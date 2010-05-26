@@ -234,7 +234,12 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
     }
 
     private int timeSinceActive(int t) {
-        return t - lastActiveTime;
+        if(t<lastActiveTime){ // wrap
+            lastActiveTime=t; // TODO handling wrap in dumb way here; will set timeSinceActive to zero on wrap and will thus extend a recording
+        }
+        return t-lastActiveTime;
+        // cast to long and subtract, this should result in unsigned difference so that if timestamp wraps around, we should get small positive number that increases
+//        return (int)((t&0xffffffffL) - (lastActiveTime&0xffffffffL));  // TODO if timetamp wraps, then new time will be MUCH less than lastActiveTime, timeSinceActive will be very negative
     }
 
     private boolean isTimedOut(int t) {

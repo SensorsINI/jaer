@@ -54,7 +54,7 @@ public class DVSActApplet extends javax.swing.JApplet {
     // activity
     private final int NUM_ACTIVITY_SAMPLES = 10000;
     private final int RESET_SCALE_COUNT = NUM_ACTIVITY_SAMPLES;
-    private final int ACTVITY_SECONDS_TO_SHOW = 600;
+    private final int ACTVITY_SECONDS_TO_SHOW = 300;
     private final int RESET_FILTER_STARTUP_COUNT = 10;
     private final int TITLE_UPDATE_INTERVAL = 1;
     private int sampleCount = 0;
@@ -65,7 +65,7 @@ public class DVSActApplet extends javax.swing.JApplet {
     private XYChart activityChart;
     private float msTime = 0, lastMsTime = 0;
 //    private long nstime;
-    private LowpassFilter filter;
+    private LowpassFilter activityChartLowpassFilter;
     private float maxActivity = 0;
 //    Random random = new Random();
 //    static HardwareInterface dummy=HardwareInterfaceFactory.instance().getFirstAvailableInterface(); // applet classloader problems, debug test
@@ -123,8 +123,8 @@ public class DVSActApplet extends javax.swing.JApplet {
             activityPanel.add(activityChart, BorderLayout.CENTER);
             ((TitledBorder) activityPanel.getBorder()).setTitle("Recent kitchen activity");
 
-            filter = new LowpassFilter();
-            filter.set3dBFreqHz(0.25f);
+            activityChartLowpassFilter = new LowpassFilter();
+            activityChartLowpassFilter.set3dBFreqHz(0.25f);
 
             try {
                 liveChip = new DVS128();
@@ -145,9 +145,11 @@ public class DVSActApplet extends javax.swing.JApplet {
             }
             frameRater.setDesiredFPS(getFps());
             backgroundActivityFilter = new BackgroundActivityFilter(liveChip);
+            backgroundActivityFilter.setPreferredEnabledState();
 //            backgroundActivityFilter.setDt(getBgFilterDt()); // set from own preferences
 //            backgroundActivityFilter.setFilterEnabled(true);
             automaticReplayPlayer = new AutomaticReplayPlayer(liveChip);
+            automaticReplayPlayer.setPreferredEnabledState();
 //            automaticReplayPlayer.setFilterEnabled(true);
             FilterChain fc = new FilterChain(liveChip);
             fc.add(backgroundActivityFilter);
@@ -439,7 +441,7 @@ public class DVSActApplet extends javax.swing.JApplet {
         lastMsTime = msTime;
         int nevents = ae.getSize();
         float instantaneousActivity = nevents / dt;
-        float activity = filter.filter(instantaneousActivity, ae.getLastTimestamp());
+        float activity = activityChartLowpassFilter.filter(instantaneousActivity, ae.getLastTimestamp());
 //                    activity=activity*activity; // power
         activitySeries.add(msTime, activity);
 //                    activitySeries.add(msTime, random.nextFloat()); // debug
@@ -448,7 +450,7 @@ public class DVSActApplet extends javax.swing.JApplet {
         sampleCount++;
         // startup
         if (sampleCount == RESET_FILTER_STARTUP_COUNT) {
-            filter.setInternalValue(activity);
+            activityChartLowpassFilter.setInternalValue(activity);
             maxActivity = 0;
         }
         if (sampleCount % RESET_SCALE_COUNT == 0) {
