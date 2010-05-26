@@ -48,14 +48,17 @@ public abstract class AbstractAEPlayer {
     /** PropertyChangeEvent.*/
     public static final String EVENT_PLAYBACKMODE="playbackMode", EVENT_TIMESLICE_US="timesliceUs",
             EVENT_PACKETSIZEEVENTS="packetSizeEvents",
-            EVENT_PLAYBACKDIRECTION="playbackDirection", EVENT_PAUSED="paused", EVENT_RESUMED="resumed", EVENT_STOPPED="stopped" ; // TODO not used yet in code
+            EVENT_PLAYBACKDIRECTION="playbackDirection", EVENT_PAUSED="paused", EVENT_RESUMED="resumed", EVENT_STOPPED="stopped", EVENT_FILEOPEN="fileopen" ; // TODO not used yet in code
 
-    /** Creates new instance of AbstractAEPlayer.
+    /** Creates new instance of AbstractAEPlayer and adds the viewer (if not null) to the list of listeners.
      *
      * @param viewer must be instance of AEViewer.
      */
     public AbstractAEPlayer (AEViewer viewer){
         this.viewer = viewer;
+        if ( viewer != null ){
+            support.addPropertyChangeListener(viewer); // TODO do we always want to add viewer to the listeners, or should it be up to the viewer to decide?
+        }
     }
 
 //    /**Returns the proper AbstractAEPlayer: either <code>this</code> or the delegated-to JAERViewer.SyncPlayer.
@@ -97,7 +100,7 @@ public abstract class AbstractAEPlayer {
 
    protected PropertyChangeSupport support = new PropertyChangeSupport(this);
 
-    /** Fires the following change events:
+    /** Fires the following change events: (see EVENT_ public static final Strings)
      * <ul>
      * <li> timesliceUs - when timeslice changes.
      * <li> packetSizeEvents - when packet size changes.
@@ -259,7 +262,7 @@ public abstract class AbstractAEPlayer {
      * @throws IOException if there is some problem opening file.
      */
     public void startPlayback (File file) throws IOException{
-        inputFile = file;
+        inputFile = file; // TODO doesn't do as advertised, subclasses override this for actual opening
     }
 
     /** Should close the input stream. */

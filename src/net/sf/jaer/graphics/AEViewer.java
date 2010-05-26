@@ -4113,12 +4113,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * a user mouse action
      */
     public void propertyChange (PropertyChangeEvent evt){
-        if ( evt.getPropertyName().equals("readerStarted") ){ // comes from hardware interface AEReader thread
+        if ( evt.getSource() instanceof CypressFX2.AEReader ){
+            if ( evt.getPropertyName().equals("readerStarted") ){ // comes from hardware interface AEReader thread
 //            log.info("AEViewer.propertyChange: AEReader started, fixing device control menu");
-            // cypress reader started, can set device control for cypress usbio reader thread
-            fixDeviceControlMenuItems();
+                // cypress reader started, can set device control for cypress usbio reader thread
+                fixDeviceControlMenuItems();
+            }
         } else if ( evt.getPropertyName().equals("cleared") ){
             setStatusMessage(null);
+        } else if ( evt.getSource() instanceof AEFileInputStream ){
+            firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // refire events from AEFileInputStream to listeners on AEViewer
+        } else if (evt.getSource() instanceof AEPlayer){
+             firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // refire events from AEFileInputStream to listeners on AEViewer
         }
     }
 

@@ -15,6 +15,7 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.IndexFileFilter;
@@ -47,9 +48,14 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     boolean fileInputEnabled = false;
     JFileChooser fileChooser;
 
+    /** Make a new AEPlayer
+     *
+     * @param viewer the viewer who is using us.
+     * @param outer from refactoring, refers to the same viewer
+     */
     public AEPlayer (AEViewer viewer,AEViewer outer){
         super(viewer);
-        this.outer = outer;
+        this.outer = outer; // TODO fix this refactoring, is outer really different than viewer?
     }
 
     private boolean isSyncEnabled(){
@@ -264,7 +270,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 e.printStackTrace();
             }
         }
-        getSupport().firePropertyChange("fileopen",null,file);  // TODO fix literal
+        getSupport().firePropertyChange(EVENT_FILEOPEN,null,file);
     }
 
     /** stops playback.
