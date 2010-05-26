@@ -264,7 +264,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 e.printStackTrace();
             }
         }
-        getSupport().firePropertyChange("fileopen",null,file);
+        getSupport().firePropertyChange("fileopen",null,file);  // TODO fix literal
     }
 
     /** stops playback.

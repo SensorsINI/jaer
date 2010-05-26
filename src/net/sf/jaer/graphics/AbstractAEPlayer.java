@@ -243,7 +243,7 @@ public abstract class AbstractAEPlayer {
     public void setPaused (boolean yes){
         boolean old = paused;
         paused = yes;
-        support.firePropertyChange(paused ? "paused" : "resumed",old,paused);
+        support.firePropertyChange(paused ? EVENT_PAUSED : EVENT_RESUMED,old,paused);
         if ( yes ){
             pausePlayAction.setPlayAction();
         } else{
@@ -277,7 +277,7 @@ public abstract class AbstractAEPlayer {
     public void setPacketSizeEvents (int packetSizeEvents){
         int old = this.packetSizeEvents;
         this.packetSizeEvents = packetSizeEvents;
-        support.firePropertyChange("packetSizeEvents",old,packetSizeEvents);
+        support.firePropertyChange(EVENT_PACKETSIZEEVENTS,old,packetSizeEvents);
     }
 
     public boolean isFlexTimeEnabled (){
@@ -303,7 +303,7 @@ public abstract class AbstractAEPlayer {
     public void setTimesliceUs (int samplePeriodUs){
         int old = this.timesliceUs;
         this.timesliceUs = samplePeriodUs;
-        support.firePropertyChange("timesliceUs",old,timesliceUs);
+        support.firePropertyChange(EVENT_TIMESLICE_US,old,timesliceUs);
     }
 
     /** Toggles between fixed packet size and fixed time slice. If mode is RealTime, has no effect.
@@ -333,7 +333,7 @@ public abstract class AbstractAEPlayer {
             toggleDirection();
         }
         this.playbackDirection = direction;
-        support.firePropertyChange("playbackDirection",old,this.playbackDirection);
+        support.firePropertyChange(EVENT_PLAYBACKDIRECTION,old,this.playbackDirection);
     }
     abstract public class MyAction extends AbstractAction{
         protected final String path = "/net/sf/jaer/graphics/icons/";
