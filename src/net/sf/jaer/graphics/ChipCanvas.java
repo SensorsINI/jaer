@@ -335,6 +335,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 //        System.out.println("displayChanged");
     }
 
+    // TODO javadoc
     public float getAnglex() {
         return anglex;
     }
@@ -349,11 +350,6 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public Canvas getCanvas() {
         return drawable;
-    }
-
-    /** Returns the rendered histogram data in case this is what is being rendered */
-    public float[][][] getFr() {
-        return fr;
     }
 
     /** Pixel drawing j2dScale. 1 pixel is rendered to getScale screen pixels.
