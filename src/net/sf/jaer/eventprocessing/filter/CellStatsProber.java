@@ -16,6 +16,7 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.util.Arrays;
+import java.util.HashMap;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLCanvas;
@@ -67,22 +68,24 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     private boolean spikeSoundEnabled = getPrefs().getBoolean("CellStatsProber.spikeSoundEnabled", true);
     SpikeSound spikeSound = null;
     private TextRenderer renderer = null;
+    volatile boolean selecting = false;
 
     public CellStatsProber(AEChip chip) {
         super(chip);
         if (chip.getCanvas() != null && chip.getCanvas().getCanvas() != null) {
             canvas = chip.getCanvas();
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
-            renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 10),true, true);
+            renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 10), true, true);
         }
         final String h = "ISIs", e = "Event rate";
         setPropertyTooltip(h, "isiHistEnabled", "enable histogramming interspike intervals");
         setPropertyTooltip(h, "isiMinUs", "min ISI in us");
         setPropertyTooltip(h, "isiMaxUs", "max ISI in us");
         setPropertyTooltip(h, "isiAutoScalingEnabled", "autoscale bounds for ISI histogram");
-        setPropertyTooltip(h,"isiNumBins","number of bins in the ISI");
-        setPropertyTooltip(e,"rateEnabled","measure event rate");
-        setPropertyTooltip("spikeSoundEnabled","enable playing spike sound whenever the selected region has events");
+        setPropertyTooltip(h, "isiNumBins", "number of bins in the ISI");
+        setPropertyTooltip(e, "rateEnabled", "measure event rate");
+        setPropertyTooltip("spikeSoundEnabled", "enable playing spike sound whenever the selected region has events");
+        setPropertyTooltip(h, "individualISIsEnabled", "enables individual ISI statistics for each cell in selection");
     }
 
     public void displayStats(GLAutoDrawable drawable) {
@@ -129,6 +132,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         gl.glPushMatrix();
         gl.glColor3fv(c, 0);
         gl.glLineWidth(lineWidth);
+        gl.glTranslatef(-.5f, -.5f, 0);
         gl.glBegin(GL.GL_LINE_LOOP);
         gl.glVertex2f(selection.x, selection.y);
         gl.glVertex2f(selection.x + selection.width, selection.y);
@@ -141,14 +145,16 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 
     @Override
     public EventPacket filterPacket(EventPacket in) {
-        stats.collectStats(in);
+        if (!selecting) {
+            stats.collectStats(in);
+        }
         return in;
     }
 
     @Override
     synchronized public void resetFilter() {
 //        selection = null;
-        stats.resetIsiHist();
+        stats.resetISIs();
     }
 
     @Override
@@ -215,6 +221,8 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             return;
         }
         getSelection(e);
+        selecting = false;
+        stats.resetISIs();
     }
 
     private int min(int a, int b) {
@@ -228,12 +236,14 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     public void mousePressed(MouseEvent e) {
         Point p = canvas.getPixelFromMouseEvent(e);
         startPoint = p;
+        selecting = true;
     }
 
     public void mouseMoved(MouseEvent e) {
     }
 
     public void mouseExited(MouseEvent e) {
+        selecting = false;
     }
 
     public void mouseEntered(MouseEvent e) {
@@ -287,6 +297,14 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         return stats.isIsiAutoScalingEnabled();
     }
 
+    public void setIndividualISIsEnabled(boolean individualISIsEnabled) {
+        stats.setIndividualISIsEnabled(individualISIsEnabled);
+    }
+
+    public boolean isIndividualISIsEnabled() {
+        return stats.isIndividualISIsEnabled();
+    }
+
     public int getIsiNumBins() {
         return stats.getIsiNumBins();
     }
@@ -304,74 +322,143 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         private int isiMinUs = prefs().getInt("CellStatsProber.isiMinUs", 0),
                 isiMaxUs = prefs().getInt("CellStatsProber.isiMaxUs", 100000),
                 isiNumBins = prefs().getInt("CellStatsProber.isiNumBins", 100);
-        private int[] isiBins = new int[isiNumBins];
-        private int isiLessCount = 0, isiMoreCount = 0;
-        private int isiMaxCount = 0;
-        private boolean isiAutoScalingEnabled = prefs().getBoolean("CellStatsProber.isiAutoScalingEnabled", true);
+//              private int[] bins = new int[isiNumBins];
+//        private int lessCount = 0, moreCount = 0;
+//        private int maxCount = 0;
+        private boolean isiAutoScalingEnabled = prefs().getBoolean("CellStatsProber.isiAutoScalingEnabled", false);
+        private boolean individualISIsEnabled = prefs().getBoolean("CellStatsProber.individualISIsEnabled", false);
         private LowpassFilter rateFilter = new LowpassFilter();
-        private int lastT = 0, prevLastT = 0;
         boolean initialized = false;
         float instantaneousRate = 0, filteredRate = 0;
         int count = 0;
-
-        public String toString() {
-            return String.format("n=%d, keps=%.1f", count, filteredRate);
-        }
+        private HashMap<Integer, ISIHist> histMap = new HashMap();
+        ISIHist globalHist = new ISIHist();
+        private int nPixels = 0;
 
         synchronized public void collectStats(EventPacket in) {
             if (selection == null) {
                 return;
             }
+            nPixels = ((selection.width + 1) * (selection.height + 1));
             stats.count = 0;
             for (Object o : in) {
                 BasicEvent e = (BasicEvent) o;
                 if (inSelection(e)) {
                     stats.count++;
-
                     if (isiHistEnabled) {
-                        int isi = e.timestamp - lastT;
-                        if (isi < 0) {
-                            lastT = e.timestamp; // handle wrapping
-                            continue;
-                        }
-                        if (isiAutoScalingEnabled) {
-                            if (isi > isiMaxUs) {
-                                setIsiMaxUs(isi);
-                            } else if (isi < isiMinUs) {
-                                setIsiMinUs(isi);
+                        if (individualISIsEnabled) {
+                            ISIHist h = histMap.get(e.address);
+                            if (h == null) {
+                                h = new ISIHist();
+                                histMap.put(e.address, h);
                             }
-                        }
-                        int bin = getIsiBin(isi);
-                        if (bin < 0) {
-                            isiLessCount++;
-                        } else if (bin >= isiNumBins) {
-                            isiMoreCount++;
+                            h.addEvent(e);
                         } else {
-                            int v = ++isiBins[bin];
-                            if (v > isiMaxCount) {
-                                isiMaxCount = v;
-                            }
+                            globalHist.addEvent(e);
                         }
                     }
-                    lastT = e.timestamp;
+                    globalHist.lastT = e.timestamp;
                 }
             }
             if (stats.count > 0) {
-                measureRate(lastT, stats.count);
+                measureAverageEPS(globalHist.lastT, stats.count);
             }
         }
 
-        private void measureRate(int lastT, int n) {
+        private class ISIHist {
+
+            int[] bins = new int[isiNumBins];
+            int lessCount = 0, moreCount = 0;
+            int maxCount = 0;
+            int lastT = 0, prevLastT = 0;
+            boolean virgin = true;
+
+            void addEvent(BasicEvent e) {
+                if (virgin) {
+                    lastT = e.timestamp;
+                    virgin = false;
+                    return;
+                }
+                int isi = e.timestamp - lastT;
+                if (isi < 0) {
+                    lastT = e.timestamp; // handle wrapping
+                    return;
+                }
+                if (isiAutoScalingEnabled) {
+                    if (isi > isiMaxUs) {
+                        setIsiMaxUs(isi);
+                    } else if (isi < isiMinUs) {
+                        setIsiMinUs(isi);
+                    }
+                }
+                int bin = getIsiBin(isi);
+                if (bin < 0) {
+                    lessCount++;
+                } else if (bin >= isiNumBins) {
+                    moreCount++;
+                } else {
+                    int v = ++bins[bin];
+                    if (v > maxCount) {
+                        maxCount = v;
+                    }
+                }
+                lastT = e.timestamp;
+            }
+
+            void draw(GL gl) {
+                gl.glColor3f(0, 0, 1);
+                gl.glLineWidth(1);
+
+                gl.glBegin(GL.GL_LINES);
+                gl.glVertex2f(1, 1);
+                gl.glVertex2f(chip.getSizeX() - 1, 0);
+                gl.glEnd();
+
+                if (maxCount > 0) {
+                    gl.glBegin(GL.GL_LINE_LOOP);
+                    float dx = (float) (chip.getSizeX() - 2) / isiNumBins;
+                    float sy = (float) (chip.getSizeY() - 2) / maxCount;
+                    for (int i = 0; i < bins.length; i++) {
+                        float y = 1 + sy * bins[i];
+                        float x1 = 1 + dx * i, x2 = x1 + dx;
+                        gl.glVertex2f(x1, 1);
+                        gl.glVertex2f(x1, y);
+                        gl.glVertex2f(x2, y);
+                        gl.glVertex2f(x2, 1);
+                    }
+                    gl.glEnd();
+                }
+            }
+
+            private void reset() {
+                if (bins == null || bins.length != isiNumBins) {
+                    bins = new int[isiNumBins];
+                } else {
+                    Arrays.fill(globalHist.bins, 0);
+                }
+                lessCount = 0;
+                moreCount = 0;
+                maxCount = 0;
+                virgin = true;
+            }
+        }
+
+        @Override
+        public String toString() {
+            return String.format("n=%d, keps=%.1f", count, filteredRate);
+        }
+
+        private void measureAverageEPS(int lastT, int n) {
             if (!rateEnabled) {
                 return;
             }
             final float maxRate = 10e6f;
             if (!initialized) {
-                prevLastT = lastT;
+                globalHist.prevLastT = lastT;
                 initialized = true;
             }
-            int dt = lastT - prevLastT;
-            prevLastT = lastT;
+            int dt = lastT - globalHist.prevLastT;
+            globalHist.prevLastT = lastT;
             if (dt < 0) {
                 initialized = false;
             }
@@ -380,7 +467,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             } else {
                 instantaneousRate = 1e6f * (float) n / (dt * AEConstants.TICK_DEFAULT_US);
             }
-            filteredRate = rateFilter.filter(instantaneousRate, lastT);
+            filteredRate = rateFilter.filter(instantaneousRate / nPixels, lastT);
         }
 
         synchronized private void drawStats(GLAutoDrawable drawable) {
@@ -390,33 +477,27 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 //            renderer.beginRendering(drawable.getWidth(), drawable.getHeight());
             // optionally set the color
             renderer.setColor(0, 0, 1, 0.8f);
-            renderer.draw3D(this.toString(), selection.x, selection.y - 1,0,.5f);
+            renderer.draw3D(this.toString(), selection.x, selection.y - 1, 0, .5f); // TODO fix string n lines
             // ... more draw commands, color changes, etc.
             renderer.end3DRendering();
 
             // draw hist
             if (isiHistEnabled) {
-                gl.glColor3f(0, 0, 1);
-                gl.glLineWidth(1);
-                gl.glBegin(GL.GL_LINE_LOOP);
-                if (isiMaxCount == 0) {
-                    gl.glVertex2f(0, 0);
-                    gl.glVertex2f(chip.getSizeX(), 0);
-                } else {
-                    float dx = (float) (chip.getSizeX() - 2) / isiNumBins;
-                    float sy = (float) (chip.getSizeY() - 2) / isiMaxCount;
-                    for (int i = 0; i < isiBins.length; i++) {
-                        float y = 1 + sy * isiBins[i];
-                        float x1 = 1 + dx * i, x2 = x1 + dx;
-                        gl.glVertex2f(x1, 1);
-                        gl.glVertex2f(x1, y);
-                        gl.glVertex2f(x2, y);
-                        gl.glVertex2f(x2, 1);
+                renderer.draw3D(String.format("%d", isiMinUs), -1, -3, 0, 0.5f);
+                renderer.draw3D(String.format("%d", isiMaxUs), chip.getSizeX() - 8, -3, 0, 0.5f);
+                if (individualISIsEnabled) {
+                    int n = histMap.size();
+                    gl.glPushMatrix();
+                    int k = 0;
+                    gl.glScalef(1, 1f / n, 1);
+                    for (ISIHist h : histMap.values()) {
+                        h.draw(gl);
+                        gl.glTranslatef(0, n, 0);
                     }
+                    gl.glPopMatrix();
+                } else {
+                    globalHist.draw(gl);
                 }
-                gl.glEnd();
-                renderer.draw3D(String.format("%d", isiMinUs), -1, -3,0,0.5f);
-                renderer.draw3D(String.format("%d",isiMaxUs), chip.getSizeX()-8, -3,0,0.5f);
             }
         }
 
@@ -430,6 +511,21 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             if (count > 0) {
                 spikeSound.play();
             }
+        }
+
+        /**
+         * @return the individualISIsEnabled
+         */
+        public boolean isIndividualISIsEnabled() {
+            return individualISIsEnabled;
+        }
+
+        /**
+         * @param individualISIsEnabled the individualISIsEnabled to set
+         */
+        public void setIndividualISIsEnabled(boolean individualISIsEnabled) {
+            this.individualISIsEnabled = individualISIsEnabled;
+            prefs().putBoolean("CellStatsProber.individualISIsEnabled", individualISIsEnabled);
         }
 
         /**
@@ -453,7 +549,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             } else {
                 prefs().putInt("CellStatsProber.isiMinUs", isiMinUs);
             }
-            resetIsiHist();
+            resetISIs();
         }
 
         /**
@@ -477,19 +573,12 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             } else {
                 prefs().putInt("CellStatsProber.isiMaxUs", isiMaxUs);
             }
-            resetIsiHist();
+            resetISIs();
         }
 
-        synchronized private void resetIsiHist() {
-            if (isiBins == null || isiBins.length != isiNumBins) {
-                isiBins = new int[isiNumBins];
-            } else {
-                Arrays.fill(isiBins, 0);
-            }
-            isiLessCount = 0;
-            isiMoreCount = 0;
-            isiMaxCount = 0;
-
+        synchronized private void resetISIs() {
+            globalHist.reset();
+            histMap.clear();
         }
 
         private int getIsiBin(int isi) {
@@ -525,7 +614,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 isiNumBins = 1;
             }
             this.isiNumBins = isiNumBins;
-            resetIsiHist();
+            resetISIs();
             prefs().putInt("CellStatsProber.isiNumBins", isiNumBins);
             support.firePropertyChange("isiNumBins", old, isiNumBins);
         }
