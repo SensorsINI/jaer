@@ -393,7 +393,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             numCells = cg.getNumMemberCells();
             mass = cg.getMass();
             increaseAgeUs(initialAge);
-            setRadius(cg);
+            setRadius(cg, 0f, mass);
             hitEdge = cg.isHitEdge();
             if ( hitEdge ){
                 ageUs = (int)( 1000 * maximumClusterLifetimeMs );
@@ -418,13 +418,24 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             this();
 
             Cluster older = one.clusterNumber < two.clusterNumber ? one : two;
+            float leakyfactor = one.calMassLeakyfactor(two.lastEventTimestamp);
+            float one_mass = one.mass;
+            float two_mass = two.mass;
+
             clusterNumber = older.clusterNumber;
-            // merge locations by average weighted by mass of events supporting each cluster
-            mass = one.mass + two.mass;
+
+            if(leakyfactor > 1)
+                two_mass /= leakyfactor;
+            else
+                one_mass *= leakyfactor;
+
+            mass = one_mass + two_mass;
             numEvents = one.numEvents + two.numEvents;
             numCells = one.numCells + two.numCells;
-            location.x = ( one.location.x * one.mass + two.location.x * two.mass ) / ( mass );
-            location.y = ( one.location.y * one.mass + two.location.y * two.mass ) / ( mass );
+
+            // merge locations by average weighted by mass of events supporting each cluster
+            location.x = ( one.location.x * one_mass + two.location.x * two_mass ) / ( mass );
+            location.y = ( one.location.y * one_mass + two.location.y * two_mass ) / ( mass );
 
             lastEventTimestamp = one.lastEventTimestamp > two.lastEventTimestamp ? one.lastEventTimestamp : two.lastEventTimestamp;
             firstEventTimestamp = one.firstEventTimestamp < two.firstEventTimestamp ? one.firstEventTimestamp : two.firstEventTimestamp;
@@ -447,6 +458,15 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             hitEdge = one.hasHitEdge() | two.hasHitEdge();
 
 //            System.out.println(older.getClusterNumber());
+        }
+
+        /**
+         * calculates mass leaky factor
+         * @param timeStamp
+         * @return
+         */
+        private float calMassLeakyfactor(int timestamp){
+            return (float) Math.exp(((float) lastEventTimestamp - timestamp) / bfilter.getCellMassTimeConstantUs());
         }
 
         /** Draws this cluster using OpenGL.
@@ -567,14 +587,29 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * @param inGroup
          */
         public void addGroup (CellGroup cg){
-            location.x = 0.5f * ( ( location.x + velocityPPT.x * ( cg.getLastEventTimestamp() - lastEventTimestamp ) ) + cg.getLocation().x );
-            location.y = 0.5f * ( ( location.y + velocityPPT.y * ( cg.getLastEventTimestamp() - lastEventTimestamp ) ) + cg.getLocation().y );
-            increaseAgeUs(cg.getLastEventTimestamp() - lastEventTimestamp);
-            lastEventTimestamp = cg.getLastEventTimestamp();
+            float leakyfactor = calMassLeakyfactor(cg.getLastEventTimestamp());
+            float curMass = mass;
+            float cgMass = cg.getMass();
+
+            if(leakyfactor > 1)
+                cgMass /= leakyfactor;
+            else
+                curMass *= leakyfactor;
+
             numEvents = cg.getNumEvents();
             numCells = cg.getNumMemberCells();
-            mass = cg.getMass();
+            mass = curMass + cgMass;
 
+            int timeshift = cg.getLastEventTimestamp() - lastEventTimestamp;
+            if(timeshift < 0) timeshift = 0;
+            location.x = ( location.x * curMass + (cg.getLocation().x + velocityPPT.x * timeshift) * cgMass ) / ( mass );
+            location.y = ( location.y * curMass + (cg.getLocation().y  + velocityPPT.y * timeshift)* cgMass ) / ( mass );
+
+            if(cg.getLastEventTimestamp() > lastEventTimestamp){
+                increaseAgeUs(cg.getLastEventTimestamp() - lastEventTimestamp);
+                lastEventTimestamp = cg.getLastEventTimestamp();
+            }
+                
             if ( maxRadius == 0 ){
                 birthLocation = cg.getLocation();
                 firstEventTimestamp = cg.getFirstEventTimestamp();
@@ -585,7 +620,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                 ageUs = (int)( 1000 * maximumClusterLifetimeMs );
             }
 
-            setRadius(cg);
+            setRadius(cg, curMass, cgMass);
         }
 
         /** Measures distance from cluster center to a cell group.
@@ -734,9 +769,10 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * radiusX and radiusY of the cluster are also set.
          * @param r the radius in pixels
          */
-        private void setRadius (CellGroup cg){
-            innerRadius = cg.getInnerRadiusPixels();
-            outterRadius = cg.getOutterRadiusPixels();
+        private void setRadius (CellGroup cg, float curMass, float cgMass){
+            float totalMass = curMass + cgMass;
+            innerRadius = (innerRadius*curMass + cg.getInnerRadiusPixels()*cgMass)/totalMass;
+            outterRadius = (outterRadius*curMass + cg.getOutterRadiusPixels()*cgMass)/totalMass;
             float maxRadiusCandidate;
 
             if ( cg.isHitEdge() ){
