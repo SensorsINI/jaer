@@ -969,13 +969,16 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      */
     @Override
     synchronized public EventPacket<?> filterPacket (EventPacket<?> in){
+        out = in;
+
         if ( in == null ){
-            return null;
+            return out;
         }
 
         if ( getEnclosedFilterChain() != null ){
             out = getEnclosedFilterChain().filterPacket(in);
         }
+
         blurring(out);
 
         return out;
@@ -989,8 +992,11 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     synchronized private EventPacket<?> blurring(EventPacket<?> in) {
         boolean updatedCells = false;
 
+        if(in == null)
+            return in;
+
         if (in.getSize() == 0) {
-            return out;
+            return in;
         }
 
         try {
