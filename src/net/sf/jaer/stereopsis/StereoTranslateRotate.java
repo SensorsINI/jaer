@@ -98,17 +98,18 @@ public class StereoTranslateRotate extends EventFilter2D {
         checkOutputPacketEventType(BinocularEvent.class);
         if (enclosedFilter != null) in = enclosedFilter.filterPacket(in);
 
-        double size_x = chip.getSizeX();
-        double size_y = chip.getSizeY();
-        double halfSize_x = size_x/2;
-        double halfSize_y = size_y/2;
+        int size_x = chip.getSizeX();
+        int size_y = chip.getSizeY();
+        int halfSize_x = size_x/2;
+        int halfSize_y = size_y/2;
         
-        double sin_phi = Math.sin(getPhi());
-        double cos_phi = Math.cos(getPhi());
+        float sin_phi = (float) Math.sin(getPhi());
+        float cos_phi = (float) Math.cos(getPhi());
         
         /* x' = x*cos_phi - y*sin_phi
            y' = y*cos_phi + x*sin_phi */
-        double x, y, x_c, y_c;
+        short x, y;
+        int x_c, y_c;
         OutputEventIterator o=out.outputIterator(); // don't need to clear it, this resets to start of output packet
         for(int i=0; i<in.getSize(); i++){
             BinocularEvent e=(BinocularEvent)in.getEvent(i);
@@ -128,11 +129,11 @@ public class StereoTranslateRotate extends EventFilter2D {
             y_c = e.y - halfSize_y;
             
             if (e.eye==BinocularEvent.Eye.LEFT) {
-                x = cos_phi*x_c + sin_phi*y_c + halfSize_x + dx;
-                y = cos_phi*y_c - sin_phi*x_c + halfSize_y + dy;
+                x = (short)(cos_phi*x_c + sin_phi*y_c + halfSize_x + dx);
+                y = (short)(cos_phi*y_c - sin_phi*x_c + halfSize_y + dy);
             } else {
-                x = cos_phi*x_c - sin_phi*y_c + halfSize_x - dx;
-                y = cos_phi*y_c + sin_phi*x_c + halfSize_y - dy;
+                x = (short)(cos_phi*x_c - sin_phi*y_c + halfSize_x - dx);
+                y = (short)(cos_phi*y_c + sin_phi*x_c + halfSize_y - dy);
             }
             
             if (x < 0 || x > size_x-1 || y < 0 || y > size_y-1) continue;
@@ -146,8 +147,8 @@ public class StereoTranslateRotate extends EventFilter2D {
             oe.polarity = e.polarity;
             oe.timestamp = e.timestamp;
             oe.type = e.type;
-            oe.x = (short) x;
-            oe.y = (short) y;
+            oe.x = x;
+            oe.y = y;
         }
         return out;
     }

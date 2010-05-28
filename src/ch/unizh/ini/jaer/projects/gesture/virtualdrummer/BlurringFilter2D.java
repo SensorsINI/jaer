@@ -362,7 +362,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @param timeStamp
          */
         protected void incrementMass(int timeStamp) {
-            mass = 1 + mass * (float) Math.exp(((float) lastEventTimestamp - timeStamp) / cellMassTimeConstantUs);
+            mass = 1.0f + mass * (float) Math.exp(((float) lastEventTimestamp - timeStamp) / cellMassTimeConstantUs);
         }
 
         /** returns the total number of events collected by this cell.
@@ -1001,14 +1001,15 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         try {
             // add events to the corresponding cell
-            for (BasicEvent ev : in) {
+            for(int i=0; i<in.getSize(); i++){
+                BasicEvent ev = in.getEvent(i);
 
                 // don't reset on nonmonotonic, rather reset on rewind, which happens automatically
 //                if(ev.timestamp < lastTime){
 //                    resetFilter();
 //                }
-                int subIndexX = (int) 2 * ev.getX() / cellSizePixels;
-                int subIndexY = (int) 2 * ev.getY() / cellSizePixels;
+                int subIndexX = (int) (2.0f * ev.getX() / cellSizePixels);
+                int subIndexY = (int) (2.0f * ev.getY() / cellSizePixels);
 
                 if (subIndexX >= numOfCellsX && subIndexY >= numOfCellsY) {
                     initFilter();
