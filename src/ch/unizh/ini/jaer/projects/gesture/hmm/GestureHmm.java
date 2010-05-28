@@ -7,6 +7,7 @@ package ch.unizh.ini.jaer.projects.gesture.hmm;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Hashtable;
 
 /**
@@ -14,51 +15,84 @@ import java.util.Hashtable;
  * @author Jun Haeng Lee
  */
 public class GestureHmm {
-    final static String START_STATE = "Start";
-    final static String FINAL_STATE = "Final";
-    final static String DYNAMIC_THRESHOLD_MODEL  = "Dynamic Threshold Model";
-    final static String[] THRESHOLD_STATE = {START_STATE, FINAL_STATE};
-    final static double[] THRESHOLD_START_PROB = {1.0, 0.0};
+    static final String START_STATE = "Start";
+    static final String FINAL_STATE = "Final";
+    static final String DYNAMIC_THRESHOLD_MODEL  = "Dynamic Threshold Model";
+    static final String[] THRESHOLD_STATE = {START_STATE, FINAL_STATE};
+    static final double[] THRESHOLD_START_PROB = {1.0, 0.0};
 
-    // number of defined gestures in a set
+    /**
+     * threshold options
+     */
+    public static final int NO_THRESHOLD       = 0x00;
+    public static final int GAUSSIAN_THRESHOLD = 0x01;
+    public static final int FIXED_THRESHOLD    = 0x02;
+    public static final int DYNAMIC_THRESHOLD  = 0x04;
+
+    /**
+     * number of defined gestures in a set
+     */
     private int numGestures = 0;
 
-    // Hashmap to store HiddenMarkovModels for gestures
+    /**
+     * Hashmap to store HiddenMarkovModels for gestures
+     */
     HashMap<String, HiddenMarkovModel> gestureHmms= new HashMap<String, HiddenMarkovModel>();
 
-    // Hashmap to store minimum likelyhood of learned gestures.
+    /**
+     * Hashmap to store minimum likelyhood of learned gestures.
+     * This is used as a reference to distinguish the target gesture from gabige gesture when the dynamic threshold model is not used.
+     */
     HashMap<String, Double> refLikelyhood= new HashMap<String, Double>();
 
-    // HMM for the threshold model
+    /**
+     * Hashmap to store gaussian thredhold models.
+     * This is used as a reference to distinguish the target gesture from gabige gesture when the dynamic threshold model is not used.
+     */
+    HashMap<String, GaussianThreshold> gthModels= new HashMap<String, GaussianThreshold>();
+
+    /**
+     * HMM for the threshold model
+     * Dynamic threshold model was introduced by H. K Lee and J. H. Kim in their paper IEEE Trans. PAMI Oct. 1999.
+     */
     HiddenMarkovModel thresholdModel;
     
-    // set of feature vectors
+    /**
+     * set of feature vectors
+     */
     private ArrayList<String> featureVectorSpace = new ArrayList<String>();
 
-    private boolean useDynamicThreshold = false;
+    /**
+     * threshold option
+     * one of NO_THRESHOLD, GAUSSIAN_THRESHOLD, FIXED_THRESHOLD, DYNAMIC_THRESHOLD, GAUSSIAN_THRESHOLD | DYNAMIC_THRESHOLD
+     */
+    private int thresholdOption;
 
     /**
      * Constructor with feature vector space
      * @param featureVectorSpace : feature vector space
-     * @param useDynamicThreshold : if true, dynamic threshold model is generated as a reference
+     * @param thresholdOption : one of NO_THRESHOLD, GAUSSIAN_THRESHOLD, FIXED_THRESHOLD, DYNAMIC_THRESHOLD, GAUSSIAN_THRESHOLD | DYNAMIC_THRESHOLD
      */
-    public GestureHmm(String [] featureVectorSpace, boolean useDynamicThreshold) {
+    public GestureHmm(String [] featureVectorSpace, int thresholdOption) {
         for(String fv:featureVectorSpace)
             this.featureVectorSpace.add(fv);
 
-        this.useDynamicThreshold = useDynamicThreshold;
-        if(useDynamicThreshold){
-            thresholdModel = new HiddenMarkovModel(DYNAMIC_THRESHOLD_MODEL, THRESHOLD_STATE, getFeatureVectorSpaceToArray(), HiddenMarkovModel.ModelType.USER_DEFINED);
-            thresholdModel.initializeProbabilityMatrix(THRESHOLD_START_PROB, null, null);
-            // set transition matrix of the final state
-            thresholdModel.setTransitionProbability(FINAL_STATE, START_STATE, 1.0);
-            thresholdModel.setStateSilent(START_STATE);
-            thresholdModel.setStateSilent(FINAL_STATE);
+        if((thresholdOption&FIXED_THRESHOLD) > 0 && (thresholdOption&DYNAMIC_THRESHOLD) > 0){
+            System.out.println("FIXED_THRESHOLD and DYNAMIC_THRESHOLD cannot be used simulateously. DYNAMIC_THRESHOLD will be applied.");
+            thresholdOption &= (0xff - FIXED_THRESHOLD);
         }
+        this.thresholdOption = thresholdOption;
+        
+        thresholdModel = new HiddenMarkovModel(DYNAMIC_THRESHOLD_MODEL, THRESHOLD_STATE, getFeatureVectorSpaceToArray(), HiddenMarkovModel.ModelType.USER_DEFINED);
+        thresholdModel.initializeProbabilityMatrix(THRESHOLD_START_PROB, null, null);
+        // set transition matrix of the final state
+        thresholdModel.setTransitionProbability(FINAL_STATE, START_STATE, 1.0);
+        thresholdModel.setStateSilent(START_STATE);
+        thresholdModel.setStateSilent(FINAL_STATE);
     }
 
     /**
-     * add a new gesture
+     * adds a new gesture
      * @param name : gesture name
      * @param numStates : number of states to be used in HMM for this gesture
      * @param modelType
@@ -70,35 +104,48 @@ public class GestureHmm {
 
         gestureHmms.put(name, hmm);
         refLikelyhood.put(name, 0.0);
+
+        boolean doBestMatching = false;
+        if(modelType == HiddenMarkovModel.ModelType.LRC_RANDOM ||  modelType == HiddenMarkovModel.ModelType.LRBC_RANDOM)
+            doBestMatching = true;
+        gthModels.put(hmm.getName(), new GaussianThreshold(featureVectorSpace.size(), 2*Math.PI/180, GaussianThreshold.Type.CIRCULATING_ANGLE, doBestMatching));
+
         numGestures++;
 
         return hmm;
     }
 
     /**
-     * add a new gesture
+     * adds a new gesture
      * @param hmm : hmm of the gesture
      */
     public void addGesture(HiddenMarkovModel hmm){
         gestureHmms.put(hmm.getName(), hmm);
         refLikelyhood.put(hmm.getName(), 0.0);
+
+        boolean doBestMatching = false;
+        HiddenMarkovModel.ModelType modelType = hmm.getModelType();
+        if(modelType == HiddenMarkovModel.ModelType.LRC_RANDOM ||  modelType == HiddenMarkovModel.ModelType.LRBC_RANDOM)
+            doBestMatching = true;
+        gthModels.put(hmm.getName(), new GaussianThreshold(featureVectorSpace.size(), 2*Math.PI/180, GaussianThreshold.Type.CIRCULATING_ANGLE, doBestMatching));
+
         numGestures++;
     }
 
     /**
-     * remove the specified gesture
+     * removes the specified gesture
      * @param name : gesture name
      */
     public void removeGesture(String name){
-        if(useDynamicThreshold)
-            removeFromThresholdModel(name);
+        removeFromThresholdModel(name);
         gestureHmms.remove(name);
         refLikelyhood.remove(name);
+        gthModels.remove(name);
         numGestures--;
     }
 
     /**
-     * initialize a gesture HMM
+     * initializes a gesture HMM
      * @param name : gesture name
      * @param startProb : start probability of HMM
      * @param transitionProb : transition probability of HMM
@@ -107,26 +154,30 @@ public class GestureHmm {
     public void initializeGesture(String name, double[] startProb, double[][] transitionProb, double[][] emissionProb){
         HiddenMarkovModel hmm = gestureHmms.get(name);
 
+        if(hmm == null)
+            return;
+
        hmm.initializeProbabilityMatrix(startProb, transitionProb, emissionProb);
 
         if(hmm.getModelType() == HiddenMarkovModel.ModelType.USER_DEFINED)
             hmm.saveInitialProbabilty();
 
-        if(!name.equals(DYNAMIC_THRESHOLD_MODEL) && useDynamicThreshold){
-            updateThresholdModelWith(name);
-        }
+        updateThresholdModelWith(name);
     }
 
     /**
-     * initialize a gesture with random probabilities
+     * initializes a gesture with random probabilities
      * @param name : gesture name
      */
     public void initializeGestureRandom(String name){
-        gestureHmms.get(name).setProbabilityRandom();
+        HiddenMarkovModel hmm = getGestureHmm(name);
 
-        if(!name.equals(DYNAMIC_THRESHOLD_MODEL) && useDynamicThreshold){
-            updateThresholdModelWith(name);
-        }
+        if(hmm == null)
+            return;
+
+        hmm.setProbabilityRandom();
+
+        updateThresholdModelWith(name);
     }
 
  
@@ -146,7 +197,7 @@ public class GestureHmm {
     }
 
     /**
-     * get gesture HMM
+     * returns gesture HMM
      * @param name : gesture name
      * @return : HMM
      */
@@ -155,7 +206,7 @@ public class GestureHmm {
     }
 
     /**
-     * learn gesture with an observation sequence
+     * learns gesture with an observation sequence
      * @param name : gesture name
      * @param obsSeq : observation sequence
      * @param updateStartProb
@@ -169,6 +220,9 @@ public class GestureHmm {
 
         HiddenMarkovModel hmm = gestureHmms.get(name);
 
+        if(hmm == null)
+            return false;
+
         // when this is the first training
         if(hmm.getNumTraining() == 0){
             while(!(learningDone = hmm.BaumWelch(obsSeq, minProb, 0.001, updateStartProb, updateTranstionProb, updateEmissionProb, false)) && minProb < 1){
@@ -179,14 +233,18 @@ public class GestureHmm {
                 minProb *= 10;
             }
 
-            if(!learningDone){
+            if(learningDone){
+                // if the HMM model type is LRC or LRBC,
+                if(hmm.getModelType() == HiddenMarkovModel.ModelType.LRC_RANDOM || hmm.getModelType() == HiddenMarkovModel.ModelType.LRBC_RANDOM)
+                    hmm.saveInitialProbabilty();
+            } else {
                 removeGesture(name);
                 System.out.println("Learning of "+name+" is failed.");
             }
 
         } else { // when this is not the first training. All training results are ensenble averaged
             HiddenMarkovModel newHmm = new HiddenMarkovModel(name, hmm.getStatesToArray(), getFeatureVectorSpaceToArray(), hmm.getModelType());
-            if(hmm.getModelType() == HiddenMarkovModel.ModelType.USER_DEFINED)
+            if(hmm.getModelType() == HiddenMarkovModel.ModelType.USER_DEFINED || hmm.getModelType() == HiddenMarkovModel.ModelType.LRC_RANDOM || hmm.getModelType() == HiddenMarkovModel.ModelType.LRBC_RANDOM)
                 newHmm.initializeProbabilityMatrix(hmm.getInitialStartProbabilityToArray(), hmm.getInitialTransitionProbabilityToArray(), hmm.getInitialEmissionProbabilityToArray());
             else
                 newHmm.setProbabilityRandom();
@@ -200,9 +258,13 @@ public class GestureHmm {
                 minProb *= 10;
             }
 
-            if(learningDone)
+            if(learningDone){
                 hmm.ensenbleAverage(newHmm);
-            else
+
+                // if the HMM model type is LRC or LRBC,
+                if(hmm.getModelType() == HiddenMarkovModel.ModelType.LRC_RANDOM || hmm.getModelType() == HiddenMarkovModel.ModelType.LRBC_RANDOM)
+                    hmm.saveInitialProbabilty();
+            }else
                 System.out.println("Learning of "+name+" is failed.");
 
         }
@@ -212,20 +274,43 @@ public class GestureHmm {
             if(refLikelyhood.get(name) > hmm.forward(obsSeq))
                 refLikelyhood.put(name, hmm.forward(obsSeq));
 
-            if(useDynamicThreshold){
-                updateThresholdModelWith(name);
-            }
+            updateThresholdModelWith(name);
         }
 
         return learningDone;
     }
 
-    /** reset the specified gesture
+    /**
+     * learns gesture with an observation sequence and law feature vectors
+     * @param name : gesture name
+     * @param obsSeq : observation sequence
+     * @param rawAngles : not quantized angle sequence
+     * @param updateStartProb
+     * @param updateEmissionProb
+     * @param updateTranstionProb
+     * @return
+     */
+    public boolean learnGesture(String name, String[] obsSeq, double[] rawAngles, boolean updateStartProb, boolean updateTranstionProb, boolean updateEmissionProb){
+        boolean learningSuccess = learnGesture(name, obsSeq, updateStartProb, updateTranstionProb, updateEmissionProb);
+
+        if(learningSuccess){
+            GaussianThreshold gth = gthModels.get(name);
+
+            gth.addSample(rawAngles);
+        }
+
+        return learningSuccess;
+    }
+
+    /** resets the specified gesture
      *
      * @param name
      */
     public void resetGesture(String name){
         HiddenMarkovModel hmm = getGestureHmm(name);
+
+        if(hmm == null)
+            return;
 
         hmm.setNumTraining(0);
         if(hmm.getModelType() == HiddenMarkovModel.ModelType.USER_DEFINED)
@@ -234,10 +319,11 @@ public class GestureHmm {
             hmm.setProbabilityRandom();
 
         refLikelyhood.put(name, 0.0);
+        gthModels.get(name).reset();
     }
 
     /**
-     * generate complete set of observation seqeunces with the specified length
+     * generates complete set of observation seqeunces with the specified length
      * @param featureVectorSpace : feature vector space
      * @param obsLength : observation sequence length
      * @param showObsSet : if true, the result will be shown on the screen
@@ -270,33 +356,34 @@ public class GestureHmm {
 
 
     /**
-     * get the likelyhood of observation sequence in the given gesture
+     * returns the likelyhood of observation sequence in the given gesture
      * @param name : gesture name
      * @param obs : observation sequence
      * @return : likelyhood
      */
     public double getGestureLikelyhood(String name, String[] obs){
-        return gestureHmms.get(name).forward(obs);
+        HiddenMarkovModel hmm = gestureHmms.get(name);
+
+        if(hmm == null)
+            return 0.0;
+
+        return hmm.forward(obs);
     }
 
     /**
-     * get the likelyhood of a gesture in the threshold model
+     * returns the likelyhood of a gesture in the threshold model
+     * Dynamic threshold model was introduced by H. K Lee and J. H. Kim in their paper IEEE Trans. PAMI Oct. 1999.
      * @param scaleFactor 
      * @param obs
      * @return
      */
     public double getGestureLikelyhoodTM(double scaleFactor, String[] obs){
-        if(useDynamicThreshold)
-            return thresholdModel.forward(obs)*scaleFactor;
-        else{
-            System.out.println("Warning: Threshold model is not used.");
-            return -1000.0;
-        }
+        return thresholdModel.forward(obs)*scaleFactor;
     }
     
 
     /**
-     * get the name of the best matching gesture
+     * returns the name of the best matching gesture
      * @param obs : observation sequence
      * @return : gesture name
      */
@@ -313,11 +400,81 @@ public class GestureHmm {
             }
         }
 
-        // checks with threshold.
-        if(useDynamicThreshold){
+        // checks state transition for LRB and LRBC types. 
+        // If the viterbi pathes doesn't include all states, this may not be a proper guess.
+        HiddenMarkovModel.ModelType modelType = getGestureHmm(name).getModelType();
+        if(modelType == HiddenMarkovModel.ModelType.LRB_RANDOM || modelType == HiddenMarkovModel.ModelType.LRBC_RANDOM){
+            getGestureHmm(name).viterbi(obs);
+            ArrayList<String> viterbiPath = getGestureHmm(name).getViterbiPath(obs.length);
+            HashSet<String> visitedStates = new HashSet<String>();
+            for(String state:viterbiPath)
+                visitedStates.add(state);
+            if(visitedStates.size() != getGestureHmm(name).getStates().size())
+                return null;
+        }
+
+        // checks with dynamic threshold.
+        if((thresholdOption&DYNAMIC_THRESHOLD)>0){
             if(maxProb < getGestureLikelyhoodTM(1.0, obs))
                 name = null;
-        } else{
+        } else if ((thresholdOption&FIXED_THRESHOLD)>0) {
+            if(maxProb < refLikelyhood.get(name))
+                name = null;
+        }
+
+//        System.out.println("Maximum likelyhood = " + maxProb);
+        return name;
+    }
+    
+    /**
+     * returns the name of the best matching gesture
+     * @param obs : observation sequence
+     * @param rawAngles : raw angle sequence
+     * @return : gesture name
+     */
+    public String getBestMatchingGesture(String[] obs, double[] rawAngles){
+        String name = null;
+        double maxProb = 0.0;
+
+        // finds a gesture having maximum likelyhood.
+        for(HiddenMarkovModel hmm : gestureHmms.values()){
+            double prob = hmm.forward(obs);
+            if(prob > maxProb){
+                name = hmm.getName();
+                maxProb = prob;
+            }
+        }
+
+        if(name == null)
+            return null;
+
+        // checks state transition for LRB and LRBC types.
+        // If the viterbi pathes doesn't include all states, this may not be a proper guess.
+        HiddenMarkovModel.ModelType modelType = getGestureHmm(name).getModelType();
+        if(modelType == HiddenMarkovModel.ModelType.LRB_RANDOM || modelType == HiddenMarkovModel.ModelType.LRBC_RANDOM){
+            getGestureHmm(name).viterbi(obs);
+            ArrayList<String> viterbiPath = getGestureHmm(name).getViterbiPath(obs.length);
+            HashSet<String> visitedStates = new HashSet<String>();
+            for(String state:viterbiPath)
+                visitedStates.add(state);
+            if(visitedStates.size() != getGestureHmm(name).getStates().size()){
+                return null;
+            }
+        }
+
+        // checks with Gaussian threshold
+        if((thresholdOption&GAUSSIAN_THRESHOLD)>0){
+            GaussianThreshold gth = gthModels.get(name);
+            if(gth.numSamples > 0)
+                if(!gth.isAboveThreshold(rawAngles))
+                    return null;
+        }
+        
+        // checks with dynamic threshold.
+        if((thresholdOption&DYNAMIC_THRESHOLD)>0){
+            if(maxProb < getGestureLikelyhoodTM(1.0, obs))
+                name = null;
+        } else if ((thresholdOption&FIXED_THRESHOLD)>0) {
             if(maxProb < refLikelyhood.get(name))
                 name = null;
         }
@@ -327,7 +484,7 @@ public class GestureHmm {
     }
 
     /**
-     * get the feature vector space in array
+     * returns the feature vector space in array
      * @return
      */
     public String[] getFeatureVectorSpaceToArray() {
@@ -348,46 +505,62 @@ public class GestureHmm {
     }
 
     /**
-     * update threshold model with the specified gesture
+     * returns the average features in Array
+     * @param gestureName
+     * @return
+     */
+    public double[] getAverageFeaturesToArray(String gestureName){
+        GaussianThreshold gth = gthModels.get(gestureName);
+
+        if(gth == null)
+            return null;
+
+        return gth.getMuToArray();
+    }
+
+    /**
+     * updates threshold model with the specified gesture
+     * Dynamic threshold model was introduced by H. K Lee and J. H. Kim in their paper IEEE Trans. PAMI Oct. 1999.
      * @param gestureName : gesture name
      */
     public void updateThresholdModelWith(String gestureName){
         HiddenMarkovModel hmm = gestureHmms.get(gestureName);
+
+        if(hmm == null)
+            return;
 
         ArrayList<String> states = thresholdModel.getStates();
         Hashtable<String, Double> startProb = thresholdModel.getStartProbability();
         Hashtable<String, Hashtable> transitionProb = thresholdModel.getTransitionProbability();
         Hashtable<String, Hashtable> emissionProb = thresholdModel.getEmissionProbability();
 
-        boolean updateStartState = false;
         for(String state : hmm.getStatesToArray()){
             // if not contained
-            if(!states.contains(state)){
-                // add state
-                states.add(state);
-                // set the added state as a non-silent state
-                thresholdModel.setStateNonSilent(state);
+            if(states.contains(state))
+               states.remove(state);
 
-                // set start probability zero
-                startProb.put(state, 0.0);
+            // add state
+            states.add(state);
+            // set the added state as a non-silent state
+            thresholdModel.setStateNonSilent(state);
 
-                // add a new row in the transition probability matirx
-                Hashtable<String, Double> newTransitionProb = new Hashtable<String, Double>();
-                for(String nextState:hmm.getStates())  // create zero transition matrix
-                    newTransitionProb.put(nextState, 0.0);
-                transitionProb.put(state, newTransitionProb);
+            // set start probability zero
+            startProb.put(state, 0.0);
 
-                // add a new row in the emission probability matrix
-                Hashtable<String, Double> newEmissionProb = new Hashtable<String, Double>();
-                emissionProb.put(state, newEmissionProb);
+            // add a new row in the transition probability matirx
+            Hashtable<String, Double> newTransitionProb = new Hashtable<String, Double>();
+            for(String nextState:hmm.getStates())  // create zero transition matrix
+                newTransitionProb.put(nextState, 0.0);
+            transitionProb.put(state, newTransitionProb);
 
-                // update transition probability
-                for(String ss:states){
-                    transitionProb.get(ss).put(state, 0.0);
-                    transitionProb.get(state).put(ss, 0.0);
-                }
+            // add a new row in the emission probability matrix
+            Hashtable<String, Double> newEmissionProb = new Hashtable<String, Double>();
+            emissionProb.put(state, newEmissionProb);
 
-                updateStartState = true;
+            // update transition probability
+            for(String ss:states){
+                transitionProb.get(ss).put(state, 0.0);
+                transitionProb.get(state).put(ss, 0.0);
             }
 
             // set transition probability
@@ -398,15 +571,32 @@ public class GestureHmm {
             for(String fv:featureVectorSpace)
                 emissionProb.get(state).put(fv, hmm.getEmissionProbability(state, fv));
         }
-        if(updateStartState)
-            for(String state:states)
-                if(!state.equals(START_STATE) && !state.equals(FINAL_STATE))
-                    transitionProb.get(START_STATE).put(state, 1.0/(thresholdModel.getNumStates()-3.0));
+
+        pruneIdenticalStatesInThresholdModel();
+    }
+
+    /**
+     * re-calculates the transition probabilities of Start state
+     */
+    private void recalculateStartStateTransitionProb(){
+        ArrayList<String> states = thresholdModel.getStates();
+        Hashtable<String, Hashtable> transitionProb = thresholdModel.getTransitionProbability();
+        for(String state:states)
+            if(!state.equals(START_STATE) && !state.equals(FINAL_STATE))
+                transitionProb.get(START_STATE).put(state, 1.0/(thresholdModel.getNumStates()-3.0));
     }
 
 
+    /**
+     * removes states of deleted guesture from the threshold model
+     * Dynamic threshold model was introduced by H. K Lee and J. H. Kim in their paper IEEE Trans. PAMI Oct. 1999.
+     * @param name
+     */
     private void removeFromThresholdModel(String name){
         HiddenMarkovModel hmm = gestureHmms.get(name);
+
+        if(hmm == null)
+            return;
 
         for(String state:hmm.getStates()){
             // remove all states from the threshold model
@@ -425,28 +615,87 @@ public class GestureHmm {
             // modify final state
             thresholdModel.getTransitionProbability().get(FINAL_STATE).remove(state);
         }
+
+        // re-calculates the transition probabilities of Start state
+        recalculateStartStateTransitionProb();
     }
 
     /**
-     * print the summay of a gesture on the screen
+     * returns the symmetric relative entropy between states i and j based on emmision probabilities
+     * Symmetric relative entropy was introduced by H. K Lee and J. H. Kim in their paper IEEE Trans. PAMI Oct. 1999.
+     * @param state_i
+     * @param state_j
+     * @return
+     */
+    private double relatveEntropy(String state_i, String state_j){
+        double rEntropy = 0;
+        double epi_p, epj_p, tmp1, tmp2;
+
+        Hashtable<String, Double> epi = thresholdModel.getEmissionProbability().get(state_i);
+        Hashtable<String, Double> epj = thresholdModel.getEmissionProbability().get(state_j);
+
+        for(String codeword:featureVectorSpace){
+            epi_p = epi.get(codeword);
+            epj_p = epj.get(codeword);
+
+            if(epi_p == 0 || epj_p == 0){
+                if(epi_p == 0 && epj_p == 0){
+                    // do nothing
+                }else{
+                    rEntropy = Double.POSITIVE_INFINITY;
+                    break;
+                }
+            }else{
+                rEntropy += (epi_p*Math.log(epi_p/epj_p)+epj_p*Math.log(epj_p/epi_p));
+            }
+        }
+
+        return rEntropy/2;
+    }
+
+    /**
+     * prunes duplicate states in the dynamic threshold model
+     */
+    public void pruneIdenticalStatesInThresholdModel(){
+        ArrayList<String> stateList = thresholdModel.getStates();
+        ArrayList<String> pruneList = new ArrayList<String>();
+
+        // do loop except Start and Final states
+        for(int i=2; i<stateList.size()-1; i++){
+            for(int j=i+1; j<stateList.size(); j++){
+                if(relatveEntropy(stateList.get(i), stateList.get(j)) == 0)
+                    pruneList.add(stateList.get(j));
+            }
+        }
+
+        stateList.removeAll(pruneList);
+        
+        // re-calculates the transition probabilities of Start state
+        recalculateStartStateTransitionProb();
+    }
+
+    /**
+     * prints the summay of a gesture on the screen
      * @param name : gesture name
      */
     public void printGesture(String name){
-        if(gestureHmms.get(name) == null)
+        HiddenMarkovModel hmm = gestureHmms.get(name);
+
+        if(hmm == null)
             return;
 
         System.out.println("+++++++++ Summary of " + name + " +++++++++++");
-        System.out.println("Number of states : " + gestureHmms.get(name).getNumStates());
+        System.out.println("Number of states : " + hmm.getNumStates());
         System.out.print("States : ");
-        for(String state:gestureHmms.get(name).getStates())
+        for(String state:hmm.getStates())
             System.out.print(state+", ");
         System.out.println();
-        gestureHmms.get(name).printAllProbability();
+        hmm.printAllProbability();
         System.out.println("+++++++++++++++++++++++++++++++++++++++++++");
     }
 
     /**
-     * print the summay of the dynamic threshold model on the screen
+     * prints the summay of the dynamic threshold model on the screen
      */
     public void printThresholdModel(){
         System.out.println("+++++++++ Summary of Threshold model +++++++++++");

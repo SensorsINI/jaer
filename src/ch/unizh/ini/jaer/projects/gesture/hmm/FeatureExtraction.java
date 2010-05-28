@@ -5,40 +5,54 @@
 
 package ch.unizh.ini.jaer.projects.gesture.hmm;
 
+import java.awt.Rectangle;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
 
 /**
- * Gesture feature extraction. Convert a trajectory to a sequence of features
- * @author Administrator
+ * Gesture feature extraction. It converts a trajectory to a sequence of features
+ * @author Jun Haeng Lee
  */
 public class FeatureExtraction{
-    // sequence length. Total length of the given trajectory will be divided into this number of sections
-    private int seqLength;
+    /** 
+     * sequence length, which is identical to the number of feature sequence.
+     * Total length of the given trajectory will be divided into this number of sections to calculate feature sequence.
+     */
+    public int seqLength;
 
-    // number of directions used for codewords
-    int numDirs;
+    /** 
+     * number of directions used for codewords
+     */
+    public int numDirs;
 
-    // 2pi/numFeatures
+    /** 
+     * 2pi/numDirs
+     */
     private double deltaAngle;
+
+    /** 
+     * array of vector angles which is not quantized. It may be necessary for Continuous HMM or GMM (Gaussian Mixture Model)
+     */
+    public double[] vectorAngleSeq;
 
     /**
      * constructor with number of directions
-     * @param numDirs : number of directions used as features
+     * @param numDirs
      * @param seqLength
      */
     public FeatureExtraction(int numDirs, int seqLength) {
         deltaAngle = 2.0*Math.PI/numDirs;
         this.seqLength = seqLength;
         this.numDirs = numDirs;
+        this.vectorAngleSeq = new double[seqLength];
     }
 
     /**
-     * convert a trajectory into a sequence of codewords
+     * converts a trajectory into a sequence of codewords
      * @param trajectory
      * @return sequence of codewords
      */
-    public String[] convToFeatureArray(ArrayList<? extends Point2D.Float> trajectory){
+    public String[] convTrajectoryToCodewords(ArrayList<? extends Point2D.Float> trajectory){
         String[] out = new String[seqLength];
 
         if(trajectory.size() == 0)
@@ -72,7 +86,8 @@ public class FeatureExtraction{
             len += distance(prevPosition, currPosition);
             
 //            System.out.println(", New dist = " + distance(prevPosition, currPosition));
-            out[i] = convToFeature(calAngle(startPosition, currPosition));
+            vectorAngleSeq[i] = calAngle(startPosition, currPosition);
+            out[i] = convToCodeword(vectorAngleSeq[i]);
 //            System.out.println("Total length = " + totalTrajLen + ", current length = " + len);
 
             startPosition = currPosition;
@@ -86,7 +101,22 @@ public class FeatureExtraction{
     }
 
     /**
-     * calculate angle of movement from p1 to p2
+     * converts angles to codeswords
+     * @param angles
+     * @return
+     */
+    public String[] convAnglesToCodewords(double[] angles){
+        String[] out = new String[angles.length];
+
+        for(int i=0; i<angles.length; i++)
+            out[i] = convToCodeword(angles[i]);
+
+        return out;
+    }
+
+
+    /**
+     * calculates the vector angle between p1 to p2
      * @param startPosition
      * @param endPosition
      * @return
@@ -115,10 +145,10 @@ public class FeatureExtraction{
     }
 
     /**
-     * find a position with the specified distance from p1 on the line between p1 and p2
+     * finds a position with the specified distance from p1 on the line between p1 and p2
      * @param p1
      * @param p2
-     * @param len
+     * @param len : distance from point 1
      * @return
      */
     private Point2D.Float interpolatePosition(Point2D.Float p1, Point2D.Float p2, double len){
@@ -132,7 +162,7 @@ public class FeatureExtraction{
     }
 
     /**
-     * calculate the total length of the trajectory
+     * calculates the total length of the trajectory
      * @param trajectory
      * @return
      */
@@ -162,11 +192,11 @@ public class FeatureExtraction{
 
 
     /**
-     * convert an angle to a codeword
+     * converts an angle to a codeword
      * @param angle
      * @return the codeword
      */
-    public String convToFeature(double angle){
+    public String convToCodeword(double angle){
         int codeword = (int) (refactorAngle(angle)/deltaAngle + 0.5);
         if(codeword >= numDirs)
             codeword = numDirs - 1;
@@ -177,7 +207,7 @@ public class FeatureExtraction{
     }
 
     /**
-     * make angle be between 0 and 2pi
+     * makes angle be between 0 and 2pi
      * @param angle
      * @return
      */
@@ -190,4 +220,78 @@ public class FeatureExtraction{
 
         return angle;
     }
+
+
+    /**
+     * converts angles to trajectory
+     * @param startPos
+     * @param angles
+     * @param sectionLength
+     * @return
+     */
+    public static ArrayList<Point2D.Float> convAnglesToTrajectory(Point2D.Float startPos, double[] angles, double sectionLength){
+        ArrayList<Point2D.Float> outTrj = new ArrayList<Point2D.Float>(angles.length+1);
+        Point2D.Float prevPos = startPos;
+
+        outTrj.add(startPos);
+        for(int i=0; i<angles.length; i++){
+            Point2D.Float nextPos = new Point2D.Float();
+
+            nextPos.x = prevPos.x + (float) (sectionLength*Math.cos(angles[i]));
+            nextPos.y = prevPos.y + (float) (sectionLength*Math.sin(angles[i]));
+
+            outTrj.add(nextPos);
+            prevPos = nextPos;
+        }
+
+        return outTrj;
+    }
+
+
+    /**
+     * converts angles to trajectory in the scaled area
+     * @param center
+     * @param size
+     * @param angles
+     * @return
+     */
+    public static ArrayList<Point2D.Float> convAnglesToTrajectoryInScaledArea(Point2D.Float center, float size, double[] angles){
+        ArrayList<Point2D.Float> outTrj = new ArrayList<Point2D.Float>(angles.length+1);
+        float minX, minY, maxX, maxY;
+
+        outTrj = convAnglesToTrajectory(new Point2D.Float(0.0f, 0.0f), angles, 1.0);
+
+        minX = maxX = outTrj.get(0).x;
+        minY = maxY = outTrj.get(0).y;
+
+        for(Point2D.Float nextPos:outTrj){
+            if(nextPos.x < minX)
+                minX = nextPos.x;
+            else if(nextPos.x > maxX)
+                maxX = nextPos.x;
+
+            if(nextPos.y < minY)
+                minY = nextPos.y;
+            else if(nextPos.y > maxY)
+                maxY = nextPos.y;
+        }
+
+        float width = maxX - minX;
+        float height = maxY - minY;
+        float scale;
+
+        if(width > height)
+            scale = size/width;
+        else
+            scale = size/height;
+
+        Point2D.Float startPos = new Point2D.Float();
+        startPos.x = center.x + (0.0f - (minX+maxX)/2)*scale;
+        startPos.y = center.y + (0.0f - (minY+maxY)/2)*scale;
+
+        outTrj = convAnglesToTrajectory(startPos, angles, scale);
+
+        return outTrj;
+    }
+
 }

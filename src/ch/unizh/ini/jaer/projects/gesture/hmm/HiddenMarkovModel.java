@@ -18,37 +18,134 @@ public class HiddenMarkovModel {
     /** HMM model type will be used to initialize the probabilities.
      * Ergodic HMM has full mesh transition between states.
      */
-    public enum ModelType{ERGODIC_RANDOM, LR_RANDOM, LRB_RANDOM, LRC_RANDOM, LRBC_RANDOM, USER_DEFINED};
+    public enum ModelType {
+        /**
+         * Ergodic model with random probablity matrix.
+         * Every state has non-zero transition probablitities to all states (including itself).
+         */
+        ERGODIC_RANDOM,
+        /**
+         * Left-Right model with random probablity matrix.
+         * i-th state has transition probabilities only to j-th state (j >= i).
+         */
+        LR_RANDOM,
+        /**
+         * Left-Right-Banded model with random probablity matrix.
+         * i-th state has transition probabilities only to itself and (i+1)-th state.
+         */
+        LRB_RANDOM,
+        /**
+         * Left-Right circulating model with random probablity matrix.
+         * In addition to LR_RANDOM, state transitions are allowed to ciculate.
+         */
+        LRC_RANDOM,
+        /**
+         * Left-Right-Banded circulating model with random probablity matrix.
+         * In addition to LRB_RANDOM, state transitions are allowed to ciculate.
+         */
+        LRBC_RANDOM,
+        /**
+         * User-defined model
+         */
+        USER_DEFINED
+    };
 
-    private String name;  // Name of HMM
+    /**
+     * Name of HMM
+     */
+    private String name;
+    /**
+     * HMM model type. one of ModelType {ERGODIC_RANDOM, LR_RANDOM, LRB_RANDOM, LRC_RANDOM, LRBC_RANDOM, USER_DEFINED}
+     */
     private ModelType modelType;
-    private int numStartStates_LR = 2; // default number of states having start probability in LR HMM
-    private int numStateDirectTransition_LR = 3; // default number of states to which a state can make a direct transition in LR HMM
-    private ArrayList<String> states = new ArrayList<String>(); // States array
-    private ArrayList<String> observationSet = new ArrayList<String>(); // Array of observation space
-    private Hashtable<String, Double> startProbability = new Hashtable<String, Double>(); // start probabilities of states
-    private Hashtable<String, Hashtable> transitionProbability = new Hashtable<String, Hashtable>(); // transition probabilities between states
-    private Hashtable<String, Hashtable> emissionProbability = new Hashtable<String, Hashtable>(); // probabilities of observations at each state
-    private Hashtable<String, Boolean> silentState = new Hashtable<String, Boolean>(); // silent state marker
-    private int depthSilentStates = 0; // maximum length of cascaded silent states
+    /**
+     * default number of states having start probability in LR HMM
+     */
+    private int numStartStates_LR = 2;
+    /**
+     * default number of states to which a state can make a direct transition in LR HMM
+     */
+    private int numStateDirectTransition_LR = 3;
+    /**
+     * States array
+     */
+    private ArrayList<String> states = new ArrayList<String>();
+    /**
+     * Array of observation space
+     */
+    private ArrayList<String> observationSet = new ArrayList<String>();
+    /**
+     * start probabilities of states
+     */
+    private Hashtable<String, Double> startProbability = new Hashtable<String, Double>();
+    /**
+     * transition probabilities between states
+     */
+    private Hashtable<String, Hashtable> transitionProbability = new Hashtable<String, Hashtable>();
+    /**
+     * probabilities of observations at each state
+     */
+    private Hashtable<String, Hashtable> emissionProbability = new Hashtable<String, Hashtable>();
+    /**
+     * silent state marker
+     */
+    private Hashtable<String, Boolean> silentState = new Hashtable<String, Boolean>();
+    /**
+     * maximum length of cascaded silent states
+     */
+    private int depthSilentStates = 0;
 
-    private Hashtable<String, Hashtable> delta = new Hashtable<String, Hashtable>(); // product of Viterbi algorithm
-    private Hashtable<String, Hashtable> alpha = new Hashtable<String, Hashtable>(); // product of forward algorithm
-    private Hashtable<String, Hashtable> beta = new Hashtable<String, Hashtable>(); // product of backward algorithm
-    private Hashtable<String, Hashtable> gamma = new Hashtable<String, Hashtable>(); // used in Baum-Welch algorithm
-    private Hashtable<String, Hashtable> zeta = new Hashtable<String, Hashtable>(); // used in Baum-Welch algorithm
-    private Hashtable<String, Double> scaleFactor = new Hashtable<String, Double>(); // by-product of scaled forward algorithm
+    /**
+     * product of Viterbi algorithm
+     */
+    private Hashtable<String, Hashtable> delta = new Hashtable<String, Hashtable>();
+    /**
+     * product of forward algorithm
+     */
+    private Hashtable<String, Hashtable> alpha = new Hashtable<String, Hashtable>();
+    /**
+     * product of backward algorithm
+     */
+    private Hashtable<String, Hashtable> beta = new Hashtable<String, Hashtable>();
+    /**
+     * used in Baum-Welch algorithm
+     */
+    private Hashtable<String, Hashtable> gamma = new Hashtable<String, Hashtable>();
+    private Hashtable<String, Hashtable> zeta = new Hashtable<String, Hashtable>();
+    /**
+     * by-product of scaled forward algorithm
+     */
+    private Hashtable<String, Double> scaleFactor = new Hashtable<String, Double>();
 
-    // Initial values are saved to be used as the initial condition in each learning
+
+    /**
+     * Initial values are saved to be used as the initial condition in each learning
+     */
     private Hashtable<String, Double> initialStartProbability = new Hashtable<String, Double>(); // start probabilities of states
     private Hashtable<String, Hashtable> initialTransitionProbability = new Hashtable<String, Hashtable>(); // transition probabilities between states
     private Hashtable<String, Hashtable> initialEmissionProbability = new Hashtable<String, Hashtable>(); // probabilities of observations at each state
 
+    /**
+     * Random
+     */
     protected static Random random = new Random();
-    protected int numTraining = 0;  // indicate how many times this HMM has been trained
-    private double numIteration;   // number of iteration in Baum-Welch Learning algorithm
-    private double logProbInit;    // total probability in log scale before Baum-Welch algorithm
-    private double logProbFinal;   // total probability in log scale after Baum-Welch algorithm
+    /**
+     * indicate how many times this HMM has been trained
+     */
+    protected int numTraining = 0;
+    /**
+     * number of iteration in Baum-Welch Learning algorithm
+     */
+    private double numIteration;
+    /**
+     * total probability in log scale before Baum-Welch algorithm
+     */
+    private double logProbInit;
+    /**
+     * total probability in log scale after Baum-Welch algorithm
+     */
+    private double logProbFinal;
+
 
     /**
      * HMM Constructor with name
@@ -64,6 +161,7 @@ public class HiddenMarkovModel {
      * @param name : name of HMM instance
      * @param states : states set of HMM
      * @param observationSpace : observation space of HMM
+     * @param modelType
      */
     public HiddenMarkovModel(String name, String [] states, String [] observationSpace, ModelType modelType) {
         this(name);
@@ -353,7 +451,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * Initialize HMM with given probabilities
+     * Initializes HMM with given probabilities
      * @param startProb : start probabilities
      * @param transitionProb : transition probabilities
      * @param emissionProb : emission probabilities
@@ -369,7 +467,7 @@ public class HiddenMarkovModel {
 
 
     /**
-     * Calculate Viterbi algorithm.
+     * Calculates Viterbi algorithm.
      * This method supports silent states
      * @param obs : observation sequence
      * @return {double totalProb, ArrayList<String> ViterbiPath, double probViterbiPath}
@@ -556,7 +654,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * Calculate the depth of silent states
+     * Calculates the depth of silent states
      */
     private void calDepthSilentStates(){
         ArrayList<String> silentStatesList = new ArrayList<String>();
@@ -587,7 +685,7 @@ public class HiddenMarkovModel {
 
 
     /**
-     * Calculate forward algorithm.
+     * Calculates forward algorithm.
      * Silent states are considered.
      * @param obs : observation sequence
      * @return : probability to observe the target sequence in this HMM
@@ -689,7 +787,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * Calculate forward algorithm with normailzation.
+     * Calculates forward algorithm with normailzation.
      * This method is used for Baum-Welch algorithm.
      * Silent states are NOT considered.
      * @param obs : observation sequence
@@ -754,7 +852,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * Calculate backward algorithm.
+     * Calculates backward algorithm.
      * Silent states are considered.
      * @param obs : observation sequence
      * @return : probability to observe the target sequence in this HMM
@@ -861,7 +959,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * Calculate backward algorithm with normailzation.
+     * Calculates backward algorithm with normailzation.
      * This method is used for Baum-Welch algorithm.
      * Silent states are NOT considered.
      * @param obs : observation sequence
@@ -909,7 +1007,10 @@ public class HiddenMarkovModel {
      * @param obs : observation sequence to learn
      * @param minProb : parameter used for computational issue. Must be as small number as possile but greater than zero
      * @param stopDelta : Condition to stop learning (Learning stops when the improvement of iteration is smaller than this value)
+     * @param updateStartProb
      * @param showResult : if true, it shows the result of learning
+     * @param updateTranstionProb 
+     * @param updateEmissionProb
      * @return : if true, learning is succeeded. Otherwise, it is failed.
      */
     public boolean BaumWelch(String[] obs, double minProb, double stopDelta, boolean updateStartProb, boolean updateTranstionProb, boolean updateEmissionProb, boolean showResult)
@@ -1101,7 +1202,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * make ensenble average of two HMMs
+     * makes ensenble average of two HMMs
      * @param targetHmm : target HMM to merge
      */
     public void ensenbleAverage(HiddenMarkovModel targetHmm){
@@ -1132,7 +1233,7 @@ public class HiddenMarkovModel {
 
 
     /**
-     * get name of HMM instance
+     * returns name of HMM instance
      * @return name
      */
     public String getName() {
@@ -1140,7 +1241,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get how many times this HMM has been trained
+     * returns how many times this HMM has been trained
      * @return : number of training
      */
     public int getNumTraining() {
@@ -1148,15 +1249,16 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * set how many times this HMM has been trained
+     * sets how many times this HMM has been trained
      *
+     * @param numTraining
      */
     public void setNumTraining(int numTraining) {
         this.numTraining = numTraining;
     }
 
     /**
-     * get states set in String array format
+     * returns states set in String array format
      * @return array of states
      */
     public String[] getStatesToArray() {
@@ -1169,7 +1271,8 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get states set in ArrList<String> format
+     * returns states set in ArrList<String> format
+     * @return
      */
     public ArrayList<String> getStates() {
         return states;
@@ -1177,7 +1280,7 @@ public class HiddenMarkovModel {
 
 
     /**
-     * get number of states
+     * returns number of states
      * @return number of states
      */
     public int getNumStates(){
@@ -1185,7 +1288,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * check if the specified state is used in HMM
+     * checks if the specified state is used in HMM
      * @param state
      * @return true if state used
      */
@@ -1194,7 +1297,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * check if the specified state is used in HMM
+     * checks if the specified state is used in HMM
      * @param state
      * @return true if state used, otherwise throws an Exception and prints the stack trace, and then returns false
      */
@@ -1212,7 +1315,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get the product of Viterbi algorithm. Method 'viterbi()' must be excuted in advance before using this method
+     * returns the product of Viterbi algorithm. Method 'viterbi()' must be excuted in advance before using this method
      * @param seqNum : observation sequence number
      * @param state : state to check
      * @return delta
@@ -1223,7 +1326,7 @@ public class HiddenMarkovModel {
 
 
     /**
-     * get the product of forward algorithm. 'forward()' or 'forwardScale()' must be excuted in advance before using this method
+     * returns the product of forward algorithm. 'forward()' or 'forwardScale()' must be excuted in advance before using this method
      * @param seqNum : observation sequence number
      * @param state : state to check
      * @return alpha
@@ -1233,7 +1336,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get the product of backward algorithm. 'backward()' or 'backwardScale()' must be excuted in advance before using this method
+     * returns the product of backward algorithm. 'backward()' or 'backwardScale()' must be excuted in advance before using this method
      * @param seqNum : observation sequence number
      * @param state : state to check
      * @return
@@ -1243,7 +1346,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get gamma.
+     * returns gamma.
      * Used for Baum-Welch algorithm
      * @param obs
      * @param state
@@ -1254,7 +1357,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get zeta
+     * returns zeta
      * Used for Baum-Welch algorithm
      * @param obs
      * @param sourceState
@@ -1266,7 +1369,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get the start probability of the specified state
+     * returns the start probability of the specified state
      * @param state
      * @return probability
      */
@@ -1276,7 +1379,8 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get all start probabilities in array format
+     * returns all start probabilities in array format
+     * @return
      */
     public double[] getStartProbabilityToArray(){
         double[] out = new double[startProbability.size()];
@@ -1288,7 +1392,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get the transition probability from 'state' to 'nextState'
+     * returns the transition probability from 'state' to 'nextState'
      * @param state
      * @param nextState
      * @return probability of transition from state to nextState
@@ -1303,7 +1407,8 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get transition probabilities in 2D array format
+     * returns transition probabilities in 2D array format
+     * @return
      */
     public double[][] getTransitionProbabilityToArray(){
         double[][] out = new double[getNumStates()][getNumStates()];
@@ -1316,7 +1421,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get emission probability of the specified observation in the specified state
+     * returns emission probability of the specified observation in the specified state
      * @param state
      * @param observation
      * @return probabiliy of emisssion from the state to the observation
@@ -1330,7 +1435,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get emission probabilities in 2D array format
+     * returns emission probabilities in 2D array format
      * @return array of emission probabilities, first index is state, second index is observation
      */
     public double[][] getEmissionProbabilityToArray(){
@@ -1345,7 +1450,7 @@ public class HiddenMarkovModel {
 
 
     /**
-     * get emission probabilities in Hashtable format
+     * returns emission probabilities in Hashtable format
      * @return probability map, from codeword to probability
      */
     public Hashtable<String, Hashtable> getEmissionProbability() {
@@ -1353,7 +1458,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get start probabilities in Hashtable format
+     * returns start probabilities in Hashtable format
      * @return probability map, from codeword to probability
      */
     public Hashtable<String, Double> getStartProbability() {
@@ -1361,14 +1466,15 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get transition probabilities in Hashtable format
+     * returns transition probabilities in Hashtable format
+     * @return
      */
     public Hashtable<String, Hashtable> getTransitionProbability() {
         return transitionProbability;
     }
 
     /**
-     * get probability of Viterbi path. 'viterbi()' must be excuted before using this method
+     * returns probability of Viterbi path. 'viterbi()' must be excuted before using this method
      * @param seqNum : observation sequence number to check
      * @param state
      * @return probabilities
@@ -1380,7 +1486,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get viterbi path in ArrayList format
+     * returns viterbi path in ArrayList format
      * @param seqNum : observation sequence number to check
      * @return path
      */
@@ -1406,8 +1512,9 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get viterbi path in String format
+     * returns viterbi path in String format
      * @param seqNum : observation sequence number to check
+     * @return
      */
     public String getViterbiPathString(int seqNum){
         ArrayList<String> path = getViterbiPath(seqNum);
@@ -1420,8 +1527,9 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get viterbi path in String[] format
+     * returns viterbi path in String[] format
      * @param seqNum : observation sequence number to check
+     * @return
      */
     public String[] getViterbiPathToArray(int seqNum){
         ArrayList<String> path = getViterbiPath(seqNum);
@@ -1437,6 +1545,7 @@ public class HiddenMarkovModel {
      * get viterbi path which is ended with the specified state in ArrayList format
      * @param seqNum : observation sequence number to check
      * @param state : final state
+     * @return
      */
     public ArrayList<String> getViterbiPath(int seqNum, String state){
         Object[] objs = getDelta(new String(""+seqNum), state);
@@ -1445,9 +1554,10 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get viterbi path which is ended with the specified state in String format
+     * returns viterbi path which is ended with the specified state in String format
      * @param seqNum : observation sequence number to check
      * @param state : final state
+     * @return
      */
     public String getViterbiPathString(int seqNum, String state){
         Object[] objs = getDelta(new String(""+seqNum), state);
@@ -1461,9 +1571,10 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * get viterbi path which is ended with the specified state in String[] format
+     * returns viterbi path which is ended with the specified state in String[] format
      * @param seqNum : observation sequence number to check
      * @param state : final state
+     * @return
      */
     public String[] getViterbiPathToArray(int seqNum, String state){
         Object[] objs = getDelta(new String(""+seqNum), state);
@@ -1477,7 +1588,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * print out start probabilies on the screen
+     * prints out start probabilies on the screen
      */
     public void printStartProbability(){
         System.out.print("startProbability = (");
@@ -1491,7 +1602,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * print out transition probabilies on the screen
+     * prints out transition probabilies on the screen
      */
     public void printTransitionProbability(){
         System.out.println("transitionProbability = ");
@@ -1504,7 +1615,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * print out emission probabilies on the screen
+     * prints out emission probabilies on the screen
      */
     public void printEmissionProbability(){
         System.out.println("emissionProbability = ");
@@ -1517,7 +1628,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * print out all probabilies (start, transition, emission) on the screen
+     * prints out all probabilies (start, transition, emission) on the screen
      */
     public void printAllProbability(){
         printStartProbability();
@@ -1526,7 +1637,7 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * check if the specified state is silent or not
+     * checks if the specified state is silent or not
      * @param state
      * @return
      */
@@ -1544,7 +1655,7 @@ public class HiddenMarkovModel {
 
 
     /**
-     * set the specified state as a silent state or non-silent state
+     * sets the specified state as a silent state or non-silent state
      * @param state
      * @param set
      */
@@ -1554,15 +1665,16 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * check if the specified state is silent or not
+     * checks if the specified state is silent or not
      * @param state
+     * @return
      */
     public boolean isSilentState(String state){
         return silentState.get(state);
     }
 
     /**
-     * set the specified state as a silent state
+     * sets the specified state as a silent state
      * @param state
      */
     public void setStateSilent(String state){
@@ -1573,29 +1685,49 @@ public class HiddenMarkovModel {
     }
 
     /**
-     * set the specified state as a non-silent state
+     * sets the specified state as a non-silent state
      * @param state
      */
     public void setStateNonSilent(String state){
         silentState.put(state, false);
     }
 
+    /**
+     * returns the number of states having non-zero start probability in LR model
+     * @return
+     */
     public int getNumStartStates_LR() {
         return numStartStates_LR;
     }
 
+    /**
+     * sets the number of states having non-zero start probability in LR model
+     * @param numStartStates_LRcase
+     */
     public void setNumStartStates_LR(int numStartStates_LRcase) {
         this.numStartStates_LR = numStartStates_LRcase;
     }
 
+    /**
+     * returns the number of states having non-zero transition probability in LR model
+     * @return
+     */
     public int getNumStateDirectTransition_LR() {
         return numStateDirectTransition_LR;
     }
 
+    /**
+     * sets the number of states having non-zero transition probability in LR model
+     * @param numStateDirectTransition_LR
+     */
     public void setNumStateDirectTransition_LR(int numStateDirectTransition_LR) {
         this.numStateDirectTransition_LR = numStateDirectTransition_LR;
     }
 
+    /**
+     * returns emission probability matix saved by saveInitialProbabilty()
+     * @return
+     */
     public double[][] getInitialEmissionProbabilityToArray() {
         double[][] out = new double[getNumStates()][observationSet.size()];
 
@@ -1606,6 +1738,10 @@ public class HiddenMarkovModel {
         return out;
     }
 
+    /**
+     * returns start probability matix saved by saveInitialProbabilty()
+     * @return
+     */
     public double[] getInitialStartProbabilityToArray() {
         double[] out = new double[initialStartProbability.size()];
 
@@ -1615,6 +1751,10 @@ public class HiddenMarkovModel {
         return out;
     }
 
+    /**
+     * returns transition probability matix saved by saveInitialProbabilty()
+     * @return
+     */
     public double[][] getInitialTransitionProbabilityToArray() {
         double[][] out = new double[getNumStates()][getNumStates()];
 
@@ -1625,16 +1765,27 @@ public class HiddenMarkovModel {
         return out;
     }
 
+    /**
+     * save current prbability matrix
+     */
     public void saveInitialProbabilty(){
         initialStartProbability.putAll(startProbability);
         initialTransitionProbability.putAll(transitionProbability);
         initialEmissionProbability.putAll(emissionProbability);
     }
 
+    /**
+     * returns HMM model type
+     * @return
+     */
     public ModelType getModelType() {
         return modelType;
     }
 
+    /**
+     * sets HMM model type
+     * @param modelType
+     */
     public void setModelType(ModelType modelType) {
         this.modelType = modelType;
     }

@@ -637,6 +637,9 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
 
     @Override
     synchronized public void initFilter() {
+        if(stereoChip == null)
+            return;
+        
         if(stereoChip.getLeft() == null)
             return;
         

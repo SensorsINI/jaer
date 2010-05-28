@@ -12,6 +12,10 @@ package ch.unizh.ini.jaer.projects.gesture.hmm;
 public class FeatureExtractionTestMain{
 
 
+    /**
+     * Main
+     * @param args
+     */
     public static void main(String[] args)
     {
 //        test1(); // Test with simple patterns
@@ -29,7 +33,7 @@ public class FeatureExtractionTestMain{
     static class HandDrawingTest extends TrajectoryDrawingPanel{
         public final String GET_TRJ = "Get codewords";
         FeatureExtraction fve = new FeatureExtraction(16, 16);
-
+        
         public HandDrawingTest(String title, String[] buttonNames) {
             super(title, 500, 500, buttonNames);
         }
@@ -37,12 +41,12 @@ public class FeatureExtractionTestMain{
         @Override
         public void buttonAction(String buttonName) {
             if(buttonName.equals(GET_TRJ)){
-                String[] fv = fve.convToFeatureArray(trajectory);
+                String[] fv = fve.convTrajectoryToCodewords(trajectory);
 
                 int i = 1;
                 System.out.print("Codewords sequence : ");
                 for(String fvEle:fv){
-                    System.out.print(fvEle+"("+i+"), ");
+                    System.out.print(i+"("+fvEle+", " +fve.vectorAngleSeq[i-1]+ "), ");
                     i++;
                 }
                 System.out.println();
@@ -57,7 +61,7 @@ public class FeatureExtractionTestMain{
         FeatureExtraction fve = new FeatureExtraction(16, 12);
         SampleTrajectory st = new SampleTrajectory();
 
-        String[] fv = fve.convToFeatureArray(st.getSampleTrajetory(SampleTrajectory.SAMPLE_TRJ_TYPE.CIRCLE, 200, 128, 128, 10));
+        String[] fv = fve.convTrajectoryToCodewords(st.getSampleTrajetory(SampleTrajectory.SAMPLE_TRJ_TYPE.CIRCLE, 200, 128, 128, 10));
 
         int i = 1;
         System.out.print("Codewords sequence : ");
