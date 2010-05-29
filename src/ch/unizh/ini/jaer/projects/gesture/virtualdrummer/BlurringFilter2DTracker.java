@@ -651,14 +651,13 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             int dt = cg.getLastEventTimestamp() - lastEventTimestamp;
             float currentLocationX = location.x;
             if ( useVelocity ){
-                currentLocationX -= velocityPPT.x * ( dt );
+                currentLocationX += velocityPPT.x * dt;
             }
 
             if ( currentLocationX < 0 ){
                 currentLocationX = 0;
             } else if ( currentLocationX > chip.getSizeX() - 1 ){
                 currentLocationX = chip.getSizeX() - 1;
-            } else{
             }
 
             return Math.abs(cg.getLocation().x - currentLocationX);
@@ -672,14 +671,13 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             int dt = cg.getLastEventTimestamp() - lastEventTimestamp;
             float currentLocationY = location.y;
             if ( useVelocity ){
-                currentLocationY -= -velocityPPT.y * ( dt );
+                currentLocationY += velocityPPT.y * dt;
             }
 
             if ( currentLocationY < 0 ){
                 currentLocationY = 0;
             } else if ( currentLocationY > chip.getSizeY() - 1 ){
                 currentLocationY = chip.getSizeY() - 1;
-            } else{
             }
 
             return Math.abs(cg.getLocation().y - currentLocationY);
