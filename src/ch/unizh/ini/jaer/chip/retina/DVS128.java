@@ -214,6 +214,7 @@ public class DVS128 extends AERetina implements Serializable, Observer {
             return out;
         }
 
+        private int printedSyncBitWarningCount=3;
         /**
          * Extracts the meaning of the raw events. This form is used to supply an output packet. This method is used for real time
          * event filtering using a buffer of output events local to data acquisition. An AEPacketRaw may contain multiple events,
@@ -247,10 +248,16 @@ public class DVS128 extends AERetina implements Serializable, Observer {
             int[] timestamps = in.getTimestamps();
             OutputEventIterator outItr = out.outputIterator();
             for (int i = 0; i < n; i += skipBy) { // TODO bug here?
-                int addr = a[i];
-                if (addr > 32767) {
-                    continue; // outside address space - presumably SyncEvent from external trigger
-                    // TODO handle this by outputting SyncEvent's instead of PolarityEvent's
+                int addr = a[i]; // TODO handle sync events from hardware correctly
+                if (addr > 0xefff) {
+                    if(printedSyncBitWarningCount>0){
+                        log.warning("raw address "+addr+" is >32767 (0xefff); either sync or stereo bit is set, clearing the msb");
+                        printedSyncBitWarningCount--;
+                        if(printedSyncBitWarningCount==0) log.warning("suppressing futher warnings about msb of raw address");
+                    }
+                    // TODO handle this by outputting SyncEvent's instead of PolarityEvent's. Some files recorded earlier in 2.0 format have the msb set by hardware.
+                    // here we restrict the addresses to 32767 max.
+                    addr=addr&0xefff;
                 } else {
                     PolarityEvent e = (PolarityEvent) outItr.nextOutput();
                     e.address=addr;
