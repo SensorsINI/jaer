@@ -298,7 +298,7 @@ public abstract class EventFilter extends Observable {
         if (propertyTooltipMap == null) {
             propertyTooltipMap = new HashMap<String, String>();
         }
-        propertyTooltipMap.put(propertyName, tooltip);
+        propertyTooltipMap.put(propertyName.toLowerCase(), tooltip);
     }
 
     /** Use this key for global parameters in your filter constructor, as in
@@ -316,8 +316,8 @@ public abstract class EventFilter extends Observable {
      * @see #PARAM_GROUP_GLOBAL
      */
     protected void setPropertyTooltip(String groupName, String propertyName, String tooltip) {
-        setPropertyTooltip(propertyName,tooltip);
-        addPropertyToGroup(groupName, propertyName);
+        setPropertyTooltip(propertyName.toLowerCase(),tooltip);
+        addPropertyToGroup(groupName, propertyName.toLowerCase());
     }
 
     /** @return the tooltip for the property */
@@ -325,7 +325,7 @@ public abstract class EventFilter extends Observable {
         if (propertyTooltipMap == null) {
             return null;
         }
-        return propertyTooltipMap.get(propertyName);
+        return propertyTooltipMap.get(propertyName.toLowerCase());
     }
 
     /** Adds a property to a group, creating the group if needed.
@@ -341,7 +341,7 @@ public abstract class EventFilter extends Observable {
             group2PropertyListMap=new HashMap();
         }
         // add the mapping from property to group
-        property2GroupMap.put(propertyName,groupName);
+        property2GroupMap.put(propertyName.toLowerCase(),groupName);
 
         // create the list of properties in the group
         ArrayList<String> propList;
@@ -351,7 +351,7 @@ public abstract class EventFilter extends Observable {
         }else{
             propList=group2PropertyListMap.get(groupName);
         }
-        propList.add(propertyName);
+        propList.add(propertyName.toLowerCase());
     }
 
     /** Returns the name of the property group for a property.
@@ -361,7 +361,7 @@ public abstract class EventFilter extends Observable {
      */
     public String getPropertyGroup(String propertyName){
         if(property2GroupMap==null) return null;
-        return property2GroupMap.get(propertyName);
+        return property2GroupMap.get(propertyName.toLowerCase());
     }
 
     /** Gets the list of property names in a particular group.
