@@ -27,7 +27,6 @@ public class BoredomFilter extends EventFilter2D implements Observer {
    public static String getDescription(){
        return " An AE filter that filters out high firing-rate repetitive events.";
    }
-   public boolean isGeneratingFilter(){ return false;}
     
     public int threshold=4;
     public int forgetInterval=30;
@@ -73,9 +72,6 @@ public class BoredomFilter extends EventFilter2D implements Observer {
         tmptimestamps=new int[n];
     }
     
-    public Object getFilterState() {
-        return boringMap;
-    }
     
     synchronized public void resetFilter() {
         allocateBoringMap(chip);
@@ -123,6 +119,7 @@ public class BoredomFilter extends EventFilter2D implements Observer {
         
         forgetCounter++;
         if(forgetCounter%forgetInterval==0){
+            // every forgetInterval packets, we divide the counts in boringMap by 2
             //boringMap=new int[chip.getSizeX()+2][chip.getSizeY()+2][chip.getNumCellTypes()];
             int nt=getChip().getNumCellTypes(),nx=getChip().getSizeX(),ny=getChip().getSizeY();
             

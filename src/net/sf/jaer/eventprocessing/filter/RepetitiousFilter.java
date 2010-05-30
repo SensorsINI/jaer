@@ -36,49 +36,32 @@ public class RepetitiousFilter extends EventFilter2D implements Observer{
         return "Filters out (or in) repetitious (boring) events";
     }
 
-    public boolean isGeneratingFilter (){
-        return false;
-    }
     /** factor different than previous dt for this cell to pass through filter */
-    protected int ratioShorter = getPrefs().getInt("RepetitiousFilter.ratioShorter",2);
-
-    {
-        setPropertyTooltip("ratioShorter","filter events with ISI shorter by this ratio");
-    }
+    private int ratioShorter = getPrefs().getInt("RepetitiousFilter.ratioShorter",2);
     /** factor different than previous dt for this cell to pass through filter */
-    protected int ratioLonger = getPrefs().getInt("RepetitiousFilter.ratioLonger",2);
-
-    {
-        setPropertyTooltip("ratioLonger","filter events with ISI longer by this ratio");
-    }
+    private int ratioLonger = getPrefs().getInt("RepetitiousFilter.ratioLonger",2);
     /** the minimum dt to record, to help reject multiple events from much slower stimulus variation (e.g. 50/100 Hz) */
-    protected int minDtToStore = getPrefs().getInt("RepetitiousFilter.minDtToStore",1000);
-
-    {
-        setPropertyTooltip("minDtToStore","minimum delta timestamp to consider - use to filter bursts");
-    }
-    /** true to enable passing repetitious events
-     */
+    private int minDtToStore = getPrefs().getInt("RepetitiousFilter.minDtToStore",1000);
+    /** true to enable passing repetitious events  */
     private boolean passRepetitiousEvents = getPrefs().getBoolean("RepetitiousFilter.passRepetitiousEvents",false);
 
-    {
-        setPropertyTooltip("passRepetitiousEvents","Enabled to flip sense so that repetitious events pass through");
-    }
+    private boolean excludeHarmonics=false;
     /** Array of last event timestamps. */
-    protected int[][][][] lastTimesMap;
+    private int[][][][] lastTimesMap;
     /** Array of average ISIs: [chip.sizeX+][chip.sizeY+2][chip.numCellTypes] */
-    protected int[][][] avgDtMap;
+    private int[][][] avgDtMap;
     final int NUMTIMES = 2;
     /** the number of packets processed to average over */
-    protected int averagingSamples = getPrefs().getInt("RepetitiousFilter.averagingSamples",3);
-
-    {
-        setPropertyTooltip("averagingSamples","Number of events to IIR-average over to compute ISI");
-    }
+    private int averagingSamples = getPrefs().getInt("RepetitiousFilter.averagingSamples",3);
 
     public RepetitiousFilter (AEChip chip){
         super(chip);
         chip.addObserver(this);
+        setPropertyTooltip("ratioShorter","filter events with ISI shorter by this ratio");
+        setPropertyTooltip("ratioLonger","filter events with ISI longer by this ratio");
+        setPropertyTooltip("averagingSamples","Number of events to IIR-average over to compute ISI");
+        setPropertyTooltip("minDtToStore","minimum delta timestamp to consider - use to filter bursts");
+        setPropertyTooltip("passRepetitiousEvents","Enabled to flip sense so that repetitious events pass through");
     }
 
     void checkMap (){
@@ -100,11 +83,6 @@ public class RepetitiousFilter extends EventFilter2D implements Observer{
             lastTimesMap = new int[ chip.getSizeX() + 2 ][ chip.getSizeY() + 2 ][ chip.getNumCellTypes() ][ NUMTIMES ];
             avgDtMap = new int[ chip.getSizeX() + 2 ][ chip.getSizeY() + 2 ][ chip.getNumCellTypes() ];
         }
-    }
-
-    /** returns array of last event times, x,y,type,[t0,t1], where t0/t1 are the last two event times, t0 first. */
-    public int[][][][] getFilterState (){
-        return lastTimesMap;
     }
 
     synchronized public void resetFilter (){
@@ -197,8 +175,20 @@ public class RepetitiousFilter extends EventFilter2D implements Observer{
             int lastdt = lastt - lasttimes[0];
             int thisdt = e.timestamp - lastt;
             int avgDt = avgDtMap[e.x][e.y][e.type];
+            // refractory period
+
+            boolean repetitious=false;
+            if(thisdt<minDtToStore){
+                continue;
+            }
+            if(excludeHarmonics){
+                double ratio=(double)thisdt/avgDt;
+                double rem=Math.IEEEremainder(ratio,1);
+                repetitious=ratio<=3 && Math.abs(rem)<1./ratioShorter;
+            }else{
             // if this dt is greater than last by threshold or less than last by threshold pass it
-            boolean repetitious = thisdt < avgDt * ratioLonger && thisdt > avgDt / ratioShorter; // true if event is repetitious
+                repetitious = thisdt < avgDt * ratioLonger && thisdt > avgDt / ratioShorter; // true if event is repetitious
+            }
             if ( !passRepetitiousEvents ){
                 if ( !repetitious ){
                     o.nextOutput().copyFrom(e);
@@ -231,5 +221,19 @@ public class RepetitiousFilter extends EventFilter2D implements Observer{
     public void setPassRepetitiousEvents (boolean passRepetitiousEvents){
         this.passRepetitiousEvents = passRepetitiousEvents;
         getPrefs().putBoolean("RepetitiousFilter.passRepetitiousEvents",passRepetitiousEvents);
+    }
+
+    /**
+     * @return the excludeHarmonics
+     */
+    public boolean isExcludeHarmonics (){
+        return excludeHarmonics;
+    }
+
+    /**
+     * @param excludeHarmonics the excludeHarmonics to set
+     */
+    public void setExcludeHarmonics (boolean excludeHarmonics){
+        this.excludeHarmonics = excludeHarmonics;
     }
 }

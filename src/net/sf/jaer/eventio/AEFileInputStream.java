@@ -210,7 +210,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             if ( addressType == Integer.TYPE ){
                 addr = byteBuffer.getInt();
             } else{
-                addr = byteBuffer.getShort();
+                addr = (byteBuffer.getShort()&0xffff); // TODO reads addr as negative number if msb is set
             }
             ts = byteBuffer.getInt(); 
              // for marking sync in a recording using the result of bitmask with input
@@ -292,7 +292,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         if ( addressType == Integer.TYPE ){
             addr = byteBuffer.getInt();
         } else{
-            addr = byteBuffer.getShort();
+            addr = (byteBuffer.getShort()&0xffff); // TODO reads addr as negative number if msb is set if we don't AND with 0xFFFF
         }
 
         int ts = byteBuffer.getInt()-timestampOffset; 

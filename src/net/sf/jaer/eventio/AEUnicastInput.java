@@ -279,7 +279,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
                         eventRaw.timestamp = ts;
                     }
                 } else{
-                    eventRaw.address = buffer.getShort(); // swab(buffer.getShort()); // swapInt is switched to handle big endian event sources (like ARC camera)
+                    eventRaw.address = buffer.getShort()&0xffff; // swab(buffer.getShort()); // swapInt is switched to handle big endian event sources (like ARC camera)
 //                    eventRaw.timestamp=(int) (timestampMultiplier*(int) swab(buffer.getShort()));
                     if ( timestampsEnabled ){
                         eventRaw.timestamp = (int)( timestampMultiplier * (int)buffer.getShort() );
@@ -301,11 +301,11 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
 //                    eventRaw.timestamp=(int) (swab(buffer.getShort()));
 //                    eventRaw.address=(int) (timestampMultiplier*(int) swab(buffer.getShort()));
                     if ( timestampsEnabled ){
-                        eventRaw.timestamp = (int)( ( buffer.getShort() ) );
+                        eventRaw.timestamp = (int)( ( buffer.getShort() ) );  // TODO check if need AND with 0xffff to avoid negative timestamps
                     } else{
                         eventRaw.timestamp = ts;
                     }
-                    eventRaw.address = (int)( timestampMultiplier * (int)( buffer.getShort() ) );
+                    eventRaw.address = (int)( timestampMultiplier * ( buffer.getShort()&0xffff ) );
                 }
             }
 

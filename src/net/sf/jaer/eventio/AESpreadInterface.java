@@ -118,7 +118,7 @@ public class AESpreadInterface {
         }
         receiveSequenceNumber=thisSequenceNumber;
         for(int i=0;i<n;i++){
-            addr[i]=buf.getShort();
+            addr[i]=buf.getShort()&0xffff;
             ts[i]=buf.getInt();
         }
         packet.setNumEvents(n);

@@ -49,8 +49,8 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
     
     private int subsampleThresholdEventCount=50000;
     
-    private short sizex,sizey; // these are size-1 (e.g. if 128 pixels, sizex=127). used for flipping below.
-    private byte sizetype;
+    private short sizexm1,sizeym1; // these are size-1 (e.g. if 128 pixels, sizex=127). used for flipping below.
+    private byte sizetypem1;
     
 //    /** Creates a new instance of RetinaEventExtractor */
 //    public TypedEventExtractor() {
@@ -65,9 +65,9 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
     }
     
     private void setChipSizes(){
-        sizex=(short)(chip.getSizeX()-1);
-        sizey=(short)(chip.getSizeY()-1);
-        sizetype=(byte)(chip.getNumCellTypes()-1);
+        sizexm1=(short)(chip.getSizeX()-1);
+        sizeym1=(short)(chip.getSizeY()-1);
+        sizetypem1=(byte)(chip.getNumCellTypes()-1);
     }
     
     /** 
@@ -88,7 +88,7 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
      */
     public short getXFromAddress(int addr){
         if(!flipx) return ((short)((addr&xmask)>>>xshift));
-        else return (short)(sizex - ((int)((addr&xmask)>>>xshift))); // e.g. chip.sizex=32, sizex=31, addr=0, getX=31, addr=31, getX=0
+        else return (short)(sizexm1 - ((int)((addr&xmask)>>>xshift))); // e.g. chip.sizex=32, sizex=31, addr=0, getX=31, addr=31, getX=0
     }
     
     /** gets Y from raw address. declared final for speed, cannot be overridden in subclass.
@@ -97,7 +97,7 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
      */
     public short getYFromAddress(int addr){
         if(!flipy) return ((short)((addr&ymask)>>>yshift));
-        else return (short)(sizey-((int)((addr&ymask)>>>yshift)));
+        else return (short)(sizeym1-((int)((addr&ymask)>>>yshift)));
         
     }
     /** gets type from raw address. declared final for speed, cannot be overridden in subclass.
@@ -106,7 +106,7 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
      */
     public byte getTypeFromAddress(int addr){
         if(!fliptype) return (byte)((addr&typemask)>>>typeshift);
-        else return (byte)(sizetype-(byte)((addr&typemask)>>>typeshift));
+        else return (byte)(sizetypem1-(byte)((addr&typemask)>>>typeshift));
     }
     
     
@@ -316,9 +316,9 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
      *@return the raw address
      */
     public int getAddressFromCell(int x, int y, int type) {
-        if(flipx) x=sizex-x;
-        if(flipy) y=sizey-y;
-        if(fliptype) type=sizetype-type;
+        if(flipx) x=sizexm1-x;
+        if(flipy) y=sizeym1-y;
+        if(fliptype) type=sizetypem1-type;
         
         return (int)(
                 (x<<xshift)
