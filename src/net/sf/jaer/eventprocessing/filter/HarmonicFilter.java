@@ -36,12 +36,10 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
     public static String getDescription (){
         return "An AE filter that filters out boring events caused by global flickering illumination. This filter measures the global event activity to obtain the phase and amplitude of flicker. If the amplitude exceeds a threashold, then events around the peak activity are filtered away.";
     }
-    private boolean printStats = false;
+    private boolean printStats = prefs().getBoolean("HarmonicFilter.printStats",true);
     private float threshold = getPrefs().getFloat("HarmonicFilter.threshold",0.1f); // when value is less than this value, then we are crossing zero and don't pass events
-//    private int cycle = 0;
     private float[][][] localPhases; // measures phase of pixel relative to oscillator
-//    private int[][][] lastEventTimes;
-    private float[][][] localCorrelation;  // local pixel correlation with global harmonic oscillator
+    private boolean useLocalPhases = prefs().getBoolean("HarmonicFilter.useLocalPhases",false);
     HarmonicOscillator oscillator = new HarmonicOscillator();
     final float TICK = 1e-6f;
     TextRenderer renderer;
@@ -53,6 +51,7 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
         setPropertyTooltip("threshold","increase to reduce # of events; when oscillator instantaneous value is within this value as fraction of amplitude, then events are blocked ");
         setPropertyTooltip("quality","quality factor of osciallator, increase to sharpen around best freq");
         setPropertyTooltip("freq","resonant frequency of oscillator in Hz; choose at observed fundamental");
+        setPropertyTooltip("useLocalPhases","uses the local phase (pixel-wise phase) to filter events out");
     }
 
     synchronized public void setFilterEnabled (boolean yes){
@@ -62,6 +61,7 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
 
     synchronized public void resetFilter (){
         oscillator.reset();
+        localPhases = new float[ chip.getSizeX() ][ chip.getSizeY() ][ chip.getNumCellTypes() ];
     }
 
     public void update (Observable o,Object arg){
@@ -71,7 +71,7 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
     public void initFilter (){
         resetFilter();
     }
- 
+
     public void annotate (GLAutoDrawable drawable){
         if ( !printStats ){
             return;
@@ -84,15 +84,42 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
         renderer.endRendering();
         oscillator.draw(drawable.getGL());
     }
+
+    /** Updates average phase of this cell
+     * 
+     * @param e the event for which to update average phase
+     */
+    private void updateLocalPhase (PolarityEvent e){
+        float f = localPhases[e.x][e.y][e.type];
+        float f1 = oscillator.getPhase(e.timestamp);
+        final float m = .95f;
+        float f2 = m * f + ( 1 - m ) * f1;
+        localPhases[e.x][e.y][e.type] = f2;
+    }
+
+    /**
+     * @return the useLocalPhases
+     */
+    public boolean isUseLocalPhases (){
+        return useLocalPhases;
+    }
+
+    /**
+     * @param useLocalPhases the useLocalPhases to set
+     */
+    public void setUseLocalPhases (boolean useLocalPhases){
+        this.useLocalPhases = useLocalPhases;
+        prefs().putBoolean("HarmonicFilter.useLocalPhases",useLocalPhases);
+    }
     public class HarmonicOscillator{
         final float GEARRATIO = 20; // chop up times between spikes by tau/GEARRATIO timesteps
         final int POWER_AVERAGING_CYCLES = 10; // number of cycles to smooth power measurement
         boolean wasReset = true;
-        float f0 = prefs().getFloat("HarmonicFilter.frequency",100); // resonant frequency in Hz
-        float tau, omega, tauoverq, reciptausq;
-        float dtlim;
-        float quality = prefs().getFloat("HarmonicFilter.quality",3);
-        float amplitude;
+        private float f0 = prefs().getFloat("HarmonicFilter.frequency",100); // natural frequency in Hz
+        private float tau, omega, tauoverq, reciptausq;
+        private float dtlim;
+        private float quality = prefs().getFloat("HarmonicFilter.quality",3); // quality factor
+        private float amplitude;
         float y = 0, x = 0;  // x =posiiton, y=velocity
         private int t = 0;  // present time in timestamp ticks, used for dt in update, then stores this last timestamp
         float lastx, lasty;
@@ -100,9 +127,12 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
         float power = 0;
         float maxx, minx, maxy, miny;
         private float maxPower = 0;
+        private int lastPositiveZeroCrossingTime;
+        final float PI = (float)Math.PI;
+//        private float measuredFreq=0;
 
         public HarmonicOscillator (){
-            setFreq(f0); // needed to init vars
+            setNaturalFrequency(f0); // needed to init vars
         }
 
         synchronized public void reset (){
@@ -114,6 +144,7 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
             maxy = 0;
             miny = 0;
             wasReset = true;
+
         }
 
         synchronized public void update (int ts,byte type){
@@ -133,6 +164,7 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
             // check if it is too long for numerical stability, if so, integrate multiple steps
             float dt = TICK * ( ts - t ); // dt is in seconds now... if TICK is correct
             if ( dt <= 0 ){
+                log.warning("negative delta time (" + dt + "), not processing this update");
                 return;
             }
             int nsteps = (int)Math.ceil(dt / dtlim); // dtlim comes from natural freq; if dt is too large, then nsteps>1
@@ -172,6 +204,10 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
             // update timestamp
             t = ts;
 
+            if ( x > 0 && lastx <= 0 ){
+                lastPositiveZeroCrossingTime = ts;
+            }
+
         }
 
         public void draw (GL gl){
@@ -191,6 +227,16 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
 
         }
 
+        /** Returns the phase of this particular time, based on the measured last zero crossing time and time t, using the natural frequency f0.
+         *
+         * @param t the time to measure
+         * @return the phase relative to the last positive zero crossing, in range 0-2*Pi, in radians.
+         */
+        public float getPhase (int t){
+            float ph = PI * 2 * ( t - lastPositiveZeroCrossingTime ) * f0*1e-6f; // TODO needs TICK
+            return ph;
+        }
+
         /** @return the current 'position' value of the oscillator */
         public float getPosition (){
             return x;
@@ -201,7 +247,7 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
             return y;
         }
 
-        synchronized void setFreq (float f){
+        synchronized void setNaturalFrequency (float f){
             f0 = f; // hz
             omega = (float)( 2 * Math.PI * f0 );  // radians/sec
             tau = 1f / omega; // seconds
@@ -211,7 +257,7 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
             prefs().putFloat("HarmonicFilter.frequency",f0);
         }
 
-        public float getFreq (){
+        public float getNaturalFrequency (){
             return f0;
         }
 
@@ -228,6 +274,18 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
         /** @return the last amplitude of the oscillator, i.e., the last magnitude of the last peak of activity */
         public float getAmplitude (){
             return amplitude;
+        }
+
+        private boolean isNearZeroCrossing (TypedEvent e){
+            if ( !useLocalPhases ){
+                return isNearZeroCrossing();
+            } else{
+                float f = getLocalPhase(e);
+                if ( f < 0 ){
+                    f = -f;
+                }
+                return ( f < .1f );
+            }
         }
 
         // if zero crossing we don't pass event
@@ -271,6 +329,18 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
         return threshold;
     }
 
+    /** returns the phase of the event e relative to the meausred local phase input to the harmonic oscillator.
+     *
+     * @param e an event
+     * @return the relative phase of the event. If the event leads the local phase, the number is positive, if it lags it is negative.
+     */
+    private float getLocalPhase (TypedEvent e){
+        float f = oscillator.getPhase(e.timestamp); // where the oscillator is now, 0 means just did positive zero crossing
+        float lf = localPhases[e.x][e.y][e.type];
+        float diff = f - lf;
+        return diff;
+    }
+
     public void setThreshold (float threshold){
         float old = this.threshold;
 //        if(threshold>1) threshold=1; else if(threshold<0) threshold=0;
@@ -288,11 +358,11 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
     }
 
     public float getFreq (){
-        return oscillator.getFreq();
+        return oscillator.getNaturalFrequency();
     }
 
     public void setFreq (float f){
-        oscillator.setFreq(f);
+        oscillator.setNaturalFrequency(f);
     }
 
     public boolean isPrintStats (){
@@ -301,6 +371,7 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
 
     public void setPrintStats (boolean printStats){
         this.printStats = printStats;
+        prefs().putBoolean("HarmonicFilter.printStats",printStats);
     }
 
     public EventPacket filterPacket (EventPacket in){
@@ -316,13 +387,14 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
         for ( Object ein:in ){
             PolarityEvent e = (PolarityEvent)ein;
             oscillator.update(e.timestamp,e.type);
+            updateLocalPhase(e);
             if ( Float.isNaN(oscillator.getVelocity()) ){
                 setFilterEnabled(false);
                 log.warning("oscillator overflowed, disabling filter");
                 resetFilter();
                 return in;
             }
-            if ( !oscillator.isNearZeroCrossing() ){
+            if ( !oscillator.isNearZeroCrossing(e) ){
                 outItr.nextOutput().copyFrom(e);
             }
         }
