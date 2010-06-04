@@ -4624,16 +4624,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_unicastOutputEnabledCheckBoxMenuItemActionPerformed
 
 private void updateFirmwareMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updateFirmwareMenuItemActionPerformed
-    if ( aemon == null ){
+    if (aemon == null) {
         return;
     }
 
-    if ( !( aemon instanceof HasUpdatableFirmware ) ){
-        JOptionPane.showMessageDialog(this,"Device does not have updatable firmware","Firmware update failed",JOptionPane.WARNING_MESSAGE);
+    if (!(aemon instanceof HasUpdatableFirmware)) {
+        JOptionPane.showMessageDialog(this, "Device does not have updatable firmware", "Firmware update failed", JOptionPane.WARNING_MESSAGE);
         return;
 
     }
 
+    int nDevices = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+    if (nDevices == 0) {
+        JOptionPane.showMessageDialog(this, "No devices found", "Firmware update not possible", JOptionPane.WARNING_MESSAGE);
+        return;
+    } else if (nDevices > 1) {
+        JOptionPane.showMessageDialog(this, "Firmware update is only allowed with a single device plugged in. There are " + nDevices + " plugged in now.", "Firmware update not allowed with multiple devices", JOptionPane.WARNING_MESSAGE);
+        return;
+    }
 
     try{
         HasUpdatableFirmware d = (HasUpdatableFirmware)aemon;
