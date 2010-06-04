@@ -54,14 +54,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     /** Used to store preferences, e.g. the default firmware download file for blank devices */
     protected static Preferences prefs = Preferences.userNodeForPackage(CypressFX2.class);
 
-    public static String getDefaultFirmwareBixFileForBlankDevice() {
-        return defaultFirmwareBixFileForBlankDevice;
-    }
 
-    public static void setDefaultFirmwareBixFileForBlankDevice(String aDefaultFirmwareBixFileForBlankDevice) {
-        defaultFirmwareBixFileForBlankDevice = aDefaultFirmwareBixFileForBlankDevice;
-        prefs.put("CypressFX2.defaultFirmwareBixFileForBlankDevice", defaultFirmwareBixFileForBlankDevice);
-    }
     protected Logger log = Logger.getLogger("CypressFX2");
     protected AEChip chip;
     // A .bix file format is needed for RAM download. 
@@ -2197,6 +2190,16 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
         return firmwareFilename;
     }
+
+    public static String getDefaultFirmwareBixFileForBlankDevice() {
+        return defaultFirmwareBixFileForBlankDevice;
+    }
+
+    public static void setDefaultFirmwareBixFileForBlankDevice(String aDefaultFirmwareBixFileForBlankDevice) {
+        defaultFirmwareBixFileForBlankDevice = aDefaultFirmwareBixFileForBlankDevice;
+        prefs.put("CypressFX2.defaultFirmwareBixFileForBlankDevice", defaultFirmwareBixFileForBlankDevice);
+    }
+
 
     /** Downloads to RAM on FX2 using built-in vendor request to CPUCS.
      * Remember to set8051Reset() before and after calling this method.
