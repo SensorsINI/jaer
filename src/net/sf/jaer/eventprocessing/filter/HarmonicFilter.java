@@ -72,16 +72,17 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
         resetFilter();
     }
 
-    public void annotate (GLAutoDrawable drawable){
+    synchronized public void annotate (GLAutoDrawable drawable){
         if ( !printStats ){
             return;
         }
-        if ( renderer == null ){
-            renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,16),true,true);
-        }
-        renderer.beginRendering(drawable.getWidth(),drawable.getHeight());
-        renderer.draw(oscillator.toString(),10,10);
-        renderer.endRendering();
+//        if(oscillator==null) return;
+//        if ( renderer == null ){
+//            renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,16),true,true);
+//        }
+//        renderer.beginRendering(drawable.getWidth(),drawable.getHeight());
+//        renderer.draw(oscillator.toString(),10,10);
+//        renderer.endRendering();
         oscillator.draw(drawable.getGL());
     }
 
@@ -163,8 +164,9 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
             // compute the delta time since last event.
             // check if it is too long for numerical stability, if so, integrate multiple steps
             float dt = TICK * ( ts - t ); // dt is in seconds now... if TICK is correct
-            if ( dt <= 0 ){
+            if ( dt < 0 ){
                 log.warning("negative delta time (" + dt + "), not processing this update");
+               wasReset=true;
                 return;
             }
             int nsteps = (int)Math.ceil(dt / dtlim); // dtlim comes from natural freq; if dt is too large, then nsteps>1
@@ -284,7 +286,7 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
                 if ( f < 0 ){
                     f = -f;
                 }
-                return ( f < .1f );
+                return ( f < threshold );
             }
         }
 
