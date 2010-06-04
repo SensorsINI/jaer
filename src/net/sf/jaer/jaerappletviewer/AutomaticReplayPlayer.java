@@ -221,7 +221,10 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
 //            os.writePacket(raw); // append data to output stream
             numEventsRecorded += in.getSize();
 //            numEventsRecorded += raw.getNumEvents();
-            currentRecordingTime = in.getLastTimestamp();
+            if(in.getSize()>0){
+                currentRecordingTime = in.getLastTimestamp();
+//                System.out.println("set currentRecordingTime="+currentRecordingTime);
+            }
         } catch (IOException ex) {
             log.warning("when writing recording to output memory stream, caught " + ex + ", resetting recording");
             resetRecording(in);

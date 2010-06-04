@@ -156,6 +156,7 @@ public class DVSActApplet extends javax.swing.JApplet {
             fc.add(automaticReplayPlayer);
             fc.setFilteringEnabled(true);
             liveChip.setFilterChain(fc);
+            fc.setFilteringEnabled(true);
             validate();
         } catch (Exception ex) {
             ex.printStackTrace();
