@@ -1288,7 +1288,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         private EngineeringFormat engFmt = new EngineeringFormat();
         private long beforeTime = 0, afterTime;
-        private int lastts = 0;
         volatile boolean stop = false;
 
         /** Sets the stop flag so that the ViewLoop exits the run method on the next iteration.
@@ -1717,19 +1716,34 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
         }
+       private int lastPacketLastTs = 0; // last timestamp of previous packet, used by getDtMs
+        private float lastDtMs=0;
 
+        // returns delta time in ms of the current packet, or 0 if there is less than two events
         private float getDtMs (EventPacket packet){
-            float dtMs = 0;
-            int numEvents = packet.getSize();
-            if ( numEvents > 0 ){
-//                lastts=ae.getLastTimestamp();
-                lastts = packet.getLastTimestamp();
+            int numEvents = 0;
+            if ( packet == null || ( numEvents = packet.getSize() ) < 2 ){
+                return 0;
             }
-            if ( numEvents > 1 ){
-                dtMs = (float)( ( lastts - packet.getFirstTimestamp() ) / ( tickUs * 1e3 ) );
-            }
+
+            float dtMs = (float)( ( packet.getLastTimestamp() - packet.getFirstTimestamp() ) / ( tickUs * 1e3 ) );
             return dtMs;
         }
+
+//        private int lastPacketLastTs = 0; // last timestamp of previous packet, used by getDtMs
+//        private float lastDtMs=0;
+//
+//        // returns delta time in ms from last time this method was called, uses lastts
+//        private float getDtMs (EventPacket packet){
+//            int numEvents=0;
+//            if(packet==null || (numEvents=packet.getSize())==0 || packet.getLastTimestamp()==lastPacketLastTs) return lastDtMs;
+//
+//                int t=packet.getLastTimestamp();
+//                float dtMs = (float)( ( t-lastPacketLastTs ) / ( tickUs * 1e3 ) );
+//                lastPacketLastTs = t; // save last timestamp of this packet
+//                lastDtMs=dtMs;
+//                return dtMs;
+//        }
 
         private float getTimeExpansion (float dtMs){
             lastTimeExpansionFactor = getFrameRater().getAverageFPS() * dtMs / 1000f;
@@ -1756,22 +1770,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             return;
                         }
 //                    ratekeps=aemon.getEstimatedEventRate()/1000f;
-                        thisTimeString = String.format("%5.2fs",lastts * aemon.getTimestampTickUs() * 1e-6f);
+                        thisTimeString = String.format("%5.3fs",lastPacketLastTs * aemon.getTimestampTickUs() * 1e-6f);
                         break;
                     case PLAYBACK:
 //                    if(ae.getNumEvents()>2) ratekeps=(float)ae.getNumEvents()/(float)dtMs;
 //                    if(packet.getSize()>2) ratekeps=(float)packet.getSize()/(float)dtMs;
-                        thisTimeString = String.format("%5.2fs",getAePlayer().getTime() * 1e-6f); // hack here, we don't know timestamp from data file, we assume 1us
+                        thisTimeString = String.format("%5.3fs",getAePlayer().getTime() * 1e-6f); // hack here, we don't know timestamp from data file, we assume 1us
                         break;
                     case REMOTE:
-                        thisTimeString = String.format("%5.2fs",packet.getLastTimestamp() * 1e-6f);
+                        thisTimeString = String.format("%5.3fs",packet.getLastTimestamp() * 1e-6f);
                         break;
                 }
                 String rateString = null;
                 if ( ratekeps >= 10e3f ){
                     rateString = "   >10 Meps";
                 } else{
-                    rateString = String.format("%6.2f keps",ratekeps);
+                    rateString = String.format("%6.2fkeps",ratekeps);
                 }
                 int cs = renderer.getColorScale();
 
@@ -1806,13 +1820,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if ( filterChain.isTimedOut() ){
                         numEventsString = String.format("%5d/%-5d TO  ",numRawEvents,numFilteredEvents);
                     } else{
-                        numEventsString = String.format("%5d/%-5d evts",numRawEvents,numFilteredEvents);
+                        numEventsString = String.format("%5d/%-5devts",numRawEvents,numFilteredEvents);
                     }
                 } else{
-                    numEventsString = String.format("%5d evts",numRawEvents);
+                    numEventsString = String.format("%5devts",numRawEvents);
                 }
 
-                statLabel = String.format("%8ss@%-8ss,%s %s,%s,%4.0f/%dfps,%4s,%2dms,%s=%2d",
+                statLabel = String.format("%8ss@%-8s,%s%s,%s,%3.0f/%dfps,%4s,%2dms,%s=%2d",
                         engFmt.format((float)dtMs / 1000),
                         thisTimeString,
                         numEventsString,
