@@ -22,7 +22,7 @@ import javax.swing.JLabel;
  */
 public class DynamicFontSizeJLabel extends JLabel {
     
-    public static final int MIN_FONT_SIZE=10, MAX_FONT_SIZE=36;
+    public static final int MIN_FONT_SIZE=11, MAX_FONT_SIZE=36;
     private Font currentFont=null;
 
     public DynamicFontSizeJLabel() {
