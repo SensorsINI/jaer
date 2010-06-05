@@ -24,12 +24,12 @@ import net.sf.jaer.graphics.FrameAnnotater;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
-public class HighPassProbabalisticFilter extends EventFilter2D implements FrameAnnotater{
+public class DepressingSynapseFilter extends EventFilter2D implements FrameAnnotater{
     private static Random random = new Random();
     private Neurons neurons;
-    private float tauMs = prefs().getFloat("HighPassProbabalisticFilter.tauMs",10000); // decay constant us
+    private float tauMs = prefs().getFloat("DepressingSynapseFilter.tauMs",10000); // decay constant us
     private float tauUs=tauMs*1000;
-    private float weight = prefs().getFloat("HighPassProbabalisticFilter.weight",.1f); // weight of each input spike on synapse
+    private float weight = prefs().getFloat("DepressingSynapseFilter.weight",.1f); // weight of each input spike on synapse
     private boolean showStateAtMouse=false;
 
     private TextRenderer renderer;
@@ -37,7 +37,7 @@ public class HighPassProbabalisticFilter extends EventFilter2D implements FrameA
     public static String getDescription(){ return "Filters out rapidly firing input using depressing probabalistic synapse model.";}
     public static DevelopmentStatus getDevelopementStatus(){ return DevelopmentStatus.Beta;}
     
-    public HighPassProbabalisticFilter (AEChip chip){
+    public DepressingSynapseFilter (AEChip chip){
         super(chip); // as usual when we're called here we don't have array size yet. Defer memory allocation to running filter.
         setPropertyTooltip("tauMs","recorery time constant in ms of depressing synapse; recovers full strength with this 1st order time constant; increase to make filtering last longer");
         setPropertyTooltip("weight","weight of each incoming spike on depressing synapse; incrrease to reduce number of spikes within tauMs window to filter out events.");
@@ -134,19 +134,21 @@ public class HighPassProbabalisticFilter extends EventFilter2D implements FrameA
             float avg=(s1+s2)/2;
             String s=String.format("%5.3f",avg);
             Rectangle2D rect=renderer.getBounds(s);
-           renderer.draw3D(s,p.x,p.y,0,.5f); // TODO fix string n lines
+           renderer.draw3D(s,p.x,p.y,0,.7f); // TODO fix string n lines
             renderer.end3DRendering();
              GL gl=drawable.getGL();
-            gl.glRectf(p.x,p.y-2,p.x+(float)rect.getWidth()*avg,p.y-1);
+            gl.glRectf(p.x,p.y-2,p.x+(float)rect.getWidth()*avg*.7f,p.y-1);
 
         }
 
 
         private class Neuron{
-            private boolean initialized = false;
-            private float state = 0; // internal state
-            private int lastt = 0;
+            private boolean initialized = false; // flag to init delta time correctly
+            private float state = 0; // internal state, clips to 0:1 and the larger the value, the more depressed is the synapse. The probability to transmit is linear in (1-state).
+            private int lastt = 0; // time of last spike input
 
+
+            // returns true if neuron spike caused by input spike at time t in us
             boolean stimulate (int t){
                 if ( !initialized ){
                     lastt = t;
@@ -158,11 +160,13 @@ public class HighPassProbabalisticFilter extends EventFilter2D implements FrameA
                     return true;
                 }
                 int dt = t - lastt;
-                float newstate = state * (float)Math.exp(-dt / tauUs) + weight;
+                float delta=dt / tauUs;
+                float exp=delta>20?0:(float)Math.exp(-delta);
+                float newstate = state * exp + weight;
                 if ( newstate > max ){
                     newstate = max;
                 }
-                boolean spike = random.nextFloat() > state;
+                boolean spike = random.nextFloat() > state; // spike goes through based on decayed state
                 state=newstate;
                 lastt=t;
                 return spike;
@@ -189,7 +193,7 @@ public class HighPassProbabalisticFilter extends EventFilter2D implements FrameA
      */
     public void setTauMs (float tau){
         this.tauMs = tau;
-        prefs().putFloat("HighPassProbabalisticFilter.tauMs",tau);
+        prefs().putFloat("DepressingSynapseFilter.tauMs",tau);
         tauUs=tauMs*1000;
     }
 
@@ -205,7 +209,7 @@ public class HighPassProbabalisticFilter extends EventFilter2D implements FrameA
      */
     public void setWeight (float weight){
         this.weight = weight;
-        prefs().putFloat("HighPassProbabalisticFilter.weight",weight);
+        prefs().putFloat("DepressingSynapseFilter.weight",weight);
     }
 
     /**
