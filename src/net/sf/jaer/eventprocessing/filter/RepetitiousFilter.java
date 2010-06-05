@@ -49,7 +49,7 @@ public class RepetitiousFilter extends EventFilter2D implements Observer{
     /** Array of last event timestamps. */
     private int[][][][] lastTimesMap;
     /** Array of average ISIs: [chip.sizeX+][chip.sizeY+2][chip.numCellTypes] */
-    private int[][][] avgDtMap;
+    protected int[][][] avgDtMap;
     final int NUMTIMES = 2;
     /** the number of packets processed to average over */
     private int averagingSamples = getPrefs().getInt("RepetitiousFilter.averagingSamples",3);
@@ -151,12 +151,6 @@ public class RepetitiousFilter extends EventFilter2D implements Observer{
     }
 
     public EventPacket<?> filterPacket (EventPacket<?> in){
-        if ( !filterEnabled || in == null ){
-            return in;
-        }
-        if ( enclosedFilter != null ){
-            in = enclosedFilter.filterPacket(in);
-        }
         checkOutputPacketEventType(in);
         checkMap();
         int n = in.getSize();

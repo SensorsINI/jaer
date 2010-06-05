@@ -1519,8 +1519,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         try{
                             packet = filterChain.filterPacket(packet);
                         } catch ( Exception e ){
-                            log.warning("Caught " + e + ", disabling all filters");
-                            e.printStackTrace();
+                            log.warning("Caught " + e + ", disabling all filters. See following stack trace.");
+                            log.log(Level.WARNING,"Filter exception",e);
                             for ( EventFilter f:filterChain ){
                                 f.setFilterEnabled(false);
                             }

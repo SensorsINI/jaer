@@ -14,7 +14,8 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
 
 /**
- *
+ *  Extracts lines in Manhatten directions using LIF neurons along rows / columns.
+ * 
  * @author Michael Pfeiffer, Alex Russell
  */
 public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnotater {

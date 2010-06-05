@@ -48,19 +48,25 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
     private short xAnd;
     private short yAnd;
     private byte typeAnd;
-    Rectangle selection = null;
+    private SelectionRectangle selection = null;
     private GLCanvas glCanvas;
     private ChipCanvas canvas;
-    Point startPoint = null, endPoint = null, clickedPoint = null;
+    private Point startPoint = null, endPoint = null, clickedPoint = null;
     private Point currentMousePoint = null;
-    int maxEvents = 0;
-    int index = 0;
+    private int maxEvents = 0;
+    private int index = 0;
     private short xspike, yspike;
     private byte typespike;
     private int ts, repMeasure, i;
-    volatile boolean selecting = false;
+    private volatile boolean selecting = false;
     private static float lineWidth = 1f;
-    int startx, starty, endx, endy;
+    private int startx, starty, endx, endy;
+    private boolean multiSelectionEnabled = prefs().getBoolean("XYTypeFilter.multiSelectionEnabled",false);
+    private ArrayList<SelectionRectangle> selectionList = new ArrayList(1);
+ 
+    synchronized public void doEraseSelections (){
+        selectionList.clear();
+    }
 
     public XYTypeFilter (AEChip chip){
         super(chip);
@@ -81,6 +87,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         setPropertyTooltip(t,"typeEnabled","filter based on cell type");
         setPropertyTooltip(t,"endType","ending cell type");
         setPropertyTooltip("invertEnabled","invert filtering to pass events outside selection");
+        setPropertyTooltip("multiSelectionEnabled", "allows defining multiple regions to filter on");
     }
 
     /**
@@ -108,7 +115,28 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         // for each event only write it to the tmp buffers if it matches
         for ( Object obj:in ){
             BasicEvent e = (BasicEvent)obj;
-            if ( !invertEnabled ){
+            if ( multiSelectionEnabled  ){
+                if(selectionList.isEmpty()) return in;
+                if ( !invertEnabled ){
+                    for ( SelectionRectangle r:selectionList ){
+                        if ( r.contains(e) ){
+                            pass(outItr,e);
+                            break;
+                        }
+                    }
+                } else{
+                    boolean blocked = false;
+                    for ( SelectionRectangle r:selectionList ){
+                        if ( r.contains(e) ){
+                            blocked = true;
+                        }
+                    }
+                    if ( !blocked ){
+                        pass(outItr,e);
+                    }
+
+                }
+            } else if ( !invertEnabled ){
                 // if we pass all 'inside' tests then pass event, otherwise continue to next event
                 if ( xEnabled && ( e.x < startX || e.x > endX ) ){
                     continue; // failed xtest, x outisde, goto next event
@@ -283,14 +311,20 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         }
         gl.glPushMatrix();
         {
-            gl.glColor3f(0,0,1);
-            gl.glLineWidth(2f);
-            gl.glBegin(gl.GL_LINE_LOOP);
-            gl.glVertex2i(startX,startY);
-            gl.glVertex2i(endX,startY);
-            gl.glVertex2i(endX,endY);
-            gl.glVertex2i(startX,endY);
-            gl.glEnd();
+            if ( !multiSelectionEnabled ){
+                gl.glColor3f(0,0,1);
+                gl.glLineWidth(2f);
+                gl.glBegin(gl.GL_LINE_LOOP);
+                gl.glVertex2i(startX,startY);
+                gl.glVertex2i(endX,startY);
+                gl.glVertex2i(endX,endY);
+                gl.glVertex2i(startX,endY);
+                gl.glEnd();
+            } else{
+                for ( SelectionRectangle r:selectionList ){
+                    r.draw(gl);
+                }
+            }
         }
         gl.glPopMatrix();
 
@@ -336,12 +370,15 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         if ( startPoint == null ){
             return;
         }
-        getSelection(e);
-        selecting = false;
+        selection = getSelection(e); // TODO sets and returns same object, not really good behavior
+        if ( multiSelectionEnabled ){
+            selectionList.add(selection);
+        }
         setStartX(startx);
         setEndX(endx);
         setStartY(starty);
         setEndY(endy);
+        selecting = false;
     }
 
     public void mouseMoved (MouseEvent e){
@@ -362,7 +399,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         getSelection(e);
     }
 
-    private void getSelection (MouseEvent e){
+    private SelectionRectangle getSelection (MouseEvent e){
         Point p = canvas.getPixelFromMouseEvent(e);
         endPoint = p;
         startx = min(startPoint.x,endPoint.x);
@@ -371,7 +408,8 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         endy = max(startPoint.y,endPoint.y);
         int w = endx - startx;
         int h = endy - starty;
-        selection = new Rectangle(startx,starty,w,h);
+        selection = new SelectionRectangle(startx,starty,w,h);
+        return selection;
 
     }
 
@@ -403,4 +441,41 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
             glCanvas.removeMouseMotionListener(this);
         }
     }
+
+    /**
+     * @return the multiSelectionEnabled
+     */
+    public boolean isMultiSelectionEnabled (){
+        return multiSelectionEnabled;
+    }
+
+    /**
+     * @param multiSelectionEnabled the multiSelectionEnabled to set
+     */
+    public void setMultiSelectionEnabled (boolean multiSelectionEnabled){
+        this.multiSelectionEnabled = multiSelectionEnabled;
+        prefs().putBoolean("XYTypeFilter.multiSelectionEnabled",multiSelectionEnabled);
+    }
+
+       private class SelectionRectangle extends Rectangle{
+        public SelectionRectangle (int x,int y,int width,int height){
+            super(x,y,width,height);
+        }
+
+        public boolean contains (BasicEvent e){
+            return contains(e.x,e.y);
+        }
+
+        private void draw (GL gl){
+            gl.glColor3f(0,0,1);
+            gl.glLineWidth(2f);
+            gl.glBegin(gl.GL_LINE_LOOP);
+            gl.glVertex2i(x,y);
+            gl.glVertex2i(x + width,y);
+            gl.glVertex2i(x + width,y + height);
+            gl.glVertex2i(x,y + height);
+            gl.glEnd();
+        }
+    }
+
 }

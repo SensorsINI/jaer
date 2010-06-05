@@ -14,6 +14,7 @@ import java.util.Observable;
 import java.util.Observer;
 import javax.swing.JFrame;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -168,7 +169,7 @@ public class ISIFilter extends EventFilter2D implements Observer {
     }
 
     public void update(Observable o, Object arg) {
-        if (arg.equals("sizeX") || arg.equals("sizeY")) {
+        if (arg.equals(Chip2D.EVENT_SIZEX) || arg.equals(Chip2D.EVENT_SIZEY)) {
             resetBins();
         }
     }

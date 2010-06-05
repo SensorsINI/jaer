@@ -15,6 +15,9 @@ import net.sf.jaer.graphics.ChipCanvas;
  */
 public class Chip2D extends Chip {
 
+    /** Argument to notifyObservers */
+    public static final String EVENT_SIZEX="sizeX", EVENT_SIZEY="sizeY";
+
     /** Creates a new instance of Chip2D */
     public Chip2D() {
         super();
@@ -37,13 +40,13 @@ public class Chip2D extends Chip {
         return sizeX;
     }
 
-    /** Updates the chip size and calls Observers with the string "sizeX".
+    /** Updates the chip size and calls Observers with the string EVENT_SIZEX.
     @param sizeX the horizontal dimension
      */
     public void setSizeX(int sizeX) {
         this.sizeX = sizeX;
         setChanged();
-        notifyObservers("sizeX");
+        notifyObservers(EVENT_SIZEX);
     }
 
     /** Size of chip in y (vertical) direction.
@@ -54,13 +57,13 @@ public class Chip2D extends Chip {
         return sizeY;
     }
 
-    /** Updates the chip size and calls Observers with the string "sizeY".
+    /** Updates the chip size and calls Observers with the string EVENT_SIZEY.
     @param sizeY the vertical dimension
      */
     public void setSizeY(int sizeY) {
         this.sizeY = sizeY;
         setChanged();
-        notifyObservers("sizeY");
+        notifyObservers(EVENT_SIZEY);
     }
 
     public int getMaxSize() {

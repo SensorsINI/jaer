@@ -805,7 +805,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             addTip(f, label);
             add(label);
 
-            tf = new JTextField("", 4);
+            tf = new JTextField("", 8);
             tf.setMaximumSize(new Dimension(100, 50));
             tf.setToolTipText("Integer control: use arrow keys or mouse wheel to change value by factor. Shift constrains to simple inc/dec");
             try {
@@ -1029,7 +1029,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             label.setFont(label.getFont().deriveFont(fontSize));
             addTip(f, label);
             add(label);
-            tf = new JTextField("", 7);
+            tf = new JTextField("", 10);
             tf.setMaximumSize(new Dimension(100, 50));
             tf.setToolTipText("Float control: use arrow keys or mouse wheel to change value by factor. Shift reduces factor.");
             try {

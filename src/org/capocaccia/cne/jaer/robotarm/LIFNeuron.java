@@ -6,7 +6,7 @@
 package org.capocaccia.cne.jaer.robotarm;
 
 /**
- *
+ * A leaky integrate and fire neuron model used for LIF-based event processing.
  * @author Michael Pfeiffer, Alex Russell
  */
 public class LIFNeuron {

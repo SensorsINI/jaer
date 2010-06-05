@@ -310,9 +310,9 @@ public class Chip2DRenderer implements Observer {
         if (o instanceof Chip2D) {
             if (arg instanceof String) {
                 String s = (String) arg;
-                if (s.equals("sizeX")) {
+                if (s.equals(Chip2D.EVENT_SIZEX)) {
                     sizeX = chip.getSizeX();
-                } else if (s.equals("sizeY")) {
+                } else if (s.equals(Chip2D.EVENT_SIZEY)) {
                     sizeY = chip.getSizeY();
                 }
             }

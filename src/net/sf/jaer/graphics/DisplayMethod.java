@@ -126,4 +126,8 @@ public abstract class DisplayMethod {
     public ChipCanvas getChipCanvas() {
         return chipCanvas;
     }
+
+    public void setChipCanvas(ChipCanvas c){
+        this.chipCanvas=c;
+    }
 }

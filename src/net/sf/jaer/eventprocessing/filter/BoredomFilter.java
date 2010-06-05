@@ -25,7 +25,7 @@ import java.util.*;
  */
 public class BoredomFilter extends EventFilter2D implements Observer {
    public static String getDescription(){
-       return " An AE filter that filters out high firing-rate repetitive events.";
+       return "Filters out events with low relative variance in activity";
    }
     
     public int threshold=4;

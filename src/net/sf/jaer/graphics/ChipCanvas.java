@@ -242,6 +242,8 @@ public class ChipCanvas implements GLEventListener, Observer {
         this.displayMethod = m;
         if (m != null) {
             if (m.getMenuItem() == null) {
+                // TODO comes here when preferred display method is constructed, which is not yet assigned a menu item like the others
+                // which are constructed by default
                 log.warning("no menu item for display method " + m + " cannot set it as the display method");
             } else {
 //            log.info("setting display method to " + m.getDescription());
@@ -317,6 +319,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 annotate(drawable);
                 checkGLError(gl, glu, "after FrameAnnotator (EventFilter) annotations");
             }
+            gl.glFlush();
 //            gl.glPopMatrix();
             checkGLError(gl, glu, "after display");
 //            drawable.swapBuffers(); // don't use, very slow and autoswapbuffers is set
@@ -421,13 +424,23 @@ public class ChipCanvas implements GLEventListener, Observer {
         return p;
     }
 
-    /** Finds the current AEChip pixel mouse position.
+    /** Finds the current AEChip pixel mouse position, or center of array if not inside.
      *
      * @return the AEChip pixel, clipped to the bounds of the AEChip
      */
     public Point getMousePixel() {
         Point mp = getCanvas().getMousePosition();
         return getPixelFromPoint(mp);
+    }
+
+    /** Returns true if mouse inside bounds of chip drawing area.
+     *
+     * // TODO returns true always now.
+     *
+     * @return true if inside, false otherwise.
+     */
+    public boolean isMouseInside (){
+        return true; // TODO returns true always now
     }
 
     /** Takes a MouseEvent and returns the AEChip pixel.
@@ -760,6 +773,8 @@ public class ChipCanvas implements GLEventListener, Observer {
         prefs.putBoolean("ChipCanvas.openGLEnabled", openGLEnabled);
     }
 
+
+
     /** Orthographic projection clipping area. */
     private class ClipArea {
 
@@ -908,7 +923,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     public void update(Observable o, Object arg) {
         // if observable is a chip object and arg is a string size property then set a new j2dScale
         if (o == chip && arg instanceof String) {
-            if (arg.equals("sizeX") || arg.equals("sizeY")) {
+            if (arg.equals(Chip2D.EVENT_SIZEX) || arg.equals(Chip2D.EVENT_SIZEY)) {
                 setScale(prefs.getFloat(scalePrefsKey(), SCALE_DEFAULT));
                 ZCLIP = chip.getMaxSize();
                 unzoom();
@@ -1009,7 +1024,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         final float zoomStepRatio = 1.3f;
         private Point startPoint = new Point();
         private Point endPoint = new Point();
-        Point centerPoint = new Point();
+        private Point centerPoint = new Point();
         float zoomFactor = 1;
         private boolean zoomEnabled = false;
         Point tmpPoint = new Point();

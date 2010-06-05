@@ -11,7 +11,8 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
 
 /**
- *
+ * Orientation extractor / labeler using LIF neurons.
+ * 
  * @author Michael Pfeiffer, Alex Russell
  */
 public class LIFOrientationFilter extends EventFilter2D implements Observer {
