@@ -250,7 +250,7 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
     }
 
     private boolean isValidRecording() {
-        return currentRecordingTime > startRecordingTime + minValidRecordingDurationMs * 1000;
+        return currentRecordingTime<startRecordingTime || currentRecordingTime > startRecordingTime + minValidRecordingDurationMs * 1000;
     }
 
     synchronized public void setState(State state) {
