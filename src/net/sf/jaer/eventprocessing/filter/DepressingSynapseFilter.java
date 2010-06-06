@@ -18,6 +18,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 /**
  *  Filters out high-firing input using probabalistic depressing synaptic connection. Works particularly well for high firing rate flickering lighting sources with the DVS.
+ * The depression state saturates, so a bursting input recovers between bursts more rapidly than one that steadily fires at the same average rate.
  * @author tobi
  *
  * This is part of jAER
@@ -70,8 +71,8 @@ public class DepressingSynapseFilter extends EventFilter2D implements FrameAnnot
 
     public void annotate (GLAutoDrawable drawable){
         if(showStateAtMouse==false || neurons==null) return;
-        if(!chip.getCanvas().isMouseInside()) return;
         Point p=chip.getCanvas().getMousePixel();
+        if(!chip.getCanvas().wasMousePixelInsideChipBounds()) return;
         neurons.display(drawable,p);
     }
 

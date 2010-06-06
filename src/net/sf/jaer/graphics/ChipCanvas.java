@@ -374,6 +374,8 @@ public class ChipCanvas implements GLEventListener, Observer {
         return new Color(value);
     }
 
+    private boolean mouseWasInsideChipBounds=true;
+
     /** Finds the chip pixel from a ChipCanvas point.
      * From <a href="http://processing.org/discourse/yabb_beta/YaBB.cgi?board=OpenGL;action=display;num=1176483247">this forum link</a>.
      *
@@ -384,7 +386,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         // this method depends on current GL context being the one that is used for rendering.
         // the display method should not push/pop the matrix stacks!!
         if (mp == null) {
-            log.warning("null Point, returning center pixel");
+//            log.warning("null Point (outside entire canvas?), returning center pixel");
             return new Point(chip.getSizeX() / 2, chip.getSizeY() / 2);
         }
         try {
@@ -419,6 +421,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         Point p = new Point();
         p.x = (int) Math.round(wcoord[0]);
         p.y = (int) Math.round(wcoord[1]);
+        if(p.x<0 || p.x>chip.getSizeX()-1 || p.y<0|p.y>chip.getSizeY()-1) mouseWasInsideChipBounds=false; else mouseWasInsideChipBounds=true;
         clipPoint(p);
 //        log.info("Mouse xyz=" + mp.getX() + "," + realy + "," + z + "   Pixel x,y=" + p.x + "," + p.y);
         return p;
@@ -433,14 +436,12 @@ public class ChipCanvas implements GLEventListener, Observer {
         return getPixelFromPoint(mp);
     }
 
-    /** Returns true if mouse inside bounds of chip drawing area.
+    /** Returns state of mouse from last call to getPixelFromPoint; true if mouse inside bounds of chip drawing area.
      *
-     * // TODO returns true always now.
-     *
-     * @return true if inside, false otherwise.
+     * @return true if was inside, false otherwise.
      */
-    public boolean isMouseInside (){
-        return true; // TODO returns true always now
+    public boolean wasMousePixelInsideChipBounds (){
+        return mouseWasInsideChipBounds;
     }
 
     /** Takes a MouseEvent and returns the AEChip pixel.
