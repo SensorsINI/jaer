@@ -3330,6 +3330,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             skipPacketsRenderingNumber = 100;
         } else{
             skipPacketsRenderingNumber = 0;
+            skipPacketsRenderingCount=0; // added to restart rendering immediately
         }
     }//GEN-LAST:event_dontRenderToggleButtonActionPerformed
 
