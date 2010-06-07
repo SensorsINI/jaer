@@ -257,7 +257,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
 //            lastts=rawTime;
                         int zeroedRawTime;
                         if ( readTimeZeroAlready ){
-                            // TDS sends 32 bit timestamp which overflows after multiplication
+                            // TODO TDS sends 32 bit timestamp which overflows after multiplication
                             // by timestampMultiplier and cast to int jaer timestamp
                             zeroedRawTime = rawTime - timeZero;
                         } else{
@@ -268,7 +268,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
 //                        int v3 = 0xffff & v2; // TODO hack for TDS sensor which uses all 32 bits causing overflow after multiplication by multiplier and int cast
                         float floatFinalTime = timestampMultiplier * zeroedRawTime;
                         int finalTime;
-                        if ( floatFinalTime >= Integer.MAX_VALUE ){
+                        if ( floatFinalTime >= Integer.MAX_VALUE || floatFinalTime<=Integer.MIN_VALUE ){
                             timeZero = rawTime; // after overflow reset timezero
                             finalTime = 0; // wrap around at 2k seconds, back to 0 seconds. TODO different than hardware which wraps back to -2k seconds
                         } else{
