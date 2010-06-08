@@ -93,7 +93,7 @@ public class DVS128 extends AERetina implements Serializable, Observer {
                 public void actionPerformed(ActionEvent evt) {
                     HardwareInterface hw = getHardwareInterface();
                     if (hw == null || !(hw instanceof HasResettablePixelArray)) {
-                        log.warning("cannot reset pixels with hardware interface=" + hw + " (class " + hw.getClass() + "), interface doesn't implement HasResettablePixelArray");
+                        log.warning("cannot reset pixels with hardware interface=" + hw + " (class " + (hw!=null?hw.getClass():null) + "), interface doesn't implement HasResettablePixelArray");
                         return;
                     }
                     log.info("resetting pixels");
