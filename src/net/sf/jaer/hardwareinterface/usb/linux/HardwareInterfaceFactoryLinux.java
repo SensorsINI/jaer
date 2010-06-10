@@ -5,7 +5,7 @@
  * 
  * INSTALLATION:
  * 
- * see jaer/trunk/drivers/driverRetinaLinux/INSTALL
+ * see jaer/trunk/drivers/linux/driverRetinaLinux/INSTALL
  * tested on opensuse, kubuntu and fedora core
  * 
  * hardware interface factory
@@ -43,7 +43,7 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
     /** Device file for retina driver. */
     public static final String DEVICE_FILE = "/dev/retina0";
     private static final String WARNING = "To use DVS128, plug in a retina.\n Will check for device file " + DEVICE_FILE + " again in " + ( CHECK_INTERVAL_MS >>> 10 ) + "s\n"
-            + "See <jAER root>/drivers/driverRetinaLinux for DVS128 linux driver.\n Email m.ebner.1979@gmail.com for driver issues";
+            + "See <jAER root>/drivers/linux/driverRetinaLinux for DVS128 linux driver.\n Email m.ebner.1979@gmail.com for driver issues";
     private static String WARNING_LABEL;
 
     static{

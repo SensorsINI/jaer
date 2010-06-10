@@ -5,7 +5,7 @@
  * 
  * INSTALLATION:
  * 
- * see jaer/trunk/drivers/driverRetinaLinux/INSTALL
+ * see jaer/trunk/drivers/linux/driverRetinaLinux/INSTALL
  * tested on opensuse, kubuntu and fedora core
  * 
  * hardware interface based upon cypressfx2 class
