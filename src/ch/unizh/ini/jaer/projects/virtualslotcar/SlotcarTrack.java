@@ -75,9 +75,23 @@ public class SlotcarTrack {
      * @param pos Point for which to search closest track point
      * @return Index of closest point on track
      */
-    public int findClosest(Point2D pos) {
-        if (trackPoints.size() > 0)
-            return 0;
+    public int findClosest(Point2D pos, double maxDist) {
+        if (trackPoints.size() > 0) {
+            ListIterator<Point2D> it = trackPoints.listIterator();
+            int idx = 0;
+            int closestIdx = -1;
+            double closestDist = Double.MAX_VALUE;
+            while (it.hasNext()) {
+                Point2D p = it.next();
+                double d = p.distance(pos);
+                if ((d < closestDist) && (d <= maxDist)) {
+                    closestIdx = idx;
+                    closestDist = d;
+                }
+                idx++;
+            }
+            return closestIdx;
+        }
         else
             return -1;
     }

@@ -11,6 +11,7 @@
 
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
+import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.util.LinkedList;
 import java.util.ListIterator;
@@ -52,15 +53,17 @@ public class TrackEditor extends javax.swing.JPanel {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        setBorder(javax.swing.BorderFactory.createTitledBorder("Track"));
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 400, Short.MAX_VALUE)
+            .addGap(0, 388, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 300, Short.MAX_VALUE)
+            .addGap(0, 273, Short.MAX_VALUE)
         );
     }// </editor-fold>//GEN-END:initComponents
 
@@ -78,9 +81,12 @@ public class TrackEditor extends javax.swing.JPanel {
                 int oldX = -1;
                 int oldY = -1;
                 while (it.hasNext()) {
+                    g.setColor(Color.black);
                     Point2D p = it.next();
                     int x = (int) (p.getX() * d.width);
                     int y = (int) (p.getY() * d.height);
+                    if (oldX == -1)
+                        g.setColor(Color.red);
                     g.drawOval(x-2, y-2, 5, 5);
                     if (oldX >= 0) {
                         g.drawLine(oldX, oldY, x, y);
@@ -96,6 +102,7 @@ public class TrackEditor extends javax.swing.JPanel {
                 ListIterator<Point2D> all_it = allpoints.listIterator();
                 int oldX = -1;
                 int oldY = -1;
+                g.setColor(Color.blue);
                 while (all_it.hasNext()) {
                     Point2D p = all_it.next();
                     int x = (int) (p.getX() * d.width);
@@ -113,6 +120,7 @@ public class TrackEditor extends javax.swing.JPanel {
     
     public void setStepSize(double stepsize) {
         this.stepsize = stepsize;
+        repaint();
     }
 
 
