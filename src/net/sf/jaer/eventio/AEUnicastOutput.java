@@ -108,7 +108,7 @@ public class AEUnicastOutput implements AEUnicastSettings{
      * Each DatagramPacket has a sequence number as the first Integer value which is used on the reciever to
     detect dropped packets.
     <p>
-    If an empty packet is supplied as ae, then a packet is still written but it contains only a sequence number.
+    If a null or empty packet is supplied as ae then this method returns doing nothing and no sequence number is sent.
      * <p>
      * This method actually offers new Datagram packets to the consumer thread for later tranmission. The datagram address and port are taken from
      * the current settings for the AEUnicastOutput.
@@ -117,6 +117,7 @@ public class AEUnicastOutput implements AEUnicastSettings{
      */
     synchronized public void writePacket (AEPacketRaw ae) throws IOException{
 
+        if(ae==null) return;
         int nEvents = ae.getNumEvents();
         if ( nEvents == 0 ){
             return;
@@ -282,6 +283,7 @@ public class AEUnicastOutput implements AEUnicastSettings{
                 while ( true ){
                     buf = exchanger.exchange(buf);
                     buf.flip();
+                    if(!buf.hasRemaining()) continue; // don't write empty packets
                     if ( !checkClient() ){ // if client not there, just continue - maybe it comes back
                         continue;
                     }

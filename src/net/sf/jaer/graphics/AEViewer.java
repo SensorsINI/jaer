@@ -1590,7 +1590,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             if ( !isLogFilteredEventsEnabled() ){
                                 unicastOutput.writePacket(aeRaw);
                             } else{
-                                // log the reconstructed packet after filtering
+                                // log the reconstructed packet after filtering.
+                                // TODO handle reconstructed packet with filtering that transforms events. At present the original raw addresses are sent out, so e.g. rotation will not appear
+                                // in the output.
                                 AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
                                 unicastOutput.writePacket(aeRawRecon);
                             }

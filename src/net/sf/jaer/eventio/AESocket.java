@@ -161,11 +161,18 @@ public class AESocket{
             return packet;
         }*/
     }
+    /** Writes the packet to the stream. Returns doing nothing if packet is null or empty.
+     *
+     * @param p the packet
+     * @throws IOException
+     */
     public synchronized void writePacket(AEPacketRaw p) throws IOException{
+        if(p==null) return;
         checkDataOutputStream();
+        int n=p.getNumEvents();
+        if(n==0) return;
         int[] a=p.getAddresses();
         int[] ts=p.getTimestamps();
-        int n=p.getNumEvents();
         for(int i=0;i<n;i++){
             dos.writeInt(a[i]);
             dos.writeInt(ts[i]);

@@ -347,7 +347,9 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
     
     /** 
      * Returns a raw packet suitable for logging to a data file, from an EventPacket that could be the result of filtering
-     * operations
+     * operations.
+     * <p>
+     This filtering may not be reflected in the output of the reconstruction because the original raw address is the one that is used (for efficiency).
      * @param packet the EventPacket
      * @return a raw packet holding the device events.  This raw packet is reused for every call to reconstructRawPacket.
      */
@@ -362,7 +364,7 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
           for(Object o:packet){
             TypedEvent e=(TypedEvent)o;
             ts[k]=e.timestamp;
-            a[k]=e.address; //getAddressFromCell(e.x,e.y,e.type); // uses the new (May 2010) field for the raw address which is initially captured from hardware
+            a[k++]=e.address; //getAddressFromCell(e.x,e.y,e.type); // uses the new (May 2010) field for the raw address which is initially captured from hardware
         }
         raw.setNumEvents(n);
 

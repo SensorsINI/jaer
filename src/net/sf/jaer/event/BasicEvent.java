@@ -24,7 +24,11 @@ public class BasicEvent implements EventInterface<BasicEvent> {
     /** timestamp of event, by convention in us */
     public int timestamp;
 
-    /** The raw address corresponding to the event which has originated in hardware and is associated here for purposes of low level IO to streams. */
+    /** The raw address corresponding to the event which has originated in hardware and is associated here for purposes of low level IO to streams.
+     <p>
+     * This address is generally not transformed by event filtering, so filters which transform events, e.g. by shifting them or rotating them, must handle
+     the transformation of the raw addresses. Event filters which simply remove events need not worry about this effect.
+     */
     public int address;
 
     /** x address of event (horizontal coordinate, by convention starts at left of image) */

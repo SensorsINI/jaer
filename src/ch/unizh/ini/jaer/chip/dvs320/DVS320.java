@@ -94,7 +94,8 @@ public class DVS320 extends AERetina implements HasIntensity {
      */
     public class DVS320Extractor extends RetinaExtractor {
 
-        public static final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0xff000,  YSHIFT = 12,  INTENSITYMASK = 0x40000;
+//        public static final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0xff000,  YSHIFT = 12,  INTENSITYMASK = 0x40000;
+         public static final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0x3fc00,  YSHIFT = 10,  INTENSITYMASK = 0x40000;
         private int lastIntenTs = 0;
 
         public DVS320Extractor(DVS320 chip) {
