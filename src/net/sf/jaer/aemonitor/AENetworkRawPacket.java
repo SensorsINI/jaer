@@ -9,7 +9,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 
 /**
- * A raw data packet with network source / destination information. Currently used to store the source address for data from UDP clients.
+ * A raw data packet with network source / destination information. Currently used to store the source addresses and starting event indices for data from UDP clients.
  *
  * @author tobi
  */
@@ -18,11 +18,11 @@ public class AENetworkRawPacket extends AEPacketRaw {
     /** Maps data from startingIndex to client address. Each item in client list will tell the EventExtractor2D which client the succeeding
      * data came from.
      */
-    public class ClientMap{
+    public class ClientInfo{
         private InetSocketAddress client;
         private int startingIndex;
 
-        public ClientMap(InetSocketAddress client, int index) {
+        public ClientInfo(InetSocketAddress client, int index) {
             this.client = client;
             this.startingIndex = index;
         }
@@ -44,7 +44,7 @@ public class AENetworkRawPacket extends AEPacketRaw {
     }
 
     /** List of clients that contributed to this packet. */
-    private ArrayList<ClientMap> clientList=new ArrayList();
+    private ArrayList<ClientInfo> clientList=new ArrayList();
 
     @Override
     public void clear() {
@@ -58,14 +58,14 @@ public class AENetworkRawPacket extends AEPacketRaw {
      * @param startingIndex
      */
     synchronized public void addClientAddress(InetSocketAddress client, int startingIndex){
-        clientList.add(new ClientMap(client,startingIndex));
+        clientList.add(new ClientInfo(client,startingIndex));
     }
 
     /** Returns the list of clients included in this packet.
      *
      * @return the list of clients.
      */
-   public ArrayList<ClientMap> getClientList(){
+   public ArrayList<ClientInfo> getClientList(){
        return clientList;
    }
 }
