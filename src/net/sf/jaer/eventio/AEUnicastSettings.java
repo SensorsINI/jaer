@@ -48,6 +48,9 @@ public interface AEUnicastSettings {
     /** ARC TDS smarteye uses 2 byte address and timestamp data */
     public static final boolean ARC_TDS_4_BYTE_ADDR_AND_TIMESTAMPS=true;
 
+    /** ARC TDS smarteye uses 2 byte address and timestamp data */
+    public static final int ARC_TDS_BUFFER_SIZE=1500;
+
     /** Opens or reopens the AEUnicast channel. If the channel is not open, open it. If it is open, then close and reopen it.
      * 
      * @throws IOException

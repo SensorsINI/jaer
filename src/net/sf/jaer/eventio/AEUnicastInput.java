@@ -49,17 +49,17 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
     private int port = prefs.getInt("AEUnicastInput.port",AENetworkInterfaceConstants.DATAGRAM_PORT);
     private boolean sequenceNumberEnabled = prefs.getBoolean("AEUnicastInput.sequenceNumberEnabled",true);
     private boolean addressFirstEnabled = prefs.getBoolean("AEUnicastInput.addressFirstEnabled",true);
-    private Exchanger<AEPacketRaw> exchanger = new Exchanger();
-    private AEPacketRaw initialEmptyBuffer = new AEPacketRaw(); // the buffer to start capturing into
-    private AEPacketRaw initialFullBuffer = new AEPacketRaw();    // the buffer to render/process first
-    private AEPacketRaw currentFillingBuffer = initialEmptyBuffer; // starting buffer for filling
-    private AEPacketRaw currentEmptyingBuffer = initialFullBuffer; // starting buffer to empty
-    private static Logger log = Logger.getLogger("AESocketStream");
+    private Exchanger<AENetworkRawPacket> exchanger = new Exchanger();
+    private AENetworkRawPacket initialEmptyBuffer = new AENetworkRawPacket(); // the buffer to start capturing into
+    private AENetworkRawPacket initialFullBuffer = new AENetworkRawPacket();    // the buffer to render/process first
+    private AENetworkRawPacket currentFillingBuffer = initialEmptyBuffer; // starting buffer for filling
+    private AENetworkRawPacket currentEmptyingBuffer = initialFullBuffer; // starting buffer to empty
+    private static final Logger log = Logger.getLogger("AESocketStream");
     private int bufferSize = prefs.getInt("AEUnicastInput.bufferSize",AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES);
     private boolean swapBytesEnabled = prefs.getBoolean("AEUnicastInput.swapBytesEnabled",false);
     private float timestampMultiplier = prefs.getFloat("AEUnicastInput.timestampMultiplier",DEFAULT_TIMESTAMP_MULTIPLIER);
     private boolean use4ByteAddrTs = prefs.getBoolean("AEUnicastInput.use4ByteAddrTs",DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP);
-    /** Maximum time inteval in ms to exchange EventPacketRaw with consumer */
+    /** Maximum time interval in ms to exchange EventPacketRaw with consumer */
     static public final long MIN_INTERVAL_MS = 30;
     final int TIMEOUT_MS = 1000; // SO_TIMEOUT for receive in ms
     boolean stopme = false;
@@ -120,7 +120,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
     /** Returns the latest buffer of events. If a timeout occurs occurs a null packet is returned.
      * @return the events collected since the last call to readPacket(), or null on a timeout or interrupt.
      */
-    public AEPacketRaw readPacket (){
+    public AENetworkRawPacket readPacket (){
 //        readingThread=Thread.currentThread();
         try{
             currentEmptyingBuffer = exchanger.exchange(currentEmptyingBuffer,1,TimeUnit.SECONDS);
@@ -159,47 +159,54 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
     /** Receives a buffer from the UDP socket. Data is stored in internal buffer.
      *
      * @param packet used only to set number of events to 0 if there is an error.
-     * @return true if successful, false if there is an IOException.
+     * @return client if successful, null if there is an IOException.
      */
-    private boolean receiveBuffer (AEPacketRaw packet){
+    private SocketAddress receiveBuffer (AENetworkRawPacket packet){
+        SocketAddress client = null;
         try{
-            SocketAddress client = channel.receive(buffer); // fill buffer with data from datagram, blocks here until packet received
+            client = channel.receive(buffer); // fill buffer with data from datagram, blocks here until packet received
             if ( !printedHost ){
                 printedHost = true;
-                log.info("received first packet from " + client + " of length " + buffer.position() + " bytes, connecting channel");
-                channel.connect(client); // TODO connect the channel to avoid security check overhead. TODO check if handles reconnects correctly.
+                log.info("received first packet from " + client + " of length " + buffer.position() + " bytes"); // , connecting channel
+                // do not connect so that multiple clients can send us data on the same port
+                //                channel.connect(client); // TODO connect the channel to avoid security check overhead. TODO check if handles reconnects correctly.
+            }
+            if(client instanceof InetSocketAddress)  {
+                packet.addClientAddress((InetSocketAddress)client, packet.getNumEvents());
+            }else{
+                log.warning("unknown type of client address - should be InetSocketAddress: "+client);
             }
         } catch ( SocketTimeoutException to ){
             // just didn't fill the buffer in time, ignore
             log.warning(to.toString());
-            return false;
+            return null;
         } catch ( IOException e ){
             log.warning(e.toString());
-            packet.setNumEvents(0);
-            return false;
+            packet.clear();
+            return null;
         } catch ( IllegalArgumentException eArg ){
             log.warning(eArg.toString());
-            return true;
+            return null;
         }
-        return true;
+        return client;
     }
 
     /** Adds to the packet supplied as argument by receiving
      * a single datagram and processing the data in it.
     @param packet the packet to add to.
      */
-    synchronized private void receiveDatagramAndAddToCurrentEventPacket (AEPacketRaw packet) throws NullPointerException{
+    synchronized private void receiveDatagramAndAddToCurrentEventPacket (AENetworkRawPacket packet) throws NullPointerException{
         if ( datagramSocket == null ){
             throw new NullPointerException("datagram socket became null for " + AEUnicastInput.this);
         }
-        if ( !receiveBuffer(packet) ){
+        if ( receiveBuffer(packet)==null ){
             return;
         }
 //        log.info("received buffer="+buffer);
         buffer.flip();
         if ( buffer.limit() < Integer.SIZE / 8 ){
             log.warning(String.format("DatagramPacket only has %d bytes, and thus doesn't even have sequence number, returning empty packet",buffer.limit()));
-            packet.setNumEvents(0);
+            packet.clear();
             buffer.clear();
             return;
         }
@@ -229,7 +236,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
      *
      * @param packet to add events to.
      */
-    private void extractEvents (AEPacketRaw packet){
+    private void extractEvents (AENetworkRawPacket packet){
         // extract the ae data and add events to the packet we are presently filling
         int seqNumLength = sequenceNumberEnabled ? Integer.SIZE / 8 : 0;
         int eventSize = eventSize();
@@ -398,7 +405,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
      * @deprecated doesn't do anything here because we only set local port
      */
     public void setHost (String host){ // TODO all wrong, doesn't need host since receiver
-        log.warning("setHost(" + host + ") ignored for AEUnicastInput");
+        log.log(Level.WARNING, "setHost({0}) ignored for AEUnicastInput", host);
         // TODO should make new socket here too since we may have changed the host since we connected the socket
 //        this.host=host;
 //        prefs.put("AEUnicastInput.host", host);
@@ -623,7 +630,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
                 try{
                     currentFillingBuffer = exchanger.exchange(currentFillingBuffer,0,TimeUnit.MILLISECONDS); // get buffer to write to from consumer thread
                     // timeout set to zero so that we time out immediately if rendering isn't asking for data now, in which case we try again to read a datagram with addToBuffer
-                    currentFillingBuffer.setNumEvents(0); // reset event counter
+                    currentFillingBuffer.clear(); // reset event counter
                 } catch ( InterruptedException ex ){
                     log.info("interrupted");
                     stopme = true;

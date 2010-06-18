@@ -114,13 +114,13 @@ public class ATIS304 extends AERetina{
         }
     }
     /**
-     * Encapsulates biases on ATIS, which are contolled by UDP datagrams here.
+     * Encapsulates biases on ATIS, which are controlled by UDP datagrams here.
      * @author tobi
      */
     public class ATIS304_Biasgen extends Biasgen{
         private DatagramSocket socket = null;
         public static final int CONTROL_PORT = 20010;
-        public static final String HOST = "172.25.48.35";
+        public static final String HOST = "172.25.48.35"; // TODO fix hardcoded host string, should implement Chip specific menu in AEViewer
         private InetSocketAddress client = null;
         private String host = getPrefs().get("ATIS304_Biasgen.host",HOST); // "localhost"
         private int port = getPrefs().getInt("ATIS304_Biasgen.port",CONTROL_PORT);
@@ -181,7 +181,7 @@ public class ATIS304 extends AERetina{
 
         /** called when observable (masterbias) calls notifyObservers.
         Sets the powerDown state.
-        If there is not a batch edit occuring, opens device if not open and calls sendConfiguration.
+        If there is not a batch edit occurring, opens device if not open and calls sendConfiguration.
          */
         @Override
         public void update (Observable observable,Object object){
@@ -440,7 +440,6 @@ public class ATIS304 extends AERetina{
                 UDP_VPot vp = (UDP_VPot)p;
                 try{
                     String s = vp.getCommandString();
-                    ;
                     byte[] b = s.getBytes(); // s.getBytes(Charset.forName("US-ASCII"));
                     socket.send(new DatagramPacket(b,b.length,client));
                     DatagramPacket packet = new DatagramPacket(new byte[ MAX_COMMAND_LENGTH_BYTES ],MAX_COMMAND_LENGTH_BYTES);

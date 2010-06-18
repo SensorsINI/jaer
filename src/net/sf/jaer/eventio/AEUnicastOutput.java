@@ -96,6 +96,7 @@ public class AEUnicastOutput implements AEUnicastSettings{
         consumerThread.setName("AEUnicastOutput");
         consumerThread.setPriority(Thread.NORM_PRIORITY + 1);
         consumerThread.start();
+        log.info("opened AEUnicastOutput on local port="+socket.getLocalPort()+" with bufferSize="+getBufferSize());
     }
 
     /**

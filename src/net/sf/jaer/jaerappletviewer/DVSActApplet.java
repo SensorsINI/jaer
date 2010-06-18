@@ -212,7 +212,7 @@ public class DVSActApplet extends javax.swing.JApplet {
             aeLiveInputStream.setSequenceNumberEnabled(AEUnicastSettings.ARC_TDS_SEQUENCE_NUMBERS_ENABLED);
             aeLiveInputStream.setSwapBytesEnabled(AEUnicastSettings.ARC_TDS_SWAPBYTES_ENABLED);
             aeLiveInputStream.setTimestampMultiplier(AEUnicastSettings.ARC_TDS_TIMESTAMP_MULTIPLIER);
-            aeLiveInputStream.setBufferSize(1500); // max packet size is 1500 bytes according to ARC
+            aeLiveInputStream.setBufferSize(AEUnicastSettings.ARC_TDS_BUFFER_SIZE); // max packet size is 1500 bytes according to ARC
 
 //            aeLiveInputStream.setPriority(Thread.NORM_PRIORITY+2);
             aeLiveInputStream.open();

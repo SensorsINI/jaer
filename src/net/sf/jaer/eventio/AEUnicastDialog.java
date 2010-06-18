@@ -380,7 +380,7 @@ private void tdsDefaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {/
     addressFirstEnabledCheckBox.setSelected(AEUnicastSettings.ARC_TDS_ADDRESS_BYTES_FIRST_ENABLED);
     timestampMultiplierTextBox.setText(String.format("%.6f",AEUnicastSettings.ARC_TDS_TIMESTAMP_MULTIPLIER));
     use4ByteAddrTsCheckBox.setSelected(AEUnicastSettings.ARC_TDS_4_BYTE_ADDR_AND_TIMESTAMPS);
-    bufferSizeTextBox.setText(Integer.toString(AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES)); // TODO mixup between AEUnicastSettings and AENetworkInterfaceConstants
+    bufferSizeTextBox.setText(Integer.toString(AEUnicastSettings.ARC_TDS_BUFFER_SIZE));
     includeTimestampsCheckBox.setSelected(AEUnicastSettings.DEFAULT_TIMESTAMPS_ENABLED);
 }//GEN-LAST:event_tdsDefaultsButtonActionPerformed
 
