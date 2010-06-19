@@ -18,5 +18,11 @@
             </test-roots>
         </data>
         <references xmlns="http://www.netbeans.org/ns/ant-project-references/1"/>
+        <spellchecker-wordlist xmlns="http://www.netbeans.org/ns/spellchecker-wordlist/1">
+            <word>biasgen</word>
+            <word>keps</word>
+            <word>Meps</word>
+            <word>Tmpdiff</word>
+        </spellchecker-wordlist>
     </configuration>
 </project>
