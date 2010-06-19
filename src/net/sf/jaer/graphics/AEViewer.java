@@ -218,6 +218,32 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public ArrayBlockingQueue getBlockingQueueInput (){
         return blockingQueueInput;
     }
+
+    private void closeAESocket() {
+        if (aeSocket != null) {
+            try {
+                aeSocket.close();
+                log.info("closed " + aeSocket);
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                openSocketInputStreamMenuItem.setText("Open socket input stream");
+                aeSocket = null;
+            }
+        }
+        socketInputEnabled = false;
+    }
+
+    private void closeUnicastInput() {
+        if (unicastInput != null) {
+            unicastInput.close();
+            removePropertyChangeListener(unicastInput);
+            log.info("closed " + unicastInput);
+            openUnicastInputMenuItem.setText("Open unicast UDP input...");
+            unicastInput = null;
+        }
+        unicastInputEnabled = false;
+    }
     /** Modes of viewing: WAITING means waiting for device or for playback or remote, LIVE means showing a hardware interface, PLAYBACK means playing
      * back a recorded file, SEQUENCING means sequencing a file out on a sequencer device, REMOTE means playing a remote stream of AEs
      */
@@ -2082,8 +2108,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 break;
             case REMOTE:
                 if ( unicastInputEnabled ){
-                    unicastInput.close();
-                    unicastInputEnabled = false;
+                    closeUnicastInput();
                 }
                 if ( multicastInputEnabled ){
                     aeMulticastInput.close();
@@ -2098,12 +2123,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     spreadInputEnabled = false;
                 }
                 if ( socketInputEnabled ){
-                    try{
-                        aeSocket.close();
-                    } catch ( IOException e ){
-                        log.warning(e.toString());
-                    }
-                    socketInputEnabled = false;
+                    closeAESocket();
                 }
         }
 // viewer is removed by WindowClosing event
@@ -3380,7 +3400,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_customizeDevicesMenuItemActionPerformed
 
     private void openMulticastInputMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openMulticastInputMenuItemActionPerformed
-        multicastInputEnabled = openMulticastInputMenuItem.isSelected();
+        multicastInputEnabled = openMulticastInputMenuItem.isSelected(); // TODO encapsulate in method so that stopme can call this close method
         if ( multicastInputEnabled ){
             try{
                 aeMulticastInput = new AEMulticastInput();
@@ -3391,7 +3411,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 openMulticastInputMenuItem.setSelected(false);
             }
         } else{
-            if ( aeMulticastInput != null ){
+            if ( aeMulticastInput != null ){ // TODO replace with close multicast method that fixes menu items
                 aeMulticastInput.close();
             }
             setPlayMode(PlayMode.WAITING);
@@ -3454,18 +3474,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void openSocketInputStreamMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openSocketInputStreamMenuItemActionPerformed
         if ( socketInputEnabled ){
-            if ( aeSocket != null ){
-                try{
-                    aeSocket.close();
-                    log.info("closed " + aeSocket);
-                } catch ( IOException e ){
-                    e.printStackTrace();
-                } finally{
-                    openSocketInputStreamMenuItem.setText("Open socket input stream");
-                    aeSocket = null;
-                }
-            }
-            socketInputEnabled = false;
+            closeAESocket();
             setPlayMode(PlayMode.WAITING);
         } else{
             try{
@@ -4569,17 +4578,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void openUnicastInputMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openUnicastInputMenuItemActionPerformed
         if ( unicastInputEnabled ){
-            if ( unicastInput != null ){
-                unicastInput.close();
-                removePropertyChangeListener(unicastInput);
-                log.info("closed " + unicastInput);
-                openUnicastInputMenuItem.setText("Open unicast UDP input...");
-                unicastInput = null;
-
-            }
 
 
-            unicastInputEnabled = false;
+            closeUnicastInput();
             setPlayMode(PlayMode.WAITING);
         } else{
             try{
@@ -5084,12 +5085,68 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
         logFilteredEventsCheckBoxMenuItem.setSelected(logFilteredEventsEnabled);
     }
 
+    /** Returns the enclosing JAERViewer, which is the top level object in jAER.
+     *
+     * @return the top-level owner
+     */
     public JAERViewer getJaerViewer (){
         return jaerViewer;
     }
 
+
+
     public void setJaerViewer (JAERViewer jaerViewer){
         this.jaerViewer = jaerViewer;
+    }
+
+    /** Finds the top-level menu named s.
+     *
+     * @param s the text of the menu. If null, returns null.
+     * @return the menu, if there is one, or null if not found.
+     */
+    public JMenu getJMenu(String s) {
+        if (s == null) {
+            return null;
+        }
+        JMenuBar b = getJMenuBar();
+        int n = b.getMenuCount();
+        for (int i = 0; i < n; i++) {
+            JMenu m = b.getMenu(i);
+            if (m.getText().equals(s)) {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    /** Adds (or replaces existing) JMenu to AEViewer, just before the Help menu. 
+     * 
+     * @param menu the menu
+     */
+    public void setMenuItem(JMenu menu) {
+        JMenuBar b = getJMenuBar();
+        int n = b.getMenuCount();
+        // check for existing and replace
+       for (int i = 0; i < n; i++) {
+            JMenu m = b.getMenu(i);
+            if (m != null && m.getText().equals(menu.getText())) {
+                b.remove(i);
+                b.add(menu, i);
+                return;
+            }
+        }
+        // otherwise add just before Help menu
+        boolean didit = false;
+        for (int i = 0; i < n; i++) {
+            JMenu m = b.getMenu(i);
+            if (m != null && m.getText().equals("Help")) {
+                b.add(menu, i);
+                didit = true;
+            }
+        }
+        if (!didit) { // if no help menu, add to end
+            b.add(menu,-1);
+        }
     }
 
     /** AEViewer makes a ServerSocket that accepts incoming connections. A connecting client
