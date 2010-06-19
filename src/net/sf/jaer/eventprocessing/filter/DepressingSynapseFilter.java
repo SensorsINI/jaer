@@ -28,9 +28,9 @@ licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_Genera
 public class DepressingSynapseFilter extends EventFilter2D implements FrameAnnotater{
     private static Random random = new Random();
     private Neurons neurons;
-    private float tauMs = prefs().getFloat("DepressingSynapseFilter.tauMs",10000); // decay constant us
+    private float tauMs = prefs().getFloat("DepressingSynapseFilter.tauMs",1000); // decay constant us
     private float tauUs=tauMs*1000;
-    private float weight = prefs().getFloat("DepressingSynapseFilter.weight",.1f); // weight of each input spike on synapse
+    private float weight = prefs().getFloat("DepressingSynapseFilter.weight",.001f); // weight of each input spike on synapse
     private boolean showStateAtMouse=false;
 
     private TextRenderer renderer;
