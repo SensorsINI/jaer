@@ -15,6 +15,11 @@ import java.util.ArrayList;
  */
 public class AENetworkRawPacket extends AEPacketRaw {
 
+        /** List of clients that contributed to this packet. */
+   public class ClientList extends ArrayList<ClientInfo>{}
+
+    private ClientList clientList=new ClientList();
+
     /** Maps data from startingIndex to client address. Each item in client list will tell the EventExtractor2D which client the succeeding
      * data came from.
      */
@@ -43,9 +48,8 @@ public class AENetworkRawPacket extends AEPacketRaw {
 
     }
 
-    /** List of clients that contributed to this packet. */
-    private ArrayList<ClientInfo> clientList=new ArrayList();
 
+    /** Clears the packet and list of clients. */
     @Override
     public void clear() {
         super.clear();
@@ -65,7 +69,7 @@ public class AENetworkRawPacket extends AEPacketRaw {
      *
      * @return the list of clients.
      */
-   public ArrayList<ClientInfo> getClientList(){
+   public ClientList getClientList(){
        return clientList;
    }
 }

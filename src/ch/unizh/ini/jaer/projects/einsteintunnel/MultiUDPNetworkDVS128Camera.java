@@ -28,13 +28,13 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 {
     static final String HASH_KEY = "MultiUDPNetworkDVS128Camera.camHashLlist";
     private static final int CAM_WIDTH=128;
 
-    private class ClientMap {
+    // this class maps from inetaddress to a position in the array of cameras
 
-        private InetSocketAddress clientAddress = null; // the InetSocketAddress for the data
-        private int position = 0; // the position of this camera in the array
+    private class ClientMap extends HashMap<InetSocketAddress,Integer>{
+
     }
 
-    private ArrayList<ClientMap> clients = null;
+    ClientMap clientMap=new ClientMap();
 
     public MultiUDPNetworkDVS128Camera() {
         setName("MultiUDPNetworkDVS128Camera");
@@ -45,9 +45,9 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 {
             byte[] bytes = getPrefs().getByteArray(HASH_KEY, null);
             if (bytes != null) {
                 ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
-                clients = (ArrayList<ClientMap>) in.readObject();
+                clientMap = (ClientMap) in.readObject();
                 in.close();
-                numCameras = clients.size(); // TODO will grow with old cameras
+                numCameras = clientMap.size(); // TODO will grow with old cameras
             } else {
                 log.info("no previous clients found - will cache them as data come in");
                 numCameras = 1;
@@ -125,7 +125,7 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 {
             }
             int n = in.getNumEvents(); //addresses.length;
 
-            ArrayList<AENetworkRawPacket.ClientInfo> packetClients=in.getClientList();
+            AENetworkRawPacket.ClientList packetClients=in.getClientList();
             if(packetClients==null || packetClients.isEmpty()){
                 log.warning("AENetworkRawPacket  has no client info");
                 out.clear();
@@ -136,7 +136,7 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 {
 
             // check if this client is in our list of clients. if it is, then get the position of the camera.
             // if not, warning and (for now) choose the next position
-
+            Client
 
             int skipBy = 1;
             if (isSubSamplingEnabled()) {
