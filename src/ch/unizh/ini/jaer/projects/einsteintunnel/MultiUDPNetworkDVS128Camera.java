@@ -42,7 +42,6 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 {
     public static final int CAM_WIDTH = 128;
     private int numCameras = 10; // actual number of cameras we've gotten data from
     private static final String CLIENT_MAPPING_LIST_PREFS_KEY = "MultiUDPNetworkDVS128Camera.camHashLlist";  // preferences key for mapping table
-    private int nextFreeCameraLocation = 0; // next camera location in linear array to be automatically assigned to incoming data
     private JMenu chipMenu = null; // menu for specialized control
     private CameraMapperDialog cameraMapperDialog = null;
     private ClientMap clientMap = new ClientMap(); // the mapping from InetSocketAddress to camera position

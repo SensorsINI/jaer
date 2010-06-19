@@ -16,18 +16,18 @@ import java.util.ArrayList;
 public class AENetworkRawPacket extends AEPacketRaw {
 
         /** List of clients that contributed to this packet. */
-   public class ClientList extends ArrayList<ClientInfo>{}
+   public class EventSourceList extends ArrayList<EventSourceInfo>{}
 
-    private ClientList clientList=new ClientList();
+    private EventSourceList clientList=new EventSourceList();
 
     /** Maps data from startingIndex to client address. Each item in client list will tell the EventExtractor2D which client the succeeding
      * data came from.
      */
-    public class ClientInfo{
+    public class EventSourceInfo{
         private InetSocketAddress client;
         private int startingIndex;
 
-        public ClientInfo(InetSocketAddress client, int index) {
+        public EventSourceInfo(InetSocketAddress client, int index) {
             this.client = client;
             this.startingIndex = index;
         }
@@ -46,6 +46,10 @@ public class AENetworkRawPacket extends AEPacketRaw {
             return startingIndex;
         }
 
+        public String toString(){
+            return "client="+client+" startingIndex="+startingIndex;
+        }
+
     }
 
 
@@ -62,14 +66,14 @@ public class AENetworkRawPacket extends AEPacketRaw {
      * @param startingIndex
      */
     synchronized public void addClientAddress(InetSocketAddress client, int startingIndex){
-        clientList.add(new ClientInfo(client,startingIndex));
+        clientList.add(new EventSourceInfo(client,startingIndex));
     }
 
     /** Returns the list of clients included in this packet.
      *
      * @return the list of clients.
      */
-   public ClientList getClientList(){
+   public EventSourceList getEventSourceList(){
        return clientList;
    }
 }

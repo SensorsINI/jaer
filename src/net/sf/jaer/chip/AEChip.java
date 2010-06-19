@@ -189,6 +189,7 @@ public class AEChip extends Chip2D {
     }
 
     /** Sets the AEViewer that will display this chip. Notifies Observers of this chip with the aeViewer instance.
+     * Subclasses can override this method to do things such as adding menu items to AEViewer.
     @param aeViewer the viewer
      */
     public void setAeViewer(AEViewer aeViewer) {

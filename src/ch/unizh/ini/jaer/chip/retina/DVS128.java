@@ -30,7 +30,7 @@ import net.sf.jaer.util.HexString;
 /**
  * Describes DVS128 retina and its event extractor and bias generator.
  * This camera is the Tmpdiff128 chip with certain biases tied to the rails to enhance AE bus bandwidth and
- * it achieves about 2 Meps, as opposed to the approx 500 keps using the onchip Tmpdiff128 biases.
+ * it achieves about 2 Meps, as opposed to the approx 500 keps using the on-chip Tmpdiff128 biases.
  * <p>
  * Two constructors ara available, the vanilla constructor is used for event playback and the
  *one with a HardwareInterface parameter is useful for live capture.
@@ -302,34 +302,21 @@ public class DVS128 extends AERetina implements Serializable, Observer {
 //    public void update(Observable o, Object arg) {
 //        log.info("DVS128: received update from Observable="+o+", arg="+arg);
 //    }
+
+    /** Called when the AEViewer is set for this AEChip. Here we add the menu to the AEViewer.
+     *
+     * @param v the viewer
+     */
     @Override
     public void setAeViewer(AEViewer v) {
         super.setAeViewer(v);
         if (v != null) {
-            JMenuBar b = v.getJMenuBar();
-            int n = b.getMenuCount();
-            for (int i = 0; i < n; i++) {
-                JMenu m = b.getMenu(i);
-                if (m != null && m.getText().equals("DVS128")) {
-                    b.remove(m);
-                }
-            }
+            
             dvs128Menu = new JMenu("DVS128");
             dvs128Menu.getPopupMenu().setLightWeightPopupEnabled(false); // to paint on GLCanvas
             dvs128Menu.setToolTipText("Specialized menu for DVS128 chip");
 
-            boolean didit = false;
-            for (int i = 0; i < n; i++) {
-                JMenu m = b.getMenu(i);
-                if (m != null && m.getText().equals("Help")) {
-                    v.getJMenuBar().add(dvs128Menu, i);
-                    didit = true;
-                }
-            }
-            if (!didit) {
-                v.getJMenuBar().add(dvs128Menu);
-            }
-            v.validate();
+            v.setMenuItem(dvs128Menu);
         }
     }
 
