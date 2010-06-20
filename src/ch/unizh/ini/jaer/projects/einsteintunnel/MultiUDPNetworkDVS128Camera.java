@@ -118,41 +118,72 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 {
          * and should only be used by a single thread of execution or for a single input stream, or mysterious results may occur!
          */
         @Override
-        synchronized public EventPacket extractPacket(AEPacketRaw in) {
-            if (!(in instanceof AENetworkRawPacket)) {
-                log.warning("input packet is not AENetworkRawPacket - cannot determine client camera addresses");
-                return super.extractPacket(in);
-            }
-            if (out == null) {
+        synchronized public EventPacket extractPacket (AEPacketRaw in){
+            if ( out == null ){
                 out = new EventPacket<PolarityEvent>(chip.getEventClass());
-            } else {
+            } else{
                 out.clear();
             }
-            AENetworkRawPacket netPacket = (AENetworkRawPacket) in;
-            extractPacket(netPacket, out);
+            if ( !( in instanceof AENetworkRawPacket ) ){
+                // data is probably coming from a recording, where the address translation has already been applied
+//                log.warning("input packet is not AENetworkRawPacket - cannot determine client camera addresses");
+                extractRecordedPacket(in,out);
+            } else{
+                AENetworkRawPacket netPacket = (AENetworkRawPacket)in;
+                extractNetworkPacket(netPacket,out);
+            }
             return out;
         }
-        private int printedSyncBitWarningCount = 3;
 
         /**
          * Extracts the meaning of the raw events and re-maps them to proper location in the larger virtual AEChip object.
          *
-         * <p>
-         * This form is used to supply an output packet. This method is used for real time
-         * event filtering using a buffer of output events local to data acquisition. An AEPacketRaw may contain multiple events,
-         * not all of them have to sent out as EventPackets. An AEPacketRaw is a set(!) of addresses and corresponding timing moments.
-         * <p>
-         * A first filter (independent from the other ones) is implemented by subSamplingEnabled and getSubsampleThresholdEventCount.
-         * The latter may limit the amount of samples in one package to say 50,000. If there are 160,000 events and there is a sub sample
-         * threshold of 50,000, a "skip parameter" set to 3. Every so now and then the routine skips with 4, so we end up with 50,000.
-         * It's an approximation, the amount of events may be less than 50,000. The events are extracted uniform from the input.
-         *
-         * @param in 		the raw events, can be null
+         * @param in 		the raw events, can be null, this clears output packet
          * @param out 		the processed events. these are partially processed in-place. empty packet is returned if null is
          * 					supplied as input.
          */
-        synchronized public void extractPacket(AENetworkRawPacket in, EventPacket out) {
+        synchronized public void extractRecordedPacket(AEPacketRaw in, EventPacket out) {
             if (in == null) {
+                out.clear();
+                return;
+            }
+            int n = in.getNumEvents(); //addresses.length;
+
+            int skipBy = 1;
+            if (isSubSamplingEnabled()) {
+                while (n / skipBy > getSubsampleThresholdEventCount()) {
+                    skipBy++;
+                }
+            }
+            int sxm = sizeX - 1;
+            int[] a = in.getAddresses();
+            int[] timestamps = in.getTimestamps();
+            OutputEventIterator outItr = out.outputIterator();
+            for (int i = 0; i < n; i += skipBy) {
+
+                int addr = a[i]; // TODO handle sync events from hardware correctly
+                    PolarityEvent e = (PolarityEvent) outItr.nextOutput();
+                    e.timestamp = (timestamps[i]);
+                    e.type = (byte) (1 - addr & 1);
+                    e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
+                    e.x = (short) (sxm - ((short) ( ((addr & XMASK) >>> XSHIFT))));
+                    e.y = (short) ((addr & YMASK) >>> YSHIFT);
+                    e.address = addr | e.x << XSHIFT | e.y << YSHIFT; // new raw address is now suitable for logging and later playback
+                    a[i] = e.address;  // replace raw address in raw packet as well
+
+            }
+        }
+
+    /**
+         * Extracts the meaning of the raw events and re-maps them to proper location in the larger virtual AEChip object.
+         *
+         * @param in 		the raw events, can be null, this clears output packet
+         * @param out 		the processed events. these are partially processed in-place. empty packet is returned if null is
+         * 					supplied as input.
+         */
+        synchronized public void extractNetworkPacket(AENetworkRawPacket in, EventPacket out) {
+            if (in == null) {
+                out.clear();
                 return;
             }
             int n = in.getNumEvents(); //addresses.length;
@@ -201,18 +232,6 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 {
                 }
 
                 int addr = a[i]; // TODO handle sync events from hardware correctly
-                if (addr > 0xefff) {
-                    if (printedSyncBitWarningCount > 0) {
-                        log.warning("raw address " + addr + " is >32767 (0xefff); either sync or stereo bit is set, clearing the msb");
-                        printedSyncBitWarningCount--;
-                        if (printedSyncBitWarningCount == 0) {
-                            log.warning("suppressing futher warnings about msb of raw address");
-                        }
-                    }
-                    // TODO handle this by outputting SyncEvent's instead of PolarityEvent's. Some files recorded earlier in 2.0 format have the msb set by hardware.
-                    // here we restrict the addresses to 32767 max.
-                    addr = addr & 0xefff;
-                } else {
                     PolarityEvent e = (PolarityEvent) outItr.nextOutput();
                     int cameraShift = cameraLocation * CAM_WIDTH;
                     e.timestamp = (timestamps[i]);
@@ -222,14 +241,12 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 {
                     e.y = (short) ((addr & YMASK) >>> YSHIFT);
                     e.address = addr | e.x << XSHIFT | e.y << YSHIFT; // new raw address is now suitable for logging and later playback
                     a[i] = e.address;  // replace raw address in raw packet as well
-                }
 
             }
         }
     }
 
     public final void loadClientMappingPrefs() {
-        //        setEventExtractor((EventExtractor2D) new MultiUDPNetworkDVS128Camera.Extractor());
         try {
             byte[] bytes = getPrefs().getByteArray(CLIENT_MAPPING_LIST_PREFS_KEY, null);
             if (bytes != null) {

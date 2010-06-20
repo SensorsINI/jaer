@@ -65,10 +65,10 @@ public class CameraMapperDialog extends javax.swing.JDialog {
         @Override
         public String getColumnName(int column) {
             switch(column){
-                case 0:
-                    return "InetSocketAddress";
                 case 1:
-                    return "Position in camera array";
+                    return "InetSocketAddress";
+                case 0:
+                    return "Position";
                 default:
                     return null;
             }
@@ -83,7 +83,7 @@ public class CameraMapperDialog extends javax.swing.JDialog {
             ClientMap map=camera.getClientMap();
             if(columnIndex>1 || rowIndex>map.size()) return null;
             switch(columnIndex){
-                case 0:
+                case 1:
                     if(!map.containsValue(new Integer(rowIndex))){
                         return null;
                     }else{
@@ -95,7 +95,7 @@ public class CameraMapperDialog extends javax.swing.JDialog {
                         }
                         return null;
                     }
-                case 1:
+                case 0:
                     return rowIndex;
                 default:
                     return null;
@@ -105,9 +105,9 @@ public class CameraMapperDialog extends javax.swing.JDialog {
         @Override
         public Class<?> getColumnClass(int columnIndex) {
             switch(columnIndex){
-                case 0:
-                    return InetSocketAddress.class;
                 case 1:
+                    return InetSocketAddress.class;
+                case 0:
                     return Integer.class;
                 default:
                     return null;
@@ -303,6 +303,7 @@ public class CameraMapperDialog extends javax.swing.JDialog {
     private void moveUpButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moveUpButtonActionPerformed
         int sel=mappingTable.getSelectedRow();
         if(sel<0) return;
+        ClientMap map=camera.getClientMap();
 
     }//GEN-LAST:event_moveUpButtonActionPerformed
 
