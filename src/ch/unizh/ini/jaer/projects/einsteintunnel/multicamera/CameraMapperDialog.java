@@ -8,9 +8,9 @@
  *
  * Created on Jun 19, 2010, 1:59:16 PM
  */
-package ch.unizh.ini.jaer.projects.einsteintunnel;
+package ch.unizh.ini.jaer.projects.einsteintunnel.multicamera;
 
-import ch.unizh.ini.jaer.projects.einsteintunnel.CameraMap;
+import ch.unizh.ini.jaer.projects.einsteintunnel.multicamera.CameraMap;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.net.InetSocketAddress;

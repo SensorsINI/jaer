@@ -3,9 +3,9 @@
  * and open the template in the editor.
  */
 
-package ch.unizh.ini.jaer.projects.einsteintunnel;
+package ch.unizh.ini.jaer.projects.einsteintunnel.multicamera;
 
-import ch.unizh.ini.jaer.projects.einsteintunnel.CameraMap;
+import ch.unizh.ini.jaer.projects.einsteintunnel.multicamera.CameraMap;
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.Font;
 import java.net.InetSocketAddress;

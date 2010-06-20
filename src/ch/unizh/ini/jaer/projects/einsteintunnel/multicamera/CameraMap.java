@@ -1,4 +1,4 @@
-package ch.unizh.ini.jaer.projects.einsteintunnel;
+package ch.unizh.ini.jaer.projects.einsteintunnel.multicamera;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;

@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.jaer.projects.einsteintunnel;
+package ch.unizh.ini.jaer.projects.einsteintunnel.multicamera;
 
 import ch.unizh.ini.jaer.chip.retina.DVS128;
 import java.awt.event.ActionEvent;
