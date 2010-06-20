@@ -59,6 +59,7 @@ public class AEUnicastOutput implements AEUnicastSettings{
     private ByteBuffer initialFullBuffer = ByteBuffer.allocateDirect(getBufferSize());// the buffer to render/process first
     private ByteBuffer currentBuf = initialEmptyBuffer; // starting buffer for filling
     private boolean timestampsEnabled = prefs.getBoolean("AEUnicastOutput.timestampsEnabled",true);
+    private boolean localTimestampsEnabled=prefs.getBoolean("AEUnicastOutput.localTimestampsEnabled", false);
 
 //    /** Creates a new instance, binding any available local port (since we will be just sending from here)
 //     * and using the last host and port.
@@ -134,27 +135,35 @@ public class AEUnicastOutput implements AEUnicastSettings{
             for ( int i = 0 ; i < nEvents ; i++ ){
                 // writes values in big endian (MSB first)
                 // write n events, but if we exceed DatagramPacket buffer size, then make a DatagramPacket and send it, then reset this ByteArrayOutputStream
+                int t=0;
+                if(timestampsEnabled){
+                    if(!localTimestampsEnabled){
+                        t=ts[i];
+                    }else{
+                        t=(int)System.nanoTime()/1000;
+                    }
+                }
                 if ( addressFirstEnabled ){
                     if ( use4ByteAddrTs ){
                         currentBuf.putInt(swab(addr[i]));
                         if ( timestampsEnabled ){
-                            currentBuf.putInt(swab((int)( timestampMultiplierReciprocal * ts[i] )));
+                            currentBuf.putInt(swab((int)( timestampMultiplierReciprocal * t )));
                         }
                     } else{
                         currentBuf.putShort((short)swab(addr[i]));
                         if ( timestampsEnabled ){
-                            currentBuf.putInt(swab((int)( timestampMultiplierReciprocal * ts[i] )));
+                            currentBuf.putInt(swab((int)( timestampMultiplierReciprocal * t )));
                         }
                     }
                 } else{
                     if ( use4ByteAddrTs ){
                         if ( timestampsEnabled ){
-                            currentBuf.putInt(swab((int)( timestampMultiplierReciprocal * ts[i] )));
+                            currentBuf.putInt(swab((int)( timestampMultiplierReciprocal * t )));
                         }
                         currentBuf.putInt(swab(addr[i]));
                     } else{
                         if ( timestampsEnabled ){
-                            currentBuf.putShort((short)swab((int)( timestampMultiplierReciprocal * ts[i] )));
+                            currentBuf.putShort((short)swab((int)( timestampMultiplierReciprocal * t )));
                         }
                         currentBuf.putInt(swab(addr[i]));
                     }
@@ -270,6 +279,17 @@ public class AEUnicastOutput implements AEUnicastSettings{
     public boolean isPaused (){
         return false;
     }
+
+    public void setLocalTimestampEnabled(boolean yes) {
+        localTimestampsEnabled=yes;
+        prefs.putBoolean("AEUnicastOutput.localTimestampsEnabled",localTimestampsEnabled);
+    }
+
+    public boolean isLocalTimestampEnabled() {
+        return localTimestampsEnabled;
+    }
+
+
     class Consumer implements Runnable{
         private final Exchanger<ByteBuffer> exchanger;
         private ByteBuffer buf;

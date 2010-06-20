@@ -59,6 +59,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
     private boolean swapBytesEnabled = prefs.getBoolean("AEUnicastInput.swapBytesEnabled",false);
     private float timestampMultiplier = prefs.getFloat("AEUnicastInput.timestampMultiplier",DEFAULT_TIMESTAMP_MULTIPLIER);
     private boolean use4ByteAddrTs = prefs.getBoolean("AEUnicastInput.use4ByteAddrTs",DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP);
+    private boolean localTimestampsEnabled=prefs.getBoolean("AEUnicastOutput.localTimestampsEnabled", false);
     /** Maximum time interval in ms to exchange EventPacketRaw with consumer */
     static public final long MIN_INTERVAL_MS = 30;
     final int TIMEOUT_MS = 1000; // SO_TIMEOUT for receive in ms
@@ -241,7 +242,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
         int seqNumLength = sequenceNumberEnabled ? Integer.SIZE / 8 : 0;
         int eventSize = eventSize();
         int nEventsInPacket = ( buffer.limit() - seqNumLength ) / eventSize;
-        int ts = !timestampsEnabled ? (int)( System.nanoTime() / 1000 ) : 0; // if no timestamps coming, add system clock for all.
+        int ts = !timestampsEnabled || localTimestampsEnabled ? (int)( System.nanoTime() / 1000 ) : 0; // if no timestamps coming, add system clock for all.
 
         final int startingIndex = packet.getNumEvents();
         final int newPacketLength = startingIndex + nEventsInPacket;
@@ -254,7 +255,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
                 if ( use4ByteAddrTs ){
                     eventRaw.address = buffer.getInt(); // swab(buffer.getInt()); // swapInt is switched to handle big endian event sources (like ARC camera)
 //                    int v=buffer.getInt();
-                    if ( timestampsEnabled ){
+                    if ( !localTimestampsEnabled && timestampsEnabled ){
                         int rawTime = buffer.getInt(); //swab(v);
 //            if(rawTime<lastts) {
 //                System.out.println("backwards timestamp at event "+i+"of "+nEventsInPacket);
@@ -288,7 +289,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
                 } else{
                     eventRaw.address = buffer.getShort()&0xffff; // swab(buffer.getShort()); // swapInt is switched to handle big endian event sources (like ARC camera)
 //                    eventRaw.timestamp=(int) (timestampMultiplier*(int) swab(buffer.getShort()));
-                    if ( timestampsEnabled ){
+                    if ( !localTimestampsEnabled && timestampsEnabled ){
                         eventRaw.timestamp = (int)( timestampMultiplier * (int)buffer.getShort() );
                     } else{
                         eventRaw.timestamp = ts;
@@ -298,7 +299,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
                 if ( use4ByteAddrTs ){
 //                    eventRaw.timestamp=(int) (swab(buffer.getInt()));
 //                    eventRaw.address=swab(buffer.getInt());
-                    if ( timestampsEnabled ){
+                    if ( !localTimestampsEnabled && timestampsEnabled ){
                         eventRaw.timestamp = (int)( ( buffer.getInt() ) );
                     } else{
                         eventRaw.timestamp = ts;
@@ -307,7 +308,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
                 } else{
 //                    eventRaw.timestamp=(int) (swab(buffer.getShort()));
 //                    eventRaw.address=(int) (timestampMultiplier*(int) swab(buffer.getShort()));
-                    if ( timestampsEnabled ){
+                    if ( !localTimestampsEnabled && timestampsEnabled ){
                         eventRaw.timestamp = (int)( ( buffer.getShort() ) );  // TODO check if need AND with 0xffff to avoid negative timestamps
                     } else{
                         eventRaw.timestamp = ts;
@@ -496,6 +497,15 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
 
     public boolean is4ByteAddrTimestampEnabled (){
         return use4ByteAddrTs;
+    }
+
+   public void setLocalTimestampEnabled(boolean yes) {
+        localTimestampsEnabled=yes;
+        prefs.putBoolean("AEUnicastOutput.localTimestampsEnabled",localTimestampsEnabled);
+    }
+
+    public boolean isLocalTimestampEnabled() {
+        return localTimestampsEnabled;
     }
 
     /**

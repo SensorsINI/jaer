@@ -184,25 +184,21 @@ public class Chip2D extends Chip {
      * @return the method, or null.
      * @see #setPreferredDisplayMethod
      */
-    public DisplayMethod getPreferredDisplayMethod(){
-        try {
-            String className = getPrefs().get(preferredDisplayMethodKey(), null);
-            if (className == null) {
-                return new ChipRendererDisplayMethod(getCanvas());
-            }
-            Class c = Class.forName(className);
-            try{
-                Class clazz=Class.forName(className);
-                Constructor constructor=clazz.getConstructor(ChipCanvas.class);
-                Object[] args={getCanvas()};
-                DisplayMethod method=(DisplayMethod)constructor.newInstance(args);
-                return method;
-            }catch(Exception e){
-                return null;
-            }
-        } catch (ClassNotFoundException ex) {
-            log.warning("couldn't find preferred display method, returning default ChipRendererDisplayMethod");
+    public DisplayMethod getPreferredDisplayMethod() {
+        String className = getPrefs().get(preferredDisplayMethodKey(), null);
+        if (className == null) {
             return new ChipRendererDisplayMethod(getCanvas());
         }
+        try {
+            Class clazz = Class.forName(className);
+            Constructor constructor = clazz.getConstructor(ChipCanvas.class);
+            Object[] args = {getCanvas()};
+            DisplayMethod method = (DisplayMethod) constructor.newInstance(args);
+            return method;
+        } catch (Exception e) {
+            log.warning(e.toString()+": couldn't construct preferred display method " + className + ", returning ChipRendererDisplayMethod");
+            return new ChipRendererDisplayMethod(getCanvas());
+        }
+
     }
 }

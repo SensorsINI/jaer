@@ -10,13 +10,14 @@
  */
 package ch.unizh.ini.jaer.projects.einsteintunnel;
 
-import ch.unizh.ini.jaer.projects.einsteintunnel.MultiUDPNetworkDVS128Camera.ClientMap;
+import ch.unizh.ini.jaer.projects.einsteintunnel.CameraMap;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.net.InetSocketAddress;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import javax.swing.event.TableModelEvent;
-import javax.swing.event.TableModelListener;
+import javax.swing.JTable;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
 
 /**
@@ -24,118 +25,32 @@ import javax.swing.table.AbstractTableModel;
  * 
  * @author tobi
  */
-public class CameraMapperDialog extends javax.swing.JDialog {
+public class CameraMapperDialog extends javax.swing.JDialog implements PropertyChangeListener{
 
     /** A return status code - returned if Cancel button has been pressed */
     public static final int RET_CANCEL = 0;
     /** A return status code - returned if OK button has been pressed */
     public static final int RET_OK = 1;
     private MultiUDPNetworkDVS128Camera camera = null;
-    MappingTableModel tableModel=null;
-
-    private void applyChanges() {
- 
-    }
-
-    /** Refreshes displayed table. */
-    public void refreshTable() {
-        tableModel.fireTableDataChanged();
-    }
-
-    /** The table model for the table of mappings from InetSocketAddress to camera position.
-     *
-     */
-    private class MappingTableModel extends AbstractTableModel {
-
-        public MappingTableModel() {
-
-        }
-
-
-        @Override
-        public int getRowCount() {
-            return camera == null ? 10 : camera.getClientMap().size();
-        }
-
-        @Override
-        public int getColumnCount() {
-            return 2;
-        }
-
-        @Override
-        public String getColumnName(int column) {
-            switch(column){
-                case 1:
-                    return "InetSocketAddress";
-                case 0:
-                    return "Position";
-                default:
-                    return null;
-            }
-        }
-
-
-
-        @Override
-        public Object getValueAt(int rowIndex, int columnIndex) {
-            // the n'th row should return the InetSocketAddress for the n'th camera
-            if(camera==null || camera.getClientMap()==null) return null;
-            ClientMap map=camera.getClientMap();
-            if(columnIndex>1 || rowIndex>map.size()) return null;
-            switch(columnIndex){
-                case 1:
-                    if(!map.containsValue(new Integer(rowIndex))){
-                        return null;
-                    }else{
-                        Set<Map.Entry<InetSocketAddress,Integer>> entrySet=map.entrySet();
-                        for(Entry<InetSocketAddress,Integer> e:entrySet){
-                            if(e.getValue()==rowIndex){
-                                return e.getKey();
-                            }
-                        }
-                        return null;
-                    }
-                case 0:
-                    return rowIndex;
-                default:
-                    return null;
-            }
-        }
-
-        @Override
-        public Class<?> getColumnClass(int columnIndex) {
-            switch(columnIndex){
-                case 1:
-                    return InetSocketAddress.class;
-                case 0:
-                    return Integer.class;
-                default:
-                    return null;
-            }
-        }
-
-
-    }
-
-    public ClientMap getClientMap() {
-
-        return null; // TODO
-
-    }
+    private MappingTableModel tableModel = null;
 
     /** Creates new form CameraMapperDialog */
     public CameraMapperDialog(java.awt.Frame parent, boolean modal, MultiUDPNetworkDVS128Camera camera) {
         super(parent, modal);
         this.camera = camera;
         initComponents();
-        tableModel=new MappingTableModel();
+        tableModel = new MappingTableModel();
         mappingTable.setModel(tableModel);
-    }
-
-    /** Creates new form CameraMapperDialog */
-    public CameraMapperDialog(java.awt.Frame parent, boolean modal) {
-        super(parent, modal);
-        initComponents();
+        mappingTable.getColumnModel().getColumn(0).setPreferredWidth(30);
+        mappingTable.getColumnModel().getColumn(1).setPreferredWidth(100);
+        if(camera!=null && camera.getCameraMap()!=null){
+            camera.getCameraMap().addPropertyChangeListener(this);
+        }
+        refreshTable();
+//        SelectionListener listener = new SelectionListener(mappingTable);
+//        mappingTable.getSelectionModel().addListSelectionListener(listener);
+//        mappingTable.getColumnModel().getSelectionModel().addListSelectionListener(listener);
+//        setChangeButtonsEnabled(false);
     }
 
     /** @return the return status of this dialog - one of RET_OK or RET_CANCEL */
@@ -153,7 +68,6 @@ public class CameraMapperDialog extends javax.swing.JDialog {
     private void initComponents() {
 
         okButton = new javax.swing.JButton();
-        cancelButton = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
         mappingTable = new javax.swing.JTable();
         moveUpButton = new javax.swing.JButton();
@@ -169,56 +83,21 @@ public class CameraMapperDialog extends javax.swing.JDialog {
             }
         });
 
-        okButton.setText("OK");
+        okButton.setText("Save preferences and dismiss");
+        okButton.setToolTipText("Closes dialog and saves changes to Preferences");
         okButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 okButtonActionPerformed(evt);
             }
         });
 
-        cancelButton.setText("Cancel");
-        cancelButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                cancelButtonActionPerformed(evt);
-            }
-        });
-
         mappingTable.setAutoCreateRowSorter(true);
-        mappingTable.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null},
-                {null, null},
-                {null, null},
-                {null, null},
-                {null, null},
-                {null, null},
-                {null, null},
-                {null, null},
-                {null, null},
-                {null, null}
-            },
-            new String [] {
-                "Source IP:port", "Position in array"
-            }
-        ) {
-            Class[] types = new Class [] {
-                java.lang.Object.class, java.lang.Integer.class
-            };
-            boolean[] canEdit = new boolean [] {
-                false, true
-            };
-
-            public Class getColumnClass(int columnIndex) {
-                return types [columnIndex];
-            }
-
-            public boolean isCellEditable(int rowIndex, int columnIndex) {
-                return canEdit [columnIndex];
-            }
-        });
+        mappingTable.setModel(mappingTable.getModel());
+        mappingTable.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
         jScrollPane1.setViewportView(mappingTable);
 
         moveUpButton.setText("Move up");
+        moveUpButton.setToolTipText("Moves camera up in list (decrements position)");
         moveUpButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 moveUpButtonActionPerformed(evt);
@@ -226,10 +105,22 @@ public class CameraMapperDialog extends javax.swing.JDialog {
         });
 
         moveDownButton.setText("Move down");
+        moveDownButton.setToolTipText("Moves camera down in list (increments position)");
+        moveDownButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                moveDownButtonActionPerformed(evt);
+            }
+        });
 
         deleteButton.setText("Delete");
+        deleteButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                deleteButtonActionPerformed(evt);
+            }
+        });
 
-        applyButton.setText("Apply");
+        applyButton.setText("Close");
+        applyButton.setToolTipText("Closes dialog");
         applyButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 applyButtonActionPerformed(evt);
@@ -243,13 +134,11 @@ public class CameraMapperDialog extends javax.swing.JDialog {
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 262, Short.MAX_VALUE)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 582, Short.MAX_VALUE)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(applyButton)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(cancelButton)))
+                        .addComponent(okButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(applyButton)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(moveUpButton)
@@ -257,9 +146,6 @@ public class CameraMapperDialog extends javax.swing.JDialog {
                     .addComponent(deleteButton))
                 .addContainerGap())
         );
-
-        layout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {cancelButton, okButton});
-
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
@@ -269,9 +155,8 @@ public class CameraMapperDialog extends javax.swing.JDialog {
                         .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 264, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(cancelButton)
-                            .addComponent(okButton)
-                            .addComponent(applyButton)))
+                            .addComponent(applyButton)
+                            .addComponent(okButton)))
                     .addGroup(layout.createSequentialGroup()
                         .addGap(41, 41, 41)
                         .addComponent(moveUpButton)
@@ -286,30 +171,47 @@ public class CameraMapperDialog extends javax.swing.JDialog {
     }// </editor-fold>//GEN-END:initComponents
 
     private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okButtonActionPerformed
-        applyChanges();
         camera.saveClientMappingPrefs();
         doClose(RET_OK);
     }//GEN-LAST:event_okButtonActionPerformed
-
-    private void cancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelButtonActionPerformed
-        doClose(RET_CANCEL);
-    }//GEN-LAST:event_cancelButtonActionPerformed
 
     /** Closes the dialog */
     private void closeDialog(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_closeDialog
         doClose(RET_CANCEL);
     }//GEN-LAST:event_closeDialog
 
+    // moves camera up in list, to smaller position
     private void moveUpButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moveUpButtonActionPerformed
-        int sel=mappingTable.getSelectedRow();
-        if(sel<0) return;
-        ClientMap map=camera.getClientMap();
-
+        int sel = mappingTable.getSelectedRow();
+        if (sel < 1) {
+            return;
+        }
+        camera.getCameraMap().decrementCameraPosition(sel);
+        mappingTable.setRowSelectionInterval(sel - 1, sel - 1);
     }//GEN-LAST:event_moveUpButtonActionPerformed
 
     private void applyButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_applyButtonActionPerformed
-        applyChanges();        // TODO add your handling code here:
+        doClose(RET_OK);        // TODO add your handling code here:
     }//GEN-LAST:event_applyButtonActionPerformed
+
+    // moves camera down in list, to larger position
+    private void moveDownButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moveDownButtonActionPerformed
+        int sel = mappingTable.getSelectedRow();
+        if (sel >= camera.getCameraMap().size() - 1) {
+            return;
+        }
+        camera.getCameraMap().incrementCameraPosition(sel);
+        mappingTable.setRowSelectionInterval(sel + 1, sel + 1);
+
+    }//GEN-LAST:event_moveDownButtonActionPerformed
+
+    private void deleteButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deleteButtonActionPerformed
+        int sel = mappingTable.getSelectedRow();
+        if (sel < 0) {
+            return;
+        }
+        camera.getCameraMap().deleteCameraAtPosition(sel);
+    }//GEN-LAST:event_deleteButtonActionPerformed
 
     private void doClose(int retStatus) {
         returnStatus = retStatus;
@@ -317,27 +219,90 @@ public class CameraMapperDialog extends javax.swing.JDialog {
         dispose();
     }
 
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String args[]) {
-        java.awt.EventQueue.invokeLater(new Runnable() {
-
-            public void run() {
-                CameraMapperDialog dialog = new CameraMapperDialog(new javax.swing.JFrame(), true);
-                dialog.addWindowListener(new java.awt.event.WindowAdapter() {
-
-                    public void windowClosing(java.awt.event.WindowEvent e) {
-                        System.exit(0);
-                    }
-                });
-                dialog.setVisible(true);
-            }
-        });
+    /** Refreshes displayed table. */
+    private void refreshTable() {
+        if(tableModel!=null) tableModel.fireTableDataChanged();
     }
+
+    /**
+     * @return the tableModel
+     */
+    public MappingTableModel getTableModel() {
+        return tableModel;
+    }
+
+    public void propertyChange(PropertyChangeEvent evt) {
+        if(evt.getSource() instanceof CameraMap && evt.getPropertyName()==CameraMap.MAP_CHANGED){
+            refreshTable();
+        }
+    }
+
+    /** The table model for the table of mappings from InetSocketAddress to camera position.
+     *
+     */
+    private class MappingTableModel extends AbstractTableModel {
+
+        public MappingTableModel() {
+        }
+
+        @Override
+        public int getRowCount() {
+            return camera == null ? 10 : camera.getCameraMap().size();
+        }
+
+        @Override
+        public int getColumnCount() {
+            return 2;
+        }
+
+        @Override
+        public String getColumnName(int column) {
+            switch (column) {
+                case 1:
+                    return "InetSocketAddress";
+                case 0:
+                    return "Position";
+                default:
+                    return null;
+            }
+        }
+
+        @Override
+        public Object getValueAt(int rowIndex, int columnIndex) {
+            // the n'th row should return the InetSocketAddress for the n'th camera
+            if (camera == null || camera.getCameraMap() == null) {
+                return null;
+            }
+            CameraMap map = camera.getCameraMap();
+            Map posMap = map.getPositionMap();
+            if (columnIndex > 1 || rowIndex > map.size()) {
+                return null;
+            }
+            switch (columnIndex) {
+                case 1:
+                    return posMap.get(rowIndex);
+                case 0:
+                    return rowIndex;
+                default:
+                    return null;
+            }
+        }
+
+        @Override
+        public Class<?> getColumnClass(int columnIndex) {
+            switch (columnIndex) {
+                case 1:
+                    return InetSocketAddress.class;
+                case 0:
+                    return Integer.class;
+                default:
+                    return null;
+            }
+        }
+    }
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton applyButton;
-    private javax.swing.JButton cancelButton;
     private javax.swing.JButton deleteButton;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JTable mappingTable;
@@ -346,4 +311,45 @@ public class CameraMapperDialog extends javax.swing.JDialog {
     private javax.swing.JButton okButton;
     // End of variables declaration//GEN-END:variables
     private int returnStatus = RET_CANCEL;
+
+    private void setChangeButtonsEnabled(boolean b) {
+        moveDownButton.setEnabled(b);
+        moveUpButton.setEnabled(b);
+        deleteButton.setEnabled(b);
+    }
+
+    public class SelectionListener implements ListSelectionListener {
+
+        JTable table;
+
+        // It is necessary to keep the table since it is not possible
+        // to determine the table from the event's source
+        SelectionListener(JTable table) {
+            this.table = table;
+        }
+
+        public void valueChanged(ListSelectionEvent e) {
+            // If cell selection is enabled, both row and column change events are fired
+            if (e.getSource() == table.getSelectionModel()
+                    && table.getRowSelectionAllowed()) {
+                // Row selection changed
+                int first = e.getFirstIndex();
+                int last = e.getLastIndex();
+                if (first < 0 && last < 0) {
+                    setChangeButtonsEnabled(false);
+                } else {
+                    setChangeButtonsEnabled(true);
+                }
+            } else if (e.getSource() == table.getColumnModel().getSelectionModel()
+                    && table.getColumnSelectionAllowed()) {
+                // Column selection changed
+                int first = e.getFirstIndex();
+                int last = e.getLastIndex();
+            }
+
+            if (e.getValueIsAdjusting()) {
+                // The mouse button has not yet been released
+            }
+        }
+    }
 }

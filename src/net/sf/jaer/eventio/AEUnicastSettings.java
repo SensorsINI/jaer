@@ -21,6 +21,9 @@ public interface AEUnicastSettings {
     /** jAER by default uses timestamps for UDP interfaces. */
     public static final boolean DEFAULT_TIMESTAMPS_ENABLED=true;
 
+    /** jAER by default uses the AE data timestamps */
+    public static final boolean DEFAULT_USE_LOCAL_TIMESTAMPS_ENABLED=false;
+
     public static final String DEFAULT_HOST = "localhost";
     /** Default jAER UDP port */
     public static final int DEFAULT_PORT = AENetworkInterfaceConstants.DATAGRAM_PORT;
@@ -141,6 +144,7 @@ public interface AEUnicastSettings {
 
     /** If timestamps are disabled then unicast interfaces only send or receive address data.
      * @return true if using timestamps.
+     * @see #setLocalTimestampEnabled(boolean)
      */
     public boolean isTimestampsEnabled();
 
@@ -148,5 +152,17 @@ public interface AEUnicastSettings {
      * @param yes true to use timestamps, false to send/recv only addresses.
      */
     public void setTimestampsEnabled(boolean yes);
+
+    /** Sets whether the AE data supplies the event timestamps or whether they come from System.nanoTime()/1000.
+     *
+     * @param yes true to use System.nanoTime/1000, false to use source timestamps.
+     */
+    public void setLocalTimestampEnabled(boolean yes);
+
+   /** Says whether the AE data supplies the event timestamps or whether they come from System.nanoTime()/1000.
+     *
+     * @return  true if using System.nanoTime/1000, false if using source timestamps.
+     */
+    public boolean isLocalTimestampEnabled();
      
 }

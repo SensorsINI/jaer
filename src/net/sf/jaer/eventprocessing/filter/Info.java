@@ -261,14 +261,14 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         if (!isEventRate()) {
             return;
         }
-        final int pos = 6, xpos = 25;
+        final int pos = 8, xpos = 25;
         gl.glPushMatrix();
         gl.glColor3f(0, 0, 1);
         gl.glRasterPos3f(0, chip.getSizeY() - pos, 0);
         GLUT glut = chip.getCanvas().getGlut();
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%10s", engFmt.format(eventRateMeasured) + " Hz"));
         gl.glColor3f(0, 0, 1);
-        gl.glRectf(xpos, chip.getSizeY() - pos, xpos + eventRateMeasured * chip.getSizeX() / getEventRateScaleMax(), chip.getSizeY() - pos + 1);
+        gl.glRectf(xpos, chip.getSizeY() - pos, xpos + eventRateMeasured * chip.getSizeX() / getEventRateScaleMax(), chip.getSizeY() - pos + 3);
         gl.glPopMatrix();
     }
 
@@ -276,7 +276,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         if (!isTimeScaling()) {
             return;
         }
-        final int pos = 12, xpos = 25;
+        final int pos = 4, xpos = 25;
         gl.glPushMatrix();
         gl.glColor3f(0, 0, 1);
         gl.glRasterPos3f(0, chip.getSizeY() - pos, 0);

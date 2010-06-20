@@ -1514,6 +1514,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             break;
                         case WAITING:
 //                          notify(); // notify waiter on this thread that we have gone to WAITING state
+                            if(unicastInputEnabled || multicastInputEnabled || socketInputEnabled){
+                                // if were were playing back a recording and a remote interface is active, then we go back to it here.
+                                setPlayMode(PlayMode.REMOTE);
+                                break;
+                            }
                             openAEMonitor();
                             if ( aemon == null || !aemon.isOpen() ){
                                 statisticsLabel.setText("Choose interface from Interface menu");
