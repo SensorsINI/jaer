@@ -120,6 +120,7 @@ public class SlotcarFilter extends EventFilter2D implements Observer {
             if (drawingWindow == null) {
                 System.out.println("Creating Window!");
                 drawingWindow = new SlotcarFrame();
+                System.out.println("Finished creating window!");
                 drawingWindow.setVisible(yes);
             }
         }

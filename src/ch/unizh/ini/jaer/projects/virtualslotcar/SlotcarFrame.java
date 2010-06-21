@@ -37,12 +37,17 @@ public class SlotcarFrame extends javax.swing.JFrame {
     // Current point that is dragged
     private int pointDragged;
 
+    // Display of the race
+    RacetrackFrame raceDisplay;
+
+
     /** Creates new form SlotcarFrame */
     public SlotcarFrame() {
         track = new SlotcarTrack();
         initComponents();
         EditorPanel.setTrack(track);
         pointDragged = -1;
+        raceDisplay = null;
     }
 
     /** This method is called from within the constructor to
@@ -66,6 +71,7 @@ public class SlotcarFrame extends javax.swing.JFrame {
         lengthLabel = new javax.swing.JLabel();
         jLabel1 = new javax.swing.JLabel();
         stepsizeValue = new javax.swing.JTextField();
+        RunButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Virtual Slotcar Track Editor");
@@ -103,7 +109,7 @@ public class SlotcarFrame extends javax.swing.JFrame {
         );
         EditorPanelLayout.setVerticalGroup(
             EditorPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 411, Short.MAX_VALUE)
+            .addGap(0, 413, Short.MAX_VALUE)
         );
 
         NumPointsLabel.setText("Num Points");
@@ -138,6 +144,15 @@ public class SlotcarFrame extends javax.swing.JFrame {
             }
         });
 
+        RunButton.setFont(new java.awt.Font("Tahoma", 1, 14)); // NOI18N
+        RunButton.setText("GO!");
+        RunButton.setEnabled(false);
+        RunButton.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                RunButtonMouseClicked(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -147,10 +162,11 @@ public class SlotcarFrame extends javax.swing.JFrame {
                     .addGroup(layout.createSequentialGroup()
                         .addContainerGap()
                         .addComponent(EditorPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 200, Short.MAX_VALUE)
+                        .addGap(200, 200, 200)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(AddPointsButton, javax.swing.GroupLayout.DEFAULT_SIZE, 107, Short.MAX_VALUE)
-                            .addComponent(DeletePointsButton, javax.swing.GroupLayout.DEFAULT_SIZE, 107, Short.MAX_VALUE)
+                            .addComponent(RunButton, javax.swing.GroupLayout.DEFAULT_SIZE, 127, Short.MAX_VALUE)
+                            .addComponent(AddPointsButton, javax.swing.GroupLayout.DEFAULT_SIZE, 127, Short.MAX_VALUE)
+                            .addComponent(DeletePointsButton, javax.swing.GroupLayout.DEFAULT_SIZE, 127, Short.MAX_VALUE)
                             .addGroup(layout.createSequentialGroup()
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                                     .addGroup(layout.createSequentialGroup()
@@ -164,7 +180,7 @@ public class SlotcarFrame extends javax.swing.JFrame {
                                     .addComponent(lengthLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 26, Short.MAX_VALUE)))
                             .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
                                 .addComponent(jLabel1)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 29, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 35, Short.MAX_VALUE)
                                 .addComponent(stepsizeValue, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE))))
                     .addGroup(layout.createSequentialGroup()
                         .addGap(42, 42, 42)
@@ -180,7 +196,7 @@ public class SlotcarFrame extends javax.swing.JFrame {
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(EditorPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 59, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 67, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(ClearButton)
                     .addComponent(LoadButton)
@@ -201,7 +217,9 @@ public class SlotcarFrame extends javax.swing.JFrame {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(stepsizeValue, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel1))
-                .addGap(325, 325, 325))
+                .addGap(39, 39, 39)
+                .addComponent(RunButton, javax.swing.GroupLayout.PREFERRED_SIZE, 41, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(272, 272, 272))
         );
 
         pack();
@@ -212,6 +230,7 @@ public class SlotcarFrame extends javax.swing.JFrame {
         pointLabel.setText(String.valueOf(track.getNumPoints()));
         lengthLabel.setText(String.valueOf(track.getTrackLength()));
         pointDragged = -1;
+        RunButton.setEnabled(false);
         repaint();
     }//GEN-LAST:event_ClearButtonActionPerformed
 
@@ -231,7 +250,9 @@ public class SlotcarFrame extends javax.swing.JFrame {
                 pointLabel.setText(String.valueOf(track.getNumPoints()));
                 lengthLabel.setText(String.format("%.2g", track.getTrackLength()));
 
-                // EditorPanel.setTrack(track);
+                if (track.getNumPoints() > 2) {
+                    RunButton.setEnabled(true);
+                }
                 break;
             }
             case DELETE_POINT_MODE: {
@@ -240,6 +261,9 @@ public class SlotcarFrame extends javax.swing.JFrame {
                 track.deletePoint(closestIdx);
                 pointLabel.setText(String.valueOf(track.getNumPoints()));
                 lengthLabel.setText(String.format("%.2g", track.getTrackLength()));
+
+                if (track.getNumPoints() < 3)
+                    RunButton.setEnabled(false);
                 // EditorPanel.setTrack(track);
                 break;
             }
@@ -307,6 +331,16 @@ public class SlotcarFrame extends javax.swing.JFrame {
         pointDragged = -1;
     }//GEN-LAST:event_EditorPanelMouseReleased
 
+    private void RunButtonMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_RunButtonMouseClicked
+        // TODO add your handling code here:
+        if (raceDisplay == null) {
+            raceDisplay = new RacetrackFrame();
+        }
+        double step = Double.parseDouble(stepsizeValue.getText());
+        raceDisplay.setTrack(track, step);
+        raceDisplay.setVisible(true);
+    }//GEN-LAST:event_RunButtonMouseClicked
+
     /** Computes the normalized position of a point wrt. size and position of the
      * drawing panel.
      * @param pos Position of the mouse click in frame coordinates
@@ -314,17 +348,10 @@ public class SlotcarFrame extends javax.swing.JFrame {
      */
     private Point2D normalizedPosition(Point pos) {
        Dimension d = EditorPanel.getSize();
-       Point2D np = new Point2D.Double(((double) pos.x) / d.width, ((double) pos.y) / d.height);
+       Point2D np = new Point2D.Double(((double) pos.x) / d.width, ((double) d.height-pos.y) / d.height);
        return np;
     }
 
-
-    /** Repaint by refreshing the labels */
-    @Override
-    public void repaint() {
-
-        super.repaint();
-    }
 
     /**
     * @param args the command line arguments
@@ -345,6 +372,7 @@ public class SlotcarFrame extends javax.swing.JFrame {
     private javax.swing.JButton LoadButton;
     private javax.swing.JLabel NumPointsLabel;
     private javax.swing.JLabel NumPointsLabel1;
+    private javax.swing.JButton RunButton;
     private javax.swing.JButton SaveButton;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel lengthLabel;

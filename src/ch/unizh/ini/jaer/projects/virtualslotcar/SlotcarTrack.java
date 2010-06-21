@@ -21,6 +21,9 @@ public class SlotcarTrack {
     /** The spline object for smooth approximation */
     PeriodicSpline smoothTrack = null;
 
+    /** Integration step for arc-length calculations */
+    public final double INTEGRATION_STEP = 0.001;
+
     /** Creates a new track */
     public SlotcarTrack() {
         trackPoints = new LinkedList<Point2D>();
@@ -146,5 +149,36 @@ public class SlotcarTrack {
     /** Returns the list of smooth points with given step size */
     public LinkedList<Point2D> getSmoothPoints(double stepSize) {
         return smoothTrack.allPoints(stepSize);
+    }
+
+    /**
+     * Gets the smooth spline position at the parameter value
+     * @param t Spline parameter
+     * @return Point on 2D spline curve
+     */
+    public Point2D getPosition(double t) {
+        return smoothTrack.getPosition(t);
+    }
+
+    /**
+     * Returns the position and orientation of the spline at the given position
+     * @param T Spline parameter
+     * @param pos Point in which to store the position
+     * @parma orient Point in which to store the orientation vector
+     * @return 0 if successful, -1 if not.
+     */
+    public int getPositionAndOrientation(double t, Point2D pos, Point2D orient) {
+        return smoothTrack.getPositionAndOrientation(t,pos,orient);
+    }
+
+    /**
+     * Advances the car on the track.
+     * @param t Current parameter position
+     * @param speed Current speed of car
+     * @param time Time to advance
+     * @return New parameter position (NaN if car leaves track)
+     */
+    public double advance(double t, double speed, double time) {
+        return smoothTrack.advance(t, speed*time, INTEGRATION_STEP);
     }
 }

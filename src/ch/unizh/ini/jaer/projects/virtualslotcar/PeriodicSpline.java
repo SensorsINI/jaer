@@ -192,19 +192,42 @@ public class PeriodicSpline {
      * @param coeff Spline coefficients
      * @return Interpolated value at x
      */
-    double evaluateSpline(double x, double x0, double[] coeff) {
+    private double evaluateSpline(double x, double x0, double[] coeff) {
         double xnorm = x-x0;
         return coeff[3] + xnorm * coeff[2] + Math.pow(xnorm, 2) * coeff[1] +
                 Math.pow(xnorm, 3) * coeff[0];
     }
 
-    double evaluateX(double x, int splineIdx) {
+    private double evaluateX(double x, int splineIdx) {
         return evaluateSpline(x, Tdata[splineIdx], splineCoefficientsX[splineIdx]);
     }
 
-    double evaluateY(double y, int splineIdx) {
+    private double evaluateY(double y, int splineIdx) {
         return evaluateSpline(y, Tdata[splineIdx], splineCoefficientsY[splineIdx]);
     }
+
+    /**
+     * Evaluates the orientation of the spline curve at the given position (first derivative)
+     * @param x Position at which to evaluate
+     * @param x0 Start point of spline
+     * @param coeff Spline coefficients
+     * @return Interpolated value at x
+     */
+    private double orientationSpline(double x, double x0, double[] coeff) {
+        double xnorm = x-x0;
+        return coeff[2] + 2*xnorm * coeff[1] +
+                3.0*Math.pow(xnorm, 2) * coeff[0];
+
+    }
+
+    private double orientationX(double x, int splineIdx) {
+        return orientationSpline(x, Tdata[splineIdx], splineCoefficientsX[splineIdx]);
+    }
+
+    private double orientationY(double y, int splineIdx) {
+        return orientationSpline(y, Tdata[splineIdx], splineCoefficientsY[splineIdx]);
+    }
+
 
     /**
      * Returns a list of all points including the original points and the
@@ -246,21 +269,141 @@ public class PeriodicSpline {
         return Tdata[numXY];
     }
 
+    /**
+     * Returns the interval in which this parameter value lies.
+     * @param T Spline parameter
+     * @return The index of the spline interval in which T lies.
+     */
+    public int getInterval(double T) {
+        int idx = 1;
+        // Find segment in which T lies
+        while ((idx <= numXY) && (T > Tdata[idx])) {
+            idx++;
+        }
+        if (idx > numXY) {
+            // T not in parameter range
+            return -1;
+        }
+        else return (idx-1);
+    }
+
+    /**
+     * Gets the smooth spline position at the parameter value if the spline segment is known.
+     * @param t Spline parameter
+     * @param idx Index of the spline segment in which T lies.
+     * @return Point on 2D spline curve
+     */
+    public Point2D getPosition(double T, int idx) {
+        Point2D.Double p = new Point2D.Double(evaluateX(T, idx), evaluateY(T, idx));
+        return p;
+    }
+
+    /**
+     * Gets the smooth spline position at the parameter value
+     * @param t Spline parameter
+     * @return Point on 2D spline curve
+     */
+    public Point2D getPosition(double T) {
+        // Find segment in which T lies
+        int idx = getInterval(T);
+        Point2D.Double p = new Point2D.Double(evaluateX(T, idx), evaluateY(T, idx));
+        return p;
+    }
+
+    /**
+     * Returns the orientation of the spline at the given position
+     * @param T Spline parameter
+     * @return A normalized orientation vector
+     */
+    public Point2D getOrientation(double T) {
+        // Find segment in which T lies
+        int idx = getInterval(T);
+        Point2D.Double p = new Point2D.Double(orientationX(T, idx), orientationY(T, idx));
+        double norm = p.distance(0,0);
+        p.setLocation(p.getX()/norm, p.getY()/norm);
+        return p;
+    }
+
+    /**
+     * Returns the position and orientation of the spline at the given position
+     * @param T Spline parameter
+     * @param pos Point in which to store the position
+     * @parma orient Point in which to store the normalized orientation vector
+     * @return 0 if successful, -1 if not.
+     */
+    public int getPositionAndOrientation(double T, Point2D pos, Point2D orient) {
+        if ((pos==null) || (orient == null))
+            return -1;
+        int idx = 1;
+        // Find segment in which T lies
+        while ((idx <= numXY) && (T > Tdata[idx])) {
+            idx++;
+        }
+        if (idx > numXY) {
+            // T not in parameter range
+            return -1;
+        }
+        pos.setLocation(evaluateX(T,idx-1), evaluateY(T,idx-1));
+        double oX = orientationX(T, idx-1);
+        double oY = orientationY(T, idx-1);
+        double norm = Math.sqrt(oX*oX+oY*oY);
+        orient.setLocation(oX/norm, oY/norm);
+        return 1;
+    }
 
 
-    // TODO
-    // - approximation of new point
-    // - test 2D spline functionality
-    // - function for creating a curve with an arbitrary number of points
-    // - create a curve with arbitrary number of in-between steps between interpolation points
+    /**
+     * Computes the next parameter value if the arc-length is increased by ds.
+     * Approximates the arc-length by sub-dividing into intervals of length int_step.
+     * @param t Current parameter value (not arc-length)
+     * @param ds Arc-length distance to new point
+     * @param int_step Integration step
+     * @return New parameter value (not arc-length)
+     */
+    public double advance(double t, double ds, double int_step) {
+        double L = 0.0;
+        double cur_t = t;
+        double old_t = t;
 
+        int interval = getInterval(t);
+        Point2D old_p = getPosition(cur_t, interval);
+
+        int count = 0;
+        while (L < ds) {
+            System.out.println("Count " + (count++));
+            // Compute next intermediate point
+            cur_t+=int_step;
+            if (cur_t >= Tdata[numXY]) {
+                cur_t -= Tdata[numXY];
+                interval = 0;
+            } else if (cur_t >= Tdata[interval+1]) {
+                interval++;
+            }
+
+            Point2D cur_p = getPosition(cur_t, interval);
+            double dist = cur_p.distance(old_p);
+
+            // Increase bow-length
+            if (L+dist < ds) {
+                L+=dist;
+                old_p = cur_p;
+                old_t = cur_t;
+            }
+            else break;
+        }
+        // Interpolate last segment
+        cur_t = old_t + int_step * (ds-L);
+
+        // return t+ds;  // non arc-length parametrization
+        return cur_t;
+    }
 
     /**
      * Pure test function
      * @param args
      */
     public static void main(String[] args) {
-        LinkedList<Point2D> testPoints = new LinkedList();
+        LinkedList<Point2D> testPoints = new LinkedList<Point2D>();
         double[]            X          = {
             1.0, 2.5, 5.25, 9.5, 12.0, 14.5, 17.0
         };

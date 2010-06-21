@@ -84,7 +84,7 @@ public class TrackEditor extends javax.swing.JPanel {
                     g.setColor(Color.black);
                     Point2D p = it.next();
                     int x = (int) (p.getX() * d.width);
-                    int y = (int) (p.getY() * d.height);
+                    int y = (int) ((1-p.getY()) * d.height);
                     if (oldX == -1)
                         g.setColor(Color.red);
                     g.drawOval(x-2, y-2, 5, 5);
@@ -106,7 +106,7 @@ public class TrackEditor extends javax.swing.JPanel {
                 while (all_it.hasNext()) {
                     Point2D p = all_it.next();
                     int x = (int) (p.getX() * d.width);
-                    int y = (int) (p.getY() * d.height);
+                    int y = (int) ((1-p.getY()) * d.height);
                     if (oldX >= 0) {
                         g.drawLine(oldX, oldY, x, y);
                     }
