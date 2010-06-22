@@ -10,7 +10,8 @@ import java.util.*;
 
 /**
  * Adds a refractory period to pixels so that they events only pass if there is sufficient 
- * time since the last event from that pixel. Basicall just knocks out 
+ * time since the last event from that pixel; so it knocks out high firing rates from cells.
+ * The option passShortISIsEnabled inverts the logic.
  redundant events.
  
  * @author tobi
@@ -33,7 +34,9 @@ public class RefractoryFilter extends EventFilter2D implements Observer  {
     private int subsampleBy=getPrefs().getInt("RefractoryFilter.subsampleBy",0);
     {setPropertyTooltip("subsampleBy","Past event addresses are subsampled by this many bits in x and y");}
 
-    
+    private boolean passShortISIsEnabled=prefs().getBoolean("RefractoryFilter.passShortISIsEnabled", false);
+     {setPropertyTooltip("passShortISIsEnabled","<html>Inverts filtering so that only events with short ISIs are passed through.<br>If refractoryPeriodUs==0, then you can block all events with idential timestamp from the same pixel.");}
+
     int[][] lastTimestamps;
     
     public RefractoryFilter(AEChip chip){
@@ -71,7 +74,8 @@ public class RefractoryFilter extends EventFilter2D implements Observer  {
                 short x=(short)(i.x>>>subsampleBy), y=(short)(i.y>>>subsampleBy);
                 int lastt=lastTimestamps[x][y];
                 int deltat=(ts-lastt);
-                if(deltat>refractoryPeriodUs && lastt!=DEFAULT_TIMESTAMP){
+                boolean longISI=deltat>refractoryPeriodUs && lastt!=DEFAULT_TIMESTAMP; // if refractoryPeriodUs==0, then all events with ISI==0 pass if passShortISIsEnabled
+                if((longISI && !passShortISIsEnabled) || (!longISI && passShortISIsEnabled)){
                     BasicEvent o=(BasicEvent)outItr.nextOutput();
                     o.copyFrom(i);
                 }
@@ -137,6 +141,23 @@ public class RefractoryFilter extends EventFilter2D implements Observer  {
         if(subsampleBy<0) subsampleBy=0; else if(subsampleBy>4) subsampleBy=4;
         this.subsampleBy = subsampleBy;
         getPrefs().putInt("RefractoryFilter.subsampleBy",subsampleBy);
+    }
+
+    /**
+     * @return the passShortISIsEnabled
+     */
+    public boolean isPassShortISIsEnabled() {
+        return passShortISIsEnabled;
+    }
+
+    /**
+     * @param passShortISIsEnabled the passShortISIsEnabled to set
+     */
+    public void setPassShortISIsEnabled(boolean passShortISIsEnabled) {
+        boolean old=this.passShortISIsEnabled;
+        this.passShortISIsEnabled = passShortISIsEnabled;
+        prefs().putBoolean("RefractoryFilter.passShortISIsEnabled", passShortISIsEnabled);
+        support.firePropertyChange("passShortISIsEnabled",old,passShortISIsEnabled);
     }
     
     
