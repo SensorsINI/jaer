@@ -52,6 +52,11 @@ public class FeatureExtractionTestMain{
                 System.out.println();
             }
         }
+
+        @Override
+        public void menuAction(String menuName) {
+            // do nothing
+        }
     }
 
     /**

@@ -5,7 +5,6 @@
 
 package ch.unizh.ini.jaer.projects.gesture.hmm;
 
-import java.awt.Rectangle;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
 
@@ -55,7 +54,7 @@ public class FeatureExtraction{
     public String[] convTrajectoryToCodewords(ArrayList<? extends Point2D.Float> trajectory){
         String[] out = new String[seqLength];
 
-        if(trajectory.size() == 0)
+        if(trajectory.size() < 2)
             return out;
 
         double totalTrajLen = calTrajectoryLength(trajectory);
