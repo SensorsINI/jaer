@@ -1,6 +1,7 @@
 package ch.unizh.ini.jaer.projects.gesture.hmm;
 
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.Random;
@@ -14,7 +15,7 @@ import java.util.Random;
  * Hidden Markov Model
  * @author Jun Haeng Lee
  */
-public class HiddenMarkovModel {
+public class HiddenMarkovModel implements Serializable{
     /** HMM model type will be used to initialize the probabilities.
      * Ergodic HMM has full mesh transition between states.
      */

@@ -5,6 +5,7 @@
 
 package ch.unizh.ini.jaer.projects.gesture.hmm;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
@@ -12,7 +13,7 @@ import java.util.ArrayList;
  * But, instead of mixture-density, only one gaussian pdf is used to allow online learning of guestures.
  * @author Jun Haeng Lee
  */
-public class GaussianThreshold {
+public class GaussianThreshold implements Serializable {
     /**
      * type of feature values
      */
@@ -400,7 +401,7 @@ public class GaussianThreshold {
     /**
      * Inner class defining the parameters of Gaussian PDF
      */
-    class GaussianParameter{
+    class GaussianParameter implements Serializable{
         /**
          * mean
          */

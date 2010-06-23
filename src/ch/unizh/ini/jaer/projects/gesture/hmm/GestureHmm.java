@@ -5,6 +5,7 @@
 
 package ch.unizh.ini.jaer.projects.gesture.hmm;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -14,7 +15,7 @@ import java.util.Hashtable;
  * HMM based gesture recognition module
  * @author Jun Haeng Lee
  */
-public class GestureHmm {
+public class GestureHmm implements Serializable{
     static final String START_STATE = "Start";
     static final String FINAL_STATE = "Final";
     static final String DYNAMIC_THRESHOLD_MODEL  = "Dynamic Threshold Model";
@@ -35,9 +36,14 @@ public class GestureHmm {
     private int numGestures = 0;
 
     /**
+     * gesture names
+     */
+    HashSet<String> gestureNames = new HashSet<String>();
+
+    /**
      * Hashmap to store HiddenMarkovModels for gestures
      */
-    HashMap<String, HiddenMarkovModel> gestureHmms= new HashMap<String, HiddenMarkovModel>();
+    HashMap<String, HiddenMarkovModel> gestureHmms = new HashMap<String, HiddenMarkovModel>();
 
     /**
      * Hashmap to store minimum likelyhood of learned gestures.
@@ -102,13 +108,14 @@ public class GestureHmm {
         String[] stateNames = composeStateNamesToArray(name, numStates);
         HiddenMarkovModel hmm = new HiddenMarkovModel(name, stateNames, getFeatureVectorSpaceToArray(), modelType);
 
+        gestureNames.add(name);
         gestureHmms.put(name, hmm);
         refLikelyhood.put(name, 0.0);
 
         boolean doBestMatching = false;
         if(modelType == HiddenMarkovModel.ModelType.LRC_RANDOM ||  modelType == HiddenMarkovModel.ModelType.LRBC_RANDOM)
             doBestMatching = true;
-        gthModels.put(hmm.getName(), new GaussianThreshold(featureVectorSpace.size(), 2*Math.PI/180, GaussianThreshold.Type.CIRCULATING_ANGLE, doBestMatching));
+        gthModels.put(hmm.getName(), new GaussianThreshold(featureVectorSpace.size(), 3*Math.PI/180, GaussianThreshold.Type.CIRCULATING_ANGLE, doBestMatching));
 
         numGestures++;
 
@@ -120,6 +127,7 @@ public class GestureHmm {
      * @param hmm : hmm of the gesture
      */
     public void addGesture(HiddenMarkovModel hmm){
+        gestureNames.add(hmm.getName());
         gestureHmms.put(hmm.getName(), hmm);
         refLikelyhood.put(hmm.getName(), 0.0);
 
@@ -127,7 +135,7 @@ public class GestureHmm {
         HiddenMarkovModel.ModelType modelType = hmm.getModelType();
         if(modelType == HiddenMarkovModel.ModelType.LRC_RANDOM ||  modelType == HiddenMarkovModel.ModelType.LRBC_RANDOM)
             doBestMatching = true;
-        gthModels.put(hmm.getName(), new GaussianThreshold(featureVectorSpace.size(), 2*Math.PI/180, GaussianThreshold.Type.CIRCULATING_ANGLE, doBestMatching));
+        gthModels.put(hmm.getName(), new GaussianThreshold(featureVectorSpace.size(), 3*Math.PI/180, GaussianThreshold.Type.CIRCULATING_ANGLE, doBestMatching));
 
         numGestures++;
     }
@@ -141,6 +149,7 @@ public class GestureHmm {
         gestureHmms.remove(name);
         refLikelyhood.remove(name);
         gthModels.remove(name);
+        gestureNames.remove(name);
         numGestures--;
     }
 
@@ -483,6 +492,54 @@ public class GestureHmm {
         return name;
     }
 
+
+    /**
+     *  tries an observation to a specific gesture
+     *
+     * @param gestureName
+     * @param obs
+     * @param rawAngles
+     * @return true if the observation satisfies all the criterions
+     */
+    public boolean tryGesture(String gestureName, String[] obs, double[] rawAngles){
+        boolean ret = true;
+
+        // checks state transition for LRB and LRBC types.
+        // If the viterbi pathes doesn't include all states, this may not be a proper guess.
+        HiddenMarkovModel.ModelType modelType = getGestureHmm(gestureName).getModelType();
+        if(modelType == HiddenMarkovModel.ModelType.LRB_RANDOM || modelType == HiddenMarkovModel.ModelType.LRBC_RANDOM){
+            getGestureHmm(gestureName).viterbi(obs);
+            ArrayList<String> viterbiPath = getGestureHmm(gestureName).getViterbiPath(obs.length);
+            HashSet<String> visitedStates = new HashSet<String>();
+            for(String state:viterbiPath)
+                visitedStates.add(state);
+            if(visitedStates.size() != getGestureHmm(gestureName).getStates().size()){
+                ret = false;
+            }
+        }
+
+        // checks with Gaussian threshold
+        if((thresholdOption&GAUSSIAN_THRESHOLD)>0){
+            GaussianThreshold gth = gthModels.get(gestureName);
+            if(gth.numSamples > 0)
+                if(!gth.isAboveThreshold(rawAngles))
+                    ret = false;
+        }
+
+        // checks with dynamic threshold.
+        if((thresholdOption&DYNAMIC_THRESHOLD)>0){
+            double prob = gestureHmms.get(gestureName).forward(obs);
+            if(prob < getGestureLikelyhoodTM(1.0, obs))
+                ret = false;
+        } else if ((thresholdOption&FIXED_THRESHOLD)>0) {
+            double prob = gestureHmms.get(gestureName).forward(obs);
+            if(prob < refLikelyhood.get(gestureName))
+                ret = false;
+        }
+
+        return ret;
+    }
+
     /**
      * returns the feature vector space in array
      * @return
@@ -503,6 +560,15 @@ public class GestureHmm {
     public int getNumGestures() {
         return numGestures;
     }
+
+    /**
+     * returns gesture names
+     * 
+     * @return
+     */
+   public HashSet<String> getGestureNames(){
+       return gestureNames;
+   }    
 
     /**
      * returns the average features in Array
