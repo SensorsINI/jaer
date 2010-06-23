@@ -5,7 +5,7 @@
 
 package ch.unizh.ini.jaer.projects.gesture.stereo;
 
-import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2D.CellGroup;
+import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2D.NeuronGroup;
 import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2DTracker;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
@@ -44,8 +44,8 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
     }
 
     @Override
-    protected void track(CellGroup cellGroup, int initialAge) {
-        if (cellGroup.getNumMemberCells() == 0) {
+    protected void track(NeuronGroup cellGroup, int initialAge) {
+        if (cellGroup.getNumMemberNeurons() == 0) {
             return;
         }
 
