@@ -7,9 +7,9 @@
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
 
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.geom.Point2D.Float;
 import javax.media.opengl.GL;
-import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import java.util.*;
 import javax.media.opengl.GLAutoDrawable;
@@ -20,245 +20,358 @@ import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
  * Finds clusters of events using spatio-temporal correlation between events.
- * Events occured within the specified area (called a Cell) are considered strongly correalated.
- * How much the events are correlated is evaluated using a parameter called 'mass'.
- * The cell mass is the weighted number of events collected by the cell.
- * By thresholding the mass of cells, active cells can be defined.
- * Then the clusters of events can be detected from the cell groups.
- * The cell group is a group of active cells which are linked each other. (If two neighboring cells are active, they are linked).
+ * Events occured within the specified area (called a LIFNeuron) are considered strongly correalated.
+ * How much the events are correlated is evaluated using a parameter called 'membranePotential'.
+ * By thresholding the membranePotential of a neuron, firing neurons can be defined.
+ * Then the clusters of events can be detected from the neuron groups.
+ * The neuron group is a group of firing neurons which are linked each other. (If two adjacent neurons are firing at the same time, they are linked).
  * (Notice) BlurringFilter2D is a cluster finder rather than a filter. It does NOT filters any events.
  *
  * @author Jun Haeng Lee
  */
 public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, Observer {
 
-    /* properties */
-    private int cellMassTimeConstantUs = getPrefs().getInt("BlurringFilter2D.cellMassTimeConstantUs", 20000);
-    private int cellLifeTimeUs = getPrefs().getInt("BlurringFilter2D.cellLifeTimeUs", 200000);
-    private int thresholdEventsForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdEventsForVisibleCell", 1);
-    private int thresholdMassForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdMassForVisibleCell", 25);
-    private boolean showCells = getPrefs().getBoolean("BlurringFilter2D.showCells", true);
-    private boolean filledCells = getPrefs().getBoolean("BlurringFilter2D.filledCells", false);
-    private boolean showBorderCellsOnly = getPrefs().getBoolean("BlurringFilter2D.showBorderCellsOnly", false);
-    private boolean showInsideCellsOnly = getPrefs().getBoolean("BlurringFilter2D.showInsideCellsOnly", false);
-    private int cellSizePixels = getPrefs().getInt("BlurringFilter2D.cellSizePixels", 8);
+    /**
+     * Time constant of LIF neurons membrane potential. It decays exponetially unless a new event is added.
+     */
+    protected int MPTimeConstantUs = getPrefs().getInt("BlurringFilter2D.MPTimeConstantUs", 30000);
 
-    /* Constants to define neighbor cells */
+    /**
+     * Life time of LIF neuron.
+     * A neuron will be reset if there is no additional event within this value of micro seconds since the last update.
+     */
+    protected int neuronLifeTimeUs = getPrefs().getInt("BlurringFilter2D.neuronLifeTimeUs", 2000000);
+
+    /**
+     * threshold of membrane potetial required for firing.
+     */
+    private int MPThreshold = getPrefs().getInt("BlurringFilter2D.MPThreshold", 15);
+
+        /**
+     * size of the receptive field of an LIF neuron.
+     */
+    protected int receptiveFieldSizePixels = getPrefs().getInt("BlurringFilter2D.receptiveFieldSizePixels", 8);
+
+    /**
+     * Membrane potential of a neuron jumps down by this amount after firing.
+     */
+    protected float MPJumpAfterFiring = getPrefs().getFloat("BlurringFilter2D.MPJumpAfterFiring", 10.0f);
+
+    /**
+     * if true, the receptive field of firing neurons are displayed on the screen.
+     */
+    private boolean showFiringNeurons = getPrefs().getBoolean("BlurringFilter2D.showFiringNeurons", false);
+
+    /**
+     * if true, the receptive field of firing neurons are displayed with filled sqaures.
+     * if false, they are shown with hallow squares.
+     */
+    private boolean filledReceptiveField = getPrefs().getBoolean("BlurringFilter2D.filledReceptiveField", true);
+
+    /**
+     * shows neurons with firing type of FIRING_ON_BORDER only.
+     */
+    private boolean showBorderNeuronsOnly = getPrefs().getBoolean("BlurringFilter2D.showBorderNeuronsOnly", true);
+
+    /**
+     * shows neurons with firing type of FIRING_INSIDE only.
+     */
+    private boolean showInsideNeuronsOnly = getPrefs().getBoolean("BlurringFilter2D.showInsideNeuronsOnly", true);
+
+
+
+
+    /**
+     * Constants to define neighbor neurons.
+     * upper neighbor.
+     */
     static int UPDATE_UP = 0x01;
+    /**
+     * Constants to define neighbor neurons.
+     * lower neighbor.
+     */
     static int UPDATE_DOWN = 0x02;
+    /**
+     * Constants to define neighbor neurons.
+     * right neighbor.
+     */
     static int UPDATE_RIGHT = 0x04;
+    /**
+     * Constants to define neighbor neurons.
+     * left neighbor.
+     */
     static int UPDATE_LEFT = 0x08;
 
-    /* variables */
-    private int numOfCellsX = 0, numOfCellsY = 0;  // number of cells in x (column) and y (row) directions.
-    private ArrayList<Cell> cellArray = new ArrayList<Cell>(); // array of cells
-    private HashSet<Integer> validCellIndexSet = new HashSet(); // index of active cells which have mass greater than the threshold
-    private HashMap<Integer, CellGroup> cellGroup = new HashMap<Integer, CellGroup>(); // cell groups found
+
+
+
     /**
      * DVS Chip
      */
-    protected AEChip mychip; 
+    protected AEChip mychip;
+    
+    /**
+     * number of neurons in x (column) directions.
+     */
+    protected int numOfNeuronsX = 0;
+    
+    /**
+     * number of neurons in y (row) directions.
+     */
+    protected int numOfNeuronsY = 0;
+
+    /**
+     * array of neurons (numOfNeuronsX x numOfNeuronsY)
+     */
+    protected ArrayList<LIFNeuron> lifNeurons = new ArrayList<LIFNeuron>();
+
+    /**
+     * index of firing neurons
+     */
+    private HashSet<Integer> firingNeurons = new HashSet();
+
+    /**
+     * neuron groups found
+     */
+    private HashMap<Integer, NeuronGroup> neuronGroups = new HashMap<Integer, NeuronGroup>();
+    
+    /**
+     * number of neuron groups found
+     */
+    protected int numOfGroup = 0;
+
     /**
      * last updat time. It is the timestamp of the latest event.
      */
     protected int lastTime;
-    /**
-     * number of cell groups found
-     */
-    protected int numOfGroup = 0;
+
     /**
      * random
      */
     protected Random random = new Random();
 
+
+
+
+
     /**
-     * Constructor
+     * Constructor of BlurringFilter2D
      * @param chip
      */
     public BlurringFilter2D(AEChip chip) {
         super(chip);
         this.mychip = chip;
+
+        // initializes filter
         initFilter();
+
+        // adds this class as an observer
         chip.addObserver(this);
         addObserver(this);
 
-        final String threshold = "Threshold", sizing = "Sizing", movement = "Movement", lifetime = "Lifetime", disp = "Display", global = "Global", update = "Update", logging = "Logging";
+        // adds tooltips
+        final String lif_neuron = "LIF Neuron", disp = "Display";
 
-        setPropertyTooltip(lifetime, "cellMassTimeConstantUs", "Time constant of cell mass. The cell mass decays exponetially unless a new event is added.");
-        setPropertyTooltip(lifetime, "cellLifeTimeUs", "A cell will be reset if there is no additional event with this value since the last update");
-        setPropertyTooltip(threshold, "thresholdEventsForVisibleCell", "Cell needs this many events to be visible");
-        setPropertyTooltip(threshold, "thresholdMassForVisibleCell", "Cell needs this much mass to be visible");
-        setPropertyTooltip(disp, "showCells", "Show active cells");
-        setPropertyTooltip(disp, "filledCells", "Use filled symbols to illustrate the active cells");
-        setPropertyTooltip(disp, "showBorderCellsOnly", "Show border cells (boundary cells of a cell group) only among the active cells");
-        setPropertyTooltip(disp, "showInsideCellsOnly", "Show inside cells (surrounded by the border cells) only among the active cells");
-        setPropertyTooltip(sizing, "cellSizePixels", "Side length of a square cell in number of pixels. Cell spacing is decided to the half of this value. Thus, neighboring cells overlaps each other.");
+        setPropertyTooltip(lif_neuron, "MPTimeConstantUs", "Time constant of LIF neurons membrane potential. It decays exponetially unless a new event is added.");
+        setPropertyTooltip(lif_neuron, "neuronLifeTimeUs", "A neuron will be reset if there is no additional event within this value of micro seconds since the last update.");
+        setPropertyTooltip(lif_neuron, "MPThreshold", "threshold of membrane potetial required for firing.");
+        setPropertyTooltip(lif_neuron, "MPJumpAfterFiring", "Membrane potential of a neuron jumps down by this amount after firing.");
+        setPropertyTooltip(lif_neuron, "receptiveFieldSizePixels", "size of the receptive field of an LIF neuron.");
+
+        setPropertyTooltip(disp, "showFiringNeurons", "if true, the receptive field of firing neurons are displayed on the screen.");
+        setPropertyTooltip(disp, "filledReceptiveField", "if true, the receptive field of firing neurons are displayed with filled sqaures. Otherwise, they are shown with hallow squares.");
+        setPropertyTooltip(disp, "showBorderNeuronsOnly", "shows neurons with firing type of FIRING_ON_BORDER only.");
+        setPropertyTooltip(disp, "showInsideNeuronsOnly", "shows neurons with firing type of FIRING_INSIDE only.");
     }
 
     @Override
     public String toString() {
-        String s = cellArray != null ? Integer.toString(numOfCellsX).concat(" by ").concat(Integer.toString(numOfCellsY)) : null;
-        String s2 = "BlurringFilter2D with " + s + " cells ";
+        String s = lifNeurons != null ? Integer.toString(numOfNeuronsX).concat(" by ").concat(Integer.toString(numOfNeuronsY)) : null;
+        String s2 = "BlurringFilter2D with " + s + " neurons ";
         return s2;
     }
 
     public void update(Observable o, Object arg) {
         if (o == this) {
             UpdateMessage msg = (UpdateMessage) arg;
-            updateCells(msg.timestamp); // at least once per packet update list
+            updateNeurons(msg.timestamp); // at least once per packet update list
         } else if (o instanceof AEChip) {
             initFilter();
         }
     }
 
     /**
-     * Definition of cell types
-     * CORNER_* : cells located in corners
-     * EDGE_* : cells located in edges
-     * INSIDE: all cells except corner and egde cells
+     * Definition of location types of LIF neurons
+     * CORNER_* : neurons that are located in corners
+     * EDGE_* : neurons that are located in edges
+     * INSIDE: all neurons except corner and egde neurons
      */
-    static enum CellType {
-
+    static enum LocationType {
         CORNER_00, CORNER_01, CORNER_10, CORNER_11, EDGE_0Y, EDGE_1Y, EDGE_X0, EDGE_X1, INSIDE
     }
 
     /**
-     * Definition of cell properties
-     * NOT_VISIBLE : non-active cells
-     * VISIBLE_ISOLATED : active cells with no neighbor
-     * VISIBLE_HAS_NEIGHBOR : active cells with (a) neighbor(s)
-     * VISIBLE_BORDER : active cells which make the boundary of a cell group
-     * VISIBLE_INSIDE : active cells which are surrounded by the border cells
+     * Definition of firing types of neurons
      */
-    public enum CellProperty {
-
-        NOT_VISIBLE, VISIBLE_ISOLATED, VISIBLE_HAS_NEIGHBOR, VISIBLE_BORDER, VISIBLE_INSIDE
-    }
-
-    /**
-     * Cell property update type
-     * FORCED : update the cell property regardless of current property
-     * CHECK : property update is done conditionally based on the current property
-     */
-    static enum CellPropertyUpdate {
-
-        FORCED, CHECK
-    }
-
-    /**
-     * Definition of cells.
-     * The cell is a partial area of events-occuring space.
-     * Events within the cell are considered strongly correalated.
-     * Cell spacing is decided to the half of cell's side length to increase the spatial resolution.
-     * Thus, neighboring cells overlaps each other.
-     */
-    public class Cell {
+    public enum FiringType {
 
         /**
-         * Cell index in (x_index, y_index)
+         * does not fire due to the low membrane potential
          */
-        public Point2D.Float cellIndex = new Point2D.Float();
+        SILENT,
         /**
-         *  location in chip pixels
+         * fires alone. Its neighbor neurons don't fire.
+         */
+        FIRING_ISOLATED,
+        /**
+         * fires together with at least one of its neighbors
+         */
+        FIRING_WITH_NEIGHBOR,
+        /**
+         * firing neuron which makes the boundary of a group of simultaneously firing neurons
+         */
+        FIRING_ON_BORDER,
+        /**
+         * non-border firing neuron which belongs a group of simultaneously firing neurons
+         */
+        FIRING_INSIDE;
+    }
+
+    /**
+     * Firing type update type
+     */
+    static enum FiringTypeUpdate {
+        /**
+         * updates forcibly
+         */
+        FORCED, 
+        /**
+         * updates if necessary based on the current condition
+         */
+        CHECK;
+    }
+
+    /**
+     * Definition of leaky integrate and fire (LIF) neuron.
+     * The receptive field is a partial area of events-occuring space.
+     * Events within the receptive field of a neuron are considered strongly correalated.
+     * Spacing of the receptive field of two adjacent LIF neurons is decided to the half of side length of the receptive field to increase the spatial resolution.
+     * Thus, each neuron shares half area of the receptive field with its neighbor.
+     */
+    public class LIFNeuron {
+
+        /**
+         * Neuron index in (x_index, y_index)
+         */
+        public Point2D.Float index = new Point2D.Float();
+
+        /**
+         *  spatial location of a neuron in chip pixels
          */
         public Point2D.Float location = new Point2D.Float();
+
         /**
-         * cell type. One of {CORNER_00, CORNER_01, CORNER_10, CORNER_11, EDGE_0Y, EDGE_1Y, EDGE_X0, EDGE_X1, INSIDE}
+         * location type of a neuron. One of {CORNER_00, CORNER_01, CORNER_10, CORNER_11, EDGE_0Y, EDGE_1Y, EDGE_X0, EDGE_X1, INSIDE}
          */
-        CellType cellType;
+        LocationType locationType;
+
         /**
-         * cell property. One of {NOT_VISIBLE, VISIBLE_ISOLATED, VISIBLE_HAS_NEIGHBOR, VISIBLE_BORDER, VISIBLE_INSIDE}
+         * firing type of a neuron. One of {SILENT, FIRING_ISOLATED, FIRING_WITH_NEIGHBOR, FIRING_ON_BORDER, FIRING_INSIDE}
          */
-        CellProperty cellProperty;
+        FiringType firingType;
+
         /**
-         * Tag to identify the group which the cell belongs to.
+         * Tag to identify the group which the neuron belongs to.
          */
         protected int groupTag = -1;
+
         /**
-         * active cell or not. If a cell is active, it's visible.
+         * true if the neuron fired a spike.
          */
-        protected boolean visible = false;
+        protected boolean fired = false;
+
+        /** The "membranePotential" of the neuron.
+         * The membranePotential decays over time (i.e., leaky) and is incremented by one by each collected event.
+         * The membranePotential decays with a first order time constant of MPTimeConstantUs in us.
+         * The membranePotential dreases by the amount of MPJumpAfterFiring after firing an event.
+         */
+        protected float membranePotential = 0;
+
         /**
-         * cell color to display the cell.
+         * Center of membrane potential.
+         */
+        protected Point2D.Float centerMP = new Point2D.Float();
+
+        /**
+         *  number of firing neighbors
+         */
+        protected int numFiringNeighbors = 0;
+
+        /**
+         * This is the last in timestamp ticks that the neuron was updated, by an event
+         */
+        protected int lastEventTimestamp;
+
+        /**
+         * defined as index.x + index.y * numOfNeuronsX
+         */
+        private int cellNumber;
+
+         /**
+         * color to display the neuron's receptive field.
          */
         protected Color color = null;
+
         /**
-         * Number of events collected by this cell when it is active.
+         * RGB value of color
          */
-        protected int numEvents = 0;
-        /** The "mass" of the cell is the weighted number of events it has collected.
-         * The mass decays over time and is incremented by one by each collected event.
-         * The mass decays with a first order time constant of cellMassTimeConstantUs in us.
-         */
-        protected float mass = 0;
-        /**
-         *  number of active neighbors
-         */
-        protected int numOfNeighbors = 0;
-        /** This is the last and first time in timestamp ticks that the cell was updated, by an event
-         * This time can be used to compute postion updates given a cell velocity and time now.
-         */
-        protected int lastEventTimestamp, firstEventTimestamp;
-        private int cellNumber; // defined as cellIndex.x + cellIndex.y * numOfCellsX
         private float[] rgb = new float[4];
 
         /**
-         * Construct a cell with index.
+         * Construct an LIF neuron with index.
+         *
          * @param indexX
          * @param indexY
          */
-        public Cell(int indexX, int indexY) {
+        public LIFNeuron(int indexX, int indexY) {
             float hue = random.nextFloat();
             Color c = Color.getHSBColor(hue, 1f, 1f);
             setColor(c);
 
-            if (indexX < 0 || indexY < 0 || indexX >= numOfCellsX || indexY >= numOfCellsY) {
+            if (indexX < 0 || indexY < 0 || indexX >= numOfNeuronsX || indexY >= numOfNeuronsY) {
                 // exception
             }
 
-            cellIndex.x = (float) indexX;
-            cellIndex.y = (float) indexY;
-            location.x = (cellIndex.x + 1) * cellSizePixels / 2; // Cell spacing is decided to the half of cell's side length
-            location.y = (cellIndex.y + 1) * cellSizePixels / 2; // Cell spacing is decided to the half of cell's side length
-            
-            cellNumber = (int) cellIndex.x + (int) cellIndex.y * numOfCellsX;
-            setCellProperty(CellProperty.NOT_VISIBLE);
-            resetGroupTag();
-            visible = false;
-            numEvents = 0;
-            mass = 0;
-            numOfNeighbors = 0;
-            lastEventTimestamp = firstEventTimestamp = 0;
+            // sets invariable parameters
+            index.x = (float) indexX;
+            index.y = (float) indexY;
+            location.x = (index.x + 1) * receptiveFieldSizePixels / 2;
+            location.y = (index.y + 1) * receptiveFieldSizePixels / 2;
+            cellNumber = (int) index.x + (int) index.y * numOfNeuronsX;
+
+            // resets initially variable parameters
+            reset();
         }
 
         /**
-        * Reset a cell with initial values
+        * Resets a neuron with initial values
         */
         public void reset() {
-            mass = 0;
-            numEvents = 0;
-            numOfNeighbors = 0;
-            visible = false;
-            setCellProperty(CellProperty.NOT_VISIBLE);
+            setFiringType(FiringType.SILENT);
             resetGroupTag();
-            lastEventTimestamp = firstEventTimestamp = 0;
+            fired = false;
+            membranePotential = 0;
+            centerMP.x = location.x;
+            centerMP.y = location.y;
+            numFiringNeighbors = 0;
+            lastEventTimestamp = 0;
         }
 
-        /** Overrides default hashCode to return {@link #cellNumber}. This overriding
-         * allows for storing cells in lists and checking for them by their cellNumber.
-         *
-         * @return cellNumber
-         */
         @Override
         public int hashCode() {
             return cellNumber;
         }
 
-        /** Two cells are equal if their {@link #cellNumber}'s are equal.
-         *
-         * @param obj another Cell.
-         * @return true if equal.
-         */
         @Override
         public boolean equals(Object obj) {
             if (this == obj) {
@@ -268,11 +381,11 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                 return false;
             }
 
-            Cell test = (Cell) obj;
+            LIFNeuron test = (LIFNeuron) obj;
             return cellNumber == test.cellNumber;
         }
 
-        /** Draws this cell using OpenGL.
+        /** Draws the neuron using OpenGL.
          *
          * @param drawable area to draw this.
          */
@@ -280,148 +393,159 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             final float BOX_LINE_WIDTH = 2f; // in chip
             GL gl = drawable.getGL();
 
-            // set color and line width of cell annotation
+            // set color and line width
             setColorAutomatically();
             getColor().getRGBComponents(rgb);
             gl.glColor3fv(rgb, 0);
             gl.glLineWidth(BOX_LINE_WIDTH);
 
-            // draw cell rectangle
-            drawCell(gl, (int) getLocation().x, (int) getLocation().y, (int) cellSizePixels / 2, (int) cellSizePixels / 2);
+            // draws the receptive field of a neuron
+            drawReceptiveField(gl, (int) getLocation().x, (int) getLocation().y, (int) receptiveFieldSizePixels / 2, (int) receptiveFieldSizePixels / 2);
         }
 
-        /** get cell property.
+        /**
+         * returns firing type
          *
          * @return
          */
-        private CellProperty getCellProperty() {
-            return cellProperty;
+        private FiringType getFiringType() {
+            return firingType;
         }
 
-        /** set cell property
-         *
-         * @param cellProperty
+        /**
+         * sets firing type
+         * 
+         * @param firingType
          */
-        private void setCellProperty(CellProperty cellProperty) {
-            this.cellProperty = cellProperty;
+        private void setFiringType(FiringType firingType) {
+            this.firingType = firingType;
         }
 
-        /** set cell property to VISIBLE_BORDER.
-         * If cellProperUpdateType is CellPropertyUpdate.CHECK, an inside cell cannot be a border cell.
+        /** 
+         * sets the firing type of the neuron to FIRING_ON_BORDER.
+         * If neuronFiringTypeUpdateType is FiringTypeUpdate.CHECK, an inside neuron cannot be a border neuron.
          *
          * @param groupTag
-         * @param cellProperUpdateType
+         * @param neuronFiringTypeUpdateType
          */
-        private void setPropertyToBorder(int groupTag, CellPropertyUpdate cellProperUpdateType) {
-            if (cellProperUpdateType == CellPropertyUpdate.CHECK) {
-                if (this.cellProperty != CellProperty.VISIBLE_INSIDE) {
-                    setCellProperty(CellProperty.VISIBLE_BORDER);
+        private void setFiringTypeToBorder(int groupTag, FiringTypeUpdate neuronFiringTypeUpdateType) {
+            if (neuronFiringTypeUpdateType == FiringTypeUpdate.CHECK) {
+                if (this.firingType != FiringType.FIRING_INSIDE) {
+                    setFiringType(FiringType.FIRING_ON_BORDER);
                 }
             } else {
-                setCellProperty(CellProperty.VISIBLE_BORDER);
+                setFiringType(FiringType.FIRING_ON_BORDER);
             }
             setGroupTag(groupTag);
         }
 
-        /** updates cell by one event.
+        /** 
+         * updates a neuron with an additional event.
          *
          * @param event
+         * @param weight
          */
-        public void addEvent(BasicEvent event) {
-            incrementMass(event.getTimestamp());
+        public void addEvent(BasicEvent event,float weight) {
+            incrementMP(event.getTimestamp(), weight);
+            centerMP.x = (centerMP.x*(membranePotential-weight) + event.x*weight)/membranePotential;
+            centerMP.y = (centerMP.y*(membranePotential-weight) + event.y*weight)/membranePotential;
             lastEventTimestamp = event.getTimestamp();
-            if (numEvents == 0) {
-                firstEventTimestamp = lastEventTimestamp;
-            }
-
-            numEvents++;
         }
 
-        /** Computes and returns {@link #mass} at time t, using the last time an event hit this cell
-         * and the {@link #cellMassTimeConstantUs}. Does not change the mass.
+        /** 
+         * Computes and returns {@link #membranePotential} at time t, using the last time an event hit this neuron
+         * and the {@link #MPTimeConstantUs}. Does not change the membranePotential itself.
          *
          * @param t timestamp now.
-         * @return the mass.
+         * @return the membranePotential.
          */
-        protected float getMassNow(int t) {
-            float m = mass * (float) Math.exp(((float) (lastEventTimestamp - t)) / cellMassTimeConstantUs);
+        protected float getMPNow(int t) {
+            float m = membranePotential * (float) Math.exp(((float) (lastEventTimestamp - t)) / MPTimeConstantUs);
             return m;
         }
 
-        /** returns the mass without considering the current time.
+        /**
+         * returns the membranePotential without considering the current time.
          *
-         * @return mass
+         * @return membranePotential
          */
-        protected float getMass() {
-            return mass;
+        protected float getMP() {
+            return membranePotential;
         }
 
         /**
-         * Increments mass of cell by one after decaying it away since the {@link #lastEventTimestamp} according
-         * to exponential decay with time constant {@link #cellMassTimeConstantUs}.
+         * Increments membranePotential of the neuron by amount of weight after decaying it away since the {@link #lastEventTimestamp} according
+         * to exponential decay with time constant {@link #MPTimeConstantUs}.
+         * 
          * @param timeStamp
+         * @param weight
          */
-        protected void incrementMass(int timeStamp) {
-            mass = 1.0f + mass * (float) Math.exp(((float) lastEventTimestamp - timeStamp) / cellMassTimeConstantUs);
+        protected void incrementMP(int timeStamp, float weight) {
+            membranePotential = weight + membranePotential * (float) Math.exp(((float) lastEventTimestamp - timeStamp) / MPTimeConstantUs);
         }
 
-        /** returns the total number of events collected by this cell.
-         * @return the numEvents
-         */
-        public int getNumEvents() {
-            return numEvents;
-        }
-
-        /** returns the cell location in pixels.
+        /**
+         * returns the neuron's location in pixels.
          *
-         * @return cell location in pixels.
+         * @return
          */
         final public Point2D.Float getLocation() {
             return location;
         }
 
-        /** returns true if the cell is active.
-         * Otherwise, returns false.
-         * @return true if the cell is active
+        /** 
+         * returns the neuron's center of membranePotential.
+         *
+         * @return
          */
-        final public boolean isVisible() {
-            return visible;
+        final public Point2D.Float getCenterMP() {
+            return centerMP;
         }
 
-        /** checks if the cell is active
+        /** 
+         * returns true if the neuron fired a spike.
+         * Otherwise, returns false.
          *
-         * @return true if the cell is active
+         * @return
+         */
+        final public boolean isFired() {
+            return fired;
+        }
+
+        /** 
+         * checks if the neuron's membrane potential is above the threshold
+         *
+         * @return
          */
         public boolean isAboveThreshold() {            
-            if (numEvents < thresholdEventsForVisibleCell) {
-                visible = false;
-                cellProperty = CellProperty.NOT_VISIBLE;
-            } else {
-                if (getMassNow(lastTime) < thresholdMassForVisibleCell){
-                    visible = false;
-                    cellProperty = CellProperty.NOT_VISIBLE;
-                }else{
-                    visible = true;
-                    cellProperty = CellProperty.VISIBLE_ISOLATED;
-                }
+            if (getMPNow(lastTime) < MPThreshold){
+                fired = false;
+                firingType = FiringType.SILENT;
+            }else{
+                // fires a spike
+                fired = true;
+                firingType = FiringType.FIRING_ISOLATED;
+
+                // decreases MP by MPJumpAfterFiring after firing
+                membranePotential -= MPJumpAfterFiring;
             }
- 
+        
             resetGroupTag();
 
-            return visible;
+            return fired;
         }
 
         @Override
         public String toString() {
-            return String.format("Cell index=(%d, %d), location = (%d, %d), mass = %.2f, numEvents=%d",
-                    (int) cellIndex.x, (int) cellIndex.y,
+            return String.format("LIF Neuron index=(%d, %d), location = (%d, %d), membrane potential = %.2f",
+                    (int) index.x, (int) index.y,
                     (int) location.x, (int) location.y,
-                    mass,
-                    numEvents);
+                    membranePotential);
         }
 
         /**
-         * returns the color of the cell when it is displayed on the screen
+         * returns the color of the neuron's receptive field when it is displayed on the screen
+         *
          * @return
          */
         public Color getColor() {
@@ -429,78 +553,89 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         }
 
         /**
-         * set the color
-         * @param color of the cell when it is displayed on the screen
+         * sets the color
+         *
+         * @param color
          */
         public void setColor(Color color) {
             this.color = color;
         }
 
-        /** Sets color according to measured cell mass
+        /**
+         * sets color according to measured membranePotential
          *
          */
-        public void setColorAccordingToMass() {
-            float hue = 1 / mass;
+        public void setColorAccordingToMP() {
+            float hue = 1 / membranePotential;
             if (hue > 1) {
                 hue = 1;
             }
             setColor(Color.getHSBColor(hue, 1f, 1f));
         }
 
-        /** Set color automatically
-         * Currently ,it's done based on the cell mass
+        /** 
+         * sets color automatically
+         * Currently ,it's done based on the membranePotential
          */
         public void setColorAutomatically() {
-            setColorAccordingToMass();
+            setColorAccordingToMP();
         }
 
-        /** returns cell index
+        /**
+         * returns index
          *
-         * @return cell index
+         * @return
          */
-        public Float getCellIndex() {
-            return cellIndex;
+        public Float getIndex() {
+            return index;
         }
 
-        /** returns cell type
+        /**
+         * returns location type
+         * 
+         * @return
+         */
+        private LocationType getLocationType() {
+            return locationType;
+        }
+
+        /** 
+         * sets location type
+         *
+         * @param locationType
+         */
+        private void setLocationType(LocationType locationType) {
+            this.locationType = locationType;
+        }
+
+        /** 
+         * returns the number of simutaneously firing neighbors
+         *
+         * @return 
+         */
+        public int getNumFiringNeighbors() {
+            return numFiringNeighbors;
+        }
+
+        /** 
+         * sets the number of simutaneously firing neighbors
+         *
+         * @param numFiringNeighbors
+         */
+        public void setNumFiringNeighbors(int numFiringNeighbors) {
+            this.numFiringNeighbors = numFiringNeighbors;
+        }
+
+        /** 
+         * increases the number of firing neighbors
          *
          */
-        private CellType getCellType() {
-            return cellType;
+        public void increaseNumFiringNeighbors() {
+            numFiringNeighbors++;
         }
 
-        /** set cell type
-         *
-         * @param cellType
-         */
-        private void setCellType(CellType cellType) {
-            this.cellType = cellType;
-        }
-
-        /** returns the number of actice neighbors
-         *
-         * @return number of active neighbors
-         */
-        public int getNumOfNeighbors() {
-            return numOfNeighbors;
-        }
-
-        /** set the number of actice ni\eighbors
-         *
-         * @param numOfNeighbors
-         */
-        public void setNumOfNeighbors(int numOfNeighbors) {
-            this.numOfNeighbors = numOfNeighbors;
-        }
-
-        /** increases the number of neighbors
-         *
-         */
-        public void increaseNumOfNeighbors() {
-            numOfNeighbors++;
-        }
-
-        /** returns the cell number
+        /** 
+         * returns the cell number of a neuron
          *
          * @return cell number
          */
@@ -508,7 +643,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return cellNumber;
         }
 
-        /** returns the group tag
+        /**
+         * returns the group tag
          *
          * @return group tag
          */
@@ -516,7 +652,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return groupTag;
         }
 
-        /** set the group tag
+        /** 
+         * sets the group tag
          *
          * @param groupTag
          */
@@ -532,102 +669,118 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             }
         }
 
-        /** reset group tag
+        /** 
+         * resets group tag
          *
          */
         public void resetGroupTag() {
             this.groupTag = -1;
         }
 
-        /** returns the first event timestamp
+        /**
+         * returns the last event timestamp
          *
-         * @return timestamp of the first event collected by the cell
-         */
-        public int getFirstEventTimestamp() {
-            return firstEventTimestamp;
-        }
-
-        /** set the first event timestamp
-         *
-         * @param firstEventTimestamp
-         */
-        public void setFirstEventTimestamp(int firstEventTimestamp) {
-            this.firstEventTimestamp = firstEventTimestamp;
-        }
-
-        /** returns the last event timestamp
-         *
-         * @return timestamp of the last event collected by the cell
+         * @return timestamp of the last event collected by the neuron
          */
         public int getLastEventTimestamp() {
             return lastEventTimestamp;
         }
 
-        /** set the last event timestamp
+        /** 
+         * sets the last event timestamp
          *
          * @param lastEventTimestamp
          */
         public void setLastEventTimestamp(int lastEventTimestamp) {
             this.lastEventTimestamp = lastEventTimestamp;
         }
-    } // End of class Cell
+    } // End of class LIFNeuron
 
 
 
-    /** Definition of cell group
-     * Cell group is a group of active cells which are linked each other.
-     * Any two neighboring cells are called linked if they are active simultaneously.
-     * Each member cell within the cell group has its property which is one of {VISIBLE_BORDER, VISIBLE_INSIDE}.
-     * Member cells with VISIBLE_BORDER property are the border cells making the boundary of the cell group.
-     * All cell except the border cells should have VISIBLE_INSIDE property.
-     * Cell groups are utilized as a basis for finding clusters.
+    /** Definition of NeuronGroup
+     * NeuronGroup is a group of simultaneously firing neurons which are linked each other.
+     * Any two neighboring neurons are called linked if they are firing simultaneously.
+     * Each member neuron within the NeuronGroup has its FiringType which is one of {FIRING_ON_BORDER, FIRING_INSIDE}.
+     * Member neurons with FIRING_ON_BORDER are the border neurons making the boundary of the group.
+     * All member neurons except the border neurons should have FIRING_INSIDE type.
+     * NeuronGroups are utilized as a basis for finding clusters.
      */
-    public class CellGroup {
-
-        public Point2D.Float location = new Point2D.Float(); // location of the group in chip pixels. Center of member cells location weighted by their mass.
-        protected int numEvents; // Number of events collected by this group at each update. Sum of the number of events of all member cells.
-        protected float mass; // Sum of the mass of all member cells.
-        /** This is the last and the first time in timestamp ticks that the group was updated by an event.
-         * The largest one among the lastUpdateTime of all member cells becomes groups's lastEventTimestamp.
-         * The smallest one among the firstUpdateTime of all member cells becomes groups's firstEventTimestamp.
+    public class NeuronGroup {
+        /**
+         * location of the group in chip pixels.
+         * Center of member neurons location weighted by their membranePotential.
          */
-        protected int lastEventTimestamp, firstEventTimestamp;
-        /** Parameters to represent the area of the group.
-         * minX(Y) : minimum X(Y) among the locations of member cells
-         * maxX(Y) : maximum X(Y) among the locations of member cells
-         */
-        protected float minX, maxX, minY, maxY;
-        protected int tag; // Group number (index)
-        protected boolean hitEdge = false; // Indicate if this cell group is hitting edge
-        protected boolean matched = false; // used in tracker
-        HashSet<Cell> memberCells = null; // Member cells consisting of this group
+        public Point2D.Float location = new Point2D.Float();
 
         /**
-         * Constructor
+         * Sum of the membranePotential of all member neurons.
          */
-        public CellGroup() {
-            memberCells = new HashSet();
+        protected float totalMP;
+
+        /**
+         * This is the last time in timestamp ticks that the group was updated by an event.
+         * The largest one among the lastUpdateTime of all member neurons becomes groups's lastEventTimestamp.
+         */
+        protected int lastEventTimestamp;
+
+        /** Parameters to represent the area of the group.
+         * minX(Y) : minimum X(Y) among the locations of member neurons
+         * maxX(Y) : maximum X(Y) among the locations of member neurons
+         */
+        protected float minX, maxX, minY, maxY;
+
+        /**
+         *Group number (index)
+         */
+        protected int tag;
+
+        /**
+         *Indicates if this group is hitting edge
+         */
+        protected boolean hitEdge = false;
+
+        /**
+         * used in tracker
+         * When a tracked cluster registered this group as its next cluster, it sets this value true.
+         * Then, other clusters cannot consider this group as its next one.
+         */
+        protected boolean matched = false;
+
+        /**
+         * Member neurons consisting of this group
+         */
+        HashSet<LIFNeuron> memberNeurons = null;
+
+
+        
+        /**
+         * Constructor of Neurongroup
+         */
+        public NeuronGroup() {
+            memberNeurons = new HashSet();
             reset();
         }
 
-        /** constructor with the first member cell
+        /**
+         * constructor with the first member
          *
-         * @param firstCell
+         * @param firstNeuron
          */
-        public CellGroup(Cell firstCell) {
+        public NeuronGroup(LIFNeuron firstNeuron) {
             this();
-            add(firstCell);
+            add(firstNeuron);
         }
 
-        /** reset the cell group
+        /** 
+         * resets the neuron group
          *
          */
         public void reset() {
             location.setLocation(-1f, -1f);
-            numEvents = 0;
-            mass = 0;
+            totalMP = 0;
             tag = -1;
-            memberCells.clear();
+            memberNeurons.clear();
             maxX = maxY = 0;
             minX = chip.getSizeX();
             minY = chip.getSizeX();
@@ -636,89 +789,84 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         }
 
         /**
-         *  adds a cell into the cell group
-         * @param inCell
+         *  adds a neuron into the group
+         * @param newNeuron
          */
-        public void add(Cell inCell) {
-            // if the first cell is added
+        public void add(LIFNeuron newNeuron) {
+            // if this is the first one
             if (tag < 0) {
-                tag = inCell.getGroupTag();
-                firstEventTimestamp = inCell.getFirstEventTimestamp();
-                lastEventTimestamp = inCell.getLastEventTimestamp();
-                location.x = inCell.location.x;
-                location.y = inCell.location.y;
-                mass = inCell.getMass();
-            } else {
-                float prev_mass = mass;
+                tag = newNeuron.getGroupTag();
+                lastEventTimestamp = newNeuron.getLastEventTimestamp();
+                location.x = newNeuron.centerMP.x;
+                location.y = newNeuron.centerMP.y;
+                totalMP = newNeuron.getMP();
+            } else { // if this is not the first one
+                float prevMP = totalMP;
                 float leakyFactor;
 
-                firstEventTimestamp = Math.min(firstEventTimestamp, inCell.getFirstEventTimestamp());
-                numEvents += inCell.getNumEvents();
+                if (lastEventTimestamp < newNeuron.getLastEventTimestamp()) {
+                    leakyFactor = (float) Math.exp(((float) lastEventTimestamp - newNeuron.getLastEventTimestamp()) / MPTimeConstantUs);
+                    totalMP = newNeuron.getMP() + totalMP * leakyFactor;
+                    location.x = (newNeuron.getCenterMP().x * newNeuron.getMP() + location.x * prevMP * leakyFactor) / (totalMP);
+                    location.y = (newNeuron.getCenterMP().y * newNeuron.getMP() + location.y * prevMP * leakyFactor) / (totalMP);
 
-                if (lastEventTimestamp < inCell.getLastEventTimestamp()) {
-                    leakyFactor = (float) Math.exp(((float) lastEventTimestamp - inCell.getLastEventTimestamp()) / cellMassTimeConstantUs);
-                    mass = inCell.getMass() + mass * leakyFactor;
-                    location.x = (inCell.getLocation().x * inCell.getMass() + location.x * prev_mass * leakyFactor) / (mass);
-                    location.y = (inCell.getLocation().y * inCell.getMass() + location.y * prev_mass * leakyFactor) / (mass);
-
-                    lastEventTimestamp = inCell.getLastEventTimestamp();
+                    lastEventTimestamp = newNeuron.getLastEventTimestamp();
                 } else {
-                    leakyFactor = (float) Math.exp(((float) inCell.getLastEventTimestamp() - lastEventTimestamp) / cellMassTimeConstantUs);
-                    mass += inCell.getMass() * leakyFactor;
-                    location.x = (inCell.getLocation().x * inCell.getMass() * leakyFactor + location.x * prev_mass) / (mass);
-                    location.y = (inCell.getLocation().y * inCell.getMass() * leakyFactor + location.y * prev_mass) / (mass);
+                    leakyFactor = (float) Math.exp(((float) newNeuron.getLastEventTimestamp() - lastEventTimestamp) / MPTimeConstantUs);
+                    totalMP += newNeuron.getMP() * leakyFactor;
+                    location.x = (newNeuron.getCenterMP().x * newNeuron.getMP() * leakyFactor + location.x * prevMP) / (totalMP);
+                    location.y = (newNeuron.getCenterMP().y * newNeuron.getMP() * leakyFactor + location.y * prevMP) / (totalMP);
                 }
             }
 
-            if (inCell.getLocation().x < minX) {
-                minX = inCell.getLocation().x;
+            // updates boundary of the group
+            if (newNeuron.getLocation().x < minX) {
+                minX = newNeuron.getLocation().x;
             }
-            if (inCell.getLocation().x > maxX) {
-                maxX = inCell.getLocation().x;
+            if (newNeuron.getLocation().x > maxX) {
+                maxX = newNeuron.getLocation().x;
             }
-            if (inCell.getLocation().y < minY) {
-                minY = inCell.getLocation().y;
+            if (newNeuron.getLocation().y < minY) {
+                minY = newNeuron.getLocation().y;
             }
-            if (inCell.getLocation().y > maxY) {
-                maxY = inCell.getLocation().y;
+            if (newNeuron.getLocation().y > maxY) {
+                maxY = newNeuron.getLocation().y;
             }
 
             // check if this group is hitting edges
-            if (!hitEdge && ((int) inCell.getCellIndex().x == 0 || (int) inCell.getCellIndex().y == 0 || (int) inCell.getCellIndex().x == numOfCellsX - 1 || (int) inCell.getCellIndex().y == numOfCellsY - 1)) {
+            if (!hitEdge && ((int) newNeuron.getIndex().x == 0 || (int) newNeuron.getIndex().y == 0 || (int) newNeuron.getIndex().x == numOfNeuronsX - 1 || (int) newNeuron.getIndex().y == numOfNeuronsY - 1)) {
                 hitEdge = true;
             }
 
-            memberCells.add(inCell);
+            memberNeurons.add(newNeuron);
 
         }
 
-        /** merges cell groups
+        /** 
+         * merges two groups
          *
          * @param targetGroup
          */
-        public void merge(CellGroup targetGroup) {
+        public void merge(NeuronGroup targetGroup) {
             if (targetGroup == null) {
                 return;
             }
 
-            float prev_mass = mass;
+            float prevMP = totalMP;
             float leakyFactor;
 
-            numEvents += targetGroup.numEvents;
-            firstEventTimestamp = Math.min(firstEventTimestamp, targetGroup.firstEventTimestamp);
-
             if (lastEventTimestamp < targetGroup.lastEventTimestamp) {
-                leakyFactor = (float) Math.exp(((float) lastEventTimestamp - targetGroup.lastEventTimestamp) / cellMassTimeConstantUs);
-                mass = targetGroup.mass + mass * leakyFactor;
-                location.x = (targetGroup.location.x * targetGroup.mass + location.x * prev_mass * leakyFactor) / (mass);
-                location.y = (targetGroup.location.y * targetGroup.mass + location.y * prev_mass * leakyFactor) / (mass);
+                leakyFactor = (float) Math.exp(((float) lastEventTimestamp - targetGroup.lastEventTimestamp) / MPTimeConstantUs);
+                totalMP = targetGroup.totalMP + totalMP * leakyFactor;
+                location.x = (targetGroup.location.x * targetGroup.totalMP + location.x * prevMP * leakyFactor) / (totalMP);
+                location.y = (targetGroup.location.y * targetGroup.totalMP + location.y * prevMP * leakyFactor) / (totalMP);
 
                 lastEventTimestamp = targetGroup.lastEventTimestamp;
             } else {
-                leakyFactor = (float) Math.exp(((float) targetGroup.lastEventTimestamp - lastEventTimestamp) / cellMassTimeConstantUs);
-                mass += (targetGroup.mass * leakyFactor);
-                location.x = (targetGroup.location.x * targetGroup.mass * leakyFactor + location.x * prev_mass) / (mass);
-                location.y = (targetGroup.location.y * targetGroup.mass * leakyFactor + location.y * prev_mass) / (mass);
+                leakyFactor = (float) Math.exp(((float) targetGroup.lastEventTimestamp - lastEventTimestamp) / MPTimeConstantUs);
+                totalMP += (targetGroup.totalMP * leakyFactor);
+                location.x = (targetGroup.location.x * targetGroup.totalMP * leakyFactor + location.x * prevMP) / (totalMP);
+                location.y = (targetGroup.location.y * targetGroup.totalMP * leakyFactor + location.y * prevMP) / (totalMP);
             }
 
             if (targetGroup.minX < minX) {
@@ -734,73 +882,54 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                 maxY = targetGroup.maxY;
             }
 
-            for(Cell tmpCell : targetGroup.getMemberCells()) {
-                tmpCell.setGroupTag(tag);
-                memberCells.add(tmpCell);
+            for(LIFNeuron tmpNeuron : targetGroup.getMemberNeurons()) {
+                tmpNeuron.setGroupTag(tag);
+                memberNeurons.add(tmpNeuron);
             }
 
             targetGroup.reset();
         }
 
-        /** calculate the distance between two groups in pixels
+        /** 
+         * calculates the distance between two groups in pixels
          *
          * @param targetGroup
          * @return
          */
-        public float locationDistancePixels(CellGroup targetGroup) {
+        public float locationDistancePixels(NeuronGroup targetGroup) {
             return (float) Math.sqrt(Math.pow(location.x - targetGroup.location.x, 2.0) + Math.pow(location.y - targetGroup.location.y, 2.0));
         }
 
-        /** calculate the distance between two groups in cells
-         *
-         * @param targetGroup
-         * @return
-         */
-        public float locationDistanceCells(CellGroup targetGroup) {
-            return locationDistancePixels(targetGroup) / ((float) cellSizePixels / 2);
-        }
-
-        /** returns member cells
+        /**
+         * returns memberNeurons
          *
          * @return
          */
-        public HashSet<Cell> getMemberCells() {
-            return memberCells;
+        public HashSet<LIFNeuron> getMemberNeurons() {
+            return memberNeurons;
         }
 
-        /** returns the number of member cells
+        /** 
+         * returns the number of member neurons
          *
          * @return
          */
-        public int getNumMemberCells() {
-            return memberCells.size();
+        public int getNumMemberNeurons() {
+            return memberNeurons.size();
         }
 
-        /** returns the number of events
-         *
-         * @return
-         */
-        public int getNumEvents() {
-            return numEvents;
-        }
-
-        /** returns the group mass.
+        /**
+         * returns the group membranePotential.
          * Time constant is not necessary.
+         * 
          * @return
          */
-        public float getMass() {
-            return mass;
+        public float getTotalMP() {
+            return totalMP;
         }
 
-        /** returns the first event timestamp of the group.
-         *
-         * @return
-         */
-        public int getFirstEventTimestamp() {
-            return firstEventTimestamp;
-        }
-
-        /** returns the last event timestamp of the group.
+        /**
+         * returns the last event timestamp of the group.
          *
          * @return
          */
@@ -808,7 +937,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return lastEventTimestamp;
         }
 
-        /** returns the location of the cell group.
+        /**
+         * returns the location of the group.
          *
          * @return
          */
@@ -816,7 +946,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return location;
         }
 
-        /** returns the inner radius of the cell group.
+        /**
+         * returns the inner radius of the group.
          *
          * @return
          */
@@ -824,7 +955,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return Math.min(Math.min(Math.abs(location.x - minX), Math.abs(location.x - maxX)), Math.min(Math.abs(location.y - minY), Math.abs(location.y - maxY)));
         }
 
-        /** returns the outter radius of the cell group.
+        /**
+         * returns the outter radius of the group.
          *
          * @return
          */
@@ -832,15 +964,31 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return Math.max(Math.max(Math.abs(location.x - minX), Math.abs(location.x - maxX)), Math.max(Math.abs(location.y - minY), Math.abs(location.y - maxY)));
         }
 
-        /** returns the raidus of the group area by assuming that the shape of the group is a square.
+        /** 
+         * returns dimension the group
+         *
+         * @return
+         */
+        public Dimension getDimension(){
+            Dimension ret = new Dimension();
+
+            ret.width = (int) (maxX - minX);
+            ret.height = (int) (maxY - minY);
+
+            return ret;
+        }
+
+        /**
+         * returns the raidus of the group area by assuming that the shape of the group is a square.
          *
          * @return
          */
         public float getAreaRadiusPixels() {
-            return (float) Math.sqrt((float) getNumMemberCells()) * cellSizePixels / 4;
+            return (float) Math.sqrt((float) getNumMemberNeurons()) * receptiveFieldSizePixels / 4;
         }
 
-        /** check if the targer location is within the inner radius of the group.
+        /** 
+         * checks if the targer location is within the inner radius of the group.
          *
          * @param targetLoc
          * @return
@@ -856,7 +1004,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return ret;
         }
 
-        /** check if the targer location is within the outter radius of the group.
+        /** 
+         * checks if the targer location is within the outter radius of the group.
          *
          * @param targetLoc
          * @return
@@ -872,7 +1021,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return ret;
         }
 
-        /** check if the targer location is within the area radius of the group.
+        /** 
+         * checks if the targer location is within the area radius of the group.
          *
          * @param targetLoc
          * @return
@@ -888,7 +1038,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return ret;
         }
 
-        /** check if the cell group contains the given event.
+        /** 
+         * checks if the group contains the given event.
          * It checks the location of the events
          * @param ev
          * @return
@@ -896,56 +1047,62 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         public boolean contains(BasicEvent ev) {
             boolean ret = false;
 
-            int subIndexX = (int) 2 * ev.getX() / cellSizePixels;
-            int subIndexY = (int) 2 * ev.getY() / cellSizePixels;
+            int subIndexX = (int) 2 * ev.getX() / receptiveFieldSizePixels;
+            int subIndexY = (int) 2 * ev.getY() / receptiveFieldSizePixels;
 
-            if (subIndexX >= numOfCellsX && subIndexY >= numOfCellsY) {
+            if (subIndexX >= numOfNeuronsX && subIndexY >= numOfNeuronsY) {
                 ret = false;
             }
 
-            if (!ret && subIndexX != numOfCellsX && subIndexY != numOfCellsY) {
-                ret = validCellIndexSet.contains(subIndexX + subIndexY * numOfCellsX);
+            if (!ret && subIndexX != numOfNeuronsX && subIndexY != numOfNeuronsY) {
+                ret = firingNeurons.contains(subIndexX + subIndexY * numOfNeuronsX);
             }
-            if (!ret && subIndexX != numOfCellsX && subIndexY != 0) {
-                ret = validCellIndexSet.contains(subIndexX + (subIndexY - 1) * numOfCellsX);
+            if (!ret && subIndexX != numOfNeuronsX && subIndexY != 0) {
+                ret = firingNeurons.contains(subIndexX + (subIndexY - 1) * numOfNeuronsX);
             }
-            if (!ret && subIndexX != 0 && subIndexY != numOfCellsY) {
-                ret = validCellIndexSet.contains(subIndexX - 1 + subIndexY * numOfCellsX);
+            if (!ret && subIndexX != 0 && subIndexY != numOfNeuronsY) {
+                ret = firingNeurons.contains(subIndexX - 1 + subIndexY * numOfNeuronsX);
             }
             if (!ret && subIndexY != 0 && subIndexX != 0) {
-                ret = validCellIndexSet.contains(subIndexX - 1 + (subIndexY - 1) * numOfCellsX);
+                ret = firingNeurons.contains(subIndexX - 1 + (subIndexY - 1) * numOfNeuronsX);
             }
 
             return ret;
         }
 
-        /** Returns true if the cell group contains border cells or corner cells.
+        /** 
+         * returns true if the group contains neurons which locate on edges or corners.
          *
+         * @return
          */
         public boolean isHitEdge() {
             return hitEdge;
         }
 
-        /** Returns true if the cell group is matched to a cluster
-         * This is used in a tracker module
+        /**
+         * Returns true if the group is matched to a cluster.
+         * This is used in a tracker module.
+         *
          * @return
          */
         public boolean isMatched() {
             return matched;
         }
 
-        /** Set true if the cell group is matched to a cluster
+        /** 
+         * Sets true if the group is matched to a cluster
          * So, other cluster cannot take this group as a cluster
          * @param matched
          */
         public void setMatched(boolean matched) {
             this.matched = matched;
         }
-    } // End of class cellGroup
+    } // End of class NeuronGroup
 
 
 
-    /** Processes the incoming events to have blurring filter output after first running the blurring to update the Cells.
+    /** 
+     * Processes the incoming events to have blurring filter output after first running the blurring to update the neurons.
      *
      * @param in the input packet.
      * @return the packet after filtering by the enclosed FilterChain.
@@ -967,13 +1124,13 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         return out;
     }
 
-    /** Allocate the incoming events into the cells
+    /** Allocate the incoming events into the neurons
      *
      * @param in the input packet of BasicEvent
      * @return the original input packet
      */
-    synchronized private EventPacket<?> blurring(EventPacket<?> in) {
-        boolean updatedCells = false;
+    synchronized protected EventPacket<?> blurring(EventPacket<?> in) {
+        boolean updatedNeurons = false;
 
         if(in == null)
             return in;
@@ -983,7 +1140,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         }
 
         try {
-            // add events to the corresponding cell
+            // add events to the corresponding neuron
             for(int i=0; i<in.getSize(); i++){
                 BasicEvent ev = in.getEvent(i);
 
@@ -991,434 +1148,438 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 //                if(ev.timestamp < lastTime){
 //                    resetFilter();
 //                }
-                int subIndexX = (int) (2.0f * ev.getX() / cellSizePixels);
-                int subIndexY = (int) (2.0f * ev.getY() / cellSizePixels);
+                int subIndexX = (int) (2.0f * ev.getX() / receptiveFieldSizePixels);
+                int subIndexY = (int) (2.0f * ev.getY() / receptiveFieldSizePixels);
 
-                if (subIndexX >= numOfCellsX && subIndexY >= numOfCellsY) {
+                if (subIndexX >= numOfNeuronsX && subIndexY >= numOfNeuronsY) {
                     initFilter();
                 }
 
-                if (subIndexX != numOfCellsX && subIndexY != numOfCellsY) {
-                    cellArray.get(subIndexX + subIndexY * numOfCellsX).addEvent(ev);
+                if (subIndexX != numOfNeuronsX && subIndexY != numOfNeuronsY) {
+                    lifNeurons.get(subIndexX + subIndexY * numOfNeuronsX).addEvent(ev, 1.0f);
                 }
-                if (subIndexX != numOfCellsX && subIndexY != 0) {
-                    cellArray.get(subIndexX + (subIndexY - 1) * numOfCellsX).addEvent(ev);
+                if (subIndexX != numOfNeuronsX && subIndexY != 0) {
+                    lifNeurons.get(subIndexX + (subIndexY - 1) * numOfNeuronsX).addEvent(ev, 1.0f);
                 }
-                if (subIndexX != 0 && subIndexY != numOfCellsY) {
-                    cellArray.get(subIndexX - 1 + subIndexY * numOfCellsX).addEvent(ev);
+                if (subIndexX != 0 && subIndexY != numOfNeuronsY) {
+                    lifNeurons.get(subIndexX - 1 + subIndexY * numOfNeuronsX).addEvent(ev, 1.0f);
                 }
                 if (subIndexY != 0 && subIndexX != 0) {
-                    cellArray.get(subIndexX - 1 + (subIndexY - 1) * numOfCellsX).addEvent(ev);
+                    lifNeurons.get(subIndexX - 1 + (subIndexY - 1) * numOfNeuronsX).addEvent(ev, 1.0f);
                 }
 
                 lastTime = ev.getTimestamp();
-                updatedCells = maybeCallUpdateObservers(in, lastTime);
+                updatedNeurons = maybeCallUpdateObservers(in, lastTime);
 
             }
         } catch (IndexOutOfBoundsException e) {
             initFilter();
-            // this is in case cell list is modified by real time filter during updating cells
+            // this is in case neuron list is modified by real time filter during updating neurons
             log.warning(e.getMessage());
         }
 
-        if (!updatedCells) {
-            updateCells(lastTime); // at laest once per packet update list
+        if (!updatedNeurons) {
+            updateNeurons(lastTime); // at laest once per packet update list
+            callUpdateObservers(in, lastTime);
         }
 
         return in;
     }
 
 
-    /** Updates cell properties of all cells at time t.
-     * Checks if the cell is active.
-     * Checks if the cell has (a) neighbor(s).
-     * Checks if the cell belongs to a group.
-     * Set the cell property based on the test results.
+    /**
+     * Updates all neurons at time t.
+     *
+     * Checks if the neuron is firing.
+     * Checks if the neuron has (a) simultaneously firing neighbor(s).
+     * Checks if the neuron belongs to a group.
+     * Set the neuron's firing type based on the test results.
+     * 
      * @param t
      */
-    synchronized private void updateCells(int t) {
-        validCellIndexSet.clear();
+    synchronized protected void updateNeurons(int t) {
+        // makes the list of firing neurons and neuron groups empty before update
+        firingNeurons.clear();
+        neuronGroups.clear();
+        // resets number of group before starting update
+        numOfGroup = 0;
 
-       if (!cellArray.isEmpty()) {
+       if (!lifNeurons.isEmpty()) {
             int timeSinceSupport;
-
-            // reset number of group before starting update
-            numOfGroup = 0;
-            cellGroup.clear();
-            Cell upCell, downCell, leftCell, rightCell;
-            for(int i=0; i<cellArray.size(); i++){
-                Cell tmpCell = cellArray.get(i);
+            
+            LIFNeuron upNeuron, downNeuron, leftNeuron, rightNeuron;
+            for(int i=0; i<lifNeurons.size(); i++){
+                LIFNeuron tmpNeuron = lifNeurons.get(i);
                 try {
-                    // reset stale cells
-                    timeSinceSupport = t - tmpCell.lastEventTimestamp;
-                    if (timeSinceSupport > cellLifeTimeUs) {
-                        tmpCell.reset();
+                    // reset stale neurons
+                    timeSinceSupport = t - tmpNeuron.lastEventTimestamp;
+                    if (timeSinceSupport > neuronLifeTimeUs) {
+                        tmpNeuron.reset();
                     }
 
-                    // calculate the cell number of neighbor cells
-                    int cellIndexX = (int) tmpCell.getCellIndex().x;
-                    int cellIndexY = (int) tmpCell.getCellIndex().y;                  
+                    int indexX = (int) tmpNeuron.getIndex().x;
+                    int indexY = (int) tmpNeuron.getIndex().y;
 
-                    tmpCell.setNumOfNeighbors(0);
-                    switch (tmpCell.getCellType()) {
+                    tmpNeuron.setNumFiringNeighbors(0);
+                    switch (tmpNeuron.getLocationType()) {
                         case CORNER_00:
-                            upCell = cellArray.get( cellIndexX + (cellIndexY + 1) * numOfCellsX);
-                            rightCell = cellArray.get(cellIndexX + 1 + cellIndexY * numOfCellsX);
+                            upNeuron = lifNeurons.get( indexX + (indexY + 1) * numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(indexX + 1 + indexY * numOfNeuronsX);
 
-                            // check threshold of the first cell
-                            tmpCell.isAboveThreshold();
+                            // check threshold of the first neuron
+                            tmpNeuron.isAboveThreshold();
 
-                            if (upCell.isAboveThreshold()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (upNeuron.isAboveThreshold()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (rightCell.isAboveThreshold()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (rightNeuron.isAboveThreshold()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpCell.getNumOfNeighbors() > 0) {
-                                if (tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER) {
-                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            if (tmpNeuron.getNumFiringNeighbors() > 0) {
+                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
+                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
                                 }
                             }
 
-                            if (tmpCell.getNumOfNeighbors() == 2) {
-                                tmpCell.setGroupTag(-1);
-                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
+                            if (tmpNeuron.getNumFiringNeighbors() == 2) {
+                                tmpNeuron.setGroupTag(-1);
+                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
 
-                                upCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                rightCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                updateGroup(tmpCell, UPDATE_UP | UPDATE_RIGHT);
+                                upNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
+                                rightNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
+                                updateGroup(tmpNeuron, UPDATE_UP | UPDATE_RIGHT);
                             }
                             break;
                         case CORNER_01:
-                            downCell = cellArray.get(cellIndexX + (cellIndexY - 1) * numOfCellsX);
-                            rightCell = cellArray.get(cellIndexX + 1 + cellIndexY * numOfCellsX);
+                            downNeuron = lifNeurons.get(indexX + (indexY - 1) * numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(indexX + 1 + indexY * numOfNeuronsX);
 
-                            if (downCell.isVisible()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (downNeuron.isFired()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (rightCell.isVisible()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (rightNeuron.isFired()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpCell.getNumOfNeighbors() > 0) {
-                                if (tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER) {
-                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            if (tmpNeuron.getNumFiringNeighbors() > 0) {
+                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
+                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
                                 }
                             }
 
-                            if (tmpCell.getNumOfNeighbors() == 2) {
-                                if (rightCell.getGroupTag() == downCell.getGroupTag()) {
-                                    tmpCell.setGroupTag(downCell.getGroupTag());
+                            if (tmpNeuron.getNumFiringNeighbors() == 2) {
+                                if (rightNeuron.getGroupTag() == downNeuron.getGroupTag()) {
+                                    tmpNeuron.setGroupTag(downNeuron.getGroupTag());
                                 } else {
-                                    tmpCell.setGroupTag(-1);
+                                    tmpNeuron.setGroupTag(-1);
                                 }
 
-                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
+                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
 
-                                rightCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                downCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                updateGroup(tmpCell, UPDATE_DOWN | UPDATE_RIGHT);
+                                rightNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                downNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                updateGroup(tmpNeuron, UPDATE_DOWN | UPDATE_RIGHT);
                             }
                             break;
                         case CORNER_10:
-                            upCell = cellArray.get( cellIndexX + (cellIndexY + 1) * numOfCellsX);
-                            leftCell = cellArray.get(cellIndexX - 1 + cellIndexY * numOfCellsX);
+                            upNeuron = lifNeurons.get( indexX + (indexY + 1) * numOfNeuronsX);
+                            leftNeuron = lifNeurons.get(indexX - 1 + indexY * numOfNeuronsX);
 
-                            if (upCell.isAboveThreshold()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (upNeuron.isAboveThreshold()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (leftCell.isVisible()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (leftNeuron.isFired()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpCell.getNumOfNeighbors() > 0) {
-                                if (tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER) {
-                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            if (tmpNeuron.getNumFiringNeighbors() > 0) {
+                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
+                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
                                 }
                             }
 
-                            if (tmpCell.getNumOfNeighbors() == 2) {
-                                tmpCell.setGroupTag(-1);
-                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
+                            if (tmpNeuron.getNumFiringNeighbors() == 2) {
+                                tmpNeuron.setGroupTag(-1);
+                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
 
-                                upCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                leftCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                updateGroup(tmpCell, UPDATE_UP | UPDATE_LEFT);
+                                upNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
+                                leftNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                updateGroup(tmpNeuron, UPDATE_UP | UPDATE_LEFT);
                             }
                             break;
                         case CORNER_11:
-                            downCell = cellArray.get(cellIndexX + (cellIndexY - 1) * numOfCellsX);
-                            leftCell = cellArray.get(cellIndexX - 1 + cellIndexY * numOfCellsX);
+                            downNeuron = lifNeurons.get(indexX + (indexY - 1) * numOfNeuronsX);
+                            leftNeuron = lifNeurons.get(indexX - 1 + indexY * numOfNeuronsX);
 
-                            if (downCell.isVisible()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (downNeuron.isFired()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (leftCell.isVisible()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (leftNeuron.isFired()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpCell.getNumOfNeighbors() > 0) {
-                                if (tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER) {
-                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            if (tmpNeuron.getNumFiringNeighbors() > 0) {
+                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
+                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
                                 }
                             }
 
-                            if (tmpCell.getNumOfNeighbors() == 2) {
-                                if (leftCell.getGroupTag() == downCell.getGroupTag()) {
-                                    tmpCell.setGroupTag(downCell.getGroupTag());
+                            if (tmpNeuron.getNumFiringNeighbors() == 2) {
+                                if (leftNeuron.getGroupTag() == downNeuron.getGroupTag()) {
+                                    tmpNeuron.setGroupTag(downNeuron.getGroupTag());
                                 } else {
-                                    if (leftCell.getGroupTag() > 0 && downCell.getGroupTag() > 0) {
-                                        tmpCell.setGroupTag(Math.min(downCell.getGroupTag(), leftCell.getGroupTag()));
+                                    if (leftNeuron.getGroupTag() > 0 && downNeuron.getGroupTag() > 0) {
+                                        tmpNeuron.setGroupTag(Math.min(downNeuron.getGroupTag(), leftNeuron.getGroupTag()));
 
                                         // do merge here
-                                        int targetGroupTag = Math.max(downCell.getGroupTag(), leftCell.getGroupTag());
-                                        cellGroup.get(tmpCell.getGroupTag()).merge(cellGroup.get(targetGroupTag));
-                                        cellGroup.remove(targetGroupTag);
-                                    } else if (leftCell.getGroupTag() < 0 && downCell.getGroupTag() < 0) {
-                                        tmpCell.setGroupTag(-1);
+                                        int targetGroupTag = Math.max(downNeuron.getGroupTag(), leftNeuron.getGroupTag());
+                                        neuronGroups.get(tmpNeuron.getGroupTag()).merge(neuronGroups.get(targetGroupTag));
+                                        neuronGroups.remove(targetGroupTag);
+                                    } else if (leftNeuron.getGroupTag() < 0 && downNeuron.getGroupTag() < 0) {
+                                        tmpNeuron.setGroupTag(-1);
                                     } else {
-                                        tmpCell.setGroupTag(Math.max(downCell.getGroupTag(), leftCell.getGroupTag()));
+                                        tmpNeuron.setGroupTag(Math.max(downNeuron.getGroupTag(), leftNeuron.getGroupTag()));
                                     }
                                 }
 
-                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
+                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
 
-                                downCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                leftCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                updateGroup(tmpCell, UPDATE_DOWN | UPDATE_LEFT);
+                                downNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                leftNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                updateGroup(tmpNeuron, UPDATE_DOWN | UPDATE_LEFT);
                             }
                             break;
                         case EDGE_0Y:
-                            upCell = cellArray.get( cellIndexX + (cellIndexY + 1) * numOfCellsX);
-                            downCell = cellArray.get(cellIndexX + (cellIndexY - 1) * numOfCellsX);
-                            rightCell = cellArray.get(cellIndexX + 1 + cellIndexY * numOfCellsX);
+                            upNeuron = lifNeurons.get( indexX + (indexY + 1) * numOfNeuronsX);
+                            downNeuron = lifNeurons.get(indexX + (indexY - 1) * numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(indexX + 1 + indexY * numOfNeuronsX);
 
-                            if (upCell.isAboveThreshold()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (upNeuron.isAboveThreshold()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (downCell.isVisible()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (downNeuron.isFired()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (rightCell.isVisible()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (rightNeuron.isFired()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpCell.getNumOfNeighbors() > 0) {
-                                if (tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER) {
-                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            if (tmpNeuron.getNumFiringNeighbors() > 0) {
+                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
+                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
                                 }
                             }
 
-                            if (tmpCell.getNumOfNeighbors() == 3) {
-                                if (rightCell.getGroupTag() == downCell.getGroupTag()) {
-                                    tmpCell.setGroupTag(downCell.getGroupTag());
+                            if (tmpNeuron.getNumFiringNeighbors() == 3) {
+                                if (rightNeuron.getGroupTag() == downNeuron.getGroupTag()) {
+                                    tmpNeuron.setGroupTag(downNeuron.getGroupTag());
                                 } else {
-                                    tmpCell.setGroupTag(-1);
+                                    tmpNeuron.setGroupTag(-1);
                                 }
 
-                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
+                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
 
-                                upCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                downCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                rightCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                updateGroup(tmpCell, UPDATE_UP | UPDATE_DOWN | UPDATE_RIGHT);
+                                upNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
+                                downNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                rightNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                updateGroup(tmpNeuron, UPDATE_UP | UPDATE_DOWN | UPDATE_RIGHT);
                             }
                             break;
                         case EDGE_1Y:
-                            upCell = cellArray.get( cellIndexX + (cellIndexY + 1) * numOfCellsX);
-                            downCell = cellArray.get(cellIndexX + (cellIndexY - 1) * numOfCellsX);
-                            leftCell = cellArray.get(cellIndexX - 1 + cellIndexY * numOfCellsX);
+                            upNeuron = lifNeurons.get( indexX + (indexY + 1) * numOfNeuronsX);
+                            downNeuron = lifNeurons.get(indexX + (indexY - 1) * numOfNeuronsX);
+                            leftNeuron = lifNeurons.get(indexX - 1 + indexY * numOfNeuronsX);
 
-                            if (upCell.isAboveThreshold()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (upNeuron.isAboveThreshold()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (downCell.isVisible()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (downNeuron.isFired()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (leftCell.isVisible()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (leftNeuron.isFired()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpCell.getNumOfNeighbors() > 0) {
-                                if (tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER) {
-                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            if (tmpNeuron.getNumFiringNeighbors() > 0) {
+                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
+                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
                                 }
                             }
 
-                            if (tmpCell.getNumOfNeighbors() == 3) {
-                                if (leftCell.getGroupTag() == downCell.getGroupTag()) {
-                                    tmpCell.setGroupTag(downCell.getGroupTag());
+                            if (tmpNeuron.getNumFiringNeighbors() == 3) {
+                                if (leftNeuron.getGroupTag() == downNeuron.getGroupTag()) {
+                                    tmpNeuron.setGroupTag(downNeuron.getGroupTag());
                                 } else {
-                                    if (leftCell.getGroupTag() > 0 && downCell.getGroupTag() > 0) {
-                                        tmpCell.setGroupTag(Math.min(downCell.getGroupTag(), leftCell.getGroupTag()));
+                                    if (leftNeuron.getGroupTag() > 0 && downNeuron.getGroupTag() > 0) {
+                                        tmpNeuron.setGroupTag(Math.min(downNeuron.getGroupTag(), leftNeuron.getGroupTag()));
 
                                         // do merge here
-                                        int targetGroupTag = Math.max(downCell.getGroupTag(), leftCell.getGroupTag());
-                                        cellGroup.get(tmpCell.getGroupTag()).merge(cellGroup.get(targetGroupTag));
-                                        cellGroup.remove(targetGroupTag);
-                                    } else if (leftCell.getGroupTag() < 0 && downCell.getGroupTag() < 0) {
-                                        tmpCell.setGroupTag(-1);
+                                        int targetGroupTag = Math.max(downNeuron.getGroupTag(), leftNeuron.getGroupTag());
+                                        neuronGroups.get(tmpNeuron.getGroupTag()).merge(neuronGroups.get(targetGroupTag));
+                                        neuronGroups.remove(targetGroupTag);
+                                    } else if (leftNeuron.getGroupTag() < 0 && downNeuron.getGroupTag() < 0) {
+                                        tmpNeuron.setGroupTag(-1);
                                     } else {
-                                        tmpCell.setGroupTag(Math.max(downCell.getGroupTag(), leftCell.getGroupTag()));
+                                        tmpNeuron.setGroupTag(Math.max(downNeuron.getGroupTag(), leftNeuron.getGroupTag()));
                                     }
                                 }
 
-                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
+                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
 
-                                upCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                downCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                leftCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                updateGroup(tmpCell, UPDATE_UP | UPDATE_DOWN | UPDATE_LEFT);
+                                upNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
+                                downNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                leftNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                updateGroup(tmpNeuron, UPDATE_UP | UPDATE_DOWN | UPDATE_LEFT);
                             }
                             break;
                         case EDGE_X0:
-                            upCell = cellArray.get( cellIndexX + (cellIndexY + 1) * numOfCellsX);
-                            rightCell = cellArray.get(cellIndexX + 1 + cellIndexY * numOfCellsX);
-                            leftCell = cellArray.get(cellIndexX - 1 + cellIndexY * numOfCellsX);
+                            upNeuron = lifNeurons.get( indexX + (indexY + 1) * numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(indexX + 1 + indexY * numOfNeuronsX);
+                            leftNeuron = lifNeurons.get(indexX - 1 + indexY * numOfNeuronsX);
 
-                            if (upCell.isAboveThreshold()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (upNeuron.isAboveThreshold()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (rightCell.isAboveThreshold()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (rightNeuron.isAboveThreshold()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (leftCell.isVisible()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (leftNeuron.isFired()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpCell.getNumOfNeighbors() > 0) {
-                                if (tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER) {
-                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            if (tmpNeuron.getNumFiringNeighbors() > 0) {
+                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
+                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
                                 }
                             }
 
-                            if (tmpCell.getNumOfNeighbors() == 3) {
-                                tmpCell.setGroupTag(-1);
-                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
+                            if (tmpNeuron.getNumFiringNeighbors() == 3) {
+                                tmpNeuron.setGroupTag(-1);
+                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
 
-                                upCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                rightCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                leftCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                updateGroup(tmpCell, UPDATE_UP | UPDATE_RIGHT | UPDATE_LEFT);
+                                upNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
+                                rightNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
+                                leftNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                updateGroup(tmpNeuron, UPDATE_UP | UPDATE_RIGHT | UPDATE_LEFT);
                             }
                             break;
                         case EDGE_X1:
-                            downCell = cellArray.get(cellIndexX + (cellIndexY - 1) * numOfCellsX);
-                            rightCell = cellArray.get(cellIndexX + 1 + cellIndexY * numOfCellsX);
-                            leftCell = cellArray.get(cellIndexX - 1 + cellIndexY * numOfCellsX);
+                            downNeuron = lifNeurons.get(indexX + (indexY - 1) * numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(indexX + 1 + indexY * numOfNeuronsX);
+                            leftNeuron = lifNeurons.get(indexX - 1 + indexY * numOfNeuronsX);
 
-                            if (downCell.isVisible()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (downNeuron.isFired()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (rightCell.isVisible()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (rightNeuron.isFired()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (leftCell.isVisible()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (leftNeuron.isFired()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpCell.getNumOfNeighbors() > 0) {
-                                if (tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER) {
-                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            if (tmpNeuron.getNumFiringNeighbors() > 0) {
+                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
+                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
                                 }
                             }
 
-                            if (tmpCell.getNumOfNeighbors() == 3) {
-                                if (rightCell.getGroupTag() == downCell.getGroupTag()) {
-                                    tmpCell.setGroupTag(downCell.getGroupTag());
+                            if (tmpNeuron.getNumFiringNeighbors() == 3) {
+                                if (rightNeuron.getGroupTag() == downNeuron.getGroupTag()) {
+                                    tmpNeuron.setGroupTag(downNeuron.getGroupTag());
                                 }
 
-                                if (leftCell.getGroupTag() == downCell.getGroupTag()) {
-                                    tmpCell.setGroupTag(downCell.getGroupTag());
+                                if (leftNeuron.getGroupTag() == downNeuron.getGroupTag()) {
+                                    tmpNeuron.setGroupTag(downNeuron.getGroupTag());
                                 } else {
-                                    if (leftCell.getGroupTag() > 0 && downCell.getGroupTag() > 0) {
-                                        tmpCell.setGroupTag(Math.min(downCell.getGroupTag(), leftCell.getGroupTag()));
+                                    if (leftNeuron.getGroupTag() > 0 && downNeuron.getGroupTag() > 0) {
+                                        tmpNeuron.setGroupTag(Math.min(downNeuron.getGroupTag(), leftNeuron.getGroupTag()));
 
                                         // do merge here
-                                        int targetGroupTag = Math.max(downCell.getGroupTag(), leftCell.getGroupTag());
-                                        cellGroup.get(tmpCell.getGroupTag()).merge(cellGroup.get(targetGroupTag));
-                                        cellGroup.remove(targetGroupTag);
-                                    } else if (leftCell.getGroupTag() < 0 && downCell.getGroupTag() < 0) {
-                                        tmpCell.setGroupTag(-1);
+                                        int targetGroupTag = Math.max(downNeuron.getGroupTag(), leftNeuron.getGroupTag());
+                                        neuronGroups.get(tmpNeuron.getGroupTag()).merge(neuronGroups.get(targetGroupTag));
+                                        neuronGroups.remove(targetGroupTag);
+                                    } else if (leftNeuron.getGroupTag() < 0 && downNeuron.getGroupTag() < 0) {
+                                        tmpNeuron.setGroupTag(-1);
                                     } else {
-                                        tmpCell.setGroupTag(Math.max(downCell.getGroupTag(), leftCell.getGroupTag()));
+                                        tmpNeuron.setGroupTag(Math.max(downNeuron.getGroupTag(), leftNeuron.getGroupTag()));
                                     }
                                 }
 
-                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
+                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
 
-                                rightCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                downCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                leftCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                updateGroup(tmpCell, UPDATE_DOWN | UPDATE_RIGHT | UPDATE_LEFT);
+                                rightNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
+                                downNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                leftNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                updateGroup(tmpNeuron, UPDATE_DOWN | UPDATE_RIGHT | UPDATE_LEFT);
                             }
                             break;
                         case INSIDE:
-                            upCell = cellArray.get( cellIndexX + (cellIndexY + 1) * numOfCellsX);
-                            downCell = cellArray.get(cellIndexX + (cellIndexY - 1) * numOfCellsX);
-                            rightCell = cellArray.get(cellIndexX + 1 + cellIndexY * numOfCellsX);
-                            leftCell = cellArray.get(cellIndexX - 1 + cellIndexY * numOfCellsX);
+                            upNeuron = lifNeurons.get( indexX + (indexY + 1) * numOfNeuronsX);
+                            downNeuron = lifNeurons.get(indexX + (indexY - 1) * numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(indexX + 1 + indexY * numOfNeuronsX);
+                            leftNeuron = lifNeurons.get(indexX - 1 + indexY * numOfNeuronsX);
                             
-                            if (upCell.isAboveThreshold()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (upNeuron.isAboveThreshold()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (downCell.isVisible()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (downNeuron.isFired()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (rightCell.isVisible()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (rightNeuron.isFired()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (leftCell.isVisible()) {
-                                tmpCell.increaseNumOfNeighbors();
+                            if (leftNeuron.isFired()) {
+                                tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpCell.getNumOfNeighbors() > 0 && tmpCell.isVisible()) {
-                                if (tmpCell.getCellProperty() != CellProperty.VISIBLE_BORDER) {
-                                    tmpCell.setCellProperty(CellProperty.VISIBLE_HAS_NEIGHBOR);
+                            if (tmpNeuron.getNumFiringNeighbors() > 0 && tmpNeuron.isFired()) {
+                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
+                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
                                 }
                             }
 
-                            if (tmpCell.getNumOfNeighbors() == 4 && tmpCell.isVisible()) {
-                                if (rightCell.getGroupTag() == downCell.getGroupTag()) {
-                                    tmpCell.setGroupTag(downCell.getGroupTag());
+                            if (tmpNeuron.getNumFiringNeighbors() == 4 && tmpNeuron.isFired()) {
+                                if (rightNeuron.getGroupTag() == downNeuron.getGroupTag()) {
+                                    tmpNeuron.setGroupTag(downNeuron.getGroupTag());
                                 }
 
-                                if (leftCell.getGroupTag() == downCell.getGroupTag()) {
-                                    tmpCell.setGroupTag(downCell.getGroupTag());
+                                if (leftNeuron.getGroupTag() == downNeuron.getGroupTag()) {
+                                    tmpNeuron.setGroupTag(downNeuron.getGroupTag());
                                 } else {
-                                    if (leftCell.getGroupTag() > 0 && downCell.getGroupTag() > 0) {
-                                        tmpCell.setGroupTag(Math.min(downCell.getGroupTag(), leftCell.getGroupTag()));
+                                    if (leftNeuron.getGroupTag() > 0 && downNeuron.getGroupTag() > 0) {
+                                        tmpNeuron.setGroupTag(Math.min(downNeuron.getGroupTag(), leftNeuron.getGroupTag()));
 
                                         // do merge here
-                                        int targetGroupTag = Math.max(downCell.getGroupTag(), leftCell.getGroupTag());
-                                        cellGroup.get(tmpCell.getGroupTag()).merge(cellGroup.get(targetGroupTag));
-                                        cellGroup.remove(targetGroupTag);
-                                    } else if (leftCell.getGroupTag() < 0 && downCell.getGroupTag() < 0) {
-                                        tmpCell.setGroupTag(-1);
+                                        int targetGroupTag = Math.max(downNeuron.getGroupTag(), leftNeuron.getGroupTag());
+                                        neuronGroups.get(tmpNeuron.getGroupTag()).merge(neuronGroups.get(targetGroupTag));
+                                        neuronGroups.remove(targetGroupTag);
+                                    } else if (leftNeuron.getGroupTag() < 0 && downNeuron.getGroupTag() < 0) {
+                                        tmpNeuron.setGroupTag(-1);
                                     } else {
-                                        tmpCell.setGroupTag(Math.max(downCell.getGroupTag(), leftCell.getGroupTag()));
+                                        tmpNeuron.setGroupTag(Math.max(downNeuron.getGroupTag(), leftNeuron.getGroupTag()));
                                     }
                                 }
 
-                                tmpCell.setCellProperty(CellProperty.VISIBLE_INSIDE);
+                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
 
-                                upCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.FORCED);
-                                downCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                rightCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
-                                leftCell.setPropertyToBorder(tmpCell.getGroupTag(), CellPropertyUpdate.CHECK);
+                                upNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
+                                downNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                rightNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                leftNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
 
-                                updateGroup(tmpCell, UPDATE_UP | UPDATE_DOWN | UPDATE_RIGHT | UPDATE_LEFT);
+                                updateGroup(tmpNeuron, UPDATE_UP | UPDATE_DOWN | UPDATE_RIGHT | UPDATE_LEFT);
                             }
                             break;
                         default:
                             break;
                     } // End of switch
-                    if (tmpCell.getCellProperty() == CellProperty.VISIBLE_INSIDE || tmpCell.getCellProperty() == CellProperty.VISIBLE_BORDER) {
-                        validCellIndexSet.add(tmpCell.cellNumber);
+                    if (tmpNeuron.getFiringType() == FiringType.FIRING_INSIDE || tmpNeuron.getFiringType() == FiringType.FIRING_ON_BORDER) {
+                        firingNeurons.add(tmpNeuron.cellNumber);
                     }
                 } catch (java.util.ConcurrentModificationException e) {
-                    // this is in case cell list is modified by real time filter during updating cells
+                    // this is in case neuron list is modified by real time filter during updating neurons
                     initFilter();
                     log.warning(e.getMessage());
                 }
@@ -1427,44 +1588,45 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         } // End of if
     }
 
-    /** Updates the cell group with a new member cell
+    /** 
+     * updates a neuron group with a new member
      *
-     * @param inCell : new member cell
-     * @param updateOption : option for updating neighbor cells. Selected neighbors are updated together.
-     * All neighbor cells are updated together with option 'UPDATE_UP | UPDATE_DOWN | UPDATE_RIGHT | UPDATE_LEFT'.
+     * @param newMemberNeuron : new member neuron
+     * @param updateOption : option for updating neighbor neurons. Selected neighbors are updated together.
+     * All neighbor neurons are updated together with option 'UPDATE_UP | UPDATE_DOWN | UPDATE_RIGHT | UPDATE_LEFT'.
      */
-    private final void updateGroup(Cell inCell, int updateOption) {
-        CellGroup tmpGroup = null;
-        if (cellGroup.containsKey(inCell.getGroupTag())) {
-            tmpGroup = cellGroup.get(inCell.getGroupTag());
-            tmpGroup.add(inCell);
+    private final void updateGroup(LIFNeuron newMemberNeuron, int updateOption) {
+        NeuronGroup tmpGroup = null;
+        if (neuronGroups.containsKey(newMemberNeuron.getGroupTag())) {
+            tmpGroup = neuronGroups.get(newMemberNeuron.getGroupTag());
+            tmpGroup.add(newMemberNeuron);
         } else {
-            tmpGroup = new CellGroup(inCell);
-            cellGroup.put(tmpGroup.tag, tmpGroup);
+            tmpGroup = new NeuronGroup(newMemberNeuron);
+            neuronGroups.put(tmpGroup.tag, tmpGroup);
         }
 
-        int cellIndexX = (int) inCell.getCellIndex().x;
-        int cellIndexY = (int) inCell.getCellIndex().y;
-        int up = cellIndexX + (cellIndexY + 1) * numOfCellsX;
-        int down = cellIndexX + (cellIndexY - 1) * numOfCellsX;
-        int right = cellIndexX + 1 + cellIndexY * numOfCellsX;
-        int left = cellIndexX - 1 + cellIndexY * numOfCellsX;
+        int indexX = (int) newMemberNeuron.getIndex().x;
+        int indexY = (int) newMemberNeuron.getIndex().y;
+        int up = indexX + (indexY + 1) * numOfNeuronsX;
+        int down = indexX + (indexY - 1) * numOfNeuronsX;
+        int right = indexX + 1 + indexY * numOfNeuronsX;
+        int left = indexX - 1 + indexY * numOfNeuronsX;
 
         if ((updateOption & UPDATE_UP) > 0) {
-            tmpGroup.add(cellArray.get(up));
+            tmpGroup.add(lifNeurons.get(up));
         }
         if ((updateOption & UPDATE_DOWN) > 0) {
-            tmpGroup.add(cellArray.get(down));
+            tmpGroup.add(lifNeurons.get(down));
         }
         if ((updateOption & UPDATE_RIGHT) > 0) {
-            tmpGroup.add(cellArray.get(right));
+            tmpGroup.add(lifNeurons.get(right));
         }
         if ((updateOption & UPDATE_LEFT) > 0) {
-            tmpGroup.add(cellArray.get(left));
+            tmpGroup.add(lifNeurons.get(left));
         }
     }
 
-    /** Draw cell
+    /** Draw the receptive field of a neuron
      *
      * @param gl
      * @param x
@@ -1472,11 +1634,11 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      * @param sx
      * @param sy
      */
-    protected void drawCell(GL gl, int x, int y, int sx, int sy) {
+    protected void drawReceptiveField(GL gl, int x, int y, int sx, int sy) {
         gl.glPushMatrix();
         gl.glTranslatef(x, y, 0);
 
-        if (filledCells) {
+        if (filledReceptiveField) {
             gl.glBegin(GL.GL_QUADS);
         } else {
             gl.glBegin(GL.GL_LINE_LOOP);
@@ -1503,24 +1665,24 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         }
         gl.glPushMatrix();
         try {
-            if (showCells) {
-                Cell tmpCell;
-                for (int i = 0; i < cellArray.size(); i++) {
-                    tmpCell = cellArray.get(i);
+            if (showFiringNeurons) {
+                LIFNeuron tmpNeuron;
+                for (int i = 0; i < lifNeurons.size(); i++) {
+                    tmpNeuron = lifNeurons.get(i);
 
-                    if (showBorderCellsOnly && tmpCell.getCellProperty() == CellProperty.VISIBLE_BORDER)
-                        tmpCell.draw(drawable);
+                    if (showBorderNeuronsOnly && tmpNeuron.getFiringType() == FiringType.FIRING_ON_BORDER)
+                        tmpNeuron.draw(drawable);
 
-                    if (showInsideCellsOnly && tmpCell.getCellProperty() == CellProperty.VISIBLE_INSIDE)
-                        tmpCell.draw(drawable);
+                    if (showInsideNeuronsOnly && tmpNeuron.getFiringType() == FiringType.FIRING_INSIDE)
+                        tmpNeuron.draw(drawable);
 
-                    if (!showBorderCellsOnly && !showInsideCellsOnly)
-                        if(tmpCell.getCellProperty() != CellProperty.NOT_VISIBLE)
-                            tmpCell.draw(drawable);
+                    if (!showBorderNeuronsOnly && !showInsideNeuronsOnly)
+                        if(tmpNeuron.getFiringType() != FiringType.SILENT)
+                            tmpNeuron.draw(drawable);
                 }
             }
         } catch (java.util.ConcurrentModificationException e) {
-            // this is in case cell list is modified by real time filter during rendering of cells
+            // this is in case neuron list is modified by real time filter during rendering of neurons
             log.warning(e.getMessage());
         }
         gl.glPopMatrix();
@@ -1529,262 +1691,279 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
     @Override
     synchronized public void initFilter() {
-        int prev_numOfCellsX = numOfCellsX;
-        int prev_numOfCellsY = numOfCellsY;
+        int prev_numOfNeuronsX = numOfNeuronsX;
+        int prev_numOfNeuronsY = numOfNeuronsY;
 
-        // calculate the required number of cells
-        if (2 * mychip.getSizeX() % cellSizePixels == 0) {
-            numOfCellsX = (int) (2 * mychip.getSizeX() / cellSizePixels) - 1;
+        // calculate the required number of neurons
+        if (2 * mychip.getSizeX() % receptiveFieldSizePixels == 0) {
+            numOfNeuronsX = (int) (2 * mychip.getSizeX() / receptiveFieldSizePixels) - 1;
         } else {
-            numOfCellsX = (int) (2 * mychip.getSizeX() / cellSizePixels);
+            numOfNeuronsX = (int) (2 * mychip.getSizeX() / receptiveFieldSizePixels);
         }
 
-        if (2 * mychip.getSizeY() % cellSizePixels == 0) {
-            numOfCellsY = (int) (2 * mychip.getSizeY() / cellSizePixels) - 1;
+        if (2 * mychip.getSizeY() % receptiveFieldSizePixels == 0) {
+            numOfNeuronsY = (int) (2 * mychip.getSizeY() / receptiveFieldSizePixels) - 1;
         } else {
-            numOfCellsY = (int) (2 * mychip.getSizeY() / cellSizePixels);
+            numOfNeuronsY = (int) (2 * mychip.getSizeY() / receptiveFieldSizePixels);
         }
 
         lastTime = 0;
-        validCellIndexSet.clear();
-        cellGroup.clear();
+        firingNeurons.clear();
+        neuronGroups.clear();
         numOfGroup = 0;
 
 
-        // initialize all cells
-        if ((numOfCellsX > 0 && numOfCellsY > 0) &&
-                (prev_numOfCellsX != numOfCellsX || prev_numOfCellsY != numOfCellsY)) {
-            if (!cellArray.isEmpty()) {
-                cellArray.clear();
+        // initialize all neurons
+        if ((numOfNeuronsX > 0 && numOfNeuronsY > 0) &&
+                (prev_numOfNeuronsX != numOfNeuronsX || prev_numOfNeuronsY != numOfNeuronsY)) {
+            if (!lifNeurons.isEmpty()) {
+                lifNeurons.clear();
             }
 
-            for (int j = 0; j < numOfCellsY; j++) {
-                for (int i = 0; i < numOfCellsX; i++) {
-                    Cell newCell = new Cell(i, j);
+            for (int j = 0; j < numOfNeuronsY; j++) {
+                for (int i = 0; i < numOfNeuronsX; i++) {
+                    LIFNeuron newNeuron = new LIFNeuron(i, j);
 
                     if (i == 0) {
                         if (j == 0) {
-                            newCell.setCellType(CellType.CORNER_00);
-                        } else if (j == numOfCellsY - 1) {
-                            newCell.setCellType(CellType.CORNER_01);
+                            newNeuron.setLocationType(LocationType.CORNER_00);
+                        } else if (j == numOfNeuronsY - 1) {
+                            newNeuron.setLocationType(LocationType.CORNER_01);
                         } else {
-                            newCell.setCellType(CellType.EDGE_0Y);
+                            newNeuron.setLocationType(LocationType.EDGE_0Y);
                         }
-                    } else if (i == numOfCellsX - 1) {
+                    } else if (i == numOfNeuronsX - 1) {
                         if (j == 0) {
-                            newCell.setCellType(CellType.CORNER_10);
-                        } else if (j == numOfCellsY - 1) {
-                            newCell.setCellType(CellType.CORNER_11);
+                            newNeuron.setLocationType(LocationType.CORNER_10);
+                        } else if (j == numOfNeuronsY - 1) {
+                            newNeuron.setLocationType(LocationType.CORNER_11);
                         } else {
-                            newCell.setCellType(CellType.EDGE_1Y);
+                            newNeuron.setLocationType(LocationType.EDGE_1Y);
                         }
                     } else {
                         if (j == 0) {
-                            newCell.setCellType(CellType.EDGE_X0);
-                        } else if (j == numOfCellsY - 1) {
-                            newCell.setCellType(CellType.EDGE_X1);
+                            newNeuron.setLocationType(LocationType.EDGE_X0);
+                        } else if (j == numOfNeuronsY - 1) {
+                            newNeuron.setLocationType(LocationType.EDGE_X1);
                         } else {
-                            newCell.setCellType(CellType.INSIDE);
+                            newNeuron.setLocationType(LocationType.INSIDE);
                         }
                     }
 
-                    cellArray.add(newCell.getCellNumber(), newCell);
+                    lifNeurons.add(newNeuron.getCellNumber(), newNeuron);
                 }
             }
         }
     }
 
     @Override
-    synchronized public void resetFilter() {
-        for (Cell c : cellArray) {
-            c.reset();
+    public void resetFilter() {
+        for (LIFNeuron n : lifNeurons) {
+            n.reset();
         }
 
         lastTime = 0;
-        validCellIndexSet.clear();
-        cellGroup.clear();
+        firingNeurons.clear();
+        neuronGroups.clear();
         numOfGroup = 0;
     }
 
-    /** returns the time constant of the cell mass
-     *
-     * @return time constant of the cell mass
-     */
-    public int getCellMassTimeConstantUs() {
-        return cellMassTimeConstantUs;
-    }
-
-    /** set the time constant of the cell mass
-     *
-     * @param cellMassTimeConstantUs
-     */
-    public void setCellMassTimeConstantUs(int cellMassTimeConstantUs) {
-        this.cellMassTimeConstantUs = cellMassTimeConstantUs;
-        getPrefs().putInt("BlurringFilter2D.cellMassTimeConstantUs", cellMassTimeConstantUs);
-    }
-
-    /** returns the life time the cell to be reset without additional events
+    /** 
+     * returns the time constant of the neuron's membranePotential
      *
      * @return
      */
-    public int getCellLifeTimeUs() {
-        return cellLifeTimeUs;
+    public int getMPTimeConstantUs() {
+        return MPTimeConstantUs;
     }
 
-    /** set the life time the cell
+    /** 
+     * sets MPTimeConstantUs
      *
-     * @param cellLifeTimeUs
+     * @param 
      */
-    public void setCellLifeTimeUs(int cellLifeTimeUs) {
-        this.cellLifeTimeUs = cellLifeTimeUs;
-        getPrefs().putInt("BlurringFilter2D.cellLifeTimeUs", cellLifeTimeUs);
+    public void setMPTimeConstantUs(int MPTimeConstantUs) {
+        this.MPTimeConstantUs = MPTimeConstantUs;
+        getPrefs().putInt("BlurringFilter2D.MPTimeConstantUs", MPTimeConstantUs);
     }
 
-    /** returns the cell size in pixels
+    /** 
+     * returns neuronLifeTimeUs
      *
-     * @return ell size in pixels
+     * @return
      */
-    public int getCellSizePixels() {
-        return cellSizePixels;
+    public int getNeuronLifeTimeUs() {
+        return neuronLifeTimeUs;
     }
 
-    /** set the cell size
+    /** 
+     * sets neuronLifeTimeUs
      *
-     * @param cellSizePixels
+     * @param neuronLifeTimeUs
      */
-    synchronized public void setCellSizePixels(int cellSizePixels) {
-        this.cellSizePixels = cellSizePixels;
-        getPrefs().putInt("BlurringFilter2D.cellSizePixels", cellSizePixels);
+    public void setNeuronLifeTimeUs(int neuronLifeTimeUs) {
+        this.neuronLifeTimeUs = neuronLifeTimeUs;
+        getPrefs().putInt("BlurringFilter2D.neuronLifeTimeUs", neuronLifeTimeUs);
+    }
+
+    /** 
+     * returns receptiveFieldSizePixels
+     *
+     * @return
+     */
+    public int getReceptiveFieldSizePixels() {
+        return receptiveFieldSizePixels;
+    }
+
+    /** 
+     * set receptiveFieldSizePixels
+     *
+     * @param receptiveFieldSizePixels
+     */
+    synchronized public void setReceptiveFieldSizePixels(int receptiveFieldSizePixels) {
+        this.receptiveFieldSizePixels = receptiveFieldSizePixels;
+        getPrefs().putInt("BlurringFilter2D.receptiveFieldSizePixels", receptiveFieldSizePixels);
         initFilter();
     }
 
-    /** returns the threshold of number of events.
-     * Only the cells with the number of events above this value will be active and visible on the screen.
-     *
-     * @return threshold of number of events
-     */
-    public int getThresholdEventsForVisibleCell() {
-        return thresholdEventsForVisibleCell;
-    }
-
-    /** set the threshold of number of events.
-     * Only the cells with the number of events above this value will be active and visible on the screen.
-     *
-     * @param thresholdEventsForVisibleCell
-     */
-    public void setThresholdEventsForVisibleCell(int thresholdEventsForVisibleCell) {
-        this.thresholdEventsForVisibleCell = thresholdEventsForVisibleCell;
-        getPrefs().putInt("BlurringFilter2D.thresholdEventsForVisibleCell", thresholdEventsForVisibleCell);
-    }
-
-    /**returns the threshold of cell mass.
-     * Only the cells with mass above this value will be active and visible on the screen.
+    /**
+     * returns MPThreshold
      *
      * @return
      */
-    public int getThresholdMassForVisibleCell() {
-        return thresholdMassForVisibleCell;
+    public int getMPThreshold() {
+        return MPThreshold;
     }
 
-    /**set the threshold of cell mass.
-     * Only the cells with mass above this value will be active and visible on the screen.
+    /**
+     * sets MPThreshold
      *
-     * @param thresholdMassForVisibleCell
+     * @param MPThreshold
      */
-    public void setThresholdMassForVisibleCell(int thresholdMassForVisibleCell) {
-        this.thresholdMassForVisibleCell = thresholdMassForVisibleCell;
-        getPrefs().putInt("BlurringFilter2D.thresholdMassForVisibleCell", thresholdMassForVisibleCell);
+    public void setMPThreshold(int MPThreshold) {
+        this.MPThreshold = MPThreshold;
+        getPrefs().putInt("BlurringFilter2D.MPThreshold", MPThreshold);
     }
 
-    /** returns true if the active cells are visible on the screen
+    /**
+     * returns showFiringNeurons
      *
      * @return
      */
-    public boolean isShowCells() {
-        return showCells;
+    public boolean isShowFiringNeurons() {
+        return showFiringNeurons;
     }
 
-    /** set true if you want the active cells visible on the screen
+    /** 
+     * sets showFiringNeurons
      *
-     * @param showCells
+     * @param showFiringNeurons
      */
-    public void setShowCells(boolean showCells) {
-        this.showCells = showCells;
-        getPrefs().putBoolean("BlurringFilter2D.showCells", showCells);
+    public void setShowFiringNeurons(boolean showFiringNeurons) {
+        this.showFiringNeurons = showFiringNeurons;
+        getPrefs().putBoolean("BlurringFilter2D.showFiringNeurons", showFiringNeurons);
     }
 
-    /** return true if only the border cells are visible on the screen
+    /** 
+     * returns showBorderNeuronsOnly
      *
-     * @return true if only the border cells are visible on the screen
+     * @return 
      */
-    public boolean isshowBorderCellsOnly() {
-        return showBorderCellsOnly;
+    public boolean isShowBorderNeuronsOnly() {
+        return showBorderNeuronsOnly;
     }
 
-    /** set true if you want the border cells visible on the screen
+    /** 
+     * sets showBorderNeuronsOnly
      *
-     * @param showBorderCellsOnly
+     * @param showBorderNeuronsOnly
      */
-    public void setshowBorderCellsOnly(boolean showBorderCellsOnly) {
-        this.showBorderCellsOnly = showBorderCellsOnly;
-        getPrefs().putBoolean("BlurringFilter2D.showBorderCellsOnly", showBorderCellsOnly);
+    public void setShowBorderNeuronsOnly(boolean showBorderNeuronsOnly) {
+        this.showBorderNeuronsOnly = showBorderNeuronsOnly;
+        getPrefs().putBoolean("BlurringFilter2D.showBorderNeuronsOnly", showBorderNeuronsOnly);
     }
 
-    /** return true if only the inside cells are visible on the screen
+    /** 
+     * returns showInsideNeuronsOnly
      *
-     * @return true if only the inside cells are visible on the screen
+     * @return 
      */
-    public boolean isshowInsideCellsOnly() {
-        return showInsideCellsOnly;
+    public boolean isShowInsideNeuronsOnly() {
+        return showInsideNeuronsOnly;
     }
 
-    /** set true if you want the inside cells visible on the screen
+    /** 
+     * sets showInsideNeuronsOnly
      *
-     * @param showInsideCellsOnly
+     * @param showInsideNeuronsOnly
      */
-    public void setshowInsideCellsOnly(boolean showInsideCellsOnly) {
-        this.showInsideCellsOnly = showInsideCellsOnly;
-        getPrefs().putBoolean("BlurringFilter2D.showInsideCellsOnly", showInsideCellsOnly);
+    public void setShowInsideNeuronsOnly(boolean showInsideNeuronsOnly) {
+        this.showInsideNeuronsOnly = showInsideNeuronsOnly;
+        getPrefs().putBoolean("BlurringFilter2D.showInsideNeuronsOnly", showInsideNeuronsOnly);
     }
 
-    /** return true if the visible cells are displayed with filled square on the screen.
+    /** 
+     * returns filledReceptiveField
      *
      * @return
      */
-    public boolean isFilledCells() {
-        return filledCells;
+    public boolean isFilledReceptiveField() {
+        return filledReceptiveField;
     }
 
-    /** set true if you want the visible cells displayed with filled square on the screen.
+    /** 
+     * sets filledReceptiveField
      *
-     * @param filledCells
+     * @param filledReceptiveField
      */
-    public void setFilledCells(boolean filledCells) {
-        this.filledCells = filledCells;
-        getPrefs().putBoolean("BlurringFilter2D.filledCells", filledCells);
+    public void setFilledReceptiveField(boolean filledReceptiveField) {
+        this.filledReceptiveField = filledReceptiveField;
+        getPrefs().putBoolean("BlurringFilter2D.filledReceptiveField", filledReceptiveField);
     }
 
-    /** returns the number of cell groups detected
+    /** 
+     * returns numOfGroup
      *
-     * @return number of cell groups detected at each update
+     * @return
      */
     public int getNumOfGroup() {
         return numOfGroup;
     }
 
-    /** returns cell groups
+    /** 
+     * returns collection of neuronGroups
      *
-     * @return collection of cell groups
+     * @return 
      */
-    public Collection getCellGroup() {
-        return cellGroup.values();
+    public Collection getNeuronGroups() {
+        return neuronGroups.values();
     }
 
-    /** returns the last timestamp ever recorded at this filter
+    /**
+     * returns the last timestamp ever recorded at this filter
      *
      * @return the last timestamp ever recorded at this filter
      */
     public int getLastTime() {
         return lastTime;
+    }
+
+    /**
+     * returns MPJumpAfterFiring
+     *
+     * @return
+     */
+    public float getMPJumpAfterFiring() {
+        return MPJumpAfterFiring;
+    }
+
+    /**
+     * sets MPJumpAfterFiring
+     *
+     * @param MPJumpAfterFiring
+     */
+    public void setMPJumpAfterFiring(float MPJumpAfterFiring) {
+        this.MPJumpAfterFiring = MPJumpAfterFiring;
+        getPrefs().putFloat("BlurringFilter2D.MPJumpAfterFiring", MPJumpAfterFiring);
     }
 }
