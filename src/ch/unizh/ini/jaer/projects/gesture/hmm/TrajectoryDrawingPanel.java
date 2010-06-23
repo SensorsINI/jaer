@@ -10,11 +10,16 @@ import java.awt.event.*;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.Random;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JPanel;
 /**
  * Abstract class for trajectory drawing panel. Feature vector extraction and gesture simulation can be implemented based on this class.
  * @author Jun Haeng Lee
  */
-abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotionListener, MouseListener, ActionListener, WindowListener{
+abstract public class TrajectoryDrawingPanel extends JFrame implements MouseMotionListener, MouseListener, WindowListener{
 
     /**
      * Name for button 'Clear trajectory' which is a default button always added to the menu. 
@@ -32,7 +37,14 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
     protected ArrayList<Point2D.Float> trajectory = new ArrayList<Point2D.Float>();
 
     Image img = null;
-    Graphics gImg = null;
+    Graphics2D gImg = null;
+
+    JMenuBar menuBar;
+    ButtonActionListener buttonActionListener = new ButtonActionListener();
+    MenuActionListener menuActionListener = new MenuActionListener();
+    JPanel buttonPanel;
+
+    private int yOffset;
 
     /**
     * for random color generation
@@ -45,17 +57,6 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
     Color penColor = Color.BLACK;
 
     /**
-     * Constructor with the title and the size of image panel
-     * @param title
-     * @param imgPanelWidth
-     * @param imgPanelHeight
-     */
-    public TrajectoryDrawingPanel(String title, int imgPanelWidth, int imgPanelHeight) {
-        super(title);
-        this.imgPanelWidth = imgPanelWidth;
-        this.imgPanelHeight = imgPanelHeight;
-    }
-    /**
      * Constructor with the title, the size of image panel, and component names for menu
      * @param title : drawing panel frame title
      * @param imgPanelWidth 
@@ -63,7 +64,9 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
      * @param imgPanelHeight
      */
     public TrajectoryDrawingPanel(String title, int imgPanelWidth, int imgPanelHeight, String[] componentNames) {
-        this(title, imgPanelWidth, imgPanelHeight);
+        super(title);
+        this.imgPanelWidth = imgPanelWidth;
+        this.imgPanelHeight = imgPanelHeight;
 
         initLayout(componentNames);
         
@@ -72,12 +75,9 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
         addMouseMotionListener(this);
         addMouseListener(this);
 
-        setVisible(true);
-
         img = createImage(imgPanelWidth, imgPanelHeight);
-        gImg = img.getGraphics();
+        gImg = (Graphics2D) img.getGraphics();
         initialDeco();
-        repaint();
     }
 
     /** override this method to change the layout
@@ -87,46 +87,80 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
     public void initLayout(String[] componentNames){
         setLayout(new BorderLayout());
 
-        // configuration of button panel
-        Panel buttonPanel = new Panel();
-        buttonPanel.setLayout(new GridLayout(1, componentNames.length));
-        for(int i = 1; i<= componentNames.length; i++){
-            Button newButton = new Button(componentNames[i-1]);
-            buttonPanel.add(newButton, ""+i);
-            newButton.addActionListener(this);
-        }
-        Button clearButton = new Button(clearButtonName);
-        buttonPanel.add(clearButton, ""+componentNames.length);
-        clearButton.addActionListener(this);
-        add(buttonPanel, "South");
+        // creates and adds menu bar to the frame
+        menuBar = new JMenuBar();
+        setJMenuBar(menuBar);
+        menuLayout();
 
-        setBounds(100, 100, imgPanelWidth, imgPanelHeight+25);
+        // creates and adds buttons
+        buttonPanel = new JPanel();
+        buttonLayout(componentNames);
+        add(buttonPanel, BorderLayout.SOUTH);
+
+        setBackground(Color.WHITE);
+        setVisible(true);
+
+        // sets window size
+        yOffset = getInsets().top + menuBar.getHeight(); // height of titlebar + height of menubar
+        int winHeight = imgPanelHeight + yOffset + buttonPanel.getHeight()+5;
+        setPreferredSize(new Dimension(imgPanelWidth, winHeight));
+        setLocation(100, 100);
+        pack();
         setResizable(false);
+    }
+
+    /**
+     * does menu layout
+     */
+    public void menuLayout(){
+        // creates and adds drop down menus to the menu bar
+        JMenu fileMenu = new JMenu("File");
+        menuBar.add(fileMenu);
+    }
+
+    /**
+     * defines and locates buttons
+     *
+     * @param componentNames
+     */
+    public void buttonLayout(String[] componentNames){
+        // configuration of button panel
+        if(componentNames != null){
+            buttonPanel.setLayout(new GridLayout(1, componentNames.length));
+            for(int i = 1; i<= componentNames.length; i++){
+                JButton newButton = new JButton(componentNames[i-1]);
+                buttonPanel.add(newButton, ""+i);
+                newButton.addActionListener(buttonActionListener);
+            }
+        }
+        JButton clearButton = new JButton(clearButtonName);
+        if(componentNames != null)
+            buttonPanel.add(clearButton, ""+componentNames.length);
+        else
+            buttonPanel.add(clearButton, "0");
+        clearButton.addActionListener(buttonActionListener);
     }
 
     @Override
     public void paint(Graphics g) {
         if(img != null)
-            g.drawImage(img, 0, 0, this);
+            g.drawImage(img, 0, yOffset, this);
     }
+
 
     /**
      * Initial decorations
      */
-    private void initialDeco(){
+    protected void initialDeco(){
         penColor = Color.BLACK;
         gImg.setColor(penColor);
         gImg.setFont(new Font("Arial", Font.PLAIN, 15));
-        gImg.drawString("Draw a trajectory by dragging your mouse.", 10, 50);
+        gImg.drawString("Draw a trajectory by dragging your mouse.", 10, 15);
         gImg.drawString("X", 65, imgPanelHeight - 5);
         gImg.drawString("Y", 8, imgPanelHeight - 65);
         gImg.drawString("(0, 0)", 15, imgPanelHeight - 15);
-        gImg.drawLine(10, imgPanelWidth - 10, 60, imgPanelHeight - 10);
-        gImg.drawLine(55, imgPanelWidth - 15, 60, imgPanelHeight - 10);
-        gImg.drawLine(55, imgPanelWidth - 5, 60, imgPanelHeight - 10);
-        gImg.drawLine(10, imgPanelWidth - 10, 10, imgPanelHeight - 60);
-        gImg.drawLine(5, imgPanelWidth - 55, 10, imgPanelHeight - 60);
-        gImg.drawLine(15, imgPanelWidth - 55, 10, imgPanelHeight - 60);
+        drawArrow(10, imgPanelWidth - 10, 60, imgPanelHeight - 10, 8, ArrowLocation.End);
+        drawArrow(10, imgPanelWidth - 10, 10, imgPanelHeight - 60, 8, ArrowLocation.End);
     }
     
     /**
@@ -162,7 +196,14 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
      * location of arrow head
      */
     public enum ArrowLocation {
+
+        /**
+         * center
+         */
         Center,
+        /**
+         * end
+         */
         End
     };
     /**
@@ -214,15 +255,17 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
         Color curColor = Color.BLUE;
 
         gImg.setColor(curColor);
-        gImg.drawOval((int) trj.get(0).x - 3, imgPanelHeight - (int) trj.get(0).y - 3, 6, 6);
+        Stroke tmpStroke = gImg.getStroke();
+        gImg.setStroke(new BasicStroke(3.0f, BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
+        gImg.drawOval((int) trj.get(0).x - 6, imgPanelHeight - (int) trj.get(0).y - 6, 12, 12);
         for(int i=0; i<trj.size()-1; i++){
             Point2D.Float startPos = trj.get(i);
             Point2D.Float endPos = trj.get(i+1);
 
             if(i == trj.size()/2)
-                drawArrow((int) startPos.x, imgPanelHeight - (int) startPos.y, (int) endPos.x, imgPanelHeight - (int) endPos.y, 8, ArrowLocation.Center);
+                drawArrow((int) startPos.x, imgPanelHeight - (int) startPos.y, (int) endPos.x, imgPanelHeight - (int) endPos.y, 12, ArrowLocation.Center);
             else if(i == trj.size()-2)
-                drawArrow((int) startPos.x, imgPanelHeight - (int) startPos.y, (int) endPos.x, imgPanelHeight - (int) endPos.y, 8, ArrowLocation.End);
+                drawArrow((int) startPos.x, imgPanelHeight - (int) startPos.y, (int) endPos.x, imgPanelHeight - (int) endPos.y, 12, ArrowLocation.End);
             else
                 gImg.drawLine((int) startPos.x, imgPanelHeight - (int) startPos.y, (int) endPos.x, imgPanelHeight - (int) endPos.y);
 
@@ -234,6 +277,7 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
         }
 
         gImg.setColor(tmp);
+        gImg.setStroke(tmpStroke);
     }
 
     /**
@@ -252,7 +296,7 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
         if(me.getModifiersEx() == MouseEvent.BUTTON1_DOWN_MASK){
             Point2D.Float newPoint = new Point2D.Float();
             newPoint.x = me.getX();
-            newPoint.y = imgPanelHeight - me.getY();
+            newPoint.y = imgPanelHeight - (me.getY() - yOffset);
             trajectory.add(newPoint);
 
             if(trajectory.size() == 1)
@@ -307,7 +351,7 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
         if(e.getButton() == MouseEvent.BUTTON1){
             Point2D.Float newPoint = new Point2D.Float();
             newPoint.x = e.getX();
-            newPoint.y = imgPanelHeight - e.getY();
+            newPoint.y = imgPanelHeight - (e.getY() - yOffset);
             
             trajectory.add(newPoint);
 
@@ -330,28 +374,44 @@ abstract public class TrajectoryDrawingPanel extends Frame implements MouseMotio
         }
     }
 
-
     /**
-     * action listener
-     * @param e
+     * class for butten action listener
      */
-    public void actionPerformed(ActionEvent e) {
-        String buttonName = e.getActionCommand();
+    class ButtonActionListener implements ActionListener{
+        public void actionPerformed(ActionEvent e) {
+            String buttonName = e.getActionCommand();
 
-        if(buttonName.equals(clearButtonName)) {
-            clearImage();
-        } else {
-            buttonAction(buttonName);
+            if(buttonName.equals(clearButtonName)) {
+                clearImage();
+            } else {
+                buttonAction(buttonName);
+            }
         }
     }
 
+    /**
+     * class for menu action listener
+     */
+    class MenuActionListener implements ActionListener{
+        public void actionPerformed(ActionEvent e) {
+            String menuName = e.getActionCommand();
+
+            menuAction(menuName);
+        }
+    }
 
     /**
-     * This funtions has to be implemented to define the action followed by a button click on the menu
+     * This funtions has to be implemented to define the action followed by a button click
      * Names of buttons are defined as componenetNames in Constructor
      * @param buttonName
      */
     abstract public void buttonAction(String buttonName);
+
+    /**
+     * This funtions has to be implemented to define the action followed by menu selection
+     * @param menuName
+     */
+    abstract public void menuAction(String menuName);
 
 
     /**

@@ -4,6 +4,11 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.Point2D;
 import java.util.HashSet;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
 
 /*
  * To change this template, choose Tools | Templates
@@ -28,7 +33,7 @@ public class HmmTestMain
 //        testSilentState(); // Tests forward, backward, and Viterbi algorithm with silent states, Currently, Baum-Welch method does not support silent states.
 //        testGesture1(); // Tests the performance of gesture recognition module. All possible observations are scanned.
 //        testDynamicThreshold(); // Tests dynamic threshold model
-//        testGesture2(); // Tests gesture recognition based on dynamic threshold model
+//        testGesture3(); // test partial gesture
         testGestureWithHandDrawing(); // Tests a HMM based gesture recognition system using hand drawing panel
     }
 
@@ -69,9 +74,9 @@ public class HmmTestMain
          */
         public HashSet<String> gestureItems = new HashSet<String>();
 
-        Choice gestureChoice;
-        Choice hmmModelChoice;
-        TextField newGesture;
+        JComboBox gestureChoice;
+        JComboBox hmmModelChoice;
+        JTextField newGesture;
 
         /**
          * All gestures have the same number of states.
@@ -108,75 +113,52 @@ public class HmmTestMain
         }
 
         /**
-         * Composes the layout of Drawing Window Frame
+         * Composes the button layout of Drawing Window Frame
+         * 
          * @param componentNames
          */
         @Override
-        public void initLayout(String[] componentNames) {
-            setLayout(new BorderLayout());
-            gestureChoice = new Choice();
+        public void buttonLayout(String[] componentNames) {
+            gestureChoice = new JComboBox();
             gestureChoice.setName("gestureChoice");
-            gestureChoice.add("Select a gesture");
-            hmmModelChoice = new Choice();
+            gestureChoice.addItem("Select a gesture");
+            hmmModelChoice = new JComboBox();
             hmmModelChoice.setName("hmmModelChoice");
-            hmmModelChoice.add("Select HMM model");
-            hmmModelChoice.add(ERGODIC);
-            hmmModelChoice.add(LR);
-            hmmModelChoice.add(LRB);
-            hmmModelChoice.add(LRC);
-            hmmModelChoice.add(LRBC);
-            newGesture = new TextField();
+            hmmModelChoice.addItem("Select HMM model");
+            hmmModelChoice.addItem(ERGODIC);
+            hmmModelChoice.addItem(LR);
+            hmmModelChoice.addItem(LRB);
+            hmmModelChoice.addItem(LRC);
+            hmmModelChoice.addItem(LRBC);
+            newGesture = new JTextField();
             newGesture.setText("New gesture name");
 
             // configuration of button panel
-            Panel buttonPanel = new Panel();
-            buttonPanel.setLayout(new GridLayout(2, componentNames.length+1));
-            
-            // gesture choice
+            buttonPanel.setLayout(new GridLayout(2, (componentNames.length+3)/2));
+
+            // adds gesture choice
             buttonPanel.add(gestureChoice, "1");
-
-            // remove and add
-            Panel removeAddPanel = new Panel();
-            Button newButton = new Button(componentNames[0]);
-            newButton.addActionListener(this);
-            removeAddPanel.add(newButton);
-            newButton = new Button(componentNames[1]);
-            newButton.addActionListener(this);
-            removeAddPanel.add(newButton);
-            buttonPanel.add(removeAddPanel, "2");
-
-            // new gesture name
-            buttonPanel.add(newGesture, "3");
-
-            // HMM model choice
-            buttonPanel.add(hmmModelChoice, "4");
-
-            // show and reset
-            Panel showResetPanel = new Panel();
-            newButton = new Button(componentNames[2]);
-            newButton.addActionListener(this);
-            showResetPanel.add(newButton);
-            newButton = new Button(componentNames[3]);
-            newButton.addActionListener(this);
-            showResetPanel.add(newButton);
-            buttonPanel.add(showResetPanel, "5");
-
-            for(int i = 4; i< componentNames.length; i++){
-                newButton = new Button(componentNames[i]);
-                buttonPanel.add(newButton, ""+(i+3));
-                newButton.addActionListener(this);
-            }
-            Button clearButton = new Button(clearButtonName);
-            buttonPanel.add(clearButton, ""+ (2*componentNames.length));
-            clearButton.addActionListener(this);
-            add(buttonPanel, "South");
-
             gestureChoice.addItemListener(this);
+
+            // adds new gesture name
+            buttonPanel.add(newGesture, "2");
+
+            // adds HMM model choice
+            buttonPanel.add(hmmModelChoice, "3");
             hmmModelChoice.addItemListener(this);
 
-            setBounds(100, 100, imgPanelWidth, imgPanelHeight+70);
-            setResizable(false);
+            // adds buttons
+            JButton newButton;
+            for(int i = 0; i< componentNames.length; i++){
+                newButton = new JButton(componentNames[i]);
+                buttonPanel.add(newButton, ""+(i+4));
+                newButton.addActionListener(buttonActionListener);
+            }
+            JButton clearButton = new JButton(clearButtonName);
+            buttonPanel.add(clearButton, ""+ (componentNames.length + 4));
+            clearButton.addActionListener(buttonActionListener);
         }
+
 
         /**
          * defines the actions caused by button pressed.
@@ -202,18 +184,25 @@ public class HmmTestMain
             }
         }
 
+        @Override
+        public void menuAction(String menuName) {
+            // do nothing
+        }
+
+
+
         /**
          * excutes Remove button
          */
         public void doRemoveGesture(){
-            String gesName = gestureChoice.getSelectedItem();
+            String gesName = (String)gestureChoice.getSelectedItem();
             if(gesName == null || gesName.equals("") || gesName.equals("Select a gesture")){
                 System.out.println("Warning: Gesture is not selected.");
                 return;
             }
 
             ghmm.removeGesture(gesName);
-            gestureChoice.remove(gesName);
+            gestureChoice.removeItem(gesName);
             gestureItems.remove(gesName);
             System.out.println(gesName + " was removed.");
         }
@@ -228,7 +217,7 @@ public class HmmTestMain
                 return;
             }
 
-            if(hmmModelChoice.getSelectedItem().startsWith("Select HMM model")) {
+            if(((String) hmmModelChoice.getSelectedItem()).startsWith("Select HMM model")) {
                 System.out.println("Warning: HMM model is not specified.");
                 return;
             }
@@ -237,7 +226,7 @@ public class HmmTestMain
 
             if(!gestureItems.contains(gestName)){
                 gestureItems.add(gestName);
-                gestureChoice.add(gestName);
+                gestureChoice.addItem(gestName);
                 HiddenMarkovModel.ModelType selectedModel;
                 if(hmmModelChoice.getSelectedItem().equals("ERGODIC"))
                     selectedModel = HiddenMarkovModel.ModelType.ERGODIC_RANDOM;
@@ -259,7 +248,7 @@ public class HmmTestMain
 
                 System.out.println("A new gesture ("+ gestName + ") is added.");
             }
-            gestureChoice.select(gestName);
+            gestureChoice.setSelectedItem(gestName);
             newGesture.setText("");
         }
 
@@ -267,7 +256,7 @@ public class HmmTestMain
          * excutes Learn button
          */
         public void doLearn(){
-            String gesName = gestureChoice.getSelectedItem();
+            String gesName = (String) gestureChoice.getSelectedItem();
             if(gesName == null || gesName.equals("") || gesName.equals("Select a gesture")){
                 System.out.println("Warning: Gesture is not selected.");
                 return;
@@ -344,7 +333,7 @@ public class HmmTestMain
          * excutes Show button
          */
         public void doShow(){
-            String gesName = gestureChoice.getSelectedItem();
+            String gesName = (String) gestureChoice.getSelectedItem();
             if(gesName == null || gesName.equals("") || gesName.equals("Select a gesture")){
                 System.out.println("Warning: Gesture is not selected.");
                 return;
@@ -385,7 +374,7 @@ public class HmmTestMain
          * excutes Reset button
          */
         public void doReset(){
-            String gesName = gestureChoice.getSelectedItem();
+            String gesName = (String) gestureChoice.getSelectedItem();
             if(gesName == null || gesName.equals("") || gesName.equals("Select a gesture")){
                 System.out.println("Warning: Gesture is not selected.");
                 return;
@@ -412,7 +401,43 @@ public class HmmTestMain
             }
         }
     }
-    
+
+    /**
+     * test partial gesture
+     */
+    public static void testGesture3()
+    {
+        String[] featureVectorSpace = new String[] {"0", "1", "2", "3", "4", "5"};
+        int numState = 4;
+
+        String[][] trainingGesture = {{"0", "1", "2", "3", "4", "5"}, {"3", "2", "1", "0", "4", "5"}, {"5", "4", "3", "2", "1", "0"}};
+        String[][] testGesture = {{"0"}, {"0", "1"}, {"0", "1", "2"}, {"0", "1", "2", "3"}, {"0", "1", "2", "3", "4"},
+                                  {"0", "1", "2", "3", "4", "5"}, {"0", "1", "2", "3", "4", "5", "1"},
+                                  {"0", "1", "2", "3", "4", "5", "1", "3"}, {"0", "1", "2", "3", "4", "5", "1", "3", "5"}};
+        String[] TGnames = {"gesture1", "gesture2", "gesture3"};
+
+        GestureHmm ghmm = new GestureHmm(featureVectorSpace, GestureHmm.DYNAMIC_THRESHOLD); // use threshold model
+        for(int i=0; i<TGnames.length; i++){
+            ghmm.addGesture(TGnames[i], numState, HiddenMarkovModel.ModelType.LRB_RANDOM);
+            ghmm.initializeGestureRandom(TGnames[i]);
+
+            if(ghmm.learnGesture(TGnames[i], trainingGesture[i], true, true, true)){
+                System.out.println(TGnames[i]+" is properly registered. Log{P(O|model)} = " + Math.log10(ghmm.getGestureHmm(TGnames[i]).forward(trainingGesture[i])));
+                ghmm.printGesture(TGnames[i]);
+                ghmm.getGestureHmm(TGnames[i]).viterbi(trainingGesture[i]);
+                System.out.println("Viterbi path : " + ghmm.getGestureHmm(TGnames[i]).getViterbiPathString(trainingGesture[i].length));
+            }
+        }
+
+        for(int i=0; i<testGesture.length; i++){
+            String bmg = ghmm.getBestMatchingGesture(testGesture[i]);
+            System.out.println("Best matching gesture of test gesture " + (i+1) + " is the " + ghmm.getBestMatchingGesture(testGesture[i]) +". ");
+            for(int j=0; j<TGnames.length; j++){
+                System.out.println("Likelyhood of test gesture " + (i+1) + " in " +TGnames[j]+" : "+ Math.log10(ghmm.getGestureLikelyhood(TGnames[j], testGesture[i])));
+            }
+            System.out.println("Likelyhood of test gesture " + (i+1) + " in threshold model : "+ Math.log10(ghmm.getGestureLikelyhoodTM(1.0, testGesture[i])));
+        }
+    }
 
     /**
      * test gesture recognition based on dynamic threshold model
