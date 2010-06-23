@@ -3,90 +3,91 @@
  * and open the template in the editor.
  */
 
-package ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.EventFilter2D;
+package ch.unizh.ini.jaer.projects.einsteintunnel.visualeffects;
+
+import java.io.*;
+import java.net.*;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.Graphics2D;
-import java.util.*;
-import java.util.Observable;
-import java.util.Observer;
+
 
 /**
  *
  * @author braendch
  */
-public class SampleTunnelFilter extends EventFilter2D implements Observer {
+public class EinsteinTunnelDisplay {
 
-    public int csx, maxHistogramX;
-    public int dsx = 504;
-    public int dsy = 80;
-    public int[] xHistogram;
-    public double decayFactor = 0.9;
+    public static int commandPort = 5888;
+    public static int packetCount = 0;
+    public static int dsx = 504;
+    public static int dsy = 80;
+    public static int maxHistogramX;
+    public static short[] xHistogram;
 
-    public static String getDescription (){
-        return "A demonstration sample for the Einstein Tunnel project on pedestrian traffic controlled LED panels";
-    }
-    private boolean histogramEnabled = getPrefs().getBoolean("HistogramFilter.histogramEnabled",true);
+    public static void main(String[] args) throws IOException{
 
-    public SampleTunnelFilter(AEChip chip) {
-        super(chip);
+        byte[] buf = new byte[dsx*2+4+4];
+        char[] msg = new char[4];
+        xHistogram = new short[dsx];
+        maxHistogramX = 1;
 
-        final String f = "Filters";
-        setPropertyTooltip(f,"histogramEnabled","A simple histogram display filter");
+        DatagramSocket socket = new DatagramSocket(commandPort);
+        InetAddress address = InetAddress.getByName("localhost");
+        
+        System.out.println("Einstein Tunnel Display Method");
 
-        initFilter();
-    }
+        while(true){
 
-    public void initFilter() {
-        resetFilter();
-    }
-
-    synchronized public void resetFilter() {
-        if(chip!=null){
-            csx = chip.getSizeX();
-            xHistogram = new int[dsx];
-        }
-        maxHistogramX = 1; // not 0 to avoid division by 0
-    }
-
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-
-        if(!isFilterEnabled()) return in;
-        if(getEnclosedFilter()!=null) in=getEnclosedFilter().filterPacket(in);
-        if(getEnclosedFilterChain()!=null) in=getEnclosedFilterChain().filterPacket(in);
-
-        for(BasicEvent e:in){
-            xHistogram[e.x*dsx/csx] += 1;
-        }
-        if(histogramEnabled){
+            //System.out.println(address.getCanonicalHostName()+":"+commandPort);
+            DatagramPacket packet = new DatagramPacket(buf, buf.length, address, commandPort);
+            packet = new DatagramPacket(buf, buf.length);
+            socket.receive(packet);
+            //seq #
+            int packetNumber = ((buf[0] & 0xFF) << 24)
+            | ((buf[1] & 0xFF) << 16)
+            | ((buf[2] & 0xFF) << 8)
+            | (buf[3] & 0xFF);
+            //msg
+            msg[0]=(char)(buf[4]);
+            msg[1]=(char)(buf[5]);
+            msg[2]=(char)(buf[6]);
+            msg[3]=(char)(buf[7]);
+            //System.out.println(new String(msg));
+            //data
+            if(msg[0]=='h'&&msg[1]=='i'&&msg[2]=='s'&&msg[3]=='t'){
+                for(int i=0; i<dsx; i++){
+                    xHistogram[i] = (short)(((buf[8+2*i] & 0xFF) << 8)
+                                   | (buf[9+2*i] & 0xFF));
+                    //System.out.print(xHistogram[i]+" ");
+                }
+                //System.out.println();
+            }
+            //System.out.print("Packet number "+packetNumber);
             checkHistogram();
             histogramCanvas.repaint();
-            for(int i = 0; i<xHistogram.length; i++){
-                xHistogram[i] = (int)(xHistogram[i]*decayFactor);
+            packetCount++;
+            if (packetNumber>packetCount){
+                System.out.println("Lost Packet! "+packetNumber);
+                packetCount = packetNumber;
             }
         }
-
-        return in;
     }
 
-    GLU glu=null;
-    JFrame histogramFrame=null;
-    GLCanvas histogramCanvas=null;
+    static GLU glu=null;
+    static JFrame histogramFrame=null;
+    static GLCanvas histogramCanvas=null;
 
-    void checkHistogram(){
+    static void checkHistogram(){
         if(histogramFrame==null || (histogramFrame!=null && !histogramFrame.isVisible())){
             createSimpleHistogram();
         }
     }
 
-    void createSimpleHistogram(){
+    static void createSimpleHistogram(){
         histogramFrame=new JFrame("Histogram");
         Insets histogramInsets = histogramFrame.getInsets();
         histogramFrame.setSize(dsx+histogramInsets.left+histogramInsets.right, dsy+histogramInsets.bottom+histogramInsets.top);
@@ -115,7 +116,7 @@ public class SampleTunnelFilter extends EventFilter2D implements Observer {
                 int error=gl.glGetError();
                 if(error!=GL.GL_NO_ERROR){
                     if(glu==null) glu=new GLU();
-                    log.warning("GL error number "+error+" "+glu.gluErrorString(error));
+                    //log.warning("GL error number "+error+" "+glu.gluErrorString(error));
                 }
             }
 
@@ -142,8 +143,5 @@ public class SampleTunnelFilter extends EventFilter2D implements Observer {
 
     public void annotate(Graphics2D g) {
     }
-    
-    public void update(Observable o, Object arg){
-        resetFilter();
-    }
+
 }
