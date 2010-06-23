@@ -1803,7 +1803,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             return;
                         }
 //                    ratekeps=aemon.getEstimatedEventRate()/1000f;
-                        thisTimeString = String.format("%5.3fs",lastPacketLastTs * aemon.getTimestampTickUs() * 1e-6f);
+                        thisTimeString = String.format("%5.3fs",packet.getLastTimestamp() * aemon.getTimestampTickUs() * 1e-6f);
                         break;
                     case PLAYBACK:
 //                    if(ae.getNumEvents()>2) ratekeps=(float)ae.getNumEvents()/(float)dtMs;
