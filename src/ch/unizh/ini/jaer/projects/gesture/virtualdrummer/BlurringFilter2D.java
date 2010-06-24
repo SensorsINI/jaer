@@ -78,6 +78,46 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      */
     private boolean showInsideNeuronsOnly = getPrefs().getBoolean("BlurringFilter2D.showInsideNeuronsOnly", true);
 
+    /**
+     * color to draw the receptive field of firing neurons
+     */
+    private COLOR_CHOICE colorToDrawRF = COLOR_CHOICE.valueOf(getPrefs().get("BlurringFilter2D.colorToDrawRF", COLOR_CHOICE.orange.toString()));
+
+    
+
+    /**
+     * names of color
+     */
+    public static enum COLOR_CHOICE {black, blue, cyan, darkgray, gray, green, lightgray, magenta, orange, pink, red, white, yellow};
+
+    /**
+     * A map containing a mapping from color names to color values
+     */
+     private final static HashMap<COLOR_CHOICE, Color> colors = new HashMap<COLOR_CHOICE, Color>();
+
+     /**
+      * The base set of colors
+      */
+     static {
+        colors.put(COLOR_CHOICE.black, Color.black);
+        colors.put(COLOR_CHOICE.blue, Color.blue);
+        colors.put(COLOR_CHOICE.cyan, Color.cyan);
+        colors.put(COLOR_CHOICE.darkgray, Color.darkGray);
+        colors.put(COLOR_CHOICE.gray, Color.gray);
+        colors.put(COLOR_CHOICE.green, Color.green);
+        colors.put(COLOR_CHOICE.lightgray, Color.lightGray);
+        colors.put(COLOR_CHOICE.magenta, Color.magenta);
+        colors.put(COLOR_CHOICE.orange, Color.orange);
+        colors.put(COLOR_CHOICE.pink, Color.pink);
+        colors.put(COLOR_CHOICE.red, Color.red);
+        colors.put(COLOR_CHOICE.white, Color.white);
+        colors.put(COLOR_CHOICE.yellow, Color.yellow);
+    }
+
+    /**
+     * RGB value of color
+     */
+     private float[] rgb = new float[4];
 
 
 
@@ -164,6 +204,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         // initializes filter
         initFilter();
+        colors.get(colorToDrawRF).getRGBComponents(rgb);
 
         // adds this class as an observer
         chip.addObserver(this);
@@ -182,6 +223,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         setPropertyTooltip(disp, "filledReceptiveField", "if true, the receptive field of firing neurons are displayed with filled sqaures. Otherwise, they are shown with hallow squares.");
         setPropertyTooltip(disp, "showBorderNeuronsOnly", "shows neurons with firing type of FIRING_ON_BORDER only.");
         setPropertyTooltip(disp, "showInsideNeuronsOnly", "shows neurons with firing type of FIRING_INSIDE only.");
+        setPropertyTooltip(disp, "colorToDrawRF", "color to draw the receptive field of firing neurons");
     }
 
     @Override
@@ -206,14 +248,14 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      * EDGE_* : neurons that are located in edges
      * INSIDE: all neurons except corner and egde neurons
      */
-    static enum LocationType {
+    public static enum LocationType {
         CORNER_00, CORNER_01, CORNER_10, CORNER_11, EDGE_0Y, EDGE_1Y, EDGE_X0, EDGE_X1, INSIDE
     }
 
     /**
      * Definition of firing types of neurons
      */
-    public enum FiringType {
+    public static enum FiringType {
 
         /**
          * does not fire due to the low membrane potential
@@ -320,12 +362,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          /**
          * color to display the neuron's receptive field.
          */
-        protected Color color = null;
+//        protected Color color = null;
 
-        /**
-         * RGB value of color
-         */
-        private float[] rgb = new float[4];
+        
 
         /**
          * Construct an LIF neuron with index.
@@ -335,8 +374,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          */
         public LIFNeuron(int indexX, int indexY) {
             float hue = random.nextFloat();
-            Color c = Color.getHSBColor(hue, 1f, 1f);
-            setColor(c);
+//            Color c = Color.getHSBColor(hue, 1f, 1f);
+//            setColor(c);
 
             if (indexX < 0 || indexY < 0 || indexX >= numOfNeuronsX || indexY >= numOfNeuronsY) {
                 // exception
@@ -387,20 +426,34 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         /** Draws the neuron using OpenGL.
          *
-         * @param drawable area to draw this.
+         * @param drawable area to drawReceptiveField this.
          */
-        public void draw(GLAutoDrawable drawable) {
+        public void drawReceptiveField(GLAutoDrawable drawable) {
             final float BOX_LINE_WIDTH = 2f; // in chip
             GL gl = drawable.getGL();
 
             // set color and line width
-            setColorAutomatically();
-            getColor().getRGBComponents(rgb);
             gl.glColor3fv(rgb, 0);
             gl.glLineWidth(BOX_LINE_WIDTH);
 
             // draws the receptive field of a neuron
-            drawReceptiveField(gl, (int) getLocation().x, (int) getLocation().y, (int) receptiveFieldSizePixels / 2, (int) receptiveFieldSizePixels / 2);
+            gl.glPushMatrix();
+            gl.glTranslatef((int) getLocation().x, (int) getLocation().y, 0);
+
+            if (filledReceptiveField) {
+                gl.glBegin(GL.GL_QUADS);
+            } else {
+                gl.glBegin(GL.GL_LINE_LOOP);
+            }
+
+            int halfSize = (int) receptiveFieldSizePixels / 2;
+            gl.glVertex2i(-halfSize, -halfSize);
+            gl.glVertex2i(+halfSize, -halfSize);
+            gl.glVertex2i(+halfSize, +halfSize);
+            gl.glVertex2i(-halfSize, +halfSize);
+
+            gl.glEnd();
+            gl.glPopMatrix();
         }
 
         /**
@@ -543,43 +596,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                     membranePotential);
         }
 
-        /**
-         * returns the color of the neuron's receptive field when it is displayed on the screen
-         *
-         * @return
-         */
-        public Color getColor() {
-            return color;
-        }
-
-        /**
-         * sets the color
-         *
-         * @param color
-         */
-        public void setColor(Color color) {
-            this.color = color;
-        }
-
-        /**
-         * sets color according to measured membranePotential
-         *
-         */
-        public void setColorAccordingToMP() {
-            float hue = 1 / membranePotential;
-            if (hue > 1) {
-                hue = 1;
-            }
-            setColor(Color.getHSBColor(hue, 1f, 1f));
-        }
-
-        /** 
-         * sets color automatically
-         * Currently ,it's done based on the membranePotential
-         */
-        public void setColorAutomatically() {
-            setColorAccordingToMP();
-        }
 
         /**
          * returns index
@@ -1626,34 +1642,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         }
     }
 
-    /** Draw the receptive field of a neuron
-     *
-     * @param gl
-     * @param x
-     * @param y
-     * @param sx
-     * @param sy
-     */
-    protected void drawReceptiveField(GL gl, int x, int y, int sx, int sy) {
-        gl.glPushMatrix();
-        gl.glTranslatef(x, y, 0);
-
-        if (filledReceptiveField) {
-            gl.glBegin(GL.GL_QUADS);
-        } else {
-            gl.glBegin(GL.GL_LINE_LOOP);
-        }
-
-        {
-            gl.glVertex2i(-sx, -sy);
-            gl.glVertex2i(+sx, -sy);
-            gl.glVertex2i(+sx, +sy);
-            gl.glVertex2i(-sx, +sy);
-        }
-        gl.glEnd();
-        gl.glPopMatrix();
-    }
-
     public void annotate(GLAutoDrawable drawable) {
         if (!isFilterEnabled()) {
             return;
@@ -1671,14 +1659,14 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                     tmpNeuron = lifNeurons.get(i);
 
                     if (showBorderNeuronsOnly && tmpNeuron.getFiringType() == FiringType.FIRING_ON_BORDER)
-                        tmpNeuron.draw(drawable);
+                        tmpNeuron.drawReceptiveField(drawable);
 
                     if (showInsideNeuronsOnly && tmpNeuron.getFiringType() == FiringType.FIRING_INSIDE)
-                        tmpNeuron.draw(drawable);
+                        tmpNeuron.drawReceptiveField(drawable);
 
                     if (!showBorderNeuronsOnly && !showInsideNeuronsOnly)
                         if(tmpNeuron.getFiringType() != FiringType.SILENT)
-                            tmpNeuron.draw(drawable);
+                            tmpNeuron.drawReceptiveField(drawable);
                 }
             }
         } catch (java.util.ConcurrentModificationException e) {
@@ -1965,5 +1953,27 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     public void setMPJumpAfterFiring(float MPJumpAfterFiring) {
         this.MPJumpAfterFiring = MPJumpAfterFiring;
         getPrefs().putFloat("BlurringFilter2D.MPJumpAfterFiring", MPJumpAfterFiring);
+    }
+
+    /**
+     * returns colorToDrawRF
+     *
+     * @return
+     */
+    public COLOR_CHOICE getColorToDrawRF() {
+        return colorToDrawRF;
+    }
+
+    /**
+     * sets colorToDrawRF
+     *
+     * @param colorToDrawRF
+     */
+    public void setColorToDrawRF(COLOR_CHOICE colorToDrawRF) {
+        COLOR_CHOICE old = this.colorToDrawRF;
+        this.colorToDrawRF = colorToDrawRF;
+
+        getPrefs().put("BlurringFilter2D.colorToDrawRF",colorToDrawRF.toString());
+        colors.get(colorToDrawRF).getRGBComponents(rgb);
     }
 }
