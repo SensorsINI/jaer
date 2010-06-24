@@ -57,10 +57,10 @@ public class IndexFileFilter extends javax.swing.filechooser.FileFilter {
 
        /** The extension, including the dot, ".aeidx"
      **/
-    public static final String EXTENSION;
-    static{
-        EXTENSION=AEDataFile.INDEX_FILE_EXTENSION.substring(AEDataFile.INDEX_FILE_EXTENSION.lastIndexOf(".")+1,AEDataFile.INDEX_FILE_EXTENSION.length());
-    }
+    public static final String EXTENSION=AEDataFile.INDEX_FILE_EXTENSION;
+//    static{
+//        EXTENSION=AEDataFile.INDEX_FILE_EXTENSION.substring(AEDataFile.INDEX_FILE_EXTENSION.lastIndexOf(".")+1,AEDataFile.INDEX_FILE_EXTENSION.length());
+//    }
 
     /** The orignal extension for AE index files */
     public static final String OLDEXTENSION=".index";
