@@ -45,17 +45,18 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
     private double [][][] audioArray = new double[128][128][2];
 
     private double [][] coherenceMap = new double[128][128];
-
+    private double audioHistogram = 0;
     private Queue CoherenceQueue = new LinkedList();
 
     private int LastQueueTimestamp = 0;
     private int CoherenceWindow = getPrefs().getInt("Coherent Timing Window", 1000);
 
     private float ClusterThresh = getPrefs().getFloat("Clustering Threshold", 0.3f);
+    private float audioEventThresh = getPrefs().getFloat("Audio Event Threshold", 13f);
 
-    private double a_decay = 0.9;
+    private float a_decay = getPrefs().getFloat("Cochlea Decaying Factor", 0.3f);
     private float v_decay = getPrefs().getFloat("Retina Decaying Factor", 0.9f);
-    private double c_decay = 0.95;
+    private float c_decay = getPrefs().getFloat("Coherent Spikes Decaying Factor", 0.95f);;
     
     private double prev_timestamp = 0;
     private int LastAudioSpike = 0;
@@ -106,6 +107,9 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
         addPropertyToGroup("ITDWeighting", "maxWeight");
         addPropertyToGroup("ITDWeighting", "maxWeightTime");
 */
+        setPropertyTooltip("a_decay", "Decaying rate of audio spikes for Event-Thresholding");
+        setPropertyTooltip("c_decay", "Decaying rate of the Coherent spikes (how long they stay visible)");
+        setPropertyTooltip("audioEventThresh", "Spikes needed to detect Audio as Event (noise reduction)");
         setPropertyTooltip("ClusterThresh", "Clustering Threshold relative to Maximum");
         setPropertyTooltip("v_decay", "Decayingfactor of the Retina histogram map");
         setPropertyTooltip("CoherenceWindow", "Timeframe within which Spikes count as correlated");
@@ -133,12 +137,15 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
 
 	                audioArray[ev.x][ev.y-128][1] = audioArray[ev.x][ev.y-128][1]+1;
                         LastAudioSpike = ev.timestamp;
+                        audioHistogram = audioHistogram + 1;
                         //log.info("audio spike " + ev.x + " " + ev.y);
 	            } else {
 	                // retina
 	                visualArray[ev.x][ev.y][1] = visualArray[ev.x][ev.y][1]+1;
                         if (Math.abs(ev.timestamp-LastAudioSpike)<CoherenceWindow){
-                            process_coherent_spike(ev);
+                            if (audioHistogram > audioEventThresh){
+                                process_coherent_spike(ev);
+                            }
                         }
                         else {
                             CoherenceQueue.offer(ev);
@@ -181,11 +188,18 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
         //log.info("coherent event" + ev.x + " " + ev.y);
         //coherenceMap[ev.x][ev.y]=coherenceMap[ev.x][ev.y]+3;
         double max = max_video();
+        int increase = 1;
+        if (Math.abs(ev.timestamp-LastAudioSpike)<(CoherenceWindow/2)){
+            increase = 1;
+        }
+        if (Math.abs(ev.timestamp-LastAudioSpike)<(CoherenceWindow/4)){
+            increase = 1;
+        }
         if (ev.x>2 && ev.x<126 && ev.y>2 && ev.y<126){
             for (int i=ev.x-1; i<=ev.x+1; i++){
                 for (int j=ev.y-1; j<=ev.y+1; j++){
                     if (visualArray[i][j][0]>0.5*max){
-                        coherenceMap[i][j]=coherenceMap[i][j]+1;
+                        coherenceMap[i][j]=coherenceMap[i][j]+increase;
                     }
                 }
             }
@@ -194,6 +208,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
     }
 
     public void decay_audio(double decay_factor){
+        audioHistogram = audioHistogram * decay_factor;
         for (int i=0; i<128; i++){
             for (int j=0; j<128; j++) {
                 audioArray[i][j][1]=(double)audioArray[i][j][1]*decay_factor;
@@ -297,7 +312,6 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
 
         /**
 	*	Drawing routine
-	*
 	*/
     public void annotate(GLAutoDrawable drawable) {
 
@@ -337,13 +351,13 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
             }
         }
         gl.glColor4f(0,1,0,.3f);
-        for (int i=0; i<128; i++){
+/*        for (int i=0; i<128; i++){
             for (int j=0; j<128; j++) {
                 if (audioArray[i][j][1]>a_maximum*0.1){
                     gl.glVertex2d(-130+i, j);
                 }
             }
-        }
+        }*/
         for (int i=0; i<128; i++){
             for (int j=0; j<128; j++) {
                 if (visualArray[i][j][0]>maximum*ClusterThresh){
@@ -354,12 +368,13 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
 
         for (int i=0; i<128; i++){
             for (int j=0; j<128; j++) {
-                if (c_maximum != 0){
+                if (c_maximum > 1){
                     float c_ratio = (float)(coherenceMap[i][j]/c_maximum);
-                    gl.glColor4f(c_ratio,0,0,1f);
-                    //if (c_ratio >0.2){
+                    //gl.glColor4f(c_ratio,0,0,1f);
+                   if (c_ratio >0.2){
+                        gl.glColor4f((float)(c_ratio/2)+0.5f,0,0,1f);
                         gl.glVertex2d(130+i, 130+j);
-                    //}
+                   }
                     
                 }
 
@@ -430,6 +445,25 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
         this.v_decay = v_decay;
     }
 
+
+    public float getA_decay(){
+        return this.a_decay;
+    }
+    public void setA_decay(float a_decay){
+        getPrefs().putFloat("Distinguish.a_decay", a_decay);
+        support.firePropertyChange("a_decay", this.a_decay, a_decay);
+        this.a_decay = a_decay;
+    }
+
+    public float getC_decay(){
+        return this.c_decay;
+    }
+    public void setC_decay(float c_decay){
+        getPrefs().putFloat("Distinguish.c_decay", c_decay);
+        support.firePropertyChange("c_decay", this.c_decay, c_decay);
+        this.c_decay = c_decay;
+    }
+
     public float getClusterThresh(){
         return this.ClusterThresh;
     }
@@ -437,6 +471,14 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
         getPrefs().putFloat("Distinguish.ClusterThresh", ClusterThresh);
         support.firePropertyChange("ClusterThresh", this.ClusterThresh, ClusterThresh);
         this.ClusterThresh = ClusterThresh;
+    }
+    public float getAudioEventThresh(){
+        return this.audioEventThresh;
+    }
+    public void setAudioEventThresh(float audioEventThresh){
+        getPrefs().putFloat("Distinguish.audioEventThresh", audioEventThresh);
+        support.firePropertyChange("audioEventThresh", this.audioEventThresh, audioEventThresh);
+        this.audioEventThresh = audioEventThresh;
     }
 
     public int getCoherenceWindow() {
