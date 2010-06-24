@@ -6,7 +6,9 @@
 package ch.unizh.ini.jaer.projects.einsteintunnel.visualeffects;
 
 import java.io.*;
+import java.nio.*;
 import java.net.*;
+import java.util.*;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
@@ -88,6 +90,7 @@ public class EinsteinTunnelDisplay {
     }
 
     static void createSimpleHistogram(){
+
         histogramFrame=new JFrame("Histogram");
         Insets histogramInsets = histogramFrame.getInsets();
         histogramFrame.setSize(dsx+histogramInsets.left+histogramInsets.right, dsy+histogramInsets.bottom+histogramInsets.top);
@@ -106,13 +109,27 @@ public class EinsteinTunnelDisplay {
                 gl.glClearColor(0,0,0,0);
                 gl.glClear(GL.GL_COLOR_BUFFER_BIT);
                 //iteration through the xHistogram
+                //background
+                drawBackground(gl);
+                //histogram
+                gl.glBegin (GL.GL_LINES);
                 for(int i = 0; i<dsx; i++){
                     if(xHistogram[i]>maxHistogramX) maxHistogramX = xHistogram[i];
-                    gl.glColor3f(1,0,0);
-                    gl.glRectf(i,0,i+1,xHistogram[i]*dsy/maxHistogramX);
-                    //System.out.println("DSX: "+dsx/csx*i);
-                    //System.out.println("histogram X: "+xHistogram[i]);
+                    if(xHistogram[i]>0){
+                        //gl.glColor3f(0,0,0);
+                        //gl.glVertex2i(i,0);
+                        //gl.glVertex2i(i,dsy);
+                        gl.glColor3f(1,1,0);
+                        gl.glVertex2i(i,0);
+                        gl.glColor3f(1,0,0);
+                        gl.glVertex2i(i,xHistogram[i]*dsy/maxHistogramX);
+                        gl.glVertex2i(i,xHistogram[i]*dsy/maxHistogramX);
+                        gl.glColor3f(0,0,0);
+                        gl.glVertex2i(i,2*xHistogram[i]*dsy/maxHistogramX);
+                    }
                 }
+                gl.glEnd ();
+
                 int error=gl.glGetError();
                 if(error!=GL.GL_NO_ERROR){
                     if(glu==null) glu=new GLU();
@@ -136,6 +153,73 @@ public class EinsteinTunnelDisplay {
         histogramFrame.getContentPane().add(histogramCanvas);
         //histogramFrame.pack();
         histogramFrame.setVisible(true);
+    }
+
+    static int phase = 0;
+    static float[][][] RGB;
+    static public void drawBackground(GL gl){
+        RGB = new float[3][dsx][dsy];
+        gl.glPointSize(1);
+        gl.glBegin (GL.GL_POINTS);
+        //snake I
+        for(int x=0; x<dsx; x++){
+            Arrays.fill(RGB[0][x], 0.0f);
+            Arrays.fill(RGB[1][x], 0.0f);
+            Arrays.fill(RGB[2][x], 0.0f);
+            int y = (int)((dsy/2)+(0.42*dsy*Math.sin(0.01*phase+1.11*x/dsx)+0.124*dsy*Math.sin(0.035*phase+0.32*x/dsx)));
+            if(y>0 && y<dsy){
+                RGB[0][x][y]+=1;
+                RGB[1][x][y]+=1;
+                RGB[2][x][y]+=1;
+                gl.glColor3f(RGB[0][x][y],RGB[1][x][y], RGB[2][x][y]);
+                gl.glVertex2i(x,y);
+            }
+            for(int j=1; j<21; j++){
+                if(y+j>0 && y+j<dsy){
+                    RGB[0][x][y+j]+=(float)(1-0.1*j);
+                    RGB[1][x][y+j]+=(float)(1-0.1*j);
+                    RGB[2][x][y+j]+=(float)(1-0.05*j);
+                    gl.glColor3f(RGB[0][x][y+j],RGB[1][x][y+j], RGB[2][x][y+j]);
+                    gl.glVertex2i(x,y+j);
+                }
+                if(y-j>0 && y-j<dsy){
+                    RGB[0][x][y-j]+=(float)(1-0.1*j);
+                    RGB[1][x][y-j]+=(float)(1-0.1*j);
+                    RGB[2][x][y-j]+=(float)(1-0.05*j);
+                    gl.glColor3f(RGB[0][x][y-j],RGB[1][x][y-j], RGB[2][x][y-j]);
+                    gl.glVertex2i(x,y-j);
+                }
+            }
+        }
+        //snake II
+        for(int x=0; x<dsx; x++){
+            int y = (int)((dsy/2)+(0.5123*dsy*Math.sin(0.019823*phase+1.265*x/dsx)+0.0832*dsy*Math.sin(0.00465*phase+0.521*x/dsx)));
+            if(y>0 && y<dsy){
+                RGB[0][x][y]+=1;
+                RGB[1][x][y]+=1;
+                RGB[2][x][y]+=1;
+                gl.glColor3f(RGB[0][x][y],RGB[1][x][y], RGB[2][x][y]);
+                gl.glVertex2i(x,y);
+            }
+            for(int j=1; j<21; j++){
+                if(y+j>0 && y+j<dsy){
+                    RGB[0][x][y+j]+=(float)(1-0.1*j);
+                    RGB[1][x][y+j]+=(float)(1-0.1*j);
+                    RGB[2][x][y+j]+=(float)(1-0.05*j);
+                    gl.glColor3f(RGB[0][x][y+j],RGB[1][x][y+j], RGB[2][x][y+j]);
+                    gl.glVertex2i(x,y+j);
+                }
+                if(y-j>0 && y-j<dsy){
+                    RGB[0][x][y-j]+=(float)(1-0.1*j);
+                    RGB[1][x][y-j]+=(float)(1-0.1*j);
+                    RGB[2][x][y-j]+=(float)(1-0.05*j);
+                    gl.glColor3f(RGB[0][x][y-j],RGB[1][x][y-j], RGB[2][x][y-j]);
+                    gl.glVertex2i(x,y-j);
+                }
+            }
+        }
+        gl.glEnd ();
+        phase +=1;
     }
 
     public void annotate(float[][][] frame) {
