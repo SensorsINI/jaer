@@ -101,8 +101,18 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 log.info("rewind PropertyChangeEvent received by " + this + " from " + evt.getSource());
                 wrappingCorrectionMs = 0;
             } else if (evt.getPropertyName().equals(AEInputStream.EVENT_WRAPPED_TIME)) {
-                wrappingCorrectionMs += (long) (1L << 32L) / 1000; // TODO fixme
-            } else if (evt.getPropertyName().equals(AEInputStream.EVENT_INIT)) {
+                long old=wrappingCorrectionMs;
+                int newtime=((Integer)evt.getNewValue()).intValue();
+                boolean fwds=true;
+                 if(newtime==0){
+                    wrappingCorrectionMs = wrappingCorrectionMs+(fwds? (long) (1L << 31L) / 1000:-(long)(1L<<31L)/1000); // 2G us, handles case of wrapping back to 0 and not -2^31
+//                System.out.println("incremented wrappingCorrectionMs");
+                }else{
+                    wrappingCorrectionMs = wrappingCorrectionMs+(fwds? (long) (1L << 32L) / 1000:-(long)(1L<<31L)/1000); // 4G us
+                }
+                log.info("timestamp wrap event received by "+this+" from "+evt.getSource()+" oldValue="+evt.getOldValue()+" newValue="+evt.getNewValue()+", wrappingCorrectionMs increased by "+(wrappingCorrectionMs-old));
+           } else if (evt.getPropertyName().equals(AEInputStream.EVENT_INIT)) {
+                log.info("EVENT_INIT recieved, signaling new input stream");
                 AEFileInputStream fis = (AEFileInputStream) (evt.getSource());
             }
         } else if (evt.getSource() instanceof AEViewer) {

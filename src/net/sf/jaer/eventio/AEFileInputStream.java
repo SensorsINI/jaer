@@ -195,11 +195,13 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         log.info("initialized " + this.toString());
     }
 
-    /** reads the next event forward
+    /** reads the next event forward, sets mostRecentTimestamp
     @throws EOFException at end of file
+     * @throws NonMonotonicTimeException
+     * @throws WrappedTimeException
      */
     private EventRaw readEventForwards () throws IOException,NonMonotonicTimeException{
-        int ts = 0;
+        int ts = -1;
         int addr = 0;
         try{
 //            eventByteBuffer.rewind();
@@ -212,7 +214,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             } else{
                 addr = (byteBuffer.getShort()&0xffff); // TODO reads addr as negative number if msb is set
             }
-            ts = byteBuffer.getInt(); 
+            ts = byteBuffer.getInt();
+//            if(ts==0){
+//                System.out.println("zero timestamp");
+//            }
              // for marking sync in a recording using the result of bitmask with input
             if ( ( addr & timestampResetBitmask ) != 0 ){
                 log.info("found timestamp reset event addr="+addr+" position="+position+" timstamp=" + ts);
@@ -354,7 +359,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             }
         } catch ( WrappedTimeException e ){
             log.warning(e.toString());
-            getSupport().firePropertyChange(AEInputStream.EVENT_WRAPPED_TIME,oldPosition,position());
+            getSupport().firePropertyChange(AEInputStream.EVENT_WRAPPED_TIME,e.getPreviousTimestamp(),e.getCurrentTimestamp());
         } catch ( NonMonotonicTimeException e ){
 //            log.info(e.getMessage());
         }
@@ -371,9 +376,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     Fires property change "wrappedTime" when time wraps from positive to negative or vice versa (when playing backwards).
      * <p>
      *Non-monotonic timestamps cause warning messages to be printed (up to MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT) and packet
-     * reading is aborted when the non-monotonic timestamp is encountered. Nornally this does not cause problems except that the packet
-     * is storter in duration that called for. But when sychronized playback is enabled it causes the differnt threads to desychronize.
-     * Therefore the data files should not contain non-monotonic timestamps when sychronized playback is desired.
+     * reading is aborted when the non-monotonic timestamp is encountered. Normally this does not cause problems except that the packet
+     * is shorter in duration that called for. But when synchronized playback is enabled it causes the different threads to desychronize.
+     * Therefore the data files should not contain non-monotonic timestamps when synchronized playback is desired.
      * 
      *@param dt the timestamp different in units of the timestamp (usually us)
      *@see #MAX_BUFFER_SIZE_EVENTS
@@ -383,6 +388,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             fireInitPropertyChange();
         }
         int endTimestamp = currentStartTimestamp + dt;
+        // check to see if this read will wrap the int32 timestamp around e.g. from >0 to <0 for dt>0
         boolean bigWrap = isWrappedTime(endTimestamp,currentStartTimestamp,dt);
 //        if( (dt>0 && mostRecentTimestamp>endTimestamp ) || (dt<0 && mostRecentTimestamp<endTimestamp)){
 //            boolean lt1=endTimestamp<0, lt2=mostRecentTimestamp<0;
@@ -399,26 +405,30 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         int oldPosition = position();
         EventRaw ae;
         int i = 0;
+//        System.out.println("endTimestamp-startTimestamp="+(endTimestamp-startTimestamp)+"   mostRecentTimestamp="+mostRecentTimestamp+" startTimestamp="+startTimestamp);
         try{
             if ( dt > 0 ){ // read forwards
-                if ( !bigWrap ){
+                if ( !bigWrap ){ // normal situation
                     do{
                         ae = readEventForwards();
                         addr[i] = ae.address;
                         ts[i] = ae.timestamp;
                         i++;
-                    } while ( mostRecentTimestamp < endTimestamp && i < addr.length - 1 && mostRecentTimestamp >= startTimestamp ); // if time jumps backwards (e.g. timestamp reset during recording) then will read a huge number of events.
-                } else{
+                    } while ( mostRecentTimestamp < endTimestamp && i < addr.length  && mostRecentTimestamp >= startTimestamp ); // if time jumps backwards (e.g. timestamp reset during recording) then will read a huge number of events.
+                } else{ // read should wrap around
+//                    System.out.println("bigwrap started");
                     do{
                         ae = readEventForwards();
                         addr[i] = ae.address;
                         ts[i] = ae.timestamp;
                         i++;
-                    } while ( mostRecentTimestamp > 0 && i < addr.length - 1 );
-                    ae = readEventForwards();
-                    addr[i] = ae.address;
-                    ts[i] = ae.timestamp;
-                    i++;
+                    } while ( mostRecentTimestamp > 0 && i < addr.length ); // read to where bigwrap occurs, then terminate - but wrapped time exception will happen first
+                    // never gets here because of wrap exception
+//                    System.out.println("reading one more event after bigwrap");
+//                    ae = readEventForwards();
+//                    addr[i] = ae.address;
+//                    ts[i] = ae.timestamp;
+//                    i++;
                 }
             } else{ // read backwards
                 if ( !bigWrap ){
@@ -435,32 +445,34 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                         ts[i] = ae.timestamp;
                         i++;
                     } while ( mostRecentTimestamp < 0 && i < addr.length - 1 );
+
                     ae = readEventBackwards();
                     addr[i] = ae.address;
                     ts[i] = ae.timestamp;
                     i++;
                 }
             }
-            currentStartTimestamp = mostRecentTimestamp;
         } catch ( WrappedTimeException w ){
             log.warning(w.toString());
-            currentStartTimestamp = w.getTimestamp();
-            mostRecentTimestamp = w.getTimestamp();
-            getSupport().firePropertyChange(AEInputStream.EVENT_WRAPPED_TIME,lastTimestamp,mostRecentTimestamp);
+            currentStartTimestamp = w.getCurrentTimestamp();
+            mostRecentTimestamp = w.getCurrentTimestamp();
+            getSupport().firePropertyChange(AEInputStream.EVENT_WRAPPED_TIME,w.getPreviousTimestamp(),w.getCurrentTimestamp());
         } catch ( NonMonotonicTimeException e ){
 //            e.printStackTrace();
             if ( numNonMonotonicTimeExceptionsPrinted++ < MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT ){
-                log.info(e + " resetting currentStartTimestamp from " + currentStartTimestamp + " to " + e.getTimestamp() + " and setting mostRecentTimestamp to same value");
+                log.info(e + " resetting currentStartTimestamp from " + currentStartTimestamp + " to " + e.getCurrentTimestamp() + " and setting mostRecentTimestamp to same value");
                 if ( numNonMonotonicTimeExceptionsPrinted == MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT ){
                     log.warning("suppressing further warnings about NonMonotonicTimeException");
                 }
             }
-            currentStartTimestamp = e.getTimestamp();
-            mostRecentTimestamp = e.getTimestamp();
+            currentStartTimestamp = e.getCurrentTimestamp();
+            mostRecentTimestamp = e.getCurrentTimestamp();
+        } finally{
+            currentStartTimestamp = mostRecentTimestamp;
         }
         packet.setNumEvents(i);
         getSupport().firePropertyChange(AEInputStream.EVENT_POSITION,oldPosition,position());
-//        System.out.println("read "+packet.getNumEvents()+" from "+file);
+//        System.out.println("bigwrap="+bigWrap+" read "+packet.getNumEvents()+" mostRecentTimestamp="+mostRecentTimestamp+" currentStartTimestamp="+currentStartTimestamp);
         return packet;
     }
 
@@ -477,7 +489,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 readEventForwards(); // to set the mostRecentTimestamp
             }
         } catch ( NonMonotonicTimeException e ){
-            log.info("rewind from timestamp=" + e.getLastTimestamp() + " to timestamp=" + e.getTimestamp());
+            log.info("rewind from timestamp=" + e.getPreviousTimestamp() + " to timestamp=" + e.getCurrentTimestamp());
         }
         currentStartTimestamp = mostRecentTimestamp;
 //        System.out.println("AEInputStream.rewind(): set position="+byteBuffer.position()+" mostRecentTimestamp="+mostRecentTimestamp);
@@ -648,22 +660,33 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             this.timestamp = ts;
         }
 
+        /** Constructs a new NonMonotonicTimeException
+         *
+         * @param readTs the timestamp just read
+         * @param lastTs the previous timestamp
+         */
         public NonMonotonicTimeException (int readTs,int lastTs){
             this.timestamp = readTs;
             this.lastTimestamp = lastTs;
         }
 
+        /** Constructs a new NonMonotonicTimeException
+         *
+         * @param readTs the timestamp just read
+         * @param lastTs the previous timestamp
+         * @param position the current position in the stream
+         */
         public NonMonotonicTimeException (int readTs,int lastTs,int position){
             this.timestamp = readTs;
             this.lastTimestamp = lastTs;
             this.position = position;
         }
 
-        public int getTimestamp (){
+        public int getCurrentTimestamp (){
             return timestamp;
         }
 
-        public int getLastTimestamp (){
+        public int getPreviousTimestamp (){
             return lastTimestamp;
         }
 
@@ -675,7 +698,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     The de-facto timestamp tick is us and timestamps are represented as int32 in jAER. Therefore the largest possible positive timestamp
     is 2^31-1 ticks which equals 2147.4836 seconds (35.7914 minutes). This wraps to -2147 seconds. The actual total time
     can be computed taking account of these "big wraps" if
-    the time is increased by 4294.9673 seconds on each WrappedTimeException (when readimg file forwards).
+    the time is increased by 4294.9673 seconds on each WrappedTimeException (when reading file forwards).
+     * @param readTs the current (just read) timestamp
+     * @param lastTs the previous timestamp
      */
     public class WrappedTimeException extends NonMonotonicTimeException{
         public WrappedTimeException (int readTs,int lastTs){
@@ -693,10 +718,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     // checks for wrap (if reading forwards, this timestamp <0 and previous timestamp >0)
     private final boolean isWrappedTime (int read,int prevRead,int dt){
-        if ( dt > 0 && read < 0 && prevRead > 0 ){
+        if ( dt > 0 && read <= 0 && prevRead > 0 ){
             return true;
         }
-        if ( dt < 0 && read > 0 && prevRead < 0 ){
+        if ( dt < 0 && read >= 0 && prevRead < 0 ){
             return true;
         }
         return false;

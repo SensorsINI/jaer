@@ -278,7 +278,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
                         int finalTime;
                         if ( floatFinalTime >= Integer.MAX_VALUE || floatFinalTime<=Integer.MIN_VALUE ){
                             timeZero = rawTime; // after overflow reset timezero
-                            finalTime = 0; // wrap around at 2k seconds, back to 0 seconds. TODO different than hardware which wraps back to -2k seconds
+                            finalTime = Integer.MIN_VALUE+(int)(floatFinalTime-Integer.MAX_VALUE); // Change to -2k seconds now - was: wrap around at 2k seconds, back to 0 seconds. TODO different than hardware which wraps back to -2k seconds
                         } else{
                             finalTime = (int)floatFinalTime;
                         }
