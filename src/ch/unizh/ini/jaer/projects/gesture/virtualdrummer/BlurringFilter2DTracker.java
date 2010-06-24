@@ -17,6 +17,7 @@ import java.awt.geom.*;
 import java.util.*;
 import javax.media.opengl.*;
 import net.sf.jaer.event.EventPacket;
+
 /**
  * Tracks moving objects. Modified from BlurringFilter2DTracker.java
  *
@@ -349,11 +350,6 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         protected Color color = null;
 
         /**
-         *Number of events collected by this cluster.
-         */
-        protected int numEvents = 0;
-
-        /**
          *Number of neurons collected by this cluster.
          */
         protected int numNeurons = 0;
@@ -483,7 +479,6 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                 one_mass *= leakyfactor;
 
             mass = one_mass + two_mass;
-            numEvents = one.numEvents + two.numEvents;
             numNeurons = one.numNeurons + two.numNeurons;
 
             // merge locations by average weighted by totalMP of events supporting each cluster
@@ -616,7 +611,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * @return numEvents
          */
         public int getNumEvents (){
-            return numEvents;
+            return 1;
         }
 
         /**
@@ -768,8 +763,8 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             float maxX = minX+clusterArea.width;
             float maxY = minY+clusterArea.height;
             
-            if(((minX < ng.minX && ng.minX < maxX) || (ng.minX < minX && minX < ng.maxX)) &&
-                ((minY < ng.minY && ng.minY < maxY) || (ng.minY < minY && minY < ng.maxY))){
+            if(((minX <= ng.minX && ng.minX <= maxX) || (ng.minX <= minX && minX <= ng.maxX)) &&
+                ((minY <= ng.minY && ng.minY <= maxY) || (ng.minY <= minY && minY <= ng.maxY))){
                 return true;
             } else
                 return false;
@@ -876,7 +871,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             if ( !pathsEnabled ){
                 return;
             }
-            path.add(new ClusterPathPoint(location.x,location.y,t,numEvents));
+            path.add(new ClusterPathPoint(location.x, location.y, t, 1));
 //            System.out.println("Added Path ("+location.x + ", "+location.y+") @"+t);
             if ( path.size() > getPathLength() ){
                 path.remove(path.get(0));
@@ -904,7 +899,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         @Override
         public String toString (){
             return String.format("Cluster number=#%d numEvents=%d locationX=%d locationY=%d lifetime=%d speedPPS=%.2f",
-                    getClusterNumber(),numEvents,
+                    getClusterNumber(), 1,
                     (int)location.x,
                     (int)location.y,
                     getLifetime(),
