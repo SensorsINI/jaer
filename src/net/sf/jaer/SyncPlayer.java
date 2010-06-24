@@ -185,7 +185,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         stopPlayback();
         // first check to make sure that index file is really an index file, in case a viewer called it
         if ( !indexFile.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION) &&!indexFile.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION) ){
-            log.warning(indexFile + " doesn\'t appear to be an .index file, opening it in the first viewer and setting sync enabled false");
+            log.warning(indexFile + " doesn\'t appear to be an index file pointing to a set of data files because it does't end with the correct extension (.aeidx or .index), opening it in the first viewer and setting sync enabled false");
             AEViewer v = outer.getViewers().get(0);
             if ( outer.isSyncEnabled() ){
                 JOptionPane.showMessageDialog(v,"<html>You are opening a single data file so synchronization has been disabled<br>To reenable, use File/Synchronization enabled</html>");
@@ -209,7 +209,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             while ( ( filename = reader.readLine() ) != null ){
 //                    log.info("JAERViewer.startPlayback(): trying to open AE file "+filename);
                 // find chip classname from leading part of e.g. Tmpdiff128-2006-02-16T11-51-13+0100-0.dat up to '-'
-//                    log.info("***********JAERViewer.SyncPlayer.startPlayback(): filename "+filename+" indicates chip class is "+className.toString());
+//                    log.info(" filename "+filename+" indicates chip class is "+className.toString());
                 // now get the data file
                 File file = new File(indexFile.getParentFile(),filename);
                 // this is File object for the data file
@@ -222,9 +222,8 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                 String className = parseClassnameFromFilename(filename);
                 AEViewer vToUse = null;
                 for ( AEViewer v:outer.getViewers() ){
-                    // a viewer is acceptable if its chip class is the same as the parsed filename chip class or if it is a virgin AEViewer window
-                    if(v.getAeChipClass().getSimpleName().equals(className)){
-                        // just last component of viewer chip class has to match parsed chip class name
+                    // a viewer is acceptable if it hasn't been mapped yet and its chip class is the same as the parsed filename chip class or if it is a virgin AEViewer window
+                    if(!dontUseAgain.contains(v) && v.getAeChipClass().getSimpleName().equals(className) ){
                         vToUse=v;
                         dontUseAgain.add(v);
                         break;
@@ -246,13 +245,13 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                 }
                 // if there is no acceptable window, create a new AEViewer for this file
                 if ( vToUse == null ){
-                    log.info("JAERViewer.SyncPlayer.startPlayback(): no window found for " + filename + ", making new one");
+                    log.info("no AEViewer found for " + filename + ", making new one");
                     vToUse = new AEViewer(outer);
                     dontUseAgain.add(vToUse);
                     vToUse.setVisible(true);
                 }
                 map.put(file,vToUse);
-                log.info("JAERViewer.SyncPlayer.startPlayback(): mapped " + file + " to viewer " + vToUse);
+                log.info("mapped " + file + " to viewer " + vToUse);
             }
             // foreach data file
             if ( reader != null ){
