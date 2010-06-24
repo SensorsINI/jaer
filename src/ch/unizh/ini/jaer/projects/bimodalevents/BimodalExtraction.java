@@ -188,12 +188,12 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
         //log.info("coherent event" + ev.x + " " + ev.y);
         //coherenceMap[ev.x][ev.y]=coherenceMap[ev.x][ev.y]+3;
         double max = max_video();
-        int increase = 1;
+        float increase = 1;
         if (Math.abs(ev.timestamp-LastAudioSpike)<(CoherenceWindow/2)){
-            increase = 1;
+            increase = 1.2f;
         }
         if (Math.abs(ev.timestamp-LastAudioSpike)<(CoherenceWindow/4)){
-            increase = 1;
+            increase = 1.4f;
         }
         if (ev.x>2 && ev.x<126 && ev.y>2 && ev.y<126){
             for (int i=ev.x-1; i<=ev.x+1; i++){
