@@ -4,34 +4,43 @@
  */
 package ch.unizh.ini.jaer.projects.einsteintunnel.multicamera;
 
+import at.ait.dss.sni.jaer.chip.atis.ATIS304;
 import ch.unizh.ini.jaer.chip.retina.DVS128;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.ObjectStreamException;
-import java.io.Serializable;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
+import java.net.SocketTimeoutException;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
+import net.sf.jaer.aemonitor.AEListener;
+import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AENetworkRawPacket;
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
+import net.sf.jaer.biasgen.Pot;
+import net.sf.jaer.biasgen.VDAC.DAC;
+import net.sf.jaer.biasgen.VDAC.VPot;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.Chip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
  * Encapsulates a whole bunch of networked TDS cameras into this single AEChip object. The size of this virtual chip is set by {@link #MAX_NUM_CAMERAS} times
@@ -336,5 +345,235 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 {
         }
     }
 
+
+//       // following not used yet
+//    class MultiUDPNetworkCamera_HardwareInterface implements BiasgenHardwareInterface,AEMonitorInterface{
+////        private DatagramChannel controlChannel = null;
+//        private DatagramSocket socket = null;
+//        final int DATA_PORT = 22222;
+//        final int CONTROL_PORT = 20010;
+//        AEUnicastInput input = null;
+//        InetSocketAddress client = null;
+//        private String host = getPrefs().get("ATIS304.host","172.25.48.35"); // "localhost"
+//        private int port = getPrefs().getInt("controlPort",CONTROL_PORT);
+//
+//        public MultiUDPNetworkCamera_HardwareInterface (){
+//        }
+//
+//        public String getTypeName (){
+//            return "ATIS304 UDP control interface";
+//        }
+//
+//        public void close (){
+//            if ( socket != null ){
+//                socket.close();
+//            }
+//            if ( input != null ){
+//                input.close();
+//            }
+//        }
+//
+//        public void open () throws HardwareInterfaceException{
+//            try{
+//                if ( socket != null ){
+//                    socket.close();
+//                }
+//                socket = new DatagramSocket(CONTROL_PORT);
+//                socket.setSoTimeout(100);
+//
+//                input = new AEUnicastInput(DATA_PORT);
+//                input.setSequenceNumberEnabled(false);
+//                input.setAddressFirstEnabled(true);
+//                input.setSwapBytesEnabled(false);
+//                input.set4ByteAddrTimestampEnabled(true);
+//                input.setTimestampsEnabled(false);
+//                input.setBufferSize(1200);
+//                input.setTimestampMultiplier(1);
+//                input.setPort(DATA_PORT);
+//                input.open();
+//            } catch ( IOException ex ){
+//                throw new HardwareInterfaceException(ex.toString());
+//            }
+//        }
+//
+//        /** returns true if socket exists and is bound */
+//        private boolean checkClient (){
+//            if ( socket == null ){
+//                return false;
+//            }
+//            if ( client != null ){
+//                return true;
+//            }
+//            try{
+//                client = new InetSocketAddress(host,port);
+//                return true;
+//
+//            } catch ( Exception se ){ // IllegalArgumentException or SecurityException
+//                log.warning("While checking client host=" + host + " port=" + port + " caught " + se.toString());
+//                return false;
+//            }
+//        }
+//
+//        public boolean isOpen (){
+//            if ( socket == null ){
+//                return false;
+//            }
+//            if ( checkClient() == false ){
+//                return false;
+//            }
+//            return true;
+//        }
+//
+//        public void setPowerDown (boolean powerDown) throws HardwareInterfaceException{
+////            throw new UnsupportedOperationException("Not supported yet.");
+//        }
+//
+//        public void sendConfiguration (Biasgen biasgen) throws HardwareInterfaceException{
+//            if ( !isOpen() ){
+//                throw new HardwareInterfaceException("not open");
+//            }
+//            int MAX_COMMAND_LENGTH_BYTES = 256;
+//            for ( Pot p:getBiasgen().getPotArray().getPots() ){
+//                UDP_VPot vp = (UDP_VPot)p;
+//                try{
+//                    String s = vp.getCommandString();
+//                    byte[] b = s.getBytes(); // s.getBytes(Charset.forName("US-ASCII"));
+//                    socket.send(new DatagramPacket(b,b.length,client));
+//                    DatagramPacket packet = new DatagramPacket(new byte[ MAX_COMMAND_LENGTH_BYTES ],MAX_COMMAND_LENGTH_BYTES);
+//                    socket.receive(packet);
+//                    ByteArrayInputStream bis;
+//                    BufferedReader reader = new BufferedReader(new InputStreamReader(( bis = new ByteArrayInputStream(packet.getData(),0,packet.getLength()) )));
+//                    String line = reader.readLine(); // .toLowerCase();
+//                    log.info("response from " + packet.getAddress() + " : " + line);
+////                    System.out.println(line); // debug
+//                } catch ( SocketTimeoutException to ){
+//                    log.warning("timeout on waiting for command response on datagram control socket");
+//                } catch ( Exception ex ){
+//                    throw new HardwareInterfaceException("while sending biases to " + client + " caught " + ex.toString());
+//                }
+//            }
+//        }
+//
+//        public void flashConfiguration (Biasgen biasgen) throws HardwareInterfaceException{
+//            throw new UnsupportedOperationException("Not supported yet.");
+//        }
+//
+//        public byte[] formatConfigurationBytes (Biasgen biasgen){
+//            throw new UnsupportedOperationException("Not supported yet."); // TODO use this to send all biases at once?
+//        }
+//
+//        public AEPacketRaw acquireAvailableEventsFromDriver () throws HardwareInterfaceException{
+//            if ( input == null ){
+//                throw new HardwareInterfaceException("no input connection");
+//            }
+//            return input.readPacket();
+//        }
+//
+//        public int getNumEventsAcquired (){
+//            if ( input == null ){
+//                return 0;
+//            }
+//            return 0; // fix AEUnicastInput to return current number of events acquired
+//        }
+//
+//        public AEPacketRaw getEvents (){
+//            if ( input == null ){
+//                return null;
+//            }
+//            return input.readPacket();
+//        }
+//
+//        public void resetTimestamps (){
+//        }
+//
+//        public boolean overrunOccurred (){
+//            return false;
+//        }
+//
+//        public int getAEBufferSize (){
+//            if ( input == null ){
+//                return 0;
+//            }
+//            return input.getBufferSize();
+//        }
+//
+//        public void setAEBufferSize (int AEBufferSize){
+//            if ( input == null ){
+//                return;
+//            }
+//            input.setBufferSize(AEBufferSize);
+//        }
+//
+//        public void setEventAcquisitionEnabled (boolean enable) throws HardwareInterfaceException{
+//            if ( input != null ){
+//                input.setPaused(enable);
+//            }
+//            if ( isOpen() ){
+//                String s = enable ? "t+\n" : "t-\n";
+//                byte[] b = s.getBytes();
+//                try{
+//                    DatagramPacket d = new DatagramPacket(b,b.length,client);
+//                    socket.send(d);
+//                } catch ( Exception e ){
+//                    log.warning(e.toString());
+//                }
+//            }
+//        }
+//
+//        public boolean isEventAcquisitionEnabled (){
+//            return isOpen();
+//        }
+//
+//        public void addAEListener (AEListener listener){
+//        }
+//
+//        public void removeAEListener (AEListener listener){
+//        }
+//
+//        public int getMaxCapacity (){
+//            return 1000000;
+//        }
+//        private int estimatedEventRate = 0;
+//
+//        public int getEstimatedEventRate (){
+//            return estimatedEventRate;
+//        }
+//
+//        /** computes the estimated event rate for a packet of events */
+//        private void computeEstimatedEventRate (AEPacketRaw events){
+//            if ( events == null || events.getNumEvents() < 2 ){
+//                estimatedEventRate = 0;
+//            } else{
+//                int[] ts = events.getTimestamps();
+//                int n = events.getNumEvents();
+//                int dt = ts[n - 1] - ts[0];
+//                estimatedEventRate = (int)( 1e6f * (float)n / (float)dt );
+//            }
+//        }
+//
+//        public int getTimestampTickUs (){
+//            return 1;
+//        }
+//
+//        public void setChip (AEChip chip){
+//        }
+//
+//        public AEChip getChip (){
+//            return MultiUDPNetworkDVS128Camera.this;
+//        }
+//    }
+//
+//       public class UDP_VPot extends VPot{
+//        public UDP_VPot (Chip chip,String name,DAC dac,int channel,Type type,Sex sex,int bitValue,int displayPosition,String tooltipString){
+//            super(chip,name,dac,channel,type,sex,bitValue,displayPosition,tooltipString);
+//        }
+//
+//        public String getCommandString (){
+//            int v = Math.round(getVoltage() * 1000);
+//            int n = getChannel();
+//            String s = String.format("d %d %d mv\n",n,v);
+//            return s;
+//        }
+//    }
 
 }

@@ -122,7 +122,7 @@ public class AEPacketRaw extends AEPacket {
         setNumEvents(counter);
     }
 
-    protected void allocateArrays(int size) {
+    private void allocateArrays(int size) {
         addresses = new int[size]; //new E[size];
         timestamps = new int[size];
         this.capacity = size;
