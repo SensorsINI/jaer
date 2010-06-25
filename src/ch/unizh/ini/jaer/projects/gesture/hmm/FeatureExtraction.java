@@ -62,6 +62,8 @@ public class FeatureExtraction{
         Point2D.Float startPosition = trajectory.get(0); // the oldest position
         Point2D.Float prevPosition = startPosition;
         Point2D.Float currPosition = null;
+
+//        System.out.println("Total lent = " + totalTrajLen + ", Delta len = " + deltaTrajLen);
         
         int j = 1;
         double len = 0;
@@ -154,8 +156,8 @@ public class FeatureExtraction{
         Point2D.Float out = new Point2D.Float();
         double ratio = len/distance(p1, p2);
 
-        out.x = (int) ((1-ratio)*p1.x + ratio*p2.x);
-        out.y = (int) ((1-ratio)*p1.y + ratio*p2.y);
+        out.x = (float) ((1-ratio)*p1.x + ratio*p2.x);
+        out.y = (float) ((1-ratio)*p1.y + ratio*p2.y);
 
         return out;
     }

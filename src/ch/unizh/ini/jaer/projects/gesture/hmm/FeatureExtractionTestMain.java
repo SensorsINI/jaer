@@ -5,6 +5,8 @@
 
 package ch.unizh.ini.jaer.projects.gesture.hmm;
 
+import java.awt.geom.Point2D;
+
 /**
  * Test module for FeatureExtraction class
  * @author Jun Haeng Lee
@@ -43,6 +45,11 @@ public class FeatureExtractionTestMain{
             if(buttonName.equals(GET_TRJ)){
                 String[] fv = fve.convTrajectoryToCodewords(trajectory);
 
+/*                System.out.print("Trajectory points : ");
+                for(Point2D.Float pt:trajectory)
+                    System.out.print("("+pt.x+", " +pt.y+ "), ");
+                System.out.println();
+*/
                 int i = 1;
                 System.out.print("Codewords sequence : ");
                 for(String fvEle:fv){
@@ -50,6 +57,9 @@ public class FeatureExtractionTestMain{
                     i++;
                 }
                 System.out.println();
+
+                drawTrajectory(FeatureExtraction.convAnglesToTrajectoryInScaledArea(new Point2D.Float(imgPanelWidth/2, imgPanelHeight/2), imgPanelWidth/3, fve.vectorAngleSeq));
+                repaint();
             }
         }
 
