@@ -38,6 +38,8 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
         return "Extracting Bimodal Events";
     }
 
+	// initializations & declarations
+
     private int[][][][] lastTs;
     private int[][][] lastTsCursor;
 
@@ -107,6 +109,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
         addPropertyToGroup("ITDWeighting", "maxWeight");
         addPropertyToGroup("ITDWeighting", "maxWeightTime");
 */
+		// Tooltips for property dialog (filter properties)
         setPropertyTooltip("a_decay", "Decaying rate of audio spikes for Event-Thresholding");
         setPropertyTooltip("c_decay", "Decaying rate of the Coherent spikes (how long they stay visible)");
         setPropertyTooltip("audioEventThresh", "Spikes needed to detect Audio as Event (noise reduction)");
@@ -121,6 +124,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
  */
     }
 
+	// function executed when spike packet arrives
     public EventPacket<?> filterPacket(EventPacket<?> in) {
 
         if (!filterEnabled) {
@@ -136,21 +140,24 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
 	                // cochlea
 
 	                audioArray[ev.x][ev.y-128][1] = audioArray[ev.x][ev.y-128][1]+1;
+	                	// set last audio spike timestamp for identifying coherent visual spikes
                         LastAudioSpike = ev.timestamp;
+                        // "audioHistogram" to filter out noisy audio spikes
                         audioHistogram = audioHistogram + 1;
-                        //log.info("audio spike " + ev.x + " " + ev.y);
 	            } else {
 	                // retina
-	                visualArray[ev.x][ev.y][1] = visualArray[ev.x][ev.y][1]+1;
+	                visualArray[ev.x][ev.y][1] = visualArray[ev.x][ev.y][1]+1;	// building up histogram map
+	                	// is spike in the coherence time window from the last audio spike?
                         if (Math.abs(ev.timestamp-LastAudioSpike)<CoherenceWindow){
                             if (audioHistogram > audioEventThresh){
                                 process_coherent_spike(ev);
                             }
                         }
-                        else {
+                        else {	// if no, build up queue for future audio spikes
                             CoherenceQueue.offer(ev);
                             LastQueueTimestamp = ev.timestamp;
                             BasicEvent CoItem = (BasicEvent)CoherenceQueue.peek();
+                            // clear visual spikes later than 2*CoherenceWindow from queue
                             while (CoItem.timestamp+2*CoherenceWindow<LastQueueTimestamp){
                                 CoherenceQueue.remove();
                                 CoItem = (BasicEvent)CoherenceQueue.peek();
@@ -158,28 +165,33 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
                         }
                         
 	            }
+	            	/*
+	            	/ decaying only executed every 100000 (according to timestamp differences approx 0.1 sec
+	            	*/
+	            	// dissolve wrapping-problem for recordings
                     if (prev_timestamp > ev.timestamp){
                         prev_timestamp = 0;
                     }
                     if (ev.timestamp - prev_timestamp > 100000){
                         double time_diff = ev.timestamp - prev_timestamp;
                         prev_timestamp = ev.timestamp;
-                        double decay = 0.9;//1/(time_diff*0.00002);
-                        //log.info("diff" + decay);
+                        double decay = 0.9;
+
+						// call decaying functions
                         decay_audio(a_decay);
                         decay_video(v_decay);
                         decay_coherence(c_decay);
-//                        log.info("max " + max_video() + "decay " + decay);
                     }
 
 
 	        } catch (Exception ex) {
+	        	// write exeption to logfile if emerged
 	            log.warning("In filterPacket caught exception " + ex + " " + ev.x + " " + ev.y);
 	            ex.printStackTrace();
 	        }
 
         }
-        //log.info("size of coherence Queue: "+CoherenceQueue.size());
+		// execute median filter with size 3
         median_filter(3);
         return in;
     }
