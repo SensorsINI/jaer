@@ -250,7 +250,7 @@ abstract public class TrajectoryDrawingPanel extends JFrame implements MouseMoti
      * draws trajectory
      * @param trj
      */
-    public void drawTrajectory(ArrayList<Point2D.Float> trj){
+    public void drawTrajectory(ArrayList<? extends Point2D.Float> trj){
         Color tmp = getColor();
         Color curColor = Color.BLUE;
 
@@ -278,6 +278,16 @@ abstract public class TrajectoryDrawingPanel extends JFrame implements MouseMoti
 
         gImg.setColor(tmp);
         gImg.setStroke(tmpStroke);
+    }
+
+    /**
+     * draws trajectory
+     * @param trj
+     */
+    public void drawTrajectoryDot(ArrayList<? extends Point2D.Float> trj){
+        for(int i=0; i<trj.size(); i++){
+            gImg.drawOval((int) trj.get(i).x - 2, imgPanelHeight - (int) trj.get(i).y - 2, 4, 4);
+        }
     }
 
     /**
