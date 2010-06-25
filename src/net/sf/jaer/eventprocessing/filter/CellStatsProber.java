@@ -276,11 +276,11 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater,Mou
         Point p = canvas.getPixelFromMouseEvent(e);
         clickedPoint = p;
     }
-
-    @Override
-    public synchronized void setFilterEnabled (boolean yes){
-        super.setFilterEnabled(yes);
-        if ( glCanvas == null ){
+    
+       @Override
+    public void setSelected (boolean yes){
+        super.setSelected(yes);
+          if ( glCanvas == null ){
             return;
         }
         if ( yes ){

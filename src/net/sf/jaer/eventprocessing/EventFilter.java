@@ -58,6 +58,9 @@ public abstract class EventFilter extends Observable {
     private EventFilter enclosingFilter = null;
     /** Used by filterPacket to say whether to filter events; default false */
     protected boolean filterEnabled = false;
+    /** Flags this EventFilter as "selected" for purposes of control */
+    public boolean selected=false;
+
 //    /** true means the events are filtered in place, replacing the contents of the input packet and more
 //     *efficiently using memory. false means a new event packet is created and populated for the output of the filter.
 //     *<p>
@@ -523,6 +526,24 @@ public abstract class EventFilter extends Observable {
     /** Override this String (can be html formatted) to show it as the filter description in the GUI control FilterPanel. */
     public static String getDescription() {
         return null;
+    }
+
+    /**
+     * @return the selected
+     */
+    public boolean isSelected (){
+        return selected;
+    }
+
+    /**
+     * Flags this EventFilter as selected. Used e.g. for GUI so that this can control its user interface, e.g. so that mouse events are ignored if
+     * this is not selected.
+     * @param selected the selected to set, true means this is "selected".
+     */
+    public void setSelected (boolean selected){
+        boolean old=this.selected;
+        this.selected = selected;
+        support.firePropertyChange("selected",old,selected);
     }
 
     /** The development status of an EventFilter. An EventFilter can implement the static method getDevelopmentStatus which

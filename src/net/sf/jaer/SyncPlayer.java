@@ -63,7 +63,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     volatile CyclicBarrier barrier;
     // used to sync up viewers for playback
     int numPlayers = 0;
-    ArrayList<AEViewer> playingViewers = new ArrayList<AEViewer>();
+    private ArrayList<AEViewer> playingViewers = new ArrayList<AEViewer>();
     static Preferences prefs=Preferences.userNodeForPackage(SyncPlayer.class);
 
     public SyncPlayer (AEViewer viewer,JAERViewer outer){
@@ -181,7 +181,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     @Override
     public void startPlayback (File indexFile) throws IOException{
         super.startPlayback(indexFile);  // just sets the file
-        log.info("indexFile=" + indexFile);
+        log.info("Starting synchronized playback of files in indexFile=" + indexFile);
         stopPlayback();
         // first check to make sure that index file is really an index file, in case a viewer called it
         if ( !indexFile.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION) &&!indexFile.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION) ){
@@ -195,7 +195,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             v.aePlayer.startPlayback(indexFile);
             return;
         }
-        playingViewers.clear();
+        getPlayingViewers().clear();
         // this map will map from the data files to the viewer windows
         HashMap<File,AEViewer> map = new HashMap<File,AEViewer>();
         setTime(0);
@@ -274,7 +274,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                 v.aePlayer.stopPlayback();
                 v.aePlayer.startPlayback(e.getKey());
                 v.aePlayer.getAEInputStream().getSupport().addPropertyChangeListener("rewind",this);
-                playingViewers.add(v);
+                getPlayingViewers().add(v);
             }
             initTime();
         } catch ( FileNotFoundException e ){
@@ -333,9 +333,9 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     }
     static final int SYNC_PLAYER_TIMEOUT_SEC = 3; 
 
-    /** returns next packet of AE data to the caller, which is a
-     * particular AEPlayer inner class of AEViewer.
-     * The packet is sychronized in event time if sychronized playback is enabled.
+    /** Returns next packet of AE data to the caller, which is a
+     * particular AEPlayer owned by an AEViewer.  getNextPacket is called via the ViewLoop run() loop thread of that AEViewer.
+     * The packet is synchronized in event time if synchronized playback is enabled.
      * @return a raw packet of events
      */
     public AEPacketRaw getNextPacket (AbstractAEPlayer player){
@@ -344,6 +344,23 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         // AFTER the blocking await call that synchronizes them.
         // if the viewer is paused during the await call, then we may get a timeout here.
         // therefore we do not stop playback if the viewers are paused, only very slowly step along
+
+        // We first set all the player's currentStartTimestamp to the same values, based on all the player's values.
+        // Since currentStartTimestamp is set by each player to whatever time it happens to end at
+        // (which is not nessarily the last timestamp plust the delta time), we have to keep synchrnozing the players
+        
+        int[] currentTimes=new int[getPlayingViewers().size()];
+        int i=0;
+        for(AEViewer v:getPlayingViewers()){
+           currentTimes[i++]=v.aePlayer.getTime();
+        }
+        int maxtime=Integer.MIN_VALUE;
+        for(int t:currentTimes){
+            if(t>maxtime)maxtime=t;
+        }
+//        System.out.println(Thread.currentThread()+" set time="+maxtime);
+         setTime(maxtime);
+
         AEPacketRaw ae = player.getNextPacket(player);
         if ( numPlayers == 1 ){
             return ae;
@@ -443,7 +460,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         currentTime = time;
 //            log.info("JAERViewer.SyncPlayer.setTime("+time+")");
         try{
-            for ( AEViewer v:playingViewers ){
+            for ( AEViewer v:getPlayingViewers() ){
                 v.aePlayer.setTime(getTime());
             }
         } catch ( ConcurrentModificationException e ){
@@ -490,5 +507,13 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
 
     @Override
     public void setDoSingleStepEnabled (boolean b){
+    }
+
+    /**
+     * Returns the list of viewers involved in this playback.
+     * @return the playingViewers
+     */
+    public ArrayList<AEViewer> getPlayingViewers (){
+        return playingViewers;
     }
 }

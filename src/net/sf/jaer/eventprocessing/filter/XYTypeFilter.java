@@ -66,6 +66,10 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
  
     synchronized public void doEraseSelections (){
         selectionList.clear();
+        setStartX(0); setEndX(chip.getSizeX()-1);
+        setStartY(0); setEndY(chip.getSizeY()-1);
+        setStartType(0); setEndType(chip.getNumCellTypes()-1);
+        setXEnabled(false); setYEnabled(false); setTypeEnabled(false);
     }
 
     public XYTypeFilter (AEChip chip){
@@ -206,11 +210,12 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
     }
 
     public void setStartX (int startX){
+        int old=this.startX;
         startX = clip(startX,chip.getSizeX());
         this.startX = startX;
         getPrefs().putInt("XYTypeFilter.startX",startX);
+        support.firePropertyChange("startX",old,startX);
         setXEnabled(true);
-        support.firePropertyChange("startX",null,startX);
     }
 
     public int getEndX (){
@@ -218,11 +223,13 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
     }
 
     public void setEndX (int endX){
+        int old=this.endX;
         endX = clip(endX,chip.getSizeX());
         this.endX = endX;
         getPrefs().putInt("XYTypeFilter.endX",endX);
+        support.firePropertyChange("endX",old,endX);
         setXEnabled(true);
-        support.firePropertyChange("endX",null,endX);
+
     }
 
     public boolean isXEnabled (){
@@ -230,8 +237,10 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
     }
 
     public void setXEnabled (boolean xEnabled){
+        boolean old=this.xEnabled;
         this.xEnabled = xEnabled;
         getPrefs().putBoolean("XYTypeFilter.xEnabled",xEnabled);
+        support.firePropertyChange("xEnabled",old,xEnabled);
     }
 
     public int getStartY (){
@@ -239,11 +248,12 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
     }
 
     public void setStartY (int startY){
+        int old=this.starty;
         startY = clip(startY,chip.getSizeY());
         this.startY = startY;
         getPrefs().putInt("XYTypeFilter.startY",startY);
+        support.firePropertyChange("startY",old,startY);
         setYEnabled(true);
-        support.firePropertyChange("startY",null,startY);
     }
 
     public int getEndY (){
@@ -251,11 +261,12 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
     }
 
     public void setEndY (int endY){
+        int old=this.endY;
         endY = clip(endY,chip.getSizeY());
         this.endY = endY;
         getPrefs().putInt("XYTypeFilter.endY",endY);
+        support.firePropertyChange("endY",old,endY);
         setYEnabled(true);
-        support.firePropertyChange("endY",null,endY);
     }
 
     public boolean isYEnabled (){
@@ -263,8 +274,10 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
     }
 
     public void setYEnabled (boolean yEnabled){
+        boolean old=this.yEnabled;
         this.yEnabled = yEnabled;
         getPrefs().putBoolean("XYTypeFilter.yEnabled",yEnabled);
+        support.firePropertyChange("yEnabled",old,yEnabled);
     }
 
     public int getStartType (){
@@ -272,9 +285,11 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
     }
 
     public void setStartType (int startType){
+        int old=this.startType;
         startType = clip(startType,chip.getNumCellTypes());
         this.startType = startType;
         getPrefs().putInt("XYTypeFilter.startType",startType);
+        support.firePropertyChange("startType",old,startType);
         setTypeEnabled(true);
     }
 
@@ -283,9 +298,11 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
     }
 
     public void setEndType (int endType){
+        int old=this.endType;
         endType = clip(endType,chip.getNumCellTypes());
         this.endType = endType;
         getPrefs().putInt("XYTypeFilter.endType",endType);
+        support.firePropertyChange("endType",old,endType);
         setTypeEnabled(true);
     }
 
@@ -294,8 +311,10 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
     }
 
     public void setTypeEnabled (boolean typeEnabled){
+        boolean old=this.typeEnabled;
         this.typeEnabled = typeEnabled;
         getPrefs().putBoolean("XYTypeFilter.typeEnabled",typeEnabled);
+        support.firePropertyChange("typeEnabled",old,typeEnabled);
     }
 
     public void annotate (GLAutoDrawable drawable){
@@ -367,7 +386,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
     }
 
     public void mouseReleased (MouseEvent e){
-        if ( startPoint == null ){
+        if ( startPoint == null || canvas.getPixelFromMouseEvent(e).equals(startPoint)){
             return;
         }
         selection = getSelection(e); // TODO sets and returns same object, not really good behavior
@@ -425,11 +444,27 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         Point p = canvas.getPixelFromMouseEvent(e);
         clickedPoint = p;
     }
+// already handled by setSelected below
+//    @Override
+//    public synchronized void setFilterEnabled (boolean yes){
+//        super.setFilterEnabled(yes);
+//        if ( glCanvas == null ){
+//            return;
+//        }
+//        if ( yes ){
+//            glCanvas.addMouseListener(this);
+//            glCanvas.addMouseMotionListener(this);
+//
+//        } else{
+//            glCanvas.removeMouseListener(this);
+//            glCanvas.removeMouseMotionListener(this);
+//        }
+//    }
 
     @Override
-    public synchronized void setFilterEnabled (boolean yes){
-        super.setFilterEnabled(yes);
-        if ( glCanvas == null ){
+    public void setSelected (boolean yes){
+        super.setSelected(yes);
+          if ( glCanvas == null ){
             return;
         }
         if ( yes ){
@@ -441,6 +476,8 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
             glCanvas.removeMouseMotionListener(this);
         }
     }
+
+
 
     /**
      * @return the multiSelectionEnabled

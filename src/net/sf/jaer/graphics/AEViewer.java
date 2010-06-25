@@ -1426,7 +1426,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         case PLAYBACK:
 //                            Thread thisThread=Thread.currentThread();
 //                            System.out.println("thread "+thisThread+" getting events for renderCount="+renderCount);
-                            aeRaw = getAePlayer().getNextPacket(aePlayer);  // TODO should throw interrupted exception
+                            aeRaw = getAePlayer().getNextPacket(aePlayer); 
                             getAePlayer().adjustTimesliceForRealtimePlayback();
 //                            System.out.println("."); System.out.flush();
                             break;
@@ -1808,7 +1808,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     case PLAYBACK:
 //                    if(ae.getNumEvents()>2) ratekeps=(float)ae.getNumEvents()/(float)dtMs;
 //                    if(packet.getSize()>2) ratekeps=(float)packet.getSize()/(float)dtMs;
-                        thisTimeString = String.format("%5.3fs",getAePlayer().getTime() * 1e-6f); // hack here, we don't know timestamp from data file, we assume 1us
+//                        thisTimeString = String.format("%5.3fs",getAePlayer().getTime() * 1e-6f); // hack here, we don't know timestamp from data file, we assume 1us
+                        thisTimeString = String.format("%5.3fs",packet.getLastTimestamp() * 1e-6f); // just use the raw timestamp from the data file, but this will not account for wrapping.
                         break;
                     case REMOTE:
                         thisTimeString = String.format("%5.3fs",packet.getLastTimestamp() * 1e-6f);

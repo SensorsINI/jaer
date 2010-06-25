@@ -1301,6 +1301,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      */
     public void setControlsVisible(boolean yes) {
         controlsVisible = yes;
+        getFilter().setSelected(yes);
         setBorderActive(yes);
         for (JComponent p : controls) {
             p.setVisible(yes);
@@ -1378,12 +1379,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
 
         repaint();
+        getFilter().setSelected(yes);
     }//GEN-LAST:event_enabledCheckBoxActionPerformed
 
     private void resetButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetButtonActionPerformed
         if (getFilter() != null) {
             getFilter().resetFilter();
         }
+        getFilter().setSelected(true);
     }//GEN-LAST:event_resetButtonActionPerformed
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JCheckBox enabledCheckBox;

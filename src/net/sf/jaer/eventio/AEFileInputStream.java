@@ -7,6 +7,7 @@
  * and open the template in the editor.
  */
 package net.sf.jaer.eventio;
+import java.util.logging.Level;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.util.EngineeringFormat;
 import java.beans.PropertyChangeSupport;
@@ -89,12 +90,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     private int currentStartTimestamp;
     FileChannel fileChannel = null;
     public static final int MAX_BUFFER_SIZE_EVENTS = 300000;
-    /** With new 32bits adressses, use EVENT32_SIZE, but use EVENT16_SIZE for backward compatibility with 16 bit addresses */
+    /** With new 32bits addresses, use EVENT32_SIZE, but use EVENT16_SIZE for backward compatibility with 16 bit addresses */
     public static final int EVENT16_SIZE = Short.SIZE / 8 + Integer.SIZE / 8;
     /** (new style) int addr, int timestamp */
     public static final int EVENT32_SIZE = Integer.SIZE / 8 + Integer.SIZE / 8;
     /** the size of the memory mapped part of the input file.
-    This window is centered over the file posiiton except at the start and end of the file.
+    This window is centered over the file position except at the start and end of the file.
      */
     private int CHUNK_SIZE_EVENTS = 10000000;
     private int chunkSizeBytes = CHUNK_SIZE_EVENTS * EVENT16_SIZE; // size of memory mapped file chunk, depends on event size and number of events to map, initialized as though we didn't have a file header
@@ -220,7 +221,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //            }
              // for marking sync in a recording using the result of bitmask with input
             if ( ( addr & timestampResetBitmask ) != 0 ){
-                log.info("found timestamp reset event addr="+addr+" position="+position+" timstamp=" + ts);
+                log.log(Level.INFO,"found timestamp reset event addr={0} position={1} timstamp={2}",new Object[ ]{ addr,position,ts });
                 timestampOffset=ts;
             }
             ts-=timestampOffset; 
@@ -460,7 +461,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         } catch ( NonMonotonicTimeException e ){
 //            e.printStackTrace();
             if ( numNonMonotonicTimeExceptionsPrinted++ < MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT ){
-                log.info(e + " resetting currentStartTimestamp from " + currentStartTimestamp + " to " + e.getCurrentTimestamp() + " and setting mostRecentTimestamp to same value");
+                log.log(Level.INFO,"{0} resetting currentStartTimestamp from {1} to {2} and setting mostRecentTimestamp to same value",new Object[ ]{ e,currentStartTimestamp,e.getCurrentTimestamp() });
                 if ( numNonMonotonicTimeExceptionsPrinted == MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT ){
                     log.warning("suppressing further warnings about NonMonotonicTimeException");
                 }
@@ -489,7 +490,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 readEventForwards(); // to set the mostRecentTimestamp
             }
         } catch ( NonMonotonicTimeException e ){
-            log.info("rewind from timestamp=" + e.getPreviousTimestamp() + " to timestamp=" + e.getCurrentTimestamp());
+            log.log(Level.INFO,"rewind from timestamp={0} to timestamp={1}",new Object[ ]{ e.getPreviousTimestamp(),e.getCurrentTimestamp() });
         }
         currentStartTimestamp = mostRecentTimestamp;
 //        System.out.println("AEInputStream.rewind(): set position="+byteBuffer.position()+" mostRecentTimestamp="+mostRecentTimestamp);
@@ -517,7 +518,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             byteBuffer.position(( event * eventSizeBytes ) % chunkSizeBytes);
             position = event;
         } catch ( IOException e ){
-            log.warning("caught " + e);
+            log.log(Level.WARNING,"caught {0}",e);
             e.printStackTrace();
         } catch ( IllegalArgumentException e2 ){
             log.warning("caught " + e2);
