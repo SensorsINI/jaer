@@ -69,6 +69,11 @@ public class AEPacketRaw extends AEPacket {
      *@param size capacity in events
      */
     public AEPacketRaw(int size) {
+        if(size>MAX_PACKET_SIZE_EVENTS){
+            log.warning("allocating arrays of size "+size+" which is larger than MAX_PACKET_SIZE_EVENTS="+MAX_PACKET_SIZE_EVENTS+" in size");
+        }else{
+            log.info("allocatiing size="+size+" arrays");
+        }
         allocateArrays(size);
     }
 

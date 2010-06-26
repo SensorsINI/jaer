@@ -451,6 +451,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             aeFileInputStream.setCurrentStartTimestamp(time);
         } else{
             log.warning("null AEInputStream");
+            Thread.currentThread().dumpStack();
         }
     }
 

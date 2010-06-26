@@ -21,7 +21,7 @@ import java.util.logging.*;
 public abstract class AEPacket {
 
     /** Can optionally be used to limit maximum packet size. This limit must be enforced at the user level. */
-    public static final int MAX_PACKET_SIZE_EVENTS=300000;
+    public static final int MAX_PACKET_SIZE_EVENTS=10000;
 
     
     static Logger log=Logger.getLogger("AEPacket");

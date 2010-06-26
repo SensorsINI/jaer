@@ -198,7 +198,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         getPlayingViewers().clear();
         // this map will map from the data files to the viewer windows
         HashMap<File,AEViewer> map = new HashMap<File,AEViewer>();
-        setTime(0);
+//        setTime(0);
         BufferedReader reader;
         // files are in same folder as index file
         try{
@@ -351,9 +351,12 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         
         int[] currentTimes=new int[getPlayingViewers().size()];
         int i=0;
+//        System.out.print("current times ");
         for(AEViewer v:getPlayingViewers()){
            currentTimes[i++]=v.aePlayer.getTime();
+//            System.out.println(currentTimes[i-1]+" ");
         }
+//        System.out.println("");
         int maxtime=Integer.MIN_VALUE;
         for(int t:currentTimes){
             if(t>maxtime)maxtime=t;

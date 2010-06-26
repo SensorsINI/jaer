@@ -89,7 +89,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     // this marks the present read time for packets
     private int currentStartTimestamp;
     FileChannel fileChannel = null;
-    public static final int MAX_BUFFER_SIZE_EVENTS = 300000;
+    public static final int MAX_BUFFER_SIZE_EVENTS = 100000;
     /** With new 32bits addresses, use EVENT32_SIZE, but use EVENT16_SIZE for backward compatibility with 16 bit addresses */
     public static final int EVENT16_SIZE = Short.SIZE / 8 + Integer.SIZE / 8;
     /** (new style) int addr, int timestamp */
@@ -191,7 +191,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         } catch ( IOException e ){
             log.warning("couldn't read first event to set starting timestamp");
         } catch ( NonMonotonicTimeException e2 ){
-//            log.warning("On AEInputStream.init() caught "+e2.toString());
+            log.warning("On AEInputStream.init() caught "+e2.toString());
         }
         log.info("initialized " + this.toString());
     }
