@@ -10,7 +10,6 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventio.*;
-import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.util.EngineeringFormat;
 import java.awt.*;
 import java.awt.event.*;
@@ -69,7 +68,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         if (f == null) {
             return false;
         }
-        if (f.getName().endsWith(".index")) {
+        if (f.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION) || f.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)){
             return true;
         } else {
             return false;
@@ -208,9 +207,10 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             }
         } else {
             fileSizeString = indexFileString;
+            g2.clearRect(0,0,getWidth(),getHeight());
         }
         g2.setColor(Color.red);
-        g2.setFont(g2.getFont().deriveFont(20f));
+        g2.setFont(g2.getFont().deriveFont(17f));
         g2.drawString(fileSizeString, 30f, 30f);
 //        infoLabel.repaint();
 
@@ -228,10 +228,25 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         try {
             BufferedReader r = new BufferedReader(new FileReader(file));
             int numFiles = 0;
-            while (r.readLine() != null) {
+            String s=null;
+            StringBuilder sb=new StringBuilder();
+            EngineeringFormat fmt=new EngineeringFormat();
+            while ((s=r.readLine()) != null) {
                 numFiles++;
+                if(s!=null) {
+                    try{
+                    File f=new File(file.getParent(),s);
+                    if(f.canRead()){
+                        long l=f.length();
+                        sb.append(" "+fmt.format((float)l)+"b");
+
+                    }
+                    }catch(Exception e){
+                        sb.append(" ? ");
+                    }
+                }
             }
-            return numFiles + " files";
+            return numFiles + " files: "+sb.toString();
         } catch (Exception e) {
             return "";
         }
