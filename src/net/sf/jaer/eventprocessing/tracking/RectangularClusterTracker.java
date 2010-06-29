@@ -2180,7 +2180,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
      *
      * @param clusterSize
      */
-    public void setClusterSize(float clusterSize) {
+    synchronized public void setClusterSize(float clusterSize) {
         if (clusterSize > 1f) {
             clusterSize = 1f;
         }
