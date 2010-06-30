@@ -211,7 +211,7 @@ public class PeriodicSpline {
      * @param x Position at which to evaluate
      * @param x0 Start point of spline
      * @param coeff Spline coefficients
-     * @return Interpolated value at x
+     * @return Orientation at x
      */
     private double orientationSpline(double x, double x0, double[] coeff) {
         double xnorm = x-x0;
@@ -227,6 +227,87 @@ public class PeriodicSpline {
     private double orientationY(double y, int splineIdx) {
         return orientationSpline(y, Tdata[splineIdx], splineCoefficientsY[splineIdx]);
     }
+
+
+    /**
+     * Evaluates the curvature of the spline curve at the given position (second derivative)
+     * @param x Position at which to evaluate
+     * @param x0 Start point of spline
+     * @param coeff Spline coefficients
+     * @return Curvature at x
+     */
+    private double curvatureSpline(double x, double x0, double[] coeff) {
+        double xnorm = x-x0;
+        return 2.0*coeff[1] +
+                6.0*xnorm * coeff[0];
+
+    }
+
+    private double curvatureX(double x, int splineIdx) {
+        return curvatureSpline(x, Tdata[splineIdx], splineCoefficientsX[splineIdx]);
+    }
+
+    private double curvatureY(double y, int splineIdx) {
+        return curvatureSpline(y, Tdata[splineIdx], splineCoefficientsY[splineIdx]);
+    }
+
+
+    /**
+     * Returns the radius of the osculating circle of the spline curve
+     * @param t Spline parameter
+     * @param splineIdx Index of the spline segment
+     * @param center Object in which to store the center of the osculating circle
+     * @return Radius of the osculating circle
+     */
+    public double osculatingCircle(double t, int splineIdx, Point2D center) {
+        // Determine position and derivatives at point
+        double xpos = evaluateX(t, splineIdx);
+        double ypos = evaluateY(t, splineIdx);
+        double xdiff = orientationX(t, splineIdx);
+        double ydiff = orientationY(t, splineIdx);
+        double xcurv = curvatureX(t, splineIdx);
+        double ycurv = curvatureY(t, splineIdx);
+        double orientNorm = xdiff*xdiff + ydiff*ydiff;
+        double curveDenom = xdiff*ycurv - xcurv*ydiff;
+
+        // Compute radius of circle
+        double radius = Double.POSITIVE_INFINITY;
+        if (Math.abs(curveDenom) > 1e-10) {
+            // radius = Math.abs(Math.pow(orientNorm, 3.0/2.0) / curveDenom);
+            radius = Math.pow(orientNorm, 3.0/2.0) / curveDenom;
+
+            // Store center of circle
+            if (center != null) {
+                center.setLocation(xpos - ydiff * orientNorm / curveDenom,
+                    ypos + xdiff * orientNorm / curveDenom);
+            }
+        }
+        else {
+            radius *= Math.signum(curveDenom);
+            if (center != null) {
+                center.setLocation(Double.NaN, Double.NaN);
+            }
+        }
+        return radius;
+    }
+
+    /**
+     * Returns the radius and center of the osculating circle at the given position.
+     * @param T Spline parameter
+     * @param center Point in which to store the center of the circle
+     * @return 0 if successful, -1 if not.
+     */
+    public double getOsculatingCircle(double T, Point2D center) {
+        if (center == null)
+            return -1;
+        // Find segment in which T lies
+        int idx = getInterval(T);
+
+        double radius = osculatingCircle(T, idx, center);
+
+        return radius;
+    }
+
 
 
     /**
@@ -328,24 +409,33 @@ public class PeriodicSpline {
      * Returns the position and orientation of the spline at the given position
      * @param T Spline parameter
      * @param pos Point in which to store the position
-     * @parma orient Point in which to store the normalized orientation vector
+     * @param orient Point in which to store the normalized orientation vector
      * @return 0 if successful, -1 if not.
      */
     public int getPositionAndOrientation(double T, Point2D pos, Point2D orient) {
+        // Find segment in which T lies
+        int idx = getInterval(T);
+        return getPositionAndOrientation(T,idx,pos,orient);
+    }
+
+    /**
+     * Returns the position and orientation of the spline at the given position
+     * @param T Spline parameter
+     * @param idx Index of the segment of the track
+     * @param pos Point in which to store the position
+     * @param orient Point in which to store the normalized orientation vector
+     * @return 0 if successful, -1 if not.
+     */
+    public int getPositionAndOrientation(double T, int idx, Point2D pos, Point2D orient) {
         if ((pos==null) || (orient == null))
             return -1;
-        int idx = 1;
-        // Find segment in which T lies
-        while ((idx <= numXY) && (T > Tdata[idx])) {
-            idx++;
-        }
         if (idx > numXY) {
             // T not in parameter range
             return -1;
         }
-        pos.setLocation(evaluateX(T,idx-1), evaluateY(T,idx-1));
-        double oX = orientationX(T, idx-1);
-        double oY = orientationY(T, idx-1);
+        pos.setLocation(evaluateX(T,idx), evaluateY(T,idx));
+        double oX = orientationX(T, idx);
+        double oY = orientationY(T, idx);
         double norm = Math.sqrt(oX*oX+oY*oY);
         orient.setLocation(oX/norm, oY/norm);
         return 1;
@@ -370,7 +460,7 @@ public class PeriodicSpline {
 
         int count = 0;
         while (L < ds) {
-            System.out.println("Count " + (count++));
+            // System.out.println("Count " + (count++));
             // Compute next intermediate point
             cur_t+=int_step;
             if (cur_t >= Tdata[numXY]) {

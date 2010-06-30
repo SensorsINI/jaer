@@ -5,7 +5,6 @@
 
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
-import java.util.Observer;
 import javax.media.opengl.*;
 import java.awt.geom.Point2D;
 import java.util.LinkedList;
@@ -49,7 +48,6 @@ public class RaceDisplay extends GLCanvas implements GLEventListener {
     }
 
     public synchronized void display(GLAutoDrawable drawable) {
-        System.out.println("display");
         if (raceTrack != null) {
             LinkedList<Point2D> allpoints = raceTrack.getSmoothPoints(stepsize);
             ListIterator<Point2D> it = allpoints.listIterator();
@@ -68,12 +66,13 @@ public class RaceDisplay extends GLCanvas implements GLEventListener {
             }
             gl.glEnd();
   
-            System.out.println("Before car display");
             if (myCar != null) {
                 // Move car
                 myCar.drive();
                 // Display car
                 myCar.displayCar(gl);
+            } else {
+                System.out.println("No car defined!");
             }
 
             gl.glFlush();
@@ -112,7 +111,6 @@ public class RaceDisplay extends GLCanvas implements GLEventListener {
      * @param myCar The new car.
      */
     public void setCar(Slotcar myCar) {
-        System.out.println("Setting Car!");
         this.myCar = myCar;
         myCar.setGL(getGL());
     }

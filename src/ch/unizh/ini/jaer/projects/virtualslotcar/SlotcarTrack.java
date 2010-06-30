@@ -24,11 +24,21 @@ public class SlotcarTrack {
     /** Integration step for arc-length calculations */
     public final double INTEGRATION_STEP = 0.001;
 
+    /** State of the slotcar */
+    private SlotcarState carState;
+
+    /** Physics object */
+    private SlotcarPhysics physics;
+
     /** Creates a new track */
     public SlotcarTrack() {
         trackPoints = new LinkedList<Point2D>();
 
         smoothTrack = new PeriodicSpline();
+
+        carState = new SlotcarState();
+
+        physics = new SlotcarPhysics();
     }
 
     /** Adds a Point2D2D to the end of the track */
@@ -164,7 +174,7 @@ public class SlotcarTrack {
      * Returns the position and orientation of the spline at the given position
      * @param T Spline parameter
      * @param pos Point in which to store the position
-     * @parma orient Point in which to store the orientation vector
+     * @param orient Point in which to store the orientation vector
      * @return 0 if successful, -1 if not.
      */
     public int getPositionAndOrientation(double t, Point2D pos, Point2D orient) {
@@ -172,13 +182,84 @@ public class SlotcarTrack {
     }
 
     /**
-     * Advances the car on the track.
-     * @param t Current parameter position
-     * @param speed Current speed of car
-     * @param time Time to advance
-     * @return New parameter position (NaN if car leaves track)
+     * Returns the osculating circle at the given position of the track
+     * @param T Spline parameter
+     * @param center Point in which to store the center of the circle.
+     * @return The radius of the circle
      */
-    public double advance(double t, double speed, double time) {
-        return smoothTrack.advance(t, speed*time, INTEGRATION_STEP);
+    public double getOsculatingCircle(double t, Point2D center) {
+        return smoothTrack.getOsculatingCircle(t,center);
+    }
+
+    /**
+     * Advances the car on the track.
+     * @param throttle Current throttle position
+     * @param time Time to advance
+     * @return New state of the car
+     */
+    public SlotcarState advance(double throttle, double time) {
+        if (carState.onTrack) {
+
+            // Compute curvature radius and direction
+            double radius = smoothTrack.osculatingCircle(carState.pos, carState.segmentIdx, null);
+
+            // Compute physics
+            carState = physics.nextState(carState, throttle, radius, Math.signum(radius), time);
+
+            // Advance car on track
+            if (carState.onTrack) {
+                carState.pos = smoothTrack.advance(carState.pos, carState.speed*time, INTEGRATION_STEP);
+                if (carState.pos > smoothTrack.getLength()) {
+                    // Wrap around at end of track
+                    carState.pos -= smoothTrack.getLength();
+                }
+                carState.segmentIdx = smoothTrack.getInterval(carState.pos);
+
+                // Compute absolute position and orientation of car
+                smoothTrack.getPositionAndOrientation(carState.pos, carState.XYpos, carState.absoluteOrientation);
+            } else {
+                System.out.println("Car flew off track!!!");
+                System.out.println("Critical radius was " + Math.abs(radius));
+                System.out.println("Outward force was " + Math.abs(carState.outwardForce));
+                System.out.println("Maximal force allowed is " + physics.getMaxOutwardForce());
+            }
+
+            return carState;
+        }
+        else {
+            // Return old state if car off track
+            return carState;
+        }
+    }
+
+    /**
+     * Returns the current state of the car on the track
+     * @return Current state of the car on the track
+     */
+    public SlotcarState getCarState() {
+        return carState;
+    }
+
+    /** Initializes the state of the car on the track */
+    public void initCarState() {
+        carState = new SlotcarState();
+
+        // Calculate absolute positions and orientations
+        carState.XYpos = new Point2D.Double();
+        carState.absoluteOrientation = new Point2D.Double();
+        getPositionAndOrientation(0.0, carState.XYpos, carState.absoluteOrientation);
+    }
+
+    public void initPhysics(double friction, double carMass, double carLength,
+            double comHeight, double momentInertia,
+            double orientationCorrectForce, double engineForce) {
+
+        physics.setCarMass(carMass);
+        physics.setCarLength(carLength);
+        physics.setComHeight(comHeight);
+        physics.setEngineForce(engineForce);
+        physics.setFriction(friction);
+        physics.setOrientationCorrectFactor(orientationCorrectForce);
+        physics.setMomentInertia(momentInertia);
     }
 }

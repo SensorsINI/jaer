@@ -62,6 +62,9 @@ public class RacetrackFrame extends javax.swing.JFrame {
 
         GoButton = new javax.swing.JButton();
         trackPanel = new javax.swing.JPanel();
+        drawCurve = new javax.swing.JCheckBox();
+        ThrottleSlider = new javax.swing.JSlider();
+        jLabel1 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Slotcar Racetrack");
@@ -78,16 +81,34 @@ public class RacetrackFrame extends javax.swing.JFrame {
             }
         });
 
+        trackPanel.setPreferredSize(new java.awt.Dimension(450, 450));
+
         javax.swing.GroupLayout trackPanelLayout = new javax.swing.GroupLayout(trackPanel);
         trackPanel.setLayout(trackPanelLayout);
         trackPanelLayout.setHorizontalGroup(
             trackPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 318, Short.MAX_VALUE)
+            .addGap(0, 488, Short.MAX_VALUE)
         );
         trackPanelLayout.setVerticalGroup(
             trackPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 278, Short.MAX_VALUE)
+            .addGap(0, 453, Short.MAX_VALUE)
         );
+
+        drawCurve.setText("Draw Curvature");
+        drawCurve.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                drawCurveActionPerformed(evt);
+            }
+        });
+
+        ThrottleSlider.setToolTipText("Speed of the car");
+        ThrottleSlider.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                ThrottleSliderStateChanged(evt);
+            }
+        });
+
+        jLabel1.setText("Throttle");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -95,18 +116,30 @@ public class RacetrackFrame extends javax.swing.JFrame {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(trackPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 13, Short.MAX_VALUE)
-                .addComponent(GoButton)
+                .addComponent(trackPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 488, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                        .addComponent(GoButton, javax.swing.GroupLayout.PREFERRED_SIZE, 97, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jLabel1, javax.swing.GroupLayout.Alignment.LEADING)
+                        .addComponent(drawCurve, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(ThrottleSlider, 0, 0, Short.MAX_VALUE))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+            .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(trackPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(GoButton))
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(trackPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 453, Short.MAX_VALUE)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(drawCurve)
+                        .addGap(21, 21, 21)
+                        .addComponent(jLabel1)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(ThrottleSlider, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 318, Short.MAX_VALUE)
+                        .addComponent(GoButton)))
                 .addContainerGap())
         );
 
@@ -125,8 +158,11 @@ public class RacetrackFrame extends javax.swing.JFrame {
     private void GoButtonMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_GoButtonMouseClicked
         if (raceMode == false) {
             // start the race
+            raceTrack.initCarState();
             myCar = new Slotcar(raceTrack);
             myCar.setDriveCar(true);
+            myCar.setThrottle((double) ThrottleSlider.getValue() / (double) ThrottleSlider.getMaximum());
+            myCar.setDrawCircle(drawCurve.isSelected());
 
             trackDisplay.setCar(myCar);
 
@@ -151,6 +187,20 @@ public class RacetrackFrame extends javax.swing.JFrame {
             raceMode = false;
         }
     }//GEN-LAST:event_GoButtonMouseClicked
+
+    private void ThrottleSliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_ThrottleSliderStateChanged
+        // TODO add your handling code here:
+        double newThrottle = (double) ThrottleSlider.getValue() / (double) ThrottleSlider.getMaximum();
+        if (myCar != null)
+            myCar.setThrottle(newThrottle);
+
+    }//GEN-LAST:event_ThrottleSliderStateChanged
+
+    private void drawCurveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_drawCurveActionPerformed
+        // TODO add your handling code here:
+        if (myCar != null)
+            myCar.setDrawCircle(drawCurve.isSelected());
+    }//GEN-LAST:event_drawCurveActionPerformed
 
     private void createOpenGLCanvas() {
         if (trackDisplay != null)
@@ -206,6 +256,9 @@ public class RacetrackFrame extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton GoButton;
+    private javax.swing.JSlider ThrottleSlider;
+    private javax.swing.JCheckBox drawCurve;
+    private javax.swing.JLabel jLabel1;
     private javax.swing.JPanel trackPanel;
     // End of variables declaration//GEN-END:variables
 

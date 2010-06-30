@@ -17,11 +17,8 @@ public class Slotcar implements Runnable {
     // The race track
     SlotcarTrack theTrack;
 
-    // Current position on track
-    double curPos;
-
-    // Current speed of car
-    double curSpeed;
+    // The current state of the car
+    SlotcarState curState;
 
     // Last time step of update
     long lastTime;
@@ -41,14 +38,19 @@ public class Slotcar implements Runnable {
     // Drive car or stop
     boolean driveCar;
 
+    // Whether to draw the osculating circle of the track at the current car position
+    boolean drawCircle;
+
+    // Whether to draw the centrifugal force
+    boolean drawForce;
+
+    // Throttle value
+    double throttle;
+
+
     // Open GL context
     GL gl;
 
-    // Old position of the car to draw
-    Point2D oldPos;
-
-    // Constant driving speed
-    public final double CONST_SPEED = 0.5;
 
     /**
      * Creates a new Slotcar object with a pointer to OpenGL context and the track
@@ -60,15 +62,15 @@ public class Slotcar implements Runnable {
         lastTime = -1;
         driveCar = false;
         gl = null;
-        oldPos = null;
+        drawCircle = true;
+        curState = theTrack.getCarState();
+        throttle = 0.0;
     }
 
     /**
      * Main method of the thread. Moves the car and updates the speed.
      */
     public void run() {
-        double TL = theTrack.getTrackLength();
-        curSpeed = 0.5;
 
         driveCar = true;
 
@@ -82,18 +84,20 @@ public class Slotcar implements Runnable {
             // Move car
             if (lastTime >= 0) {
                 long sinceTime = newTime - lastTime;
-                // Compute new position
-                curPos = theTrack.advance(curPos, curSpeed, sinceTime / 1.0e9);
-                // curPos += curSpeed * (sinceTime / 1.0e9);
-
-                if (curPos >= TL)
-                    curPos = curPos - TL;
-
-                // TODO: Let controller change speed
+                // Compute new state of the car
+                
+                curState = theTrack.advance(throttle, sinceTime / 1.0e9);
+                
+                // TODO: Let controller change throttle
                 //System.out.println("Here the controller should take over...");
             }
             lastTime = newTime;
 
+            if (curState.onTrack == false) {
+                // Car fell off track
+                driveCar = false;
+                System.out.println("Car OFF TRACK!!!");
+            }
             try {
                 Thread.sleep(sleepTime);
             } catch (InterruptedException e) {
@@ -107,7 +111,7 @@ public class Slotcar implements Runnable {
      */
     public void drive() {
         double TL = theTrack.getTrackLength();
-        curSpeed = CONST_SPEED;
+        // curSpeed = CONST_SPEED;
 
         if (driveCar) {
 
@@ -119,17 +123,18 @@ public class Slotcar implements Runnable {
             if (lastTime >= 0) {
                 long sinceTime = newTime - lastTime;
                 // Compute new position
-                curPos = theTrack.advance(curPos, curSpeed, sinceTime / 1.0e9);
-                // curPos += curSpeed * (sinceTime / 1.0e9);
-
-                if (curPos >= TL)
-                    curPos = curPos - TL;
+                curState = theTrack.advance(throttle, sinceTime / 1.0e9);
 
                 // TODO: Let controller change speed
                 //System.out.println("Here the controller should take over...");
             }
             lastTime = newTime;
 
+            if (curState.onTrack == false) {
+                // Car fell off track
+                driveCar = false;
+                System.out.println("Car OFF TRACK!!!");
+            }
         }
     }
 
@@ -146,10 +151,13 @@ public class Slotcar implements Runnable {
         gl.glTranslated(2*(p.getX())-1, 2*p.getY()-1, 0);
 
         double angle = (180.0 * Math.atan2(orient.getX(), orient.getY())) / Math.PI;
+        angle += 180.0 * curState.relativeOrientation / Math.PI;
+
+        // System.out.println("Draw Angle: " + curState.relativeOrientation);
         gl.glRotated(-angle, 0, 0, 1);
 
-        gl.glRectd(-2*carSizeX, -2*carSizeY,
-                   2*carSizeX, 2*carSizeY);
+        gl.glRectd(-2*carSizeX, 0.5*carSizeY,
+                   2*carSizeX, -3.5*carSizeY);
         /*
         gl.glBegin(GL.GL_POLYGON);
         gl.glVertex2d(2*(p.getX()-carSizeX)-1, 2*(p.getY()-carSizeY)-1);
@@ -165,17 +173,48 @@ public class Slotcar implements Runnable {
 
     }
 
+    /** Draws the osculating circle of the track at the current car position */
+    private void drawOsculatingCircle(GL g, Point2D p, double radius, Point2D center) {
+        radius = Math.abs(radius);
+
+        gl.glLineWidth(1.0f);
+
+        // Draw line to connect center of circle and car
+        gl.glColor3f(1.0f, 1.0f, 1.0f);
+
+        gl.glBegin(GL.GL_LINES);
+        gl.glVertex2d(2*(p.getX())-1, 2*(p.getY())-1);
+        gl.glVertex2d(2*(center.getX())-1, 2*(center.getY())-1);
+        gl.glEnd();
+
+        // Draw circle
+        gl.glColor3f(1.0f, 0.0f, 1.0f);
+        gl.glBegin(GL.GL_LINE_LOOP);
+        for (int i=0; i<90; i++) {
+            gl.glVertex2d(2*(center.getX()+radius*Math.cos(4.0*i*Math.PI/180.0))-1,
+                    2*(center.getY()+radius*Math.sin(4.0*i*Math.PI/180.0))-1);
+        }
+        gl.glEnd();
+
+        gl.glLoadIdentity();
+
+    }
+
+
     // Paints the car on the drawable surface
     public void displayCar(GL gl)  {
-        System.out.println("Displaying Car!");
-        Point2D p = new Point2D.Double();
-        Point2D orient = new Point2D.Double();
-        theTrack.getPositionAndOrientation(curPos, p, orient);
+        // System.out.println("Displaying Car!");
 
-         System.out.println("CurPos: " + p);
-        if (p != null) {
-            drawCar(gl,p, orient);
-            oldPos = p;
+        // System.out.println("CurPos: " + p);
+        if (curState.XYpos != null) {
+            drawCar(gl,curState.XYpos, curState.absoluteOrientation);
+            if (drawCircle) {
+                Point2D center = new Point2D.Double();
+                double radius = theTrack.getOsculatingCircle(curState.pos, center);
+                radius = Math.abs(radius);
+                if ((radius >= 0) && !(Double.isInfinite(radius)))
+                    drawOsculatingCircle(gl, curState.XYpos, radius, center);
+            }
             
         }
         else {
@@ -220,5 +259,35 @@ public class Slotcar implements Runnable {
     public void setGL(GL gl) {
         this.gl = gl;
     }
+
+    public boolean isDrawCircle() {
+        return drawCircle;
+    }
+
+    public void setDrawCircle(boolean drawCircle) {
+        this.drawCircle = drawCircle;
+    }
+
+    public boolean isDrawForce() {
+        return drawForce;
+    }
+
+    public void setDrawForce(boolean drawForce) {
+        this.drawForce = drawForce;
+    }
+
+    public SlotcarState getState() {
+        return this.curState;
+    }
+
+    public double getThrottle() {
+        return throttle;
+    }
+
+    public void setThrottle(double throttle) {
+        this.throttle = throttle;
+    }
+
+
 
 }
