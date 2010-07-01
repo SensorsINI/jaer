@@ -413,9 +413,11 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     static final int CMD_SET_SERVO=7, 
             CMD_DISABLE_SERVO=8, 
             CMD_SET_ALL_SERVOS=9, 
-            CMD_DISABLE_ALL_SERVOS=10, 
-            CMD_SET_TIMER0_RELOAD_VALUE=11,
-            CMD_SET_PORT2=12;
+            CMD_DISABLE_ALL_SERVOS = 10,
+            CMD_SET_TIMER0_RELOAD_VALUE = 11,
+            CMD_SET_PORT2 = 12,
+            CMD_SEND_WOWWEE_RS_CMD = 13,
+            CMD_SET_PORT_DOUT=14; // 13 used for wowwee cmds
     
     public int getNumServos() {
         return NUM_SERVOS;
@@ -526,11 +528,11 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     
     /** directly sends a particular short value to the servo, bypassing conversion from float.
      * The value is subtracted from 65536 and written so that the value you write encodes the HIGH time of the
-     * PWM pulse.
+     * PWM pulse; 0=low always, 65535=high always.
      * @param servo the servo number
      * @param pwmValue the value written to servo controller is 64k minus this value
      */
-    private void setServoValuePWM(int servo, int pwmValue) {
+    public void setServoValuePWM(int servo, int pwmValue) {
         pwmValue=65536-pwmValue;
         checkServoCommandThread();
         ServoCommand cmd=new ServoCommand();
@@ -576,7 +578,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         return freqActual;
     }
     
-    /** corrects for mislabling of servo board compared with pca output port on SiLabs, i.e. S0 on board is actually PCA3 output and S3 is PCA0.
+    /** corrects for mislabeling of servo board compared with PCA output port on SiLabs, i.e. S0 on board is actually PCA3 output and S3 is PCA0.
      * 
      * @param servo is the labeled output port
      * @return the index into the array that is passed to setAllServoValues to set all the servos simultaneously
@@ -660,7 +662,27 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         cmd.bytes[1]=(byte)(0xff&portValue);
         submitCommand(cmd);
     }
-    
+
+    /** Sets the accessible ports PXMDOUT bits to set the port pins in either push-pull or open-drain configuration.
+     * The first nibble of p1 are the servo S0-S3 bits (in reverse order), and p2 is the port on the side of the ServoUSB board.
+     * p1.0=S3, p1.3=S0.  Setting the bit to 1 sets the port pin to push-pull and setting it to 0 sets it in open-drain.
+     * If the pin is set to open drain mode, then writing a 1 to the port turns off the pull down.
+     * <p>
+     * The default (reset state) is that only the servo output pins are set to push-pull mode. P2 is set to open drain.
+     *
+     * @param p1 port 1 - the first nibble are the servo output pins in reverse order. The upper nibble is masked out to leave bits 4:7 in open drain mode.
+     * @param p2 port 2 - on the side of the board.
+     */
+    public void setPortDOutRegisters(byte p1, byte p2){
+          checkServoCommandThread();
+        ServoCommand cmd=new ServoCommand();
+        cmd.bytes=new byte[3];
+        cmd.bytes[0]=CMD_SET_PORT_DOUT;
+        cmd.bytes[1]=(byte)(0x0f&p1);
+        cmd.bytes[2]=(byte)(0xff&p2);
+        submitCommand(cmd);
+
+    }
 
     /** encapsulates the servo command bytes that are sent.
      The first byte is the command specifier, the rest of the bytes are the command itself.
