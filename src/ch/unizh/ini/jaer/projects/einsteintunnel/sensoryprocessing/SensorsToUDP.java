@@ -11,14 +11,9 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import javax.media.opengl.*;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.glu.*;
-import javax.swing.*;
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.nio.*;
 
 
 /**
@@ -28,7 +23,7 @@ import java.nio.*;
 public class SensorsToUDP extends EventFilter2D {
 
     public int csx, maxHistogramX, packetCounter;
-    public int commandPort = 5888;
+    public int commandPort = 20021;
     public int dsx = 504;
     public int dsy = 80;
     public short[] xHistogram;

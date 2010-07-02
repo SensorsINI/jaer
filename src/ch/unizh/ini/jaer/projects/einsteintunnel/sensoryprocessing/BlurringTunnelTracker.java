@@ -5,8 +5,7 @@
 
 package ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing;
 
-import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2D.CellGroup;
-import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.*;
+import ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing.BlurringTunnelFilter.CellGroup;
 import com.sun.opengl.util.GLUT;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.*;
@@ -40,6 +39,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 
     public int csx, maxHistogramX, packetCounter;
     public int commandPort = 20021;
+    public int maxClusters = 200;
     public int dsx = 504;
     public int dsy = 80;
     public short[] xHistogram;
@@ -54,7 +54,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     /**
      * Blurring filter to get clusters
      */
-    protected BlurringFilter2D bfilter;
+    protected BlurringTunnelFilter bfilter;
     /**
      *  clusters to be destroyed
      */
@@ -67,36 +67,35 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
      * random
      */
     protected Random random = new Random();
-    private int numVelocityPoints = getPrefs().getInt("BlurringTunnelTracker.numVelocityPoints",3);
+    private int numVelocityPoints = getPrefs().getInt("BlurringTunnelTracker.numVelocityPoints",15);
     private int minCellsPerCluster = getPrefs().getInt("BlurringTunnelTracker.minCellsPerCluster",10);
     private boolean pathsEnabled = getPrefs().getBoolean("BlurringTunnelTracker.pathsEnabled",true);
     private boolean udpEnabled = getPrefs().getBoolean("BlurringTunnelTracker.udpEnabled",true);
-    private boolean sendActivity = getPrefs().getBoolean("BlurringTunnelTracker.sendActivity",false);
     private float activityDecayFactor = getPrefs().getFloat("BlurringTunnelTracker.activityDecayFactor",0.9f);
+    private boolean sendActivity = getPrefs().getBoolean("BlurringTunnelTracker.sendActivity",true);
     private boolean sendPosition = getPrefs().getBoolean("BlurringTunnelTracker.sendPosition",true);
     private boolean sendVelocity = getPrefs().getBoolean("BlurringTunnelTracker.sendVelocity",false);
     private boolean sendSize = getPrefs().getBoolean("BlurringTunnelTracker.sendSize",false);
     private int pathLength = getPrefs().getInt("BlurringTunnelTracker.pathLength",100);
     private boolean useVelocity = getPrefs().getBoolean("BlurringTunnelTracker.useVelocity",true); // enabling this enables both computation and rendering of cluster velocities
-    private boolean showClusters = getPrefs().getBoolean("BlurringTunnelTracker.showClusters",false);
+    private boolean showClusters = getPrefs().getBoolean("BlurringTunnelTracker.showClusters",true);
     private float velAngDiffDegToNotMerge = getPrefs().getFloat("BlurringTunnelTracker.velAngDiffDegToNotMerge",60.0f);
     private boolean showClusterNumber = getPrefs().getBoolean("BlurringTunnelTracker.showClusterNumber",false);
-    private boolean showClusterVelocity = getPrefs().getBoolean("BluringFilter2DTracker.showClusterVelocity",false);
+    private boolean showClusterVelocity = getPrefs().getBoolean("BlurringTunnelTracker.showClusterVelocity",false);
     private float velocityVectorScaling = getPrefs().getFloat("BlurringTunnelTracker.velocityVectorScaling",1.0f);
     private final float VELOCITY_VECTOR_SCALING = 1e6f; // to scale rendering of cluster velocityPPT vector, velocityPPT is in pixels/tick=pixels/us so this gives 1 screen pixel per 1 pix/s actual vel
     private boolean showClusterMass = getPrefs().getBoolean("BlurringTunnelTracker.showClusterMass",false);
-    private float maximumClusterLifetimeMs = getPrefs().getFloat("BlurringTunnelTracker.maximumClusterLifetimeMs",50.0f);
+    private float maximumClusterLifetimeMs = getPrefs().getFloat("BlurringTunnelTracker.maximumClusterLifetimeMs",100.0f);
 
     /**
-     * Creates a new instance of BlurringFilter2DTracker.
+     * Creates a new instance of BlurringTunnelTracker.
      * @param chip
      */
     public BlurringTunnelTracker (AEChip chip){
         super(chip);
         this.chip = chip;
-        initFilter();
         chip.addObserver(this);
-        final String movement = "Movement", disp = "Display", global = "Global", output = "output", update = "Update", logging = "Logging";
+        final String movement = "Movement", disp = "Display", global = "Global", output = "Output", update = "Update", logging = "Logging";
         setPropertyTooltip(global,"maximumClusterLifetimeMs","upper limit of cluster lifetime. It increases by when the cluster is properly updated. Otherwise, it decreases. When the lifetime becomes zero, the cluster will be expired.");
         setPropertyTooltip(global,"minCellsPerCluster","the minimal amount of active cells in a cell group to be tracked");
         setPropertyTooltip(output,"udpEnabled","creates UDP output of the observed activities and cluster ");
@@ -117,13 +116,14 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         setPropertyTooltip(disp,"velocityVectorScaling","scaling of drawn velocity vectors");
 
         filterChainSetting();
+        initFilter();
     }
 
     /**
-     * sets the BlurringFilter2D as a enclosed filter to find cluster
+     * sets the BlurringTunnelFilter as a enclosed filter to find cluster
      */
     protected void filterChainSetting (){
-        bfilter = new BlurringFilter2D(chip);
+        bfilter = new BlurringTunnelFilter(chip);
         bfilter.addObserver(this); // to get us called during blurring filter iteration at least every updateIntervalUs
         setEnclosedFilter(bfilter);
     }
@@ -204,7 +204,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     /** Processes the incoming events to track clusters.
      *
      * @param in
-     * @return packet of BluringFilter2DTrackerEvent.
+     * @return packet of BlurringFilter2DTrackerEvent.
      */
     public EventPacket<?> filterPacket (EventPacket<?> in){
         if ( in == null ){
@@ -224,8 +224,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     }
 
     public void sendOutput(EventPacket<?> in){
+        byte[] message = new byte[maxClusters*8+4+4];
         if(sendActivity){
-            byte[] message = new byte[4+4+dsx*2];
             for(BasicEvent e:in){
                 xHistogram[e.x*dsx/csx] += 1;
             }
@@ -240,11 +240,10 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             message[6]=(byte)'s';
             message[7]=(byte)'t';
             //data
-            for (int i=0; i<dsx; i+=2){
-                message[8+2]=(byte)((xHistogram[i] & 0xff00>>>8));
-                message[9+2]=(byte)((xHistogram[i] & 0x00ff));
+            for (int i=0; i<dsx; i++){
+                message[8+2*i]=(byte)((xHistogram[i] & 0xff00>>>8));
+                message[9+2*i]=(byte)((xHistogram[i] & 0x00ff));
             }
-
             try {
                 sendPacket(message);
             } catch (IOException ex) {
@@ -257,7 +256,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             packetCounter += 1;
         }
         if(sendPosition){
-            byte[] message = new byte[4+4+clusters.size()*8];
             //sequence #
             message[0]=(byte)((packetCounter & 0xff000000)>>>24);
             message[1]=(byte)((packetCounter & 0x00ff0000)>>>16);
@@ -267,7 +265,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             message[4]=(byte)'p';
             message[5]=(byte)'o';
             message[6]=(byte)'s';
-            message[7]=(byte)'n';
+            message[7]=(byte)(clusters.size());
             //data
             for(int i=0; i<clusters.size(); i+=8){
                 //x position
@@ -281,10 +279,18 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
                 message[14+i]=(byte)(((byte)(clusters.get(i).getLocation().y) & 0xff00>>>8));
                 message[15+i]=(byte)(((byte)(clusters.get(i).getLocation().y) & 0x00ff));
             }
+            try {
+                sendPacket(message);
+            } catch (IOException ex) {
+                Logger.getLogger(SensorsToUDP.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+            for(int i = 0; i<xHistogram.length; i++){
+                xHistogram[i] = (short)(xHistogram[i]*activityDecayFactor);
+            }
             packetCounter += 1;
         }
         if(sendVelocity){
-            byte[] message = new byte[4+4+clusters.size()*8];
             //sequence #
             message[0]=(byte)((packetCounter & 0xff000000)>>>24);
             message[1]=(byte)((packetCounter & 0x00ff0000)>>>16);
@@ -294,7 +300,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             message[4]=(byte)'v';
             message[5]=(byte)'e';
             message[6]=(byte)'l';
-            message[7]=(byte)'o';
+            message[7]=(byte)(clusters.size());
             //data
             for(int i=0; i<clusters.size(); i+=8){
                 //x velocity
@@ -308,10 +314,18 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
                 message[14+i]=(byte)(((byte)(clusters.get(i).velocityPPS.y) & 0xff00>>>8));
                 message[15+i]=(byte)(((byte)(clusters.get(i).velocityPPS.y) & 0x00ff));
             }
+            try {
+                sendPacket(message);
+            } catch (IOException ex) {
+                Logger.getLogger(SensorsToUDP.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+            for(int i = 0; i<xHistogram.length; i++){
+                xHistogram[i] = (short)(xHistogram[i]*activityDecayFactor);
+            }
             packetCounter += 1;
         }
         if(sendSize){
-            byte[] message = new byte[4+4+clusters.size()*4];
             //sequence #
             message[0]=(byte)((packetCounter & 0xff000000)>>>24);
             message[1]=(byte)((packetCounter & 0x00ff0000)>>>16);
@@ -319,9 +333,9 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             message[3]=(byte)((packetCounter & 0x000000ff));
             //msg
             message[4]=(byte)'s';
-            message[5]=(byte)'i';
-            message[6]=(byte)'z';
-            message[7]=(byte)'e';
+            message[5]=(byte)'z';
+            message[6]=(byte)'e';
+            message[7]=(byte)(clusters.size());
             //data
             for(int i=0; i<clusters.size(); i+=4){
                 //size
@@ -329,6 +343,15 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
                 message[9+i]=(byte)(((byte)(clusters.get(i).numCells) & 0xff00>>>16));
                 message[10+i]=(byte)(((byte)(clusters.get(i).numCells) & 0xff00>>>8));
                 message[11+i]=(byte)(((byte)(clusters.get(i).numCells) & 0x00ff));
+            }
+            try {
+                sendPacket(message);
+            } catch (IOException ex) {
+                Logger.getLogger(SensorsToUDP.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+            for(int i = 0; i<xHistogram.length; i++){
+                xHistogram[i] = (short)(xHistogram[i]*activityDecayFactor);
             }
             packetCounter += 1;
         }
@@ -372,7 +395,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     @Override
     public String toString (){
         String s = clusters != null ? Integer.toString(clusters.size()) : null;
-        String s2 = "BluringFilter2DTracker with " + s + " clusters ";
+        String s2 = "BlurringTunnelTracker with " + s + " clusters ";
         return s2;
     }
 
@@ -1345,7 +1368,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     public void setPathsEnabled (boolean pathsEnabled){
         support.firePropertyChange("pathsEnabled",this.pathsEnabled,pathsEnabled);
         this.pathsEnabled = pathsEnabled;
-        getPrefs().putBoolean("BluringFilter2DTracker.pathsEnabled",pathsEnabled);
+        getPrefs().putBoolean("BlurringTunnelTracker.pathsEnabled",pathsEnabled);
     }
 
     /** Processes the events if the Observable is an EventFilter2D.
@@ -1436,7 +1459,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         }
         GL gl = drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
         if ( gl == null ){
-            log.warning("null GL in BluringFilter2DTracker.annotate");
+            log.warning("null GL in BlurringTunnelTracker.annotate");
             return;
         }
         gl.glPushMatrix();
@@ -1466,7 +1489,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         }
         support.firePropertyChange("useVelocity",this.useVelocity,useVelocity);
         this.useVelocity = useVelocity;
-        getPrefs().putBoolean("BluringFilter2DTracker.useVelocity",useVelocity);
+        getPrefs().putBoolean("BlurringTunnelTracker.useVelocity",useVelocity);
     }
 
     /**
@@ -1490,7 +1513,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
      */
     public void setShowClusters (boolean showClusters){
         this.showClusters = showClusters;
-        getPrefs().putBoolean("BluringFilter2DTracker.showClusters",showClusters);
+        getPrefs().putBoolean("BlurringTunnelTracker.showClusters",showClusters);
     }
 
     /** returns path length
@@ -1512,7 +1535,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         }
         int old = this.pathLength;
         this.pathLength = pathLength;
-        getPrefs().putInt("BluringFilter2DTracker.pathLength",pathLength);
+        getPrefs().putInt("BlurringTunnelTracker.pathLength",pathLength);
         support.firePropertyChange("pathLength",old,pathLength);
         if ( numVelocityPoints > pathLength ){
             setNumVelocityPoints(pathLength);
@@ -1536,7 +1559,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             velAngDiffDegToNotMerge = 180;
         }
         this.velAngDiffDegToNotMerge = velAngDiffDegToNotMerge;
-        getPrefs().putFloat("BluringFilter2DTracker.velAngDiffDegToNotMerge",velAngDiffDegToNotMerge);
+        getPrefs().putFloat("BlurringTunnelTracker.velAngDiffDegToNotMerge",velAngDiffDegToNotMerge);
     }
 
     /**
@@ -1551,7 +1574,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
      */
     public void setShowClusterNumber (boolean showClusterNumber){
         this.showClusterNumber = showClusterNumber;
-        getPrefs().putBoolean("BluringFilter2DTracker.showClusterNumber",showClusterNumber);
+        getPrefs().putBoolean("BlurringTunnelTracker.showClusterNumber",showClusterNumber);
     }
 
     /**
@@ -1566,7 +1589,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
      */
     public void setShowClusterVelocity (boolean showClusterVelocity){
         this.showClusterVelocity = showClusterVelocity;
-        getPrefs().putBoolean("BluringFilter2DTracker.showClusterVelocity",showClusterVelocity);
+        getPrefs().putBoolean("BlurringTunnelTracker.showClusterVelocity",showClusterVelocity);
     }
 
     /**
@@ -1581,7 +1604,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
      */
     public void setVelocityVectorScaling (float velocityVectorScaling){
         this.velocityVectorScaling = velocityVectorScaling;
-        getPrefs().putFloat("BluringFilter2DTracker.velocityVectorScaling",velocityVectorScaling);
+        getPrefs().putFloat("BlurringTunnelTracker.velocityVectorScaling",velocityVectorScaling);
     }
 
     /**
@@ -1599,7 +1622,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     public void setMaximumClusterLifetimeMs (float maximumClusterLifetimeMs){
         float old = this.maximumClusterLifetimeMs;
         this.maximumClusterLifetimeMs = maximumClusterLifetimeMs;
-        getPrefs().putFloat("BluringFilter2DTracker.maximumClusterLifetimeMs",maximumClusterLifetimeMs);
+        getPrefs().putFloat("BlurringTunnelTracker.maximumClusterLifetimeMs",maximumClusterLifetimeMs);
         support.firePropertyChange("maximumClusterLifetimeMs",old,this.maximumClusterLifetimeMs);
     }
 
@@ -1615,7 +1638,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
      */
     public void setShowClusterMass (boolean showClusterMass){
         this.showClusterMass = showClusterMass;
-        getPrefs().putBoolean("BluringFilter2DTracker.showClusterMass",showClusterMass);
+        getPrefs().putBoolean("BlurringTunnelTracker.showClusterMass",showClusterMass);
     }
 
     /** @see #setNumVelocityPoints(int)
@@ -1639,7 +1662,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         }
         int old = this.numVelocityPoints;
         this.numVelocityPoints = velocityPoints;
-        getPrefs().putInt("BluringFilter2DTracker.numVelocityPoints",velocityPoints);
+        getPrefs().putInt("BlurringTunnelTracker.numVelocityPoints",velocityPoints);
         support.firePropertyChange("velocityPoints",old,this.numVelocityPoints);
     }
 
@@ -1667,6 +1690,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 
     public void setUdpEnabled (boolean udpEnabled){
         this.udpEnabled = udpEnabled;
+        getPrefs().putBoolean("BlurringTunnelTracker.udpEnabled",udpEnabled);
     }
 
     public boolean getSendActivity (){
@@ -1675,6 +1699,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 
     public void setSendActiviy (boolean sendActivity){
         this.sendActivity = sendActivity;
+        getPrefs().putBoolean("BlurringTunnelTracker.sendActivity",sendActivity);
     }
 
     public float getActivityDecayFactor (){
@@ -1682,7 +1707,10 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     }
 
     public void setActivityDecayFactor (float activityDecayFactor){
+        float old = this.activityDecayFactor;
         this.activityDecayFactor = activityDecayFactor;
+        getPrefs().putFloat("BlurringTunnelTracker.activityDecayFactor",activityDecayFactor);
+        support.firePropertyChange("activityDecayFactor",old,this.activityDecayFactor);
     }
 
     public boolean getSendPosition (){
@@ -1691,6 +1719,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 
     public void setSendPosition (boolean sendPosition){
         this.sendPosition = sendPosition;
+        getPrefs().putBoolean("BlurringTunnelTracker.sendPosition",sendPosition);
     }
 
     public boolean getSendVelocity (){
@@ -1699,6 +1728,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 
     public void setSendVelocity (boolean sendVelocity){
         this.sendVelocity = sendVelocity;
+        getPrefs().putBoolean("BlurringTunnelTracker.sendVelocity",sendVelocity);
     }
 
     public boolean getSendSize (){
@@ -1707,5 +1737,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 
     public void setSendSize (boolean sendSize){
         this.sendSize = sendSize;
+        getPrefs().putBoolean("BlurringTunnelTracker.sendSize",sendSize);
     }
 }

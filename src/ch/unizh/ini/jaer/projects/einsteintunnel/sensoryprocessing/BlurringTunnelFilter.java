@@ -31,15 +31,15 @@ import net.sf.jaer.graphics.FrameAnnotater;
 public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotater, Observer {
 
     /* properties */
-    private int cellMassTimeConstantUs = getPrefs().getInt("BlurringFilter2D.cellMassTimeConstantUs", 20000);
-    private int cellLifeTimeUs = getPrefs().getInt("BlurringFilter2D.cellLifeTimeUs", 200000);
-    private int thresholdEventsForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdEventsForVisibleCell", 1);
-    private int thresholdMassForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdMassForVisibleCell", 25);
+    private int cellMassTimeConstantUs = getPrefs().getInt("BlurringFilter2D.cellMassTimeConstantUs", 100000);
+    private int cellLifeTimeUs = getPrefs().getInt("BlurringFilter2D.cellLifeTimeUs", 50000);
+    private int thresholdEventsForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdEventsForVisibleCell", 2);
+    private int thresholdMassForVisibleCell = getPrefs().getInt("BlurringFilter2D.thresholdMassForVisibleCell", 2);
     private boolean showCells = getPrefs().getBoolean("BlurringFilter2D.showCells", true);
     private boolean filledCells = getPrefs().getBoolean("BlurringFilter2D.filledCells", false);
     private boolean showBorderCellsOnly = getPrefs().getBoolean("BlurringFilter2D.showBorderCellsOnly", false);
     private boolean showInsideCellsOnly = getPrefs().getBoolean("BlurringFilter2D.showInsideCellsOnly", false);
-    private int cellSizePixels = getPrefs().getInt("BlurringFilter2D.cellSizePixels", 8);
+    private int cellSizePixels = getPrefs().getInt("BlurringFilter2D.cellSizePixels", 5);
 
     /* Constants to define neighbor cells */
     static int UPDATE_UP = 0x01;

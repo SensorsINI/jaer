@@ -23,30 +23,40 @@ import java.awt.Graphics2D;
  */
 public class EinsteinTunnelDisplay {
 
-    public static int commandPort = 5888;
+    public static boolean makeHistogram = true;
+    
+    public static boolean dropPerls = false; //doesnt work yet
+
+    public static int commandPort = 20021;
     public static int packetCount = 0;
     public static int dsx = 504;
     public static int dsy = 80;
+    public static int maxClusters = 200;
+    public static int nrClusters;
+    public static int packetLength;
     public static int maxHistogramX;
     public static short[] xHistogram;
+    public static float[] xPos;
+    public static float[] yPos;
+
+    protected static Random random = new Random();
 
     public static void main(String[] args) throws IOException{
-
-        byte[] buf = new byte[dsx*2+4+4];
-        char[] msg = new char[4];
+        char[] msg = new char[3];
+        int msgSize;
+        packetLength = maxClusters*8+4+4;
+        xPos = new float[maxClusters];
+        yPos = new float[maxClusters];
         xHistogram = new short[dsx];
         maxHistogramX = 1;
+        byte[] buf = new byte[packetLength];
 
         DatagramSocket socket = new DatagramSocket(commandPort);
-        InetAddress address = InetAddress.getByName("localhost");
-        
+
         System.out.println("Einstein Tunnel Display Method");
 
         while(true){
-
-            //System.out.println(address.getCanonicalHostName()+":"+commandPort);
-            DatagramPacket packet = new DatagramPacket(buf, buf.length, address, commandPort);
-            packet = new DatagramPacket(buf, buf.length);
+            DatagramPacket packet = new DatagramPacket(buf, buf.length);
             socket.receive(packet);
             //seq #
             int packetNumber = ((buf[0] & 0xFF) << 24)
@@ -57,21 +67,21 @@ public class EinsteinTunnelDisplay {
             msg[0]=(char)(buf[4]);
             msg[1]=(char)(buf[5]);
             msg[2]=(char)(buf[6]);
-            msg[3]=(char)(buf[7]);
+            msgSize=(int)(buf[7]);
+            //System.out.println(msg[0]+msg[1]+msg[2]+" "+msgSize);
             //System.out.println(new String(msg));
             //data
-            if(msg[0]=='h'&&msg[1]=='i'&&msg[2]=='s'&&msg[3]=='t'){
-                for(int i=0; i<dsx; i++){
-                    xHistogram[i] = (short)(((buf[8+2*i] & 0xFF) << 8)
-                                   | (buf[9+2*i] & 0xFF));
-                    //System.out.print(xHistogram[i]+" ");
-                }
-                //System.out.println();
+            if(msg[0]=='h' && msg[1]=='i' && msg[2]=='s'){
+                readHistogramPacket(buf);
+                packetCount++;
             }
-            //System.out.print("Packet number "+packetNumber);
-            checkHistogram();
-            histogramCanvas.repaint();
-            packetCount++;
+            if(msg[0]=='p' && msg[1]=='o' && msg[2]=='s'){
+                readPositionPacket(buf,msgSize);
+                //System.out.println("Read position... first position: "+xPos[0]);
+                packetCount++;
+            }
+            checkInput();
+            displayCanvas.repaint();
             if (packetNumber>packetCount){
                 System.out.println("Lost Packet! "+packetNumber);
                 packetCount = packetNumber;
@@ -79,27 +89,48 @@ public class EinsteinTunnelDisplay {
         }
     }
 
-    static GLU glu=null;
-    static JFrame histogramFrame=null;
-    static GLCanvas histogramCanvas=null;
-
-    static void checkHistogram(){
-        if(histogramFrame==null || (histogramFrame!=null && !histogramFrame.isVisible())){
-            createSimpleHistogram();
+    static void readHistogramPacket(byte[] buf){
+        for(int i=0; i<dsx; i++){
+            xHistogram[i] = (short)(((buf[8+2*i] & 0xFF) << 8)
+                           | (buf[9+2*i] & 0xFF));
         }
     }
 
-    static void createSimpleHistogram(){
+    static void readPositionPacket(byte[] buf, int msgSize){
+        nrClusters = msgSize;
+        for(int i=0; i<msgSize; i+=8){
+            xPos[i] = (float)(((buf[8+i] & 0xFF) << 24)
+                            | ((buf[9+i] & 0xFF) << 16)
+                            | ((buf[10+i] & 0xFF) << 8)
+                            | ((buf[11+i] & 0xFF)));
+            yPos[i] = (float)(((buf[12+i] & 0xFF) << 24)
+                            | ((buf[13+i] & 0xFF) << 16)
+                            | ((buf[14+i] & 0xFF) << 8)
+                            | ((buf[15+i] & 0xFF)));
+        }
+    }
 
-        histogramFrame=new JFrame("Histogram");
-        Insets histogramInsets = histogramFrame.getInsets();
-        histogramFrame.setSize(dsx+histogramInsets.left+histogramInsets.right, dsy+histogramInsets.bottom+histogramInsets.top);
+    static GLU glu=null;
+    static JFrame displayFrame=null;
+    static GLCanvas displayCanvas=null;
+
+    static void checkInput(){
+        if(displayFrame==null || (displayFrame!=null && !displayFrame.isVisible())){
+            createDisplay();
+        }
+    }
+
+    static void createDisplay(){
+
+        displayFrame=new JFrame("Tunnel Display");
+        Insets displayInsets = displayFrame.getInsets();
+        displayFrame.setSize(dsx+displayInsets.left+displayInsets.right, dsy+displayInsets.bottom+displayInsets.top);
         //histogramFrame.setSize(new Dimension(dsx,dsy));
-        histogramFrame.setResizable(false);
-        histogramFrame.setAlwaysOnTop(true);
-        histogramFrame.setLocation(100, 100);
-        histogramCanvas=new GLCanvas();
-        histogramCanvas.addGLEventListener(new GLEventListener(){
+        displayFrame.setResizable(false);
+        displayFrame.setAlwaysOnTop(true);
+        displayFrame.setLocation(100, 100);
+        displayCanvas=new GLCanvas();
+        displayCanvas.addGLEventListener(new GLEventListener(){
             public void init(GLAutoDrawable drawable) {
             }
 
@@ -109,27 +140,15 @@ public class EinsteinTunnelDisplay {
                 gl.glClearColor(0,0,0,0);
                 gl.glClear(GL.GL_COLOR_BUFFER_BIT);
                 //iteration through the xHistogram
-                //background
-                drawBackground(gl);
-                //histogram
-                gl.glBegin (GL.GL_LINES);
-                for(int i = 0; i<dsx; i++){
-                    if(xHistogram[i]>maxHistogramX) maxHistogramX = xHistogram[i];
-                    if(xHistogram[i]>0){
-                        //gl.glColor3f(0,0,0);
-                        //gl.glVertex2i(i,0);
-                        //gl.glVertex2i(i,dsy);
-                        gl.glColor3f(1,1,0);
-                        gl.glVertex2i(i,0);
-                        gl.glColor3f(1,0,0);
-                        gl.glVertex2i(i,xHistogram[i]*dsy/maxHistogramX);
-                        gl.glVertex2i(i,xHistogram[i]*dsy/maxHistogramX);
-                        gl.glColor3f(0,0,0);
-                        gl.glVertex2i(i,2*xHistogram[i]*dsy/maxHistogramX);
-                    }
+                if(makeHistogram){
+                    //background
+                    //drawBackgroundSnakes(gl);
+                    drawPerls(gl);
+                    //histogram
+                    drawDot(gl);
+                    drawHistogramFire(gl);
                 }
-                gl.glEnd ();
-
+                //if(dropPerls)drawPerls(gl);
                 int error=gl.glGetError();
                 if(error!=GL.GL_NO_ERROR){
                     if(glu==null) glu=new GLU();
@@ -150,14 +169,94 @@ public class EinsteinTunnelDisplay {
             public void displayChanged(GLAutoDrawable drawable, boolean modeChanged, boolean deviceChanged) {
             }
         });
-        histogramFrame.getContentPane().add(histogramCanvas);
+        displayFrame.getContentPane().add(displayCanvas);
         //histogramFrame.pack();
-        histogramFrame.setVisible(true);
+        displayFrame.setVisible(true);
     }
 
+    static public void drawDot(GL gl){
+        for (int i=0; i<nrClusters; i++){
+            gl.glPointSize(10);
+            gl.glColor3f(0.5f,0.6f,1.0f);
+            gl.glBegin(GL.GL_POINTS);
+            gl.glVertex2i((int)xPos[i],(int)yPos[i]);
+            gl.glEnd();
+        }
+    }
+    
+    public static class Perl{
+        public int x;
+        public int y;
+        public int size;
+        public float phase;
+        public float color;
+        
+        public Perl(){
+            x = random.nextInt(dsx);
+            y = random.nextInt(dsy);
+            size = random.nextInt(maxSize);
+            phase  = random.nextFloat()*360;
+            color = (float)Math.sin(phase);
+        }
+        
+        public void update(){
+            phase+=0.02;
+            color = (float)Math.sin(phase);
+        }
+    }
+    
     static int phase = 0;
+    static int margin = 3;
+    static int maxPerls = 100;
+    static int maxSize = 8;
+    static ArrayList<Perl> perls = new ArrayList();
+
+    static public void drawPerls(GL gl){
+        while (perls.size()<maxPerls){
+            perls.add(new Perl());
+        }
+        Iterator<Perl> itr = perls.iterator();
+        while(itr.hasNext()){
+            boolean drawPerl = true;
+            Perl perl = itr.next();
+            /*for(int j=0; j<nrClusters; j++){
+                if (perl.x > xPos[j]-margin && perl.y < xPos[j]+margin && drawPerl){
+                    System.out.println("perl "+perl.x+"/"+perl.y+" removed");
+                    perls.remove(perl);
+                    drawPerl = false;
+                }
+            }*/
+            if(drawPerl){
+                perl.update();
+                gl.glPointSize(perl.size);
+                gl.glColor3f(perl.color*0.5f,perl.color*0.5f,perl.color);
+                gl.glBegin(GL.GL_POINTS);
+                gl.glVertex2i(perl.x,perl.y);
+                gl.glEnd();
+            }
+        }
+        phase++;
+    }
+
+    static public void drawHistogramFire(GL gl){
+        gl.glBegin (GL.GL_LINES);
+        for(int i = 0; i<dsx; i++){
+            if(xHistogram[i]>maxHistogramX) maxHistogramX = xHistogram[i];
+            if(xHistogram[i]>0){
+                gl.glColor3f(1,1,0);
+                gl.glVertex2i(i,0);
+                gl.glColor3f(1,0,0);
+                gl.glVertex2i(i,xHistogram[i]*dsy/maxHistogramX);
+                gl.glVertex2i(i,xHistogram[i]*dsy/maxHistogramX);
+                gl.glColor3f(0,0,0);
+                gl.glVertex2i(i,2*xHistogram[i]*dsy/maxHistogramX);
+            }
+        }
+        gl.glEnd ();
+    }
+
     static float[][][] RGB;
-    static public void drawBackground(GL gl){
+    static public void drawBackgroundSnakes(GL gl){
         RGB = new float[3][dsx][dsy];
         gl.glPointSize(1);
         gl.glBegin (GL.GL_POINTS);
