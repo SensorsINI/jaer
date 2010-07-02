@@ -58,7 +58,6 @@ public class JoshParallelLineTracker extends EventFilter2D implements FrameAnnot
 
 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if(!isFilterEnabled()) return in;
         if(maxDist == 0)
             maxDist = Math.sqrt(chip.getSizeX() * chip.getSizeX() + chip.getSizeY() * chip.getSizeY());
         for(BasicEvent event : in) {

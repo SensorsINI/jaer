@@ -534,10 +534,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /** If we are are the only viewer, automatically set
     interface to the hardware interface if there is only 1 of them and there is not already
-    a hardware inteface (e.g. StereoPairHardwareInterface which consists of
+    a hardware interface (e.g. StereoPairHardwareInterface which consists of
     two interfaces). otherwise force user choice.
      */
     private void openHardwareIfNonambiguous (){
+        // TODO doesn't open an AEMonitor if there is a ServoInterface plugged in.
+        // Should check to see if there is only 1 AEMonitorInterface, but this check is not possible currently without opening the interface.
         if ( jaerViewer != null && jaerViewer.getViewers().size() == 1 && chip.getHardwareInterface() == null && HardwareInterfaceFactory.instance().getNumInterfacesAvailable() == 1 ){
             log.info("opening unambiguous device");
             chip.setHardwareInterface(HardwareInterfaceFactory.instance().getFirstAvailableInterface()); // if blank cypress, returns bare CypressFX2

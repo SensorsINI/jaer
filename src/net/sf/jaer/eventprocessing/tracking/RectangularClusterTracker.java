@@ -105,6 +105,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     private boolean filterEventsEnabled = getPrefs().getBoolean("RectangularClusterTracker.filterEventsEnabled", false); // enables filtering events so that output events only belong to clustera and point to the clusters.
     private float velocityTauMs = getPrefs().getFloat("RectangularClusterTracker.velocityTauMs", 10);
     private int maxNumClusters = getPrefs().getInt("RectangularClusterTracker.maxNumClusters", 10);
+    private boolean surroundInhibitionEnabled=prefs().getBoolean("RectangularClusterTracker.surroundInhibitionEnabled",false);
 
     public enum ClusterLoggingMethod {
 
@@ -158,7 +159,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         setPropertyTooltip(disp, "showClusterVelocity", "annotates velocity in pixels/second");
         setPropertyTooltip(disp, "showClusterEps", "shows cluster events per second");
         setPropertyTooltip(disp, "showClusterNumber", "shows cluster ID number");
-        setPropertyTooltip(disp, "showClusterMass", "shows cluster mass");
+        setPropertyTooltip(disp, "showClusterMass", "shows cluster mass; mass is decaying measure of the rate of captured events");
         setPropertyTooltip(disp, "velocityVectorScaling", "scaling of drawn velocity vectors");
         setPropertyTooltip(logging, "logDataEnabled", "writes a cluster log matlab file called RectangularClusterTrackerLog.m in the startup folder host/java");
         setPropertyTooltip(logging, "loggingIntervalUs", "interval in us between logging cluster info to logging file");
@@ -166,7 +167,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         setPropertyTooltip(logging, "clusterLoggingMethod", "method for logging cluster data: LogFrames logs at specified time intervals; LogClusters logs each valid cluster on its death");
         setPropertyTooltip(movement, "initializeVelocityToAverage", "initializes cluster velocity to moving average of cluster velocities; otherwise initialized to zero");
         setPropertyTooltip(global, "filterEventsEnabled", "<html>If disabled, input packet is unaltered. <p>If enabled, output packet contains RectangularClusterTrackerEvent, <br>events refer to containing cluster, and non-owned events are discarded.");
-
+        setPropertyTooltip(lifetime,"surroundInhibitionEnabled","Enabling this option causes events in the surround region to actively reduce the cluster mass, enabling tracking of only isolated features");
 //        setPropertyTooltip("sizeClassificationEnabled", "Enables coloring cluster by size threshold");
 //        setPropertyTooltip("opticalGyroTauHighpassMs", "highpass filter time constant in ms for optical gyro position, increase to forget DC value more slowly");
 //    {setPropertyTooltip("velocityMixingFactor","how much cluster velocityPPT estimate is updated by each packet (IIR filter constant)");}
@@ -448,7 +449,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 ////                    System.out.println("pruning unzupported "+c);
 //                }
 //            }
-            if (c.getMassNow(t) < 1) {
+            if (c.getMassNow(t) < thresholdEventsForVisibleCluster) {
                 killOff = true;
             }
             boolean hitEdge = c.hasHitEdge();
@@ -542,7 +543,24 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //    ArrayList<Cluster> pruneList=new ArrayList<Cluster>(1);
     protected LinkedList<Cluster> pruneList = new LinkedList<Cluster>();
 
-    // the method that actually does the tracking
+    /** Encapulates the nearest Cluster and the distance to it
+     * 
+     */
+    private class ClusterAndDistance{
+
+        public ClusterAndDistance (Cluster c,float distance){
+            this.c = c;
+            this.distance = distance;
+        }
+
+        Cluster c; float distance;
+    }
+
+    /** The method that actually does the tracking.
+     *
+     * @param in the event packet.
+     * @return a possibly filtered event packet passing only events contained in the tracked and visible Clusters, depending on filterEventsEnabled.
+     */
     synchronized private EventPacket<? extends BasicEvent> track(EventPacket<BasicEvent> in) {
         boolean updatedClusterList = false;
         OutputEventIterator outItr = null;
@@ -833,8 +851,16 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         to exponential decay with time constant {@link #clusterLifetimeWithoutSupportUs}.
         @param event used for event timestamp.
          */
-        protected void incrementMass(BasicEvent event) {
-            mass = 1 + mass * (float) Math.exp(((float) lastEventTimestamp - event.timestamp) / clusterLifetimeWithoutSupportUs);
+        protected void updateMass (BasicEvent event){
+            if ( surroundInhibitionEnabled ){
+                // if the event is in the surround, we decrement the mass, if inside cluster, we increment
+                float normDistance=distanceToLastEvent/radius;
+                float dmass=normDistance<=1?1:-1;
+                 mass = dmass + mass * (float)Math.exp((float)( lastEventTimestamp - event.timestamp ) / clusterLifetimeWithoutSupportUs);
+           } else{
+                // don't worry about distance, just increment
+                mass = 1 + mass * (float)Math.exp(( (float)lastEventTimestamp - event.timestamp ) / clusterLifetimeWithoutSupportUs);
+            }
         }
 
         /** Returns true if the cluster center is outside the array or if this test is enabled and if the
@@ -936,6 +962,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         /** The "mass" of the cluster is the weighted number of events it has collected.
          * The mass decays over time and is incremented by one by each collected event.
          * The mass decays with a first order time constant of clusterLifetimeWithoutSupportUs in us.
+         * If surroundInhibitionEnabled=true, then the mass is decremented by events captured in the surround.
          */
         private float mass = 1;
         /** This is the last time in timestamp ticks that the cluster was updated, either by an event
@@ -1247,9 +1274,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 }
             }
 
-            //Increments mass of cluster by one after decaying it away since the lastEventTimestamp according
-            // to exponential decay with time constant clusterLifetimeWithoutSupportUs.
-            incrementMass(event);
+            updateMass(event);
+           
 
             float m = mixingFactor, m1 = 1 - m;
 
@@ -1334,7 +1360,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
         }
 
-        /** sets the cluster radius according to distance of event from cluster center, but only if dynamicSizeEnabled or dynamicAspectRatioEnabled.
+        /** Updates the cluster radius and angle according to distance of event from cluster center, but only if dynamicSizeEnabled or dynamicAspectRatioEnabled or dynamicAngleEnabled.
          * @param event the event to scale with
          */
         private final void scale(BasicEvent event) {
@@ -1374,7 +1400,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 setAspectRatio((1 - mixingFactor) * oldAspectRatio + mixingFactor * newAspectRatio);
             }
             if (dynamicAngleEnabled) {
-                // dynamicall rotates cluster to line it up with edge.
+                // dynamically rotates cluster to line it up with edge.
                 // the cluster instantaneousAngle is defined so horizontal edges have instantaneousAngle 0 or +/-PI, vertical have +/- PI/2.
                 // instantaneousAngle increases CCW from 0 for rightward from center of cluster events.
                 //
@@ -1458,6 +1484,12 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //            return distance;
         }
 
+        /** Returns the implemented distance metric which is the Manhattan distance for speed.
+         * This is the sum of abs(dx)+abs(dy).
+         * @param dx the x distance
+         * @param dy the y distance
+         * @return abs(dx)+abs(dy)
+         */
         public float distanceMetric(float dx, float dy) {
             return ((dx > 0) ? dx : -dx) + ((dy > 0) ? dy : -dy);
         }
@@ -2888,5 +2920,22 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         this.clusterLoggingMethod = clusterLoggingMethod;
         support.firePropertyChange("clusterLoggingMethod", old, clusterLoggingMethod);
         getPrefs().put("RectangularClusterTracker.clusterLoggingMethod", clusterLoggingMethod.toString());
+    }
+
+    /**
+     * @return the surroundInhibitionEnabled
+     */
+    public boolean isSurroundInhibitionEnabled (){
+        return surroundInhibitionEnabled;
+    }
+
+    /**
+     * @param surroundInhibitionEnabled the surroundInhibitionEnabled to set
+     */
+    public void setSurroundInhibitionEnabled (boolean surroundInhibitionEnabled){
+        boolean old=this.surroundInhibitionEnabled;
+        this.surroundInhibitionEnabled = surroundInhibitionEnabled;
+        prefs().putBoolean("RectangularClusterTracker.surroundInhibitionEnabled",surroundInhibitionEnabled);
+        support.firePropertyChange("surroundInhibitionEnabled",old,surroundInhibitionEnabled);
     }
 }

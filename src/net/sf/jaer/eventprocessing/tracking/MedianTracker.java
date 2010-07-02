@@ -108,10 +108,8 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
     
     
     public EventPacket filterPacket(EventPacket in) {
-        if(!isFilterEnabled()) return in;
         int n=in.getSize();
         if(n==0) return in;
-//        short[] xs=in.getXs(),ys=in.getYs();
         
         lastts=in.getLastTimestamp();
         dt=lastts-prevlastts;
@@ -170,11 +168,6 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
         return in; // xs and ys will now be sorted, output will be bs because time will not be sorted like addresses
     }
     
-    public void annotate(float[][][] frame) {
-    }
-    
-    public void annotate(Graphics2D g) {
-    }
     /** JOGL annotation */
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;

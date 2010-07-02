@@ -80,6 +80,30 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
 
     private volatile boolean dontProcessSlider=false;
 
+    private boolean setPortsModes (){
+        if ( hwInterface == null || !( hwInterface instanceof SiLabsC8051F320_USBIO_ServoController ) ){
+            return true;
+        }
+        byte p1mode = 0x0f;
+        byte p2mode = 0x00;
+        try{
+            p1mode = (byte)(0xff&HexString.parseShort(p1modeTextField.getText()));
+        } catch ( ParseException e ){
+            p1modeTextField.selectAll();
+            return true;
+        }
+        try{
+            p2mode = (byte)(0xff&HexString.parseShort(p2modeTextField.getText()));
+        } catch ( ParseException e ){
+            p2modeTextField.selectAll();
+            return true;
+        }
+        SiLabsC8051F320_USBIO_ServoController hw = (SiLabsC8051F320_USBIO_ServoController)hwInterface;
+        hw.setPortDOutRegisters(p1mode,p2mode);
+        log.info("Set port modes to P1="+HexString.toString(p1mode)+" P2="+HexString.toString(p2mode));
+        return false;
+    }
+
     private void setServoSlider (int servo,float value){
         float f=value * sliders[servo].getMaximum();
         int v = (int)f;
@@ -164,9 +188,15 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
         servoFreqPanel = new javax.swing.JPanel();
         servoFreqLabel = new javax.swing.JLabel();
         servoFreqTextBox = new javax.swing.JTextField();
+        fullDutyCycleModeCheckBox = new javax.swing.JCheckBox();
         port2Panel = new javax.swing.JPanel();
         port2ValueTextField = new javax.swing.JTextField();
         port2Label = new javax.swing.JLabel();
+        jLabel8 = new javax.swing.JLabel();
+        p2modeTextField = new javax.swing.JTextField();
+        jPanel1 = new javax.swing.JPanel();
+        jLabel7 = new javax.swing.JLabel();
+        p1modeTextField = new javax.swing.JTextField();
         menuBar = new javax.swing.JMenuBar();
         fileMenu = new javax.swing.JMenu();
         exitMenuItem = new javax.swing.JMenuItem();
@@ -584,15 +614,26 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
             }
         });
 
+        fullDutyCycleModeCheckBox.setText("Full duty cycle mode");
+        fullDutyCycleModeCheckBox.setToolTipText("Selecting produces produces 0-100% duty cycle on servo outputs; deselecting produces standard 1-2ms servo outputs");
+        fullDutyCycleModeCheckBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                fullDutyCycleModeCheckBoxActionPerformed(evt);
+            }
+        });
+
         org.jdesktop.layout.GroupLayout servoFreqPanelLayout = new org.jdesktop.layout.GroupLayout(servoFreqPanel);
         servoFreqPanel.setLayout(servoFreqPanelLayout);
         servoFreqPanelLayout.setHorizontalGroup(
             servoFreqPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(servoFreqPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .add(servoFreqLabel)
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(servoFreqTextBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 89, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .add(servoFreqPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(fullDutyCycleModeCheckBox)
+                    .add(servoFreqPanelLayout.createSequentialGroup()
+                        .add(servoFreqLabel)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(servoFreqTextBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 89, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         servoFreqPanelLayout.setVerticalGroup(
@@ -602,6 +643,8 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
                 .add(servoFreqPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(servoFreqLabel)
                     .add(servoFreqTextBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(fullDutyCycleModeCheckBox)
                 .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -618,21 +661,73 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
 
         port2Label.setText("value (hex)");
 
+        jLabel8.setText("P2 mode");
+
+        p2modeTextField.setText("0x00");
+        p2modeTextField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                p2modeTextFieldActionPerformed(evt);
+            }
+        });
+
         org.jdesktop.layout.GroupLayout port2PanelLayout = new org.jdesktop.layout.GroupLayout(port2Panel);
         port2Panel.setLayout(port2PanelLayout);
         port2PanelLayout.setHorizontalGroup(
             port2PanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(port2PanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .add(port2Label)
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(port2ValueTextField, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 47, Short.MAX_VALUE))
+                .add(port2PanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
+                    .add(port2PanelLayout.createSequentialGroup()
+                        .add(port2Label)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(port2ValueTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 72, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                    .add(port2PanelLayout.createSequentialGroup()
+                        .add(jLabel8)
+                        .add(18, 18, 18)
+                        .add(p2modeTextField)))
+                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         port2PanelLayout.setVerticalGroup(
             port2PanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(port2PanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
-                .add(port2Label)
-                .add(port2ValueTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+            .add(port2PanelLayout.createSequentialGroup()
+                .add(port2PanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                    .add(port2Label)
+                    .add(port2ValueTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .add(port2PanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                    .add(jLabel8)
+                    .add(p2modeTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
+        );
+
+        jLabel7.setText("P1 mode");
+        jLabel7.setToolTipText("Set the servo output port mode 1=push/pull (default), 0=open drain");
+
+        p1modeTextField.setText("0x0f");
+        p1modeTextField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                p1modeTextFieldActionPerformed(evt);
+            }
+        });
+
+        org.jdesktop.layout.GroupLayout jPanel1Layout = new org.jdesktop.layout.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .add(jLabel7)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(p1modeTextField, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 53, Short.MAX_VALUE)
+                .addContainerGap())
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                    .add(jLabel7)
+                    .add(p1modeTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(18, Short.MAX_VALUE))
         );
 
         fileMenu.setMnemonic('F');
@@ -661,27 +756,29 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
                     .add(layout.createSequentialGroup()
                         .add(servo0Panel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                        .add(servo1Panel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                        .add(servo2Panel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                        .add(servo3Panel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                        .add(servo1Panel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                     .add(layout.createSequentialGroup()
                         .addContainerGap()
                         .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                             .add(layout.createSequentialGroup()
                                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                                    .add(servoFreqPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                    .add(syncPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                                    .add(syncPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                                    .add(servoFreqPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                 .add(oscillatePanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                                 .add(carServoPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                             .add(layout.createSequentialGroup()
-                                .add(chooserPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                .add(47, 47, 47)
+                                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                                    .add(chooserPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                                    .add(jPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                                .add(46, 46, 46)
                                 .add(port2Panel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))))
-                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(servo2Panel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(servo3Panel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
@@ -697,14 +794,17 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
                     .add(layout.createSequentialGroup()
                         .add(syncPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                        .add(servoFreqPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                        .add(servoFreqPanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                     .add(carServoPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                     .add(oscillatePanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
-                    .add(chooserPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(layout.createSequentialGroup()
+                        .add(jPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(chooserPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                     .add(port2Panel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                .add(57, 57, 57))
+                .addContainerGap())
         );
 
         pack();
@@ -842,7 +942,10 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
     }
 
     void setServo (int servo,ChangeEvent evt){
-
+        if(hwInterface==null){
+            log.warning("interface is null");
+            return;
+        }
         if ( !( evt.getSource() instanceof JSlider ) ){
             log.warning("evt not from a slider: " + evt);
         }
@@ -955,6 +1058,24 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
         port2ValueTextField.selectAll();
     }//GEN-LAST:event_port2ValueTextFieldActionPerformed
 
+    private void p2modeTextFieldActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_p2modeTextFieldActionPerformed
+       if ( setPortsModes() ){
+            return;
+        }
+    }//GEN-LAST:event_p2modeTextFieldActionPerformed
+
+    private void p1modeTextFieldActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_p1modeTextFieldActionPerformed
+        if ( setPortsModes() ){
+            return;
+        }
+    }//GEN-LAST:event_p1modeTextFieldActionPerformed
+
+    private void fullDutyCycleModeCheckBoxActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_fullDutyCycleModeCheckBoxActionPerformed
+        if(hwInterface==null) return;
+        hwInterface.setFullDutyCycleMode(fullDutyCycleModeCheckBox.isSelected());
+        log.info("set fullDutyCycleMode="+hwInterface.isFullDutyCycleMode());
+    }//GEN-LAST:event_fullDutyCycleModeCheckBoxActionPerformed
+
     /**
      * @param args the command line arguments
      */
@@ -990,6 +1111,7 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
     private javax.swing.JButton disableServo3Button;
     private javax.swing.JMenuItem exitMenuItem;
     private javax.swing.JMenu fileMenu;
+    private javax.swing.JCheckBox fullDutyCycleModeCheckBox;
     private javax.swing.JButton jButton1;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
@@ -997,6 +1119,9 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
     private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
+    private javax.swing.JLabel jLabel8;
+    private javax.swing.JPanel jPanel1;
     private javax.swing.JCheckBox liveSlidersCheckBox;
     private javax.swing.JMenuBar menuBar;
     private javax.swing.JTextField oscDelayTextField;
@@ -1008,6 +1133,8 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
     private javax.swing.JRadioButton oscSelRadioButton3;
     private javax.swing.JToggleButton oscStartStopToggleButton;
     private javax.swing.JPanel oscillatePanel;
+    private javax.swing.JTextField p1modeTextField;
+    private javax.swing.JTextField p2modeTextField;
     private javax.swing.JLabel port2Label;
     private javax.swing.JPanel port2Panel;
     private javax.swing.JTextField port2ValueTextField;

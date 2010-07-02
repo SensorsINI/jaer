@@ -626,6 +626,14 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
         }
         submitCommand(cmd);
     }
+
+    public void setFullDutyCycleMode (boolean yes){
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    public boolean isFullDutyCycleMode (){
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
     
     // encaps the servo command bytes that are sent
     private class ServoCommand{

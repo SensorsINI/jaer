@@ -39,9 +39,9 @@ import java.util.logging.Logger;
  */
 public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, PnPNotifyInterface, ServoInterface {
     
-    static Logger log=Logger.getLogger("SiLabsC8051F320_USBIO_ServoController");
+    static final Logger log=Logger.getLogger("SiLabsC8051F320_USBIO_ServoController");
     
-    /** driver guid (Globally unique ID, for this USB driver instance */
+    /** driver GUID (Globally unique ID, for this USB driver instance */
     public final static String GUID  = "{3B15398D-1EF2-44d7-A6B8-74A3FCCD29BF}"; // tobi generated in pasadena july 2006
     
     /** The vendor ID */
@@ -92,7 +92,8 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     private final int SYSCLK_MHZ=12; // this is sysclock of SiLabs
     private float pcaClockFreqMHz=SYSCLK_MHZ/2; // runs at 6 MHz by default with timer0 reload value of 255-1
     
-    
+    private boolean fullDutyCycleModeEnabled=false;  // reset state is false;
+
     /**
      * Creates a new instance of SiLabsC8051F320_USBIO_ServoController using device 0 - the first
      * device in the list.
@@ -104,6 +105,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             pnp.enablePnPNotification(GUID);
         }
         Runtime.getRuntime().addShutdownHook(new Thread(){
+            @Override
             public void run(){
                 if(isOpen()){
                     close();
@@ -326,7 +328,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         pipeParams.Flags=UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
         status=servoCommandWriter.setPipeParameters(pipeParams);
         if (status != USBIO_ERR_SUCCESS) {
-            gUsbIo.destroyDeviceList(gDevList);
+            UsbIo.destroyDeviceList(gDevList);
             throw new HardwareInterfaceException("startAEWriter: can't set pipe parameters: "+UsbIo.errorText(status));
         }
         
@@ -409,8 +411,10 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         #define CMD_DISABLE_ALL_SERVOS 10
      */
     
-    // servo command bytes recognized by microcontroller, defined in F32x_USB_Main.c on firmware
-    static final int CMD_SET_SERVO=7, 
+    /** servo command bytes recognized by microcontroller, defined in F32x_USB_Main.c on firmware
+     *
+     */
+    private static final int CMD_SET_SERVO=7,
             CMD_DISABLE_SERVO=8, 
             CMD_SET_ALL_SERVOS=9, 
             CMD_DISABLE_ALL_SERVOS = 10,
@@ -442,7 +446,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             servoQueue.offer(cmd);
             log.warning("cleared queue to submit latest command");
         }
-        Thread.currentThread().yield(); // let writer thread get it and submit a write
+        Thread.yield(); // let writer thread get it and submit a write
     }
 
     /** Returns last servo values sent.These are in order of PCA outputs on the SiLabs chip, which are opposite the labeling on the board. */
@@ -454,11 +458,20 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     public float getLastServoValue(int servo){
         return lastServoValues[getServo(servo)];
     }
+
+    public void setFullDutyCycleMode (boolean yes){
+        this.fullDutyCycleModeEnabled=yes;
+    }
+
+    public boolean isFullDutyCycleMode (){
+        return fullDutyCycleModeEnabled;
+    }
     
     /** This thread actually talks to the hardware */
     private class ServoCommandWriter extends UsbIoWriter{
         
         // overridden to change priority
+        @Override
         public void startThread(int MaxIoErrorCount) {
             allocateBuffers(ENDPOINT_OUT_LENGTH, 2);
             if (T == null) {
@@ -498,32 +511,46 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             log.info("servo command writer done");
         }
     }
-    
-    protected void checkServoCommandThread(){
+
+    /** Checks if servo is not open and opens it
+     * 
+     * @return
+     */
+    protected boolean checkServoCommandThread(){
         try {
             if(!isOpen()) open();
+            return true;
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
+            return false;
         }
     }
     
     private byte[] pwmValue(float value){
         if(value<0) value=0; else if(value>1) value=1;
-        // we want 0 to map to 900 us, 1 to map to 2100 us.
-        // PCA clock runs at pcaClockFreqMHz
-        
-        // count to load to PCA registers is low count
-        float f=65536-pcaClockFreqMHz*( ((2100-900)*value) + 900 );
-        
-        int v=(int)(f);
-        
-        byte[] b=new byte[2];
-        
-        b[0]=(byte)((v>>>8)&0xff);  // big endian format
-        b[1]=(byte)(v&0xff);
-        
+        if ( !fullDutyCycleModeEnabled ){
+            // we want 0 to map to 900 us, 1 to map to 2100 us.
+            // PCA clock runs at pcaClockFreqMHz
+
+            // count to load to PCA registers is low count
+            float f = 65536 - pcaClockFreqMHz * ( ( ( 2100 - 900 ) * value ) + 900 );
+
+            int v = (int)( f );
+
+            byte[] b = new byte[ 2 ];
+
+            b[0] = (byte)( ( v >>> 8 ) & 0xff );  // big endian format
+            b[1] = (byte)( v & 0xff );
+
 //        System.out.println("value="+value+" 64k-f="+(65536-v+" f="+f+" v="+v+"="+HexString.toString((short)v)+" bMSB="+HexString.toString(b[0])+" bLSB="+HexString.toString(b[1]));
-        return b;
+            return b;
+        } else{
+            short val = (short)(65535- (0xffff & (int)( 65535 * value )) ); // value sent is the PWM output LOW time, so we subtract from 0xffff to send the proper value to get the desired HIGH duty cycle
+            byte[] b = new byte[ 2 ];
+            b[0] = (byte)( ( val >>> 8 ) & 0xff );
+            b[1] = (byte)( val & 0xff );
+            return b;
+        }
     }
     
     /** directly sends a particular short value to the servo, bypassing conversion from float.

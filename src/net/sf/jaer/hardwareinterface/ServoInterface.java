@@ -50,4 +50,16 @@ public interface ServoInterface extends HardwareInterface {
      * @param portValue the bits to set
      */
     public void setPort2(int portValue);
+
+    /** Sets servo outputs to produce full duty cycle output rather than standard 1-2ms servo output.
+     *
+     * @param yes true to set full duty cycle mode.
+     */
+    public void setFullDutyCycleMode(boolean yes);
+
+    /** Returns setting of full duty cycle mode.
+     *
+     * @return true if full duty cycle mode, false if standard servo mode.
+     */
+    public boolean isFullDutyCycleMode();
 }
