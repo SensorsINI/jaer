@@ -9,7 +9,7 @@ import java.util.logging.Logger;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
 /**
- * Encapsulates the physical hardware interface to the slot car. To use it create a SlotCarHardwareInterface and call setSpeed(float value).
+ * Encapsulates the physical hardware interface to the slot car. To use it create a SlotCarHardwareInterface and call setThrottle(float value).
  *
  * @author tobi
  *
@@ -17,10 +17,10 @@ import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoContr
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
-public class SlotCarHardwareInterface {
+public class SlotCarHardwareInterface implements ThrottleInterface {
     private SiLabsC8051F320_USBIO_ServoController hw;
     static Logger log=Logger.getLogger("SlotCarHardwareInterface");
-    private float speed=0;
+    private float throttle=0;
     private static final int PORT=0;
     private boolean setupPortSuccessful=false;
     private final int WARNING_PRINT_INTERVAL=200;
@@ -33,16 +33,16 @@ public class SlotCarHardwareInterface {
     /**
      * @return the last speed that was set.
      */
-    public float getSpeed (){
-        return speed;
+    public float getThrottle (){
+        return throttle;
     }
 
     /**  Set the speed and returns success.
      * @param speed the speed to set.
      * @return true if interface was open.
      */
-    public boolean setSpeed (float speed){
-        this.speed = speed;
+    public boolean setThrottle (float speed){
+        this.throttle = speed;
         if(!hw.isOpen()){
             try{
                 hw.open();
