@@ -183,13 +183,37 @@ public class SlotcarTrack {
 
     /**
      * Returns the osculating circle at the given position of the track
-     * @param T Spline parameter
+     * @param t Spline parameter
      * @param center Point in which to store the center of the circle.
      * @return The radius of the circle
      */
     public double getOsculatingCircle(double t, Point2D center) {
         return smoothTrack.getOsculatingCircle(t,center);
     }
+
+
+    /**
+     * Returns the upcoming curvature for the next timesteps
+     * @param numPoints Number of curvature points to look ahead
+     * @param dt Time interval between steps
+     * @param speed Current speed of the car
+     * @return Curvatures of the time points ahead.
+     */
+    public UpcomingCurvature getCurvature(int numPoints, double dt, double speed) {
+        double pos = carState.pos;
+        float[] curvature = new float[numPoints];
+
+        for (int i=0; i<numPoints; i++) {
+            curvature[i] = (float) getOsculatingCircle(pos, null);
+            pos = smoothTrack.advance(pos, speed*dt, INTEGRATION_STEP);
+            if (pos > smoothTrack.getLength())
+                pos -= smoothTrack.getLength();
+        }
+
+        UpcomingCurvature uc = new UpcomingCurvature(curvature);
+        return uc;
+    }
+
 
     /**
      * Advances the car on the track.
@@ -261,5 +285,14 @@ public class SlotcarTrack {
         physics.setFriction(friction);
         physics.setOrientationCorrectFactor(orientationCorrectForce);
         physics.setMomentInertia(momentInertia);
+    }
+
+    /**
+     * Refines the spline by introducing new intermediate points.
+     * @param step Step size
+    */
+    public void refine(double step) {
+        smoothTrack = smoothTrack.refine(step);
+        trackPoints = smoothTrack.allPoints(step);
     }
 }

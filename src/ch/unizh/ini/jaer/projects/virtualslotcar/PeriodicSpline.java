@@ -298,8 +298,6 @@ public class PeriodicSpline {
      * @return 0 if successful, -1 if not.
      */
     public double getOsculatingCircle(double T, Point2D center) {
-        if (center == null)
-            return -1;
         // Find segment in which T lies
         int idx = getInterval(T);
 
@@ -446,16 +444,17 @@ public class PeriodicSpline {
      * Computes the next parameter value if the arc-length is increased by ds.
      * Approximates the arc-length by sub-dividing into intervals of length int_step.
      * @param t Current parameter value (not arc-length)
+     * @param curSegment Current track segment
      * @param ds Arc-length distance to new point
      * @param int_step Integration step
      * @return New parameter value (not arc-length)
      */
-    public double advance(double t, double ds, double int_step) {
+    public double advance(double t, int curSegment, double ds, double int_step) {
         double L = 0.0;
         double cur_t = t;
         double old_t = t;
 
-        int interval = getInterval(t);
+        int interval = curSegment;
         Point2D old_p = getPosition(cur_t, interval);
 
         int count = 0;
@@ -466,7 +465,7 @@ public class PeriodicSpline {
             if (cur_t >= Tdata[numXY]) {
                 cur_t -= Tdata[numXY];
                 interval = 0;
-            } else if (cur_t >= Tdata[interval+1]) {
+            } else while (cur_t >= Tdata[interval+1]) {
                 interval++;
             }
 
@@ -487,6 +486,48 @@ public class PeriodicSpline {
         // return t+ds;  // non arc-length parametrization
         return cur_t;
     }
+
+    /**
+     * Computes the next parameter value if the arc-length is increased by ds.
+     * Approximates the arc-length by sub-dividing into intervals of length int_step.
+     * @param t Current parameter value (not arc-length)
+     * @param ds Arc-length distance to new point
+     * @param int_step Integration step
+     * @return New parameter value (not arc-length)
+     */
+    public double advance(double t, double ds, double int_step) {
+        int interval = getInterval(t);
+        return advance(t,interval,ds,int_step);
+    }
+
+
+    /**
+     *  Refines this spline by introducing intermediate points
+     * @param stepSize The step size in parameter space
+     * @return The new refined spline.
+     */
+    public PeriodicSpline refine(double stepSize) {
+        PeriodicSpline fineSpline = new PeriodicSpline();
+
+        // Compute list of intermediate points
+        double t = 0.0;
+        int idx = 0;
+        LinkedList<Point2D> finePoints = new LinkedList<Point2D>();
+
+        while (t < Tdata[numXY]) {
+            Point2D p = getPosition(t, idx);
+            finePoints.add(p);
+
+            t+=stepSize;
+            while ((idx < numXY) && (t >= Tdata[idx+1])) {
+                idx++;
+            }
+        }
+
+        fineSpline.computeCoefficients(finePoints);
+        return fineSpline;
+    }
+    
 
     /**
      * Pure test function

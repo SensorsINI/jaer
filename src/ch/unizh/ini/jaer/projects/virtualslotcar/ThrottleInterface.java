@@ -12,15 +12,15 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 public interface ThrottleInterface {
 
     /**
-     * @return the last speed that was set.
+     * @return the last throttle level that was set.
      */
     float getThrottle ();
 
     /**
-     * Set the speed and returns success.
-     * @param speed the speed to set.
+     * Set the throttle level and returns success.
+     * @param throttle The throttle level to set.
      * @return true if interface was open.
      */
-    boolean setThrottle (float speed);
+    boolean setThrottle (float throttle);
 
 }

@@ -72,6 +72,7 @@ public class SlotcarFrame extends javax.swing.JFrame {
         jLabel1 = new javax.swing.JLabel();
         stepsizeValue = new javax.swing.JTextField();
         RunButton = new javax.swing.JButton();
+        RefineButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Virtual Slotcar Track Editor");
@@ -109,7 +110,7 @@ public class SlotcarFrame extends javax.swing.JFrame {
         );
         EditorPanelLayout.setVerticalGroup(
             EditorPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 413, Short.MAX_VALUE)
+            .addGap(0, 415, Short.MAX_VALUE)
         );
 
         NumPointsLabel.setText("Num Points");
@@ -144,12 +145,19 @@ public class SlotcarFrame extends javax.swing.JFrame {
             }
         });
 
-        RunButton.setFont(new java.awt.Font("Tahoma", 1, 14)); // NOI18N
+        RunButton.setFont(new java.awt.Font("Tahoma", 1, 14));
         RunButton.setText("GO!");
         RunButton.setEnabled(false);
         RunButton.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 RunButtonMouseClicked(evt);
+            }
+        });
+
+        RefineButton.setText("Refine");
+        RefineButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                RefineButtonActionPerformed(evt);
             }
         });
 
@@ -163,11 +171,16 @@ public class SlotcarFrame extends javax.swing.JFrame {
                         .addContainerGap()
                         .addComponent(EditorPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(200, 200, 200)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(RunButton, javax.swing.GroupLayout.DEFAULT_SIZE, 127, Short.MAX_VALUE)
-                            .addComponent(AddPointsButton, javax.swing.GroupLayout.DEFAULT_SIZE, 127, Short.MAX_VALUE)
-                            .addComponent(DeletePointsButton, javax.swing.GroupLayout.DEFAULT_SIZE, 127, Short.MAX_VALUE)
-                            .addGroup(layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(RefineButton, javax.swing.GroupLayout.DEFAULT_SIZE, 127, Short.MAX_VALUE)
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                .addComponent(jLabel1)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 35, Short.MAX_VALUE)
+                                .addComponent(stepsizeValue, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(RunButton, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 127, Short.MAX_VALUE)
+                            .addComponent(AddPointsButton, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 127, Short.MAX_VALUE)
+                            .addComponent(DeletePointsButton, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 127, Short.MAX_VALUE)
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                                     .addGroup(layout.createSequentialGroup()
                                         .addComponent(NumPointsLabel)
@@ -177,11 +190,7 @@ public class SlotcarFrame extends javax.swing.JFrame {
                                         .addGap(18, 18, 18)))
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                                     .addComponent(pointLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(lengthLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 26, Short.MAX_VALUE)))
-                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
-                                .addComponent(jLabel1)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 35, Short.MAX_VALUE)
-                                .addComponent(stepsizeValue, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                                    .addComponent(lengthLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 26, Short.MAX_VALUE)))))
                     .addGroup(layout.createSequentialGroup()
                         .addGap(42, 42, 42)
                         .addComponent(ClearButton, javax.swing.GroupLayout.PREFERRED_SIZE, 123, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -196,7 +205,7 @@ public class SlotcarFrame extends javax.swing.JFrame {
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(EditorPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 67, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 65, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(ClearButton)
                     .addComponent(LoadButton)
@@ -213,13 +222,15 @@ public class SlotcarFrame extends javax.swing.JFrame {
                 .addComponent(AddPointsButton)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(DeletePointsButton)
-                .addGap(23, 23, 23)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(RefineButton)
+                .addGap(54, 54, 54)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(stepsizeValue, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel1))
                 .addGap(39, 39, 39)
                 .addComponent(RunButton, javax.swing.GroupLayout.PREFERRED_SIZE, 41, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(272, 272, 272))
+                .addGap(202, 202, 202))
         );
 
         pack();
@@ -341,6 +352,13 @@ public class SlotcarFrame extends javax.swing.JFrame {
         raceDisplay.setVisible(true);
     }//GEN-LAST:event_RunButtonMouseClicked
 
+    private void RefineButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_RefineButtonActionPerformed
+        // TODO add your handling code here:
+        double step = Double.parseDouble(stepsizeValue.getText());
+        track.refine(step);
+        repaint();
+    }//GEN-LAST:event_RefineButtonActionPerformed
+
     /** Computes the normalized position of a point wrt. size and position of the
      * drawing panel.
      * @param pos Position of the mouse click in frame coordinates
@@ -352,6 +370,14 @@ public class SlotcarFrame extends javax.swing.JFrame {
        return np;
     }
 
+    
+    /**
+     * Returns the designed track.
+     * @return The track designed in the window.
+     */
+    public SlotcarTrack getTrack() {
+        return track;
+    }
 
     /**
     * @param args the command line arguments
@@ -372,6 +398,7 @@ public class SlotcarFrame extends javax.swing.JFrame {
     private javax.swing.JButton LoadButton;
     private javax.swing.JLabel NumPointsLabel;
     private javax.swing.JLabel NumPointsLabel1;
+    private javax.swing.JButton RefineButton;
     private javax.swing.JButton RunButton;
     private javax.swing.JButton SaveButton;
     private javax.swing.JLabel jLabel1;
