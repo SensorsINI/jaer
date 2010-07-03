@@ -74,10 +74,12 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
 
     public void annotate (GLAutoDrawable drawable){
         carTracker.annotate(drawable);
-        if(renderer==null){
-                      renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,10),true,true);
-
+        if ( renderer == null ){
+            renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,8),true,true);
         }
+        renderer.begin3DRendering();
+        renderer.draw("Throttle:"+controller.getThrottle(),10,10);
+        renderer.end3DRendering();
     }
 
     /**
