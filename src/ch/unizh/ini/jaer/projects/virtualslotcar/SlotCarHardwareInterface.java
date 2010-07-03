@@ -6,6 +6,7 @@
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
 /**
@@ -17,7 +18,7 @@ import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoContr
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
-public class SlotCarHardwareInterface implements ThrottleInterface {
+public class SlotCarHardwareInterface implements HardwareInterface,ThrottleInterface {
     private SiLabsC8051F320_USBIO_ServoController hw;
     static Logger log=Logger.getLogger("SlotCarHardwareInterface");
     private float throttle=0;
@@ -60,6 +61,22 @@ public class SlotCarHardwareInterface implements ThrottleInterface {
             return true;
         }
         return false;
+    }
+
+    public String getTypeName() {
+        return hw.getTypeName();
+    }
+
+    public void close() {
+        hw.close();
+    }
+
+    public void open() throws HardwareInterfaceException {
+        hw.open();
+    }
+
+    public boolean isOpen() {
+        return hw.isOpen();
     }
 
 }

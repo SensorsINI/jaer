@@ -73,6 +73,9 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
 
     @Override
     public void resetFilter (){
+        if(hw.isOpen()){
+            hw.close();
+        }
     }
 
     @Override
