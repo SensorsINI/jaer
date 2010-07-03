@@ -5,6 +5,7 @@
 
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 import java.util.List;
+import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -12,6 +13,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
+import net.sf.jaer.graphics.FrameAnnotater;
 /**
  *
  * @author tobi
@@ -20,7 +22,7 @@ import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
-public class CarTracker extends EventFilter2D{
+public class CarTracker extends EventFilter2D implements FrameAnnotater{
 
     RectangularClusterTracker tracker;
     public CarTracker (AEChip chip){
@@ -67,6 +69,10 @@ public class CarTracker extends EventFilter2D{
             if(c!=null && c.isVisible()) return c;
         }
         return null;
+    }
+
+    public void annotate (GLAutoDrawable drawable){
+        tracker.annotate(drawable);
     }
 
 

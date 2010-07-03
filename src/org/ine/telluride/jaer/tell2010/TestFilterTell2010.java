@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 
-package ch.unizh.ini.jaer.projects.virtualslotcar;
+package org.ine.telluride.jaer.tell2010;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
@@ -12,7 +12,9 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 /**
- *
+ *  This is a demo filter written just for Telluride 2010 participants.
+ *  This filter just computes a running average of the x and y event addresses.
+ * 
  * @author tobi
  *
  * This is part of jAER
@@ -31,11 +33,15 @@ public class TestFilterTell2010 extends EventFilter2D implements FrameAnnotater{
     @Override
     public EventPacket<?> filterPacket (EventPacket<?> in){
 
+        // compute running average
         for(BasicEvent e:in){
             x=updateRate*e.x+(1-updateRate)*x;
             y=updateRate*e.y+(1-updateRate)*y;
         }
-        System.out.println("x="+x+" y="+y);
+
+        // use the built in EventFilter2D logger to log some output to the console
+//        log.info("x="+x+" y="+y);
+//        System.out.println("x="+x+" y="+y);
         return in;
         
     }
@@ -50,11 +56,23 @@ public class TestFilterTell2010 extends EventFilter2D implements FrameAnnotater{
 
     public void annotate (GLAutoDrawable drawable){
         GL gl=drawable.getGL();
-        gl.glColor3f(1,1,1);
+
+
+        // draw a cross at the average location
+        gl.glColor3f(1,1,0);
         gl.glLineWidth(5);
+        gl.glBegin(GL.GL_LINES);
+        gl.glVertex2f(x-10, y);
+        gl.glVertex2f(x+10,y);
+        gl.glVertex2f(x, y-10);
+        gl.glVertex2f(x,y+10);
+        gl.glEnd();
 
 
     }
+
+
+    // implement a getter/setter pair to expose the property in the Filter GUI
 
     /**
      * @return the updateRate

@@ -3,18 +3,14 @@
  * and open the template in the editor.
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
-import com.sun.opengl.util.GLUT;
-import java.awt.BorderLayout;
-import java.awt.geom.Rectangle2D;
-import javax.media.opengl.GL;
+import com.sun.opengl.util.j2d.TextRenderer;
+import java.awt.Font;
 import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLCanvas;
-import javax.media.opengl.GLEventListener;
-import javax.media.opengl.glu.GLU;
-import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 /**
  * Controls slot car tracked from eye of god view.
@@ -26,96 +22,45 @@ import net.sf.jaer.graphics.FrameAnnotater;
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
-    private boolean showTrack = prefs().getBoolean("SlotCarRacer.showTrack",true);
-    private boolean virtualCar = prefs().getBoolean("SlotCarRacer.virtualCar",true);
-    JFrame trackFrame = null;
-    GLUT glut = new GLUT();
-    GLU glu = new GLU();
-    GLCanvas trackCanvas;
-    SlotCarTrackModel trackModel = null;
-    private boolean fillsVertically = false, fillsHorizontally = false;
+    private boolean showTrackEnabled = prefs().getBoolean("SlotCarRacer.showTrack",true);
+    private boolean virtualCarEnabled = prefs().getBoolean("SlotCarRacer.virtualCar",true);
+//    JFrame trackFrame = null;
+//    GLUT glut = new GLUT();
+//    GLU glu = new GLU();
+//    GLCanvas trackCanvas;
+    private SlotCarHardwareInterface hw;
+    private SlotcarFrame slotCarFrame;
+    private CarTracker carTracker;
+    private FilterChain filterChain;
+    private boolean overrideThrottle = prefs().getBoolean("SlotCarRacer.overrideThrottle",true);
+    private float overriddenThrottleSetting = prefs().getFloat("SlotCarRacer.overriddenThrottleSetting",0);
+    private SlotCarController controller = null;
+    private SlotcarTrack trackModel;
+    TextRenderer renderer;
 
     public SlotCarRacer (AEChip chip){
         super(chip);
-//        trackModel=new SlotCarTrackModel(this);
-        trackModel = SlotCarTrackModel.makeOvalTrack(this);
-        doShowTrack();
+        hw = new SlotCarHardwareInterface();
+        carTracker = new CarTracker(chip);
+        slotCarFrame = new SlotcarFrame();
+        filterChain = new FilterChain(chip);
+        filterChain.add(carTracker);
+        setEnclosedFilterChain(filterChain);
+        controller = new SimpleSpeedController(this);
     }
 
-    public void doShowTrack (){
-        if ( trackFrame == null ){
-            trackFrame = new JFrame("SlotCarTrack");
-            trackCanvas = new GLCanvas();
-            trackCanvas.addGLEventListener(new GLEventListener(){
-                public void init (GLAutoDrawable drawable){
-                }
-
-                synchronized public void display (GLAutoDrawable drawable){
-                    GL gl = drawable.getGL();
-                    gl.glLoadIdentity();
-//                    gl.glScalef(drawable.getWidth() / nTheta,drawable.getHeight() / nRho,1);
-                    gl.glClearColor(0,0,0,0);
-                    gl.glClear(GL.GL_COLOR_BUFFER_BIT);
-                    int error = gl.glGetError();
-                    if ( error != GL.GL_NO_ERROR ){
-                        if ( glu == null ){
-                            glu = new GLU();
-                        }
-                        log.warning("GL error number " + error + " " + glu.gluErrorString(error));
-                    }
-                    if ( trackModel != null ){
-                        Rectangle2D.Float bounds = trackModel.getBounds();
-                        final float w = (float)bounds.getWidth(), h = (float)bounds.getHeight();
-                        final float max = w > h ? w : h;
-                        final float x0 = (float)bounds.getMinX(), x1 = (float)bounds.getMaxX(), y0 = (float)bounds.getMinY(), y1 = (float)bounds.getMaxY();
-                        // set up ortho so that clipping covers largest dimension
-                        gl.glMatrixMode(GL.GL_PROJECTION);
-                        gl.glLoadIdentity();
-                        if ( w > h ){
-                            gl.glOrtho(x0,x1,x0,x1,-10000,10000);
-                        } else{
-                            gl.glOrtho(y0,y1,y0,y1,-10000,10000);
-                        }
-                        gl.glMatrixMode(GL.GL_MODELVIEW);
-                        int dh=drawable.getHeight(), dw=drawable.getWidth();
-                        int dm=dh>dw? dh:dw;
-                        gl.glViewport(30,30,dm - 60,dm - 60);
-                        trackModel.draw(gl);
-                    }
-                    gl.glFlush();
-                }
-
-                synchronized public void reshape (GLAutoDrawable drawable,int x,int y,int width,int height){
-                    GL gl = drawable.getGL();
-                    if ( trackModel != null ){
-                        Rectangle2D.Float bounds = trackModel.getBounds();
-                        final float w = (float)bounds.getWidth(), h = (float)bounds.getHeight();
-                        final float max = w > h ? w : h;
-                        final float x0 = (float)bounds.getMinX(), x1 = (float)bounds.getMaxX(), y0 = (float)bounds.getMinY(), y1 = (float)bounds.getMaxY();
-                        // set up ortho so that clipping covers largest dimension
-                        gl.glMatrixMode(GL.GL_PROJECTION);
-                        gl.glLoadIdentity();
-                        if ( w > h ){
-                            gl.glOrtho(x0,x1,x0,x1,-10000,10000);
-                        } else{
-                            gl.glOrtho(y0,y1,y0,y1,-10000,10000);
-                        }
-                        gl.glMatrixMode(GL.GL_MODELVIEW);
-                        gl.glViewport(30,30,drawable.getWidth() - 60,drawable.getHeight() - 60);
-                    }
-                }
-
-                public void displayChanged (GLAutoDrawable drawable,boolean modeChanged,boolean deviceChanged){
-                }
-            });
-
-            trackFrame.getContentPane().add(trackCanvas,BorderLayout.CENTER);
-        }
-        trackFrame.setVisible(true);
+    public void doLearnTrack (){
+        JOptionPane.showMessageDialog(chip.getAeViewer(),"I should do something");
     }
 
     @Override
     public EventPacket<?> filterPacket (EventPacket<?> in){
+        getEnclosedFilterChain().filterPacket(in);
+        if ( isOverrideThrottle() ){
+            hw.setThrottle(getOverriddenThrottleSetting());
+        } else{
+            hw.setThrottle(controller.computeControl(carTracker,trackModel));
+        }
         return in;
     }
 
@@ -128,8 +73,48 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     }
 
     public void annotate (GLAutoDrawable drawable){
-        if ( trackCanvas != null ){
-            trackCanvas.display();
+        carTracker.annotate(drawable);
+        if(renderer==null){
+                      renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,10),true,true);
+
         }
+    }
+
+    /**
+     * @return the overrideThrottle
+     */
+    public boolean isOverrideThrottle (){
+        return overrideThrottle;
+    }
+
+    /**
+     * @param overrideThrottle the overrideThrottle to set
+     */
+    public void setOverrideThrottle (boolean overrideThrottle){
+        this.overrideThrottle = overrideThrottle;
+    }
+
+    /**
+     * @return the overriddenThrottleSetting
+     */
+    public float getOverriddenThrottleSetting (){
+        return overriddenThrottleSetting;
+    }
+
+    /**
+     * @param overriddenThrottleSetting the overriddenThrottleSetting to set
+     */
+    public void setOverriddenThrottleSetting (float overriddenThrottleSetting){
+        this.overriddenThrottleSetting = overriddenThrottleSetting;
+        prefs().putFloat("SlotCarRacer.overriddenThrottleSetting",overriddenThrottleSetting);
+    }
+
+    // for GUI slider
+    public float setMaxOverriddenThrottleSetting (){
+        return 1;
+    }
+
+    public float getMinOverriddenThrottleSetting (){
+        return 0;
     }
 }

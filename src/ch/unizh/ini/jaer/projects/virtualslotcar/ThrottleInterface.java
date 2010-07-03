@@ -23,4 +23,8 @@ public interface ThrottleInterface {
      */
     boolean setThrottle (float throttle);
 
+//    /** These methods just for ease of delegating building the GUI. If we delegate these methods then the GUI can build a slider. */
+//    public float getMaxThrottle();
+//    public float getMinThrottle();
+
 }
