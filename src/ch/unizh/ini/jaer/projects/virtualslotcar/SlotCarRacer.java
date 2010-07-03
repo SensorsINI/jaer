@@ -23,7 +23,7 @@ licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_Genera
  */
 public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     private boolean showTrackEnabled = prefs().getBoolean("SlotCarRacer.showTrack",true);
-    private boolean virtualCarEnabled = prefs().getBoolean("SlotCarRacer.virtualCar",true);
+    private boolean virtualCarEnabled = prefs().getBoolean("SlotCarRacer.virtualCar",false);
 //    JFrame trackFrame = null;
 //    GLUT glut = new GLUT();
 //    GLU glu = new GLU();
@@ -47,6 +47,13 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
         filterChain.add(carTracker);
         setEnclosedFilterChain(filterChain);
         controller = new SimpleSpeedController(this);
+
+        // tooltips for properties
+        String con="Controller", dis="Display", ov="Override", vir="Virtual car";
+        setPropertyTooltip(con,"desiredSpeed","Desired speed from speed controller");
+        setPropertyTooltip(ov,"overrideThrottle","Select to override the controller throttle setting");
+        setPropertyTooltip(ov,"overriddenThrottleSetting","Manual overidden throttle setting");
+        setPropertyTooltip(vir,"virtualCarEnabled","Enable display of virtual car on virtual track");
     }
 
     public void doLearnTrack (){
@@ -112,11 +119,27 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     }
 
     // for GUI slider
-    public float setMaxOverriddenThrottleSetting (){
+    public float getMaxOverriddenThrottleSetting (){
         return 1;
     }
 
     public float getMinOverriddenThrottleSetting (){
         return 0;
+    }
+
+    /**
+     * @return the virtualCarEnabled
+     */
+    public boolean isVirtualCarEnabled (){
+        return virtualCarEnabled;
+    }
+
+    /**
+     * @param virtualCarEnabled the virtualCarEnabled to set
+     */
+    public void setVirtualCarEnabled (boolean virtualCarEnabled){
+        this.virtualCarEnabled = virtualCarEnabled;
+        prefs().putBoolean("SlotCarRacer.virtualCarEnabled",virtualCarEnabled);
+
     }
 }

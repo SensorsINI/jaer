@@ -34,6 +34,7 @@ class SimpleSpeedController implements SlotCarController {
             float measuredSpeedPPS=(float)car.getVelocityPPS().distance(0,0);
             float error=measuredSpeedPPS-desiredSpeedPPS;
             float newThrottle=throttle-gain*error;
+            if(newThrottle<0) newThrottle=defaultThrottle; else if(newThrottle>1) newThrottle=1;
             throttle=newThrottle;
             return throttle;
         }
