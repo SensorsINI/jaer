@@ -403,12 +403,17 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         }
                         myadd(control, name);
                     } else if (c == Boolean.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
-                        if (p.getName().equals("filterEnabled")) {
+                        if (p.getName().equals("filterEnabled")) { // built in, skip
                             continue;
                         }
-                        if (p.getName().equals("annotationEnabled")) {
+                        if (p.getName().equals("annotationEnabled")) {// built in, skip
                             continue;
                         }
+                        if (p.getName().equals("selected")) {// built in, skip
+                            continue;
+                        }
+
+
                         control = new BooleanControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
                         myadd(control, name);
                     } else if (c == String.class && p.getReadMethod() != null && p.getWriteMethod() != null) {
