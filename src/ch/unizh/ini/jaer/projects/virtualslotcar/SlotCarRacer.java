@@ -5,6 +5,9 @@
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.Font;
+import java.awt.Rectangle;
+import java.awt.geom.Rectangle2D;
+import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JOptionPane;
 import net.sf.jaer.chip.AEChip;
@@ -63,17 +66,24 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     @Override
     public EventPacket<?> filterPacket (EventPacket<?> in){
         getEnclosedFilterChain().filterPacket(in);
-        if ( isOverrideThrottle() ){
-            hw.setThrottle(getOverriddenThrottleSetting());
-        } else{
-            hw.setThrottle(controller.computeControl(carTracker,trackModel));
-        }
+        setThrottle();
         return in;
     }
 
+    private float lastThrottle=0;
+
+    private void setThrottle() {
+        if (isOverrideThrottle()) {
+            lastThrottle = getOverriddenThrottleSetting();
+        } else {
+            lastThrottle = controller.computeControl(carTracker, trackModel);
+        }
+        hw.setThrottle(lastThrottle);
+    }
+
     @Override
-    public void resetFilter (){
-        if(hw.isOpen()){
+    public void resetFilter() {
+        if (hw.isOpen()) {
             hw.close();
         }
     }
@@ -85,11 +95,16 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     public void annotate (GLAutoDrawable drawable){
         carTracker.annotate(drawable);
         if ( renderer == null ){
-            renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,8),true,true);
+            renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,24),true,true);
         }
         renderer.begin3DRendering();
-        renderer.draw("Throttle:"+controller.getThrottle(),10,10);
+        String s="Throttle:"+lastThrottle;
+        final float scale=.25f;
+        renderer.draw3D(s,0,2,0,scale);
+//        Rectangle2D bounds=renderer.getBounds(s);
         renderer.end3DRendering();
+//        GL gl=drawable.getGL();
+//        gl.glRectf((float)bounds.getMaxX()*scale, 2,(float) (chip.getSizeX()-scale*bounds.getWidth())*lastThrottle, 4);
     }
 
     /**
@@ -145,4 +160,6 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
         prefs().putBoolean("SlotCarRacer.virtualCarEnabled",virtualCarEnabled);
 
     }
+
+
 }
