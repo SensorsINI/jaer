@@ -175,7 +175,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     BeanInfo info;
     PropertyDescriptor[] props;
     Method[] methods;
-    Logger log = Logger.getLogger("Filters");
+    private static Logger log = Logger.getLogger("Filters");
     private EventFilter filter = null;
     final float fontSize = 10f;
     private Border normalBorder, redLineBorder;
@@ -1306,7 +1306,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      */
     public void setControlsVisible(boolean yes) {
         controlsVisible = yes;
-        getFilter().setSelected(yes);
+        getFilter().setSelected(yes); // exposing controls 'selects' this filter
         setBorderActive(yes);
         for (JComponent p : controls) {
             p.setVisible(yes);
