@@ -44,6 +44,7 @@ public class PeriodicSpline {
     }
 
     // Computes the spline coefficients from a list of points
+    // Does not require the last point to be identical to the first point
     public void computeCoefficients(LinkedList<Point2D> XYdata) {
         numXY = XYdata.size();
 
@@ -327,12 +328,13 @@ public class PeriodicSpline {
             // Add original point
             path.add(new Point2D.Double(Xdata[splineIdx], Ydata[splineIdx]));
             double nextStop = Tdata[splineIdx+1];
-            while (curT < nextStop) {
+            while (curT < nextStop-stepsize) {
                 // Add interpolated points
                 path.add(new Point2D.Double(evaluateX(curT, splineIdx),
                         evaluateY(curT, splineIdx)));
                 curT+= stepsize;
             }
+            curT = nextStop+stepsize;
             splineIdx++;
         }
 

@@ -250,8 +250,6 @@ public class SlotcarFrame extends javax.swing.JFrame {
         int ClickX = evt.getX();
         int ClickY = evt.getY();
 
-        System.out.println("Click: " + ClickX + " / " + ClickY + " / " + evt.getPoint());
-
         Point2D normPoint = normalizedPosition(evt.getPoint());
 
         switch (currentMode) {

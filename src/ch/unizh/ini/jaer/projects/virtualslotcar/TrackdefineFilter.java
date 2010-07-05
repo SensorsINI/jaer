@@ -23,35 +23,58 @@ import java.awt.event.MouseMotionListener;
 import java.util.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.*;
+import javax.swing.JFileChooser;
+import javax.swing.filechooser.FileFilter;
+import java.io.File;
+import java.awt.geom.Point2D;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 /**
  * An AE filter that first creates a histogram of incoming pixels, and then lets the user define
  * the detected track.
  *
  * @author Michael Pfeiffer
  */
+
+/**
+ * A utility class for points in a priority queue, ordered by their distance to
+ * other points in the queue.
+ */
+class TrackPoint implements Comparable<TrackPoint> {
+    public int x;
+    public int y;
+    public float minDistance;
+
+    public TrackPoint(int x, int y, float minDistance) {
+        this.x = x;
+        this.y = y;
+        this.minDistance = minDistance;
+    }
+
+    public int compareTo(TrackPoint p) {
+        if (p.minDistance < minDistance)
+            return +1;
+        else if (p.minDistance == minDistance)
+            return 0;
+        else
+            return -1;
+    }
+}
+
+
+
 public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,Observer,MouseListener,MouseMotionListener{
     public static String getDescription (){
         return "Detects a track from incoming pixels and user input";
     }
     // Variables declared in XYTypeFilter
-    final private static float[] SELECT_COLOR = { .8f,0,0,.5f };
     public short x = 0, y = 0;
     public byte type = 0;
-    private short xAnd;
-    private short yAnd;
-    private byte typeAnd;
     private GLCanvas glCanvas;
     private ChipCanvas canvas;
-    private Point startPoint = null, clickedPoint = null;
     private Point currentMousePoint = null;
-    private int maxEvents = 0;
-    private int index = 0;
-    private short xspike, yspike;
-    private byte typespike;
-    private int ts, repMeasure, i;
-    private volatile boolean selecting = false;
-    private static float lineWidth = 1f;
-    
+    private int currentPointIdx;
+
     // Start here with new variable declarations
 
     // Dimensions of the pixel array
@@ -70,13 +93,40 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
     // Threshold for accepting points as track points
     private float histThresh = prefs().getFloat("TrackdefineFilter.histThresh",0.0001f);
 
-    // Re-initialize counters after end of replay
-    private boolean reInit = prefs().getBoolean("TrackdefineFilter.reInit", false);
-
     // Size of erosion mask
-    private int erosionSize = prefs().getInt("TrackdefineFilter.erosionSize", 0);
+    private int erosionSize = prefs().getInt("TrackdefineFilter.erosionSize", 1);
+
+    // Minimum distance between track points
+    private float minDistance = prefs().getFloat("TrackdefineFilter.minDistance", 10.0f);
+
+    // Maximum distance between track points
+    private float maxDistance = prefs().getFloat("TrackdefineFilter.maxDistance", 50.0f);
+
+    // Interpolation step size for spline curve
+    private float stepSize = prefs().getFloat("TrackdefineFilter.stepSize", 0.05f);
+
+    // Whether to draw smooth interpolated track
+    private boolean drawSmooth = prefs().getBoolean("TrackdefineFilter.drawSmooth", false);
+
+    // Delete or move track points on mouse click
+    private boolean deleteOnClick = prefs().getBoolean("TrackdefineFilter.deleteOnClick", false);
+
+    // Tolerance for mouse clicks
+    private float clickTolerance = prefs().getFloat("TrackdefineFilter.clickTolerance", 5.0f);
 
     private int counter = 0;
+
+    // List of extracted track points
+    private LinkedList<Point2D> extractPoints;
+
+    // The extracted slotcar track
+    private SlotcarTrack extractedTrack;
+
+    // Smooth display points of the interpolated track
+    private LinkedList<Point2D> smoothPoints;
+
+    // Display extracted Points
+    private boolean displayTrack = prefs().getBoolean("TrackdefineFilter.displayTrack", true);
 
     public TrackdefineFilter (AEChip chip){
         super(chip);
@@ -89,15 +139,27 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
         // final String y = "y", x = "x", t = "type";
         setPropertyTooltip("drawHist", "Draw Histogram");
         setPropertyTooltip("histThresh", "Threshold of histogram points to display");
-        setPropertyTooltip("reInit", "Reset counters after every replay");
+        setPropertyTooltip("drawSmooth", "Draw smooth track or only points");
+        setPropertyTooltip("displayTrack", "Display extracted Track Points");
+        setPropertyTooltip("minDistance", "Minimum distance between extracted track points");
+        setPropertyTooltip("minDistance", "Maximum distance between extracted track points");
+        setPropertyTooltip("stepSize", "Interpolation step size for spline curve");
+        setPropertyTooltip("deleteOnClick", "Delete track points on mouse click (otherwise move)");
+        setPropertyTooltip("clickTolerance", "Tolerance for mouse clicks (deleting, dragging)");
 
         // New in TrackdefineFilter
         // Initialize histogram
-        numX = chip.getSizeX();
-        numY = chip.getSizeY();
-        pixData = new float[numY][numX];
+        // numX = chip.getSizeX();
+        // numY = chip.getSizeY();
+        numX = numY = -1;
+
+        currentPointIdx = -1;
 
         resetFilter();
+
+        extractPoints = null;
+        extractedTrack = null;
+        smoothPoints = null;
     }
 
     /**
@@ -152,12 +214,9 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
         numX = chip.getSizeX();
         numY = chip.getSizeY();
 
-        if ((oldNumX != numX) || (oldNumY != numY))
+        if ((oldNumX != numX) || (oldNumY != numY)) {
             pixData = new float[numY][numX];
 
-        System.out.println("Reset: " + reInit + " / " + totalSum);
-        if (reInit) {
-            pixData = new float[numY][numX];
             for (int i=0; i<numY; i++)
                 for (int j=0; j<numX; j++)
                     pixData[i][j]=0.0f;
@@ -256,6 +315,43 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
         System.out.println("Max: " + maxH + " / Count: " + count);
     }
 
+
+    /** Displays the extracted track points */
+    private void drawExtractedTrack(GL gl) {
+        if (extractedTrack != null) {
+
+            // Draw extracted points
+            gl.glColor3d(1.0f, 0.0f, 1.0f);
+            gl.glPointSize(5.0f);
+            gl.glBegin(gl.GL_POINTS);
+            for (Point2D p:extractPoints) {
+                gl.glVertex2d(p.getX(), p.getY());
+            }
+            gl.glEnd();
+
+            gl.glPointSize(1.0f);
+            gl.glBegin(gl.GL_LINE_STRIP);
+            for (Point2D p:extractPoints) {
+                gl.glVertex2d(p.getX(), p.getY());
+            }
+            gl.glEnd();
+
+            if (drawSmooth) {
+                // Draw smooth interpolated track
+
+                gl.glColor3f(0.0f,1.0f,1.0f);
+                gl.glBegin(gl.GL_LINE_LOOP);
+                for (Point2D p:smoothPoints) {
+                    gl.glVertex2d(p.getX(), p.getY());
+                }
+                gl.glEnd();
+            }
+        } else
+            System.out.println("No Track!!");
+
+    }
+
+
     public void annotate (GLAutoDrawable drawable){
         if (counter < 1)
             counter++;
@@ -275,7 +371,11 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
                 drawHistogram(gl);
             }
             gl.glPopMatrix();
-            
+
+            if (displayTrack) {
+                drawExtractedTrack(gl);
+            }
+
             counter = 0;
         }
 
@@ -287,15 +387,30 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
 
     public void mousePressed (MouseEvent e){
         Point p = canvas.getPixelFromMouseEvent(e);
-        startPoint = p;
-        selecting = true;
+        System.out.println("Pressing " + currentPointIdx);
     }
 
     public void mouseReleased (MouseEvent e){
-        if ( startPoint == null ){
+        if (( currentPointIdx < 0 ) || (extractedTrack == null)) {
             return;
         }
-        selecting = false;
+
+        // Move point if selected
+        System.out.println("Releasing mouse for point " + currentPointIdx);
+
+        currentMousePoint = canvas.getPixelFromMouseEvent(e);
+
+        if ((currentMousePoint.getX() >= 0) && (currentMousePoint.getY() >= 0) &&
+                (currentMousePoint.getX() < numX) && (currentMousePoint.getY() < numY)) {
+
+            // Move point 
+            extractedTrack.setPoint(currentPointIdx, currentMousePoint);
+            extractedTrack.updateSpline();
+            extractPoints = extractedTrack.getPointList();
+            smoothPoints = extractedTrack.getSmoothPoints(stepSize);
+        }
+        
+        currentPointIdx = -1;
     }
 
     public void mouseMoved (MouseEvent e){
@@ -303,15 +418,23 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
     }
 
     public void mouseExited (MouseEvent e){
-        selecting = false;
     }
 
     public void mouseEntered (MouseEvent e){
     }
 
     public void mouseDragged (MouseEvent e){
-        if ( startPoint == null ){
-            return;
+        // System.out.println("Dragging " + currentPointIdx);
+        currentMousePoint = canvas.getPixelFromMouseEvent(e);
+        if (!deleteOnClick) {
+            // Select point for dragging
+            if ((extractedTrack != null) && (currentPointIdx < 0)) {
+                int idx = extractedTrack.findClosest(currentMousePoint, clickTolerance);
+                // System.out.println("New drag " + idx + " / " + clickTolerance);
+                if (idx >= 0) {
+                    currentPointIdx = idx;
+                }
+            }
         }
     }
 
@@ -324,8 +447,20 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
     }
 
     public void mouseClicked (MouseEvent e){
+        // System.out.println("Click " + currentPointIdx);
         Point p = canvas.getPixelFromMouseEvent(e);
-        clickedPoint = p;
+        if (deleteOnClick) {
+            // Delete point
+            if (extractedTrack != null) {
+                int idx = extractedTrack.findClosest(p, clickTolerance);
+                if (idx >= 0) {
+                    extractedTrack.deletePoint(idx);
+                    extractedTrack.updateSpline();
+                    extractPoints = extractedTrack.getPointList();
+                    smoothPoints = extractedTrack.getSmoothPoints(stepSize);
+                }
+            }
+        }
     }
 
     @Override
@@ -362,15 +497,6 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
         getPrefs().putFloat("TrackdefineFilter.histThresh",histThresh);
     }
 
-    public boolean isReInit() {
-        return reInit;
-    }
-
-    public void setReInit(boolean reInit) {
-        this.reInit = reInit;
-        getPrefs().putBoolean("TrackdefineFilter.reInit",reInit);
-    }
-
     public int getErosionSize() {
         return erosionSize;
     }
@@ -380,6 +506,204 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
         getPrefs().putInt("TrackdefineFilter.erosionSize",erosionSize);
     }
 
+    public float getMinDistance() {
+        return minDistance;
+    }
+
+    public void setMinDistance(float minDistance) {
+        this.minDistance = minDistance;
+    }
+
+    public float getMaxDistance() {
+        return maxDistance;
+    }
+
+    public void setMaxDistance(float maxDistance) {
+        this.maxDistance = maxDistance;
+    }
+
+    public boolean isDisplayTrack() {
+        return displayTrack;
+    }
+
+    public void setDisplayTrack(boolean displayTrack) {
+        this.displayTrack = displayTrack;
+    }
+
+    public float getStepSize() {
+        return stepSize;
+    }
+
+    public void setStepSize(float stepSize) {
+        this.stepSize = stepSize;
+        if (extractedTrack != null) {
+            smoothPoints = extractedTrack.getSmoothPoints(stepSize);
+        }
+    }
+
+    public boolean isDrawSmooth() {
+        return drawSmooth;
+    }
+
+    public void setDrawSmooth(boolean drawSmooth) {
+        this.drawSmooth = drawSmooth;
+    }
+
+    public boolean isDeleteOnClick() {
+        return deleteOnClick;
+    }
+
+    public void setDeleteOnClick(boolean deleteOnClick) {
+        this.deleteOnClick = deleteOnClick;
+    }
+
+    public float getClickTolerance() {
+        return clickTolerance;
+    }
+
+    public void setClickTolerance(float clickTolerance) {
+        this.clickTolerance = clickTolerance;
+    }
 
 
+
+
+    /**
+     * Re-initializes the histogram of events.
+     */
+    public void doInitHistogram() {
+            pixData = new float[numY][numX];
+            for (int i=0; i<numY; i++)
+                for (int j=0; j<numX; j++)
+                    pixData[i][j]=0.0f;
+
+            totalSum = 0.0f;
+    }
+
+    /** Invalidates all points within minDistance of (x,y) in the queue */
+    private void invalidateQueue(PriorityQueue<TrackPoint> pq, int x, int y) {
+        Point2D.Float pos = new Point2D.Float(x,y);
+
+        Iterator<TrackPoint> it = pq.iterator();
+        LinkedList<TrackPoint> toAdd = new LinkedList<TrackPoint>();
+
+        while(it.hasNext()) {
+            TrackPoint p = it.next();
+            float distance = (float) pos.distance(p.x, p.y);
+            it.remove();
+            if (distance > minDistance) {
+                p.minDistance = distance;
+                toAdd.add(p);
+            }
+        }
+
+        // Add all updated points
+        pq.addAll(toAdd);
+    }
+
+    /**
+     * Extracts the track from the histogram of events.
+     */
+    public void doExtractTrack() {
+        boolean[][] trackPoints = erosion();
+
+        // Find starting point
+        int maxX = -1, maxY = -1;
+        float maxVal = Float.NEGATIVE_INFINITY;
+        for (int i=0; i<numY; i++) {
+            for (int j=0; j<numX; j++) {
+                if (pixData[i][j] > maxVal) {
+                    maxVal = pixData[i][j];
+                    maxX = j;
+                    maxY = i;
+                }
+            }
+        }
+
+        // Insert starting point
+        extractPoints = new LinkedList<Point2D>();
+        extractPoints.add(new Point2D.Float((float)maxX, (float)maxY));
+        boolean trackFinished = false;
+
+
+        // Prepare queue of potential track points
+        PriorityQueue<TrackPoint> pq = new PriorityQueue<TrackPoint>();
+
+        for (int i=0; i<numY; i++) {
+            for (int j=0; j<numX; j++) {
+                if (trackPoints[i][j]) {
+                    // Insert into queue
+                    float dist = (float) Point.distance(maxX, maxY, j, i);
+                    if (dist > minDistance) {
+                        TrackPoint p = new TrackPoint(j,i,dist);
+                        pq.add(p);
+                    }
+                }
+            }
+        }
+
+        int curX = maxX;
+        int curY = maxY;
+        while (!trackFinished) {
+            // Delete track point which are too close to current points
+            invalidateQueue(pq, curX, curY);
+
+            if (pq.isEmpty()) {
+                trackFinished = true;
+            } else {
+                // Add new track point
+                TrackPoint nextPoint = pq.remove();
+                if (Point2D.distance(nextPoint.x, nextPoint.y, curX, curY) < maxDistance) {
+                    extractPoints.add(new Point2D.Float(nextPoint.x, nextPoint.y));
+                    curX = nextPoint.x;
+                    curY = nextPoint.y;
+                } else {
+                    System.out.println("No more points in distance!");
+                    trackFinished = true;
+                }
+            }
+        }
+
+        System.out.println("Extracted " + extractPoints.size() + " track points!");
+
+        // Create track object and spline
+        extractedTrack = new SlotcarTrack();
+        extractedTrack.create(extractPoints);
+
+        smoothPoints = extractedTrack.getSmoothPoints(stepSize);
+    }
+
+    /**
+     * Saves the extracted track to an external file.
+     */
+    public void doSaveTrack() {
+        if (extractedTrack == null) {
+            // No track defined
+            return;
+        }
+
+        JFileChooser fc = new JFileChooser();
+        fc.setFileFilter(new FileFilter() {
+                @Override public boolean accept (File f) {
+                    return f.isDirectory() ||
+                            f.getName().toLowerCase().endsWith(".track");
+                }
+
+                @Override public String getDescription() {
+                    return "Track files";
+                }
+            }
+        );
+
+        // TODO: Why is manual entry of file-name not working?
+        fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+        fc.setSelectedFile(new File("test.track"));
+        int state = fc.showSaveDialog(null);
+        if (state == JFileChooser.APPROVE_OPTION) {
+            File file = fc.getSelectedFile();
+            System.out.println("Selected " + file.getName());
+        } else {
+            System.out.println("Cancelled saving!");
+        }
+    }
 }

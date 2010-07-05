@@ -47,8 +47,8 @@ public class SlotCarHardwareInterface implements HardwareInterface,ThrottleInter
         if(!hw.isOpen()){
             try{
                 hw.open();
-                hw.setFullDutyCycleMode(true); // sets the servo outputs to do 0-100% duty cycle rather than usual 1-2ms pulses
-                hw.setPortDOutRegisters((byte)0x00,(byte)0x00); // sets the servo output port to open drain
+                //hw.setFullDutyCycleMode(true); // sets the servo outputs to do 0-100% duty cycle rather than usual 1-2ms pulses
+                //hw.setPortDOutRegisters((byte)0x00,(byte)0x00); // sets the servo output port to open drain
             } catch ( HardwareInterfaceException ex ){
                 if(warningPrintCounter--==0){
                     log.warning(ex.toString());
@@ -57,7 +57,7 @@ public class SlotCarHardwareInterface implements HardwareInterface,ThrottleInter
             }
         }
         if(hw.isOpen()){
-            hw.setServoValuePWM(PORT,(int)(speed*65535));
+            //hw.setServoValuePWM(PORT,(int)(speed*65535));
             return true;
         }
         return false;

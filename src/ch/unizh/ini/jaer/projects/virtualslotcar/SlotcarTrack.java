@@ -295,4 +295,19 @@ public class SlotcarTrack {
         smoothTrack = smoothTrack.refine(step);
         trackPoints = smoothTrack.allPoints(step);
     }
+
+    /**
+     * Creates a new track from a list of points.
+     * @param allPoints The list of track points.
+     */
+    public void create(LinkedList<Point2D> allPoints) {
+        if (allPoints != null) {
+            clear();
+            for (Point2D p: allPoints) {
+                addPoint(p);
+            }
+        }
+
+        updateSpline();
+    }
 }
