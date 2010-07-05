@@ -10,6 +10,8 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.graphics.FrameAnnotater;
 /**
  *  This is a demo filter written just for Telluride 2010 participants.
@@ -24,15 +26,21 @@ licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_Genera
 public class TestFilterTell2010 extends EventFilter2D implements FrameAnnotater{
 
     float x, y;
-    private float updateRate=0.01f;
+    private float updateRate=prefs().getFloat("TestFilterTell2010.updateRate",0.01f);
+    BackgroundActivityFilter bgFilter;
+    FilterChain filterChain;
 
     public TestFilterTell2010 (AEChip chip){
         super(chip);
+        filterChain=new FilterChain(chip);
+        setEnclosedFilterChain(filterChain);
+        bgFilter=new BackgroundActivityFilter(chip);
+        filterChain.add(bgFilter);
     }
 
     @Override
     public EventPacket<?> filterPacket (EventPacket<?> in){
-
+        out=bgFilter.filterPacket(in);
         // compute running average
         for(BasicEvent e:in){
             x=updateRate*e.x+(1-updateRate)*x;
@@ -86,6 +94,7 @@ public class TestFilterTell2010 extends EventFilter2D implements FrameAnnotater{
      */
     public void setUpdateRate (float updateRate){
         this.updateRate = updateRate;
+        prefs().putFloat("TestFilterTell2010.updateRate",updateRate);
     }
 
 }
