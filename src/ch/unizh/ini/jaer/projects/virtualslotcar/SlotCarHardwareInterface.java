@@ -47,7 +47,8 @@ public class SlotCarHardwareInterface implements HardwareInterface,ThrottleInter
         if(!hw.isOpen()){
             try{
                 hw.open();
-                //hw.setFullDutyCycleMode(true); // sets the servo outputs to do 0-100% duty cycle rather than usual 1-2ms pulses
+                hw.setFullDutyCycleMode(true); // sets the servo outputs to do 0-100% duty cycle rather than usual 1-2ms pulses
+                // we don't need open drain with garrick's 3.3V PNP inverter before the MOSFET
                 //hw.setPortDOutRegisters((byte)0x00,(byte)0x00); // sets the servo output port to open drain
             } catch ( HardwareInterfaceException ex ){
                 if(warningPrintCounter--==0){
@@ -57,7 +58,8 @@ public class SlotCarHardwareInterface implements HardwareInterface,ThrottleInter
             }
         }
         if(hw.isOpen()){
-            //hw.setServoValuePWM(PORT,(int)(speed*65535));
+            // the PWM output must be low to turn on MOSFET so if speed=0 then write 65535
+            hw.setServoValuePWM(PORT,(int)((1-speed)*65535));
             return true;
         }
         return false;
@@ -68,6 +70,7 @@ public class SlotCarHardwareInterface implements HardwareInterface,ThrottleInter
     }
 
     public void close() {
+        setThrottle(0);  // actually leaves servo output HI
         hw.close();
     }
 
