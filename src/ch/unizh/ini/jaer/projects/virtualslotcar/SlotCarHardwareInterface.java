@@ -59,7 +59,7 @@ public class SlotCarHardwareInterface implements HardwareInterface,ThrottleInter
         }
         if(hw.isOpen()){
             // the PWM output must be low to turn on MOSFET so if speed=0 then write 65535
-            hw.setServoValuePWM(PORT,(int)((1-speed)*65535));
+            hw.setServoValuePWM(PORT,(int)((1f-speed)*65535));
             return true;
         }
         return false;

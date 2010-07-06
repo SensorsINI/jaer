@@ -53,8 +53,14 @@ public class SimpleSpeedController extends EventFilter2D implements SlotCarContr
 
  
     public String logControllerState() {
-        return String.format("%f %f %f",desiredSpeedPPS, measuredSpeedPPS, throttle);
+        return String.format("%f\t%f\t%f",desiredSpeedPPS, measuredSpeedPPS, throttle);
     }
+
+    public String logContents() {
+        return "desiredSpeedPPS, measuredSpeedPPS, throttle";
+    }
+
+
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {

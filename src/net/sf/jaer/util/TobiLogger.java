@@ -58,7 +58,7 @@ public class TobiLogger {
     }
     
     /** Logs a string to the file (\n is appended), if logging is enabled.
-     * Prepends the relative or absolute time in ms or nanoseconds, depending on nanotimeEnabled, comma separated from the rest of the string.
+     * Prepends the relative or absolute time in ms or nanoseconds, depending on nanotimeEnabled, tab separated from the rest of the string.
      * 
      * @param s the string
      * @see #setEnabled
@@ -67,9 +67,9 @@ public class TobiLogger {
         if(!logDataEnabled) return;
         if(logStream!=null) {
             if(absoluteTimeEnabled){
-                logStream.print((nanotimeEnabled?System.nanoTime():System.currentTimeMillis())+",");
+                logStream.print((nanotimeEnabled?System.nanoTime():System.currentTimeMillis())+"\t");
             }else{
-                logStream.print(((nanotimeEnabled?System.nanoTime():System.currentTimeMillis())-startingTime)+",");
+                logStream.print(((nanotimeEnabled?System.nanoTime():System.currentTimeMillis())-startingTime)+"\t");
             }
             logStream.println(s);
             if(logStream.checkError()) log.warning("eroror logging data");

@@ -560,7 +560,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      * @param pwmValue the value written to servo controller is 64k minus this value
      */
     public void setServoValuePWM(int servo, int pwmValue) {
-        pwmValue=65536-pwmValue;
+        pwmValue=65535-pwmValue;
         checkServoCommandThread();
         ServoCommand cmd=new ServoCommand();
         cmd.bytes=new byte[4];

@@ -36,4 +36,10 @@ public interface SlotCarController {
      */
     public String logControllerState();
 
+    /** Returns a string that says what are the contents of the log, e.g. throttle, desired speed, measured speed.
+     *
+     * @return the string description of the log contents.
+     */
+    public String logContents();
+
 }
