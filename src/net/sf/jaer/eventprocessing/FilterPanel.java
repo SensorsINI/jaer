@@ -515,6 +515,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 }
                 control.setSelectedItem(x);
             } catch (Exception e) {
+                log.warning("cannot access the field named "+name+" is the class or method not public?");
                 e.printStackTrace();
             }
             control.addActionListener(new ActionListener() {
@@ -574,6 +575,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 textField.setText(x);
                 textField.setToolTipText(x);
             } catch (Exception e) {
+                log.warning("cannot access the field named "+name+" is the class or method not public?");
                 e.printStackTrace();
             }
             textField.addActionListener(new ActionListener() {
@@ -623,6 +625,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
             } catch (IllegalAccessException e) {
+                log.warning("cannot access the field named "+name+" is the class or method not public?");
                 e.printStackTrace();
             }
             checkBox.addActionListener(new ActionListener() {
@@ -685,6 +688,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 initValue = x.intValue();
                 slider.setValue(initValue);
             } catch (Exception e) {
+                log.warning("cannot access the field named "+name+" is the class or method not public?");
                 e.printStackTrace();
             }
             add(slider);
@@ -757,6 +761,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 currentValue = x.floatValue();
                 set(new Float(currentValue));
             } catch (Exception e) {
+                log.warning("cannot access the field named "+name+" is the class or method not public?");
                 e.printStackTrace();
             }
             add(slider);
@@ -1049,6 +1054,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
             } catch (IllegalAccessException e) {
+                log.warning("cannot access the field named "+name+" is the class or method not public?");
                 e.printStackTrace();
             }
             add(tf);
