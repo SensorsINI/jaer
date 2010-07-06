@@ -15,6 +15,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.TobiLogger;
 /**
  * Controls slot car tracked from eye of god view.
  *
@@ -27,36 +28,46 @@ licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_Genera
 public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     private boolean showTrackEnabled = prefs().getBoolean("SlotCarRacer.showTrack",true);
     private boolean virtualCarEnabled = prefs().getBoolean("SlotCarRacer.virtualCar",false);
-//    JFrame trackFrame = null;
-//    GLUT glut = new GLUT();
-//    GLU glu = new GLU();
-//    GLCanvas trackCanvas;
+
+    private TobiLogger tobiLogger;
     private SlotCarHardwareInterface hw;
     private SlotcarFrame slotCarFrame;
     private CarTracker carTracker;
     private FilterChain filterChain;
     private boolean overrideThrottle = prefs().getBoolean("SlotCarRacer.overrideThrottle",true);
     private float overriddenThrottleSetting = prefs().getFloat("SlotCarRacer.overriddenThrottleSetting",0);
-    private SlotCarController controller = null;
+//    private SlotCarController controller = null;
     private SlotcarTrack trackModel;
-    TextRenderer renderer;
+    private TextRenderer renderer;
+    private SimpleSpeedController speedController;
+
 
     public SlotCarRacer (AEChip chip){
         super(chip);
         hw = new SlotCarHardwareInterface();
-        carTracker = new CarTracker(chip);
         slotCarFrame = new SlotcarFrame();
+
+        
         filterChain = new FilterChain(chip);
+
+        carTracker = new CarTracker(chip);
         filterChain.add(carTracker);
+
+        speedController = new SimpleSpeedController(chip);
+        filterChain.add(speedController);
+
         setEnclosedFilterChain(filterChain);
-        controller = new SimpleSpeedController(this);
+
+        tobiLogger = new TobiLogger("SlotCarRacer","racer data");
 
         // tooltips for properties
-        String con="Controller", dis="Display", ov="Override", vir="Virtual car";
+        String con="Controller", dis="Display", ov="Override", vir="Virtual car", log="Logging";
         setPropertyTooltip(con,"desiredSpeed","Desired speed from speed controller");
         setPropertyTooltip(ov,"overrideThrottle","Select to override the controller throttle setting");
         setPropertyTooltip(ov,"overriddenThrottleSetting","Manual overidden throttle setting");
         setPropertyTooltip(vir,"virtualCarEnabled","Enable display of virtual car on virtual track");
+        setPropertyTooltip(log,"logRacerDataEnabled","enables logging of racer data");
+
     }
 
     public void doLearnTrack (){
@@ -72,13 +83,19 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
 
     private float lastThrottle=0;
 
-    private void setThrottle() {
+    synchronized private void setThrottle() {
+
         if (isOverrideThrottle()) {
             lastThrottle = getOverriddenThrottleSetting();
         } else {
-            lastThrottle = controller.computeControl(carTracker, trackModel);
+            lastThrottle = speedController.computeControl(carTracker, trackModel);
         }
         hw.setThrottle(lastThrottle);
+       
+        if (isLogRacerDataEnabled()) {
+            logRacerData(speedController.logControllerState());
+        }
+
     }
 
     @Override
@@ -119,6 +136,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
      */
     public void setOverrideThrottle (boolean overrideThrottle){
         this.overrideThrottle = overrideThrottle;
+        prefs().putBoolean("SlotCarRacer.overrideThrottle", overrideThrottle);
     }
 
     /**
@@ -161,5 +179,16 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
 
     }
 
+   public synchronized void setLogRacerDataEnabled(boolean logDataEnabled) {
+        tobiLogger.setEnabled(logDataEnabled);
+    }
 
+    public synchronized void logRacerData(String s) {
+        tobiLogger.log(s);
+    }
+
+    public boolean isLogRacerDataEnabled() {
+        if(tobiLogger==null) return false;
+        return tobiLogger.isEnabled();
+    }
 }

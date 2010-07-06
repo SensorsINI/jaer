@@ -30,4 +30,10 @@ public interface SlotCarController {
      */
     public float getThrottle();
 
+    /** Implement this method to return a string logging the state of the controller, e.g. throttle, measured speed, and curvature.
+     *
+     * @return string to log
+     */
+    public String logControllerState();
+
 }
