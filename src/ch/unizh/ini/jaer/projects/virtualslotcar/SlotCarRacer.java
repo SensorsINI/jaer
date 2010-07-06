@@ -40,6 +40,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     private SlotcarTrack trackModel;
     private TextRenderer renderer;
     private SimpleSpeedController speedController;
+    private float maxThrottle=prefs().getFloat("SlotCarRacer.maxThrottle",1);
 
 
     public SlotCarRacer (AEChip chip){
@@ -64,6 +65,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
         String con="Controller", dis="Display", ov="Override", vir="Virtual car", log="Logging";
         setPropertyTooltip(con,"desiredSpeed","Desired speed from speed controller");
         setPropertyTooltip(ov,"overrideThrottle","Select to override the controller throttle setting");
+        setPropertyTooltip(con,"maxThrottle","Absolute limit on throttle for safety");
         setPropertyTooltip(ov,"overriddenThrottleSetting","Manual overidden throttle setting");
         setPropertyTooltip(vir,"virtualCarEnabled","Enable display of virtual car on virtual track");
         setPropertyTooltip(log,"logRacerDataEnabled","enables logging of racer data");
@@ -90,6 +92,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
         } else {
             lastThrottle = speedController.computeControl(carTracker, trackModel);
         }
+        lastThrottle=lastThrottle>maxThrottle? maxThrottle:lastThrottle;
         hw.setThrottle(lastThrottle);
        
         if (isLogRacerDataEnabled()) {
@@ -191,4 +194,23 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
         if(tobiLogger==null) return false;
         return tobiLogger.isEnabled();
     }
+
+    /**
+     * @return the maxThrottle
+     */
+    public float getMaxThrottle() {
+        return maxThrottle;
+    }
+
+    /**
+     * @param maxThrottle the maxThrottle to set
+     */
+    public void setMaxThrottle(float maxThrottle) {
+        if(maxThrottle>1) maxThrottle=1; else if(maxThrottle<0) maxThrottle=0;
+        this.maxThrottle = maxThrottle;
+        prefs().putFloat("SlotCarRacer.maxThrottle",maxThrottle);
+    }
+
+    public float getMaxMaxThrottle(){return 1;}
+    public float getMinMaxThrottle(){return 0;}
 }
