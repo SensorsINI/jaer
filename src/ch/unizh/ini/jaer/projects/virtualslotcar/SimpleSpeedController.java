@@ -43,7 +43,7 @@ public class SimpleSpeedController extends EventFilter2D implements SlotCarContr
         if(car==null){
             return defaultThrottle;
         }else{
-             measuredSpeedPPS=(float)car.getVelocityPPS().distance(0,0);
+             measuredSpeedPPS=(float)car.getSpeedPPS();
             float error=measuredSpeedPPS-desiredSpeedPPS;
             float newThrottle=throttle-gain*error;
             if(newThrottle<0) newThrottle=defaultThrottle; else if(newThrottle>1) newThrottle=1;

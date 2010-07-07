@@ -26,6 +26,8 @@ import net.sf.jaer.util.TobiLogger;
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
+
+    public static String getDescription(){ return "Slot car racer project, Telluride 2010";}
     private boolean showTrackEnabled = prefs().getBoolean("SlotCarRacer.showTrack",true);
     private boolean virtualCarEnabled = prefs().getBoolean("SlotCarRacer.virtualCar",false);
 

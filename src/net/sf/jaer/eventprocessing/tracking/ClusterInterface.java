@@ -53,7 +53,13 @@ public interface ClusterInterface {
      */
     public Point2D.Float getVelocityPPT();
 
-    /** Returns measure of cluster average radius in pixels.
+    /** Computes and returns speed of cluster in pixels per second.
+     *
+     * @return speed in pixels per second.
+     */
+    public float getSpeedPPS();
+        
+        /** Returns measure of cluster average radius in pixels.
      *
      * @return some measure of average cluster radius in pixels.
      */
