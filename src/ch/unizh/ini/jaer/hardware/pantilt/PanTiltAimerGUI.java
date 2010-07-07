@@ -48,6 +48,10 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
     public void paint(Graphics g) {
         final int r = 6;
         super.paint(g);
+        float[] ptvals=panTilt.getPanTiltValues();
+        float p=ptvals[0], t=ptvals[1];
+        
+//        g.drawLine(x0, y0, x1, y1);
     }
 
     /** This method is called from within the constructor to

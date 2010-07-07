@@ -4,6 +4,8 @@
  */
 package ch.unizh.ini.jaer.hardware.pantilt;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -23,6 +25,10 @@ public class PanTiltAimer extends EventFilter2D implements FrameAnnotater, PanTi
     public static final String getDescription(){ return "Allows control of pan-tilt using a panel to aim it and parameters to control the jitter";}
     private PanTilt panTiltHardware;
     private PanTiltAimerGUI calibrator;
+    private float jitterFreqHz=prefs().getFloat("PanTiltAimer.jitterFreqHz", 3);
+    private float jitterAmplitude=prefs().getFloat("PanTiltAimer.jitterAmplitude",.1f);
+    private float panValue=prefs().getFloat("PanTiltAimer.panValue",.5f);
+   private float tiltValue=prefs().getFloat("PanTiltAimer.tiltValue",.5f);
 
     /** Constructs instance of the new 'filter' CalibratedPanTilt. The only time events are actually used
      * is during calibration. The PanTilt hardware interface is also constructed.
@@ -31,8 +37,8 @@ public class PanTiltAimer extends EventFilter2D implements FrameAnnotater, PanTi
     public PanTiltAimer(AEChip chip) {
         super(chip);
         panTiltHardware = new PanTilt();
-        setPropertyTooltip("jitterAmplitude","Jitter of pantilt amplitude");
-        setPropertyTooltip("jitterFreqHz","Jitter frequency in Hz");
+        setPropertyTooltip("jitterAmplitude","Jitter of pantilt amplitude for circular motion");
+        setPropertyTooltip("jitterFreqHz","Jitter frequency in Hz of circular motion");
     }
     
     @Override
@@ -74,8 +80,10 @@ public class PanTiltAimer extends EventFilter2D implements FrameAnnotater, PanTi
         this.panTiltHardware=panTilt;
     }
     
-       public float getJitterAmplitude() {
-        return panTiltHardware.getJitterAmplitude();
+    public float getJitterAmplitude() {
+        float old = panTiltHardware.getJitterAmplitude();
+        support.firePropertyChange("jitterAmplitude", jitterAmplitude, old);
+        return old;
     }
 
     /** Sets the amplitude (1/2 of peak to peak) of circular jitter of pan tilt during jittering
@@ -84,6 +92,7 @@ public class PanTiltAimer extends EventFilter2D implements FrameAnnotater, PanTi
      */
     public void setJitterAmplitude(float jitterAmplitude) {
         panTiltHardware.setJitterAmplitude(jitterAmplitude);
+        prefs().putFloat("PanTiltAimer.jitterAmplitude",jitterAmplitude);
     }
 
     public float getJitterFreqHz() {
@@ -96,6 +105,7 @@ public class PanTiltAimer extends EventFilter2D implements FrameAnnotater, PanTi
      */
     public void setJitterFreqHz(float jitterFreqHz) {
         panTiltHardware.setJitterFreqHz(jitterFreqHz);
+        prefs().putFloat("PanTiltAimer.jitterFreqHz",jitterFreqHz);
     }
 
     public void acquire() {
@@ -127,7 +137,12 @@ public class PanTiltAimer extends EventFilter2D implements FrameAnnotater, PanTi
      @param tilt 0 to 1 value
      */
     public void setPanTiltValues(float pan, float tilt) throws HardwareInterfaceException {
+        float[] old=getPanTiltHardware().getPanTiltValues();
         getPanTiltHardware().setPanTiltValues(pan, tilt);
+        support.firePropertyChange("panValue", old[0], panValue);
+        support.firePropertyChange("tiltValue",old[1], tiltValue);
+        prefs().putFloat("PanTiltAimer.panValue",pan);
+        prefs().putFloat("PanTiltAimer.tiltValue",tilt);
     }
 
     public void setServoInterface(ServoInterface servo) {
@@ -142,5 +157,18 @@ public class PanTiltAimer extends EventFilter2D implements FrameAnnotater, PanTi
         getPanTiltHardware().setLaserEnabled(yes);
     }
 
- 
+    @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes);
+        try {
+            setPanTiltValues(panValue, tiltValue);
+            setJitterFreqHz(jitterFreqHz);
+            setJitterAmplitude(jitterAmplitude);
+        } catch (HardwareInterfaceException ex) {
+            Logger.getLogger(PanTiltAimer.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+
+
 }
