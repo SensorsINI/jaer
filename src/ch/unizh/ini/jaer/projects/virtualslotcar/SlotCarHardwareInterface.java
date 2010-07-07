@@ -48,7 +48,7 @@ public class SlotCarHardwareInterface implements HardwareInterface,ThrottleInter
             try{
                 hw.open();
                 hw.setFullDutyCycleMode(true); // sets the servo outputs to do 0-100% duty cycle rather than usual 1-2ms pulses
-                // we don't need open drain with garrick's 3.3V PNP inverter before the MOSFET
+                hw.setServoPWMFrequencyHz(200); // we don't need open drain with garrick's 3.3V PNP inverter before the MOSFET
                 //hw.setPortDOutRegisters((byte)0x00,(byte)0x00); // sets the servo output port to open drain
             } catch ( HardwareInterfaceException ex ){
                 if(warningPrintCounter--==0){
