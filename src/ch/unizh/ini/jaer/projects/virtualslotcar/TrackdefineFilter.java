@@ -8,29 +8,23 @@
  * Open. You can then make changes to the template in the Source Editor.
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
-import net.sf.jaer.eventprocessing.filter.*;
 import java.awt.*;
-import java.awt.Rectangle;
 import java.awt.event.MouseEvent;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
-import java.awt.Graphics2D;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.util.*;
-import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.*;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 import java.io.*;
 import java.awt.geom.Point2D;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import javax.swing.SwingUtilities;
-import java.lang.reflect.InvocationTargetException;
+// import java.lang.reflect.InvocationTargetException;
 /**
  * An AE filter that first creates a histogram of incoming pixels, and then lets the user define
  * the detected track.
@@ -76,6 +70,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
     private ChipCanvas canvas;
     private Point currentMousePoint = null;
     private int currentPointIdx;
+    private Point currentInsertMarkPoints = null;
 
     // Start here with new variable declarations
 
@@ -113,6 +108,9 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
     // Delete or move track points on mouse click
     private boolean deleteOnClick = prefs().getBoolean("TrackdefineFilter.deleteOnClick", false);
 
+    // Delete or move track points on mouse click
+    private boolean insertOnClick = prefs().getBoolean("TrackdefineFilter.insertOnClick", false);
+
     // Tolerance for mouse clicks
     private float clickTolerance = prefs().getFloat("TrackdefineFilter.clickTolerance", 5.0f);
 
@@ -139,15 +137,20 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
             glCanvas = (GLCanvas)chip.getCanvas().getCanvas();
         }
         // final String y = "y", x = "x", t = "type";
-        setPropertyTooltip("drawHist", "Draw Histogram");
-        setPropertyTooltip("histThresh", "Threshold of histogram points to display");
-        setPropertyTooltip("drawSmooth", "Draw smooth track or only points");
-        setPropertyTooltip("displayTrack", "Display extracted Track Points");
-        setPropertyTooltip("minDistance", "Minimum distance between extracted track points");
-        setPropertyTooltip("minDistance", "Maximum distance between extracted track points");
-        setPropertyTooltip("stepSize", "Interpolation step size for spline curve");
-        setPropertyTooltip("deleteOnClick", "Delete track points on mouse click (otherwise move)");
-        setPropertyTooltip("clickTolerance", "Tolerance for mouse clicks (deleting, dragging)");
+        String disp = "Display";
+        String mod = "Modify Track";
+        String extr = "Extraction Parameters";
+        setPropertyTooltip(disp,"drawHist", "Draw Histogram");
+        setPropertyTooltip(extr, "histThresh", "Threshold of histogram points to display");
+        setPropertyTooltip(disp, "drawSmooth", "Draw smooth track or only points");
+        setPropertyTooltip(disp, "displayTrack", "Display extracted Track Points");
+        setPropertyTooltip(extr, "minDistance", "Minimum distance between extracted track points");
+        setPropertyTooltip(extr, "maxDistance", "Maximum distance between extracted track points");
+        setPropertyTooltip(extr, "erosionSize", "Size of the erosion kernel");
+        setPropertyTooltip(disp, "stepSize", "Interpolation step size for spline curve");
+        setPropertyTooltip(mod, "deleteOnClick", "Delete track points on mouse click (otherwise move)");
+        setPropertyTooltip(mod, "insertOnClick", "Insert track points on mouse click (otherwise move)");
+        setPropertyTooltip(mod, "clickTolerance", "Tolerance for mouse clicks (deleting, dragging)");
 
         // New in TrackdefineFilter
         // Initialize histogram
@@ -342,12 +345,31 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
             }
             gl.glEnd();
 
+            // Plot lines
             gl.glPointSize(1.0f);
             gl.glBegin(gl.GL_LINE_STRIP);
             for (Point2D p:extractPoints) {
                 gl.glVertex2d(p.getX(), p.getY());
             }
             gl.glEnd();
+
+            // Plot lines to mark insert points
+            if (insertOnClick) {
+                if (currentInsertMarkPoints != null) {
+                    if ((currentInsertMarkPoints.getX() >= 0) &&
+                            (currentInsertMarkPoints.getY() >= 0)) {
+                        Point2D startP = extractPoints.get((int) currentInsertMarkPoints.getX());
+                        Point2D endP = extractPoints.get((int) currentInsertMarkPoints.getY());
+                        gl.glColor3d(1.0f, 1.0f, 1.0f);
+                        gl.glLineWidth(5.0f);
+                        gl.glBegin(gl.GL_LINE);
+                        gl.glVertex2d(startP.getX(), startP.getY());
+                        gl.glVertex2d(endP.getX(), endP.getY());
+                        gl.glEnd();
+                        gl.glLineWidth(1.0f);
+                    }
+                }
+            }
 
             if (drawSmooth) {
                 // Draw smooth interpolated track
@@ -424,7 +446,10 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
     }
 
     public void mouseMoved (MouseEvent e){
-        currentMousePoint = canvas.getPixelFromMouseEvent(e);
+        if (insertOnClick) {
+            currentMousePoint = canvas.getPixelFromMouseEvent(e);
+            currentInsertMarkPoints = getClosestInsertPoints(currentMousePoint);
+        }
     }
 
     public void mouseExited (MouseEvent e){
@@ -462,6 +487,39 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
         return a > b ? a : b;
     }
 
+    private Point getClosestInsertPoints(Point p) {
+        Point idxP = new Point(-1,-1);
+
+        if (extractedTrack == null)
+            return idxP;
+        
+        int idx1 = extractedTrack.findClosest(p, Float.MAX_VALUE);
+        if (idx1 >= 0) {
+                    // Find which one of the neighbors is closest
+                    int idx2 = idx1-1;
+                    if (idx2 < 0) {
+                        idx2 = extractedTrack.getNumPoints()-1;
+                    }
+
+                    int idx3 = idx1+1;
+                    if (idx3 >= extractedTrack.getNumPoints())
+                        idx3 = 0;
+
+                    Point2D p2 = extractedTrack.getPoint(idx2);
+                    Point2D p3 = extractedTrack.getPoint(idx3);
+
+                    double dist2 = p2.distance(p);
+                    double dist3 = p3.distance(p);
+
+                    if (dist2 < dist3) {
+                        idxP.setLocation(max(idx1, idx2), min(idx1, idx2));
+                    } else {
+                        idxP.setLocation(max(idx1, idx3), min(idx1, idx3));
+                    }
+        }
+        return idxP;
+    }
+
     public void mouseClicked (MouseEvent e){
         // System.out.println("Click " + currentPointIdx);
         Point p = canvas.getPixelFromMouseEvent(e);
@@ -476,6 +534,20 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
                     smoothPoints = extractedTrack.getSmoothPoints(stepSize);
                 }
             }
+        } else if (insertOnClick) {
+            // Insert point between existing points
+            if (extractedTrack != null) {
+                Point idxP = getClosestInsertPoints(p);
+                if ((idxP.getX()>=0) && (idxP.getY()>=0)) {
+                        if ((idxP.getX() == extractedTrack.getNumPoints()-1) && (idxP.getY() == 0))
+                            extractedTrack.addPoint(p);
+                        else
+                            extractedTrack.insertPoint((int) idxP.getX(), p);
+                    }
+                    extractedTrack.updateSpline();
+                    extractPoints = extractedTrack.getPointList();
+                    smoothPoints = extractedTrack.getSmoothPoints(stepSize);
+                }
         }
     }
 
@@ -577,7 +649,31 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
     public void setDeleteOnClick(boolean deleteOnClick) {
         this.deleteOnClick = deleteOnClick;
         prefs().putBoolean("TrackdefineFilter.deleteOnClick",deleteOnClick);
+
+        if (deleteOnClick) {
+            this.insertOnClick = false;
+            prefs().putBoolean("TrackdefineFilter.insertOnClick",false);
+
+        }
     }
+
+    public boolean isInsertOnClick() {
+        return insertOnClick;
+    }
+
+    public void setInsertOnClick(boolean insertOnClick) {
+        this.insertOnClick = insertOnClick;
+        prefs().putBoolean("TrackdefineFilter.insertOnClick",insertOnClick);
+
+        if (insertOnClick) {
+            this.deleteOnClick = false;
+            prefs().putBoolean("TrackdefineFilter.deleteOnClick",false);
+
+        } else {
+            currentInsertMarkPoints = null;
+        }
+    }
+
 
     public float getClickTolerance() {
         return clickTolerance;

@@ -77,6 +77,21 @@ public class SlotcarTrack implements java.io.Serializable {
         }
     }
 
+    /** Inserts a Point after the given index */
+    public int insertPoint(int idx, Point2D p) {
+        if ((idx < 0) || (idx > trackPoints.size())) {
+            return -1;
+        } else if (idx == trackPoints.size()) {
+            addPoint(p);
+            return trackPoints.size();
+        } else {
+            trackPoints.add(idx, p);
+            if (trackPoints.size() >= 3)
+                updateSpline();
+            return trackPoints.size();
+        }
+    }
+
     /** Updates the spline coefficients for this track */
     public void updateSpline() {
         if (trackPoints.size() > 2) {
