@@ -10,7 +10,7 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
  * takes care of friction, and computes when the car flies off the track.
  * @author Michael Pfeiffer
  */
-public class SlotcarPhysics {
+public class SlotcarPhysics implements java.io.Serializable {
 
     // Track friction
     protected double friction;

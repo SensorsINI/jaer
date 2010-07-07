@@ -25,10 +25,12 @@ import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.*;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
-import java.io.File;
+import java.io.*;
 import java.awt.geom.Point2D;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import javax.swing.SwingUtilities;
+import java.lang.reflect.InvocationTargetException;
 /**
  * An AE filter that first creates a histogram of incoming pixels, and then lets the user define
  * the detected track.
@@ -324,8 +326,19 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
             gl.glColor3d(1.0f, 0.0f, 1.0f);
             gl.glPointSize(5.0f);
             gl.glBegin(gl.GL_POINTS);
+            int idx = 0;
             for (Point2D p:extractPoints) {
-                gl.glVertex2d(p.getX(), p.getY());
+                if (idx == this.currentPointIdx) {
+                    gl.glColor3d(1.0f, 1.0f, 1.0f);
+                    gl.glPointSize(10.0f);
+                    gl.glVertex2d(p.getX(), p.getY());
+                    gl.glColor3d(1.0f, 0.0f, 1.0f);
+                    gl.glPointSize(5.0f);
+                }
+                else {
+                    gl.glVertex2d(p.getX(), p.getY());
+                }
+                idx++;
             }
             gl.glEnd();
 
@@ -346,8 +359,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
                 }
                 gl.glEnd();
             }
-        } else
-            System.out.println("No Track!!");
+        };
 
     }
 
@@ -387,7 +399,6 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
 
     public void mousePressed (MouseEvent e){
         Point p = canvas.getPixelFromMouseEvent(e);
-        System.out.println("Pressing " + currentPointIdx);
     }
 
     public void mouseReleased (MouseEvent e){
@@ -694,7 +705,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
             return;
         }
 
-        JFileChooser fc = new JFileChooser();
+        final JFileChooser fc = new JFileChooser();
         fc.setFileFilter(new FileFilter() {
                 @Override public boolean accept (File f) {
                     return f.isDirectory() ||
@@ -707,15 +718,44 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
             }
         );
 
-        // TODO: Why is manual entry of file-name not working?
-        fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
-        fc.setSelectedFile(new File("test.track"));
-        int state = fc.showSaveDialog(null);
-        if (state == JFileChooser.APPROVE_OPTION) {
-            File file = fc.getSelectedFile();
-            System.out.println("Selected " + file.getName());
-        } else {
-            System.out.println("Cancelled saving!");
-        }
+        final int[] state = new int[1];
+        state[0] = Integer.MIN_VALUE;
+
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+                fc.setSelectedFile(new File("test.track"));
+                state[0] = fc.showSaveDialog(null);
+                 if (state[0] == JFileChooser.APPROVE_OPTION) {
+                    File file = fc.getSelectedFile();
+                    System.out.println("Selected " + file.getName());
+
+                    try {
+                        FileOutputStream fos = new FileOutputStream(file);
+                        ObjectOutputStream oos = new ObjectOutputStream(fos);
+
+                        oos.writeObject(extractedTrack);
+
+                        oos.close();
+                        fos.close();
+
+                    } catch (IOException ioe) {
+                        ioe.printStackTrace();
+                    }
+                    } else {
+                    System.out.println("Cancelled saving!");
+                }
+            }
+         });
+         System.out.println(fc);
+    }
+
+
+    /**
+     * Returns the extracted track.
+     * @return The extracted track
+     */
+    public SlotcarTrack getTrack() {
+        return this.extractedTrack;
     }
 }

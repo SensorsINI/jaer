@@ -18,7 +18,7 @@ import java.util.ListIterator;
  *                     B.G. Teubner, Stuttgart, 4th edition, 1997
  * @author Michael Pfeiffer
  */
-public class PeriodicSpline {
+public class PeriodicSpline implements java.io.Serializable {
 
     // Distances between data points (for 2D parametrization)
     private double[] Hdata = null;

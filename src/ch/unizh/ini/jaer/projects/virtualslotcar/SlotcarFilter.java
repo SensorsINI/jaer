@@ -110,7 +110,7 @@ public class SlotcarFilter extends EventFilter2D implements Observer {
 
     /** Turns the additional display on or off */
     private void setDrawingWindow(boolean yes) {
-        System.out.println("Drawing window " + yes + " : " + drawingWindow);
+        // System.out.println("Drawing window " + yes + " : " + drawingWindow);
         if ( !yes ){
             if ( drawingWindow != null ){
                 drawingWindow.dispose();

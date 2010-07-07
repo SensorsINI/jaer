@@ -13,7 +13,7 @@ import java.awt.geom.Point2D;
  * Class for storing race tracks for slot cars
  * @author Michael Pfeiffer
  */
-public class SlotcarTrack {
+public class SlotcarTrack implements java.io.Serializable {
 
     /** All points of the track added by the user */
     LinkedList<Point2D> trackPoints;

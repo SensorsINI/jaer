@@ -11,7 +11,7 @@ import java.awt.geom.Point2D;
  * A class for storing the state of the car
  * @author Michael Pfeiffer
  */
-public class SlotcarState {
+public class SlotcarState implements java.io.Serializable {
 
     // Position of the car on the curve
     public double pos;
