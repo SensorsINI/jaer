@@ -1129,7 +1129,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             //annotate the cluster with the velocityPPT in pps
             if (showClusterVelocity) {
                 Point2D.Float velpps = getVelocityPPS();
-                chip.getCanvas().getGlut().glutBitmapString(font, String.format("v=%.0f,%.0fpps ", velpps.x, velpps.y));
+                chip.getCanvas().getGlut().glutBitmapString(font, String.format("v=%.0fpps ", getSpeedPPS()));
             }
 
             if (showClusterMass) {
