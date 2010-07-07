@@ -396,7 +396,6 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
         }
 
         // Move point if selected
-        System.out.println("Releasing mouse for point " + currentPointIdx);
 
         currentMousePoint = canvas.getPixelFromMouseEvent(e);
 
@@ -427,13 +426,19 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
         // System.out.println("Dragging " + currentPointIdx);
         currentMousePoint = canvas.getPixelFromMouseEvent(e);
         if (!deleteOnClick) {
+            if (extractedTrack == null)
+                return;
+
             // Select point for dragging
-            if ((extractedTrack != null) && (currentPointIdx < 0)) {
+            if (currentPointIdx < 0) {
                 int idx = extractedTrack.findClosest(currentMousePoint, clickTolerance);
                 // System.out.println("New drag " + idx + " / " + clickTolerance);
                 if (idx >= 0) {
                     currentPointIdx = idx;
                 }
+            } else {
+                extractedTrack.setPoint(currentPointIdx, currentMousePoint);
+                extractPoints = extractedTrack.getPointList();
             }
         }
     }
@@ -512,6 +517,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
 
     public void setMinDistance(float minDistance) {
         this.minDistance = minDistance;
+        prefs().putFloat("TrackdefineFilter.minDistance",minDistance);
     }
 
     public float getMaxDistance() {
@@ -520,6 +526,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
 
     public void setMaxDistance(float maxDistance) {
         this.maxDistance = maxDistance;
+        prefs().putFloat("TrackdefineFilter.maxDistance",maxDistance);
     }
 
     public boolean isDisplayTrack() {
@@ -528,6 +535,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
 
     public void setDisplayTrack(boolean displayTrack) {
         this.displayTrack = displayTrack;
+        prefs().putBoolean("TrackdefineFilter.displayTrack",displayTrack);
     }
 
     public float getStepSize() {
@@ -539,6 +547,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
         if (extractedTrack != null) {
             smoothPoints = extractedTrack.getSmoothPoints(stepSize);
         }
+        prefs().putFloat("TrackdefineFilter.stepSize",stepSize);
     }
 
     public boolean isDrawSmooth() {
@@ -547,6 +556,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
 
     public void setDrawSmooth(boolean drawSmooth) {
         this.drawSmooth = drawSmooth;
+        prefs().putBoolean("TrackdefineFilter.drawSmooth",drawSmooth);
     }
 
     public boolean isDeleteOnClick() {
@@ -555,6 +565,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
 
     public void setDeleteOnClick(boolean deleteOnClick) {
         this.deleteOnClick = deleteOnClick;
+        prefs().putBoolean("TrackdefineFilter.deleteOnClick",deleteOnClick);
     }
 
     public float getClickTolerance() {
@@ -563,6 +574,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
 
     public void setClickTolerance(float clickTolerance) {
         this.clickTolerance = clickTolerance;
+        prefs().putFloat("TrackdefineFilter.clickTolerance",clickTolerance);
     }
 
 
