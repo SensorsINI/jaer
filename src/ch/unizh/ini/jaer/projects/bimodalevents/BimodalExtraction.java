@@ -39,7 +39,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
     }
 
 	// initializations & declarations
-
+    
     private int[][][][] lastTs;
     private int[][][] lastTsCursor;
 
@@ -204,14 +204,11 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
 
         double max = max_video();
         
-        // weak linear increase in weightening if timediff < CW/2, CW/4, more in synchrony
-        float increase = 1;
-        if (Math.abs(ev.timestamp-LastAudioSpike)<(CoherenceWindow/2)){
-            increase = 1.2f;
-        }
-        if (Math.abs(ev.timestamp-LastAudioSpike)<(CoherenceWindow/4)){
-            increase = 1.4f;
-        }
+        // linear weightening depending on timediff
+        //  x = timediff/CoherenceWindow
+        // -1/2 * abs(x) + 3/2
+        float increase = 1.5f-0.5f*Math.abs(ev.timestamp-LastAudioSpike)/CoherenceWindow;
+
         if (ev.x>2 && ev.x<126 && ev.y>2 && ev.y<126){
             for (int i=ev.x-1; i<=ev.x+1; i++){
                 for (int j=ev.y-1; j<=ev.y+1; j++){
