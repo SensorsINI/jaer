@@ -12,7 +12,7 @@ import java.awt.geom.Point2D;
  * Implements the movement and drawing of a slotcar
  * @author Michael Pfeiffer
  */
-public class Slotcar implements Runnable {
+public class Slotcar implements Runnable, ThrottleInterface {
 
     // The race track
     SlotcarTrack theTrack;
@@ -45,7 +45,7 @@ public class Slotcar implements Runnable {
     boolean drawForce;
 
     // Throttle value
-    double throttle;
+    float throttle;
 
 
     // Open GL context
@@ -63,8 +63,11 @@ public class Slotcar implements Runnable {
         driveCar = false;
         gl = null;
         drawCircle = true;
-        curState = theTrack.getCarState();
-        throttle = 0.0;
+        if (theTrack != null)
+            curState = theTrack.getCarState();
+        else
+            curState = null;
+        throttle = 0.0f;
     }
 
     /**
@@ -280,14 +283,18 @@ public class Slotcar implements Runnable {
         return this.curState;
     }
 
-    public double getThrottle() {
+    public float getThrottle() {
         return throttle;
     }
 
-    public void setThrottle(double throttle) {
+    public boolean setThrottle(float throttle) {
         this.throttle = throttle;
+        return true;
     }
 
-
+    public void setTrack(SlotcarTrack newTrack) {
+        theTrack = newTrack;
+        curState = newTrack.getCarState();
+    }
 
 }

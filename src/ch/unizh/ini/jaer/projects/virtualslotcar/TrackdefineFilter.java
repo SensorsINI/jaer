@@ -653,6 +653,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
         if (deleteOnClick) {
             this.insertOnClick = false;
             prefs().putBoolean("TrackdefineFilter.insertOnClick",false);
+            support.firePropertyChange("insertOnClick",this.insertOnClick,this.insertOnClick);
 
         }
     }
@@ -668,6 +669,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
         if (insertOnClick) {
             this.deleteOnClick = false;
             prefs().putBoolean("TrackdefineFilter.deleteOnClick",false);
+            support.firePropertyChange("deleteOnClick",this.deleteOnClick,this.deleteOnClick);
 
         } else {
             currentInsertMarkPoints = null;

@@ -3,22 +3,21 @@
  * and open the template in the editor.
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
-import com.sun.opengl.util.GLUT;
-import java.awt.BorderLayout;
+import com.sun.opengl.util.j2d.TextRenderer;
+import java.awt.Font;
+import java.awt.Rectangle;
 import java.awt.geom.Rectangle2D;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLCanvas;
-import javax.media.opengl.GLEventListener;
-import javax.media.opengl.glu.GLU;
-import javax.swing.JFrame;
-import net.sf.jaer.eventprocessing.FilterChain;
+import javax.swing.JOptionPane;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.TobiLogger;
 /**
- * Controls a virtual slot car with a track model.
+ * Controls virtual slot cars on designed or extracted tracks.
  *
  * @author Michael Pfeiffer
  *
@@ -27,59 +26,117 @@ import net.sf.jaer.graphics.FrameAnnotater;
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 public class VirtualSlotcarRacer extends EventFilter2D implements FrameAnnotater{
-    private boolean showTrack = prefs().getBoolean("VirtualSlotCarRacer.showTrack",true);
-    private boolean virtualCar = prefs().getBoolean("VirtualSlotCarRacer.virtualCar",true);
-    SlotcarFrame trackFrame = null;
-    SlotcarTrack trackModel = null;
 
-    CarTracker tracker = null;
-    //    private boolean fillsVertically = false, fillsHorizontally = false;
+    public static String getDescription(){ return "Slot car racer for virtual cars and tracks";}
+    private boolean showTrackEnabled = prefs().getBoolean("VirtualSlotcarRacer.showTrack",true);
+    private boolean virtualCarEnabled = prefs().getBoolean("VirtualSlotcarRacer.virtualCar",false);
+
+    private TobiLogger tobiLogger;
+
+    // The virtual race track
+    private RacetrackFrame raceTrack = null;
+
+    // The designer of race tracks
+    private SlotcarFrame trackDesigner = null;
+
+    // Filter for extracting tracks from retina input
+    private TrackdefineFilter trackExtractor = null;
+
+    private CarTracker carTracker;
+    private FilterChain filterChain;
+    private boolean overrideThrottle = prefs().getBoolean("VirtualSlotcarRacer.overrideThrottle",true);
+    private float overriddenThrottleSetting = prefs().getFloat("VirtualSlotcarRacer.overriddenThrottleSetting",0);
+//    private SlotCarController controller = null;
+    private SlotcarTrack trackModel;
+    private TextRenderer renderer;
+    private SimpleSpeedController speedController;
+    private Slotcar throttleController;
+    private float maxThrottle=prefs().getFloat("VirtualSlotcarRacer.maxThrottle",1);
+
+
+    // Where does the track come from? Designer, loaded, extracted
+    private int trackOrigin;
+
+    private final int TRACK_DESIGNED = 0;    // Use track from designer
+    private final int TRACK_LOADED = 1;      // Use a loaded track
+    private final int TRACK_EXTRACTED = 2;   // Use a track extracted from a filter
+    private final int TRACK_UNDEFINED = -1;  // Track is currently undefined
+
+    private float displayStepSize = 0.001f;
+
 
     public VirtualSlotcarRacer (AEChip chip){
         super(chip);
-        //        trackModel=new SlotCarTrackModel(this);
-        trackModel = new SlotcarTrack();
-        doDesignTrack();
+        trackDesigner = new SlotcarFrame();
 
-        FilterChain filterChain=new FilterChain(chip);
-        tracker=new CarTracker(chip);
+        
+        filterChain = new FilterChain(chip);
 
-        filterChain.add(tracker);
+        carTracker = new CarTracker(chip);
+        filterChain.add(carTracker);
+
+        speedController = new SimpleSpeedController(chip);
+        filterChain.add(speedController);
+
+        // The virtual car accepts the throttle commands
+        throttleController = new Slotcar(null);
+
         setEnclosedFilterChain(filterChain);
 
+        tobiLogger = new TobiLogger("VirtualSlotcarRacer","racer data "+speedController.logContents());
+
+        // tooltips for properties
+        String con="Controller", dis="Display", ov="Override", vir="Virtual car", log="Logging";
+        setPropertyTooltip(con,"desiredSpeed","Desired speed from speed controller");
+        setPropertyTooltip(ov,"overrideThrottle","Select to override the controller throttle setting");
+        setPropertyTooltip(con,"maxThrottle","Absolute limit on throttle for safety");
+        setPropertyTooltip(ov,"overriddenThrottleSetting","Manual overidden throttle setting");
+        setPropertyTooltip(vir,"virtualCarEnabled","Enable display of virtual car on virtual track");
+        setPropertyTooltip(log,"logRacerDataEnabled","enables logging of racer data");
+
+        trackOrigin = TRACK_UNDEFINED;
     }
 
-    public void doDesignTrack (){
-        if ( trackFrame == null ){
-            trackFrame = new SlotcarFrame();
-            trackFrame.setVisible(true);
-        }
+    public void doLearnTrack (){
+        JOptionPane.showMessageDialog(chip.getAeViewer(),"I should start a TrackdefineFilter" +
+                "and extract the track from there!");
+
+        throttleController.setTrack(trackModel);
+        trackOrigin = TRACK_EXTRACTED;
     }
 
     @Override
     public EventPacket<?> filterPacket (EventPacket<?> in){
-        in=getEnclosedFilterChain().filterPacket(in);
-
-        // Q: Do the control of the car here, in annotate, or in a separate thread?
-
-        // TODO: Retrieve car position and speed from filtered events
-
-        // TODO: Call controller to determine new throttle command
-
-        if (virtualCar) {
-            // TODO: In virtual car, send throttle command (with timestep?) and compute
-            //       new position on track (+ physics, etc.)
-        }
-        else {
-            // TODO: In real car, send command to hardware
-        }
-
-
+        getEnclosedFilterChain().filterPacket(in);
+        setThrottle();
         return in;
     }
 
+    private float lastThrottle=0;
+
+    synchronized private void setThrottle() {
+
+        if (isOverrideThrottle()) {
+            lastThrottle = getOverriddenThrottleSetting();
+        } else {
+            lastThrottle = speedController.computeControl(carTracker, trackModel);
+        }
+        lastThrottle=lastThrottle>maxThrottle? maxThrottle:lastThrottle;
+
+        if (throttleController != null) {
+            // Pass current throttle to virtual racer
+            throttleController.setThrottle(lastThrottle);
+        }
+       
+        if (isLogRacerDataEnabled()) {
+            logRacerData(speedController.logControllerState());
+        }
+
+    }
+
     @Override
-    public void resetFilter (){
+    public void resetFilter() {
+        // TODO: Do something with virtual race track
     }
 
     @Override
@@ -87,8 +144,171 @@ public class VirtualSlotcarRacer extends EventFilter2D implements FrameAnnotater
     }
 
     public void annotate (GLAutoDrawable drawable){
-        if ( trackFrame != null ){
-            trackFrame.repaint();
+        carTracker.annotate(drawable);
+        speedController.annotate(drawable);
+        if ( renderer == null ){
+            renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,24),true,true);
+        }
+        renderer.begin3DRendering();
+        String s="Throttle:"+lastThrottle;
+        final float scale=.25f;
+        renderer.draw3D(s,0,2,0,scale);
+//        Rectangle2D bounds=renderer.getBounds(s);
+        renderer.end3DRendering();
+//        GL gl=drawable.getGL();
+//        gl.glRectf((float)bounds.getMaxX()*scale, 2,(float) (chip.getSizeX()-scale*bounds.getWidth())*lastThrottle, 4);
+
+        if (raceTrack != null) {
+            System.out.println("Painting race track!");
+            raceTrack.repaint();
         }
     }
+
+
+    public void doDesignTrack() {
+        trackDesigner.setVisible(true);
+        trackOrigin = TRACK_DESIGNED;
+    }
+
+    public void doLoadTrack() {
+        JOptionPane.showMessageDialog(chip.getAeViewer(),"I should load the track from a file!");
+        trackOrigin = TRACK_LOADED;
+    }
+
+    public void doStartRace() {
+        // Extract the track from the defined source
+        switch (trackOrigin) {
+            case TRACK_LOADED: {
+                System.out.println("The track should already be loaded");
+                break;
+            }
+            case TRACK_DESIGNED: {
+                trackModel = trackDesigner.getTrack();
+                break;
+            }
+            case TRACK_EXTRACTED: {
+                if (trackExtractor != null)
+                    trackModel = trackExtractor.getTrack();
+                else {
+                    System.out.println("WARNING: No track designer defined!");
+                }
+                break;
+            }
+            case TRACK_UNDEFINED: {
+                System.out.println("WARNING: Cannot start race! No track defined!");
+                return;
+            }
+        }
+
+        if (trackModel == null) {
+            System.out.println("WARNING: No valid track defined!");
+            return;
+        }
+        if (trackModel.getNumPoints() < 3) {
+            System.out.println("WARNING: Track has less than 3 points, cannot race!");
+            return;
+        }
+
+        // Initialize car
+        throttleController.setTrack(trackModel);
+
+        // Start the car
+        System.out.println("Starting the Slotcar now!");
+
+        // TODO: Start a new thread for the car controller???
+
+
+        // Initialize race display
+        raceTrack = new RacetrackFrame();
+        raceTrack.setTrack(trackModel, displayStepSize);
+        raceTrack.setCar(throttleController);
+        raceTrack.setVisible(true);
+    }
+
+    /**
+     * @return the overrideThrottle
+     */
+    public boolean isOverrideThrottle (){
+        return overrideThrottle;
+    }
+
+    /**
+     * @param overrideThrottle the overrideThrottle to set
+     */
+    public void setOverrideThrottle (boolean overrideThrottle){
+        this.overrideThrottle = overrideThrottle;
+        prefs().putBoolean("VirtualSlotcarRacer.overrideThrottle", overrideThrottle);
+    }
+
+    /**
+     * @return the overriddenThrottleSetting
+     */
+    public float getOverriddenThrottleSetting (){
+        return overriddenThrottleSetting;
+    }
+
+    /**
+     * @param overriddenThrottleSetting the overriddenThrottleSetting to set
+     */
+    public void setOverriddenThrottleSetting (float overriddenThrottleSetting){
+        this.overriddenThrottleSetting = overriddenThrottleSetting;
+        prefs().putFloat("VirtualSlotcarRacer.overriddenThrottleSetting",overriddenThrottleSetting);
+    }
+
+    // for GUI slider
+    public float getMaxOverriddenThrottleSetting (){
+        return 1;
+    }
+
+    public float getMinOverriddenThrottleSetting (){
+        return 0;
+    }
+
+    /**
+     * @return the virtualCarEnabled
+     */
+    public boolean isVirtualCarEnabled (){
+        return virtualCarEnabled;
+    }
+
+    /**
+     * @param virtualCarEnabled the virtualCarEnabled to set
+     */
+    public void setVirtualCarEnabled (boolean virtualCarEnabled){
+        this.virtualCarEnabled = virtualCarEnabled;
+        prefs().putBoolean("VirtualSlotcarRacer.virtualCarEnabled",virtualCarEnabled);
+
+    }
+
+   public synchronized void setLogRacerDataEnabled(boolean logDataEnabled) {
+        tobiLogger.setEnabled(logDataEnabled);
+    }
+
+    public synchronized void logRacerData(String s) {
+        tobiLogger.log(s);
+    }
+
+    public boolean isLogRacerDataEnabled() {
+        if(tobiLogger==null) return false;
+        return tobiLogger.isEnabled();
+    }
+
+    /**
+     * @return the maxThrottle
+     */
+    public float getMaxThrottle() {
+        return maxThrottle;
+    }
+
+    /**
+     * @param maxThrottle the maxThrottle to set
+     */
+    public void setMaxThrottle(float maxThrottle) {
+        if(maxThrottle>1) maxThrottle=1; else if(maxThrottle<0) maxThrottle=0;
+        this.maxThrottle = maxThrottle;
+        prefs().putFloat("VirtualSlotcarRacer.maxThrottle",maxThrottle);
+    }
+
+    public float getMaxMaxThrottle(){return 1;}
+    public float getMinMaxThrottle(){return 0;}
 }
