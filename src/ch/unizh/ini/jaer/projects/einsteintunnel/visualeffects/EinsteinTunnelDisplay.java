@@ -6,7 +6,6 @@
 package ch.unizh.ini.jaer.projects.einsteintunnel.visualeffects;
 
 import java.io.*;
-import java.nio.*;
 import java.net.*;
 import java.util.*;
 import javax.media.opengl.*;
@@ -29,12 +28,14 @@ public class EinsteinTunnelDisplay {
 
     public static int commandPort = 20021;
     public static int packetCount = 0;
+    public static int csx = 128;
+    public static int csy = 1280;
     public static int dsx = 504;
     public static int dsy = 80;
     public static int maxClusters = 200;
-    public static int nrClusters;
     public static int packetLength;
     public static int maxHistogramX;
+    public static int nrClusters;
     public static short[] xHistogram;
     public static float[] xPos;
     public static float[] yPos;
@@ -42,8 +43,7 @@ public class EinsteinTunnelDisplay {
     protected static Random random = new Random();
 
     public static void main(String[] args) throws IOException{
-        char[] msg = new char[3];
-        int msgSize;
+        char[] msg = new char[4];
         packetLength = maxClusters*8+4+4;
         xPos = new float[maxClusters];
         yPos = new float[maxClusters];
@@ -67,16 +67,17 @@ public class EinsteinTunnelDisplay {
             msg[0]=(char)(buf[4]);
             msg[1]=(char)(buf[5]);
             msg[2]=(char)(buf[6]);
-            msgSize=(int)(buf[7]);
-            //System.out.println(msg[0]+msg[1]+msg[2]+" "+msgSize);
-            //System.out.println(new String(msg));
+            msg[3]=(char)(buf[7]);
+            //nrc
+            nrClusters = (((buf[8] & 0xFF) << 8)
+                        | (buf[9] & 0xFF));
             //data
             if(msg[0]=='h' && msg[1]=='i' && msg[2]=='s'){
                 readHistogramPacket(buf);
                 packetCount++;
             }
             if(msg[0]=='p' && msg[1]=='o' && msg[2]=='s'){
-                readPositionPacket(buf,msgSize);
+                readPositionPacket(buf);
                 //System.out.println("Read position... first position: "+xPos[0]);
                 packetCount++;
             }
@@ -91,22 +92,24 @@ public class EinsteinTunnelDisplay {
 
     static void readHistogramPacket(byte[] buf){
         for(int i=0; i<dsx; i++){
-            xHistogram[i] = (short)(((buf[8+2*i] & 0xFF) << 8)
-                           | (buf[9+2*i] & 0xFF));
+            xHistogram[i] = (short)(((buf[10+2*i] & 0xFF) << 8)
+                           | (buf[11+2*i] & 0xFF));
         }
     }
 
-    static void readPositionPacket(byte[] buf, int msgSize){
-        nrClusters = msgSize;
-        for(int i=0; i<msgSize; i+=8){
-            xPos[i] = (float)(((buf[8+i] & 0xFF) << 24)
-                            | ((buf[9+i] & 0xFF) << 16)
-                            | ((buf[10+i] & 0xFF) << 8)
-                            | ((buf[11+i] & 0xFF)));
-            yPos[i] = (float)(((buf[12+i] & 0xFF) << 24)
-                            | ((buf[13+i] & 0xFF) << 16)
-                            | ((buf[14+i] & 0xFF) << 8)
-                            | ((buf[15+i] & 0xFF)));
+    static void readPositionPacket(byte[] buf){
+        for(int i=0; i<nrClusters; i++){
+            int offset = i*8;
+            int xInt =    ((buf[10+offset] & 0xFF) << 24)
+                        | ((buf[11+offset] & 0xFF) << 16)
+                        | ((buf[12+offset] & 0xFF) << 8)
+                        |  (buf[13+offset] & 0xFF);
+            xPos[i] =  Float.intBitsToFloat(xInt);
+            int yInt =    ((buf[14+offset] & 0xFF) << 24)
+                        | ((buf[15+offset] & 0xFF) << 16)
+                        | ((buf[16+offset] & 0xFF) << 8)
+                        |  (buf[17+offset] & 0xFF);
+            yPos[i] = Float.intBitsToFloat(yInt);
         }
     }
 
@@ -124,12 +127,13 @@ public class EinsteinTunnelDisplay {
 
         displayFrame=new JFrame("Tunnel Display");
         Insets displayInsets = displayFrame.getInsets();
-        displayFrame.setSize(dsx+displayInsets.left+displayInsets.right, dsy+displayInsets.bottom+displayInsets.top);
+        displayFrame.setSize(dsx+displayInsets.left+displayInsets.right, dsy+displayInsets.bottom+displayInsets.top+40);
         //histogramFrame.setSize(new Dimension(dsx,dsy));
         displayFrame.setResizable(false);
         displayFrame.setAlwaysOnTop(true);
         displayFrame.setLocation(100, 100);
         displayCanvas=new GLCanvas();
+        displayCanvas.setSize(dsx,dsy);
         displayCanvas.addGLEventListener(new GLEventListener(){
             public void init(GLAutoDrawable drawable) {
             }
@@ -145,8 +149,9 @@ public class EinsteinTunnelDisplay {
                     //drawBackgroundSnakes(gl);
                     drawPerls(gl);
                     //histogram
-                    drawDot(gl);
                     drawHistogramFire(gl);
+                    //dot
+                    drawDot(gl);
                 }
                 //if(dropPerls)drawPerls(gl);
                 int error=gl.glGetError();
@@ -177,7 +182,7 @@ public class EinsteinTunnelDisplay {
     static public void drawDot(GL gl){
         for (int i=0; i<nrClusters; i++){
             gl.glPointSize(10);
-            gl.glColor3f(0.5f,0.6f,1.0f);
+            gl.glColor3f(1f,0.5f,0.5f);
             gl.glBegin(GL.GL_POINTS);
             gl.glVertex2i((int)xPos[i],(int)yPos[i]);
             gl.glEnd();

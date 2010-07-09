@@ -15,6 +15,7 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.eventprocessing.filter.*;
 
 /**
  * Finds clusters of events using spatio-temporal correlation between events.
@@ -57,6 +58,10 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
      */
     protected AEChip mychip;
     /**
+     * Blurring filter to get clusters
+     */
+    protected BackgroundActivityFilter bfilter;
+    /**
      * last updat time. It is the timestamp of the latest event.
      */
     protected int lastTime;
@@ -76,6 +81,7 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
     public BlurringTunnelFilter(AEChip chip) {
         super(chip);
         this.mychip = chip;
+        filterChainSetting();
         initFilter();
         chip.addObserver(this);
         addObserver(this);
@@ -91,6 +97,14 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
         setPropertyTooltip(disp, "showBorderCellsOnly", "Show border cells (boundary cells of a cell group) only among the active cells");
         setPropertyTooltip(disp, "showInsideCellsOnly", "Show inside cells (surrounded by the border cells) only among the active cells");
         setPropertyTooltip(sizing, "cellSizePixels", "Side length of a square cell in number of pixels. Cell spacing is decided to the half of this value. Thus, neighboring cells overlaps each other.");
+
+
+    }
+
+    protected void filterChainSetting (){
+        bfilter = new BackgroundActivityFilter(chip);
+        bfilter.addObserver(this); // to get us called during blurring filter iteration at least every updateIntervalUs
+        setEnclosedFilter(bfilter);
     }
 
     @Override
