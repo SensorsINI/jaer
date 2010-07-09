@@ -209,7 +209,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
         outItr.nextOutput().copyFrom(te);
     }
 
-    synchronized public void resetFilter (){
+    synchronized final public void resetFilter (){
 //        startX=0; endX=chip.getSizeX();
 //        startY=0; endY=chip.getSizeY();
 //        startType=0; endType=chip.getNumCellTypes();
@@ -391,7 +391,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater,O
             counter++;
         else {
             if ( drawable == null || chip.getCanvas() == null ){
-                System.out.println("Null, why?");
+                System.out.println("Null drawable or chip.getCanvas(), why?");
                 return;
             }
             canvas = chip.getCanvas();

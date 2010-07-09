@@ -39,16 +39,18 @@ public class SlotCarHardwareInterface implements HardwareInterface,ThrottleInter
     }
 
     /**  Set the speed and returns success.
-     * @param speed the speed to set.
+     * @param throttle the speed to set.
      * @return true if interface was open.
      */
-    public boolean setThrottle (float speed){
-        this.throttle = speed;
+    public boolean setThrottle (float throttle){
+        this.throttle = throttle;
         if(!hw.isOpen()){
             try{
                 hw.open();
                 hw.setFullDutyCycleMode(true); // sets the servo outputs to do 0-100% duty cycle rather than usual 1-2ms pulses
-                hw.setServoPWMFrequencyHz(200); // we don't need open drain with garrick's 3.3V PNP inverter before the MOSFET
+                hw.setServoPWMFrequencyHz(200); 
+                hw.setPCA0MD_CPS_Bits(SiLabsC8051F320_USBIO_ServoController.PCA_ClockSource.Sysclk);
+                // we don't need open drain with garrick's 3.3V PNP inverter before the MOSFET
                 //hw.setPortDOutRegisters((byte)0x00,(byte)0x00); // sets the servo output port to open drain
             } catch ( HardwareInterfaceException ex ){
                 if(warningPrintCounter--==0){
@@ -59,7 +61,9 @@ public class SlotCarHardwareInterface implements HardwareInterface,ThrottleInter
         }
         if(hw.isOpen()){
             // the PWM output must be low to turn on MOSFET so if speed=0 then write 65535
-            hw.setServoValuePWM(PORT,(int)((1f-speed)*65535));
+            // compute the sqrt of speed to account for the MOSFET nonlinearity
+            throttle=(float)Math.sqrt(throttle);
+            hw.setServoValuePWM(PORT,(int)((1f-throttle)*65535));
             return true;
         }
         return false;

@@ -14,7 +14,7 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
-public interface SlotCarController {
+public interface SlotCarControllerInterface {
 
     /** Computes the control signal given the car tracker and the track model.
      *
@@ -40,6 +40,6 @@ public interface SlotCarController {
      *
      * @return the string description of the log contents.
      */
-    public String logContents();
+    public String getLogContentsHeader();
 
 }
