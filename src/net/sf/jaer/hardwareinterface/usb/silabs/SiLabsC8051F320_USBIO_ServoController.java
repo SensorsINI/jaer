@@ -421,7 +421,8 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             CMD_SET_TIMER0_RELOAD_VALUE = 11,
             CMD_SET_PORT2 = 12,
             CMD_SEND_WOWWEE_RS_CMD = 13,
-            CMD_SET_PORT_DOUT=14; // 13 used for wowwee cmds
+            CMD_SET_PORT_DOUT=14,
+            CMD_SET_PCA0MD_CPS=15;
     
     public int getNumServos() {
         return NUM_SERVOS;
@@ -710,6 +711,36 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         submitCommand(cmd);
 
     }
+
+    /** Sets the bits of the PCA register that controls PCA clock source.
+     *
+     * @param source the clock source, e.g. Sysclk
+     */
+    public void setPCA0MD_CPS_Bits(PCA_ClockSource source){
+        checkServoCommandThread();
+        ServoCommand cmd=new ServoCommand();
+        cmd.bytes=new byte[2];
+        cmd.bytes[0]=CMD_SET_PCA0MD_CPS;
+        cmd.bytes[1]=(byte)(0x07&source.code());
+        submitCommand(cmd);
+    }
+
+    public enum PCA_ClockSource {
+
+        SysclkOver12(0),
+        SysclkOver4(1),
+        Timer0Overflow(2),
+        Sysclk(4);
+        private final int code;
+
+        PCA_ClockSource(int code) {
+            this.code = code;
+        }
+
+        public int code() {
+            return code;
+        }
+    };
 
     /** encapsulates the servo command bytes that are sent.
      The first byte is the command specifier, the rest of the bytes are the command itself.

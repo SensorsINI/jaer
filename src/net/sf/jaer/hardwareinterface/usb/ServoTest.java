@@ -59,6 +59,8 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
         sliders[1] = servo1Slider;
         sliders[2] = servo2Slider;
         sliders[3] = servo3Slider;
+
+        pcaClkSrcComboBox.setModel(new DefaultComboBoxModel(SiLabsC8051F320_USBIO_ServoController.PCA_ClockSource.class.getEnumConstants()));
     }
 
     /** Constructs a new controller panel using existing hardware interface
@@ -197,6 +199,8 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
         jPanel1 = new javax.swing.JPanel();
         jLabel7 = new javax.swing.JLabel();
         p1modeTextField = new javax.swing.JTextField();
+        jLabel9 = new javax.swing.JLabel();
+        pcaClkSrcComboBox = new javax.swing.JComboBox();
         menuBar = new javax.swing.JMenuBar();
         fileMenu = new javax.swing.JMenu();
         exitMenuItem = new javax.swing.JMenuItem();
@@ -709,6 +713,14 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
             }
         });
 
+        jLabel9.setText("PCA Clock Source");
+
+        pcaClkSrcComboBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                pcaClkSrcComboBoxActionPerformed(evt);
+            }
+        });
+
         org.jdesktop.layout.GroupLayout jPanel1Layout = new org.jdesktop.layout.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -717,7 +729,11 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
                 .addContainerGap()
                 .add(jLabel7)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(p1modeTextField, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 53, Short.MAX_VALUE)
+                .add(p1modeTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
+                .add(jLabel9)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
+                .add(pcaClkSrcComboBox, 0, 82, Short.MAX_VALUE)
                 .addContainerGap())
         );
         jPanel1Layout.setVerticalGroup(
@@ -726,7 +742,9 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
                 .addContainerGap()
                 .add(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(jLabel7)
-                    .add(p1modeTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                    .add(p1modeTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(jLabel9)
+                    .add(pcaClkSrcComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(18, Short.MAX_VALUE))
         );
 
@@ -772,7 +790,7 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
                                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                                     .add(chooserPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                                     .add(jPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                                .add(46, 46, 46)
+                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
                                 .add(port2Panel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(servo2Panel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
@@ -1076,6 +1094,18 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
         log.info("set fullDutyCycleMode="+hwInterface.isFullDutyCycleMode());
     }//GEN-LAST:event_fullDutyCycleModeCheckBoxActionPerformed
 
+    private void pcaClkSrcComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pcaClkSrcComboBoxActionPerformed
+        if(hwInterface==null) return;
+        if(!(hwInterface instanceof SiLabsC8051F320_USBIO_ServoController)){
+            log.warning("can only set PCA0MD PCA clock source register on SiLabsC8051F320_USBIO_ServoController");
+            return;
+        }
+        SiLabsC8051F320_USBIO_ServoController silabs=(SiLabsC8051F320_USBIO_ServoController)hwInterface;
+        SiLabsC8051F320_USBIO_ServoController.PCA_ClockSource source=(SiLabsC8051F320_USBIO_ServoController.PCA_ClockSource)pcaClkSrcComboBox.getSelectedItem();
+        silabs.setPCA0MD_CPS_Bits(source);
+
+    }//GEN-LAST:event_pcaClkSrcComboBoxActionPerformed
+
     /**
      * @param args the command line arguments
      */
@@ -1121,6 +1151,7 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
     private javax.swing.JLabel jLabel6;
     private javax.swing.JLabel jLabel7;
     private javax.swing.JLabel jLabel8;
+    private javax.swing.JLabel jLabel9;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JCheckBox liveSlidersCheckBox;
     private javax.swing.JMenuBar menuBar;
@@ -1135,6 +1166,7 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
     private javax.swing.JPanel oscillatePanel;
     private javax.swing.JTextField p1modeTextField;
     private javax.swing.JTextField p2modeTextField;
+    private javax.swing.JComboBox pcaClkSrcComboBox;
     private javax.swing.JLabel port2Label;
     private javax.swing.JPanel port2Panel;
     private javax.swing.JTextField port2ValueTextField;
