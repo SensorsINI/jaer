@@ -12,11 +12,11 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- * Base class for slot car controllers.
+ * Base class for slot car controllers where all methods are Unsupported.
  *
  * @author tobi
  */
-class AbstractSlotCarController extends EventFilter2D implements FrameAnnotater, SlotCarControllerInterface{
+abstract public class AbstractSlotCarController extends EventFilter2D implements FrameAnnotater{
 
     public AbstractSlotCarController(AEChip chip) {
         super(chip);
@@ -25,37 +25,48 @@ class AbstractSlotCarController extends EventFilter2D implements FrameAnnotater,
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return in;
     }
 
     @Override
     public void resetFilter() {
-        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
     public void initFilter() {
-        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     public void annotate(GLAutoDrawable drawable) {
-        throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    public float computeControl(CarTracker tracker, SlotcarTrack track) {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
+      /** Computes the control signal given the car tracker and the track model.
+     *
+     * @param tracker
+     * @param track
+     * @return the throttle setting ranging from 0 to 1.
+     */
+    abstract public float computeControl(CarTracker tracker, SlotcarTrack track);
 
-    public float getThrottle() {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
+   /** Returns the last computed throttle setting.
+     *
+     * @return the throttle setting.
+     */
+    abstract public  float getThrottle();
 
+     /** Implement this method to return a string logging the state of the controller, e.g. throttle, measured speed, and curvature.
+     *
+     * @return string to log, by default the empty string.
+     */
     public String logControllerState() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return "";
     }
 
-    public String getLogContentsHeader() {
-        throw new UnsupportedOperationException("Not supported yet.");
+     /** Returns a string that says what are the contents of the log, e.g. throttle, desired speed, measured speed.
+     *
+     * @return the string description of the log contents - by default empty
+     */
+    public String getLogContentsHeader(){
+        return "";
     }
 
 }

@@ -6,9 +6,6 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.Font;
-import java.awt.Rectangle;
-import java.awt.geom.Rectangle2D;
-import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JOptionPane;
 import net.sf.jaer.chip.AEChip;
@@ -16,6 +13,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.StateMachineStates;
 import net.sf.jaer.util.TobiLogger;
 
 /**
@@ -46,12 +44,34 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     private TextRenderer renderer;
     private AbstractSlotCarController throttleController;
     private float maxThrottle = prefs().getFloat("SlotCarRacer.maxThrottle", 1);
+    private TrackdefineFilter trackDefineFilter;
+    private TrackEditor trackEditor;
 
     public enum ControllerToUse {
 
         SimpleSpeedController, CurvatureBasedController
     };
     private ControllerToUse controllerToUse = ControllerToUse.valueOf(prefs().get("SlotCarRacer.controllerToUse", ControllerToUse.SimpleSpeedController.toString()));
+
+       /** possible states,
+     * <ol>
+     * <li> STARTING means no car is tracked or tracker has not found a car cluster near the track model,
+     * <li> RUNNING is the active state,
+     * <li> CRASHED is the state if we were RUNNING and the car tracker has tracked the car
+     * sufficiently far away from the track model,
+     * <li> STALLED is the state if the car has stopped being tracked but the last tracked position was on the track
+     * because it has stalled out and stopped moving. is after there have not been any definite balls for a while and we are waiting for a clear ball directed
+     * </ol>
+     */
+    public enum State {STARTING, RUNNING, CRASHED, STALLED}
+    protected class RacerState extends StateMachineStates{
+        State state=State.STARTING;
+        @Override
+        public Enum getInitial(){
+            return State.STARTING;
+        }
+    }
+    private RacerState state=new RacerState();
 
     public SlotCarRacer(AEChip chip) {
         super(chip);
@@ -60,6 +80,10 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
 
 
         filterChain = new FilterChain(chip);
+
+        trackDefineFilter = new TrackdefineFilter(chip);
+        filterChain.add(trackDefineFilter);
+
 
         carTracker = new CarTracker(chip);
         filterChain.add(carTracker);
@@ -83,13 +107,22 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
 
     }
 
-    public void doLearnTrack() {
-        JOptionPane.showMessageDialog(chip.getAeViewer(), "I should do something");
+    public void doShowTrackEditor() {
+        if(trackEditor==null){
+            trackEditor=new TrackEditor();
+        }
+        trackEditor.setVisible(true);
+        trackEditor.requestFocusInWindow();
+    }
+
+    public void doExtractTrack(){
+        trackDefineFilter.setFilterEnabled(true);
+        JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "TrackdefineFilter is now enabled; adjust it's parameters to extract track points from data");
     }
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        out=getEnclosedFilterChain().filterPacket(in);
+        out = getEnclosedFilterChain().filterPacket(in);
         setThrottle();
         return out;
     }
@@ -100,8 +133,16 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         if (isOverrideThrottle()) {
             lastThrottle = getOverriddenThrottleSetting();
         } else {
-            lastThrottle = throttleController.computeControl(carTracker, trackModel);
+            if (state.get() == State.STARTING) {
+                lastThrottle = throttleController.getThrottle();
+            } else if (state.get() == State.RUNNING) {
+                lastThrottle = throttleController.computeControl(carTracker, trackModel);
+            } else if (state.get() == State.CRASHED) {
+            } else if (state.get() == State.STALLED) {
+            }
         }
+
+        // clip throttle to hard limit
         lastThrottle = lastThrottle > maxThrottle ? maxThrottle : lastThrottle;
         hw.setThrottle(lastThrottle);
 
@@ -146,6 +187,8 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     }
 
     /**
+     * Overrides any controller action to manually control the throttle.
+     *
      * @param overrideThrottle the overrideThrottle to set
      */
     public void setOverrideThrottle(boolean overrideThrottle) {
@@ -161,6 +204,8 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     }
 
     /**
+     * Sets the value of the throttle override throttle.
+     *
      * @param overriddenThrottleSetting the overriddenThrottleSetting to set
      */
     public void setOverriddenThrottleSetting(float overriddenThrottleSetting) {
@@ -216,6 +261,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     }
 
     /**
+     *  Sets the failsafe maximum throttle that overrides any controller action.
      * @param maxThrottle the maxThrottle to set
      */
     public void setMaxThrottle(float maxThrottle) {
@@ -244,6 +290,8 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     }
 
     /**
+     * Swaps in the chosen controller and rebuilds the GUI and filterChain.
+     *
      * @param controllerToUse the controllerToUse to set
      */
     synchronized public void setControllerToUse(ControllerToUse controllerToUse) {

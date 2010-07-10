@@ -10,7 +10,12 @@ import java.util.ListIterator;
 import java.awt.geom.Point2D;
 
 /**
- * Class for storing race tracks for slot cars
+ * Class for storing race tracks for slot cars. 
+ * The SlotcarTrack also holds a SlotcarState that models the cars current state (e.g. pos) on this SlotcarTrack.
+ * The track model has a list of track points, a PeriodicSpline that interpolates smoothly betweeen these points,
+ * and a SlotcarPhysics that models the car's dynamics.  The track model can be queried for the upcoming curvature that
+ * the car will see. The car's state is updated
+ * 
  * @author Michael Pfeiffer
  */
 public class SlotcarTrack implements java.io.Serializable {
@@ -24,13 +29,13 @@ public class SlotcarTrack implements java.io.Serializable {
     /** Integration step for arc-length calculations */
     public final double INTEGRATION_STEP = 0.001;
 
-    /** State of the slotcar */
+    /** State of the slot car. */
     private SlotcarState carState;
 
     /** Physics object */
     private SlotcarPhysics physics;
 
-    /** Creates a new track */
+    /** Creates a new track. */
     public SlotcarTrack() {
         trackPoints = new LinkedList<Point2D>();
 
@@ -99,9 +104,9 @@ public class SlotcarTrack implements java.io.Serializable {
         }
     }
 
-    /** Find the closest point on the track
-     * @param pos Point for which to search closest track point
-     * @return Index of closest point on track
+    /** Find the closest point on the track.
+     * @param pos Point for which to search closest track point.
+     * @return Index of closest point on track or -1 if no track point is <= maxDist from pos.
      */
     public int findClosest(Point2D pos, double maxDist) {
         if (trackPoints.size() > 0) {
@@ -178,7 +183,7 @@ public class SlotcarTrack implements java.io.Serializable {
 
     /**
      * Gets the smooth spline position at the parameter value
-     * @param t Spline parameter
+     * @param t Spline parameter ? what is this?
      * @return Point on 2D spline curve
      */
     public Point2D getPosition(double t) {
@@ -208,7 +213,7 @@ public class SlotcarTrack implements java.io.Serializable {
 
 
     /**
-     * Returns the upcoming curvature for the next timesteps
+     * Returns the upcoming curvature for the next timesteps given the track's current SlotcarState.
      * @param numPoints Number of curvature points to look ahead
      * @param dt Time interval between steps
      * @param speed Current speed of the car
