@@ -236,7 +236,7 @@ public abstract class EventFilter extends Observable {
      * <ul>
      * <li>false if filter is not FrameAnnotater.
      * <li>true if the filter is not enclosed and the filter.
-     * <li>is enabled and annotation is enabled.
+     * is enabled and annotation is enabled.
      * <li>It returns false if the filter is enclosed and the enclosing filter is not enabled.
      * </ul>
      * @return true to show filter annotation should be shown

@@ -24,7 +24,7 @@ public class SlotCarHardwareInterface implements HardwareInterface,ThrottleInter
     private float throttle=0;
     private static final int PORT=0;
     private boolean setupPortSuccessful=false;
-    private final int WARNING_PRINT_INTERVAL=200;
+    private final int WARNING_PRINT_INTERVAL=1000; // only prints missing servo warning once this many tries
     private int warningPrintCounter=0;
 
     public SlotCarHardwareInterface (){

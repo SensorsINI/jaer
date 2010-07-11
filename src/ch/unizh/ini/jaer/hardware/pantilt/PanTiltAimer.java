@@ -160,12 +160,14 @@ public class PanTiltAimer extends EventFilter2D implements FrameAnnotater, PanTi
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
-        try {
-            setPanTiltValues(panValue, tiltValue);
-            setJitterFreqHz(jitterFreqHz);
-            setJitterAmplitude(jitterAmplitude);
-        } catch (HardwareInterfaceException ex) {
-            Logger.getLogger(PanTiltAimer.class.getName()).log(Level.SEVERE, null, ex);
+        if (yes) {
+            try {
+                setPanTiltValues(panValue, tiltValue);
+                setJitterFreqHz(jitterFreqHz);
+                setJitterAmplitude(jitterAmplitude);
+            } catch (HardwareInterfaceException ex) {
+                log.warning(ex.toString());
+            }
         }
     }
 

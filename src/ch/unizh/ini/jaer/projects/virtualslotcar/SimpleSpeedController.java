@@ -27,7 +27,6 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
     private float defaultThrottle=prefs().getFloat("SimpleSpeedController.defaultThrottle",.3f); // default throttle setting if no car is detected
     private float gain=prefs().getFloat("SimpleSpeedController.gain", 1); // gain of proportional controller
     private float measuredSpeedPPS; // the last measured speed
-    private TextRenderer renderer;
 
     SlotCarRacer racer;
 
@@ -104,11 +103,14 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
     }
 
     /**
+     * Sets the desired speed but does NOT store the preferred value in the Preferences (for speed).
+     *
      * @param desiredSpeedPPS the desiredSpeedPPS to set
      */
     public void setDesiredSpeedPPS (float desiredSpeedPPS){
+        float old=this.desiredSpeedPPS;
         this.desiredSpeedPPS = desiredSpeedPPS;
-        prefs().putFloat("SimpleSpeedController.desiredSpeedPPS", desiredSpeedPPS);
+        support.firePropertyChange("desiredSpeedPPS", old, desiredSpeedPPS);  // updates the GUI with the new value
     }
 
 
@@ -128,16 +130,9 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
     }
 
     public void annotate(GLAutoDrawable drawable) {
-         if ( renderer == null ){
-            renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,24),true,true);
-        }
-        renderer.begin3DRendering();
-        String s=String.format("Desired speed: %8.1f, Measured %8.1f",desiredSpeedPPS, measuredSpeedPPS);
-        final float scale=.25f;
-        renderer.draw3D(s,0,8,0,scale);
-//        Rectangle2D bounds=renderer.getBounds(s);
-        renderer.end3DRendering();   }
-
+        String s=String.format("SimpleSpeedController: Desired speed: %8.1f, Measured %8.1f",desiredSpeedPPS, measuredSpeedPPS);
+        MultilineAnnotationTextRenderer.renderMultilineString(s);
+    }
 
 
 }

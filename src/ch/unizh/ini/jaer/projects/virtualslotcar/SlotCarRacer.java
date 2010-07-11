@@ -6,16 +6,24 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.Font;
+import java.awt.geom.Rectangle2D;
+import java.lang.reflect.InvocationTargetException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.StateMachineStates;
 import net.sf.jaer.util.TobiLogger;
 
+
+        // clip throttle to hard limit
 /**
  * Controls slot car tracked from eye of god view.
  *
@@ -40,12 +48,12 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     private boolean overrideThrottle = prefs().getBoolean("SlotCarRacer.overrideThrottle", true);
     private float overriddenThrottleSetting = prefs().getFloat("SlotCarRacer.overriddenThrottleSetting", 0);
 //    private SlotCarController controller = null;
-    private SlotcarTrack trackModel;
     private TextRenderer renderer;
     private AbstractSlotCarController throttleController;
     private float maxThrottle = prefs().getFloat("SlotCarRacer.maxThrottle", 1);
     private TrackdefineFilter trackDefineFilter;
     private TrackEditor trackEditor;
+    private int crashDistancePixels=prefs().getInt("SlotCarRacer.crashDistancePixels",20);
 
     public enum ControllerToUse {
 
@@ -88,61 +96,99 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         carTracker = new CarTracker(chip);
         filterChain.add(carTracker);
 
-        throttleController = new SimpleSpeedController(chip);
-        filterChain.add(throttleController);                    // TODO when controller is changed the filter chain is not changed yet
+        setControllerToUse(controllerToUse);
 
         setEnclosedFilterChain(filterChain);
 
         tobiLogger = new TobiLogger("SlotCarRacer", "racer data " + throttleController.getLogContentsHeader());
 
         // tooltips for properties
-        String con = "Controller", dis = "Display", ov = "Override", vir = "Virtual car", log = "Logging";
+        final String con = "Controller", dis = "Display", ov = "Override", vir = "Virtual car", lg = "Logging";
         setPropertyTooltip(con, "desiredSpeed", "Desired speed from speed controller");
         setPropertyTooltip(ov, "overrideThrottle", "Select to override the controller throttle setting");
         setPropertyTooltip(con, "maxThrottle", "Absolute limit on throttle for safety");
         setPropertyTooltip(ov, "overriddenThrottleSetting", "Manual overidden throttle setting");
         setPropertyTooltip(vir, "virtualCarEnabled", "Enable display of virtual car on virtual track");
-        setPropertyTooltip(log, "logRacerDataEnabled", "enables logging of racer data");
+        setPropertyTooltip(lg, "logRacerDataEnabled", "enables logging of racer data");
         setPropertyTooltip(con, "controllerToUse", "Which controller to use to control car throttle");
 
     }
 
-    public void doShowTrackEditor() {
-        if(trackEditor==null){
-            trackEditor=new TrackEditor();
-        }
-        trackEditor.setVisible(true);
-        trackEditor.requestFocusInWindow();
+    @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes);
+        trackDefineFilter.setFilterEnabled(false); // don't enable by default
     }
 
-    public void doExtractTrack(){
-        trackDefineFilter.setFilterEnabled(true);
-        JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "TrackdefineFilter is now enabled; adjust it's parameters to extract track points from data");
-    }
+//    public void doShowTrackEditor() {
+//        if(trackEditor==null){
+//            trackEditor=new TrackEditor();
+//        }
+//        trackEditor.setVisible(true); // will not work because TrackEditor is a JPanel, not a window
+//        trackEditor.requestFocusInWindow();
+//    }
+
+
+
+ 
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         out = getEnclosedFilterChain().filterPacket(in);
-        setThrottle();
+        chooseNextState();
         return out;
     }
     private float lastThrottle = 0;
-
-    synchronized private void setThrottle() {
+    private boolean showedMissingTrackWarning=false;
+    synchronized private void chooseNextState() {
 
         if (isOverrideThrottle()) {
             lastThrottle = getOverriddenThrottleSetting();
         } else {
             if (state.get() == State.STARTING) {
-                lastThrottle = throttleController.getThrottle();
+                lastThrottle = getOverriddenThrottleSetting();
+                if(state.timeSinceChanged()>300){
+                    state.set(State.RUNNING);
+                };
             } else if (state.get() == State.RUNNING) {
-                lastThrottle = throttleController.computeControl(carTracker, trackModel);
+                if (trackDefineFilter.getTrack() == null) {
+                    if (!showedMissingTrackWarning) {
+                        log.warning("Track not defined yet. Use the TrackdefineFilter to extract the slot car track or load the track from a file.");
+//                        try {
+//                            SwingUtilities.invokeAndWait(new Runnable() {
+//
+//                                public void run() {
+//                                    JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "<html>Track not defined yet. <p>Use the TrackdefineFilter to extract the slot car track or load the track from a file.", "No track defined yet", JOptionPane.WARNING_MESSAGE);
+//                                }
+//                            });
+//                        } catch (InterruptedException ex) {
+//                            Logger.getLogger(SlotCarRacer.class.getName()).log(Level.SEVERE, null, ex);
+//                        } catch (InvocationTargetException ex) {
+//                            Logger.getLogger(SlotCarRacer.class.getName()).log(Level.SEVERE, null, ex);
+//                        }
+                    }
+                    showedMissingTrackWarning = true;
+                } else {
+
+                    ClusterInterface carCluster = carTracker.getCarCluster();
+                    if (carCluster == null) {
+                        state.set(State.STALLED);
+                    } else if (trackDefineFilter.getTrack().findClosest(carCluster.getLocation(), crashDistancePixels) == -1) {
+                        state.set(State.CRASHED);
+                    } else {
+                        lastThrottle = throttleController.computeControl(carTracker, trackDefineFilter.getTrack());
+                    }
+                }
             } else if (state.get() == State.CRASHED) {
+                if (carTracker.getCarCluster() != null && state.timeSinceChanged() > 1000) {
+                    state.set(State.STARTING);
+                }
             } else if (state.get() == State.STALLED) {
+                if(state.timeSinceChanged()>1000){
+                    state.set(State.STARTING);
+                }
             }
         }
-
-        // clip throttle to hard limit
         lastThrottle = lastThrottle > maxThrottle ? maxThrottle : lastThrottle;
         hw.setThrottle(lastThrottle);
 
@@ -151,6 +197,13 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         }
 
     }
+
+    public void doExtractTrack(){
+       setFilterEnabled(true);
+        trackDefineFilter.setFilterEnabled(true);  // do this second so that trackDefineFilter is enabled
+         JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "TrackdefineFilter is now enabled; adjust it's parameters to extract track points from data");
+    }
+
 
     @Override
     public void resetFilter() {
@@ -164,19 +217,12 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     }
 
     public synchronized void annotate(GLAutoDrawable drawable) { // TODO may not want to synchronize here since this will block filtering durring annotation
-        carTracker.annotate(drawable);
-        throttleController.annotate(drawable);
-        if (renderer == null) {
-            renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
-        }
-        renderer.begin3DRendering();
-        String s = "Throttle:" + lastThrottle;
-        final float scale = .25f;
-        renderer.draw3D(s, 0, 2, 0, scale);
-//        Rectangle2D bounds=renderer.getBounds(s);
-        renderer.end3DRendering();
-//        GL gl=drawable.getGL();
-//        gl.glRectf((float)bounds.getMaxX()*scale, 2,(float) (chip.getSizeX()-scale*bounds.getWidth())*lastThrottle, 4);
+        MultilineAnnotationTextRenderer.resetToOrigin();
+        if(carTracker.isFilterEnabled()) carTracker.annotate(drawable);
+        if(throttleController.isFilterEnabled()) throttleController.annotate(drawable);
+        if(trackDefineFilter.isFilterEnabled()) trackDefineFilter.annotate(drawable);
+        String s = "SlotCarRacer: state: "+state.toString()+" throttle: " + lastThrottle;
+        MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 
     /**
@@ -294,7 +340,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
      *
      * @param controllerToUse the controllerToUse to set
      */
-    synchronized public void setControllerToUse(ControllerToUse controllerToUse) {
+    synchronized final public void setControllerToUse(ControllerToUse controllerToUse) {
         this.controllerToUse = controllerToUse;
         try {
             switch (controllerToUse) {

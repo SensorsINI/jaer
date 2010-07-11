@@ -6,10 +6,13 @@
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.Font;
+import java.awt.Rectangle;
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.StateMachineStates;
@@ -24,27 +27,30 @@ licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_Genera
 public class CurvatureBasedController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater {
 
     private float throttle=0; // last output throttle setting
-    private float desiredSpeedPPS=prefs().getFloat("CurvatureBasedController.desiredSpeedPPS",0); // desired speed of card in pixels per second
     private float defaultThrottle=prefs().getFloat("CurvatureBasedController.defaultThrottle",.3f); // default throttle setting if no car is detected
-    private float gain=prefs().getFloat("CurvatureBasedController.gain", 1); // gain of proportional controller
     private float measuredSpeedPPS; // the last measured speed
     private Point2D.Float measuredLocation;
-    private TextRenderer renderer;
     private float throttleDelayMs=prefs().getFloat("CurvatureBasedController.throttleDelayMs", 30);
     private int numUpcomingCurvaturePoints=prefs().getInt("CurvatureBasedController.numUpcomingCurvaturePoints",3);
-
+    private float desiredSpeedPPS=0;
+    private SimpleSpeedController speedController;
  
 
     private float maxDistanceFromTrackPoint=prefs().getFloat("CurvatureBasedController.maxDistanceFromTrackPoint",15);
-    private float curvatureDeltaTimeMs=prefs().getFloat("CurvatureBasedController.curvatureDeltaTimeMs",1);
+//    private float curvatureDeltaTimeMs=prefs().getFloat("CurvatureBasedController.curvatureDeltaTimeMs",1);
+    private float lateralAccelerationLimitPPS2=prefs().getFloat("CurvatureBasedController.lateralAccelerationLimitPPS2", 4000);// 400pps change in 0.1s is about 4000pps2
+    private float upcomingCurvature=0;
 
     public CurvatureBasedController(AEChip chip) {
         super(chip);
-        setPropertyTooltip("desiredSpeedPPS", "desired speed of card in pixels per second");
         setPropertyTooltip("defaultThrottle", "default throttle setting if no car is detected");
         setPropertyTooltip("gain", "gain of proportional controller");
         setPropertyTooltip("throttleDelayMs", "delay time constant of throttle change on speed; same as look-ahead time for estimation of track curvature");
-        setPropertyTooltip("", "");
+        setPropertyTooltip("lateralAccelerationLimitPPS2","Maximum allowed lateral acceleration in pixels per second squared; 400pps change in 0.1s is about 4000pps2");
+//        setPropertyTooltip("", "");
+        speedController=new SimpleSpeedController(chip);
+        setEnclosedFilterChain(new FilterChain(chip));
+        getEnclosedFilterChain().add(speedController);
     }
 
     /** Computes throttle using tracker output and upcoming curvature, using methods from SlotcarTrack.
@@ -82,9 +88,19 @@ This still requires us to have an estimated relation between throttle and result
             track.getCarState().XYpos=measuredLocation; // update car state
             track.getCarState().speed=measuredSpeedPPS;
 // TODO nothing below is correct!!!!
-            UpcomingCurvature curvature=track.getCurvature(numUpcomingCurvaturePoints, curvatureDeltaTimeMs, measuredSpeedPPS);
-            int neededCurvatureIdx=0;
-            float upcomingLateralAcceleration=measuredSpeedPPS*measuredSpeedPPS*curvature.getCurvature(neededCurvatureIdx);
+            // compute the curvature at throttleDelayMs in the future, given our measured speed
+            UpcomingCurvature curvature=track.getCurvature(1, throttleDelayMs*1000, measuredSpeedPPS);
+
+            // compute desiredSpeedPPS given limit on lateral acceleration 'g', curvature 'c', and speed 'v'
+            // v^2*c<g, so
+            // v<sqrt(g/c)
+            float c=curvature.getCurvature(0);
+            float g=lateralAccelerationLimitPPS2;
+            float v=(float)Math.sqrt(g/c);
+            desiredSpeedPPS=v;
+            upcomingCurvature=c;
+            speedController.setDesiredSpeedPPS(v);
+            throttle=speedController.computeControl(tracker, track);
             return throttle;
         }
     }
@@ -119,21 +135,6 @@ This still requires us to have an estimated relation between throttle and result
     }
 
     /**
-     * @return the gain
-     */
-    public float getGain (){
-        return gain;
-    }
-
-    /**
-     * @param gain the gain to set
-     */
-    public void setGain (float gain){
-        this.gain = gain;
-        prefs().putFloat("CurvatureBasedController.gain",gain);
-    }
-
-    /**
      * @return the defaultThrottle
      */
     public float getDefaultThrottle() {
@@ -149,16 +150,9 @@ This still requires us to have an estimated relation between throttle and result
     }
 
     public void annotate(GLAutoDrawable drawable) {
-         if ( renderer == null ){
-            renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,24),true,true);
-        }
-        renderer.begin3DRendering();
-        String s=String.format("Desired speed: %8.1f, Measured %8.1f",desiredSpeedPPS, measuredSpeedPPS);
-        final float scale=.25f;
-        renderer.draw3D(s,0,8,0,scale);
-//        Rectangle2D bounds=renderer.getBounds(s);
-        renderer.end3DRendering();   }
-
-
+        String s=String.format("CurvatureBasedController\nDesired speed: %8.1f\nMeasured speed %8.1f\nCurvature: %8.1f\nThrottle: %8.1f",desiredSpeedPPS, measuredSpeedPPS, upcomingCurvature, throttle);
+        MultilineAnnotationTextRenderer.renderMultilineString(s);
+    }
+    
 
 }

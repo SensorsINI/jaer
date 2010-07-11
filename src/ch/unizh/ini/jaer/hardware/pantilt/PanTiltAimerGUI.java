@@ -31,7 +31,6 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
     /** Make the GUI.
      * 
      * @param pt the pan tilt unit
-     * @param calibrator that we give calibration points to and that provides calibration points to paint here
      */
     public PanTiltAimerGUI(PanTilt pt) {
         panTilt = pt;
