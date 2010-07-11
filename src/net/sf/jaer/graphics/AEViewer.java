@@ -492,6 +492,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     sockets.
      */
     private void cleanup (){
+        stopLogging(true); // in case logging, make sure we give chance to save file
         if ( aemon != null && aemon.isOpen() ){
             log.info("closing " + aemon);
             aemon.close();
@@ -2101,8 +2102,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
-    /** Fires a property change "stopme", and then stops playback or closes device */
+    /** Fires a property change {@link #EVENT_STOPME}, and then stops playback or closes device */
     public void stopMe (){
+        stopLogging(true); // in case logging, make sure we give chance to save file
         firePropertyChange(EVENT_STOPME,null,null);
 //        log.info(Thread.currentThread()+ "AEViewer.stopMe() called");
         switch ( getPlayMode() ){
@@ -4156,9 +4158,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } else if ( evt.getPropertyName().equals("cleared") ){
             setStatusMessage(null);
         } else if ( evt.getSource() instanceof AEFileInputStream ){
-            firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // refire events from AEFileInputStream to listeners on AEViewer
+            firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // forward/refire events from AEFileInputStream to listeners on AEViewer
         } else if (evt.getSource() instanceof AEPlayer){
-             firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // refire events from AEFileInputStream to listeners on AEViewer
+             firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // forward/refire events from AEFileInputStream to listeners on AEViewer
         }
     }
 
