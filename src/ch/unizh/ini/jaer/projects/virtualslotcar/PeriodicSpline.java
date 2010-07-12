@@ -14,6 +14,17 @@ import java.util.ListIterator;
 
 /**
  * A class for computing periodic cubic splines from a set of 2D points.
+ * <p>
+ *  The spline curve is parameterized by a single parameter (call it T),
+     * which gives you the points on the track as (x(T), y(T)).
+     * T can have a rather arbitrary scale, so if your car runs for a distance of S meters,
+     * you cannot simply use the point (x(T+S), y(T+S)), but you have to find the corresponding parameter
+     * value T* for your new position. What PeriodicSpline.advance does is to start from the current
+     * parameter value t (curSegment just tells you in which segment of the spline curve this parameter t lies),
+     * and then computes the new parameter T* that corresponds to a point on the spline curve with distance of ds
+     * on the curve (this is typically different from a straight line distance). It does so by
+     * partitioning the curve into smaller segments (with lengths int_step in T-space).
+ * <p>
  * Algorithms are from H.R. Schwarz, Numerische Mathematik
  *                     B.G. Teubner, Stuttgart, 4th edition, 1997
  * @author Michael Pfeiffer
@@ -460,6 +471,22 @@ public class PeriodicSpline implements java.io.Serializable {
     /**
      * Computes the next parameter value if the arc-length is increased by ds.
      * Approximates the arc-length by sub-dividing into intervals of length int_step.
+     * <p>
+     * The spline curve is parameterized by a single parameter (call it T),
+     * which gives you the points on the track as (x(T), y(T)).
+     * T can have a rather arbitrary scale, so if your car runs for a distance of S meters,
+     * you cannot simply use the point (x(T+S), y(T+S)), but you have to find the corresponding parameter
+     * value T* for your new position. What PeriodicSpline.advance does is to start from the current
+     * parameter value t (curSegment just tells you in which segment of the spline curve this parameter t lies),
+     * and then computes the new parameter T* that corresponds to a point on the spline curve with distance of ds
+     * on the curve (this is typically different from a straight line distance). It does so by
+     * partitioning the curve into smaller segments (with lengths int_step in T-space).
+    <p>
+     * This function computes the next position on the track in
+     * the simulation of the virtual car. For the real slotcar you need it to
+     * compute from your track model the curvature that lies ahead, as it computes
+     * the spline parameters corresponding to points on the track with a certain distance to your current position.
+     *
      * @param t Current parameter value (not arc-length)
      * @param curSegment Current track segment
      * @param ds Arc-length distance to new point
@@ -510,7 +537,7 @@ public class PeriodicSpline implements java.io.Serializable {
      * @param t Current parameter value (not arc-length)
      * @param ds Arc-length distance to new point
      * @param int_step Integration step
-     * @return New parameter value (not arc-length)
+     * @return New t parameter value (not arc-length or time)
      */
     public double advance(double t, double ds, double int_step) {
         int interval = getInterval(t);
