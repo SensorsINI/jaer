@@ -33,7 +33,7 @@ public class UDPMesssgeSender {
     InetSocketAddress client = null;
     Thread consumerThread;
     private String host = prefs.get("UDPMesssgeSender.host", "localhost");
-    public static final int DEFAULT_PORT=14334;
+    public static final int DEFAULT_PORT = 14334;
     private int port = DEFAULT_PORT;
     /** Buffer size (max) in bytes */
     final public static int BUFFER_SIZE_BYTES = 1500;
@@ -43,6 +43,7 @@ public class UDPMesssgeSender {
     private CharBuffer currentBuf = initialEmptyBuffer; // starting buffer for filling
     long msgTime;
     public static final char SEP = ' ';
+    boolean isOpen = false;
 
     public UDPMesssgeSender() {
     }
@@ -72,12 +73,23 @@ public class UDPMesssgeSender {
         }
     }
 
-    /** Opens or reopens the AEUnicast channel. If the channel is not open, open it. If it is open, then close and reopen it.
+    /** Returns true if open has succeeded and close has not been called.
+     * 
+     * @return true if open() has succeeded and close has not been called.
+     */
+    public boolean isOpen(){
+        return isOpen;
+    }
+
+    /** Opens or reopens the channel. If the channel is not open, open it. If it is open then just return.
      *
      * @throws IOException
      */
     public void open() throws IOException {
-        close();
+        if (isOpen) {
+            log.info("already open, not opening");
+            return;
+        }
         channel = DatagramChannel.open();
         socket = channel.socket(); // bind to any available port because we will be sending datagrams with included host:port info
         socket.setTrafficClass(0x10 + 0x08); // low delay
@@ -87,6 +99,7 @@ public class UDPMesssgeSender {
         consumerThread.setName("UDPMessageSender");
         consumerThread.setPriority(Thread.NORM_PRIORITY + 1);
         consumerThread.start();
+        isOpen = true;
         log.info("opened UDPMessageSender on local port=" + socket.getLocalPort() + " with bufferSize=" + BUFFER_SIZE_BYTES);
     }
 
@@ -138,10 +151,10 @@ public class UDPMesssgeSender {
                     }
                     try {
 //                        log.info("sending buf="+buf+" to client="+client);
-                        ByteBuffer b=ByteBuffer.wrap(buf.toString().getBytes());
+                        ByteBuffer b = ByteBuffer.wrap(buf.toString().getBytes());
                         channel.send(b, client);
                     } catch (IOException e) {
-                        log.warning("caught when sending buffer: "+e);
+                        log.warning("caught when sending buffer: " + e);
                     }
                 }
             } catch (InterruptedException e) {
@@ -155,6 +168,7 @@ public class UDPMesssgeSender {
     }
 
     public void close() {
+        isOpen = false;
         if (socket == null) {
             return;
         }
@@ -162,6 +176,7 @@ public class UDPMesssgeSender {
         if (consumerThread != null) {
             consumerThread.interrupt();
         }
+        log.info("closed socket and interrupted consumer thread");
     }
 
     /** returns true if socket exists and is bound */
