@@ -22,12 +22,12 @@ import org.ine.telluride.jaer.tell2010.spinningcardclassifier.CardNamePlayer;
  *
  * @author tobi
  */
-public class ClusterBasedPipCounter extends EventFilter2D implements FrameAnnotater, Observer {
+public final class ClusterBasedPipCounter extends EventFilter2D implements FrameAnnotater, Observer {
 
     public static String getDescription() {
         return "Simple card pip (value) counter for the card player project";
     }
-    RectangularClusterTracker tracker;
+    RectangularClusterTracker pipCounter, cardTracker;
     FilterChain filterChain;
     CardStatsMessageSender msgSender;
     CardHistogram cardHist = new CardHistogram();
@@ -36,15 +36,30 @@ public class ClusterBasedPipCounter extends EventFilter2D implements FrameAnnota
     private int maxLikliehoodCardValue = 0;
     private CardNamePlayer[] namePlayers = new CardNamePlayer[13];
     private long lastTimeSaidCar = 0;
+    private float pipSize = prefs().getFloat("ClusterBasedPipCounter.pipSize", .08f);
+    private float cardSize = prefs().getFloat("ClusterBasedPipCounter.cardSize", .3f);
+    private float cardAspectRatio = 1.1f;
+    private int lastCardValue=0;
 
     public ClusterBasedPipCounter(AEChip chip) {
         super(chip);
         filterChain = new FilterChain(chip);
-        tracker = new RectangularClusterTracker(chip);
-        filterChain.add(tracker);
+
+        pipCounter = new RectangularClusterTracker(chip);
+        setPipSize(pipSize);
+        pipCounter.setAspectRatio(1);
+
+        cardTracker = new RectangularClusterTracker(chip);
+        setCardSize(cardSize);
+        cardTracker.setAspectRatio(cardAspectRatio);
+
+
+        filterChain.add(cardTracker);
+        filterChain.add(pipCounter);
         setEnclosedFilterChain(filterChain);
         msgSender = new CardStatsMessageSender();
-        tracker.addObserver(this);
+        pipCounter.addObserver(this);   //  we get called back from pipCounter to upate()
+        // during tracking
         for (int i = 0; i < 13; i++) {
             try {
                 namePlayers[i] = new CardNamePlayer(i);
@@ -52,6 +67,9 @@ public class ClusterBasedPipCounter extends EventFilter2D implements FrameAnnota
                 log.warning(ex.toString());
             }
         }
+        setPropertyTooltip("cardSize", "card size as fraction of max chip dimension");
+        setPropertyTooltip("pipSize", "pip size as fraction of max chip dimension");
+        setPropertyTooltip("sayCard", "enables audio output of card");
     }
 
     @Override
@@ -70,14 +88,14 @@ public class ClusterBasedPipCounter extends EventFilter2D implements FrameAnnota
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        out = filterChain.filterPacket(in);
+        out = filterChain.filterPacket(in);  // the RCT calls us back every updateIntervalMs to update()
 
         return out;
     }
 
     @Override
     public void resetFilter() {
-        tracker.resetFilter();
+        pipCounter.resetFilter();
     }
 
     @Override
@@ -88,21 +106,31 @@ public class ClusterBasedPipCounter extends EventFilter2D implements FrameAnnota
     @Override
     public void annotate(GLAutoDrawable drawable) {
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() - 2);
-        MultilineAnnotationTextRenderer.renderMultilineString("ClusterBasedPipCounter\n" + cardHist.toString().substring(0, 50));
+        String s="ClusterBasedPipCounter\n" + cardHist.toString().substring(0, 50);
+        if(lastCardValue>1 && lastCardValue<14) s+="\nCard value: "+cardNameFromValue(lastCardValue);
+        MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 
     @Override
     public void update(Observable o, Object arg) {
-        if (o != tracker) {
+        if (o != pipCounter) {
             return;
         }
+
+        // determine if the pipCounter has a valid ML estimate of card.
+        // if so, say it
         int npips = 0;
-        if ((npips = tracker.getNumVisibleClusters()) == 0) {
-            // card has gone past, say peak value of hist
+        if(cardTracker.getNumVisibleClusters()==1 ){
+            RectangularClusterTracker.Cluster cluster=cardTracker.getClusters().get(0);
+            if(cluster.isOverlappingBorder()) return;
+        }
+        if ((npips = pipCounter.getNumVisibleClusters()) == 0) {
+            // card has gone past, get peak value of hist
             if (sayCard && cardHist.getMaxValueBin() != 0 && System.currentTimeMillis() - lastTimeSaidCar > minSayCardIntervalMs) {
                 int val = cardHist.getMaxValueBin();
                 if (val > 0 && val <= 13 && namePlayers[val] != null) {
                     lastTimeSaidCar = System.currentTimeMillis();
+                    lastCardValue=val;
                     namePlayers[val - 1].play(); // 0=ace, 12=king
                 }
             }
@@ -150,5 +178,50 @@ public class ClusterBasedPipCounter extends EventFilter2D implements FrameAnnota
     public void setMinSayCardIntervalMs(int minSayCardIntervalMs) {
         this.minSayCardIntervalMs = minSayCardIntervalMs;
         prefs().putInt("ClusterBasedPipCounter.minSayCardIntervalMs", minSayCardIntervalMs);
+    }
+
+    /**
+     * @return the pipSize
+     */
+    public float getPipSize() {
+        return pipSize;
+    }
+
+    /**
+     * @param pipSize the pipSize to set
+     */
+    public final void setPipSize(float pipSize) {
+        this.pipSize = pipSize;
+        prefs().putFloat("ClusterBasedPipCounter.pipSize", pipSize);
+        pipCounter.setClusterSize(pipSize);
+    }
+
+    /**
+     * @return the cardSize
+     */
+    public float getCardSize() {
+        return cardSize;
+    }
+
+    /**
+     * @param cardSize the cardSize to set
+     */
+    public void setCardSize(float cardSize) {
+        this.cardSize = cardSize;
+        prefs().putFloat("ClusterBasedPipCounter.cardSize", cardSize);
+        cardTracker.setClusterSize(cardSize);
+    }
+
+    private String cardNameFromValue(final int value){
+        if(value==0) return "";
+        if(value==1) return "ace";
+        if(value>13) return "";
+        if(value<11) return Integer.toString(value);
+        switch(value){
+            case 11: return "jack";
+            case 12: return "queen";
+            case 13: return "king";
+            default: return "?";
+        }
     }
 }

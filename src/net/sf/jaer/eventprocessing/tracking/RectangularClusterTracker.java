@@ -894,6 +894,23 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             return false;
         }
 
+        /** Returns true if cluster is overlapping chip border on any side.
+         *
+         * @return true if overlapping border.
+         */
+        public boolean isOverlappingBorder(){
+            int lx = (int) location.x, ly = (int) location.y;
+            int sx = chip.getSizeX(), sy = chip.getSizeY();
+
+            if (lx < 0 || lx > sx || ly < 0 || ly > sy) {
+                return true;  // always true if cluster is outside array, e.g. from velocityPPT prediction
+            }
+            if (lx < radiusX || lx > sx - radiusX || ly < radiusY || ly > sy - radiusY) {
+                        return true;
+            }
+            return false;
+        }
+
         /** Total number of events collected by this cluster.
          * @return the numEvents
          */
@@ -2219,12 +2236,14 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         if (clusterSize < 0) {
             clusterSize = 0;
         }
+        float old=this.clusterSize;
         defaultClusterRadius = (int) Math.max(chip.getSizeX(), chip.getSizeY()) * clusterSize;
         this.clusterSize = clusterSize;
         for (Cluster c : clusters) {
             c.setRadius(defaultClusterRadius);
         }
         getPrefs().putFloat("RectangularClusterTracker.clusterSize", clusterSize);
+        support.firePropertyChange("clusterSize", old, clusterSize);
     }
 
     public float getMinClusterSize() {
