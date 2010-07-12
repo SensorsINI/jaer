@@ -213,14 +213,15 @@ public class SlotcarTrack implements java.io.Serializable {
 
 
     /**
-     * Returns the upcoming curvature for the next timesteps given the track's current SlotcarState.
+     * Returns the upcoming curvature for the next timesteps given the spline-parameter
+     * position of the car.
+     * @param pos Current spline-parameter position of the car.
      * @param numPoints Number of curvature points to look ahead
      * @param dt Time interval between steps
      * @param speed Current speed of the car
      * @return Curvatures of the time points ahead.
      */
-    public UpcomingCurvature getCurvature(int numPoints, double dt, double speed) {
-        double pos = carState.pos;
+    public UpcomingCurvature getCurvature(double pos, int numPoints, double dt, double speed) {
         float[] curvature = new float[numPoints];
 
         for (int i=0; i<numPoints; i++) {
@@ -234,6 +235,47 @@ public class SlotcarTrack implements java.io.Serializable {
         return uc;
     }
 
+    /**
+     * Returns the upcoming curvature for the next timesteps given the XY-position of the car on the screen.
+     * @param XYpos Current position of the car on the screen.
+     * @param numPoints Number of curvature points to look ahead
+     * @param dt Time interval between steps
+     * @param speed Current speed of the car
+     * @return Curvatures of the time points ahead.
+     */
+    public UpcomingCurvature getCurvature(Point2D XYpos, int numPoints, double dt, double speed) {
+
+        int closestIdx = findClosest(XYpos, 0.1);
+        double pos = smoothTrack.getParam(closestIdx);
+        return getCurvature(pos, numPoints, dt, speed);
+    }
+
+    /**
+     * Returns the upcoming curvature for the next timesteps given the index of the closest
+     * spline point.
+     * @param closestIdx Index of the currently closest spline point.
+     * @param numPoints Number of curvature points to look ahead
+     * @param dt Time interval between steps
+     * @param speed Current speed of the car
+     * @return Curvatures of the time points ahead.
+     */
+    public UpcomingCurvature getCurvature(int closestIdx, int numPoints, double dt, double speed) {
+
+        double pos = smoothTrack.getParam(closestIdx);
+        return getCurvature(pos, numPoints, dt, speed);
+    }
+
+    /**
+     * Returns the upcoming curvature for the next timesteps given the track's current SlotcarState.
+     * @param numPoints Number of curvature points to look ahead
+     * @param dt Time interval between steps
+     * @param speed Current speed of the car
+     * @return Curvatures of the time points ahead.
+     */
+    public UpcomingCurvature getCurvature(int numPoints, double dt, double speed) {
+        double pos = carState.pos;
+        return getCurvature(pos, numPoints, dt, speed);
+    }
 
     /**
      * Advances the car on the track.

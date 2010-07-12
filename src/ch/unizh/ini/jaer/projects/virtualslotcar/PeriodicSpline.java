@@ -369,6 +369,21 @@ public class PeriodicSpline implements java.io.Serializable {
     }
 
     /**
+     * Returns the parameter value corresponding to the point index. This is the
+     * "inverse function" to getInterval.
+     * @param idx The index of the spline point.
+     * @return The parameter value corresponding to the spline point, or NaN if the
+     * index is out of bounds.
+     */
+    public double getParam(int idx) {
+        if ((idx < 0) || (idx > this.numXY))
+            return Double.NaN;
+        else {
+            return this.Tdata[idx];
+        }
+    }
+
+    /**
      * Gets the smooth spline position at the parameter value if the spline segment is known.
      * @param t Spline parameter
      * @param idx Index of the spline segment in which T lies.
