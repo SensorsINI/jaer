@@ -29,6 +29,9 @@ public class SlotcarTrack implements java.io.Serializable {
     /** Integration step for arc-length calculations */
     public final double INTEGRATION_STEP = 0.001;
 
+    /** Tolerance for finding nearby spline points */
+    private float pointTolerance = 5.0f;
+
     /** State of the slot car. */
     private SlotcarState carState;
 
@@ -245,7 +248,7 @@ public class SlotcarTrack implements java.io.Serializable {
      */
     public UpcomingCurvature getCurvature(Point2D XYpos, int numPoints, double dt, double speed) {
 
-        int closestIdx = findClosest(XYpos, 0.1);
+        int closestIdx = findClosest(XYpos, pointTolerance);
         double pos = smoothTrack.getParam(closestIdx);
         return getCurvature(pos, numPoints, dt, speed);
     }
@@ -372,4 +375,34 @@ public class SlotcarTrack implements java.io.Serializable {
 
         updateSpline();
     }
+
+
+    /**
+     * Updates the internal slotcar state by the observed XY-position of the car
+     * and the speed estimated from events.
+     * @param XYpos The observed position of the car
+     * @param speed The estimated speed of the car
+     * @param onTrack Is the car still on the track
+     * @return The current state of the car
+     */
+    public SlotcarState updateSlotcarState(Point2D XYpos, double speed, boolean onTrack) {
+        int closestIdx = findClosest(XYpos, pointTolerance);
+
+        carState.pos = smoothTrack.getParam(closestIdx);
+        carState.segmentIdx = closestIdx;
+        carState.onTrack = onTrack;
+        carState.speed = speed;
+        carState.XYpos = XYpos;
+
+        return carState;
+    }
+
+    public float getPointTolerance() {
+        return pointTolerance;
+    }
+
+    public void setPointTolerance(float pointTolerance) {
+        this.pointTolerance = pointTolerance;
+    }
+
 }

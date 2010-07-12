@@ -86,13 +86,16 @@ This still requires us to have an estimated relation between throttle and result
              */
              measuredSpeedPPS=(float)car.getSpeedPPS();
              measuredLocation=car.getLocation();
-            int trackPos= track.findClosest(measuredLocation, getMaxDistanceFromTrackPoint());
-            track.getCarState().pos=trackPos;
-            track.getCarState().XYpos=measuredLocation; // update car state
-            track.getCarState().speed=measuredSpeedPPS;
+             
+             // Encapsulated update in track object
+             SlotcarState newState = track.updateSlotcarState(measuredLocation, measuredSpeedPPS, true);
+            int trackPos= newState.segmentIdx;
+            //int trackPos= track.findClosest(measuredLocation, getMaxDistanceFromTrackPoint());
 // TODO nothing below is correct!!!!
             // compute the curvature at throttleDelayMs in the future, given our measured speed
-            UpcomingCurvature curvature=track.getCurvature(1, 1, measuredSpeedPPS/10);
+
+            double timeStep = getThrottleDelayMs();
+            UpcomingCurvature curvature=track.getCurvature(trackPos, 1, timeStep, measuredSpeedPPS/10);
 
             // compute desiredSpeedPPS given limit on lateral acceleration 'g', curvature 'c', and speed 'v'
             // v^2*c<g, so
@@ -189,6 +192,8 @@ This still requires us to have an estimated relation between throttle and result
     public void setMaxDistanceFromTrackPoint(float maxDistanceFromTrackPoint) {
         this.maxDistanceFromTrackPoint = maxDistanceFromTrackPoint;
         prefs().putFloat("CurvatureBasedController.maxDistanceFromTrackPoint",maxDistanceFromTrackPoint);
+        // Define tolerance for track model
+        track.setPointTolerance(maxDistanceFromTrackPoint);
     }
 
     /**
