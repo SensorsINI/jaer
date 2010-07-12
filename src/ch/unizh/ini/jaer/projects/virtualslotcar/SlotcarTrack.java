@@ -105,7 +105,7 @@ public class SlotcarTrack implements java.io.Serializable {
     }
 
     /** Find the closest point on the track.
-     * @param pos Point for which to search closest track point.
+     * @param pos Point in x,y Cartesian space for which to search closest track point.
      * @return Index of closest point on track or -1 if no track point is <= maxDist from pos.
      */
     public int findClosest(Point2D pos, double maxDist) {

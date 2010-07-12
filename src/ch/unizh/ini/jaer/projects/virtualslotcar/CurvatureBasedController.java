@@ -4,6 +4,7 @@
  */
 
 package ch.unizh.ini.jaer.projects.virtualslotcar;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.Font;
 import java.awt.Rectangle;
@@ -83,19 +84,19 @@ This still requires us to have an estimated relation between throttle and result
              */
              measuredSpeedPPS=(float)car.getSpeedPPS();
              measuredLocation=car.getLocation();
-            int trackPos= track.findClosest(measuredLocation, maxDistanceFromTrackPoint);
+            int trackPos= track.findClosest(measuredLocation, getMaxDistanceFromTrackPoint());
             track.getCarState().pos=trackPos;
             track.getCarState().XYpos=measuredLocation; // update car state
             track.getCarState().speed=measuredSpeedPPS;
 // TODO nothing below is correct!!!!
             // compute the curvature at throttleDelayMs in the future, given our measured speed
-            UpcomingCurvature curvature=track.getCurvature(1, throttleDelayMs*1000, measuredSpeedPPS);
+            UpcomingCurvature curvature=track.getCurvature(1, 1, measuredSpeedPPS/10);
 
             // compute desiredSpeedPPS given limit on lateral acceleration 'g', curvature 'c', and speed 'v'
             // v^2*c<g, so
             // v<sqrt(g/c)
-            float c=curvature.getCurvature(0);
-            float g=lateralAccelerationLimitPPS2;
+            float c=Math.abs(curvature.getCurvature(0));
+            float g=getLateralAccelerationLimitPPS2();
             float v=(float)Math.sqrt(g/c);
             desiredSpeedPPS=v;
             upcomingCurvature=c;
@@ -152,6 +153,51 @@ This still requires us to have an estimated relation between throttle and result
     public void annotate(GLAutoDrawable drawable) {
         String s=String.format("CurvatureBasedController\nDesired speed: %8.1f\nMeasured speed %8.1f\nCurvature: %8.1f\nThrottle: %8.1f",desiredSpeedPPS, measuredSpeedPPS, upcomingCurvature, throttle);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
+    }
+
+    /**
+     * @return the lateralAccelerationLimitPPS2
+     */
+    public float getLateralAccelerationLimitPPS2() {
+        return lateralAccelerationLimitPPS2;
+    }
+
+    /**
+     * @param lateralAccelerationLimitPPS2 the lateralAccelerationLimitPPS2 to set
+     */
+    public void setLateralAccelerationLimitPPS2(float lateralAccelerationLimitPPS2) {
+        this.lateralAccelerationLimitPPS2 = lateralAccelerationLimitPPS2;
+        prefs().putFloat("CurvatureBasedController.lateralAccelerationLimitPPS2",lateralAccelerationLimitPPS2);
+    }
+
+    /**
+     * @return the maxDistanceFromTrackPoint
+     */
+    public float getMaxDistanceFromTrackPoint() {
+        return maxDistanceFromTrackPoint;
+    }
+
+    /**
+     * @param maxDistanceFromTrackPoint the maxDistanceFromTrackPoint to set
+     */
+    public void setMaxDistanceFromTrackPoint(float maxDistanceFromTrackPoint) {
+        this.maxDistanceFromTrackPoint = maxDistanceFromTrackPoint;
+        prefs().putFloat("CurvatureBasedController.maxDistanceFromTrackPoint",maxDistanceFromTrackPoint);
+    }
+
+    /**
+     * @return the throttleDelayMs
+     */
+    public float getThrottleDelayMs() {
+        return throttleDelayMs;
+    }
+
+    /**
+     * @param throttleDelayMs the throttleDelayMs to set
+     */
+    public void setThrottleDelayMs(float throttleDelayMs) {
+        this.throttleDelayMs = throttleDelayMs;
+        prefs().putFloat("CurvatureBasedController.throttleDelayMs",throttleDelayMs);
     }
     
 

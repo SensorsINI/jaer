@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 
-package ch.unizh.ini.jaer.projects.virtualslotcar;
+package net.sf.jaer.graphics;
 
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.Font;
@@ -11,18 +11,18 @@ import java.awt.geom.Rectangle2D;
 import javax.media.opengl.GLAutoDrawable;
 
 /**
- * Holds static methods for text rendering in the annotation for the slot car project.
+ * Holds static methods for text rendering in the annotation of an EventFilter chip output display.
  *
  * @author tobi
  */
-class MultilineAnnotationTextRenderer {
+public class MultilineAnnotationTextRenderer {
 
     private static TextRenderer renderer;
     private static float yshift=0;
     private static float xposition=1;
 
     /** Call to reset to origin */
-    static void resetToOrigin(){
+    public static void resetToOrigin(){
         yshift=0;
     }
 
@@ -30,7 +30,7 @@ class MultilineAnnotationTextRenderer {
      *
      * @param s the string to render.
      */
-     static void renderMultilineString(String s) {
+     public static void renderMultilineString(String s) {
         if ( renderer == null ){
             renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,24),true,true);
         }
