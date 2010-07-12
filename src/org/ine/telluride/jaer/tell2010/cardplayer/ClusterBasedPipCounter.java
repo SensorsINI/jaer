@@ -7,8 +7,6 @@ package org.ine.telluride.jaer.tell2010.cardplayer;
 import java.io.IOException;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
@@ -17,7 +15,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
-import net.sf.jaer.util.networking.UDPMesssgeSender;
+import org.ine.telluride.jaer.tell2010.spinningcardclassifier.CardNamePlayer;
 
 /**
  * Uses RectangularCluterTracker to send estimates of card value to the card player.
@@ -33,6 +31,11 @@ public class ClusterBasedPipCounter extends EventFilter2D implements FrameAnnota
     FilterChain filterChain;
     CardStatsMessageSender msgSender;
     CardHistogram cardHist = new CardHistogram();
+    private boolean sayCard = prefs().getBoolean("ClusterBasedPipCounter.sayCard", true);
+    private int minSayCardIntervalMs = prefs().getInt("ClusterBasedPipCounter.minSayCardIntervalMs", 400);
+    private int maxLikliehoodCardValue = 0;
+    private CardNamePlayer[] namePlayers = new CardNamePlayer[13];
+    private long lastTimeSaidCar = 0;
 
     public ClusterBasedPipCounter(AEChip chip) {
         super(chip);
@@ -42,6 +45,13 @@ public class ClusterBasedPipCounter extends EventFilter2D implements FrameAnnota
         setEnclosedFilterChain(filterChain);
         msgSender = new CardStatsMessageSender();
         tracker.addObserver(this);
+        for (int i = 0; i < 13; i++) {
+            try {
+                namePlayers[i] = new CardNamePlayer(i);
+            } catch (Exception ex) {
+                log.warning(ex.toString());
+            }
+        }
     }
 
     @Override
@@ -53,7 +63,7 @@ public class ClusterBasedPipCounter extends EventFilter2D implements FrameAnnota
             } catch (IOException ex) {
                 log.warning("couldn't open the UDPMesssgeSender to send messages about card stats: " + ex);
             }
-        }else{
+        } else {
 //            msgSender.close(); // don't close or else receiever may have bound to the port and will not receive messages on setting filter enabled again
         }
     }
@@ -88,6 +98,14 @@ public class ClusterBasedPipCounter extends EventFilter2D implements FrameAnnota
         }
         int npips = 0;
         if ((npips = tracker.getNumVisibleClusters()) == 0) {
+            // card has gone past, say peak value of hist
+            if (sayCard && cardHist.getMaxValueBin() != 0 && System.currentTimeMillis() - lastTimeSaidCar > minSayCardIntervalMs) {
+                int val = cardHist.getMaxValueBin();
+                if (val > 0 && val <= 13 && namePlayers[val] != null) {
+                    lastTimeSaidCar = System.currentTimeMillis();
+                    namePlayers[val - 1].play(); // 0=ace, 12=king
+                }
+            }
             cardHist.reset();
             cardHist.incValue(0);
         } else {
@@ -98,5 +116,39 @@ public class ClusterBasedPipCounter extends EventFilter2D implements FrameAnnota
         } catch (IOException ex) {
             log.warning("couldn't send CardHistogram: " + ex);
         }
+    }
+
+    /**
+     * Get the value of sayCard
+     *
+     * @return the value of sayCard
+     */
+    public boolean isSayCard() {
+        return sayCard;
+    }
+
+    /**
+     * Set the value of sayCard
+     *
+     * @param sayCard new value of sayCard
+     */
+    public void setSayCard(boolean sayCard) {
+        this.sayCard = sayCard;
+        prefs().putBoolean("ClusterBasedPipCounter.sayCard", sayCard);
+    }
+
+    /**
+     * @return the minSayCardIntervalMs
+     */
+    public int getMinSayCardIntervalMs() {
+        return minSayCardIntervalMs;
+    }
+
+    /**
+     * @param minSayCardIntervalMs the minSayCardIntervalMs to set
+     */
+    public void setMinSayCardIntervalMs(int minSayCardIntervalMs) {
+        this.minSayCardIntervalMs = minSayCardIntervalMs;
+        prefs().putInt("ClusterBasedPipCounter.minSayCardIntervalMs", minSayCardIntervalMs);
     }
 }

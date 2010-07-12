@@ -18,19 +18,24 @@ public class CardHistogram {
     int[] suitCounts = new int[5]; // suits, including bin 0 which is "don't know"
     final char SEP = UDPMesssgeSender.SEP;
     final String header = "retina"+SEP+"cardstats"+SEP;
+    private int maxValueBin=0, maxSuitBin=4;
 
     public void reset() {
         Arrays.fill(valueCounts, 0);
         Arrays.fill(suitCounts, 0);
+        maxValueBin=0;
+        maxSuitBin=4;
     }
 
     public final void incValue(int value) {
         valueCounts[value]++;
+        if(valueCounts[value]>valueCounts[maxValueBin]) maxValueBin=value;
     }
 
     public final void incSuit(int suit) {
         suitCounts[suit]++;
-    }
+         if(suitCounts[suit]>suitCounts[maxSuitBin]) maxSuitBin=suit;
+   }
 
     @Override
     public String toString() {
@@ -44,5 +49,19 @@ public class CardHistogram {
             sb.append(SEP);
         }
         return sb.toString();
+    }
+
+    /**
+     * @return the maxValueBin
+     */
+    public int getMaxValueBin() {
+        return maxValueBin;
+    }
+
+    /**
+     * @return the maxSuitBin
+     */
+    public int getMaxSuitBin() {
+        return maxSuitBin;
     }
 }
