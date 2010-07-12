@@ -40,6 +40,19 @@ public class SlotcarState implements java.io.Serializable {
     /** Still on track or has flown off? */
     public boolean onTrack;
 
+    public String toString(){
+        return String.format("SlotcarState: pos= %f XYPos= %f %f absoluteOrientation= %f %f segmentIdx= %d relativeOrientation= %f angularVelocity= %f speed= %f outwardForce= %f onTrack= %s",
+                pos,
+                XYpos==null? Float.NaN: XYpos.getX(), XYpos==null? Float.NaN:XYpos.getY(),
+                absoluteOrientation==null? Float.NaN: absoluteOrientation.getX(), absoluteOrientation==null? Float.NaN: absoluteOrientation.getY(),
+                segmentIdx,
+                relativeOrientation,
+                angularVelocity,
+                speed,
+                outwardForce,
+                onTrack);
+    }
+
     /**
      * Copy constructor for the state object
      * @param oldState Previous state to copy

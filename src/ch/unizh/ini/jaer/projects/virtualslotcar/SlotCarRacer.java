@@ -23,8 +23,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.StateMachineStates;
 import net.sf.jaer.util.TobiLogger;
 
-
-        // clip throttle to hard limit
+// clip throttle to hard limit
 /**
  * Controls slot car tracked from eye of god view.
  *
@@ -54,7 +53,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     private float maxThrottle = prefs().getFloat("SlotCarRacer.maxThrottle", 1);
     private TrackdefineFilter trackDefineFilter;
     private TrackEditor trackEditor;
-    private int crashDistancePixels=prefs().getInt("SlotCarRacer.crashDistancePixels",20);
+    private int crashDistancePixels = prefs().getInt("SlotCarRacer.crashDistancePixels", 20);
 
     public enum ControllerToUse {
 
@@ -62,7 +61,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     };
     private ControllerToUse controllerToUse = ControllerToUse.valueOf(prefs().get("SlotCarRacer.controllerToUse", ControllerToUse.SimpleSpeedController.toString()));
 
-       /** possible states,
+    /** possible states,
      * <ol>
      * <li> STARTING means no car is tracked or tracker has not found a car cluster near the track model,
      * <li> RUNNING is the active state,
@@ -72,15 +71,21 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
      * because it has stalled out and stopped moving. is after there have not been any definite balls for a while and we are waiting for a clear ball directed
      * </ol>
      */
-    public enum State {STARTING, RUNNING, CRASHED, STALLED}
-    protected class RacerState extends StateMachineStates{
-        State state=State.STARTING;
+    public enum State {
+
+        STARTING, RUNNING, CRASHED, STALLED
+    }
+
+    protected class RacerState extends StateMachineStates {
+
+        State state = State.STARTING;
+
         @Override
-        public Enum getInitial(){
+        public Enum getInitial() {
             return State.STARTING;
         }
     }
-    private RacerState state=new RacerState();
+    private RacerState state = new RacerState();
 
     public SlotCarRacer(AEChip chip) {
         super(chip);
@@ -96,6 +101,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
 
         carTracker = new CarTracker(chip);
         filterChain.add(carTracker);
+        carTracker.setEnclosed(true, this);
 
         setControllerToUse(controllerToUse);
 
@@ -128,11 +134,6 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
 //        trackEditor.setVisible(true); // will not work because TrackEditor is a JPanel, not a window
 //        trackEditor.requestFocusInWindow();
 //    }
-
-
-
- 
-
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         out = getEnclosedFilterChain().filterPacket(in);
@@ -140,7 +141,8 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         return out;
     }
     private float lastThrottle = 0;
-    private boolean showedMissingTrackWarning=false;
+    private boolean showedMissingTrackWarning = false;
+
     synchronized private void chooseNextState() {
 
         if (isOverrideThrottle()) {
@@ -148,9 +150,9 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         } else {
             if (state.get() == State.STARTING) {
                 lastThrottle = getOverriddenThrottleSetting();
-                if(state.timeSinceChanged()>300){
+                if (state.timeSinceChanged() > 300) {
                     state.set(State.RUNNING);
-                };
+                }
             } else if (state.get() == State.RUNNING) {
                 if (trackDefineFilter.getTrack() == null) {
                     if (!showedMissingTrackWarning) {
@@ -185,7 +187,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
                     state.set(State.STARTING);
                 }
             } else if (state.get() == State.STALLED) {
-                if(state.timeSinceChanged()>1000){
+                if (state.timeSinceChanged() > 1000) {
                     state.set(State.STARTING);
                 }
             }
@@ -199,12 +201,11 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
 
     }
 
-    public void doExtractTrack(){
-       setFilterEnabled(true);
+    public void doExtractTrack() {
+        setFilterEnabled(true);
         trackDefineFilter.setFilterEnabled(true);  // do this second so that trackDefineFilter is enabled
-         JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "TrackdefineFilter is now enabled; adjust it's parameters to extract track points from data");
+        JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "TrackdefineFilter is now enabled; adjust it's parameters to extract track points from data");
     }
-
 
     @Override
     public void resetFilter() {
@@ -218,11 +219,17 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     }
 
     public synchronized void annotate(GLAutoDrawable drawable) { // TODO may not want to synchronize here since this will block filtering durring annotation
-        MultilineAnnotationTextRenderer.resetToOrigin();
-        if(carTracker.isFilterEnabled()) carTracker.annotate(drawable);
-        if(throttleController.isFilterEnabled()) throttleController.annotate(drawable);
-        if(trackDefineFilter.isFilterEnabled()) trackDefineFilter.annotate(drawable);
-        String s = "SlotCarRacer: state: "+state.toString()+" throttle: " + lastThrottle;
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY()-2);
+//        if (carTracker.isFilterEnabled()) {
+//            carTracker.annotate(drawable);
+//        }
+//        if (throttleController.isFilterEnabled()) {
+//            throttleController.annotate(drawable);
+//        }
+//        if (trackDefineFilter.isFilterEnabled()) {
+//            trackDefineFilter.annotate(drawable);
+//        }
+        String s = "SlotCarRacer\nstate: " + state.toString() + "\nthrottle: " + lastThrottle;
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 
@@ -346,25 +353,24 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         try {
             switch (controllerToUse) {
                 case SimpleSpeedController:
-                    if (!(throttleController instanceof SimpleSpeedController)) {
+                    if (throttleController == null || !(throttleController instanceof SimpleSpeedController)) {
                         filterChain.remove(throttleController);
                         throttleController = new SimpleSpeedController(chip);
-                        throttleController.setFilterEnabled(true);
-                        filterChain.add(throttleController);
-                        chip.getAeViewer().getFilterFrame().rebuildContents();
-                    }
+                   }
                     break;
                 case CurvatureBasedController:
-                    if (!(throttleController instanceof CurvatureBasedController)) {
+                    if (throttleController == null || !(throttleController instanceof CurvatureBasedController)) {
                         filterChain.remove(throttleController);
                         throttleController = new CurvatureBasedController(chip);
-                        throttleController.setFilterEnabled(true);
-                        filterChain.add(throttleController);
-                        chip.getAeViewer().getFilterFrame().rebuildContents();
                     }
                     break;
             }
+            throttleController.setFilterEnabled(true);
+            filterChain.add(throttleController);
+            throttleController.setEnclosed(true, this);
+            if(chip.getAeViewer()!=null && chip.getAeViewer().getFilterFrame()!=null) chip.getAeViewer().getFilterFrame().rebuildContents();
             prefs().put("SlotCarRacer.controllerToUse", controllerToUse.toString());
+            log.info("set throttleController to instance of "+throttleController.getClass());
         } catch (Exception e) {
             log.warning(e.toString());
         }

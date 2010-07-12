@@ -5,18 +5,13 @@
 
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
-import com.sun.opengl.util.j2d.TextRenderer;
-import java.awt.Font;
-import java.awt.Rectangle;
 import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.util.StateMachineStates;
 /**
  * Controls speed of car based on upcoming curvature of track, using measured speed of car and track model.
  * @author tobi
@@ -41,6 +36,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
 //    private float curvatureDeltaTimeMs=prefs().getFloat("CurvatureBasedController.curvatureDeltaTimeMs",1);
     private float lateralAccelerationLimitPPS2=prefs().getFloat("CurvatureBasedController.lateralAccelerationLimitPPS2", 4000);// 400pps change in 0.1s is about 4000pps2
     private float upcomingCurvature=0;
+    private SlotcarTrack track;
 
     public CurvatureBasedController(AEChip chip) {
         super(chip);
@@ -52,6 +48,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
         speedController=new SimpleSpeedController(chip);
         setEnclosedFilterChain(new FilterChain(chip));
         getEnclosedFilterChain().add(speedController);
+        speedController.setEnclosed(true, this); // to get GUI to show up properly
     }
 
     /** Computes throttle using tracker output and upcoming curvature, using methods from SlotcarTrack.
@@ -60,6 +57,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
      * @param track
      * @return the throttle from 0-1.
      */
+    @Override
     public float computeControl (CarTracker tracker,SlotcarTrack track){
         // find the csar, pass it to the track if there is one to get it's location, the use the UpcomingCurvature to compute the curvature coming up,
         // then compute the throttle to get our speed at the limit of traction.
@@ -68,7 +66,11 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
             // lost car tracking or just starting out
             return getThrottle();  // return last throttle
         }else{
-
+            if(track==null){
+                log.warning("null track model - can't compute control");
+                return getThrottle();
+            }
+            this.track=track; // set track for logging
             /*
              * during the normal running of the car, the steps would be as follows (which are computed in the controller, given the CarTracker and SlotcarTrack)
 
@@ -106,17 +108,20 @@ This still requires us to have an estimated relation between throttle and result
         }
     }
 
+    @Override
     public float getThrottle (){
         return throttle;
     }
 
  
+    @Override
     public String logControllerState() {
-        return String.format("%f\t%f\t%f",desiredSpeedPPS, measuredSpeedPPS, throttle);
+        return String.format("%f\t%f\t%f\t%s",desiredSpeedPPS, measuredSpeedPPS, throttle, track==null? null:track.getCarState());
     }
 
+    @Override
     public String getLogContentsHeader() {
-        return "desiredSpeedPPS, measuredSpeedPPS, throttle";
+        return "upcomingCurvature, lateralAccelerationLimitPPS2, desiredSpeedPPS, measuredSpeedPPS, throttle, slotCarState";
     }
 
 
@@ -150,6 +155,7 @@ This still requires us to have an estimated relation between throttle and result
         prefs().putFloat("CurvatureBasedController.defaultThrottle",defaultThrottle);
     }
 
+    @Override
     public void annotate(GLAutoDrawable drawable) {
         String s=String.format("CurvatureBasedController\nDesired speed: %8.1f\nMeasured speed %8.1f\nCurvature: %8.1f\nThrottle: %8.1f",desiredSpeedPPS, measuredSpeedPPS, upcomingCurvature, throttle);
         MultilineAnnotationTextRenderer.renderMultilineString(s);

@@ -1211,7 +1211,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      */
     public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
         if (propertyChangeEvent.getSource() == getFilter()) {
-            if (propertyChangeEvent.getPropertyName().equals("filterEnabled")) { // comes from EventFilter when filter is enabled or disabled
+            if(propertyChangeEvent.getPropertyName().equals("selected")){
+                return; // ignore changes to "selected" for filter because these are masked out from GUI building
+            }else if (propertyChangeEvent.getPropertyName().equals("filterEnabled")) { // comes from EventFilter when filter is enabled or disabled
 //            log.info("propertyChangeEvent name="+propertyChangeEvent.getPropertyName()+" src="+propertyChangeEvent.getSource()+" oldValue="+propertyChangeEvent.getOldValue()+" newValue="+propertyChangeEvent.getNewValue());
                 boolean yes = (Boolean) propertyChangeEvent.getNewValue();
                 enabledCheckBox.setSelected(yes);
@@ -1324,12 +1326,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         if (c == null) {
             return;
         }
+        // TODO fix bug here with enclosed filters not showing up if they are enclosed in enclosed filter, unless they are declared as enclosed
         if (!getFilter().isEnclosed() && c instanceof Window) {
             if (c instanceof FilterFrame) {
                 // hide all filters except one that is being modified, *unless* we are an enclosed filter
                 FilterFrame ff = (FilterFrame) c;
                 for (FilterPanel f : ff.filterPanels) {
                     if (f == this) {
+                        f.setVisible(yes);
                         continue;  // don't do anything to ourselves
                     }
 

@@ -68,8 +68,8 @@ public class ClusterBasedPipCounter extends EventFilter2D implements FrameAnnota
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        MultilineAnnotationTextRenderer.resetToOrigin();
-        MultilineAnnotationTextRenderer.renderMultilineString("ClusterBasedPipCounter\n"+cardHist.toString().substring(0,30));
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY()-2);
+        MultilineAnnotationTextRenderer.renderMultilineString("ClusterBasedPipCounter\n"+cardHist.toString().substring(0,50));
     }
 
     @Override

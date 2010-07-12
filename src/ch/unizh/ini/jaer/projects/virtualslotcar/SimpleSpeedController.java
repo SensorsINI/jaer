@@ -38,6 +38,7 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
         setPropertyTooltip("gain", "gain of proportional controller");
     }
 
+    @Override
     public float computeControl (CarTracker tracker,SlotcarTrack track){
         ClusterInterface car=tracker.getCarCluster();
         if(car==null){
@@ -52,15 +53,18 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
         }
     }
 
+    @Override
     public float getThrottle (){
         return throttle;
     }
 
  
+    @Override
     public String logControllerState() {
         return String.format("%f\t%f\t%f",desiredSpeedPPS, measuredSpeedPPS, throttle);
     }
 
+    @Override
     public String getLogContentsHeader() {
         return "desiredSpeedPPS, measuredSpeedPPS, throttle";
     }
@@ -131,7 +135,7 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
     }
 
     public void annotate(GLAutoDrawable drawable) {
-        String s=String.format("SimpleSpeedController: Desired speed: %8.1f, Measured %8.1f",desiredSpeedPPS, measuredSpeedPPS);
+        String s=String.format("SimpleSpeedController\nDesired speed: %8.1f\nMeasured: %8.1f\nThrottle: %5.2f",desiredSpeedPPS, measuredSpeedPPS,throttle);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 
