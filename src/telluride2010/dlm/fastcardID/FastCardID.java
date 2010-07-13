@@ -6,7 +6,7 @@
 /*
  * PcaTrackingFilter.java
  *
- * @author David Mascarnas
+ * @author David Mascarenas
  * Created on July 11, 2010
  *
  * "This is meant to identify a playing card moving quickly across the field of
@@ -27,8 +27,17 @@ import net.sf.jaer.util.filter.LowpassFilter;
 import java.awt.Graphics2D;
 import java.awt.geom.*;
 import java.util.Arrays;
+import java.io.IOException;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+//package org.ine.telluride.jaer.tell2010.cardplayer;
+import org.ine.telluride.jaer.tell2010.cardplayer.CardHistogram;
+import org.ine.telluride.jaer.tell2010.cardplayer.CardStatsMessageSender;
+
+import net.sf.jaer.util.networking.UDPMesssgeSender;
+
+
 //DLM additions
 import java.lang.Math;
 
@@ -88,12 +97,15 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
     int aspect_ratio_allowable_error_pts=getPrefs().getInt("FastCardID.aspect_ratio_allowable_error_pts",10);
     {setPropertyTooltip("aspect_ratio_allowable_error_pts","Aspect ratio allowable error in pts");}
 
-     int pip_bin_hist_threshold=getPrefs().getInt("FastCardID.pip_bin_hist_threshold",100);
+     int pip_bin_hist_threshold=getPrefs().getInt("FastCardID.pip_bin_hist_threshold",10);
     {setPropertyTooltip("pip_bin_hist_threshold","number of events needed in a bin to 'see' a pip");}
 
+     //Tobi's UDP message sender
+     CardStatsMessageSender msgSender;
+     //msgSender = new CardStatsMessageSender();
 
     //histogram variables
-    int[] card_value_hist = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};    //This is a histogram for the number of the card
+    //int[] card_value_hist = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};    //This is a histogram for the number of the card
     int[] pip_bin_hist = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};             //This is the count of events in a given sector of the card
     int pip_count = 0;
 
@@ -121,6 +133,17 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
     Point2D eventPoint = new Point2D.Float();
     Point2D stddev1Point=new Point2D.Float();
     Point2D stddev2Point=new Point2D.Float();
+    Point2D pipbiny1trPoint= new Point2D.Float(), pipbiny1brPoint= new Point2D.Float(), pipbiny1tlPoint= new Point2D.Float(), pipbiny1blPoint= new Point2D.Float();
+    Point2D pipbiny2tlPoint= new Point2D.Float(), pipbiny2blPoint= new Point2D.Float(), pipbiny3tlPoint= new Point2D.Float(), pipbiny3blPoint= new Point2D.Float(); 
+    Point2D pipbiny2trPoint= new Point2D.Float(), pipbiny2brPoint= new Point2D.Float(), pipbiny3trPoint= new Point2D.Float(), pipbiny3brPoint= new Point2D.Float();
+    Point2D pipbinx4trPoint= new Point2D.Float(), pipbinx4tlPoint= new Point2D.Float(), pipbinx4brPoint= new Point2D.Float(), pipbinx4blPoint= new Point2D.Float();
+    Point2D pipbinx3trPoint= new Point2D.Float(), pipbinx3tlPoint= new Point2D.Float(), pipbinx3brPoint= new Point2D.Float(), pipbinx3blPoint= new Point2D.Float();
+    Point2D pipbinx2trPoint= new Point2D.Float(), pipbinx2tlPoint= new Point2D.Float(), pipbinx2brPoint= new Point2D.Float(), pipbinx2blPoint= new Point2D.Float();
+    Point2D pipbinx1trPoint= new Point2D.Float(), pipbinx1tlPoint= new Point2D.Float(), pipbinx1brPoint= new Point2D.Float(), pipbinx1blPoint= new Point2D.Float();
+    Point2D pipbinx5trPoint= new Point2D.Float(), pipbinx5tlPoint= new Point2D.Float(), pipbinx5brPoint= new Point2D.Float(), pipbinx5blPoint= new Point2D.Float();
+    Point2D pipbinx6trPoint= new Point2D.Float(), pipbinx6tlPoint= new Point2D.Float(), pipbinx6brPoint= new Point2D.Float(), pipbinx6blPoint= new Point2D.Float();
+    Point2D pipbinx7trPoint= new Point2D.Float(), pipbinx7tlPoint= new Point2D.Float(), pipbinx7brPoint= new Point2D.Float(), pipbinx7blPoint= new Point2D.Float();
+
     float xmedian=0f;
     float ymedian=0f;
     float xstd=0f;
@@ -148,9 +171,15 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
     double binx7 = .643;
 
 
+    //Tobi's card histogram classes
+    CardHistogram cardHist = new CardHistogram();
 
 
-    /** Creates a new instance of PcaTracker */
+    
+
+
+
+    /** Creates a new instance of FastCardID */
     public FastCardID(AEChip chip) {
         super(chip);
 
@@ -162,9 +191,6 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
         }
 
     }
-
-
-   
 
     public void resetFilter() {
         medianPoint.setLocation(chip.getSizeX()/2,chip.getSizeY()/2);
@@ -287,6 +313,15 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
         checkOutputPacketEventType(in); //This is what actually initiates the out EventPacket of the correct type.
         OutputEventIterator outItr=out.outputIterator();
 
+        /*
+        try {
+            msgSender.open();
+        } catch (IOException ex) {
+            log.warning("couldn't open the UDPMesssgeSender to send messages about card stats: " + ex);
+        }
+        */
+
+
             for(Object o:in){
                 BasicEvent e=(BasicEvent)o;
 
@@ -394,6 +429,84 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
                 stddev1Point.setLocation(10, 10 + stddev1);
                 stddev2Point.setLocation(20, 10 + stddev2);
 
+                //These are points representing the pip_hist bins
+                //middle vertical bars
+                pipbiny1tlPoint.setLocation(xmean + scale_stddev * stddev_inc *(      (eigvec1x * stddev1) + (biny1 * eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(      (eigvec1y * stddev1) + (biny1 * eigvec2y * stddev2)));
+                pipbiny1blPoint.setLocation(xmean + scale_stddev * stddev_inc *( -1 * (eigvec1x * stddev1) + (biny1 * eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *( -1 * (eigvec1y * stddev1) + (biny1 * eigvec2y * stddev2)));
+
+                pipbiny1trPoint.setLocation(xmean + scale_stddev * stddev_inc *(      (eigvec1x * stddev1) - (biny1 * eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(      (eigvec1y * stddev1) - (biny1 * eigvec2y * stddev2)));
+                pipbiny1brPoint.setLocation(xmean + scale_stddev * stddev_inc *( -1 * (eigvec1x * stddev1) - (biny1 * eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *( -1 * (eigvec1y * stddev1) - (biny1 * eigvec2y * stddev2)));
+
+                //left vertical bars
+                pipbiny2tlPoint.setLocation(xmean + scale_stddev * stddev_inc *(      (eigvec1x * stddev1) + (biny2 * eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(      (eigvec1y * stddev1) + (biny2 * eigvec2y * stddev2)));
+                pipbiny2blPoint.setLocation(xmean + scale_stddev * stddev_inc *( -1 * (eigvec1x * stddev1) + (biny2 * eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *( -1 * (eigvec1y * stddev1) + (biny2 * eigvec2y * stddev2)));
+
+                pipbiny3tlPoint.setLocation(xmean + scale_stddev * stddev_inc *(      (eigvec1x * stddev1) + (biny3 * eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(      (eigvec1y * stddev1) + (biny3 * eigvec2y * stddev2)));
+                pipbiny3blPoint.setLocation(xmean + scale_stddev * stddev_inc *( -1 * (eigvec1x * stddev1) + (biny3 * eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *( -1 * (eigvec1y * stddev1) + (biny3 * eigvec2y * stddev2)));
+
+                //Right vertical bars
+                pipbiny2trPoint.setLocation(xmean + scale_stddev * stddev_inc *(      (eigvec1x * stddev1) - (biny2 * eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(      (eigvec1y * stddev1) - (biny2 * eigvec2y * stddev2)));
+                pipbiny2brPoint.setLocation(xmean + scale_stddev * stddev_inc *( -1 * (eigvec1x * stddev1) - (biny2 * eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *( -1 * (eigvec1y * stddev1) - (biny2 * eigvec2y * stddev2)));
+
+                pipbiny3trPoint.setLocation(xmean + scale_stddev * stddev_inc *(      (eigvec1x * stddev1) - (biny3 * eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(      (eigvec1y * stddev1) - (biny3 * eigvec2y * stddev2)));
+                pipbiny3brPoint.setLocation(xmean + scale_stddev * stddev_inc *( -1 * (eigvec1x * stddev1) - (biny3 * eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *( -1 * (eigvec1y * stddev1) - (biny3 * eigvec2y * stddev2)));
+
+                //Top Horizontal bar
+                pipbinx4trPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx4 * (eigvec1x * stddev1) - (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx4 * (eigvec1y * stddev1) - (eigvec2y * stddev2)));
+                pipbinx4tlPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx4 * (eigvec1x * stddev1) + (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx4 * (eigvec1y * stddev1) + (eigvec2y * stddev2)));
+
+                //Bottom Horizontal bar
+                pipbinx4brPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx4 * -1 * (eigvec1x * stddev1) - (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx4 * -1 * (eigvec1y * stddev1) - (eigvec2y * stddev2)));
+                pipbinx4blPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx4 * -1 * (eigvec1x * stddev1) + (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx4 * -1 * (eigvec1y * stddev1) + (eigvec2y * stddev2)));
+
+                //Top Horizontal bar
+                pipbinx3trPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx3 * (eigvec1x * stddev1) - (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx3 * (eigvec1y * stddev1) - (eigvec2y * stddev2)));
+                pipbinx3tlPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx3 * (eigvec1x * stddev1) + (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx3 * (eigvec1y * stddev1) + (eigvec2y * stddev2)));
+
+                //Bottom Horizontal bar
+                pipbinx3brPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx3 * -1 * (eigvec1x * stddev1) - (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx3 * -1 * (eigvec1y * stddev1) - (eigvec2y * stddev2)));
+                pipbinx3blPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx3 * -1 * (eigvec1x * stddev1) + (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx3 * -1 * (eigvec1y * stddev1) + (eigvec2y * stddev2)));
+
+                //Top Horizontal bar
+                pipbinx2trPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx2 * (eigvec1x * stddev1) - (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx2 * (eigvec1y * stddev1) - (eigvec2y * stddev2)));
+                pipbinx2tlPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx2 * (eigvec1x * stddev1) + (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx2 * (eigvec1y * stddev1) + (eigvec2y * stddev2)));
+
+                //Bottom Horizontal bar
+                pipbinx2brPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx2 * -1 * (eigvec1x * stddev1) - (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx2 * -1 * (eigvec1y * stddev1) - (eigvec2y * stddev2)));
+                pipbinx2blPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx2 * -1 * (eigvec1x * stddev1) + (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx2 * -1 * (eigvec1y * stddev1) + (eigvec2y * stddev2)));
+
+                //Top Horizontal bar
+                pipbinx1trPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx1 * (eigvec1x * stddev1) - (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx1 * (eigvec1y * stddev1) - (eigvec2y * stddev2)));
+                pipbinx1tlPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx1 * (eigvec1x * stddev1) + (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx1 * (eigvec1y * stddev1) + (eigvec2y * stddev2)));
+
+                //Bottom Horizontal bar
+                pipbinx1brPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx1 * -1 * (eigvec1x * stddev1) - (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx1 * -1 * (eigvec1y * stddev1) - (eigvec2y * stddev2)));
+                pipbinx1blPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx1 * -1 * (eigvec1x * stddev1) + (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx1 * -1 * (eigvec1y * stddev1) + (eigvec2y * stddev2)));
+
+                //Top Horizontal bar
+                pipbinx5trPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx5 * (eigvec1x * stddev1) - (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx5 * (eigvec1y * stddev1) - (eigvec2y * stddev2)));
+                pipbinx5tlPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx5 * (eigvec1x * stddev1) + (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx5 * (eigvec1y * stddev1) + (eigvec2y * stddev2)));
+
+                //Bottom Horizontal bar
+                pipbinx5brPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx5 * -1 * (eigvec1x * stddev1) - (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx5 * -1 * (eigvec1y * stddev1) - (eigvec2y * stddev2)));
+                pipbinx5blPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx5 * -1 * (eigvec1x * stddev1) + (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx5 * -1 * (eigvec1y * stddev1) + (eigvec2y * stddev2)));
+
+                 //Top Horizontal bar
+                pipbinx6trPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx6 * (eigvec1x * stddev1) - (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx6 * (eigvec1y * stddev1) - (eigvec2y * stddev2)));
+                pipbinx6tlPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx6 * (eigvec1x * stddev1) + (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx6 * (eigvec1y * stddev1) + (eigvec2y * stddev2)));
+
+                //Bottom Horizontal bar
+                pipbinx6brPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx6 * -1 * (eigvec1x * stddev1) - (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx6 * -1 * (eigvec1y * stddev1) - (eigvec2y * stddev2)));
+                pipbinx6blPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx6 * -1 * (eigvec1x * stddev1) + (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx6 * -1 * (eigvec1y * stddev1) + (eigvec2y * stddev2)));
+
+                //Top Horizontal bar
+                pipbinx7trPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx7 * (eigvec1x * stddev1) - (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx7 * (eigvec1y * stddev1) - (eigvec2y * stddev2)));
+                pipbinx7tlPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx7 * (eigvec1x * stddev1) + (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx7 * (eigvec1y * stddev1) + (eigvec2y * stddev2)));
+
+                //Bottom Horizontal bar
+                pipbinx7brPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx7 * -1 * (eigvec1x * stddev1) - (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx7 * -1 * (eigvec1y * stddev1) - (eigvec2y * stddev2)));
+                pipbinx7blPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx7 * -1 * (eigvec1x * stddev1) + (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx7 * -1 * (eigvec1y * stddev1) + (eigvec2y * stddev2)));
+
 
                 //Put the event data in the ring buffer
                 if (rb_index < ring_buffer_length ) {
@@ -406,7 +519,6 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
                     ring_bufferY[rb_index] = e.y;
                 }
 
-
                 //Now begin checking whether or not a card is present
                 //First check the aspect ratio;
 
@@ -414,17 +526,24 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
 
                 aspect_ratio_error = java.lang.Math.abs(aspect_ratio -aspect_ratio_card)/aspect_ratio_card;
 
+                //Aspect ratio may not be a good way to identify whether or not a card is there.  
+
                
                 if (aspect_ratio_error < (aspect_ratio_allowable_error_inc * aspect_ratio_allowable_error_pts)) {  
                     //check for a change in the flag to reset the histogram buffers
-                    System.out.println("Card Present");
+                    //System.out.println("Card Present");
                     if (card_present_flag == false ) {
                         //Indicate card has entered the screen
                         //System.out.println("Card Present");
                         //Here reinitialize the card value matrix to 0s
+
+                        cardHist.reset();
+
+                        /*
                         for (int ii = 0; ii < card_value_hist.length; ii++){
                             card_value_hist[ii] = 0;            
                         }
+                        */
 
                         for (int ii = 0; ii < pip_bin_hist.length; ii++){
                             pip_bin_hist[ii] = 0;
@@ -432,7 +551,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
                     }
                     card_present_flag = true;
                 } else {
-                    System.out.println("Card Not Present");
+                    //System.out.println("Card Not Present");
                     if (card_present_flag == true ) {
                         //Output the card_value_hist
                         //Indicate card is gone
@@ -454,14 +573,12 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
                     //Now project this relative vector onto the card coordinate frame
                     //Then scale by the std dev in the two directions.  
 
-                    cardx = (eigvec1x * e.x + eigvec1y * e.y)/(stddev1 * scale_stddev * stddev_inc);
-                    cardy = (eigvec2x * e.x + eigvec2y * e.y)/(stddev2 * scale_stddev * stddev_inc);
+                    cardx = (eigvec1x * relx + eigvec1y * rely)/(stddev1 * scale_stddev * stddev_inc);
+                    cardy = (eigvec2x * relx + eigvec2y * rely)/(stddev2 * scale_stddev * stddev_inc);
 
                     //Now determine whether the event falls into one of the pip bins
                     //This is kind of the heart of the card ID
                     //Only pass forward events falling in a pip bin
-
-                    
 
                     if ((cardy >= -1 * biny3) && (cardy <= -1 * biny2)) {
 
@@ -544,19 +661,55 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
                     //For now assume the pip count equals the card value.
                     //Deal with the odd case of counting a value of 11 later.  
 
+                    //Remove this line and replace it with Tobi's Card Hist method
                     //card_value_hist[pip_count - 1]++;
-                    
+
+                    cardHist.incValue(pip_count);
+
+                    //Now send out the data over UDP
+
+                    /*
+                    try {
+                           msgSender.sendMessage(cardHist.toString());
+                    } catch (IOException ex) {
+                            log.warning("couldn't send CardHistogram: " + ex);
+                    }
+                    */
                 }
 
                 rb_index++;
             }
 
-        return in; //I just put this there since it seems necessary and Tobi said to do it.
+        return out; //I just put this there since it seems necessary and Tobi said to do it.
     }
+
+
+    //This is code to allow a multiline annotate
+    /*
+    @Override
+    public void annotate(GLAutoDrawable drawable) {
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() - 2);
+        String s="ClusterBasedPipCounter\n" + cardHist.toString().substring(0, 50);
+        if(lastCardValue>1 && lastCardValue<14) s+="\nCard value: "+cardNameFromValue(lastCardValue);
+        MultilineAnnotationTextRenderer.renderMultilineString(s);
+    }
+    */
 
     /** JOGL annotation */
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
+
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() - 2);
+        String ss="FastCardID\n" + cardHist.toString().substring(0, 50);
+        ss += "\nPip bin histogram\n";
+        if (card_present_flag == true) {
+            ss += "Card Present\n";
+        } else {
+            ss += "Card Not Present\n";
+        }
+        ss += "card x = " + cardx + " cardy = " + cardy + "\n";
+        MultilineAnnotationTextRenderer.renderMultilineString(ss);
+
         Point2D p=meanPoint;
         Point2D s=eventPoint;
         //Point2D o=orthoPoint;
@@ -571,8 +724,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
         Point2D sxx = stddev1Point;
         Point2D syy = stddev2Point;
 
-        //These are points to make a square
-
+        //These are points to make the pip_hist_bins
 
         GL gl=drawable.getGL();
         // already in chip pixel context with LL corner =0,0
@@ -627,7 +779,97 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
 
         gl.glVertex2d(w.getX(), w.getY());      //Origen
         gl.glVertex2d(t.getX(), t.getY());      //return to beginning
+
         gl.glEnd();
+
+        
+        gl.glColor3f(1,0,0);
+        gl.glLineWidth(1);
+        gl.glBegin(GL.GL_LINES);
+
+        //Draw the pip bin hist
+
+        //Middle verticle bars
+        gl.glVertex2d(pipbiny1tlPoint.getX(), pipbiny1tlPoint.getY());
+        gl.glVertex2d(pipbiny1blPoint.getX(), pipbiny1blPoint.getY());
+
+        gl.glVertex2d(pipbiny1trPoint.getX(), pipbiny1trPoint.getY());
+        gl.glVertex2d(pipbiny1brPoint.getX(), pipbiny1brPoint.getY());
+
+        //Left Vertical Bars
+        gl.glVertex2d(pipbiny2blPoint.getX(), pipbiny2blPoint.getY());
+        gl.glVertex2d(pipbiny2tlPoint.getX(), pipbiny2tlPoint.getY());
+
+        gl.glVertex2d(pipbiny3blPoint.getX(), pipbiny3blPoint.getY());
+        gl.glVertex2d(pipbiny3tlPoint.getX(), pipbiny3tlPoint.getY());
+
+        //right vertical bars
+        gl.glVertex2d(pipbiny2brPoint.getX(), pipbiny2brPoint.getY());
+        gl.glVertex2d(pipbiny2trPoint.getX(), pipbiny2trPoint.getY());
+
+        gl.glVertex2d(pipbiny3brPoint.getX(), pipbiny3brPoint.getY());
+        gl.glVertex2d(pipbiny3trPoint.getX(), pipbiny3trPoint.getY());
+
+        //Top horizontal bar
+        gl.glVertex2d(pipbinx4tlPoint.getX(), pipbinx4tlPoint.getY());
+        gl.glVertex2d(pipbinx4trPoint.getX(), pipbinx4trPoint.getY());
+        
+        gl.glVertex2d(pipbinx4brPoint.getX(), pipbinx4brPoint.getY());
+        gl.glVertex2d(pipbinx4blPoint.getX(), pipbinx4blPoint.getY());
+
+        //Top horizontal bar
+        gl.glVertex2d(pipbinx3tlPoint.getX(), pipbinx3tlPoint.getY());
+        gl.glVertex2d(pipbinx3trPoint.getX(), pipbinx3trPoint.getY());
+
+        gl.glVertex2d(pipbinx3brPoint.getX(), pipbinx3brPoint.getY());
+        gl.glVertex2d(pipbinx3blPoint.getX(), pipbinx3blPoint.getY());
+
+        //Top horizontal bar
+        gl.glVertex2d(pipbinx2tlPoint.getX(), pipbinx2tlPoint.getY());
+        gl.glVertex2d(pipbinx2trPoint.getX(), pipbinx2trPoint.getY());
+
+        gl.glVertex2d(pipbinx2brPoint.getX(), pipbinx2brPoint.getY());
+        gl.glVertex2d(pipbinx2blPoint.getX(), pipbinx2blPoint.getY());
+
+        //Top horizontal bar
+        gl.glVertex2d(pipbinx1tlPoint.getX(), pipbinx1tlPoint.getY());
+        gl.glVertex2d(pipbinx1trPoint.getX(), pipbinx1trPoint.getY());
+
+        gl.glVertex2d(pipbinx1brPoint.getX(), pipbinx1brPoint.getY());
+        gl.glVertex2d(pipbinx1blPoint.getX(), pipbinx1blPoint.getY());
+
+
+        gl.glEnd();
+
+
+        gl.glColor3f(0,0,1);
+        gl.glLineWidth(2);
+        gl.glBegin(GL.GL_LINES);
+
+        //Top horizontal bar
+        gl.glVertex2d(pipbinx5tlPoint.getX(), pipbinx5tlPoint.getY());
+        gl.glVertex2d(pipbinx5trPoint.getX(), pipbinx5trPoint.getY());
+
+        gl.glVertex2d(pipbinx5brPoint.getX(), pipbinx5brPoint.getY());
+        gl.glVertex2d(pipbinx5blPoint.getX(), pipbinx5blPoint.getY());
+
+        //Top horizontal bar
+        gl.glVertex2d(pipbinx6tlPoint.getX(), pipbinx6tlPoint.getY());
+        gl.glVertex2d(pipbinx6trPoint.getX(), pipbinx6trPoint.getY());
+
+        gl.glVertex2d(pipbinx6brPoint.getX(), pipbinx6brPoint.getY());
+        gl.glVertex2d(pipbinx6blPoint.getX(), pipbinx6blPoint.getY());
+
+        //Top horizontal bar
+        gl.glVertex2d(pipbinx7tlPoint.getX(), pipbinx7tlPoint.getY());
+        gl.glVertex2d(pipbinx7trPoint.getX(), pipbinx7trPoint.getY());
+
+        gl.glVertex2d(pipbinx7brPoint.getX(), pipbinx7brPoint.getY());
+        gl.glVertex2d(pipbinx7blPoint.getX(), pipbinx7blPoint.getY());
+
+
+        gl.glEnd();
+
 
         /*
         gl.glColor3f(1,1,0);
@@ -637,9 +879,6 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
         gl.glEnd( );
          *
          */
-
-
-
 
         gl.glPopMatrix();
     }
