@@ -157,16 +157,12 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         extractedTrack = null;
         smoothPoints = null;
 
-        // loads last track from file
-        String fn = prefs().get("TrackdefineFilter.lastFile", null);
-        if (fn != null) {
-            File f = new File(fn);
+            File f = getLastFilePrefs();
             try {
                 loadTrackFromFile(f);
             } catch (Exception ex) {
-                log.warning("couldn't load track information from file " + fn+", caught "+ex);
+                log.warning("couldn't load track information from file " + f+", caught "+ex+"; save a track to put preferences for track");
             }
-        }
 
     }
 
@@ -810,7 +806,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         }
 
         final JFileChooser fc = new JFileChooser();
-        fc.setCurrentDirectory(new File(prefs().get("TrackdefineFilter.lastFile", System.getProperty("user.dir"))));  // defaults to startup runtime folder
+        fc.setCurrentDirectory(getLastFilePrefs());  // defaults to startup runtime folder
         fc.setFileFilter(new FileFilter() {
 
             @Override
@@ -833,15 +829,16 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
             public void run() {
                 fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
                 fc.setSelectedFile(new File("test.track"));
-                state[0] = fc.showSaveDialog(chip.getAeViewer()!=null && chip.getAeViewer().getFilterFrame()!=null ? chip.getAeViewer().getFilterFrame(): null);
+                state[0] = fc.showSaveDialog(chip.getAeViewer() != null && chip.getAeViewer().getFilterFrame() != null ? chip.getAeViewer().getFilterFrame() : null);
                 if (state[0] == JFileChooser.APPROVE_OPTION) {
                     File file = fc.getSelectedFile();
-                    prefs().put("TrackdefineFilter.lastFile", fc.getSelectedFile().toString());
+                    putLastFilePrefs(file);
+
                     try {
                         saveTrackToFile(file);
                     } catch (IOException ex) {
-                       log.warning("couldn't save track to file, caught: "+ex);
-                       JOptionPane.showMessageDialog(fc, "couldn't save track to file, caught: "+ex,"Saving track failed",JOptionPane.WARNING_MESSAGE);
+                        log.warning("couldn't save track to file, caught: " + ex);
+                        JOptionPane.showMessageDialog(fc, "couldn't save track to file, caught: " + ex, "Saving track failed", JOptionPane.WARNING_MESSAGE);
                     }
                 } else {
                     log.info("Cancelled saving!");
@@ -849,6 +846,15 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
             }
         });
     }
+
+    private void putLastFilePrefs(File file) {
+        prefs().put("TrackdefineFilter.lastFile", file.toString());
+    }
+
+    private File getLastFilePrefs(){
+        return new File(prefs().get("TrackdefineFilter.lastFile", System.getProperty("user.dir")));
+    }
+
 
     private void saveTrackToFile(File file) throws IOException {
         if(extractedTrack==null) throw new IOException("null extractedTrack, can't save track");
@@ -868,7 +874,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     public void doLoadTrack() {
 
         final JFileChooser fc = new JFileChooser();
-        fc.setCurrentDirectory(new File(prefs().get("TrackdefineFilter.lastFile", System.getProperty("user.dir"))));  // defaults to startup runtime folder
+        fc.setCurrentDirectory(getLastFilePrefs());  // defaults to startup runtime folder
         fc.setFileFilter(new FileFilter() {
 
             @Override
@@ -894,7 +900,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
                 state[0] = fc.showOpenDialog(chip.getAeViewer()!=null && chip.getAeViewer().getFilterFrame()!=null ? chip.getAeViewer().getFilterFrame(): null);
                 if (state[0] == JFileChooser.APPROVE_OPTION) {
                     File file = fc.getSelectedFile();
-                    prefs().put("TrackdefineFilter.lastFile", fc.getSelectedFile().toString());
+                    putLastFilePrefs(file);
                     try {
                         loadTrackFromFile(file);
                     } catch (Exception e) {
@@ -912,7 +918,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         if (file == null) {
             throw new IOException("null filename, can't load track from file - track needs to be saved first");
         }
-        log.info("loading track data from " + file.getName());
+        log.info("loading track data from " + file);
         FileInputStream fis = new FileInputStream(file);
         ObjectInputStream ois = new ObjectInputStream(fis);
         extractedTrack = (SlotcarTrack) ois.readObject();

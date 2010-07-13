@@ -7,6 +7,9 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 
 /**
  * Class which reports the upcoming curvature on the track.
+ * The curvature is actually the radius of curvature - the radius of the osculating circle in pixels.
+ * The tighter the turn, the smaller this radius of curvature. The curvature approaches infinity for straight sections.
+ * 
  * @author Michael Pfeiffer
  */
 public class UpcomingCurvature {
@@ -67,7 +70,9 @@ public class UpcomingCurvature {
         return curvature;
     }
 
-    /** Returns the curvature at a given index */
+    /** Returns the curvature at a given index
+     @param idx the index. 0 is the curvature at current location, 1 at next location, etc. TODO fix doc here
+     */
     public float getCurvature(int idx) {
         if ((idx >= 0) && (idx < numPoints))
             return curvature[idx];

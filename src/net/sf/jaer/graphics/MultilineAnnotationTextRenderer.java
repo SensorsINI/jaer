@@ -8,7 +8,8 @@ package net.sf.jaer.graphics;
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
-import javax.media.opengl.GLAutoDrawable;
+import java.util.logging.Logger;
+import javax.media.opengl.GLException;
 
 /**
  * Holds static methods for text rendering in the annotation of an EventFilter chip output display.
@@ -23,6 +24,7 @@ public class MultilineAnnotationTextRenderer {
     private static float yshift=0;
     private static float xposition=1;
     private static final float scale = .15f;
+    private static final Logger log=Logger.getLogger("MultilineAnnotationTextRenderer");
 
     /** Call to reset to origin */
     public static void resetToYPositionPixels(float yOrigin){
@@ -38,22 +40,30 @@ public class MultilineAnnotationTextRenderer {
             renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,24),true,true);
         }
         String[] lines = s.split("\n");
-        if(lines==null) return;
-
-        renderer.begin3DRendering();
-        boolean first=true;
-        for (String l : lines) {
-            if(l==null) continue;
-            Rectangle2D r=renderer.getBounds(l);
-            yshift-=r.getHeight()*scale;
-            if(!first){
-                l="  "+l;
-            }
-            first=false;
-            renderer.draw3D(l, xposition, yshift, 0, scale);
+        if (lines == null) {
+            return;
         }
-        renderer.end3DRendering();
-        yshift-=additionalSpace;  // add additional space between multiline strings
+
+        try {
+            renderer.begin3DRendering();
+            boolean first = true;
+            for (String l : lines) {
+                if (l == null) {
+                    continue;
+                }
+                Rectangle2D r = renderer.getBounds(l);
+                yshift -= r.getHeight() * scale;
+                if (!first) {
+                    l = "  " + l;
+                }
+                first = false;
+                renderer.draw3D(l, xposition, yshift, 0, scale);
+            }
+            renderer.end3DRendering();
+        } catch (GLException e) {
+            log.warning("caught " + e + " when trying to render text into the current OpenGL context");
+        }
+        yshift -= additionalSpace;  // add additional space between multiline strings
     }
 
 }

@@ -7,6 +7,7 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.Font;
+import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.lang.reflect.InvocationTargetException;
 import java.util.logging.Level;
@@ -196,7 +197,18 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         hw.setThrottle(lastThrottle);
 
         if (isLogRacerDataEnabled()) {
-            logRacerData(throttleController.logControllerState());
+            if(overrideThrottle){
+                float  measuredSpeedPPS=Float.NaN;
+                Point2D.Float pos=new Point2D.Float(Float.NaN,Float.NaN);
+                if(carTracker.getCarCluster()!=null){
+                    ClusterInterface c=carTracker.getCarCluster();
+                    measuredSpeedPPS=c.getSpeedPPS();
+                    pos=c.getLocation();
+                }
+                logRacerData(String.format("%f %f %f %f",pos.getX(), pos.getY(), measuredSpeedPPS, getOverriddenThrottleSetting()));
+            }else{
+                logRacerData(throttleController.logControllerState());
+            }
         }
 
     }

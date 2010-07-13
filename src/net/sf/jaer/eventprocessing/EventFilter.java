@@ -496,7 +496,7 @@ public abstract class EventFilter extends Observable {
                 Class enclClass = Class.forName(enclClassName);
                 if (EventFilter.class.isAssignableFrom(enclClass)) {
                     prefs = getPrefsForEnclosedFilter(prefs, enclClassName);
-//                    log.info("This filter "+this.getClass()+" is enclosed in "+enclClass+" and has new Preferences node="+prefs);
+                    log.info("This filter "+this.getClass()+" is enclosed in "+enclClass+" and has new Preferences node="+prefs);
                 }
             }
         } catch (ClassNotFoundException e) {
@@ -505,7 +505,13 @@ public abstract class EventFilter extends Observable {
         return prefs;
     }
 
-    /** if the filter is enclosed, it's prefs node is the enclosing node plus the enclosing filter class node */
+    /** 
+     * 
+     *
+     * If the filter is enclosed, it's prefs node is the enclosing
+     * node plus the enclosing filter class node
+     *
+     */
     private Preferences getPrefsForEnclosedFilter(Preferences prefs, String enclClassName) {
 //        int clNaInd=enclClassName.lastIndexOf(".");
 //        enclClassName=enclClassName.substring(clNaInd,enclClassName.length());

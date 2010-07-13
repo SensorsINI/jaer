@@ -7,7 +7,7 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 
 /**
  * Empirical model of speed of car vs throttle, measured from recorded data.
- *
+ *  Blue car, intermediate power, inside lane of oval track.
  *
  * @author tobi
  */

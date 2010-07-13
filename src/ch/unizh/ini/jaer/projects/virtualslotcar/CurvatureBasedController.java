@@ -23,27 +23,29 @@ licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_Genera
 public class CurvatureBasedController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater {
 
     private float throttle=0; // last output throttle setting
-    private float defaultThrottle=prefs().getFloat("CurvatureBasedController.defaultThrottle",.3f); // default throttle setting if no car is detected
+    private float defaultThrottle=prefs().getFloat("CurvatureBasedController.defaultThrottle",.1f); // default throttle setting if no car is detected
     private float measuredSpeedPPS; // the last measured speed
     private Point2D.Float measuredLocation;
-    private float throttleDelayMs=prefs().getFloat("CurvatureBasedController.throttleDelayMs", 30);
-    private int numUpcomingCurvaturePoints=prefs().getInt("CurvatureBasedController.numUpcomingCurvaturePoints",3);
+    private float throttleDelayMs=prefs().getFloat("CurvatureBasedController.throttleDelayMs", 200);
+//    private int numUpcomingCurvaturePoints=prefs().getInt("CurvatureBasedController.numUpcomingCurvaturePoints",3);
     private float desiredSpeedPPS=0;
     private SimpleSpeedController speedController;
  
 
-    private float maxDistanceFromTrackPoint=prefs().getFloat("CurvatureBasedController.maxDistanceFromTrackPoint",15);
+    private float maxDistanceFromTrackPoint=prefs().getFloat("CurvatureBasedController.maxDistanceFromTrackPoint",30); // pixels - need to set in track model
 //    private float curvatureDeltaTimeMs=prefs().getFloat("CurvatureBasedController.curvatureDeltaTimeMs",1);
     private float lateralAccelerationLimitPPS2=prefs().getFloat("CurvatureBasedController.lateralAccelerationLimitPPS2", 4000);// 400pps change in 0.1s is about 4000pps2
     private float upcomingCurvature=0;
     private SlotcarTrack track;
+    private int currentTrackPos; // position in spline parameter of track
 
     public CurvatureBasedController(AEChip chip) {
         super(chip);
         setPropertyTooltip("defaultThrottle", "default throttle setting if no car is detected");
-        setPropertyTooltip("gain", "gain of proportional controller");
+//        setPropertyTooltip("gain", "gain of proportional controller");
         setPropertyTooltip("throttleDelayMs", "delay time constant of throttle change on speed; same as look-ahead time for estimation of track curvature");
         setPropertyTooltip("lateralAccelerationLimitPPS2","Maximum allowed lateral acceleration in pixels per second squared; 400pps change in 0.1s is about 4000pps2");
+        setPropertyTooltip("maxDistanceFromTrackPoint","Maximum allowed distance in pixels from track spline point to find nearest spline point; if currentTrackPos=-1 increase maxDistanceFromTrackPoint");
 //        setPropertyTooltip("", "");
         speedController=new SimpleSpeedController(chip);
         setEnclosedFilterChain(new FilterChain(chip));
@@ -71,6 +73,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
                 return getThrottle();
             }
             this.track=track; // set track for logging
+           track.setPointTolerance(maxDistanceFromTrackPoint);
             /*
              * during the normal running of the car, the steps would be as follows (which are computed in the controller, given the CarTracker and SlotcarTrack)
 
@@ -91,28 +94,32 @@ This still requires us to have an estimated relation between throttle and result
              // TODO: check whether car is on track, currently assume that it is always on track
              boolean onTrack = true;
              SlotcarState newState = track.updateSlotcarState(measuredLocation, measuredSpeedPPS, onTrack);
-            int trackPos= newState.segmentIdx;
-            //int trackPos= track.findClosest(measuredLocation, getMaxDistanceFromTrackPoint());
-// TODO nothing below is correct!!!!
+            currentTrackPos= newState.segmentIdx;
             // compute the curvature at throttleDelayMs in the future, given our measured speed
 
             double timeStep = getThrottleDelayMs();
-            UpcomingCurvature curvature=track.getCurvature(trackPos, 2, timeStep/1000.0, measuredSpeedPPS);
+            UpcomingCurvature curvature=track.getCurvature(currentTrackPos, 2, timeStep/1000.0, measuredSpeedPPS);
             // The first entry of the curvature is always the curvature at the current position
             // If you need the curvature one timestep ahead, you need to extract two points
             // and use the second entry "curvature.getCurvature(1)"
 
 
-            // compute desiredSpeedPPS given limit on lateral acceleration 'g', curvature 'c', and speed 'v'
-            // v^2*c<g, so
-            // v<sqrt(g/c)
-            float c=Math.abs(curvature.getCurvature(1));
-            float g=getLateralAccelerationLimitPPS2();
-            float v=(float)Math.sqrt(g/c);
-            desiredSpeedPPS=v;
-            upcomingCurvature=c;
-            speedController.setDesiredSpeedPPS(v);
-            throttle=speedController.computeControl(tracker, track);
+            // compute desiredSpeedPPS given limit on lateral acceleration 'g', radius of curvature 'c', and speed 'v'
+            // v^2/c<g, so
+            // v<sqrt(g*c)
+
+            float c = Math.abs(curvature.getCurvature(1));  // this is radius of curvature in pixels!
+            if (Float.isNaN(c)) {
+                // TODO do something if track model not loaded or something
+                
+            } else {
+                float g = getLateralAccelerationLimitPPS2();
+                float v = (float) Math.sqrt(g * c);
+                desiredSpeedPPS = v;
+                upcomingCurvature = c;
+                speedController.setDesiredSpeedPPS(v);
+                throttle = speedController.computeControl(tracker, track);
+            }
             return throttle;
         }
     }
@@ -166,7 +173,7 @@ This still requires us to have an estimated relation between throttle and result
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        String s=String.format("CurvatureBasedController\nDesired speed: %8.1f\nMeasured speed %8.1f\nCurvature: %8.1f\nThrottle: %8.1f",desiredSpeedPPS, measuredSpeedPPS, upcomingCurvature, throttle);
+        String s=String.format("CurvatureBasedController\ncurrentTrackPos: %d\nDesired speed: %8.0f\nMeasured speed %8.0f\nCurvature: %8.1f\nThrottle: %8.3f",currentTrackPos, desiredSpeedPPS, measuredSpeedPPS, upcomingCurvature, throttle);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 
