@@ -110,11 +110,11 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     private float clickTolerance = prefs().getFloat("TrackdefineFilter.clickTolerance", 5.0f);
     private int counter = 0;
     // List of extracted track points
-    private LinkedList<Point2D> extractPoints;
+    private LinkedList<Point2D.Float> extractPoints;
     // The extracted slotcar track
     private SlotcarTrack extractedTrack;
     // Smooth display points of the interpolated track
-    private LinkedList<Point2D> smoothPoints;
+    private LinkedList<Point2D.Float> smoothPoints;
     // Display extracted Points
     private boolean displayTrack = prefs().getBoolean("TrackdefineFilter.displayTrack", true);
 
@@ -435,7 +435,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
                 && (currentMousePoint.getX() < numX) && (currentMousePoint.getY() < numY)) {
 
             // Move point 
-            extractedTrack.setPoint(currentPointIdx, currentMousePoint);
+            extractedTrack.setPoint(currentPointIdx, new Point2D.Float(currentMousePoint.x,currentMousePoint.y));
             extractedTrack.updateSpline();
             extractPoints = extractedTrack.getPointList();
             smoothPoints = extractedTrack.getSmoothPoints(stepSize);
@@ -473,7 +473,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
                     currentPointIdx = idx;
                 }
             } else {
-                extractedTrack.setPoint(currentPointIdx, currentMousePoint);
+                extractedTrack.setPoint(currentPointIdx, new Point2D.Float(currentMousePoint.x,currentMousePoint.y));
                 extractPoints = extractedTrack.getPointList();
             }
         }
@@ -542,9 +542,9 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
                 Point idxP = getClosestInsertPoints(p);
                 if ((idxP.getX() >= 0) && (idxP.getY() >= 0)) {
                     if ((idxP.getX() == extractedTrack.getNumPoints() - 1) && (idxP.getY() == 0)) {
-                        extractedTrack.addPoint(p);
+                        extractedTrack.addPoint(new Point2D.Float(p.x,p.y));
                     } else {
-                        extractedTrack.insertPoint((int) idxP.getX(), p);
+                        extractedTrack.insertPoint((int) idxP.getX(), new Point2D.Float(p.x,p.y));
                     }
                 }
                 extractedTrack.updateSpline();
@@ -744,7 +744,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         }
 
         // Insert starting point
-        extractPoints = new LinkedList<Point2D>();
+        extractPoints = new LinkedList<Point2D.Float>();
         extractPoints.add(new Point2D.Float((float) maxX, (float) maxY));
         boolean trackFinished = false;
 
@@ -922,7 +922,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         FileInputStream fis = new FileInputStream(file);
         ObjectInputStream ois = new ObjectInputStream(fis);
         extractedTrack = (SlotcarTrack) ois.readObject();
-        extractPoints = (LinkedList<Point2D>) ois.readObject();
+        extractPoints = (LinkedList<Point2D.Float>) ois.readObject();
         ois.close();
         fis.close();
     }

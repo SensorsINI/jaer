@@ -21,13 +21,13 @@ import java.awt.geom.Point2D;
 public class SlotcarTrack implements java.io.Serializable {
 
     /** All points of the track added by the user */
-    LinkedList<Point2D> trackPoints;
+    LinkedList<Point2D.Float> trackPoints;
 
     /** The spline object for smooth approximation */
     PeriodicSpline smoothTrack = null;
 
     /** Integration step for arc-length calculations */
-    public final double INTEGRATION_STEP = 0.001;
+    public final float INTEGRATION_STEP = 0.1f;
 
     /** Tolerance for finding nearby spline points */
     private float pointTolerance = 5.0f;
@@ -40,7 +40,7 @@ public class SlotcarTrack implements java.io.Serializable {
 
     /** Creates a new track. */
     public SlotcarTrack() {
-        trackPoints = new LinkedList<Point2D>();
+        trackPoints = new LinkedList<Point2D.Float>();
 
         smoothTrack = new PeriodicSpline();
 
@@ -50,7 +50,7 @@ public class SlotcarTrack implements java.io.Serializable {
     }
 
     /** Adds a Point2D2D to the end of the track */
-    public void addPoint(Point2D newPoint) {
+    public void addPoint(Point2D.Float newPoint) {
         trackPoints.addLast(newPoint);
         updateSpline();
     }
@@ -65,7 +65,7 @@ public class SlotcarTrack implements java.io.Serializable {
     }
 
     /** Inserts a Point2D at the given index */
-    public void addPoint(int i, Point2D newPoint) {
+    public void addPoint(int i, Point2D.Float newPoint) {
         trackPoints.add(i, newPoint);
         updateSpline();
     }
@@ -86,7 +86,7 @@ public class SlotcarTrack implements java.io.Serializable {
     }
 
     /** Inserts a Point after the given index */
-    public int insertPoint(int idx, Point2D p) {
+    public int insertPoint(int idx, Point2D.Float p) {
         if ((idx < 0) || (idx > trackPoints.size())) {
             return -1;
         } else if (idx == trackPoints.size()) {
@@ -111,15 +111,15 @@ public class SlotcarTrack implements java.io.Serializable {
      * @param pos Point in x,y Cartesian space for which to search closest track point.
      * @return Index of closest point on track or -1 if no track point is <= maxDist from pos.
      */
-    public int findClosest(Point2D pos, double maxDist) {
+    public int findClosest(Point2D pos, float maxDist) {
         if (trackPoints.size() > 0) {
-            ListIterator<Point2D> it = trackPoints.listIterator();
+            ListIterator<Point2D.Float> it = trackPoints.listIterator();
             int idx = 0;
             int closestIdx = -1;
-            double closestDist = Double.MAX_VALUE;
+            float closestDist = Float.MAX_VALUE;
             while (it.hasNext()) {
                 Point2D p = it.next();
-                double d = p.distance(pos);
+                float d = (float)p.distance(pos);
                 if ((d < closestDist) && (d <= maxDist)) {
                     closestIdx = idx;
                     closestDist = d;
@@ -141,7 +141,7 @@ public class SlotcarTrack implements java.io.Serializable {
     }
 
     /** Changes the point with the given index to a new value */
-    public void setPoint(int idx, Point2D newPoint){
+    public void setPoint(int idx, Point2D.Float newPoint){
         if ((idx >= 0) && (idx < trackPoints.size())) {
             trackPoints.set(idx, newPoint);
             updateSpline();
@@ -160,27 +160,27 @@ public class SlotcarTrack implements java.io.Serializable {
     }
 
     /** Return length of the track */
-    public double getTrackLength() {
+    public float getTrackLength() {
         if (trackPoints.size() <= 1)
             return 0;
         else if (trackPoints.size() == 2)
-            return 2.0 * trackPoints.getFirst().distance(trackPoints.getLast());
+            return 2f * (float)trackPoints.getFirst().distance(trackPoints.getLast());
         else
             return smoothTrack.getLength();
     }
 
     /** Returns the list of points */
-    public LinkedList<Point2D> getPointList() {
+    public LinkedList<Point2D.Float> getPointList() {
         return trackPoints;
     }
 
     /** Returns the iterator of the track points */
-    public ListIterator<Point2D> getIterator() {
+    public ListIterator<Point2D.Float> getIterator() {
         return trackPoints.listIterator();
     }
 
     /** Returns the list of smooth points with given step size */
-    public LinkedList<Point2D> getSmoothPoints(double stepSize) {
+    public LinkedList<Point2D.Float> getSmoothPoints(float stepSize) {
         return smoothTrack.allPoints(stepSize);
     }
 
@@ -189,7 +189,7 @@ public class SlotcarTrack implements java.io.Serializable {
      * @param t Spline parameter ? what is this?
      * @return Point on 2D spline curve
      */
-    public Point2D getPosition(double t) {
+    public Point2D getPosition(float t) {
         return smoothTrack.getPosition(t);
     }
 
@@ -200,7 +200,7 @@ public class SlotcarTrack implements java.io.Serializable {
      * @param orient Point in which to store the orientation vector
      * @return 0 if successful, -1 if not.
      */
-    public int getPositionAndOrientation(double t, Point2D pos, Point2D orient) {
+    public int getPositionAndOrientation(float t, Point2D pos, Point2D orient) {
         return smoothTrack.getPositionAndOrientation(t,pos,orient);
     }
 
@@ -210,7 +210,7 @@ public class SlotcarTrack implements java.io.Serializable {
      * @param center Point in which to store the center of the circle.
      * @return The radius of the circle
      */
-    public double getOsculatingCircle(double t, Point2D center) {
+    public float getOsculatingCircle(float t, Point2D center) {
         return smoothTrack.getOsculatingCircle(t,center);
     }
 
@@ -224,7 +224,7 @@ public class SlotcarTrack implements java.io.Serializable {
      * @param speed Current speed of the car
      * @return Curvatures of the time points ahead.
      */
-    public UpcomingCurvature getCurvature(double pos, int numPoints, double dt, double speed) {
+    public UpcomingCurvature getCurvature(float pos, int numPoints, float dt, float speed) {
         float[] curvature = new float[numPoints];
 
         for (int i=0; i<numPoints; i++) {
@@ -246,10 +246,10 @@ public class SlotcarTrack implements java.io.Serializable {
      * @param speed Current speed of the car
      * @return Curvatures of the time points ahead.
      */
-    public UpcomingCurvature getCurvature(Point2D XYpos, int numPoints, double dt, double speed) {
+    public UpcomingCurvature getCurvature(Point2D XYpos, int numPoints, float dt, float speed) {
 
         int closestIdx = findClosest(XYpos, pointTolerance);
-        double pos = smoothTrack.getParam(closestIdx);
+        float pos = smoothTrack.getParam(closestIdx);
         return getCurvature(pos, numPoints, dt, speed);
     }
 
@@ -262,9 +262,9 @@ public class SlotcarTrack implements java.io.Serializable {
      * @param speed Current speed of the car
      * @return Curvatures of the time points ahead.
      */
-    public UpcomingCurvature getCurvature(int closestIdx, int numPoints, double dt, double speed) {
+    public UpcomingCurvature getCurvature(int closestIdx, int numPoints, float dt, float speed) {
 
-        double pos = smoothTrack.getParam(closestIdx);
+        float pos = smoothTrack.getParam(closestIdx);
         return getCurvature(pos, numPoints, dt, speed);
     }
 
@@ -275,8 +275,8 @@ public class SlotcarTrack implements java.io.Serializable {
      * @param speed Current speed of the car
      * @return Curvatures of the time points ahead.
      */
-    public UpcomingCurvature getCurvature(int numPoints, double dt, double speed) {
-        double pos = carState.pos;
+    public UpcomingCurvature getCurvature(int numPoints, float dt, float speed) {
+        float pos = carState.pos;
         return getCurvature(pos, numPoints, dt, speed);
     }
 
@@ -286,11 +286,11 @@ public class SlotcarTrack implements java.io.Serializable {
      * @param time Time to advance
      * @return New state of the car
      */
-    public SlotcarState advance(double throttle, double time) {
+    public SlotcarState advance(float throttle, float time) {
         if (carState.onTrack) {
 
             // Compute curvature radius and direction
-            double radius = smoothTrack.osculatingCircle(carState.pos, carState.segmentIdx, null);
+            float radius = smoothTrack.osculatingCircle(carState.pos, carState.segmentIdx, null);
 
             // Compute physics
             carState = physics.nextState(carState, throttle, radius, Math.signum(radius), time);
@@ -334,14 +334,14 @@ public class SlotcarTrack implements java.io.Serializable {
         carState = new SlotcarState();
 
         // Calculate absolute positions and orientations
-        carState.XYpos = new Point2D.Double();
-        carState.absoluteOrientation = new Point2D.Double();
-        getPositionAndOrientation(0.0, carState.XYpos, carState.absoluteOrientation);
+        carState.XYpos = new Point2D.Float();
+        carState.absoluteOrientation = new Point2D.Float();
+        getPositionAndOrientation(0, carState.XYpos, carState.absoluteOrientation);
     }
 
-    public void initPhysics(double friction, double carMass, double carLength,
-            double comHeight, double momentInertia,
-            double orientationCorrectForce, double engineForce) {
+    public void initPhysics(float friction, float carMass, float carLength,
+            float comHeight, float momentInertia,
+            float orientationCorrectForce, float engineForce) {
 
         physics.setCarMass(carMass);
         physics.setCarLength(carLength);
@@ -356,7 +356,7 @@ public class SlotcarTrack implements java.io.Serializable {
      * Refines the spline by introducing new intermediate points.
      * @param step Step size
     */
-    public void refine(double step) {
+    public void refine(float step) {
         smoothTrack = smoothTrack.refine(step);
         trackPoints = smoothTrack.allPoints(step);
     }
@@ -365,10 +365,10 @@ public class SlotcarTrack implements java.io.Serializable {
      * Creates a new track from a list of points.
      * @param allPoints The list of track points.
      */
-    public void create(LinkedList<Point2D> allPoints) {
+    public void create(LinkedList<Point2D.Float> allPoints) {
         if (allPoints != null) {
             clear();
-            for (Point2D p: allPoints) {
+            for (Point2D.Float p: allPoints) {
                 addPoint(p);
             }
         }
@@ -385,7 +385,7 @@ public class SlotcarTrack implements java.io.Serializable {
      * @param onTrack Is the car still on the track
      * @return The current state of the car
      */
-    public SlotcarState updateSlotcarState(Point2D XYpos, double speed, boolean onTrack) {
+    public SlotcarState updateSlotcarState(Point2D XYpos, float speed, boolean onTrack) {
         int closestIdx = findClosest(XYpos, pointTolerance);
 
         carState.pos = smoothTrack.getParam(closestIdx);

@@ -89,7 +89,7 @@ public class Slotcar implements Runnable, ThrottleInterface {
                 long sinceTime = newTime - lastTime;
                 // Compute new state of the car
                 
-                curState = theTrack.advance(throttle, sinceTime / 1.0e9);
+                curState = theTrack.advance(throttle, sinceTime / 1.0e9f);
                 
                 // TODO: Let controller change throttle
                 //System.out.println("Here the controller should take over...");
@@ -126,7 +126,7 @@ public class Slotcar implements Runnable, ThrottleInterface {
             if (lastTime >= 0) {
                 long sinceTime = newTime - lastTime;
                 // Compute new position
-                curState = theTrack.advance(throttle, sinceTime / 1.0e9);
+                curState = theTrack.advance(throttle, sinceTime / 1.0e9f);
 
                 // TODO: Let controller change speed
                 //System.out.println("Here the controller should take over...");

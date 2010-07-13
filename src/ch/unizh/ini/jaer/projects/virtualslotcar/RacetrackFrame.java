@@ -226,7 +226,7 @@ public class RacetrackFrame extends javax.swing.JFrame {
      * Sets a new track for the race.
      * @param newTrack The new race track
      */
-    public void setTrack(SlotcarTrack newTrack, double stepsize) {
+    public void setTrack(SlotcarTrack newTrack, float stepsize) {
         raceTrack = newTrack;
         trackDisplay.setTrack(raceTrack, stepsize);
     }
@@ -243,16 +243,16 @@ public class RacetrackFrame extends javax.swing.JFrame {
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
                 SlotcarTrack rT = new SlotcarTrack();
-                rT.addPoint(new Point2D.Double(0, 0));
-                rT.addPoint(new Point2D.Double(1, 0));
-                rT.addPoint(new Point2D.Double(0.5, -0.5));
-                rT.addPoint(new Point2D.Double(-0.5, 0.25));
+                rT.addPoint(new Point2D.Float(0, 0));
+                rT.addPoint(new Point2D.Float(1, 0));
+                rT.addPoint(new Point2D.Float(0.5f, -0.5f));
+                rT.addPoint(new Point2D.Float(-0.5f, 0.25f));
 
 
                 RacetrackFrame rf = new RacetrackFrame();
                 rf.setVisible(true);
 
-                rf.setTrack(rT, 0.01);
+                rf.setTrack(rT, 0.01f);
 
 
             }

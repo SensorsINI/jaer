@@ -29,7 +29,7 @@ public class SlotcarFrame extends javax.swing.JFrame {
     public static final int DELETE_POINT_MODE = 2;
 
     // Maximal distance to select a point
-    public static final double MAX_DIST = 0.1;
+    public static final float MAX_DIST = 0.1f;
 
     // Current mode for adding or removing points
     private int currentMode;
@@ -250,7 +250,7 @@ public class SlotcarFrame extends javax.swing.JFrame {
         int ClickX = evt.getX();
         int ClickY = evt.getY();
 
-        Point2D normPoint = normalizedPosition(evt.getPoint());
+        Point2D.Float normPoint = normalizedPosition(evt.getPoint());
 
         switch (currentMode) {
             case ADD_POINT_MODE: {
@@ -320,14 +320,14 @@ public class SlotcarFrame extends javax.swing.JFrame {
     private void EditorPanelMouseDragged(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_EditorPanelMouseDragged
         // TODO add your handling code here:
         if (pointDragged < 0) {
-            Point2D normPoint = normalizedPosition(evt.getPoint());
+            Point2D.Float normPoint = normalizedPosition(evt.getPoint());
             pointDragged=track.findClosest(normPoint, MAX_DIST);
 
             System.out.println("Dragging Point " + pointDragged);
         }
         else {
             // Move dragged point
-            Point2D normPoint = normalizedPosition(evt.getPoint());
+            Point2D.Float normPoint = normalizedPosition(evt.getPoint());
             track.setPoint(pointDragged, normPoint);
             EditorPanel.repaint();
         }
@@ -345,14 +345,14 @@ public class SlotcarFrame extends javax.swing.JFrame {
         if (raceDisplay == null) {
             raceDisplay = new RacetrackFrame();
         }
-        double step = Double.parseDouble(stepsizeValue.getText());
+        float step = Float.parseFloat(stepsizeValue.getText());
         raceDisplay.setTrack(track, step);
         raceDisplay.setVisible(true);
     }//GEN-LAST:event_RunButtonMouseClicked
 
     private void RefineButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_RefineButtonActionPerformed
         // TODO add your handling code here:
-        double step = Double.parseDouble(stepsizeValue.getText());
+        float step = Float.parseFloat(stepsizeValue.getText());
         track.refine(step);
         repaint();
     }//GEN-LAST:event_RefineButtonActionPerformed
@@ -362,9 +362,9 @@ public class SlotcarFrame extends javax.swing.JFrame {
      * @param pos Position of the mouse click in frame coordinates
      * @return Normalized position of the mouse position
      */
-    private Point2D normalizedPosition(Point pos) {
+    private Point2D.Float normalizedPosition(Point pos) {
        Dimension d = EditorPanel.getSize();
-       Point2D np = new Point2D.Double(((double) pos.x) / d.width, ((double) d.height-pos.y) / d.height);
+       Point2D.Float np = new Point2D.Float(((float) pos.x) / d.width, ((float) d.height-pos.y) / d.height);
        return np;
     }
 

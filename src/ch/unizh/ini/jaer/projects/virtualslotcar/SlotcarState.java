@@ -14,7 +14,7 @@ import java.awt.geom.Point2D;
 public class SlotcarState implements java.io.Serializable {
 
     /** Position of the car on the curve. */
-    public double pos;
+    public float pos;
 
     /** Position of the car in xy-space. */
     public Point2D XYpos;
@@ -26,16 +26,16 @@ public class SlotcarState implements java.io.Serializable {
     public int segmentIdx;
 
     /** Orientation of the car relative to the track. */
-    public double relativeOrientation;
+    public float relativeOrientation;
 
     /** Angular rotation velocity of the car */
-    public double angularVelocity;
+    public float angularVelocity;
 
     /** Speed of the car in track units per second. */
-    public double speed;
+    public float speed;
 
     /** Outward force of the car in track units per second squared. */
-    public double outwardForce;
+    public float outwardForce;
 
     /** Still on track or has flown off? */
     public boolean onTrack;
@@ -82,14 +82,14 @@ public class SlotcarState implements java.io.Serializable {
     /** Default constructor for state objects */
     public SlotcarState() {
         onTrack = true;
-        outwardForce = 0.0;
-        speed = 0.0;
-        angularVelocity = 0.0;
-        relativeOrientation = 0.0;
+        outwardForce = 0;
+        speed = 0;
+        angularVelocity = 0;
+        relativeOrientation = 0;
         segmentIdx = 0;
         absoluteOrientation = null;
         XYpos = null;
-        pos = 0.0;
+        pos = 0;
     }
 }
 

@@ -97,8 +97,8 @@ This still requires us to have an estimated relation between throttle and result
             currentTrackPos= newState.segmentIdx;
             // compute the curvature at throttleDelayMs in the future, given our measured speed
 
-            double timeStep = getThrottleDelayMs();
-            UpcomingCurvature curvature=track.getCurvature(currentTrackPos, 2, timeStep/1000.0, measuredSpeedPPS);
+            float timeStep = getThrottleDelayMs();
+            UpcomingCurvature curvature=track.getCurvature(currentTrackPos, 2, timeStep/1000, measuredSpeedPPS);
             // The first entry of the curvature is always the curvature at the current position
             // If you need the curvature one timestep ahead, you need to extract two points
             // and use the second entry "curvature.getCurvature(1)"

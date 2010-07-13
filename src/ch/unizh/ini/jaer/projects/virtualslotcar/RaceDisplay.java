@@ -23,7 +23,7 @@ public class RaceDisplay extends GLCanvas implements GLEventListener {
     Slotcar myCar = null;
 
     // Step size of track
-    double stepsize = 0.01;
+    float stepsize = 0.01f;
 
     public RaceDisplay(GLCapabilities caps) {
         super(caps);
@@ -49,8 +49,8 @@ public class RaceDisplay extends GLCanvas implements GLEventListener {
 
     public synchronized void display(GLAutoDrawable drawable) {
         if (raceTrack != null) {
-            LinkedList<Point2D> allpoints = raceTrack.getSmoothPoints(stepsize);
-            ListIterator<Point2D> it = allpoints.listIterator();
+            LinkedList<Point2D.Float> allpoints = raceTrack.getSmoothPoints(stepsize);
+            ListIterator<Point2D.Float> it = allpoints.listIterator();
 
             GL gl = this.getGL();
             gl.glClear(GL.GL_COLOR_BUFFER_BIT);
@@ -100,7 +100,7 @@ public class RaceDisplay extends GLCanvas implements GLEventListener {
      * Sets a new track for the race.
      * @param newTrack The new race track
      */
-    public void setTrack(SlotcarTrack newTrack, double stepsize) {
+    public void setTrack(SlotcarTrack newTrack, float stepsize) {
         raceTrack = newTrack;
         this.stepsize = stepsize;
     }

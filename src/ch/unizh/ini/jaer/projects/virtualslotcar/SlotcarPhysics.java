@@ -13,36 +13,36 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 public class SlotcarPhysics implements java.io.Serializable {
 
     // Track friction
-    protected double friction;
+    protected float friction;
 
     // Mass of car
-    protected double carMass;
+    protected float carMass;
 
     // Length of car
-    protected double carLength;
+    protected float carLength;
 
     // Height of car center-of-mass
-    protected double comHeight;
+    protected float comHeight;
 
     // Maximum force allowed before car flies off the track
-    private double maxOutwardForce;
+    private float maxOutwardForce;
 
     // Factor to correct oblique orientation
-    protected double orientationCorrectFactor;
+    protected float orientationCorrectFactor;
 
     // Engine force for acceleration
-    protected double engineForce;
+    protected float engineForce;
 
     // Moment of inertia for rotations around guide
-    protected double momentInertia;
+    protected float momentInertia;
 
     // Drag coefficient of the car
-    protected double dragCoefficient;
+    protected float dragCoefficient;
 
-    public SlotcarPhysics(double friction, double carMass, double carLength,
-            double comHeight, double momentInertia, 
-            double orientationCorrectFactor, double engineForce,
-            double dragCoefficient) {
+    public SlotcarPhysics(float friction, float carMass, float carLength,
+            float comHeight, float momentInertia,
+            float orientationCorrectFactor, float engineForce,
+            float dragCoefficient) {
         this.friction = friction;
         this.carMass = carMass;
         this.carLength = carLength;
@@ -59,93 +59,93 @@ public class SlotcarPhysics implements java.io.Serializable {
      * Default constructor with default values for all forces and masses.
      */
     public SlotcarPhysics() {
-        friction = 0.5;
-        carMass = 0.1;
-        carLength = 0.05;
-        comHeight = 0.001;
-        momentInertia = 0.1;
-        orientationCorrectFactor = 0.5;
-        engineForce = 0.25;
-        dragCoefficient = 0.2;
+        friction = 0.5f;
+        carMass = 0.1f;
+        carLength = 0.05f;
+        comHeight = 0.001f;
+        momentInertia = 0.1f;
+        orientationCorrectFactor = 0.5f;
+        engineForce = 0.25f;
+        dragCoefficient = 0.2f;
 
         computeMaxOutwardForce();
     }
 
-    public double getCarMass() {
+    public float getCarMass() {
         return carMass;
     }
 
-    public void setCarMass(double carMass) {
+    public void setCarMass(float carMass) {
         this.carMass = carMass;
         computeMaxOutwardForce();
     }
 
-    public double getCarLength() {
+    public float getCarLength() {
         return carLength;
     }
 
-    public void setCarLength(double carLength) {
+    public void setCarLength(float carLength) {
         this.carLength = carLength;
         computeMaxOutwardForce();
     }
 
-    public double getComHeight() {
+    public float getComHeight() {
         return comHeight;
     }
 
-    public void setComHeight(double comHeight) {
+    public void setComHeight(float comHeight) {
         this.comHeight = comHeight;
         computeMaxOutwardForce();
     }
 
-    public double getEngineForce() {
+    public float getEngineForce() {
         return engineForce;
     }
 
-    public void setEngineForce(double engineForce) {
+    public void setEngineForce(float engineForce) {
         this.engineForce = engineForce;
     }
 
-    public double getOrientationCorrectFactor() {
+    public float getOrientationCorrectFactor() {
         return orientationCorrectFactor;
     }
 
-    public void setOrientationCorrectFactor(double orientationCorrectFactor) {
+    public void setOrientationCorrectFactor(float orientationCorrectFactor) {
         // this.orientationCorrectForce = orientationCorrectForce;
-        this.orientationCorrectFactor = Math.min(0.0, Math.max(1.0, orientationCorrectFactor));
+        this.orientationCorrectFactor = (float)Math.min(0.0, Math.max(1.0, orientationCorrectFactor));
     }
 
 
-    public double getFriction() {
+    public float getFriction() {
         return friction;
     }
 
-    public void setFriction(double friction) {
+    public void setFriction(float friction) {
         this.friction = friction;
     }
 
-    public double getMomentInertia() {
+    public float getMomentInertia() {
         return momentInertia;
     }
 
-    public void setMomentInertia(double momentInertia) {
+    public void setMomentInertia(float momentInertia) {
         this.momentInertia = momentInertia;
     }
 
 
 
-    public double getMaxOutwardForce() {
+    public float getMaxOutwardForce() {
         return maxOutwardForce;
     }
 
 
 
     private void computeMaxOutwardForce() {
-        maxOutwardForce = carMass * carLength / (2.0 * comHeight);
+        maxOutwardForce = carMass * carLength / (2f * comHeight);
     }
 
 
-    private double computeCentrifugalForce(double curveRadius, double speed) {
+    private float computeCentrifugalForce(float curveRadius, float speed) {
         return (carMass * speed*speed / curveRadius);
     }
 
@@ -158,19 +158,19 @@ public class SlotcarPhysics implements java.io.Serializable {
      * @param dt Time step
      * @return Next state of the car
      */
-    public SlotcarState nextState(SlotcarState curState, double throttle, double curveRadius,
-            double curveDirection, double dt) {
+    public SlotcarState nextState(SlotcarState curState, float throttle, float curveRadius,
+            float curveDirection, float dt) {
         SlotcarState nextState = new SlotcarState(curState);
 
         // Forward acceleration
-        double newSpeed = curState.speed + throttle*engineForce*dt / carMass;
+        float newSpeed = curState.speed + throttle*engineForce*dt / carMass;
         // Effect of friction and drag
         newSpeed -= carMass * 9.81 * friction * dt;
         newSpeed -= dragCoefficient * curState.speed*curState.speed * dt;
-        newSpeed = Math.max(newSpeed, 0.0);
+        newSpeed = (float) Math.max(newSpeed, 0);
         nextState.speed = newSpeed;
 
-        double centForce = computeCentrifugalForce(curveRadius, newSpeed);
+        float centForce = computeCentrifugalForce(curveRadius, newSpeed);
         nextState.outwardForce = centForce;
 
         
@@ -181,15 +181,15 @@ public class SlotcarPhysics implements java.io.Serializable {
         else {
             // Compute orientation of car
 
-            double newOrientation = curState.relativeOrientation;
-            double newAngularVelocity = curState.angularVelocity;
+            float newOrientation = curState.relativeOrientation;
+            float newAngularVelocity = curState.angularVelocity;
             // Straighten orientation of car
             newOrientation *= (1.0 - dt * orientationCorrectFactor);
 
             // Compute torque attacking at COM to change angular velocity
             // We assume that the COM is at the center of the car
             // We assume that half of the force is compensated by resistance of the guide
-            double torque = (0.5 * centForce) * curveDirection * (0.5 * carLength);
+            float torque = (0.5f * centForce) * curveDirection * (0.5f * carLength);
             newAngularVelocity += torque * dt / momentInertia;
 
             newAngularVelocity *= (1.0 - dt * orientationCorrectFactor);

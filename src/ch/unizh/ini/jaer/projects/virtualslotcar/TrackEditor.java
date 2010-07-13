@@ -31,12 +31,12 @@ public class TrackEditor extends javax.swing.JPanel {
     private PeriodicSpline xySpline = null;
     
     /** The stepsize for interpolation */
-    private double stepsize;
+    private float stepsize;
 
     /** Creates new form TrackEditor */
     public TrackEditor() {
         initComponents();
-        stepsize = 0.05;
+        stepsize = 0.05f;
     }
 
     /** Sets a new Track to paint */
@@ -76,7 +76,7 @@ public class TrackEditor extends javax.swing.JPanel {
             Dimension d = getSize();
 
             if (newTrack.getNumPoints() > 0) {
-                ListIterator<Point2D> it = newTrack.getIterator();
+                ListIterator<Point2D.Float> it = newTrack.getIterator();
 
                 int oldX = -1;
                 int oldY = -1;
@@ -97,9 +97,9 @@ public class TrackEditor extends javax.swing.JPanel {
             }
 
             if (newTrack.getNumPoints() > 2) {
-                LinkedList<Point2D> allpoints = newTrack.getSmoothPoints(stepsize);
+                LinkedList<Point2D.Float> allpoints = newTrack.getSmoothPoints(stepsize);
 
-                ListIterator<Point2D> all_it = allpoints.listIterator();
+                ListIterator<Point2D.Float> all_it = allpoints.listIterator();
                 int oldX = -1;
                 int oldY = -1;
                 g.setColor(Color.blue);
@@ -118,7 +118,7 @@ public class TrackEditor extends javax.swing.JPanel {
 
     }
     
-    public void setStepSize(double stepsize) {
+    public void setStepSize(float stepsize) {
         this.stepsize = stepsize;
         repaint();
     }
