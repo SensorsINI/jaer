@@ -88,19 +88,25 @@ This still requires us to have an estimated relation between throttle and result
              measuredLocation=car.getLocation();
              
              // Encapsulated update in track object
-             SlotcarState newState = track.updateSlotcarState(measuredLocation, measuredSpeedPPS, true);
+             // TODO: check whether car is on track, currently assume that it is always on track
+             boolean onTrack = true;
+             SlotcarState newState = track.updateSlotcarState(measuredLocation, measuredSpeedPPS, onTrack);
             int trackPos= newState.segmentIdx;
             //int trackPos= track.findClosest(measuredLocation, getMaxDistanceFromTrackPoint());
 // TODO nothing below is correct!!!!
             // compute the curvature at throttleDelayMs in the future, given our measured speed
 
             double timeStep = getThrottleDelayMs();
-            UpcomingCurvature curvature=track.getCurvature(trackPos, 1, timeStep, measuredSpeedPPS/10);
+            UpcomingCurvature curvature=track.getCurvature(trackPos, 2, timeStep/1000.0, measuredSpeedPPS);
+            // The first entry of the curvature is always the curvature at the current position
+            // If you need the curvature one timestep ahead, you need to extract two points
+            // and use the second entry "curvature.getCurvature(1)"
+
 
             // compute desiredSpeedPPS given limit on lateral acceleration 'g', curvature 'c', and speed 'v'
             // v^2*c<g, so
             // v<sqrt(g/c)
-            float c=Math.abs(curvature.getCurvature(0));
+            float c=Math.abs(curvature.getCurvature(1));
             float g=getLateralAccelerationLimitPPS2();
             float v=(float)Math.sqrt(g/c);
             desiredSpeedPPS=v;
