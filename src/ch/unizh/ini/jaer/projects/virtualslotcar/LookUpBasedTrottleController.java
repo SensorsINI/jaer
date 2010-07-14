@@ -12,15 +12,12 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
 import net.sf.jaer.graphics.FrameAnnotater;
+
 /**
- * Controls speed of car based on upcoming curvature of track, using measured speed of car and track model.
- * @author tobi
  *
- * This is part of jAER
-<a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
-licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
+ * @author Juston
  */
-public class CurvatureBasedController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater {
+public class LookUpBasedTrottleController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater {
 
     private float throttle=0; // last output throttle setting
     private float defaultThrottle=prefs().getFloat("CurvatureBasedController.defaultThrottle",.1f); // default throttle setting if no car is detected
@@ -30,7 +27,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
 //    private int numUpcomingCurvaturePoints=prefs().getInt("CurvatureBasedController.numUpcomingCurvaturePoints",3);
     private float desiredSpeedPPS=0;
     private SimpleSpeedController speedController;
- 
+
 
     private float maxDistanceFromTrackPoint=prefs().getFloat("CurvatureBasedController.maxDistanceFromTrackPoint",30); // pixels - need to set in track model
 //    private float curvatureDeltaTimeMs=prefs().getFloat("CurvatureBasedController.curvatureDeltaTimeMs",1);
@@ -40,8 +37,16 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
     private int currentTrackPos; // position in spline parameter of track
 
     private float integrationStep = prefs().getFloat("CurvatureBasedController.integrationStep",0.1f);
+    private float def = 1/2;
+    private int nbsection=14;
+    private float LookUpTable[]={def,def,def,def,def,def,def,def,def,def,def,def,def,def};
+    private boolean learning=false;
+    private boolean crash;
+    
 
-    public CurvatureBasedController(AEChip chip) {
+
+
+    public LookUpBasedTrottleController(AEChip chip) {
         super(chip);
         setPropertyTooltip("defaultThrottle", "default throttle setting if no car is detected");
 //        setPropertyTooltip("gain", "gain of proportional controller");
@@ -92,38 +97,39 @@ This still requires us to have an estimated relation between throttle and result
              */
              measuredSpeedPPS=(float)car.getSpeedPPS();
              measuredLocation=car.getLocation();
-             
+
              // Encapsulated update in track object
              // TODO: check whether car is on track, currently assume that it is always on track
              //boolean onTrack = true;
              SlotcarState newState = track.updateSlotcarState(measuredLocation, measuredSpeedPPS);
+             setCrash(!newState.onTrack);
             currentTrackPos= newState.segmentIdx;
             // compute the curvature at throttleDelayMs in the future, given our measured speed
 
-            float timeStep = getThrottleDelayMs();
-            UpcomingCurvature curvature=track.getApproxCurvature(currentTrackPos, 2, timeStep/1000, measuredSpeedPPS);
-            // UpcomingCurvature curvature=track.getCurvature(currentTrackPos, 2, timeStep/1000, measuredSpeedPPS);
-            // The first entry of the curvature is always the curvature at the current position
-            // If you need the curvature one timestep ahead, you need to extract two points
-            // and use the second entry "curvature.getCurvature(1)"
+            //float timeStep = getThrottleDelayMs();
+            //UpcomingCurvature curvature=track.getApproxCurvature(currentTrackPos, 2, timeStep/1000, measuredSpeedPPS);
 
 
-            // compute desiredSpeedPPS given limit on lateral acceleration 'g', radius of curvature 'c', and speed 'v'
-            // v^2/c<g, so
-            // v<sqrt(g*c)
+            if (crash){
+                if (currentTrackPos==nbsection-1){
+                    LookUpTable[0]=LookUpTable[0]-1/100;
+                }else{
+                    LookUpTable[currentTrackPos+1]=LookUpTable[currentTrackPos+1]-1/100;
+                }
+            }else{
+                if (learning){
+                    if (currentTrackPos==nbsection-1){
+                        LookUpTable[0]=LookUpTable[0]+1/100;
+                    }else{
+                        LookUpTable[currentTrackPos+1]=LookUpTable[currentTrackPos+1]+1/100;
+                    }
 
-            float c = Math.abs(curvature.getCurvature(1));  // this is radius of curvature in pixels!
-            if (Float.isNaN(c)) {
-                // TODO do something if track model not loaded or something
-                
-            } else {
-                float g = getLateralAccelerationLimitPPS2();
-                float v = (float) Math.sqrt(g * c);
-                desiredSpeedPPS = v;
-                upcomingCurvature = c;
-                speedController.setDesiredSpeedPPS(v);
-                throttle = speedController.computeControl(tracker, track);
+                 }
             }
+            
+            
+
+            throttle=LookUpTable[currentTrackPos];
             return throttle;
         }
     }
@@ -133,7 +139,7 @@ This still requires us to have an estimated relation between throttle and result
         return throttle;
     }
 
- 
+
     @Override
     public String logControllerState() {
         return String.format("%f\t%f\t%f\t%s",desiredSpeedPPS, measuredSpeedPPS, throttle, track==null? null:track.getCarState());
@@ -245,6 +251,38 @@ This still requires us to have an estimated relation between throttle and result
         prefs().putFloat("CurvatureBasedController.integrationStep",integrationStep);
         track.setIntegrationStep(integrationStep);
     }
-    
+
+    /**
+     * @return the learning
+     */
+    public boolean isLearning() {
+        return learning;
+    }
+
+    /**
+     * @param learning the learning to set
+     */
+    public void setLearning(boolean learning) {
+        this.learning = learning;
+    }
+
+    /**
+     * @return the crash
+     */
+    public boolean isCrash() {
+        return crash;
+    }
+
+    /**
+     * @param crash the crash to set
+     */
+    public void setCrash(boolean crash) {
+        this.crash = crash;
+    }
+
+
+
+
+
 
 }

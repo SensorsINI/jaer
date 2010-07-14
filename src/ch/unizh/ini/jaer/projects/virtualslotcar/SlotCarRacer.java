@@ -58,7 +58,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
 
     public enum ControllerToUse {
 
-        SimpleSpeedController, CurvatureBasedController
+        SimpleSpeedController, CurvatureBasedController, LookUpBasedTrottleController
     };
     private ControllerToUse controllerToUse = ControllerToUse.valueOf(prefs().get("SlotCarRacer.controllerToUse", ControllerToUse.SimpleSpeedController.toString()));
 
@@ -184,6 +184,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
                     }
                 }
             } else if (state.get() == State.CRASHED) {
+                        throttleController.computeControl(carTracker, trackDefineFilter.getTrack());
                 if (carTracker.getCarCluster() != null && state.timeSinceChanged() > 1000) {
                     state.set(State.STARTING);
                 }
@@ -374,6 +375,12 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
                     if (throttleController == null || !(throttleController instanceof CurvatureBasedController)) {
                         filterChain.remove(throttleController);
                         throttleController = new CurvatureBasedController(chip);
+                    }
+                    break;
+               case LookUpBasedTrottleController:
+                    if (throttleController == null || !(throttleController instanceof LookUpBasedTrottleController)) {
+                        filterChain.remove(throttleController);
+                        throttleController = new LookUpBasedTrottleController(chip);
                     }
                     break;
             }
