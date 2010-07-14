@@ -108,6 +108,8 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     private boolean insertOnClick = prefs().getBoolean("TrackdefineFilter.insertOnClick", false);
     // Tolerance for mouse clicks
     private float clickTolerance = prefs().getFloat("TrackdefineFilter.clickTolerance", 5.0f);
+    // Distance between refined spline points
+    private float refineDistance = prefs().getFloat("TrackdefineFilter.refineDistance", 5.0f);
     private int counter = 0;
     // List of extracted track points
     private LinkedList<Point2D.Float> extractPoints;
@@ -138,6 +140,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         setPropertyTooltip(extr, "minDistance", "Minimum distance between extracted track points");
         setPropertyTooltip(extr, "maxDistance", "Maximum distance between extracted track points");
         setPropertyTooltip(extr, "erosionSize", "Size of the erosion kernel");
+        setPropertyTooltip(extr, "refineDistance", "Distance between refined spline points");
         setPropertyTooltip(disp, "stepSize", "Interpolation step size for spline curve");
         setPropertyTooltip(mod, "deleteOnClick", "Delete track points on mouse click (otherwise move)");
         setPropertyTooltip(mod, "insertOnClick", "Insert track points on mouse click (otherwise move)");
@@ -330,7 +333,15 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
             int idx = 0;
             for (Point2D p : extractPoints) {
                 if (idx == this.currentPointIdx) {
+                    // Plot selected point in special color
                     gl.glColor3d(1.0f, 1.0f, 1.0f);
+                    gl.glPointSize(10.0f);
+                    gl.glVertex2d(p.getX(), p.getY());
+                    gl.glColor3d(1.0f, 0.0f, 1.0f);
+                    gl.glPointSize(5.0f);
+                } else if (idx == 0) {
+                    // Plot first point of the track in special color
+                    gl.glColor3d(1.0f, 0.0f, 0.0f);
                     gl.glPointSize(10.0f);
                     gl.glVertex2d(p.getX(), p.getY());
                     gl.glColor3d(1.0f, 0.0f, 1.0f);
@@ -689,6 +700,17 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         prefs().putFloat("TrackdefineFilter.clickTolerance", clickTolerance);
     }
 
+    public float getRefineDistance() {
+        return refineDistance;
+    }
+
+    public void setRefineDistance(float refineDistance) {
+        this.refineDistance = refineDistance;
+        prefs().putFloat("TrackdefineFilter.refineDistance", refineDistance);
+    }
+
+
+
     /**
      * Re-initializes the histogram of events.
      */
@@ -922,7 +944,12 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         FileInputStream fis = new FileInputStream(file);
         ObjectInputStream ois = new ObjectInputStream(fis);
         extractedTrack = (SlotcarTrack) ois.readObject();
-        extractPoints = (LinkedList<Point2D.Float>) ois.readObject();
+        // extractPoints = (LinkedList<Point2D.Float>) ois.readObject();  // unchecked cast exception
+        LinkedList loadPoints = (LinkedList<?>) ois.readObject();
+        extractPoints = new LinkedList<Point2D.Float>();
+        for (Object o:loadPoints) {
+            extractPoints.add((Point2D.Float) o);
+        }
         ois.close();
         fis.close();
     }
@@ -933,5 +960,25 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
      */
     public SlotcarTrack getTrack() {
         return this.extractedTrack;
+    }
+
+    /**
+     * Refines the extracted track by inserting intermediate spline points.
+     */
+    public void doRefineTrack() {
+        if (extractedTrack != null) {
+            extractedTrack.refine(refineDistance);
+            extractPoints = extractedTrack.getPointList();
+        }
+    }
+
+    /**
+     * Reverses the direction of the track.
+     */
+    public void doReverseTrack() {
+        if (extractedTrack != null) {
+            extractedTrack.reverseTrack();
+            extractPoints = extractedTrack.getPointList();
+        }
     }
 }

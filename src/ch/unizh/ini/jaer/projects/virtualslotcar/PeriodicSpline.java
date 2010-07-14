@@ -229,8 +229,9 @@ public class PeriodicSpline implements java.io.Serializable {
      */
     private float evaluateSpline(float x, float x0, float[] coeff) {
         float xnorm = x-x0;
-        return coeff[3] + xnorm * coeff[2] + (float)Math.pow(xnorm, 2) * coeff[1] +
-                (float)Math.pow(xnorm, 3) * coeff[0];
+//        return coeff[3] + xnorm * coeff[2] + (float)Math.pow(xnorm, 2) * coeff[1] +
+//                (float)Math.pow(xnorm, 3) * coeff[0];
+        return coeff[3] + xnorm * (coeff[2] + xnorm * (coeff[1] + coeff[0] * xnorm));
     }
 
     private float evaluateX(float x, int splineIdx) {
@@ -341,6 +342,18 @@ public class PeriodicSpline implements java.io.Serializable {
         return radius;
     }
 
+    /**
+     * Returns the radius and center of the osculating circle at the given position.
+     * @param T Spline parameter
+     * @param idx The index of the spline segment in which T falls.
+     * @param center Point in which to store the center of the circle
+     * @return 0 if successful, -1 if not.
+     */
+    public float getOsculatingCircle(float T, int idx, Point2D center) {
+        float radius = osculatingCircle(T, idx, center);
+
+        return radius;
+    }
 
 
     /**
@@ -391,6 +404,26 @@ public class PeriodicSpline implements java.io.Serializable {
      */
     public int getInterval(float T) {
         int idx = 1;
+        // Find segment in which T lies
+        while ((idx <= numXY) && (T > Tdata[idx])) {
+            idx++;
+        }
+        if (idx > numXY) {
+            // T not in parameter range
+            return -1;
+        }
+        else return (idx-1);
+    }
+
+    /**
+     * Returns the interval in which this parameter value lies, starting the search
+     * from a given start interval.
+     * @param T Spline parameter
+     * @param startIdx The index at which to start the search
+     * @return The index of the spline interval in which T lies.
+     */
+    public int newInterval(float T, int startIdx) {
+        int idx = startIdx;
         // Find segment in which T lies
         while ((idx <= numXY) && (T > Tdata[idx])) {
             idx++;
@@ -554,6 +587,7 @@ public class PeriodicSpline implements java.io.Serializable {
         return cur_t;
     }
 
+
     /**
      * Computes the next parameter value if the arc-length is increased by ds.
      * Approximates the arc-length by sub-dividing into intervals of length int_step.
@@ -566,7 +600,6 @@ public class PeriodicSpline implements java.io.Serializable {
         int interval = getInterval(t);
         return advance(t,interval,ds,int_step);
     }
-
 
     /**
      *  Refines this spline by introducing intermediate points

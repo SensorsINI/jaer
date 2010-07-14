@@ -7,6 +7,7 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 
 import java.util.LinkedList;
 import java.util.ListIterator;
+import java.util.Iterator;
 import java.awt.geom.Point2D;
 
 /**
@@ -214,6 +215,79 @@ public class SlotcarTrack implements java.io.Serializable {
         return smoothTrack.getOsculatingCircle(t,center);
     }
 
+    /**
+     * Returns the osculating circle at the given position of the track
+     * @param t Spline parameter
+     * @param center Point in which to store the center of the circle.
+     * @param idx Spline interval in which this point lies.
+     * @return The radius of the circle
+     */
+    public float getOsculatingCircle(float t, Point2D center, int idx) {
+        return smoothTrack.getOsculatingCircle(t,idx,center);
+    }
+
+
+    /**
+     * Returns the upcoming curvature for the next timesteps given the spline-parameter
+     * position of the car. Approximates the arc-length along the track by assuming that
+     * straight line distance and spline-parameter distance are equal (this holds for
+     * tracks with many spline points). This method does not use advance().
+     * @param pos Current spline-parameter position of the car.
+     * @param numPoints Number of curvature points to look ahead
+     * @param dt Time interval between steps
+     * @param speed Current speed of the car
+     * @param closestIdx Index of the closest track point.
+     * @return Curvatures of the time points ahead.
+     */
+    public UpcomingCurvature getApproxCurvature(float pos, int numPoints, float dt, float speed, int closestIdx) {
+        float[] curvature = new float[numPoints];
+        int curIdx = closestIdx;
+
+        for (int i=0; i<numPoints; i++) {
+            curvature[i] = (float) getOsculatingCircle(pos, null, curIdx);
+            pos += speed*dt;
+            curIdx = smoothTrack.newInterval(pos, curIdx);
+            if (pos > smoothTrack.getLength())
+                pos -= smoothTrack.getLength();
+        }
+
+        UpcomingCurvature uc = new UpcomingCurvature(curvature);
+        return uc;
+    }
+    /**
+     * Returns the upcoming curvature for the next timesteps given the XY-position of the car on the screen.
+     * Approximates the arc-length along the track by assuming that
+     * straight line distance and spline-parameter distance are equal (this holds for
+     * tracks with many spline points). This method does not use advance().
+     * @param XYpos Current position of the car on the screen.
+     * @param numPoints Number of curvature points to look ahead
+     * @param dt Time interval between steps
+     * @param speed Current speed of the car
+     * @return Curvatures of the time points ahead.
+     */
+    public UpcomingCurvature getApproxCurvature(Point2D XYpos, int numPoints, float dt, float speed) {
+
+        int closestIdx = findClosest(XYpos, pointTolerance);
+        float pos = smoothTrack.getParam(closestIdx);
+        return getApproxCurvature(pos, numPoints, dt, speed, closestIdx);
+    }
+
+    /**
+     * Returns the upcoming curvature for the next timesteps given the index of the closest
+     * spline point. Approximates the arc-length along the track by assuming that
+     * straight line distance and spline-parameter distance are equal (this holds for
+     * tracks with many spline points). This method does not use advance().
+     * @param closestIdx Index of the currently closest spline point.
+     * @param numPoints Number of curvature points to look ahead
+     * @param dt Time interval between steps
+     * @param speed Current speed of the car
+     * @return Curvatures of the time points ahead.
+     */
+    public UpcomingCurvature getApproxCurvature(int closestIdx, int numPoints, float dt, float speed) {
+
+        float pos = smoothTrack.getParam(closestIdx);
+        return getApproxCurvature(pos, numPoints, dt, speed, closestIdx);
+    }
 
     /**
      * Returns the upcoming curvature for the next timesteps given the spline-parameter
@@ -395,6 +469,20 @@ public class SlotcarTrack implements java.io.Serializable {
         carState.XYpos = XYpos;
 
         return carState;
+    }
+
+    /**
+     * Reverses the direction of the track.
+     */
+    public void reverseTrack() {
+        LinkedList<Point2D.Float> reversePoints = new LinkedList<Point2D.Float>();
+        Iterator<Point2D.Float> it = trackPoints.descendingIterator();
+        while (it.hasNext()) {
+            reversePoints.add(it.next());
+        }
+        trackPoints = reversePoints;
+
+        updateSpline();
     }
 
     public float getPointTolerance() {
