@@ -432,7 +432,7 @@ public class SlotcarTrack implements java.io.Serializable {
     */
     public void refine(float step) {
         smoothTrack = smoothTrack.refine(step);
-        trackPoints = smoothTrack.allPoints(step);
+        trackPoints = smoothTrack.getSplinePoints();
     }
 
     /**

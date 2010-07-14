@@ -391,6 +391,22 @@ public class PeriodicSpline implements java.io.Serializable {
         return path;
     }
 
+    /**
+     * Returns a list of all original spline points.
+     * @return A list of all spline points on the 2D spline
+     */
+    LinkedList<Point2D.Float> getSplinePoints() {
+        LinkedList<Point2D.Float> path = new LinkedList<Point2D.Float>();
+
+        for (int i=0; i<numXY; i++) {
+            // Add original point
+            path.add(new Point2D.Float(Xdata[i], Ydata[i]));
+        }
+
+        return path;
+    }
+
+
     /** Returns length of smooth track */
     public float getLength() {
         // TODO: This is just an approximation of the smooth length
@@ -614,7 +630,7 @@ public class PeriodicSpline implements java.io.Serializable {
         int idx = 0;
         LinkedList<Point2D.Float> finePoints = new LinkedList<Point2D.Float>();
 
-        while (t < Tdata[numXY]) {
+        while (t < (Tdata[numXY]-0.5*stepSize)) {
             Point2D.Float p = getPosition(t, idx);
             finePoints.add(p);
 
