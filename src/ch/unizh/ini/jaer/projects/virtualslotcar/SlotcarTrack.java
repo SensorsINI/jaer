@@ -26,9 +26,6 @@ public class SlotcarTrack implements java.io.Serializable {
     /** The spline object for smooth approximation */
     PeriodicSpline smoothTrack = null;
 
-    /** Integration step for arc-length calculations */
-    public final float INTEGRATION_STEP = 0.1f;
-
     /** Tolerance for finding nearby spline points */
     private float pointTolerance = 5.0f;
 
@@ -37,6 +34,9 @@ public class SlotcarTrack implements java.io.Serializable {
 
     /** Physics object */
     private SlotcarPhysics physics;
+
+    /** Integration step for arc-length calculations */
+    private float integrationStep = 0.1f;
 
     /** Creates a new track. */
     public SlotcarTrack() {
@@ -229,7 +229,7 @@ public class SlotcarTrack implements java.io.Serializable {
 
         for (int i=0; i<numPoints; i++) {
             curvature[i] = (float) getOsculatingCircle(pos, null);
-            pos = smoothTrack.advance(pos, speed*dt, INTEGRATION_STEP);
+            pos = smoothTrack.advance(pos, speed*dt, integrationStep);
             if (pos > smoothTrack.getLength())
                 pos -= smoothTrack.getLength();
         }
@@ -297,7 +297,7 @@ public class SlotcarTrack implements java.io.Serializable {
 
             // Advance car on track
             if (carState.onTrack) {
-                carState.pos = smoothTrack.advance(carState.pos, carState.speed*time, INTEGRATION_STEP);
+                carState.pos = smoothTrack.advance(carState.pos, carState.speed*time, integrationStep);
                 if (carState.pos > smoothTrack.getLength()) {
                     // Wrap around at end of track
                     carState.pos -= smoothTrack.getLength();
@@ -403,6 +403,14 @@ public class SlotcarTrack implements java.io.Serializable {
 
     public void setPointTolerance(float pointTolerance) {
         this.pointTolerance = pointTolerance;
+    }
+
+    public float getIntegrationStep() {
+        return integrationStep;
+    }
+
+    public void setIntegrationStep(float integrationStep) {
+        this.integrationStep = integrationStep;
     }
 
 }

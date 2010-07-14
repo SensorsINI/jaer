@@ -310,7 +310,7 @@ public class SlotcarFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_DeletePointsButtonActionPerformed
 
     private void stepsizeValueActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_stepsizeValueActionPerformed
-        double step = Double.parseDouble(stepsizeValue.getText());
+        float step = Float.parseFloat(stepsizeValue.getText());
         if ((step > 0) && (step <1))
             EditorPanel.setStepSize(step);
         if (step >= 1)

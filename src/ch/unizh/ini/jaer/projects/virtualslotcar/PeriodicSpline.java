@@ -67,36 +67,61 @@ public class PeriodicSpline implements java.io.Serializable {
         Hdata               = new float[numXY];
         Tdata               = new float[numXY+1];
 
+        double[][] DsplineCoefficientsX = new double[numXY][4];
+        double[][] DsplineCoefficientsY = new double[numXY][4];
+        double[] DXdata               = new double[numXY+1];
+        double[] DYdata               = new double[numXY+1];
+        double[] DHdata               = new double[numXY];
+        double[] DTdata               = new double[numXY+1];
+
+
         // Store XY-data in lists and compute distances
         int                   idx = 0;
 
-        Tdata[0] = 0;
+        DTdata[0] = 0;
         Point2D.Float lastPoint=new Point2D.Float();
         for(Point2D.Float p:XYdata) {
             lastPoint=p;
-            Xdata[idx] = (float)p.getX();
-            Ydata[idx] =(float) p.getY();
+            DXdata[idx] = p.getX();
+            DYdata[idx] = p.getY();
 
             if (idx > 0) {
 
                 // Compute distance to previous point
-                Hdata[idx - 1] = (float)p.distance(Xdata[idx - 1], Ydata[idx - 1]);
-                Tdata[idx] = Tdata[idx-1] + Hdata[idx-1];
+                DHdata[idx - 1] = p.distance(DXdata[idx - 1], DYdata[idx - 1]);
+                DTdata[idx] = DTdata[idx-1] + DHdata[idx-1];
             }
 
             idx++;
         }
 
         // Compute "periodic" distance between first and last point
-        Hdata[numXY - 1] = (float)(lastPoint.distance(Xdata[0], Ydata[0]));
-        Xdata[numXY] = Xdata[0];
-        Ydata[numXY] = Ydata[0];
-        Tdata[numXY] = Tdata[numXY-1]+Hdata[numXY-1];
+        DHdata[numXY - 1] = (lastPoint.distance(DXdata[0], DYdata[0]));
+        DXdata[numXY] = DXdata[0];
+        DYdata[numXY] = DYdata[0];
+        DTdata[numXY] = DTdata[numXY-1]+DHdata[numXY-1];
 
         // Run spline algorithms to determine both coefficient matrices
         // Use same bow-length parametrization
-        spline1D(Hdata, Xdata, splineCoefficientsX);
-        spline1D(Hdata, Ydata, splineCoefficientsY);
+        spline1D(DHdata, DXdata, DsplineCoefficientsX);
+        spline1D(DHdata, DYdata, DsplineCoefficientsY);
+
+
+        // Convert double values to float
+        for (int i=0; i<numXY; i++) {
+            for (int j=0; j<4; j++) {
+                splineCoefficientsX[i][j] = (float) DsplineCoefficientsX[i][j];
+                splineCoefficientsY[i][j] = (float) DsplineCoefficientsY[i][j];
+            }
+            Xdata[i] = (float)DXdata[i];
+            Ydata[i] = (float)DYdata[i];
+            Hdata[i] = (float)DHdata[i];
+            Tdata[i] = (float)DTdata[i];
+        }
+        Xdata[numXY] = (float)DXdata[numXY];
+        Ydata[numXY] = (float)DYdata[numXY];
+        Tdata[numXY] = (float)DTdata[numXY];
+
     }
 
     /**
@@ -106,7 +131,7 @@ public class PeriodicSpline implements java.io.Serializable {
      * @param Y Target values to interpolate
      * @param targetCoeff Matrix in which to store coefficients
      */
-    public void spline1D(float[] T, float[] Y, float[][] targetCoeff) {
+    public void spline1D(double[] T, double[] Y, double[][] targetCoeff) {
         int N = T.length;
 
         if ((N+1) != Y.length) {
@@ -120,18 +145,18 @@ public class PeriodicSpline implements java.io.Serializable {
 
         
         // Solve system of equations (3.136) to find second derivatives
-        float[] ddy = new float[N + 1];
+        double[] ddy = new double[N + 1];
 
         // Compute elements of Cholesky decomposition (3.137)
-        float[] L = new float[N];
-        float[] M = new float[N - 1];
-        float[] E = new float[N - 2];
-        float[] D = new float[N];
+        double[] L = new double[N];
+        double[] M = new double[N - 1];
+        double[] E = new double[N - 2];
+        double[] D = new double[N];
 
         // Algorithm from (3.138)
-        float s = 0;
+        double s = 0;
 
-        L[0] = (float)Math.sqrt(2.0 * (T[0] + T[N - 1]));
+        L[0] = (double)Math.sqrt(2.0 * (T[0] + T[N - 1]));
         E[0] = T[N - 1] / L[0];
 
         for (int i = 0; i < (N - 2); i++) {
@@ -141,12 +166,12 @@ public class PeriodicSpline implements java.io.Serializable {
                 E[i] = -E[i - 1] * M[i - 1] / L[i];
             }
 
-            L[i + 1] = (float)Math.sqrt(2.0 * (T[i] + T[i + 1]) - M[i] * M[i]);
+            L[i + 1] = (double)Math.sqrt(2.0 * (T[i] + T[i + 1]) - M[i] * M[i]);
             s        = s + E[i] * E[i];
         }
 
         M[N - 2] = (T[N - 2] - E[N - 3] * M[N - 3]) / L[N - 2];
-        L[N - 1] = (float)Math.sqrt((2.0 * (T[N - 2] + T[N - 1])) - M[N - 2] * M[N - 2] - s);
+        L[N - 1] = (double)Math.sqrt((2.0 * (T[N - 2] + T[N - 1])) - M[N - 2] * M[N - 2] - s);
 
 
         D[0]     = -6 * (Y[1] - Y[0]) / T[0] + 6 * (Y[0] - Y[N - 1]) / T[N - 1];
@@ -160,7 +185,7 @@ public class PeriodicSpline implements java.io.Serializable {
 
         // Algorithm from (3.139)
         // Forward insertion for y
-        float[] hY = new float[N];
+        double[] hY = new double[N];
 
         hY[0] = D[0] / L[0];
         s     = 0;
@@ -576,7 +601,7 @@ public class PeriodicSpline implements java.io.Serializable {
      * @param args
      */
     public static void main(String[] args) {
-        LinkedList<Point2D> testPoints = new LinkedList<Point2D>();
+/*        LinkedList<Point2D> testPoints = new LinkedList<Point2D>();
         float[]            X          = {
             1, 2.5f, 5.25f, 9.5f, 12.0f, 14.5f, 17.0f
         };
@@ -606,7 +631,10 @@ public class PeriodicSpline implements java.io.Serializable {
 
             System.out.println();
         }
+
+    */
     }
+
 }
 
 

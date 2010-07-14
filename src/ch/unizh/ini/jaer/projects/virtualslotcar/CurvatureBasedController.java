@@ -39,6 +39,8 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
     private SlotcarTrack track;
     private int currentTrackPos; // position in spline parameter of track
 
+    private float integrationStep = prefs().getFloat("CurvatureBasedController.integrationStep",0.1f);
+
     public CurvatureBasedController(AEChip chip) {
         super(chip);
         setPropertyTooltip("defaultThrottle", "default throttle setting if no car is detected");
@@ -46,6 +48,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
         setPropertyTooltip("throttleDelayMs", "delay time constant of throttle change on speed; same as look-ahead time for estimation of track curvature");
         setPropertyTooltip("lateralAccelerationLimitPPS2","Maximum allowed lateral acceleration in pixels per second squared; 400pps change in 0.1s is about 4000pps2");
         setPropertyTooltip("maxDistanceFromTrackPoint","Maximum allowed distance in pixels from track spline point to find nearest spline point; if currentTrackPos=-1 increase maxDistanceFromTrackPoint");
+        setPropertyTooltip("integrationStep","Integration step for computation of upcoming curvatures");
 //        setPropertyTooltip("", "");
         speedController=new SimpleSpeedController(chip);
         setEnclosedFilterChain(new FilterChain(chip));
@@ -222,6 +225,24 @@ This still requires us to have an estimated relation between throttle and result
     public void setThrottleDelayMs(float throttleDelayMs) {
         this.throttleDelayMs = throttleDelayMs;
         prefs().putFloat("CurvatureBasedController.throttleDelayMs",throttleDelayMs);
+    }
+
+    /**
+     * @return The integration step used for computing upcoming curvatures (in the same units
+     * that are used for the track model, typically retina pixels)
+     */
+    public float getIntegrationStep() {
+        return integrationStep;
+    }
+
+    /**
+     * @param integrationStep The integration step used for computing upcoming curvatures (in the same units
+     * that are used for the track model, typically retina pixels)
+     */
+    public void setIntegrationStep(float integrationStep) {
+        this.integrationStep = integrationStep;
+        prefs().putFloat("CurvatureBasedController.integrationStep",integrationStep);
+        track.setIntegrationStep(integrationStep);
     }
     
 
