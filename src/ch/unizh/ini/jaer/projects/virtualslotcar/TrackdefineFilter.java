@@ -11,8 +11,6 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 
 import java.awt.*;
 import java.awt.event.MouseEvent;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.JOptionPane;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
@@ -27,13 +25,33 @@ import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 import java.io.*;
 import java.awt.geom.Point2D;
+import javax.media.opengl.glu.GLU;
 import javax.swing.SwingUtilities;
 // import java.lang.reflect.InvocationTargetException;
 
 /**
  * An AE filter that first creates a histogram of incoming pixels, and then lets the user define
  * the detected track.
+
+ * * <p>
+ * I have implemented two new buttons for the TrackDefineFilter, which allow you to refine the currently extracted
+track. So first you would use the filter as before, move your spline points around, delete and maybe insert points,
+and then you click on refineTrack. As a result new spline points will be inserted along the smooth track curve with
+a distance "refineDistance" that you can set in the filter. This allows us to see the track more or less as a
+sequence of linear segments, which facilitates and hopefully speeds up the computation for curvature extraction. I
+have also tried to optimize evaluateSpline a little bit, so that we can get rid of the Math.pow() calls and use
+less multiplications, this should also help us, as this is called very frequently.
+
+With the refined track you can use the function getApproxCurvature() instead of getCurvature(). This function will
+not use PeriodicSpline.advance to compute future track points, but approximates spline-parameter distances by
+straight-line distances, which should be quite accurate in the case where we have many spline points (i.e. after
+pressing refineTrack). I have also tried to optimize the curvature methods a little bit, but this requires that the
+direction in which you race with your cars (clockwise or counter-clockwise) matches the order of points along the
+spline curve. I have therefore added a "reverseTrack" button with which you can change the order of spline points,
+and marked the first point in red instead of magenta (and there is no line drawn between the last and first spline
+point).
  *
+ * 
  * @author Michael Pfeiffer
  */
 /**
@@ -103,9 +121,9 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     // Whether to draw smooth interpolated track
     private boolean drawSmooth = prefs().getBoolean("TrackdefineFilter.drawSmooth", false);
     // Delete or move track points on mouse click
-    private boolean deleteOnClick = prefs().getBoolean("TrackdefineFilter.deleteOnClick", false);
+    private boolean deleteOnClick = false; // start always that mouse clicks do not mess up track // prefs().getBoolean("TrackdefineFilter.deleteOnClick", false);
     // Delete or move track points on mouse click
-    private boolean insertOnClick = prefs().getBoolean("TrackdefineFilter.insertOnClick", false);
+    private boolean insertOnClick = false; // prefs().getBoolean("TrackdefineFilter.insertOnClick", false);
     // Tolerance for mouse clicks
     private float clickTolerance = prefs().getFloat("TrackdefineFilter.clickTolerance", 5.0f);
     // Distance between refined spline points
@@ -236,7 +254,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     }
 
     private int clip(int val, int limit) {
-        if (val > limit && limit != 0) {
+        if (val >= limit && limit != 0) {
             return limit;
         } else if (val < 0) {
             return 0;
@@ -268,8 +286,8 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
                 boolean keep = true;
                 for (int k = -erSize; k <= erSize; k++) {
                     for (int l = -erSize; l <= erSize; l++) {
-                        int pixY = clip(i + k, numY);
-                        int pixX = clip(j + l, numX);
+                        int pixY = clip(i + k, numY-1); // limit to size-1 to avoid arrayoutofbounds exceptions 
+                        int pixX = clip(j + l, numX-1);
                         if ((pixData[pixY][pixX] / totalSum) < histThresh) {
                             keep = false;
                             break;
@@ -289,19 +307,25 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     // Draws the histogram (only points above threshold)
     private void drawHistogram(GL gl) {
         // System.out.println("Drawing histogram..." + gl);
-        boolean[][] bitmap = erosion();
-        gl.glColor3f(1.0f, 1.0f, 0);
-        gl.glBegin(gl.GL_POINTS);
-        for (int i = 0; i < numY; i++) {
-            for (int j = 0; j < numX; j++) {
-                // if ((pixData[i][j] / totalSum) > histThresh) {
-                if (bitmap[i][j]) {
-                    gl.glVertex2i(j, i);
-                    // gl.glRecti(i, j, i+1, j+1);
+//        try {
+            boolean[][] bitmap = erosion();
+            gl.glColor3f(1.0f, 1.0f, 0);
+            gl.glBegin(gl.GL_POINTS);
+            for (int i = 0; i < numY; i++) {
+                for (int j = 0; j < numX; j++) {
+                    // if ((pixData[i][j] / totalSum) > histThresh) {
+                    if (bitmap[i][j]) {
+                        gl.glVertex2i(j, i);
+                        // gl.glRecti(i, j, i+1, j+1);
+                    }
                 }
             }
-        }
-        gl.glEnd();
+//        } catch (ArrayIndexOutOfBoundsException e) {
+//            log.warning(e.toString());
+//        } finally {
+            gl.glEnd();
+//        }
+//        chip.getCanvas().checkGLError(gl, glu , "in TrackdefineFilter.drawExtractedTrack");
 
     }
 
@@ -323,35 +347,49 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         System.out.println("Max: " + maxH + " / Count: " + count);
     }
 
+
+    GLU glu=new GLU();
+
     /** Displays the extracted track points */
     private void drawExtractedTrack(GL gl) {
         if (extractedTrack != null && extractPoints != null) {
             // Draw extracted points
             gl.glColor3d(1.0f, 0.0f, 1.0f);
             gl.glPointSize(5.0f);
+            gl.glColor3d(1.0f, 1.0f, 1.0f);
+            gl.glPointSize(10.0f);
+            Point2D startPoint = null, selectedPoint = null;
             gl.glBegin(gl.GL_POINTS);
             int idx = 0;
             for (Point2D p : extractPoints) {
                 if (idx == this.currentPointIdx) {
-                    // Plot selected point in special color
-                    gl.glColor3d(1.0f, 1.0f, 1.0f);
-                    gl.glPointSize(10.0f);
-                    gl.glVertex2d(p.getX(), p.getY());
-                    gl.glColor3d(1.0f, 0.0f, 1.0f);
-                    gl.glPointSize(5.0f);
+                    selectedPoint=p;
                 } else if (idx == 0) {
-                    // Plot first point of the track in special color
-                    gl.glColor3d(1.0f, 0.0f, 0.0f);
-                    gl.glPointSize(10.0f);
-                    gl.glVertex2d(p.getX(), p.getY());
-                    gl.glColor3d(1.0f, 0.0f, 1.0f);
-                    gl.glPointSize(5.0f);
-                } else {
+                    // Plot first point of the track in special color, but we cannot call setColor inside glBegin/glEnd
+                    startPoint=p;
+               } else {
                     gl.glVertex2d(p.getX(), p.getY());
                 }
                 idx++;
             }
             gl.glEnd();
+ 
+            if (startPoint != null) {
+                gl.glColor3d(1.0f, 0.0f, 0.0f);
+                gl.glPointSize(10.0f);
+                gl.glBegin(gl.GL_POINTS);
+                gl.glVertex2d(startPoint.getX(), startPoint.getY());
+                gl.glEnd();
+            }
+
+            if (selectedPoint != null) {
+                // Plot selected point in special color
+                gl.glColor3d(1.0f, 0.0f, 1.0f);
+                gl.glPointSize(5.0f);
+                gl.glBegin(gl.GL_POINTS);
+                gl.glVertex2d(selectedPoint.getX(), selectedPoint.getY());
+                gl.glEnd();
+            }
 
             // Plot lines
             gl.glPointSize(1.0f);
@@ -390,11 +428,11 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
                 gl.glEnd();
             }
         }
-        ;
+        chip.getCanvas().checkGLError(gl, glu , "in TrackdefineFilter.drawExtractedTrack");
 
     }
 
-    public void annotate(GLAutoDrawable drawable) {
+    synchronized public void annotate(GLAutoDrawable drawable) {
         if (counter < 1) {
             counter++;
         } else {
@@ -410,12 +448,20 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
 
             gl.glPushMatrix();
             if (drawHist) {
-                drawHistogram(gl);
+//                try {
+                    drawHistogram(gl);
+//                } catch (Exception e) {
+//                    log.warning(e.toString());
+//                }
             }
             gl.glPopMatrix();
 
             if (displayTrack) {
-                drawExtractedTrack(gl);
+//                try {
+                    drawExtractedTrack(gl);
+//                } catch (Exception e) {
+//                    log.warning(e.toString());
+//                }
             }
 
             counter = 0;
@@ -662,14 +708,11 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     }
 
     public void setDeleteOnClick(boolean deleteOnClick) {
+        boolean old=this.deleteOnClick;
         this.deleteOnClick = deleteOnClick;
-        prefs().putBoolean("TrackdefineFilter.deleteOnClick", deleteOnClick);
-
+        support.firePropertyChange("deleteOnClick", old, deleteOnClick);
         if (deleteOnClick) {
-            this.insertOnClick = false;
-            prefs().putBoolean("TrackdefineFilter.insertOnClick", false);
-            support.firePropertyChange("insertOnClick", this.insertOnClick, this.insertOnClick);
-
+            if(isInsertOnClick()) setInsertOnClick(false);
         }
     }
 
@@ -678,14 +721,12 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     }
 
     public void setInsertOnClick(boolean insertOnClick) {
+        boolean old=this.insertOnClick;
         this.insertOnClick = insertOnClick;
-        prefs().putBoolean("TrackdefineFilter.insertOnClick", insertOnClick);
+      support.firePropertyChange("insertOnClick", old, insertOnClick);
 
         if (insertOnClick) {
-            this.deleteOnClick = false;
-            prefs().putBoolean("TrackdefineFilter.deleteOnClick", false);
-            support.firePropertyChange("deleteOnClick", this.deleteOnClick, this.deleteOnClick);
-
+            if(isDeleteOnClick()) setDeleteOnClick(false);
         } else {
             currentInsertMarkPoints = null;
         }
@@ -714,7 +755,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     /**
      * Re-initializes the histogram of events.
      */
-    public void doInitHistogram() {
+    synchronized public void doInitHistogram() {
         pixData = new float[numY][numX];
         for (int i = 0; i < numY; i++) {
             for (int j = 0; j < numX; j++) {
@@ -749,7 +790,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     /**
      * Extracts the track from the histogram of events.
      */
-    public void doExtractTrack() {
+    synchronized public void doExtractTrack() {
         boolean[][] trackPoints = erosion();
 
         // Find starting point
@@ -965,7 +1006,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     /**
      * Refines the extracted track by inserting intermediate spline points.
      */
-    public void doRefineTrack() {
+    synchronized public void doRefineTrack() {
         if (extractedTrack != null) {
             extractedTrack.refine(refineDistance);
             extractPoints = extractedTrack.getPointList();
@@ -975,7 +1016,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     /**
      * Reverses the direction of the track.
      */
-    public void doReverseTrack() {
+    synchronized public void doReverseTrack() {
         if (extractedTrack != null) {
             extractedTrack.reverseTrack();
             extractPoints = extractedTrack.getPointList();

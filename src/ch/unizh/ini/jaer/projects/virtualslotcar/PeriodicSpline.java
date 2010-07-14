@@ -235,6 +235,9 @@ public class PeriodicSpline implements java.io.Serializable {
     }
 
     private float evaluateX(float x, int splineIdx) {
+        if(splineIdx==-1){
+            throw new RuntimeException("invalid splineIdx="+splineIdx+" at pos="+x);
+        }
         return evaluateSpline(x, Tdata[splineIdx], splineCoefficientsX[splineIdx]);
     }
 
@@ -433,10 +436,10 @@ public class PeriodicSpline implements java.io.Serializable {
 
     /**
      * Returns the interval in which this parameter value lies, starting the search
-     * from a given start interval.
+     * from a given start interval and increasing the index; note that this search will not find intervals before the current position, only after.
      * @param T Spline parameter
      * @param startIdx The index at which to start the search
-     * @return The index of the spline interval in which T lies.
+     * @return The index of the spline interval in which T lies, or 0 if if T is not in the total parameter range to start over.
      */
     public int newInterval(float T, int startIdx) {
         int idx = startIdx;
@@ -445,10 +448,12 @@ public class PeriodicSpline implements java.io.Serializable {
             idx++;
         }
         if (idx > numXY) {
-            // T not in parameter range
-            return -1;
+            // T not in parameter range so wrap around to start of spline // TODO check michael is this correct behavior?
+            return 0;
         }
-        else return (idx-1);
+        if(idx==0) return numXY-1; // wrap arond to end of closed spline
+        else return idx-1; // TODO check if we return startIdx if we are in the same segment
+//        else return (idx-1); // TODO returns -1 if we start with 0, should return last index?
     }
 
     /**

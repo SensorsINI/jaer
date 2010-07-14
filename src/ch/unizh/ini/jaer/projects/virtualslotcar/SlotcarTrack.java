@@ -21,6 +21,9 @@ import java.awt.geom.Point2D;
  */
 public class SlotcarTrack implements java.io.Serializable {
 
+    private static final long serialVersionUID = 8769462155491049760L; // define so that rebuilds don't cause load failure
+
+
     /** All points of the track added by the user */
     LinkedList<Point2D.Float> trackPoints;
 
@@ -231,7 +234,8 @@ public class SlotcarTrack implements java.io.Serializable {
      * Returns the upcoming curvature for the next timesteps given the spline-parameter
      * position of the car. Approximates the arc-length along the track by assuming that
      * straight line distance and spline-parameter distance are equal (this holds for
-     * tracks with many spline points). This method does not use advance().
+     * tracks with many spline points). This method does not use advance(), but does require that the car advances
+     * in the direction of increasing indices.
      * @param pos Current spline-parameter position of the car.
      * @param numPoints Number of curvature points to look ahead
      * @param dt Time interval between steps
@@ -240,18 +244,25 @@ public class SlotcarTrack implements java.io.Serializable {
      * @return Curvatures of the time points ahead.
      */
     public UpcomingCurvature getApproxCurvature(float pos, int numPoints, float dt, float speed, int closestIdx) {
+        float startPos=pos;
         float[] curvature = new float[numPoints];
         int curIdx = closestIdx;
 
         for (int i=0; i<numPoints; i++) {
             curvature[i] = (float) getOsculatingCircle(pos, null, curIdx);
             pos += speed*dt;
-            curIdx = smoothTrack.newInterval(pos, curIdx);
+            int prevIdx=curIdx;
+            curIdx = smoothTrack.newInterval(pos, curIdx); // update the index?   This increases index and wraps around to 0. Car must be driving towards increasing index.
+//            if(curIdx==-1){
+//                throw new RuntimeException(
+//                        String.format("could not find curvature, ran out of segments: startPos=%.1f numPoints=%d dt=%f speed=%.1f closestIdx=%d; currentPos=%f curIdx=%d prevIdx=%d ; should you reverse the track diretion",
+//                        startPos, numPoints,dt,speed,closestIdx,pos,curIdx,prevIdx ));
+//            }
             if (pos > smoothTrack.getLength())
                 pos -= smoothTrack.getLength();
         }
 
-        UpcomingCurvature uc = new UpcomingCurvature(curvature);
+        UpcomingCurvature uc = new UpcomingCurvature(curvature); // TODO reuse a one-time alloated object here
         return uc;
     }
     /**

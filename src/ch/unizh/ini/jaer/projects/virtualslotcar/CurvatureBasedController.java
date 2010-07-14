@@ -98,6 +98,10 @@ This still requires us to have an estimated relation between throttle and result
              //boolean onTrack = true;
              SlotcarState newState = track.updateSlotcarState(measuredLocation, measuredSpeedPPS);
             currentTrackPos= newState.segmentIdx;
+            if(currentTrackPos==-1){
+                log.warning("couldn't find nearest segment of track; either refine track or increase maxDistanceFromTrackPoint; not computing new throttle");
+                return throttle;
+            }
             // compute the curvature at throttleDelayMs in the future, given our measured speed
 
             float timeStep = getThrottleDelayMs();
