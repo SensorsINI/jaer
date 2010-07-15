@@ -184,6 +184,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
             } catch (Exception ex) {
                 log.warning("couldn't load track information from file " + f+", caught "+ex+"; save a track to put preferences for track");
             }
+        setStepSize(stepSize); // init smooth points too
 
     }
 
@@ -685,7 +686,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         return stepSize;
     }
 
-    public void setStepSize(float stepSize) {
+    final public void setStepSize(float stepSize) {
         this.stepSize = stepSize;
         if (extractedTrack != null) {
             smoothPoints = extractedTrack.getSmoothPoints(stepSize);
