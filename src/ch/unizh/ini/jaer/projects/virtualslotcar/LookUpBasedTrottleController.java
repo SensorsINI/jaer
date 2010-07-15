@@ -31,7 +31,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
     private int lastTrackPos; // last position in spline parameter of track
     private int[] trackPos; // used to store points to punish
     private int nbsection;
-    private int nbPreviewsStep;
+    private int nbPreviewsStep =0;
     private ThrottleSection[] lookUpTable;
     private boolean learning = false;
     private boolean crash;
@@ -87,10 +87,12 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
             nbsection = track.getNumPoints();//load the number of section
             if (lookUpTable == null || lookUpTable.length != track.getNumPoints()) {
                 lookUpTable = new ThrottleSection[nbsection];
-                nbPreviewsStep = (int) (nbsection * fractionOfTrackToPunish);
-                trackPos = new int[nbPreviewsStep];
-            }
 
+            }
+              if (trackPos==null || nbPreviewsStep != (int) (nbsection * fractionOfTrackToPunish)){
+                  nbPreviewsStep = (int) (nbsection * fractionOfTrackToPunish);
+                  trackPos = new int[nbPreviewsStep];
+              }
             SlotcarState carState = track.updateSlotcarState(measuredLocation, measuredSpeedPPS);
             setCrash(!carState.onTrack);
             if (!crash) {
@@ -100,7 +102,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
                     lookUpTable[currentTrackPos] = new ThrottleSection(currentTrackPos);
                 }
                 if (currentTrackPos != lastTrackPos) { // update table of positions to later credit with crash
-                    for (int i = 1; i < nbPreviewsStep; i++) {
+                    for (int i = nbPreviewsStep-1; i > 0; i--) {
                         trackPos[i] = trackPos[i - 1];
                     }
                     trackPos[0] = currentTrackPos;
@@ -112,12 +114,12 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
             }else if(!didPunishment){
                 didPunishment=true;
                 for (int i = 1; i < nbPreviewsStep; i++) {
-                    lookUpTable[trackPos[i]].punish(trackPos[i]);
+                    if (lookUpTable[trackPos[i]]!=null) lookUpTable[trackPos[i]].punish(trackPos[i]);
                 }
             }
 
 
-            throttle = lookUpTable[currentTrackPos].definethrottle;
+            throttle = lookUpTable[currentTrackPos]==null ? defaultThrottle : lookUpTable[currentTrackPos].definethrottle;
             return throttle;
         }
     }
@@ -257,9 +259,10 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
     /**
      * @param fractionOfTrackToPunish the fractionOfTrackToPunish to set
      */
-    public void setFractionOfTrackToPunish(float fractionOfTrackToPunish) {
+    synchronized public void setFractionOfTrackToPunish(float fractionOfTrackToPunish) {
         this.fractionOfTrackToPunish = fractionOfTrackToPunish;
         prefs().putFloat("LookUpBasedTrottleController.fractionOfTrackToPunish",fractionOfTrackToPunish);
+        trackPos=null;
     }
 
     /**
