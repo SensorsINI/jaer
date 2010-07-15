@@ -34,9 +34,10 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 //package org.ine.telluride.jaer.tell2010.cardplayer;
 import org.ine.telluride.jaer.tell2010.cardplayer.CardHistogram;
 import org.ine.telluride.jaer.tell2010.cardplayer.CardStatsMessageSender;
+import java.util.Arrays;
 
 import net.sf.jaer.util.networking.UDPMesssgeSender;
-
+import org.ine.telluride.jaer.tell2010.spinningcardclassifier.CardNamePlayer;
 
 //DLM additions
 import java.lang.Math;
@@ -48,6 +49,14 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
         return "Tracks a single object pose by Principle Components Analysis";
     }
 
+    //This is just a thing that only lets the UDP send data if at least this number of events is observed.  
+    
+    int min_number_events=getPrefs().getInt("FastCardID.min_number_events",6000);
+    {setPropertyTooltip("min_number_events","minimum number of events needed to send UDP message");}
+
+
+    int card_event_index = 0;
+    
     //Required variables for this class.
     float xsum = 0f;
     float ysum = 0f;
@@ -74,6 +83,10 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
 
     //protected int dt=getPrefs().getInt("BackgroundActivityFilter.dt",30000);
     //{setPropertyTooltip("dt","Events with less than this delta time in us to neighbors pass through");}
+    private CardNamePlayer[] namePlayers = new CardNamePlayer[13];  //This is used to call out the names of the cards
+    private int minSayCardIntervalMs = prefs().getInt("ClusterBasedPipCounter.minSayCardIntervalMs", 400);
+    private long lastTimeSaidCar = 0;
+
 
     double stddev_inc = .1;     //I need this so I can exert fine control over the size of the bounding box.
     int scale_stddev=getPrefs().getInt("FastCardID.scale_stddev",10);
@@ -101,12 +114,13 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
     {setPropertyTooltip("pip_bin_hist_threshold","number of events needed in a bin to 'see' a pip");}
 
      //Tobi's UDP message sender
-     CardStatsMessageSender msgSender;
-     //msgSender = new CardStatsMessageSender();
+     CardStatsMessageSender msgSender = new CardStatsMessageSender();
+     
 
     //histogram variables
     //int[] card_value_hist = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};    //This is a histogram for the number of the card
-    int[] pip_bin_hist = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};             //This is the count of events in a given sector of the card
+    double[] pip_bin_hist = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};             //This is the count of events in a given sector of the card
+    int[] pip_bin_active = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     int pip_count = 0;
 
     //flags
@@ -133,6 +147,8 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
     Point2D eventPoint = new Point2D.Float();
     Point2D stddev1Point=new Point2D.Float();
     Point2D stddev2Point=new Point2D.Float();
+
+    //pipbin points
     Point2D pipbiny1trPoint= new Point2D.Float(), pipbiny1brPoint= new Point2D.Float(), pipbiny1tlPoint= new Point2D.Float(), pipbiny1blPoint= new Point2D.Float();
     Point2D pipbiny2tlPoint= new Point2D.Float(), pipbiny2blPoint= new Point2D.Float(), pipbiny3tlPoint= new Point2D.Float(), pipbiny3blPoint= new Point2D.Float(); 
     Point2D pipbiny2trPoint= new Point2D.Float(), pipbiny2brPoint= new Point2D.Float(), pipbiny3trPoint= new Point2D.Float(), pipbiny3brPoint= new Point2D.Float();
@@ -143,6 +159,22 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
     Point2D pipbinx5trPoint= new Point2D.Float(), pipbinx5tlPoint= new Point2D.Float(), pipbinx5brPoint= new Point2D.Float(), pipbinx5blPoint= new Point2D.Float();
     Point2D pipbinx6trPoint= new Point2D.Float(), pipbinx6tlPoint= new Point2D.Float(), pipbinx6brPoint= new Point2D.Float(), pipbinx6blPoint= new Point2D.Float();
     Point2D pipbinx7trPoint= new Point2D.Float(), pipbinx7tlPoint= new Point2D.Float(), pipbinx7brPoint= new Point2D.Float(), pipbinx7blPoint= new Point2D.Float();
+
+    //pipbin display  points
+    Point2D pipbinPoint0= new Point2D.Float();
+    Point2D pipbinPoint1= new Point2D.Float();
+    Point2D pipbinPoint2= new Point2D.Float();
+    Point2D pipbinPoint3= new Point2D.Float();
+    Point2D pipbinPoint4= new Point2D.Float();
+    Point2D pipbinPoint5= new Point2D.Float();
+    Point2D pipbinPoint6= new Point2D.Float();
+    Point2D pipbinPoint7= new Point2D.Float();
+    Point2D pipbinPoint8= new Point2D.Float();
+    Point2D pipbinPoint9= new Point2D.Float();
+    Point2D pipbinPoint10= new Point2D.Float();
+   
+    double pipdisplayscale = 5;
+
 
     float xmedian=0f;
     float ymedian=0f;
@@ -174,8 +206,38 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
     //Tobi's card histogram classes
     CardHistogram cardHist = new CardHistogram();
 
+    //mle
+    int max_bin_mle = 0;
 
     
+
+    //==========================================================================
+    //This is the Dictionary of pip hist values used to identify the cards
+    
+    double[][] pip_hist_dictionary = {
+        {446, 8, 40, 396, 127, 136, 32, 608, 26, 24, 176},          //A
+        {38, 56, 86, 34, 194, 186, 146, 28, 46, 22, 54},            //2
+        {52, 157, 147, 129, 620, 1044, 744, 323, 240, 142, 200},    //3
+        {520, 69, 19, 147, 90, 9, 30, 556, 77, 36, 175},            //4
+        {632, 43, 165, 1280, 39, 1705, 105, 587, 177, 33, 1673},    //5
+        {289, 204, 347, 284, 18, 77, 58, 356, 383, 197, 464},       //6
+        {524, 161, 339, 381, 67, 69, 369, 222, 578, 170, 391},      //7
+        {261, 451, 314, 259, 370, 82, 296, 339, 284, 372, 329},     //8
+        {510, 654, 624, 457, 127, 531, 88, 407, 462, 677, 682},     //9
+        {572, 561, 584, 579, 616, 121, 423, 580, 618, 603, 585},    //10
+        {527, 501, 614, 856, 370, 1350, 264, 972, 474, 572, 579},   //J
+        {746, 1022, 605, 1163, 693, 207, 568, 921, 701, 928, 830},  //Q
+        {38, 23, 16, 57, 23, 26, 22, 70, 3, 35, 24},                //K
+    };
+
+    //now the pip_hist_dictionary needs to be normalized across the rows.
+    
+    
+
+    
+    //==========================================================================
+
+
 
 
 
@@ -189,6 +251,28 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
             ring_bufferX[k] = 0;
             ring_bufferY[k] = 0;
         }
+
+        //Get the name player ready
+        // during tracking
+        for (int i = 0; i < 13; i++) {
+            try {
+                namePlayers[i] = new CardNamePlayer(i);
+            } catch (Exception ex) {
+                log.warning(ex.toString());
+            }
+        }
+
+        //open up the message sender
+
+        try {
+            msgSender.open();
+        } catch (IOException ex) {
+            log.warning("couldn't open the UDPMesssgeSender to send messages about card stats: " + ex);
+        }
+
+        //Normalize the Pip_Bin_Hist_Dictionary across the rows to sum to 1;
+        normalizePipBinHistDictionary();
+
 
     }
 
@@ -232,11 +316,161 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
         return this.aspect_ratio_allowable_error_pts;
     }
 
-     public void setAspect_ratio_allowable_error_pts(final int aspect_ratio_allowable_error_pts) {
+    public void setAspect_ratio_allowable_error_pts(final int aspect_ratio_allowable_error_pts) {
          getPrefs().putInt("FastCardID.aspect_ratio_allowable_error_pts",aspect_ratio_allowable_error_pts);
         support.firePropertyChange("aspect_ratio_allowable_error_pts",this.aspect_ratio_allowable_error_pts,aspect_ratio_allowable_error_pts);
         this.aspect_ratio_allowable_error_pts = aspect_ratio_allowable_error_pts;
      }
+
+    public void normalizePipBinHistDictionary(){
+        //This method is used to make the pip bin hist dictionary normalized in the sense that it sums to one across the rows.
+
+        //int width = pip_bin_hist.length;  //(11)This is the number of pip hist bins
+        int width = 11;
+        int height = 13; //This is the number of cards.
+
+        //Go through row by row to find the sums
+
+        for (int ii = 0; ii < height; ii++){
+
+            //First sum all the elements of the ii row
+            double row_sum = 0;
+            for (int jj = 0; jj < width; jj++ ){
+                row_sum = row_sum + pip_hist_dictionary[ii][jj];
+            }
+
+            //Now divide each element in the ii row by the row sum
+            for (int jj = 0; jj < width; jj++ ){
+                pip_hist_dictionary[ii][jj] = pip_hist_dictionary[ii][jj]/row_sum;
+            }
+
+        }
+
+
+    }
+
+    public double getMaxPipBinHist() {
+        double pip_bin_hist_max = 0;
+        for (int jj = 0; jj < pip_bin_hist.length; jj++ ){
+                 if (pip_bin_hist[jj] > pip_bin_hist_max) {
+                     pip_bin_hist_max = pip_bin_hist[jj];
+                 }
+        }
+        return pip_bin_hist_max;
+    }
+
+    public void normalizePipBinHist(){
+        //This method is used to make the pip bin hist dictionary normalized in the sense that it sums to one across the rows.
+
+        int width = pip_bin_hist.length;  //(11)This is the number of pip hist bins
+
+            //First sum all the elements of the pip_bin_hist
+            double row_sum = 0;
+            for (int jj = 0; jj < width; jj++ ){
+                row_sum = row_sum + pip_bin_hist[jj];
+            }
+
+            //Now divide each element in the ii row by the row sum
+            for (int jj = 0; jj < width; jj++ ){
+                pip_bin_hist[jj] = pip_bin_hist[jj]/row_sum;
+            }
+    }
+
+    public void euclideanMetric(){
+        //Just initilize to 10
+
+        int width = pip_bin_hist.length;  //(11)This is the number of pip hist bins
+        int height = 13; //This is the number of cards.
+
+        //Normalize the pip bin hist
+        normalizePipBinHist();
+
+        double[] euclidean_metric = {10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10};
+        //pip_hist_dictionary[ii][jj]        
+
+        //Go through row by row to find euclidean distance
+        for (int ii = 0; ii < height; ii++){
+
+            //First sum all the elements of the ii row
+            double row_sum = 0;
+            for (int jj = 0; jj < width; jj++ ){
+                row_sum = row_sum + java.lang.Math.pow((pip_bin_hist[jj] - pip_hist_dictionary[ii][jj]),2);
+            }
+            //Now take the square root of the sum of the squares
+            //Multiply by 1000 for scaling purposes
+            euclidean_metric[ii] = java.lang.Math.sqrt(row_sum) * 1000;
+        }
+
+        //set cardhist appropriately
+        //This is going to require some gymnastics since the CardHistogram class is
+        //Implemented using ints and the metric values are doubles
+        
+        //First find the max value of the euclidean metric and do maxeuclidean - each bin
+        double euclidean_max = 0;
+        for (int jj = 0; jj < 13; jj++ ){
+                 if (euclidean_metric[jj] > euclidean_max) {
+                     euclidean_max = euclidean_metric[jj];
+                 }
+        }
+
+        //Now set the cardHist matrix
+        cardHist.reset();
+        for (int jj = 0; jj < 13; jj++ ){
+             cardHist.setValue(jj + 1,(int) (euclidean_max - euclidean_metric[jj]) );   //The jj+1 reflects the fact that toby reserves the 0 bin for unknown.  
+        }
+
+    }
+
+    public void hellingerMetric(){
+        
+
+
+        int width = pip_bin_hist.length;  //(11)This is the number of pip hist bins
+        int height = 13; //This is the number of cards.
+
+        //Normalize the pip bin hist
+        normalizePipBinHist();
+
+        //Just initilize to 10
+        double[] hellinger_metric = {10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10};
+        
+
+        //Go through row by row to find hellinger distance
+        for (int ii = 0; ii < height; ii++){
+
+            //First sum all the elements of the ii row
+            double row_sum = 0;
+            for (int jj = 0; jj < width; jj++ ){
+                row_sum = row_sum + java.lang.Math.pow((java.lang.Math.sqrt(pip_bin_hist[jj]) - java.lang.Math.sqrt(pip_hist_dictionary[ii][jj])),2);
+            }
+            //Now take the square root of the sum of the squares
+            //Multiply by 1000 for scaling purposes
+            hellinger_metric[ii] = java.lang.Math.sqrt(row_sum) * 1000;
+        }
+
+        //set cardhist appropriately
+        //This is going to require some gymnastics since the CardHistogram class is
+        //Implemented using ints and the metric values are doubles
+
+        //First find the max value of the euclidean metric and do maxeuclidean - each bin
+        double hellinger_max = 0;
+        for (int jj = 0; jj < 13; jj++ ){
+                 if (hellinger_metric[jj] > hellinger_max) {
+                     hellinger_max = hellinger_metric[jj];
+                 }
+        }
+
+        //Now set the cardHist matrix
+        cardHist.reset();
+        for (int jj = 0; jj < 13; jj++ ){
+             cardHist.setValue(jj + 1,(int) (hellinger_max - hellinger_metric[jj]) );   //The jj+1 reflects the fact that toby reserves the 0 bin for unknown.
+        }
+          
+        
+    }
+    
+    
+
 
     public int getPip_bin_hist_threshold() {
         return this.pip_bin_hist_threshold;
@@ -429,6 +663,8 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
                 stddev1Point.setLocation(10, 10 + stddev1);
                 stddev2Point.setLocation(20, 10 + stddev2);
 
+
+                /*
                 //These are points representing the pip_hist bins
                 //middle vertical bars
                 pipbiny1tlPoint.setLocation(xmean + scale_stddev * stddev_inc *(      (eigvec1x * stddev1) + (biny1 * eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(      (eigvec1y * stddev1) + (biny1 * eigvec2y * stddev2)));
@@ -506,7 +742,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
                 //Bottom Horizontal bar
                 pipbinx7brPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx7 * -1 * (eigvec1x * stddev1) - (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx7 * -1 * (eigvec1y * stddev1) - (eigvec2y * stddev2)));
                 pipbinx7blPoint.setLocation(xmean + scale_stddev * stddev_inc * (binx7 * -1 * (eigvec1x * stddev1) + (eigvec2x * stddev2)), ymean + scale_stddev * stddev_inc *(binx7 * -1 * (eigvec1y * stddev1) + (eigvec2y * stddev2)));
-
+                */
 
                 //Put the event data in the ring buffer
                 if (rb_index < ring_buffer_length ) {
@@ -538,16 +774,22 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
                         //Here reinitialize the card value matrix to 0s
 
                         cardHist.reset();
+                        card_event_index = 0;       //Resent the number of events for this instance of the card
 
+                        //Reset the active pip bins and the pip bin hist
+                        Arrays.fill(pip_bin_active, 0);
+                        Arrays.fill(pip_bin_hist, 0);
                         /*
                         for (int ii = 0; ii < card_value_hist.length; ii++){
                             card_value_hist[ii] = 0;            
                         }
                         */
-
+                        /*
                         for (int ii = 0; ii < pip_bin_hist.length; ii++){
                             pip_bin_hist[ii] = 0;
                         }
+                        */
+
                     }
                     card_present_flag = true;
                 } else {
@@ -556,6 +798,33 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
                         //Output the card_value_hist
                         //Indicate card is gone
                         //System.out.println("Card Not Present");
+
+                        if (getMin_number_events() < card_event_index) {
+                            //Now send out the data over UDP
+                            try {
+                                //Put metric check here
+                                euclideanMetric();
+                                //hellingerMetric();
+                                msgSender.sendMessage(cardHist.toString());
+                            } catch (IOException ex) {
+                                log.warning("couldn't send CardHistogram: " + ex);
+                            }
+
+                            if (cardHist.getMaxValueBin() != 0 && System.currentTimeMillis() - lastTimeSaidCar > minSayCardIntervalMs) {
+                                int val = cardHist.getMaxValueBin();
+                                    if (val > 0 && val <= 13 && namePlayers[val-1] != null) {
+                                        lastTimeSaidCar = System.currentTimeMillis();
+                                        //lastCardValue=val;
+                                        namePlayers[val - 1].play(); // 0=ace, 12=king
+                                        }
+                            }
+
+
+                        //Send the max card out on the console
+                        System.out.println("The MLE of the card is: " + cardHist.getMaxValueBin());
+                        System.out.println(cardHist.toString());
+                        }
+
                     }
                    card_present_flag = false;
                 }
@@ -646,12 +915,18 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
                     
                     if (card_present_flag == true ) {
 
-                        pip_count = 0;
+                        //pip_count = 0;
+                        //This for statement can be removed it is not used anymore
+
+                        /*
                         for (int ii = 0; ii<pip_bin_hist.length; ii++) {
+
                             if (pip_bin_hist[ii] >= pip_bin_hist_threshold) {
-                                pip_count++;
+                                pip_bin_active[ii] = 1;         //The idea here is if the pip bin ever goes above threshold it is considered active.  
+                                //pip_count++;
                             }
                         }
+                        */
                         
                     }
 
@@ -664,11 +939,19 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
                     //Remove this line and replace it with Tobi's Card Hist method
                     //card_value_hist[pip_count - 1]++;
 
-                    cardHist.incValue(pip_count);
+                    //determine the number of the card by summing the number of active pip bins
 
-                    //Now send out the data over UDP
+                    //ignore
+                    /*
+                    pip_count = 0;
+                    for (int ii = 0; ii<pip_bin_active.length; ii++) {
+                        pip_count =  pip_count + pip_bin_active[ii];
+                    }
+                    */
+                    //cardHist.incValue(pip_count);
 
                     /*
+                    //Now send out the data over UDP
                     try {
                            msgSender.sendMessage(cardHist.toString());
                     } catch (IOException ex) {
@@ -676,8 +959,30 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
                     }
                     */
                 }
+                //max_bin_mle = cardHist.getMaxValueBin();
+
+                //Here put code to display the pip_hist
+                double max_pip_bin_hist = getMaxPipBinHist();
+                
+                
+                pipbinPoint0.setLocation( pipdisplayscale * 3,(pipdisplayscale + 1)*4 + pipdisplayscale*pip_bin_hist[0]/max_pip_bin_hist );
+                pipbinPoint1.setLocation( pipdisplayscale * 3,(pipdisplayscale + 1)*3 + pipdisplayscale*pip_bin_hist[1]/max_pip_bin_hist );
+                pipbinPoint2.setLocation( pipdisplayscale * 3,(pipdisplayscale + 1)*2 + pipdisplayscale*pip_bin_hist[2]/max_pip_bin_hist );
+                pipbinPoint3.setLocation( pipdisplayscale * 3,(pipdisplayscale + 1)*1 + pipdisplayscale*pip_bin_hist[3]/max_pip_bin_hist );
+
+                pipbinPoint4.setLocation( pipdisplayscale * 2,(pipdisplayscale + 2)*3 + pipdisplayscale*pip_bin_hist[4]/max_pip_bin_hist );
+                pipbinPoint5.setLocation( pipdisplayscale * 2,(pipdisplayscale + 2)*2 + pipdisplayscale*pip_bin_hist[5]/max_pip_bin_hist );
+                pipbinPoint6.setLocation( pipdisplayscale * 2,(pipdisplayscale + 2)*1 + pipdisplayscale*pip_bin_hist[6]/max_pip_bin_hist );
+
+                pipbinPoint7.setLocation( pipdisplayscale * 1,(pipdisplayscale + 1)*4 + pipdisplayscale*pip_bin_hist[7]/max_pip_bin_hist );
+                pipbinPoint8.setLocation( pipdisplayscale * 1,(pipdisplayscale + 1)*3 + pipdisplayscale*pip_bin_hist[8]/max_pip_bin_hist );
+                pipbinPoint9.setLocation( pipdisplayscale * 1,(pipdisplayscale + 1)*2 + pipdisplayscale*pip_bin_hist[9]/max_pip_bin_hist );
+                pipbinPoint10.setLocation( pipdisplayscale * 1,(pipdisplayscale + 1)*1 + pipdisplayscale*pip_bin_hist[10]/max_pip_bin_hist );
+
+
 
                 rb_index++;
+                card_event_index++;
             }
 
         return out; //I just put this there since it seems necessary and Tobi said to do it.
@@ -695,21 +1000,41 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
     }
     */
 
+
+
+
     /** JOGL annotation */
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
 
+        
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() - 2);
-        String ss="FastCardID\n" + cardHist.toString().substring(0, 50);
+        String ss="FastCardID, David Mascarenas and Tobi Delbruck, Telluride, Co, July,2010 \n";// + cardHist.toString().substring(0, 50);
         ss += "\nPip bin histogram\n";
         if (card_present_flag == true) {
             ss += "Card Present\n";
         } else {
             ss += "Card Not Present\n";
         }
-        ss += "card x = " + cardx + " cardy = " + cardy + "\n";
-        MultilineAnnotationTextRenderer.renderMultilineString(ss);
+        ss += "pip_count = " + pip_count + "\n";
+        //ss += "MLE count = " + max_bin_mle + "\n";
+        ss += "pip bin  0 =" + pip_bin_hist[0] + "\n";
+        ss += "pip bin  1 =" + pip_bin_hist[1] + "\n";
+        ss += "pip bin  2 =" + pip_bin_hist[2] + "\n";
+        ss += "pip bin  3 =" + pip_bin_hist[3] + "\n";
+        ss += "pip bin  4 =" + pip_bin_hist[4] + "\n";
+        ss += "pip bin  5 =" + pip_bin_hist[5] + "\n";
+        ss += "pip bin  6 =" + pip_bin_hist[6] + "\n";
+        ss += "pip bin  7 =" + pip_bin_hist[7] + "\n";
+        ss += "pip bin  8 =" + pip_bin_hist[8] + "\n";
+        ss += "pip bin  9 =" + pip_bin_hist[9] + "\n";
+        ss += "pip bin 10 =" + pip_bin_hist[10] + "\n";
+        
 
+        //ss += "card x = " + cardx + " cardy = " + cardy + "\n";
+        MultilineAnnotationTextRenderer.renderMultilineString(ss);
+        
+        
         Point2D p=meanPoint;
         Point2D s=eventPoint;
         //Point2D o=orthoPoint;
@@ -782,13 +1107,70 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
 
         gl.glEnd();
 
-        
+        //======================================================================
+
+        //Draw the pip_bin_hist display
+
+        gl.glColor3f(1,0,0);
+        gl.glLineWidth(4);
+        gl.glBegin(GL.GL_LINES);
+
+        //bin0
+        gl.glVertex2d(pipdisplayscale * 3,(pipdisplayscale + 1)*4);
+        gl.glVertex2d(pipbinPoint0.getX(),pipbinPoint0.getY());
+
+        //bin1
+        gl.glVertex2d(pipdisplayscale * 3,(pipdisplayscale + 1)*3);
+        gl.glVertex2d(pipbinPoint1.getX(),pipbinPoint1.getY());
+
+        //bin2
+        gl.glVertex2d( pipdisplayscale * 3,(pipdisplayscale + 1)*2);
+        gl.glVertex2d(pipbinPoint2.getX(),pipbinPoint2.getY());
+
+        //bin3
+        gl.glVertex2d(pipdisplayscale * 3,(pipdisplayscale + 1)*1);
+        gl.glVertex2d(pipbinPoint3.getX(),pipbinPoint3.getY());
+
+
+        //bin4
+        gl.glVertex2d(pipdisplayscale * 2,(pipdisplayscale + 2)*3);
+        gl.glVertex2d(pipbinPoint4.getX(),pipbinPoint4.getY());
+
+        //bin5
+        gl.glVertex2d(pipdisplayscale * 2,(pipdisplayscale + 2)*2);
+        gl.glVertex2d(pipbinPoint5.getX(),pipbinPoint5.getY());
+
+        //bin6
+        gl.glVertex2d(pipdisplayscale * 2,(pipdisplayscale + 2)*1);
+        gl.glVertex2d(pipbinPoint6.getX(),pipbinPoint6.getY());
+
+        //bin7
+        gl.glVertex2d(pipdisplayscale * 1,(pipdisplayscale + 1)*4);
+        gl.glVertex2d(pipbinPoint7.getX(),pipbinPoint7.getY());
+
+        //bin8
+        gl.glVertex2d( pipdisplayscale * 1,(pipdisplayscale + 1)*3);
+        gl.glVertex2d(pipbinPoint8.getX(),pipbinPoint8.getY());
+
+        //bin9
+        gl.glVertex2d(pipdisplayscale * 1,(pipdisplayscale + 1)*2);
+        gl.glVertex2d(pipbinPoint9.getX(),pipbinPoint9.getY());
+
+        //bin
+        gl.glVertex2d(pipdisplayscale * 1,(pipdisplayscale + 1)*1);
+        gl.glVertex2d(pipbinPoint10.getX(),pipbinPoint10.getY());
+
+        gl.glEnd();
+                 
+
+
+        /*
         gl.glColor3f(1,0,0);
         gl.glLineWidth(1);
         gl.glBegin(GL.GL_LINES);
 
         //Draw the pip bin hist
-
+        
         //Middle verticle bars
         gl.glVertex2d(pipbiny1tlPoint.getX(), pipbiny1tlPoint.getY());
         gl.glVertex2d(pipbiny1blPoint.getX(), pipbiny1blPoint.getY());
@@ -869,6 +1251,8 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
 
 
         gl.glEnd();
+        */
+        //======================================================================
 
 
         /*
@@ -880,7 +1264,22 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
          *
          */
 
+
         gl.glPopMatrix();
+    }
+
+    /**
+     * @return the min_number_events
+     */
+    public int getMin_number_events() {
+        return min_number_events;
+    }
+
+    /**
+     * @param min_number_events the min_number_events to set
+     */
+    public void setMin_number_events(int min_number_events) {
+        this.min_number_events = min_number_events;
     }
 
 }
