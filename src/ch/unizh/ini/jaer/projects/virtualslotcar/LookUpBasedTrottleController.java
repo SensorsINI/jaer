@@ -100,7 +100,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
                 if (lookUpTable[currentTrackPos] == null) {
                     lookUpTable[currentTrackPos] = new ThrottleSection();
                 }
-                for (int i = 1; i < nbPreviewsStep; i++) {
+                for (int i = nbPreviewsStep-1; i > 0; i--) {
                     trackPos[i] = trackPos[i - 1];
                 }
                 trackPos[0] = currentTrackPos;
@@ -267,6 +267,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
         return punishmentFactorIncrease;
     }
 
+
     /**
      * @param punishmentFactorIncrease the punishmentFactorIncrease to set
      */
@@ -286,6 +287,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
             nbcrash++;
             System.out.println("punishing "+i+" with nbcrash="+nbcrash);
         }
+
 
         void maybeReward(int i) {
             if (nbcrash == 0) {
