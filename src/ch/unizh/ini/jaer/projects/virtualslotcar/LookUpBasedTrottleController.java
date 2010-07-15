@@ -116,9 +116,10 @@ This still requires us to have an estimated relation between throttle and result
 
             SlotcarState newState = track.updateSlotcarState(measuredLocation, measuredSpeedPPS);
             setCrash(!newState.onTrack);
-            lastTrackPos= currentTrackPos;
-            currentTrackPos= newState.segmentIdx;
-
+            if(!crash){
+                lastTrackPos= currentTrackPos;
+                currentTrackPos= newState.segmentIdx;
+            }
             if (lookUpTable[currentTrackPos]==null){
                 lookUpTable[currentTrackPos]=new ThrottleSection();
             }

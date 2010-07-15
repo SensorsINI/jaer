@@ -25,32 +25,47 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
 
     private float throttle=0; // last output throttle setting
     private float desiredSpeedPPS=prefs().getFloat("SimpleSpeedController.desiredSpeedPPS",0); // desired speed of card in pixels per second
-    private float defaultThrottle=prefs().getFloat("SimpleSpeedController.defaultThrottle",.3f); // default throttle setting if no car is detected
-    private float gain=prefs().getFloat("SimpleSpeedController.gain", 1); // gain of proportional controller
+    private float defaultThrottle=prefs().getFloat("SimpleSpeedController.defaultThrottle",.1f); // default throttle setting if no car is detected
+    private float gain=prefs().getFloat("SimpleSpeedController.gain", 1e-5f); // gain of proportional controller
     private float measuredSpeedPPS; // the last measured speed
+    private boolean useModelEnabled=prefs().getBoolean("SimpleSpeedController.useModelEnabled", false);
+    private SpeedVsThrottleModel throttleModel=new SpeedVsThrottleModel(); // used for FF control when useModelEnabled=true
+
 
     SlotCarRacer racer;
-
+ 
     public SimpleSpeedController(AEChip chip) {
         super(chip);
         setPropertyTooltip("desiredSpeedPPS", "desired speed of card in pixels per second");
         setPropertyTooltip("defaultThrottle", "default throttle setting if no car is detected");
         setPropertyTooltip("gain", "gain of proportional controller");
+        setPropertyTooltip("useModelEnabled", "set true to use feedforward throttle, false to use feedback control from error signal desired-measured speed");
+        final String ff="Feedforward throttle model";
+        setPropertyTooltip(ff, "thresholdThrottle", "threshold throttle for feedforward throttle model");
+        setPropertyTooltip(ff, "fullThrottle",  "full throttle for feedforward throttle model");
     }
 
     @Override
-    public float computeControl (CarTracker tracker,SlotcarTrack track){
-        ClusterInterface car=tracker.getCarCluster();
-        if(car==null){
-            return defaultThrottle;
-        }else{
-             measuredSpeedPPS=(float)car.getSpeedPPS();
-            float error=measuredSpeedPPS-desiredSpeedPPS;
-            float newThrottle=throttle-gain*error;
-            if(newThrottle<0) newThrottle=defaultThrottle; else if(newThrottle>1) newThrottle=1;
-            throttle=newThrottle;
-            return throttle;
+    public float computeControl(CarTracker tracker, SlotcarTrack track) {
+        ClusterInterface car = tracker.getCarCluster();
+        if (useModelEnabled) {
+            throttle=throttleModel.computeThrottle(desiredSpeedPPS);
+        } else {
+            if (car == null) {
+                return defaultThrottle;
+            } else {
+                measuredSpeedPPS = (float) car.getSpeedPPS();
+                float error = measuredSpeedPPS - desiredSpeedPPS;
+                float newThrottle = throttle - gain * error;
+                if (newThrottle < 0) {
+                    newThrottle = defaultThrottle;
+                } else if (newThrottle > 1) {
+                    newThrottle = 1;
+                }
+                throttle = newThrottle;
+            }
         }
+        return throttle;
     }
 
     @Override
@@ -100,13 +115,13 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
         prefs().putFloat("SimpleSpeedController.gain",gain);
     }
 
-    /**
-     * @return the desiredSpeedPPS
-     */
-    public float getDesiredSpeedPPS (){
-        return desiredSpeedPPS;
-    }
-
+//    /**
+//     * @return the desiredSpeedPPS
+//     */
+//    public float getDesiredSpeedPPS (){
+//        return desiredSpeedPPS;
+//    }
+//
     /**
      * Sets the desired speed but does NOT store the preferred value in the Preferences (for speed).
      *
@@ -115,7 +130,7 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
     public void setDesiredSpeedPPS (float desiredSpeedPPS){
         float old=this.desiredSpeedPPS;
         this.desiredSpeedPPS = desiredSpeedPPS;
-        support.firePropertyChange("desiredSpeedPPS", old, desiredSpeedPPS);  // updates the GUI with the new value
+//        support.firePropertyChange("desiredSpeedPPS", old, desiredSpeedPPS);  // updates the GUI with the new value
     }
 
 
@@ -135,9 +150,44 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
     }
 
     public void annotate(GLAutoDrawable drawable) {
-        String s=String.format("SimpleSpeedController\nDesired speed: %8.1f\nMeasured: %8.1f\nThrottle: %5.2f",desiredSpeedPPS, measuredSpeedPPS,throttle);
+        String s=String.format("SimpleSpeedController\nDesired speed: %8.1f\nMeasured: %8.1f\nError: %8.0f\nThrottle: %5.2f",desiredSpeedPPS, measuredSpeedPPS, (measuredSpeedPPS-desiredSpeedPPS),throttle);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 
+    /**
+     * @return the useModelEnabled
+     */
+    public boolean isUseModelEnabled() {
+        return useModelEnabled;
+    }
+
+    /**
+     * @param useModelEnabled the useModelEnabled to set
+     */
+    public void setUseModelEnabled(boolean useModelEnabled) {
+        this.useModelEnabled = useModelEnabled;
+        prefs().putBoolean("SimpleSpeedController.useModelEnabled", useModelEnabled);
+    }
+
+
+
+    //////////////////////////  ff throttle model delegated methods
+
+      public void setThresholdThrottle(float thresholdThrottle) {
+        throttleModel.setThresholdThrottle(thresholdThrottle);
+    }
+
+    public void setFullThrottle(float fullThrottle) {
+        throttleModel.setFullThrottle(fullThrottle);
+    }
+
+    public float getThresholdThrottle() {
+        return throttleModel.getThresholdThrottle();
+    }
+
+    public float getFullThrottle() {
+        return throttleModel.getFullThrottle();
+    }
+ 
 
 }

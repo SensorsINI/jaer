@@ -21,6 +21,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.SpikeSound;
 import net.sf.jaer.util.StateMachineStates;
 import net.sf.jaer.util.TobiLogger;
 
@@ -39,7 +40,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     public static String getDescription() {
         return "Slot car racer project, Telluride 2010";
     }
-    private boolean showTrackEnabled = prefs().getBoolean("SlotCarRacer.showTrack", true);
+     private boolean showTrackEnabled = prefs().getBoolean("SlotCarRacer.showTrack", true);
     private boolean virtualCarEnabled = prefs().getBoolean("SlotCarRacer.virtualCar", false);
     private TobiLogger tobiLogger;
     private SlotCarHardwareInterface hw;
@@ -56,7 +57,17 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     private TrackEditor trackEditor;
     private int crashDistancePixels = prefs().getInt("SlotCarRacer.crashDistancePixels", 20);
 
-    public enum ControllerToUse {
+
+    private boolean playThrottleSound=prefs().getBoolean("SlotCarRacer.playThrottleSound", true);
+   private SpikeSound spikeSound;
+   private float playSoundThrottleChangeThreshold = 0.01F;
+   private float lastSoundThrottleValue=0;
+    private long lastTimeSoundPlayed;
+
+ 
+
+
+   public enum ControllerToUse {
 
         SimpleSpeedController, CurvatureBasedController, LookUpBasedTrottleController
     };
@@ -119,6 +130,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip(vir, "virtualCarEnabled", "Enable display of virtual car on virtual track");
         setPropertyTooltip(lg, "logRacerDataEnabled", "enables logging of racer data");
         setPropertyTooltip(con, "controllerToUse", "Which controller to use to control car throttle");
+        setPropertyTooltip("playThrottleSound", "plays a spike when throttle is increased to indicate controller active");
 
     }
 
@@ -141,12 +153,13 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         chooseNextState();
         return out;
     }
-    private float lastThrottle = 0;
+    private float lastThrottle = 0, prevThrottle=0;;
     private boolean showedMissingTrackWarning = false;
 
     synchronized private void chooseNextState() {
 
-        if (isOverrideThrottle()) {
+        prevThrottle=lastThrottle;
+       if (isOverrideThrottle()) {
             lastThrottle = getOverriddenThrottleSetting();
         } else {
             if (state.get() == State.STARTING) {
@@ -194,8 +207,22 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
                 }
             }
         }
-        lastThrottle = lastThrottle > maxThrottle ? maxThrottle : lastThrottle;
+
+         lastThrottle = lastThrottle > maxThrottle ? maxThrottle : lastThrottle;
         hw.setThrottle(lastThrottle);
+        if(playThrottleSound&&Math.abs(lastThrottle-lastSoundThrottleValue)>playSoundThrottleChangeThreshold){
+            long now;
+            if(lastThrottle>lastSoundThrottleValue && (now=System.currentTimeMillis())-lastTimeSoundPlayed>10) {
+                if(spikeSound==null) spikeSound=new SpikeSound();
+                spikeSound.play();
+                lastTimeSoundPlayed=now;
+            }
+            lastSoundThrottleValue=lastThrottle;
+        }
+//        if(lastThrottle-lastSoundThrottleValue<-playSoundThrottleChangeThreshold){
+//            lastSoundThrottleValue=lastThrottle;
+//        }
+
 
         if (isLogRacerDataEnabled()) {
             if(overrideThrottle){
@@ -394,4 +421,34 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
             log.warning(e.toString());
         }
     }
+
+
+       /**
+     * @return the playThrottleSound
+     */
+    public boolean isPlayThrottleSound() {
+        return playThrottleSound;
+    }
+
+    /**
+     * @param playThrottleSound the playThrottleSound to set
+     */
+    public void setPlayThrottleSound(boolean playThrottleSound) {
+        this.playThrottleSound = playThrottleSound;
+    }
+
+       /**
+     * @return the playSoundThrottleChangeThreshold
+     */
+    public float getPlaySoundThrottleChangeThreshold() {
+        return playSoundThrottleChangeThreshold;
+    }
+
+    /**
+     * @param playSoundThrottleChangeThreshold the playSoundThrottleChangeThreshold to set
+     */
+    public void setPlaySoundThrottleChangeThreshold(float playSoundThrottleChangeThreshold) {
+        this.playSoundThrottleChangeThreshold = playSoundThrottleChangeThreshold;
+    }
+
 }
