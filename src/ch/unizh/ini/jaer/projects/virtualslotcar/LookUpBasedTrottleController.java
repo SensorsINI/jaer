@@ -13,8 +13,8 @@ import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- * Class which learn the throttle at different part of the track and set it on a table of sectionthrottle object
- * @author Juston
+ * Learns the throttle at different part of the track.
+ * @author Juston, Tobi
  */
 public class LookUpBasedTrottleController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater {
     private float fractionOfTrackToPunish  =prefs().getFloat("LookUpBasedTrottleController.fractionOfTrackToPunish",0.06f);

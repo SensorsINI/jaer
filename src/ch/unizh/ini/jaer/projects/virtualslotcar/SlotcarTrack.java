@@ -206,7 +206,7 @@ public class SlotcarTrack implements java.io.Serializable {
     }
 
     /** Returns the list of points */
-    public LinkedList<Point2D.Float> getPointList() {
+    final public LinkedList<Point2D.Float> getPointList() {
         return trackPoints;
     }
 
