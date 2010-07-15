@@ -116,6 +116,7 @@ public class SlotcarTrack implements java.io.Serializable {
      * @return Index of closest point on track or -1 if no track point is <= maxDist from pos.
      */
     public int findClosest(Point2D pos, float maxDist) {
+        if(pos==null) return -1;
         if (trackPoints.size() > 0) {
             ListIterator<Point2D.Float> it = trackPoints.listIterator();
             int idx = 0;

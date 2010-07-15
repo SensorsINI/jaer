@@ -193,9 +193,9 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
                     } else if (trackDefineFilter.getTrack().findClosest(carCluster.getLocation(), crashDistancePixels) == -1) {
                         state.set(State.CRASHED);
                     } else {
-                        lastThrottle = throttleController.computeControl(carTracker, trackDefineFilter.getTrack());
                     }
-                }
+                    lastThrottle = throttleController.computeControl(carTracker, trackDefineFilter.getTrack());
+               }
             } else if (state.get() == State.CRASHED) {
                         throttleController.computeControl(carTracker, trackDefineFilter.getTrack());
                 if (carTracker.getCarCluster() != null && state.timeSinceChanged() > 1000) {
