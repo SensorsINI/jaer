@@ -36,6 +36,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
     private SlotcarTrack track;
     private int currentTrackPos; // position in spline parameter of track
     private int lastTrackPos; // last position in spline parameter of track
+    private int[] trackPos;
 
     private float integrationStep = prefs().getFloat("CurvatureBasedController.integrationStep",0.1f);
     /*
@@ -48,6 +49,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
     //LookUpTable[]={def,def,def,def,def,def,def,def,def,def,def,def,def,def};*/
     private float def = 5/100;
     private int nbsection;
+    private int nbPreviewsStep;
     private ThrottleSection[] lookUpTable;
     private boolean learning=false;
     private boolean crash;
@@ -112,12 +114,16 @@ This still requires us to have an estimated relation between throttle and result
             nbsection=track.getNumPoints() ;//load the number of section
             if(lookUpTable==null || lookUpTable.length!=track.getNumPoints() ){
                 lookUpTable=new ThrottleSection[nbsection];
+                nbPreviewsStep=(int)(nbsection*0.06);
+                trackPos= new int[nbPreviewsStep];
             }
 
             SlotcarState newState = track.updateSlotcarState(measuredLocation, measuredSpeedPPS);
             setCrash(!newState.onTrack);
-            if(!crash){
-                lastTrackPos= currentTrackPos;
+            if(currentTrackPos!=-1){
+                for(int i = 1; i < nbPreviewsStep; i++){
+                    trackPos[i]= trackPos[i-1];
+                }
                 currentTrackPos= newState.segmentIdx;
             }
             if (lookUpTable[currentTrackPos]==null){
@@ -127,7 +133,7 @@ This still requires us to have an estimated relation between throttle and result
             if (crash) {
                 ThrottleSection t = lookUpTable[lastTrackPos];
                 t.definethrottle = clipThrottle(t.definethrottle - getThrottleChange());
-                lookUpTable[lastTrackPos].nbcrash++;
+                t.nbcrash++;
             } else {
                 if (learning && lookUpTable[lastTrackPos].nbcrash == 0) {
                     ThrottleSection t = lookUpTable[lastTrackPos];
@@ -311,6 +317,11 @@ This still requires us to have an estimated relation between throttle and result
     public class ThrottleSection {
         float definethrottle=getDefaultThrottle();
         int nbcrash=0;
+
+        void punish(){
+            definethrottle=clipThrottle()
+        }
+
     }
 
  
