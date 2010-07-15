@@ -14,7 +14,7 @@ import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- * 
+ * Class which learn the throttle at different part of the track and set it on a table of sectionthrottle object
  * @author Juston
  */
 public class LookUpBasedTrottleController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater {
@@ -35,11 +35,20 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
     private float upcomingCurvature=0;
     private SlotcarTrack track;
     private int currentTrackPos; // position in spline parameter of track
+    private int lastTrackPos; // last position in spline parameter of track
 
     private float integrationStep = prefs().getFloat("CurvatureBasedController.integrationStep",0.1f);
-    private float def = 1/2;
-    private int nbsection=14;
-    private float LookUpTable[]={def,def,def,def,def,def,def,def,def,def,def,def,def,def};
+    /*
+    private int nbsection=14;//do new object ThrottleSection
+    private float lookUpTable[]= new float[nbsection];
+    //private float LookUpTable[]={def,def,def,def,def,def,def,def,def,def,def,def,def,def};
+    //for( int i = 0; i < nbsection ; i++ ){
+      //   LookUpTable[i] = def ;
+    //}
+    //LookUpTable[]={def,def,def,def,def,def,def,def,def,def,def,def,def,def};*/
+    private float def = 5/100;
+    private int nbsection;
+    private ThrottleSection[] lookUpTable;
     private boolean learning=false;
     private boolean crash;
     
@@ -98,38 +107,36 @@ This still requires us to have an estimated relation between throttle and result
              measuredSpeedPPS=(float)car.getSpeedPPS();
              measuredLocation=car.getLocation();
 
-             // Encapsulated update in track object
-             // TODO: check whether car is on track, currently assume that it is always on track
-             //boolean onTrack = true;
-             SlotcarState newState = track.updateSlotcarState(measuredLocation, measuredSpeedPPS);
-             setCrash(!newState.onTrack);
-            currentTrackPos= newState.segmentIdx;
-            // compute the curvature at throttleDelayMs in the future, given our measured speed
 
-            //float timeStep = getThrottleDelayMs();
-            //UpcomingCurvature curvature=track.getApproxCurvature(currentTrackPos, 2, timeStep/1000, measuredSpeedPPS);
-
-
+//            nbsection=track.getNumPoints() ;//load the number of section
+//            if
+//
+//            SlotcarState newState = track.updateSlotcarState(measuredLocation, measuredSpeedPPS);
+//            setCrash(!newState.onTrack);
+//            currentTrackPos= newState.segmentIdx;
+//            lastTrackPos= currentTrackPos+1;
+//            if (lastTrackPos==nbsection){
+//                lastTrackPos=0;
+//            }
+            if (lookUpTable[currentTrackPos]==null){
+                lookUpTable[currentTrackPos].definethrottle=def;
+                lookUpTable[currentTrackPos].nbcrash=0;
+            }
+            
+    
+            
             if (crash){
-                if (currentTrackPos==nbsection-1){
-                    LookUpTable[0]=LookUpTable[0]-1/100;
-                }else{
-                    LookUpTable[currentTrackPos+1]=LookUpTable[currentTrackPos+1]-1/100;
-                }
+                lookUpTable[lastTrackPos].definethrottle=lookUpTable[lastTrackPos].definethrottle-1/100;
+                lookUpTable[lastTrackPos].nbcrash++;
             }else{
-                if (learning){
-                    if (currentTrackPos==nbsection-1){
-                        LookUpTable[0]=LookUpTable[0]+1/100;
-                    }else{
-                        LookUpTable[currentTrackPos+1]=LookUpTable[currentTrackPos+1]+1/100;
-                    }
-
+                if (learning && lookUpTable[lastTrackPos].nbcrash==0){
+                    lookUpTable[lastTrackPos].definethrottle=lookUpTable[lastTrackPos].definethrottle+1/100;
                  }
             }
             
             
 
-            throttle=LookUpTable[currentTrackPos];
+            throttle=lookUpTable[currentTrackPos].definethrottle;
             return throttle;
         }
     }
@@ -282,7 +289,10 @@ This still requires us to have an estimated relation between throttle and result
 
 
 
+    public class ThrottleSection {
+        float definethrottle;
+        int nbcrash;
+    }
 
-
-
+ 
 }
