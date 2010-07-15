@@ -131,6 +131,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip(lg, "logRacerDataEnabled", "enables logging of racer data");
         setPropertyTooltip(con, "controllerToUse", "Which controller to use to control car throttle");
         setPropertyTooltip("playThrottleSound", "plays a spike when throttle is increased to indicate controller active");
+     setPropertyTooltip("playSoundThrottleChangeThreshold", "threshold change in throttle to play sound");
 
     }
 
@@ -163,6 +164,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
             lastThrottle = getOverriddenThrottleSetting();
         } else {
             if (state.get() == State.STARTING) {
+                throttleController.computeControl(carTracker, trackDefineFilter.getTrack());
                 lastThrottle = getOverriddenThrottleSetting();
                 if (state.timeSinceChanged() > 300) {
                     state.set(State.RUNNING);
@@ -435,6 +437,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
      */
     public void setPlayThrottleSound(boolean playThrottleSound) {
         this.playThrottleSound = playThrottleSound;
+        prefs().putBoolean("SlotCarRacer.playThrottleSound", playThrottleSound);
     }
 
        /**
