@@ -9,7 +9,6 @@ import java.awt.geom.Point2D;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
 import net.sf.jaer.graphics.FrameAnnotater;
 
@@ -98,19 +97,22 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
                 didPunishment=false;
                 currentTrackPos = carState.segmentIdx;
                 if (lookUpTable[currentTrackPos] == null) {
-                    lookUpTable[currentTrackPos] = new ThrottleSection();
+                    lookUpTable[currentTrackPos] = new ThrottleSection(currentTrackPos);
                 }
-                for (int i = nbPreviewsStep-1; i > 0; i--) {
-                    trackPos[i] = trackPos[i - 1];
+                if (currentTrackPos != lastTrackPos) { // update table of positions to later credit with crash
+                    for (int i = 1; i < nbPreviewsStep; i++) {
+                        trackPos[i] = trackPos[i - 1];
+                    }
+                    trackPos[0] = currentTrackPos;
+                    lastTrackPos = currentTrackPos;
                 }
-                trackPos[0] = currentTrackPos;
                 if (learning) {
                     lookUpTable[currentTrackPos].maybeReward(currentTrackPos);
                 }
             }else if(!didPunishment){
                 didPunishment=true;
                 for (int i = 1; i < nbPreviewsStep; i++) {
-                    lookUpTable[trackPos[i]].punish(i);
+                    lookUpTable[trackPos[i]].punish(trackPos[i]);
                 }
             }
 
@@ -280,19 +282,28 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
 
         float definethrottle = getDefaultThrottle();
         int nbcrash = 0;
-//        int trackPoint;
+        int trackPoint;
+
+        public ThrottleSection(int trackPoint) {
+            this.trackPoint = trackPoint;
+        }
+
+
 
         void punish(int i) {
+
+            if(!learning) return;
             definethrottle = clipThrottle(definethrottle - getPunishmentFactorIncrease()*getThrottleChange());
             nbcrash++;
-            System.out.println("punishing "+i+" with nbcrash="+nbcrash);
+            System.out.println(trackPoint+ ": punishing "+i+" with nbcrash="+nbcrash+", definethrottle="+definethrottle+" now");
         }
 
 
         void maybeReward(int i) {
+             if(!learning) return;
             if (nbcrash == 0) {
                 definethrottle = clipThrottle(definethrottle + getThrottleChange());
-                System.out.println("rewarding "+i);
+                System.out.println(trackPoint+ ": rewarding "+i+" with nbcrash="+nbcrash);
             }
         }
     }
