@@ -120,6 +120,8 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     private float stepSize = prefs().getFloat("TrackdefineFilter.stepSize", 0.05f);
     // Whether to draw smooth interpolated track
     private boolean drawSmooth = prefs().getBoolean("TrackdefineFilter.drawSmooth", false);
+    // Whether to use curvature to scale the size of vertices
+    private boolean scalePointsCurvature = prefs().getBoolean("TrackdefineFilter.scalePointsCurvature", true);
     // Delete or move track points on mouse click
     private boolean deleteOnClick = false; // start always that mouse clicks do not mess up track // prefs().getBoolean("TrackdefineFilter.deleteOnClick", false);
     // Delete or move track points on mouse click
@@ -163,6 +165,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         setPropertyTooltip(mod, "deleteOnClick", "Delete track points on mouse click (otherwise move)");
         setPropertyTooltip(mod, "insertOnClick", "Insert track points on mouse click (otherwise move)");
         setPropertyTooltip(mod, "clickTolerance", "Tolerance for mouse clicks (deleting, dragging)");
+        setPropertyTooltip(disp, "scalePointsCurvature", "Scale the size of a vertex by the curvature at that point");
 
         // New in TrackdefineFilter
         // Initialize histogram
@@ -252,6 +255,10 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
 
     public void initFilter() {
         resetFilter();
+        extractPoints = null;
+        extractedTrack = null;
+        smoothPoints = null;
+
     }
 
     private int clip(int val, int limit) {
@@ -355,29 +362,48 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     private void drawExtractedTrack(GL gl) {
         if (extractedTrack != null && extractPoints != null) {
             // Draw extracted points
-            gl.glColor3d(1.0f, 0.0f, 1.0f);
-            gl.glPointSize(5.0f);
+
+            float[] curvatureAtPoints;
+            if (scalePointsCurvature) {
+                // Use curvature to set size of points
+                curvatureAtPoints = extractedTrack.getCurvatureAtPoints();
+                if (curvatureAtPoints == null)
+                    return;
+            } else {
+                int numPoints = extractPoints.size();
+                curvatureAtPoints = new float[numPoints];
+                for (int i=0; i<numPoints; i++)
+                    curvatureAtPoints[i] = 5.0f;
+            }
+            //gl.glColor3d(1.0f, 0.0f, 1.0f);
+            //gl.glPointSize(5.0f);
             gl.glColor3d(1.0f, 1.0f, 1.0f);
-            gl.glPointSize(10.0f);
             Point2D startPoint = null, selectedPoint = null;
-            gl.glBegin(gl.GL_POINTS);
+            float startSize=10.0f, selectedSize=10.0f;
+            float minSize = 3.0f;
             int idx = 0;
             for (Point2D p : extractPoints) {
                 if (idx == this.currentPointIdx) {
                     selectedPoint=p;
+                    selectedSize = minSize+Math.min(200.0f, Math.abs(curvatureAtPoints[idx])) / 10.0f;
+
                 } else if (idx == 0) {
                     // Plot first point of the track in special color, but we cannot call setColor inside glBegin/glEnd
                     startPoint=p;
+                    startSize = minSize+Math.min(200.0f, Math.abs(curvatureAtPoints[idx])) / 10.0f;
                } else {
+                    float curveSize = minSize+Math.min(200.0f, Math.abs(curvatureAtPoints[idx])) / 10.0f;
+                    gl.glPointSize(curveSize);
+                    gl.glBegin(gl.GL_POINTS);
                     gl.glVertex2d(p.getX(), p.getY());
+                    gl.glEnd();
                 }
                 idx++;
             }
-            gl.glEnd();
  
             if (startPoint != null) {
                 gl.glColor3d(1.0f, 0.0f, 0.0f);
-                gl.glPointSize(10.0f);
+                gl.glPointSize(startSize);
                 gl.glBegin(gl.GL_POINTS);
                 gl.glVertex2d(startPoint.getX(), startPoint.getY());
                 gl.glEnd();
@@ -386,7 +412,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
             if (selectedPoint != null) {
                 // Plot selected point in special color
                 gl.glColor3d(1.0f, 0.0f, 1.0f);
-                gl.glPointSize(5.0f);
+                gl.glPointSize(selectedSize);
                 gl.glBegin(gl.GL_POINTS);
                 gl.glVertex2d(selectedPoint.getX(), selectedPoint.getY());
                 gl.glEnd();
@@ -749,6 +775,15 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     public void setRefineDistance(float refineDistance) {
         this.refineDistance = refineDistance;
         prefs().putFloat("TrackdefineFilter.refineDistance", refineDistance);
+    }
+
+    public boolean isScalePointsCurvature() {
+        return scalePointsCurvature;
+    }
+
+    public void setScalePointsCurvature(boolean scalePointsCurvature) {
+        this.scalePointsCurvature = scalePointsCurvature;
+        prefs().putBoolean("TrackdefineFilter.scalePointsCurvature", scalePointsCurvature);
     }
 
 

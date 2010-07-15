@@ -7,6 +7,7 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import java.awt.geom.Point2D;
 import javax.media.opengl.GLAutoDrawable;
+import javax.media.opengl.GL;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -35,9 +36,12 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
 //    private float curvatureDeltaTimeMs=prefs().getFloat("CurvatureBasedController.curvatureDeltaTimeMs",1);
     private float lateralAccelerationLimitPPS2 = prefs().getFloat("CurvatureBasedController.lateralAccelerationLimitPPS2", 4000);// 400pps change in 0.1s is about 4000pps2
     private float upcomingCurvature = 0;
+    private float osculatingCircleRadius;
+    private Point2D.Float osculatingCircleCenter;
     private SlotcarTrack track;
     private int currentTrackPos; // position in spline parameter of track
     private float integrationStep = prefs().getFloat("CurvatureBasedController.integrationStep", 0.1f);
+    private boolean drawOsculatingCircle = prefs().getBoolean("CurvatureBasedController.drawOsculatingCircle", false);
 
     public CurvatureBasedController(AEChip chip) {
         super(chip);
@@ -48,10 +52,13 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
         setPropertyTooltip("maxDistanceFromTrackPoint", "Maximum allowed distance in pixels from track spline point to find nearest spline point; if currentTrackPos=-1 increase maxDistanceFromTrackPoint");
         setPropertyTooltip("integrationStep", "Integration step for computation of upcoming curvatures");
 //        setPropertyTooltip("", "");
+        setPropertyTooltip("drawOsculatingCircle", "Display the osculating circle during driving");
         speedController = new SimpleSpeedController(chip);
         setEnclosedFilterChain(new FilterChain(chip));
         getEnclosedFilterChain().add(speedController);
         speedController.setEnclosed(true, this); // to get GUI to show up properly
+
+        osculatingCircleCenter = new Point2D.Float();
     }
 
     /** Computes throttle using tracker output and upcoming curvature, using methods from SlotcarTrack.
@@ -64,6 +71,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
     public float computeControl(CarTracker tracker, SlotcarTrack track) {
         // find the csar, pass it to the track if there is one to get it's location, the use the UpcomingCurvature to compute the curvature coming up,
         // then compute the throttle to get our speed at the limit of traction.
+
         ClusterInterface car = tracker.getCarCluster();
         if (car == null) {
             // lost car tracking or just starting out
@@ -119,6 +127,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
                 float c = Math.abs(curvature.getCurvature(1));  // this is radius of curvature in pixels!
                 if (Float.isNaN(c)) {
                     // TODO do something if track model not loaded or something
+                    System.out.println("No track model loaded!");
                 } else {
                     float g = getLateralAccelerationLimitPPS2();
                     float v = (float) Math.sqrt(g * c);
@@ -126,6 +135,12 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
                     upcomingCurvature = c;
                     speedController.setDesiredSpeedPPS(v);
                     throttle = speedController.computeControl(tracker, track);
+
+                    if (drawOsculatingCircle) {
+                        if (track!= null)
+                            osculatingCircleRadius = track.getOsculatingCircle(newState.pos+(measuredSpeedPPS*timeStep/1000), osculatingCircleCenter);
+                        
+                    }
                 }
             } catch (RuntimeException e) {
                 log.warning("caught " + e + ", returning old throttle setting");
@@ -177,10 +192,43 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
         prefs().putFloat("CurvatureBasedController.defaultThrottle", defaultThrottle);
     }
 
+        /** Draws the osculating circle of the track at the current car position */
+    private void drawOsculatingCircle(GL gl, Point2D p, double radius, Point2D center) {
+        radius = Math.abs(radius);
+
+        gl.glLineWidth(1.0f);
+
+        // Draw line to connect center of circle and car
+        gl.glColor3f(1.0f, 1.0f, 1.0f);
+
+        gl.glBegin(GL.GL_LINES);
+        gl.glVertex2d(p.getX(), p.getY());
+        gl.glVertex2d(center.getX(), center.getY());
+        gl.glEnd();
+
+        // Draw circle
+        gl.glColor3f(1.0f, 0.0f, 1.0f);
+        gl.glBegin(GL.GL_LINE_LOOP);
+        for (int i=0; i<60; i++) {
+            gl.glVertex2d(center.getX()+radius*Math.cos(6.0*i*Math.PI/180.0),
+                    center.getY()+radius*Math.sin(6.0*i*Math.PI/180.0));
+        }
+        gl.glEnd();
+
+        // gl.glLoadIdentity();
+
+    }
+
     @Override
     public void annotate(GLAutoDrawable drawable) {
         String s = String.format("CurvatureBasedController\ncurrentTrackPos: %d\nDesired speed: %8.0f\nMeasured speed %8.0f\nCurvature: %8.1f\nThrottle: %8.3f", currentTrackPos, desiredSpeedPPS, measuredSpeedPPS, upcomingCurvature, throttle);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
+
+        // Draw osculating circle
+        if (drawOsculatingCircle) {
+            drawOsculatingCircle(drawable.getGL(), measuredLocation, osculatingCircleRadius,
+                    osculatingCircleCenter);
+        }
     }
 
     /**
@@ -247,4 +295,15 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
         prefs().putFloat("CurvatureBasedController.integrationStep", integrationStep);
         track.setIntegrationStep(integrationStep);
     }
+
+    public boolean isDrawOsculatingCircle() {
+        return drawOsculatingCircle;
+    }
+
+    public void setDrawOsculatingCircle(boolean drawOsculatingCircle) {
+        this.drawOsculatingCircle = drawOsculatingCircle;
+        prefs().putBoolean("CurvatureBasedController.drawOsculatingCircle", drawOsculatingCircle);
+    }
+
+
 }

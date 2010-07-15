@@ -42,6 +42,9 @@ public class SlotcarTrack implements java.io.Serializable {
     /** Integration step for arc-length calculations */
     private float integrationStep = 0.1f;
 
+    /** Curvature at track points */
+    private float[] curvatureAtPoints;
+
     /** Creates a new track. */
     public SlotcarTrack() {
         trackPoints = new LinkedList<Point2D.Float>();
@@ -51,6 +54,8 @@ public class SlotcarTrack implements java.io.Serializable {
         carState = new SlotcarState();
 
         physics = new SlotcarPhysics();
+
+        curvatureAtPoints = null;
     }
 
     /** Adds a Point2D2D to the end of the track */
@@ -104,10 +109,36 @@ public class SlotcarTrack implements java.io.Serializable {
         }
     }
 
+    /** Returns an array of curvatures at spline points */
+    public float[] getCurvatureAtPoints() {
+        if (curvatureAtPoints == null)
+            updateCurvature();
+
+        return curvatureAtPoints;
+    }
+
+    /** Computes the curvatures at every spline point */
+    private void updateCurvature() {
+        if (trackPoints == null)
+            return;
+        int numPoints = trackPoints.size();
+        if (numPoints > 0) {
+            curvatureAtPoints = new float[numPoints];
+            for (int i=0; i<numPoints; i++) {
+                float pos = smoothTrack.getParam(i);
+                curvatureAtPoints[i] = (float) getOsculatingCircle(pos, null);
+            }
+        } else {
+            curvatureAtPoints = null;
+        }
+
+    }
+
     /** Updates the spline coefficients for this track */
     public void updateSpline() {
         if (trackPoints.size() > 2) {
             smoothTrack.computeCoefficients(trackPoints);
+            updateCurvature();
         }
     }
 
@@ -351,6 +382,8 @@ public class SlotcarTrack implements java.io.Serializable {
     public UpcomingCurvature getCurvature(int closestIdx, int numPoints, float dt, float speed) {
 
         float pos = smoothTrack.getParam(closestIdx);
+//            System.out.println("S: " + speed + "|| DT: " + dt);
+//            System.out.println("DS: " + speed*dt + " // " + getTrackLength());
         return getCurvature(pos, numPoints, dt, speed);
     }
 
@@ -445,6 +478,7 @@ public class SlotcarTrack implements java.io.Serializable {
     public void refine(float step) {
         smoothTrack = smoothTrack.refine(step);
         trackPoints = smoothTrack.getSplinePoints();
+        updateCurvature();
     }
 
     /**
