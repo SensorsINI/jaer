@@ -29,7 +29,14 @@ public class CardHistogram {
 
     public final void incValue(int value) {
         valueCounts[value]++;
-        if(valueCounts[value]>valueCounts[maxValueBin]) maxValueBin=value;
+        if(valueCounts[value]>valueCounts[maxValueBin]) maxValueBin=value;    
+    }
+
+    //Method added by DLM to set the value of one of the card value hist bins
+    //This is an additional method I added
+    public final void setValue(int card_value, int num) {
+        valueCounts[card_value] = num;
+        if(valueCounts[card_value]>valueCounts[maxValueBin]) maxValueBin=card_value;
     }
 
     public final void incSuit(int suit) {
