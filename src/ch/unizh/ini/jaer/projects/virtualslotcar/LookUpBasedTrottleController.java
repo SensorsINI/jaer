@@ -51,8 +51,9 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
     private ThrottleSection[] lookUpTable;
     private boolean learning=false;
     private boolean crash;
+    private float throttleChange=prefs().getFloat("LookUpBasedTrottleController.throttlePunishment",0.01f);
     
-
+//eligibility trace
 
 
     public LookUpBasedTrottleController(AEChip chip) {
@@ -108,39 +109,42 @@ This still requires us to have an estimated relation between throttle and result
              measuredLocation=car.getLocation();
 
 
-//            nbsection=track.getNumPoints() ;//load the number of section
-//            if
-//
-//            SlotcarState newState = track.updateSlotcarState(measuredLocation, measuredSpeedPPS);
-//            setCrash(!newState.onTrack);
-//            currentTrackPos= newState.segmentIdx;
-//            lastTrackPos= currentTrackPos+1;
-//            if (lastTrackPos==nbsection){
-//                lastTrackPos=0;
-//            }
+            nbsection=track.getNumPoints() ;//load the number of section
+            if(lookUpTable==null || lookUpTable.length!=track.getNumPoints() ){
+                lookUpTable=new ThrottleSection[nbsection];
+            }
+
+            SlotcarState newState = track.updateSlotcarState(measuredLocation, measuredSpeedPPS);
+            setCrash(!newState.onTrack);
+            lastTrackPos= currentTrackPos;
+            currentTrackPos= newState.segmentIdx;
+
             if (lookUpTable[currentTrackPos]==null){
-                lookUpTable[currentTrackPos].definethrottle=def;
-                lookUpTable[currentTrackPos].nbcrash=0;
+                lookUpTable[currentTrackPos]=new ThrottleSection();
             }
             
-    
-            
-            if (crash){
-                lookUpTable[lastTrackPos].definethrottle=lookUpTable[lastTrackPos].definethrottle-1/100;
+            if (crash) {
+                ThrottleSection t = lookUpTable[lastTrackPos];
+                t.definethrottle = clipThrottle(t.definethrottle - getThrottleChange());
                 lookUpTable[lastTrackPos].nbcrash++;
-            }else{
-                if (learning && lookUpTable[lastTrackPos].nbcrash==0){
-                    lookUpTable[lastTrackPos].definethrottle=lookUpTable[lastTrackPos].definethrottle+1/100;
-                 }
+            } else {
+                if (learning && lookUpTable[lastTrackPos].nbcrash == 0) {
+                    ThrottleSection t = lookUpTable[lastTrackPos];
+                    t.definethrottle = clipThrottle(t.definethrottle + getThrottleChange());
+                }
             }
-            
-            
+                      
 
             throttle=lookUpTable[currentTrackPos].definethrottle;
             return throttle;
         }
     }
 
+    private float clipThrottle(float t){
+        if(t>1) t=1; else if(t<defaultThrottle) t=defaultThrottle;
+        return t;
+    }
+    
     @Override
     public float getThrottle (){
         return throttle;
@@ -190,7 +194,7 @@ This still requires us to have an estimated relation between throttle and result
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        String s=String.format("CurvatureBasedController\ncurrentTrackPos: %d\nDesired speed: %8.0f\nMeasured speed %8.0f\nCurvature: %8.1f\nThrottle: %8.3f",currentTrackPos, desiredSpeedPPS, measuredSpeedPPS, upcomingCurvature, throttle);
+        String s=String.format("LookUpBasedTrottleController\ncurrentTrackPos: %d\nDesired speed: %8.0f\nMeasured speed %8.0f\nCurvature: %8.1f\nThrottle: %8.3f",currentTrackPos, desiredSpeedPPS, measuredSpeedPPS, upcomingCurvature, throttle);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 
@@ -287,11 +291,25 @@ This still requires us to have an estimated relation between throttle and result
         this.crash = crash;
     }
 
+    /**
+     * @return the throttlePunishment
+     */
+    public float getThrottleChange() {
+        return throttleChange;
+    }
+
+    /**
+     * @param throttlePunishment the throttlePunishment to set
+     */
+    public void setThrottleChange(float throttlePunishment) {
+        this.throttleChange = throttlePunishment;
+    }
+
 
 
     public class ThrottleSection {
-        float definethrottle;
-        int nbcrash;
+        float definethrottle=getDefaultThrottle();
+        int nbcrash=0;
     }
 
  
