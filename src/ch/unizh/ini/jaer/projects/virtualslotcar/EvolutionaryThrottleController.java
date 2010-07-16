@@ -58,7 +58,6 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     private int successfulLapCounter = 0, lastRewardLap = 0;
     private ThrottleProfile currentProfile, lastSuccessfulProfile;
     private Random random = new Random();
-    private LapTimer lapTimer = new LapTimer();
 
     public EvolutionaryThrottleController(AEChip chip) {
         super(chip);
@@ -105,11 +104,9 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             if (!crash) {
                 // did we lap?
                 currentTrackPos = carState.segmentIdx;
-                boolean lapped = false;
-                if (car != null) {
-                    lapped = lapTimer.update(currentTrackPos, ((RectangularClusterTracker.Cluster) car).getLastEventTimestamp());
-                }
-                if (lapped) {
+                boolean lapped = currentTrackPos<lastTrackPos;
+
+                 if (lapped) {
                     successfulLapCounter++;
 //                    log.info("successfulLapCounter=" + successfulLapCounter);
                 }
@@ -129,7 +126,6 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                     log.info("crashed after " + (successfulLapCounter - 1) + " laps");
                 }
                 successfulLapCounter = 0;
-                lapTimer.reset();
                 lastRewardLap = 0;
                 if (learningEnabled && lastSuccessfulProfile != null && currentProfile != lastSuccessfulProfile) {
                     log.info("crashed, switching back to " + lastSuccessfulProfile);
@@ -143,76 +139,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         }
     }
 
-    private class LapTimer {
 
-        int lastSegment = Integer.MAX_VALUE, startSegment = 0;
-        int lastLapTime = 0;
-        int lapCounter = 0;
-        boolean initialized = false;
-        int sumTime = 0;
-        int bestTime = Integer.MAX_VALUE;
-
-        class Lap {
-
-            int laptimeUs = 0;
-
-            public Lap(int timeUs) {
-                this.laptimeUs = timeUs;
-            }
-
-            @Override
-            public String toString() {
-                return String.format("%.2fs", (float) laptimeUs / 1e6f);
-            }
-        }
-        LinkedList<Lap> laps = new LinkedList();
-
-        // returns true if there was a new lap (crossed finish line) 
-        boolean update(int newSegment, int timeUs) {
-            if (!initialized) {
-                lastSegment = newSegment;
-                lastLapTime = timeUs;
-                lapCounter = 0;
-                startSegment = newSegment;
-                initialized = true;
-            } else if (newSegment != lastSegment) {
-                lastSegment = newSegment;
-                if (newSegment == startSegment) {
-                    lapCounter++;
-                    int deltaTime = timeUs - lastLapTime;
-                    sumTime += deltaTime;
-                    if(deltaTime<bestTime) bestTime=deltaTime;
-                    laps.add(new Lap(deltaTime));
-                    initialized = true;
-                    lastLapTime = timeUs;
-
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        Lap getLastLap() {
-            if (laps.isEmpty()) {
-                return null;
-            }
-            return laps.getLast();
-        }
-
-        void reset() {
-            lapCounter = 0;
-            initialized = false;
-            laps.clear();
-            lastSegment = Integer.MAX_VALUE;
-            sumTime = 0;
-            lapCounter = 0;
-            bestTime = Integer.MAX_VALUE;
-        }
-
-        public String toString() {
-            return String.format("Laps: %d\nAvg: %.2f, Best: %.2f, Last: %s", lapCounter,  (float) sumTime * 1e-6f / lapCounter,(float) bestTime * 1e-6f, getLastLap());
-        }
-    }
 
     synchronized public void doResetAllThrottleValues() {
         if (currentProfile == null) {
@@ -296,7 +223,6 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     @Override
     public void resetFilter() {
-        lapTimer.reset();
     }
 
     @Override
@@ -320,7 +246,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        String s = String.format("EvolutionaryThrottleController\ncurrentTrackPos: %d\nThrottle: %8.3f\n%s", currentTrackPos, throttle, lapTimer);
+        String s = String.format("EvolutionaryThrottleController\ncurrentTrackPos: %d\nThrottle: %8.3f", currentTrackPos, throttle);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
         drawThrottleProfile(drawable.getGL());
     }

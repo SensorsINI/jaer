@@ -4,6 +4,8 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
+import java.util.LinkedList;
+import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.Font;
@@ -40,34 +42,29 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     public static String getDescription() {
         return "Slot car racer project, Telluride 2010";
     }
-     private boolean showTrackEnabled = prefs().getBoolean("SlotCarRacer.showTrack", true);
+    private boolean showTrackEnabled = prefs().getBoolean("SlotCarRacer.showTrack", true);
     private boolean virtualCarEnabled = prefs().getBoolean("SlotCarRacer.virtualCar", false);
-    private TobiLogger tobiLogger;
-    private SlotCarHardwareInterface hw;
-    private SlotcarFrame slotCarFrame;
-    private CarTracker carTracker;
-    private FilterChain filterChain;
     private boolean overrideThrottle = prefs().getBoolean("SlotCarRacer.overrideThrottle", true);
     private float overriddenThrottleSetting = prefs().getFloat("SlotCarRacer.overriddenThrottleSetting", 0);
-//    private SlotCarController controller = null;
-    private TextRenderer renderer;
-    private AbstractSlotCarController throttleController;
     private float maxThrottle = prefs().getFloat("SlotCarRacer.maxThrottle", 1);
-    private TrackdefineFilter trackDefineFilter;
-    private TrackEditor trackEditor;
     private int crashDistancePixels = prefs().getInt("SlotCarRacer.crashDistancePixels", 20);
-
-
-    private boolean playThrottleSound=prefs().getBoolean("SlotCarRacer.playThrottleSound", true);
-   private SpikeSound spikeSound;
-   private float playSoundThrottleChangeThreshold = 0.01F;
-   private float lastSoundThrottleValue=0;
+    private boolean playThrottleSound = prefs().getBoolean("SlotCarRacer.playThrottleSound", true);
+    private TobiLogger tobiLogger;
+    private SlotCarHardwareInterface hw;
+    private CarTracker carTracker;
+    private ClusterInterface car = null;
+    private FilterChain filterChain;
+    private AbstractSlotCarController throttleController;
+    private TrackdefineFilter trackDefineFilter;
+    private SlotcarTrack track;
+    private SpikeSound spikeSound;
+    private float playSoundThrottleChangeThreshold = 0.01F;
+    private float lastSoundThrottleValue = 0;
     private long lastTimeSoundPlayed;
+    private LapTimer lapTimer = new LapTimer();
+    private int currentTrackPos=-1;
 
- 
-
-
-   public enum ControllerToUse {
+    public enum ControllerToUse {
 
         SimpleSpeedController, CurvatureBasedController, LookUpBasedTrottleController, EvolutionaryThrottleController
     };
@@ -102,7 +99,6 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     public SlotCarRacer(AEChip chip) {
         super(chip);
         hw = new SlotCarHardwareInterface();
-        slotCarFrame = new SlotcarFrame();
 
 
         filterChain = new FilterChain(chip);
@@ -131,7 +127,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip(lg, "logRacerDataEnabled", "enables logging of racer data");
         setPropertyTooltip(con, "controllerToUse", "Which controller to use to control car throttle");
         setPropertyTooltip("playThrottleSound", "plays a spike when throttle is increased to indicate controller active");
-     setPropertyTooltip("playSoundThrottleChangeThreshold", "threshold change in throttle to play sound");
+        setPropertyTooltip("playSoundThrottleChangeThreshold", "threshold change in throttle to play sound");
 
     }
 
@@ -141,26 +137,29 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         trackDefineFilter.setFilterEnabled(false); // don't enable by default
     }
 
-//    public void doShowTrackEditor() {
-//        if(trackEditor==null){
-//            trackEditor=new TrackEditor();
-//        }
-//        trackEditor.setVisible(true); // will not work because TrackEditor is a JPanel, not a window
-//        trackEditor.requestFocusInWindow();
-//    }
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         out = getEnclosedFilterChain().filterPacket(in);
+        car = carTracker.getCarCluster();
+        track=trackDefineFilter.getTrack();
+        if (car != null && track!=null) {
+            currentTrackPos=trackDefineFilter.getTrack().findClosest(car.getLocation(), crashDistancePixels);
+            lapTimer.update(currentTrackPos, ((RectangularClusterTracker.Cluster) car).getLastEventTimestamp());
+        } else {
+            lapTimer.reset();
+        }
         chooseNextState();
         return out;
     }
-    private float lastThrottle = 0, prevThrottle=0;;
+    private float lastThrottle = 0, prevThrottle = 0;
+
+    ;
     private boolean showedMissingTrackWarning = false;
 
     synchronized private void chooseNextState() {
 
-        prevThrottle=lastThrottle;
-       if (isOverrideThrottle()) {
+        prevThrottle = lastThrottle;
+        if (isOverrideThrottle()) {
             lastThrottle = getOverriddenThrottleSetting();
         } else {
             if (state.get() == State.STARTING) {
@@ -170,37 +169,23 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
                     state.set(State.RUNNING);
                 }
             } else if (state.get() == State.RUNNING) {
-                if (trackDefineFilter.getTrack() == null) {
+                if (track == null) {
                     if (!showedMissingTrackWarning) {
                         log.warning("Track not defined yet. Use the TrackdefineFilter to extract the slot car track or load the track from a file.");
-//                        try {
-//                            SwingUtilities.invokeAndWait(new Runnable() {
-//
-//                                public void run() {
-//                                    JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "<html>Track not defined yet. <p>Use the TrackdefineFilter to extract the slot car track or load the track from a file.", "No track defined yet", JOptionPane.WARNING_MESSAGE);
-//                                }
-//                            });
-//                        } catch (InterruptedException ex) {
-//                            Logger.getLogger(SlotCarRacer.class.getName()).log(Level.SEVERE, null, ex);
-//                        } catch (InvocationTargetException ex) {
-//                            Logger.getLogger(SlotCarRacer.class.getName()).log(Level.SEVERE, null, ex);
-//                        }
                     }
                     showedMissingTrackWarning = true;
                 } else {
-
-                    ClusterInterface carCluster = carTracker.getCarCluster();
-                    if (carCluster == null) {
+                    if (car == null) {
                         state.set(State.STALLED);
-                    } else if (trackDefineFilter.getTrack().findClosest(carCluster.getLocation(), crashDistancePixels) == -1) {
+                    } else if (currentTrackPos == -1) {
                         state.set(State.CRASHED);
                     } else {
                     }
                     lastThrottle = throttleController.computeControl(carTracker, trackDefineFilter.getTrack());
-               }
+                }
             } else if (state.get() == State.CRASHED) {
-                        throttleController.computeControl(carTracker, trackDefineFilter.getTrack());
-                if (carTracker.getCarCluster() != null && state.timeSinceChanged() > 1000) {
+                throttleController.computeControl(carTracker, trackDefineFilter.getTrack());
+                if (car != null && state.timeSinceChanged() > 1000) {
                     state.set(State.STARTING);
                 }
             } else if (state.get() == State.STALLED) {
@@ -210,37 +195,34 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
             }
         }
 
-         lastThrottle = lastThrottle > maxThrottle ? maxThrottle : lastThrottle;
+        lastThrottle = lastThrottle > maxThrottle ? maxThrottle : lastThrottle;
         hw.setThrottle(lastThrottle);
-        if(playThrottleSound&&Math.abs(lastThrottle-lastSoundThrottleValue)>playSoundThrottleChangeThreshold){
+        if (playThrottleSound && Math.abs(lastThrottle - lastSoundThrottleValue) > playSoundThrottleChangeThreshold) {
             long now;
-            if(lastThrottle>lastSoundThrottleValue && (now=System.currentTimeMillis())-lastTimeSoundPlayed>10) {
-                if(spikeSound==null) spikeSound=new SpikeSound();
+            if (lastThrottle > lastSoundThrottleValue && (now = System.currentTimeMillis()) - lastTimeSoundPlayed > 5) {
+                if (spikeSound == null) {
+                    spikeSound = new SpikeSound();
+                }
                 spikeSound.play();
-                lastTimeSoundPlayed=now;
+                lastTimeSoundPlayed = now;
             }
-            lastSoundThrottleValue=lastThrottle;
+            lastSoundThrottleValue = lastThrottle;
         }
-//        if(lastThrottle-lastSoundThrottleValue<-playSoundThrottleChangeThreshold){
-//            lastSoundThrottleValue=lastThrottle;
-//        }
-
 
         if (isLogRacerDataEnabled()) {
-            if(overrideThrottle){
-                float  measuredSpeedPPS=Float.NaN;
-                Point2D.Float pos=new Point2D.Float(Float.NaN,Float.NaN);
-                if(carTracker.getCarCluster()!=null){
-                    ClusterInterface c=carTracker.getCarCluster();
-                    measuredSpeedPPS=c.getSpeedPPS();
-                    pos=c.getLocation();
+            if (overrideThrottle) {
+                float measuredSpeedPPS = Float.NaN;
+                Point2D.Float pos = new Point2D.Float(Float.NaN, Float.NaN);
+                if (carTracker.getCarCluster() != null) {
+                    ClusterInterface c = carTracker.getCarCluster();
+                    measuredSpeedPPS = c.getSpeedPPS();
+                    pos = c.getLocation();
                 }
-                logRacerData(String.format("%f %f %f %f",pos.getX(), pos.getY(), measuredSpeedPPS, getOverriddenThrottleSetting()));
-            }else{
+                logRacerData(String.format("%f %f %f %f", pos.getX(), pos.getY(), measuredSpeedPPS, getOverriddenThrottleSetting()));
+            } else {
                 logRacerData(throttleController.logControllerState());
             }
         }
-
     }
 
     public void doExtractTrack() {
@@ -254,6 +236,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         if (hw.isOpen()) {
             hw.close();
         }
+        lapTimer.reset();
     }
 
     @Override
@@ -261,17 +244,11 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     }
 
     public synchronized void annotate(GLAutoDrawable drawable) { // TODO may not want to synchronize here since this will block filtering durring annotation
-        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY()-2);
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() - 2);
         if (!trackDefineFilter.isFilterEnabled()) {
             trackDefineFilter.annotate(drawable);// show track always
         }
-//        if (!carTracker.isFilterEnabled()) {
-//            carTracker.annotate(drawable); 
-//        }
-//        if (throttleController.isFilterEnabled()) {
-//            throttleController.annotate(drawable);
-//        }
-        String s = "SlotCarRacer\nstate: " + state.toString() + "\nthrottle: " + lastThrottle;
+        String s = "SlotCarRacer\nstate: " + state.toString() + "\nthrottle: " + lastThrottle+"\n"+lapTimer;
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 
@@ -398,7 +375,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
                     if (throttleController == null || !(throttleController instanceof SimpleSpeedController)) {
                         filterChain.remove(throttleController);
                         throttleController = new SimpleSpeedController(chip);
-                   }
+                    }
                     break;
                 case CurvatureBasedController:
                     if (throttleController == null || !(throttleController instanceof CurvatureBasedController)) {
@@ -406,14 +383,14 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
                         throttleController = new CurvatureBasedController(chip);
                     }
                     break;
-               case LookUpBasedTrottleController:
+                case LookUpBasedTrottleController:
                     if (throttleController == null || !(throttleController instanceof LookUpBasedTrottleController)) {
                         filterChain.remove(throttleController);
                         throttleController = new LookUpBasedTrottleController(chip);
                     }
                     break;
                 case EvolutionaryThrottleController:
-                     if (throttleController == null || !(throttleController instanceof EvolutionaryThrottleController)) {
+                    if (throttleController == null || !(throttleController instanceof EvolutionaryThrottleController)) {
                         filterChain.remove(throttleController);
                         throttleController = new EvolutionaryThrottleController(chip);
                     }
@@ -424,16 +401,17 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
             throttleController.setFilterEnabled(true);
             filterChain.add(throttleController);
             throttleController.setEnclosed(true, this);
-            if(chip.getAeViewer()!=null && chip.getAeViewer().getFilterFrame()!=null) chip.getAeViewer().getFilterFrame().rebuildContents();
+            if (chip.getAeViewer() != null && chip.getAeViewer().getFilterFrame() != null) {
+                chip.getAeViewer().getFilterFrame().rebuildContents();
+            }
             prefs().put("SlotCarRacer.controllerToUse", controllerToUse.toString());
-            log.info("set throttleController to instance of "+throttleController.getClass());
+            log.info("set throttleController to instance of " + throttleController.getClass());
         } catch (Exception e) {
             log.warning(e.toString());
         }
     }
 
-
-       /**
+    /**
      * @return the playThrottleSound
      */
     public boolean isPlayThrottleSound() {
@@ -448,7 +426,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         prefs().putBoolean("SlotCarRacer.playThrottleSound", playThrottleSound);
     }
 
-       /**
+    /**
      * @return the playSoundThrottleChangeThreshold
      */
     public float getPlaySoundThrottleChangeThreshold() {
@@ -462,4 +440,76 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         this.playSoundThrottleChangeThreshold = playSoundThrottleChangeThreshold;
     }
 
+    private class LapTimer {
+
+        int lastSegment = Integer.MAX_VALUE, startSegment = 0;
+        int lastLapTime = 0;
+        int lapCounter = 0;
+        boolean initialized = false;
+        int sumTime = 0;
+        int bestTime = Integer.MAX_VALUE;
+
+        class Lap {
+
+            int laptimeUs = 0;
+
+            public Lap(int timeUs) {
+                this.laptimeUs = timeUs;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("%.2fs", (float) laptimeUs / 1e6f);
+            }
+        }
+        LinkedList<Lap> laps = new LinkedList();
+
+        // returns true if there was a new lap (crossed finish line)
+        boolean update(int newSegment, int timeUs) {
+            if (!initialized) {
+                lastSegment = newSegment;
+                lastLapTime = timeUs;
+                lapCounter = 0;
+                startSegment = newSegment;
+                initialized = true;
+            } else if (newSegment != lastSegment) {
+                lastSegment = newSegment;
+                if (newSegment == startSegment) {
+                    lapCounter++;
+                    int deltaTime = timeUs - lastLapTime;
+                    sumTime += deltaTime;
+                    if (deltaTime < bestTime) {
+                        bestTime = deltaTime;
+                    }
+                    laps.add(new Lap(deltaTime));
+                    initialized = true;
+                    lastLapTime = timeUs;
+
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        Lap getLastLap() {
+            if (laps.isEmpty()) {
+                return null;
+            }
+            return laps.getLast();
+        }
+
+        void reset() {
+            lapCounter = 0;
+            initialized = false;
+            laps.clear();
+            lastSegment = Integer.MAX_VALUE;
+            sumTime = 0;
+            lapCounter = 0;
+            bestTime = Integer.MAX_VALUE;
+        }
+
+        public String toString() {
+            return String.format("Laps: %d\nAvg: %.2f, Best: %.2f, Last: %s", lapCounter, (float) sumTime * 1e-6f / lapCounter, (float) bestTime * 1e-6f, getLastLap());
+        }
+    }
 }
