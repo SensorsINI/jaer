@@ -12,6 +12,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.Random;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
@@ -19,6 +20,7 @@ import javax.media.opengl.glu.GLU;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
+import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
@@ -38,12 +40,14 @@ import net.sf.jaer.graphics.FrameAnnotater;
  */
 public class EvolutionaryThrottleController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater {
 
+    // prefs
     private float fractionOfTrackToPerturb = prefs().getFloat("EvolutionaryThrottleController.fractionOfTrackToPunish", 0.2f);
     private float defaultThrottle = prefs().getFloat("EvolutionaryThrottleController.defaultThrottle", .1f); // default throttle setting if no car is detected
     private float maxDistanceFromTrackPoint = prefs().getFloat("CurvatureBasedController.maxDistanceFromTrackPoint", 15); // pixels - need to set in track model
     private boolean learningEnabled = prefs().getBoolean("EvolutionaryThrottleController.learningEnabled", false);
-    private float throttleChange = prefs().getFloat("EvolutionaryThrottleController.throttleChange", 0.05f);
-    private int numSuccessfulLapsToReward = prefs().getInt("EvolutionaryThrottleController.numSuccessfulLapsToReward", 2);
+    private float throttleChange = prefs().getFloat("EvolutionaryThrottleController.throttleChange", 0.1f);
+    private int numSuccessfulLapsToReward = prefs().getInt("EvolutionaryThrottleController.numSuccessfulLapsToReward", 3);
+    // vars
     private float throttle = 0; // last output throttle setting
     private float measuredSpeedPPS; // the last measured speed
     private Point2D.Float measuredLocation;
@@ -53,7 +57,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     private boolean crash;
     private int successfulLapCounter = 0, lastRewardLap = 0;
     private ThrottleProfile currentProfile, lastSuccessfulProfile;
-    Random random = new Random();
+    private Random random = new Random();
+    private LapTimer lapTimer = new LapTimer();
 
     public EvolutionaryThrottleController(AEChip chip) {
         super(chip);
@@ -100,7 +105,11 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             if (!crash) {
                 // did we lap?
                 currentTrackPos = carState.segmentIdx;
-                if (lastTrackPos > currentTrackPos) {
+                boolean lapped = false;
+                if (car != null) {
+                    lapped = lapTimer.update(currentTrackPos, ((RectangularClusterTracker.Cluster) car).getLastEventTimestamp());
+                }
+                if (lapped) {
                     successfulLapCounter++;
 //                    log.info("successfulLapCounter=" + successfulLapCounter);
                 }
@@ -120,6 +129,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                     log.info("crashed after " + (successfulLapCounter - 1) + " laps");
                 }
                 successfulLapCounter = 0;
+                lapTimer.reset();
                 lastRewardLap = 0;
                 if (learningEnabled && lastSuccessfulProfile != null && currentProfile != lastSuccessfulProfile) {
                     log.info("crashed, switching back to " + lastSuccessfulProfile);
@@ -130,6 +140,77 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
             throttle = currentProfile.getThrottle(currentTrackPos);
             return throttle;
+        }
+    }
+
+    private class LapTimer {
+
+        int lastSegment = Integer.MAX_VALUE, startSegment = 0;
+        int lastLapTime = 0;
+        int lapCounter = 0;
+        boolean initialized = false;
+        int sumTime = 0;
+        int bestTime = Integer.MAX_VALUE;
+
+        class Lap {
+
+            int laptimeUs = 0;
+
+            public Lap(int timeUs) {
+                this.laptimeUs = timeUs;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("%.2fs", (float) laptimeUs / 1e6f);
+            }
+        }
+        LinkedList<Lap> laps = new LinkedList();
+
+        // returns true if there was a new lap (crossed finish line) 
+        boolean update(int newSegment, int timeUs) {
+            if (!initialized) {
+                lastSegment = newSegment;
+                lastLapTime = timeUs;
+                lapCounter = 0;
+                startSegment = newSegment;
+                initialized = true;
+            } else if (newSegment != lastSegment) {
+                lastSegment = newSegment;
+                if (newSegment == startSegment) {
+                    lapCounter++;
+                    int deltaTime = timeUs - lastLapTime;
+                    sumTime += deltaTime;
+                    if(deltaTime<bestTime) bestTime=deltaTime;
+                    laps.add(new Lap(deltaTime));
+                    initialized = true;
+                    lastLapTime = timeUs;
+
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        Lap getLastLap() {
+            if (laps.isEmpty()) {
+                return null;
+            }
+            return laps.getLast();
+        }
+
+        void reset() {
+            lapCounter = 0;
+            initialized = false;
+            laps.clear();
+            lastSegment = Integer.MAX_VALUE;
+            sumTime = 0;
+            lapCounter = 0;
+            bestTime = Integer.MAX_VALUE;
+        }
+
+        public String toString() {
+            return String.format("Laps: %d\nAvg: %.2f, Best: %.2f, Last: %s", lapCounter,  (float) sumTime * 1e-6f / lapCounter,(float) bestTime * 1e-6f, getLastLap());
         }
     }
 
@@ -173,8 +254,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             }
             ByteArrayInputStream bis = new ByteArrayInputStream(b);
             ObjectInputStream ois = new ObjectInputStream(bis);
-            currentProfile.n = ((Integer)ois.readObject()).intValue();
-            currentProfile.throttleSettings=(float[])ois.readObject();
+            currentProfile.n = ((Integer) ois.readObject()).intValue();
+            currentProfile.throttleSettings = (float[]) ois.readObject();
             ois.close();
             bis.close();
             log.info("loaded throttle profile from preferencdes");
@@ -215,6 +296,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     @Override
     public void resetFilter() {
+        lapTimer.reset();
     }
 
     @Override
@@ -238,7 +320,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        String s = String.format("EvolutionaryThrottleController\ncurrentTrackPos: %d\nThrottle: %8.3f", currentTrackPos, throttle);
+        String s = String.format("EvolutionaryThrottleController\ncurrentTrackPos: %d\nThrottle: %8.3f\n%s", currentTrackPos, throttle, lapTimer);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
         drawThrottleProfile(drawable.getGL());
     }
