@@ -38,6 +38,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
     private float throttleChange = prefs().getFloat("LookUpBasedTrottleController.throttleChange", 0.01f);
     boolean didPunishment=false;
     private float punishmentFactorIncrease=prefs().getFloat("LookUpBasedTrottleController.punishmentFactorIncrease",5);
+    private int cte=0;
 
 //eligibility trace
     public LookUpBasedTrottleController(AEChip chip) {
@@ -66,19 +67,6 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
             }
             this.track = track; // set track for logging
             track.setPointTolerance(maxDistanceFromTrackPoint);
-            /*
-             * during the normal running of the car, the steps would be as follows (which are computed in the controller, given the CarTracker and SlotcarTrack)
-
-            1. Get the car position from the tracker.
-            2. Ask the track model for the nearest spline point which is an int indexing into the list of track points.
-            3. Update the car state SlotcarState of the track model - not clear how this should be done from the CarTracker data.
-            4. Ask the track model for the list of upcoming curvatures.
-            5. From the parameter throttleDelayMs, find the curvature at this time in the future.
-            6. Compute the throttle needed to get us to a speed at this future time that puts us at the limit of traction.
-
-
-            This still requires us to have an estimated relation between throttle and resulting speed. We don't have any such model yet.
-             */
             
             measuredSpeedPPS = car==null? Float.NaN: (float) car.getSpeedPPS();
             measuredLocation = car==null? null: car.getLocation();
@@ -107,15 +95,25 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
                     }
                     trackPos[0] = currentTrackPos;
                     lastTrackPos = currentTrackPos;
-                }
-                if (learning) {
-                    lookUpTable[currentTrackPos].maybeReward(currentTrackPos);
+                
+                    if (learning && lookUpTable[currentTrackPos].definethrottle < 1) {
+                        lookUpTable[currentTrackPos].maybeReward(currentTrackPos);
+                    }
                 }
             }else if(!didPunishment){
                 didPunishment=true;
                 for (int i = 1; i < nbPreviewsStep; i++) {
-                    if (lookUpTable[trackPos[i]]!=null) lookUpTable[trackPos[i]].punish(trackPos[i]);
+                    if (trackPos[1]-i+1<0){
+                        cte=nbsection;
+                    }else{
+                        cte=0;
+                    }
+                    if (lookUpTable[trackPos[1]-i+1+cte]!=null){
+                        lookUpTable[trackPos[1]-i+1+cte].punish(i);
+                    }
+
                 }
+                //learning=false;
             }
 
 
@@ -296,7 +294,9 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
         void punish(int i) {
 
             if(!learning) return;
-            definethrottle = clipThrottle(definethrottle - getPunishmentFactorIncrease()*getThrottleChange());
+
+            System.out.println(trackPoint+ ": punishing "+i+" with nbcrash="+nbcrash+", definethrottle="+definethrottle+" now");
+            definethrottle = clipThrottle(definethrottle - (getPunishmentFactorIncrease()*getThrottleChange())*(2/(float)(nbsection)*(float)(Math.exp((float)(-((i-nbsection)^2))/(float)((nbsection^2/2))))));
             nbcrash++;
             System.out.println(trackPoint+ ": punishing "+i+" with nbcrash="+nbcrash+", definethrottle="+definethrottle+" now");
         }
