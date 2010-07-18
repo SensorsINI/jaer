@@ -140,7 +140,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public final String REMOTE_STOP_LOGGING = "stoplogging";
     public final String REMOTE_TOGGLE_SYNCHRONIZED_LOGGING = "togglesynclogging";
 
-    /** Processes remote control ocmmands for this AEViewer. A list of commands can be obtained
+    /** Processes remote control commands for this AEViewer. A list of commands can be obtained
      * from a remote host by sending ? or help. The port number is logged to the console on startup.
      * @param command the parsed command (first token)
      * @param line the line sent from the remote host.
@@ -148,6 +148,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public String processRemoteControlCommand (RemoteControlCommand command,String line){
         String[] tokens = line.split("\\s");
+        log.finer("got command "+command+" with line=\""+line+"\"");
         try{
             if ( command.getCmdName().equals(REMOTE_START_LOGGING) ){
                 if ( tokens.length < 2 ){
@@ -4349,9 +4350,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.warning("tried to log to null filename, aborting");
             return null;
         }
-        if ( !filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION) ){
+        if ( !filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION)  && !filename.toLowerCase().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION)){
+            // allow both extensions for  backward compatibility
             filename = filename + AEDataFile.DATA_FILE_EXTENSION;
-            log.info("Appended extension to make filename=" + filename);
+            log.info("Appended extension AEDataFile.DATA_FILE_EXTENSION "+AEDataFile.DATA_FILE_EXTENSION+" to make filename=" + filename);
         }
         try{
             loggingFile = new File(filename);
@@ -4449,8 +4451,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             loggingFile.getName();
 //                System.out.println("fn="+fn);
                     // strip off .aedat to make it easier to add comment to filename
-                    String base =
-                            fn.substring(0,fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION));
+                    int extInd=fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION);
+                    String base=fn;
+                    if(extInd>0) base = fn.substring(0,extInd); // maybe trying to save old .dat extension
 //                System.out.println("base="+base);
                     // we'll add the extension back later
                     chooser.setSelectedFile(new File(base));

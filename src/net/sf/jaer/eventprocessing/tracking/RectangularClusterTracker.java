@@ -107,6 +107,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     private float velocityTauMs = getPrefs().getFloat("RectangularClusterTracker.velocityTauMs", 10);
     private int maxNumClusters = getPrefs().getInt("RectangularClusterTracker.maxNumClusters", 10);
     private boolean surroundInhibitionEnabled=prefs().getBoolean("RectangularClusterTracker.surroundInhibitionEnabled",false);
+    private boolean dontMergeEver=prefs().getBoolean("RectangularClusterTracker.dontMergeEver", false);
+    private boolean angleFollowsVelocity=prefs().getBoolean("RectangularClusterTracker.angleFollowsVelocity",false);
 
     public enum ClusterLoggingMethod {
 
@@ -157,6 +159,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         setPropertyTooltip(lifetime, "thresholdVelocityForVisibleCluster", "cluster must have at least this velocity in pixels/sec to become visible");
         setPropertyTooltip(global, "maxNumClusters", "Sets the maximum potential number of clusters");
         setPropertyTooltip(update, "velAngDiffDegToNotMerge", "relative angle in degrees of cluster velocity vectors to not merge overlapping clusters");
+        setPropertyTooltip(update, "dontMergeEver", "never merge overlapping clusters");
+         setPropertyTooltip(update, "angleFollowsVelocity", "cluster angle is set by velocity vector angle; requires that useVelocity is on");
         setPropertyTooltip(disp, "showClusterVelocity", "annotates velocity in pixels/second");
         setPropertyTooltip(disp, "showClusterEps", "shows cluster events per second");
         setPropertyTooltip(disp, "showClusterNumber", "shows cluster ID number");
@@ -373,12 +377,13 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     }
 
     /**
-     * merge clusters that are too close to each other and that have sufficiently similar velocities (if velocityRatioToNotMergeClusters).
+     * merge clusters that are too close to each other and that have sufficiently similar velocities (if velocityAngleToRad).
     this must be done interatively, because merging 4 or more clusters feedforward can result in more clusters than
     you start with. each time we merge two clusters, we start over, until there are no more merges on iteration.
     for each cluster, if it is close to another cluster then merge them and start over.
      */
     private void mergeClusters() {
+        if(isDontMergeEver()) return;
         boolean mergePending;
         Cluster c1 = null;
         Cluster c2 = null;
@@ -1380,7 +1385,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
         }
 
-        /** Updates the cluster radius and angle according to distance of event from cluster center, but only if dynamicSizeEnabled or dynamicAspectRatioEnabled or dynamicAngleEnabled.
+        /** Updates the cluster radius and angle according to distance of event from cluster center,
+         * but only if dynamicSizeEnabled or dynamicAspectRatioEnabled or dynamicAngleEnabled.
          * @param event the event to scale with
          */
         private final void scale(BasicEvent event) {
@@ -1461,6 +1467,16 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //                System.out.println(String.format("dx=%8.1f\tdy=%8.1f\tnewAngle=%8.1f\tangleDistance=%8.1f\tangle=%8.1f\tflippedPos=%s\tflippedNeg=%s",dx,dy,newAngle*180/Math.PI,angleDistance*180/Math.PI,instantaneousAngle*180/Math.PI,flippedPos,flippedNeg));
 //                System.out.println(String.format("dx=%8.1f\tdy=%8.1f\tnewAngle=%8.1f\tangleDistance=%8.1f\tangle=%8.1f",dx,dy,newAngle*180/Math.PI,angleDistance*180/Math.PI,instantaneousAngle*180/Math.PI));
 //                setAngle(-.1f);
+            }
+            
+            // turn cluster so that it is aligned along velocity
+            if(angleFollowsVelocity){
+                if(!useVelocity){
+                    log.warning("angleFollowsVelocity cannot be used unless useVelocity=true");
+                    return;
+                }
+                float velAngle=(float)Math.atan2(velocityPPS.y, velocityPPS.x);
+                setAngle(velAngle);
             }
         }
 
@@ -2946,5 +2962,35 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         this.surroundInhibitionEnabled = surroundInhibitionEnabled;
         prefs().putBoolean("RectangularClusterTracker.surroundInhibitionEnabled",surroundInhibitionEnabled);
         support.firePropertyChange("surroundInhibitionEnabled",old,surroundInhibitionEnabled);
+    }
+
+    /**
+     * @return the dontMergeEver
+     */
+    public boolean isDontMergeEver() {
+        return dontMergeEver;
+    }
+
+    /**
+     * @param dontMergeEver the dontMergeEver to set
+     */
+    public void setDontMergeEver(boolean dontMergeEver) {
+        this.dontMergeEver = dontMergeEver;
+        prefs().putBoolean("RectangularClusterTracker.dontMergeEver", dontMergeEver);
+    }
+
+    /**
+     * @return the angleFollowsVelocity
+     */
+    public boolean isAngleFollowsVelocity() {
+        return angleFollowsVelocity;
+    }
+
+    /**
+     * @param angleFollowsVelocity the angleFollowsVelocity to set
+     */
+    public void setAngleFollowsVelocity(boolean angleFollowsVelocity) {
+        this.angleFollowsVelocity = angleFollowsVelocity;
+        prefs().putBoolean("RectangularClusterTracker.angleFollowsVelocity",angleFollowsVelocity);
     }
 }

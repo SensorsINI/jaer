@@ -77,4 +77,10 @@ public interface ClusterInterface {
      */
     public boolean isVisible();
 
+    /** Returns the last timestamp of this Cluster.
+     *
+     * @return the timestamp in us.
+     */
+    public int getLastEventTimestamp();
+
 }

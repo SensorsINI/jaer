@@ -151,14 +151,14 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         chooseNextState();
         return out;
     }
-    private float lastThrottle = 0, prevThrottle = 0;
+    private float lastThrottle = 0;
 
     ;
     private boolean showedMissingTrackWarning = false;
 
     synchronized private void chooseNextState() {
 
-        prevThrottle = lastThrottle;
+        float prevThrottle = lastThrottle;
         if (isOverrideThrottle()) {
             lastThrottle = getOverriddenThrottleSetting();
         } else {
@@ -218,9 +218,14 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
                     measuredSpeedPPS = c.getSpeedPPS();
                     pos = c.getLocation();
                 }
-                logRacerData(String.format("%f %f %f %f", pos.getX(), pos.getY(), measuredSpeedPPS, getOverriddenThrottleSetting()));
+                logRacerData(String.format("%f %f %f %f", pos.getX(), pos.getY(), measuredSpeedPPS, lastThrottle));
             } else {
-                logRacerData(throttleController.logControllerState());
+                if(car!=null){
+                    String lt=lapTimer.toString().replace('\n', ' ');
+                    logRacerData(String.format("%d %f %f %f %f %s %s", ((RectangularClusterTracker.Cluster)car).getLastEventTimestamp(), car.getLocation().x, car.getLocation().y, car.getSpeedPPS(), lastThrottle, throttleController.logControllerState(), lt));
+                }else{
+                    logRacerData(throttleController.logControllerState());
+                }
             }
         }
     }
@@ -237,6 +242,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
             hw.close();
         }
         lapTimer.reset();
+        filterChain.reset();
     }
 
     @Override
@@ -438,78 +444,5 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
      */
     public void setPlaySoundThrottleChangeThreshold(float playSoundThrottleChangeThreshold) {
         this.playSoundThrottleChangeThreshold = playSoundThrottleChangeThreshold;
-    }
-
-    private class LapTimer {
-
-        int lastSegment = Integer.MAX_VALUE, startSegment = 0;
-        int lastLapTime = 0;
-        int lapCounter = 0;
-        boolean initialized = false;
-        int sumTime = 0;
-        int bestTime = Integer.MAX_VALUE;
-
-        class Lap {
-
-            int laptimeUs = 0;
-
-            public Lap(int timeUs) {
-                this.laptimeUs = timeUs;
-            }
-
-            @Override
-            public String toString() {
-                return String.format("%.2fs", (float) laptimeUs / 1e6f);
-            }
-        }
-        LinkedList<Lap> laps = new LinkedList();
-
-        // returns true if there was a new lap (crossed finish line)
-        boolean update(int newSegment, int timeUs) {
-            if (!initialized) {
-                lastSegment = newSegment;
-                lastLapTime = timeUs;
-                lapCounter = 0;
-                startSegment = newSegment;
-                initialized = true;
-            } else if (newSegment != lastSegment) {
-                lastSegment = newSegment;
-                if (newSegment == startSegment) {
-                    lapCounter++;
-                    int deltaTime = timeUs - lastLapTime;
-                    sumTime += deltaTime;
-                    if (deltaTime < bestTime) {
-                        bestTime = deltaTime;
-                    }
-                    laps.add(new Lap(deltaTime));
-                    initialized = true;
-                    lastLapTime = timeUs;
-
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        Lap getLastLap() {
-            if (laps.isEmpty()) {
-                return null;
-            }
-            return laps.getLast();
-        }
-
-        void reset() {
-            lapCounter = 0;
-            initialized = false;
-            laps.clear();
-            lastSegment = Integer.MAX_VALUE;
-            sumTime = 0;
-            lapCounter = 0;
-            bestTime = Integer.MAX_VALUE;
-        }
-
-        public String toString() {
-            return String.format("Laps: %d\nAvg: %.2f, Best: %.2f, Last: %s", lapCounter, (float) sumTime * 1e-6f / lapCounter, (float) bestTime * 1e-6f, getLastLap());
-        }
     }
 }

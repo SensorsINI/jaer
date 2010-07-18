@@ -179,7 +179,7 @@ public class RemoteControl /* implements RemoteControlled */{
                     ByteArrayInputStream bis;
                     BufferedReader reader = new BufferedReader(new InputStreamReader(( bis = new ByteArrayInputStream(packet.getData(),0,packet.getLength()) )));
                     String line = reader.readLine(); // .toLowerCase();
-//                    System.out.println(line); // debug
+                    System.out.println(line); // debug
                     parseAndDispatchCommand(line);
 
                 } catch ( SocketException e ){
@@ -239,8 +239,9 @@ public class RemoteControl /* implements RemoteControlled */{
     // debug
 
     public static void main (String[] args) throws SocketException{
-        RemoteControl remoteControl = new RemoteControl(8995);
+        RemoteControl remoteControl = new RemoteControl(10000);
         CommandProcessor processor = new CommandProcessor();
+        remoteControl.addCommandListener(processor,"startlogging","start logging doit");
         remoteControl.addCommandListener(processor,"doit thismanytimes","i am doit");
         remoteControl.addCommandListener(processor,"dd","i am dd");
         remoteControl.addCommandListener(processor,"dd","i am dd also");
@@ -262,6 +263,13 @@ class CommandProcessor implements RemoteControlled{
                 int val = Integer.parseInt(tokens[1]);
             } else if ( command.getCmdName().equals("dd") ){
                 return "got dd\n";
+            } else {
+                StringBuilder sb=new StringBuilder();
+                sb.append("got cmd=\"" + command.getCmd()+"\" line=\""+line+"\" tokens=");
+                for(String s:tokens){
+                    sb.append("\n"+s);
+                }
+                return sb.toString();
             }
         } catch ( Exception e ){
             return e.toString() + "\n";
