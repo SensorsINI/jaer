@@ -88,7 +88,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         GL gl = this.getGL();
         if (reshapePending) {
             reshapePending = false;
-//            reshape(drawable, getWidth(), getHeight(), 0, 0);
+            reshape(drawable,  0, 0,getWidth(), getHeight());
         }
         try {
             gl.glClear(GL.GL_COLOR_BUFFER_BIT);
@@ -351,7 +351,6 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         GLdouble far)
          */
         final int w = getWidth(), h = getHeight(); // w,h of screen
-        final int sx = getSizeX(), sy = getSizeY(); // chip size
         final float border = getBorderSpacePixels(); // desired smallest border in screen pixels
         float glScale;
         checkGLError(g, "before setDefaultProjection");
@@ -360,39 +359,39 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         // now we set the clipping volume so that the volume is clipped according to whether the window is tall (ar>1) or wide (ar<1).
 
         if (isFillsHorizontally()) { //tall
-            glScale = (float) (w - 2 * border) / sx; // chip pix to screen pix scaling in horizontal&vert direction
+            glScale = (float) (w - 2 * border) / sizeX; // chip pix to screen pix scaling in horizontal&vert direction
             float b = border / glScale; // l,r border in model coordinates
             if (b <= 0) {
                 b = 1;
             }
-            float bb = (h / glScale - sy) / 2; // leftover y in model coordinates that makes up vertical border
+            float bb = (h / glScale - sizeY) / 2; // leftover y in model coordinates that makes up vertical border
             if (bb <= 0) {
                 bb = 1;
             }
             clipArea.left = -b;
-            clipArea.right = sx + b;
+            clipArea.right = sizeX + b;
             clipArea.bottom = -bb;
-            clipArea.top = sy + bb;
+            clipArea.top = sizeY + bb;
             borders.leftRight = b;
             borders.bottomTop = bb;
-            g.glOrtho(-b, sx + b, -bb, (sy + bb), ZCLIP, -ZCLIP); // clip area has same ar as screen!
+            g.glOrtho(-b, sizeX + b, -bb, (sizeY + bb), ZCLIP, -ZCLIP); // clip area has same ar as screen!
         } else {
-            glScale = (float) (h - 2 * border) / sy;
+            glScale = (float) (h - 2 * border) / sizeY;
             float b = border / glScale;
             if (b <= .5f) {
                 b = 1;
             }
-            float bb = (w / glScale - sx) / 2; // leftover y in model coordinates that makes up vertical border
+            float bb = (w / glScale - sizeX) / 2; // leftover y in model coordinates that makes up vertical border
             if (bb <= 0) {
                 bb = 1;
             }
             clipArea.left = -bb;
-            clipArea.right = sx + bb;
+            clipArea.right = sizeX + bb;
             clipArea.bottom = -b;
-            clipArea.top = sy + b;
+            clipArea.top = sizeY + b;
             borders.leftRight = bb;
             borders.bottomTop = b;
-            g.glOrtho(-bb, (sx + bb), -b, sy + b, ZCLIP, -ZCLIP);
+            g.glOrtho(-bb, (sizeX + bb), -b, sizeY + b, ZCLIP, -ZCLIP);
         }
         g.glMatrixMode(GL.GL_MODELVIEW);
     }
@@ -415,6 +414,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         if (sizeX != this.sizeX) {
             this.sizeX = sizeX;
             checkPixmapAllocation();
+            reshapePending=true;
             invalidate();
             repaint();
         }
@@ -434,6 +434,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         if (sizeY != this.sizeY) {
             this.sizeY = sizeY;
             checkPixmapAllocation();
+            reshapePending=true;
             invalidate();
             repaint();
         }
@@ -532,17 +533,32 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             Rectangle2D r = textRenderer.getBounds(titleLabel);
             textRenderer.draw(titleLabel, (int) (-r.getWidth() + getWidth()) / 2, (int) (getHeight() - r.getHeight())); // +(float)(-r.getHeight())
         }
-
-        if (yLabel != null) {
-            gl.glMatrixMode(GL.GL_MODELVIEW);
-            gl.glPushMatrix();
-            Rectangle2D r = textRenderer.getBounds(yLabel);
-            gl.glTranslated(-r.getHeight(),getHeight() / 2 - r.getWidth() / 2, 0);
-            gl.glRotatef(90, 0, 0, 1);
-            textRenderer.draw(yLabel, 0, 0);
-            gl.glPopMatrix();
-        }
         textRenderer.endRendering();
+
+        if (yLabel != null) { // TODO fix rendering of y axis label to be constant screen size.  rotatef doesn't work with draw(), must use draw3D but don't understand scalling
+            textRenderer.begin3DRendering();
+            gl.glMatrixMode(GL.GL_MODELVIEW);
+           gl.glPushMatrix();
+//           gl.glLoadIdentity();
+
+//            gl.glMatrixMode(GL.GL_PROJECTION);
+//            gl.glPushMatrix();
+//            gl.glLoadIdentity();
+
+            Rectangle2D r = textRenderer.getBounds(yLabel);
+            gl.glTranslated(   -r.getHeight()/2, r.getWidth()/2,           0);
+            gl.glRotatef(90, 0, 0, 1);
+
+            float s=(float)r.getHeight()/getHeight()*12;  // mysterious scalling of text
+
+            textRenderer.draw3D(yLabel, 0, 0,0,s);
+            textRenderer.end3DRendering();
+
+            gl.glPopMatrix();
+
+//             gl.glMatrixMode(GL.GL_MODELVIEW);
+//           gl.glPopMatrix();
+        }
         checkGLError(gl, "after text");
     }
 
@@ -571,11 +587,13 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
                 if (k == KeyEvent.VK_ESCAPE || k == KeyEvent.VK_X) {
                     System.exit(0);
                 } else if (k == KeyEvent.VK_UP) {
-                    disp.setSizeX(disp.getSizeX() * 2);
                     disp.setSizeY(disp.getSizeY() * 2);
                 } else if (k == KeyEvent.VK_DOWN) {
-                    disp.setSizeX(disp.getSizeX() / 2);
                     disp.setSizeY(disp.getSizeY() / 2);
+                } else if (k == KeyEvent.VK_RIGHT) {
+                    disp.setSizeX(disp.getSizeX() * 2);
+                } else if (k == KeyEvent.VK_LEFT) {
+                    disp.setSizeX(disp.getSizeX() / 2);
                 } else if (k == KeyEvent.VK_G) {
                     disp.resetFrame(.5f);
                 }
