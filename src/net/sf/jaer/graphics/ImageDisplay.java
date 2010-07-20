@@ -22,6 +22,15 @@ import javax.swing.JFrame;
 /**
  * OpenGL display of 2d data as color image. See the main method for example of use.
  *
+ *ImageDisplay should be OK for displaying the spectrogram and similar 2d arrays of float info.
+ *
+ *   You create a new ImageDisplay by using the static factory method createImageDisplay,
+ * set the x,y size on it, and then you access the frame pixmap directly by settings RGB or gray values at
+ * chosen x, y locations. It takes care of scaling, centering, etc for you.  When you are ready to show the frame,
+ * call display() or repaint() on the ImageDisplay.
+ *
+ *
+ *
  *<pre>
 public static void main(String[] args) {
 final ImageDisplay disp = ImageDisplay.createOpenGLCanvas();
