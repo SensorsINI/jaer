@@ -525,10 +525,11 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         }
         textRenderer.setColor(1, 1, 1, 1);
         textRenderer.beginRendering(getWidth(), getHeight());
+        float s = (clipArea.top - clipArea.bottom) / getHeight();  // TODO mysterious scalling of text
 
         if (xLabel != null) {
             Rectangle2D r = textRenderer.getBounds(xLabel);
-            textRenderer.draw(xLabel, (int) (getWidth() - r.getWidth()) / 2, 0);
+            textRenderer.draw(xLabel, (int) (getWidth() - r.getWidth()) / 2, (int)((-clipArea.bottom/s)-r.getHeight()));
         }
         if (titleLabel != null) {
             Rectangle2D r = textRenderer.getBounds(titleLabel);
@@ -542,7 +543,6 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
            gl.glPushMatrix();
 
             Rectangle2D r = textRenderer.getBounds(yLabel);
-            float s=(clipArea.top-clipArea.bottom)/getHeight();  // TODO mysterious scalling of text
             gl.glTranslated(   -r.getHeight()*s, sizeY/2-r.getWidth()/2*s,           0);
             gl.glRotatef(90, 0, 0, 1);
 
