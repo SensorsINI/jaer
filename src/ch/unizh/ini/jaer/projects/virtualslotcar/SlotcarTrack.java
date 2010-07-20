@@ -502,7 +502,6 @@ public class SlotcarTrack implements java.io.Serializable {
      * and the speed estimated from events.
      * @param XYpos The observed position of the car
      * @param speed The estimated speed of the car
-     * @param onTrack Is the car still on the track tqken out becquse closest<idx is used to set it
      * @return The current state of the car
      */
     public SlotcarState updateSlotcarState(Point2D XYpos, float speed) {

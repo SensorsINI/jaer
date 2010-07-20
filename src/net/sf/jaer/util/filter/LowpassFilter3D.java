@@ -64,24 +64,18 @@ public class LowpassFilter3D extends LowpassFilter{
 	}
 
 	/**
-         * {@inheritDoc}
-         * @since 1.2
 	 */
 	public double getY() {
 	    return (double) y;
 	}
 
 	/**
-         * {@inheritDoc}
-         * @since 1.2
 	 */
 	public double getZ() {
 	    return (double) z;
 	}
 
 	/**
-         * {@inheritDoc}
-         * @since 1.2
 	 */
 	public void setLocation(double x, double y) {
 	    this.x = (float) x;
@@ -94,7 +88,6 @@ public class LowpassFilter3D extends LowpassFilter{
          *
          * @param x the new X coordinate of this {@code Point2D}
          * @param y the new Y coordinate of this {@code Point2D}
-	 * @since 1.2
 	 */
 	public void setLocation(float x, float y) {
 	    this.x = x;
@@ -105,7 +98,6 @@ public class LowpassFilter3D extends LowpassFilter{
 	 * Returns a <code>String</code> that represents the value
          * of this <code>Point2D</code>.
          * @return a string representation of this <code>Point2D</code>.
-	 * @since 1.2
 	 */
 	public String toString() {
 	    return "Point3D["+x+", "+y+", "+z+"]";

@@ -346,8 +346,7 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
 
     /** Returns the current location of the optical gyro filter translation
 
-    @return a Point2D.Flaot with x,y, values that show the present position of the gyro output. Returns null if the optical gyro is disabled.
-    @see #isOpticalGyroEnabled
+    @return a Point2D.Float with x,y, values that show the present position of the gyro output. Returns null if the optical gyro is disabled.
      */
     public Point2D.Float getOpticalGyroTranslation() {
         return translation;

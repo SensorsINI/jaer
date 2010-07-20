@@ -14,6 +14,7 @@ public  class LowpassFilter extends Filter{
     /** @param val the new input value
      @param time the time in us - note units here, microseconds!
      */
+    @Override
     public float filter(float val, int time){
         if(!initialized){
             lpVal=val;

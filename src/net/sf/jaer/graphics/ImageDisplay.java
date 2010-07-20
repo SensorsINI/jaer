@@ -22,7 +22,68 @@ import javax.swing.JFrame;
 /**
  * OpenGL display of 2d data as color image. See the main method for example of use.
  *
- *
+ *<pre>
+    public static void main(String[] args) {
+        final ImageDisplay disp = ImageDisplay.createOpenGLCanvas();
+        JFrame frame = new JFrame("ImageFrame");
+        frame.setPreferredSize(new Dimension(400, 400));
+        Random r = new Random();
+        frame.getContentPane().add(disp, BorderLayout.CENTER);
+        int size = 200;
+        disp.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                System.out.println(e.toString());
+                int k = e.getKeyCode();
+                if (k == KeyEvent.VK_ESCAPE || k == KeyEvent.VK_X) {
+                    System.exit(0);
+                } else if (k == KeyEvent.VK_UP) {
+                    disp.setSizeY(disp.getSizeY() * 2);
+                } else if (k == KeyEvent.VK_DOWN) {
+                    disp.setSizeY(disp.getSizeY() / 2);
+                } else if (k == KeyEvent.VK_RIGHT) {
+                    disp.setSizeX(disp.getSizeX() * 2);
+                } else if (k == KeyEvent.VK_LEFT) {
+                    disp.setSizeX(disp.getSizeX() / 2);
+                } else if (k == KeyEvent.VK_G) {
+                    disp.resetFrame(.5f);
+                }
+            }
+        });
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.pack();
+        frame.setVisible(true);
+        disp.setxLabel("x label");
+        disp.setyLabel("y label");
+
+        disp.setSizeX(size);
+        disp.setSizeY(size);
+
+        int frameCounter = 0;
+        while (true) {
+            disp.checkPixmapAllocation();
+            int n = size * size;
+            float[] f = disp.getPixmapArray();
+            int sx = disp.getSizeX(), sy = disp.getSizeY();
+//                for (int x = 0; x < sx; x++) {
+//                    for (int y = 0; y < sy; y++) {
+//                        int ind = imageDisplay.getPixMapIndex(x, y);
+//                        f[ind + 0] = r.nextFloat();
+//                        f[ind + 1] = r.nextFloat();
+//                        f[ind + 2] = r.nextFloat();
+//                    }
+//                }
+            // randomly select one color of one pixel to change
+            synchronized (disp) {
+                int ind = disp.getPixMapIndex(r.nextInt(disp.getSizeX()), r.nextInt(disp.getSizeY())) + r.nextInt(3);
+                f[ind] = r.nextFloat();
+            }
+            disp.setTitleLabel("Frame " + (frameCounter++));
+            disp.repaint();
+
+        }
+    }
+    </pre>
  * @author Tobi Delbruck
  */
 public class ImageDisplay extends GLCanvas implements GLEventListener {
@@ -48,6 +109,11 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     private String xLabel = null, yLabel = null, titleLabel = null;
     boolean reshapePending = false;
 
+    /** Creates a new ImageDisplay, given some Open GL capabilities.
+     *
+     * @param caps the capabilities desired. See factory method.
+     * @see #createOpenGLCanvas() for factory method with predefined capabilities.
+     */
     public ImageDisplay(GLCapabilities caps) {
         super(caps);
 
@@ -60,7 +126,15 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 
     }
 
-    /** Factory method for creating an ImageDisplay
+    /** Factory method for creating an ImageDisplay with following capabilities:
+     * <pre>
+        caps.setDoubleBuffered(true);
+        caps.setHardwareAccelerated(true);
+        caps.setAlphaBits(8);
+        caps.setRedBits(8);
+        caps.setGreenBits(8);
+        caps.setBlueBits(8);
+</pre>
      *
      * @return a new ImageDisplay
      */
@@ -80,9 +154,12 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 
     @Override
     public void displayChanged(GLAutoDrawable drawable, boolean modeChanged, boolean deviceChanged) {
-        log.info("displayChanged");
     }
 
+    /** Called when the canvas is updated. To update the display, call either
+     * <code>repaint()</code> or <code>display()</code>.
+     * @param drawable the Open GL context.
+     */
     @Override
     public synchronized void display(GLAutoDrawable drawable) {
 
@@ -101,6 +178,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         }
     }
 
+    /** Called on initialization
+     */
     @Override
     public void init(GLAutoDrawable drawable) {
 
@@ -121,6 +200,10 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         gl.glColor3f(1, 1, 1);
     }
 
+    /** Displays the pixmap of pixel values.
+     *
+     * @param drawable
+     */
     synchronized private void displayPixmap(GLAutoDrawable drawable) {
         GL gl = drawable.getGL();
         if (gl == null) {
@@ -240,7 +323,9 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 //        pixmap.position(3 * (x + y * sizeX));
 //    }
 //    private float pixmapGrayValue = 0;
-    /** Sets full pixmap to some gray level
+    
+    /** Sets full pixmap to some gray level. An internal buffer is created if needed
+     * so that gray level can be set back quickly using System.arraycopy.
      *
      * @param value the gray level.
      */
@@ -264,7 +349,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         pixmap.limit(n);
     }
 
-    /** Resets the pixmap frame buffer to a given gray level.
+    /** Resets the pixmap frame buffer to a given gray level; can be used at the
+     * start of rendering to achieve a particular starting grey level.
      *
      * @param value gray level, 0-1 range.
      */
@@ -284,21 +370,22 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         }
     }
 
-    /** Chip fills drawable horizontally.
+    /** Indicates that image fills drawable horizontally.
      * @return the fillsHorizontally
      */
     public boolean isFillsHorizontally() {
         return fillsHorizontally;
     }
 
-    /** Chip fills drawable vertically.
+    /** Indicates that image fills drawable vertically.
      * @return the fillsVertically
      */
     public boolean isFillsVertically() {
         return fillsVertically;
     }
 
-    /** Called on reshape of canvas. Determines which way the chip fits into the display area optimally and calls
+    /** Called on reshape of canvas.
+     * Determines which way the chip fits into the display area optimally and calls
      * for a new orthographic projection to achieve this filling.
      * Finally sets the viewport to the entire drawable area.
      */
@@ -336,8 +423,10 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         repaint();
     }
 
-    /** Sets the projection matrix so that we get an orthographic projection that is the size of the
-    canvas with z volume -ZCLIP to ZCLIP padded with extra space around the sides.
+    /** Sets the projection matrix so that we get an
+     * orthographic projection that is the size of the
+    canvas with z volume -ZCLIP to ZCLIP padded with
+     * extra space around the sides.
 
     @param g the GL context
     @param d the GLAutoDrawable canvas
@@ -401,7 +490,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         return BORDER_SPACE_PIXELS;
     }
 
-    /**
+    /**  Returns the horizontal dimension of image.
      * @return the sizeX
      */
     public int getSizeX() {
@@ -409,6 +498,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     }
 
     /**
+     * Sets the image horizontal dimension.
+     *
      * @param sizeX the sizeX to set
      */
     synchronized public void setSizeX(int sizeX) {
@@ -422,6 +513,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     }
 
     /**
+     * Returns the image height.
+     *
      * @return the sizeY
      */
     public int getSizeY() {
@@ -429,6 +522,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     }
 
     /**
+     * Sets the image height.
+     *
      * @param sizeY the sizeY to set
      */
     synchronized public void setSizeY(int sizeY) {
@@ -442,6 +537,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     }
 
     /**
+     * Returns the x-axis label.
+     *
      * @return the xLabel
      */
     public String getxLabel() {
@@ -449,6 +546,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     }
 
     /**
+     * Sets the x-axis label.
      * @param xLabel the xLabel to set
      */
     public void setxLabel(String xLabel) {
@@ -461,6 +559,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     }
 
     /**
+     * Returns the y-axis label.
+     *
      * @return the yLabel
      */
     public String getyLabel() {
@@ -468,6 +568,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     }
 
     /**
+     * Sets the y-axis label.
+     *
      * @param yLabel the yLabel to set
      */
     public void setyLabel(String yLabel) {
@@ -480,6 +582,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     }
 
     /**
+     * Returns the title label.
+     *
      * @return the titleLabel
      */
     public String getTitleLabel() {
@@ -487,6 +591,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     }
 
     /**
+     * Sets the title label.
+     *
      * @param titleLabel the titleLabel to set
      */
     public void setTitleLabel(String titleLabel) {
@@ -519,6 +625,10 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         float leftRight = 0, bottomTop = 0;
     }
 
+    /** Draws the labels.
+     *
+     * @param gl
+     */
     private void drawText(GL gl) {
         if (textRenderer == null && (xLabel != null || yLabel != null || titleLabel != null)) {
             textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, true);
@@ -558,7 +668,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     /////////////////////////////////////////////////////////////////////
     /** Displays some random noise.
      *
-     * @param args
+     * @param args - no effect.
      */
     public static void main(String[] args) {
 
