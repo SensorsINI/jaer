@@ -29,6 +29,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 
     protected Preferences prefs = Preferences.userNodeForPackage(ImageDisplay.class);
     protected Logger log = Logger.getLogger("ImageDisplay");
+    private int fontSize = 20;
     private int sizeX = 0, sizeY = 0;
     protected float grayValue = 0;
     /** The rendered pixel map, ordered by rgb/row/col. The first 3 elements are the RBB float values of the LL pixel (x=0,y=0). The next 3 are
@@ -374,7 +375,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             clipArea.top = sizeY + bb;
             borders.leftRight = b;
             borders.bottomTop = bb;
-            g.glOrtho(-b, sizeX + b, -bb, (sizeY + bb), ZCLIP, -ZCLIP); // clip area has same ar as screen!
+            g.glOrtho(-b, sizeX + b, -bb, (sizeY + bb), ZCLIP, -ZCLIP); // clip area has same aspect ratio as screen!
         } else {
             glScale = (float) (h - 2 * border) / sizeY;
             float b = border / glScale;
@@ -520,7 +521,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 
     private void drawText(GL gl) {
         if (textRenderer == null && (xLabel != null || yLabel != null || titleLabel != null)) {
-            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 20), true, true);
+            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, true);
         }
         textRenderer.setColor(1, 1, 1, 1);
         textRenderer.beginRendering(getWidth(), getHeight());
@@ -539,25 +540,17 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             textRenderer.begin3DRendering();
             gl.glMatrixMode(GL.GL_MODELVIEW);
            gl.glPushMatrix();
-//           gl.glLoadIdentity();
-
-//            gl.glMatrixMode(GL.GL_PROJECTION);
-//            gl.glPushMatrix();
-//            gl.glLoadIdentity();
 
             Rectangle2D r = textRenderer.getBounds(yLabel);
-            gl.glTranslated(   -r.getHeight()/2, r.getWidth()/2,           0);
+            float s=(clipArea.top-clipArea.bottom)/getHeight();  // TODO mysterious scalling of text
+            gl.glTranslated(   -r.getHeight()*s, sizeY/2-r.getWidth()/2*s,           0);
             gl.glRotatef(90, 0, 0, 1);
-
-            float s=(float)r.getHeight()/getHeight()*12;  // mysterious scalling of text
 
             textRenderer.draw3D(yLabel, 0, 0,0,s);
             textRenderer.end3DRendering();
 
             gl.glPopMatrix();
 
-//             gl.glMatrixMode(GL.GL_MODELVIEW);
-//           gl.glPopMatrix();
         }
         checkGLError(gl, "after text");
     }
