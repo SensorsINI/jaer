@@ -23,48 +23,29 @@ import javax.swing.JFrame;
  * OpenGL display of 2d data as color image. See the main method for example of use.
  *
  *<pre>
-    public static void main(String[] args) {
-        final ImageDisplay disp = ImageDisplay.createOpenGLCanvas();
-        JFrame frame = new JFrame("ImageFrame");
-        frame.setPreferredSize(new Dimension(400, 400));
-        Random r = new Random();
-        frame.getContentPane().add(disp, BorderLayout.CENTER);
-        int size = 200;
-        disp.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyReleased(KeyEvent e) {
-                System.out.println(e.toString());
-                int k = e.getKeyCode();
-                if (k == KeyEvent.VK_ESCAPE || k == KeyEvent.VK_X) {
-                    System.exit(0);
-                } else if (k == KeyEvent.VK_UP) {
-                    disp.setSizeY(disp.getSizeY() * 2);
-                } else if (k == KeyEvent.VK_DOWN) {
-                    disp.setSizeY(disp.getSizeY() / 2);
-                } else if (k == KeyEvent.VK_RIGHT) {
-                    disp.setSizeX(disp.getSizeX() * 2);
-                } else if (k == KeyEvent.VK_LEFT) {
-                    disp.setSizeX(disp.getSizeX() / 2);
-                } else if (k == KeyEvent.VK_G) {
-                    disp.resetFrame(.5f);
-                }
-            }
-        });
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.pack();
-        frame.setVisible(true);
-        disp.setxLabel("x label");
-        disp.setyLabel("y label");
+public static void main(String[] args) {
+final ImageDisplay disp = ImageDisplay.createOpenGLCanvas();
+JFrame frame = new JFrame("ImageFrame");
+frame.setPreferredSize(new Dimension(400, 400));
+Random r = new Random();
+frame.getContentPane().add(disp, BorderLayout.CENTER);
+int size = 200;
 
-        disp.setSizeX(size);
-        disp.setSizeY(size);
+frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+frame.pack();
+frame.setVisible(true);
+disp.setxLabel("x label");
+disp.setyLabel("y label");
 
-        int frameCounter = 0;
-        while (true) {
-            disp.checkPixmapAllocation();
-            int n = size * size;
-            float[] f = disp.getPixmapArray();
-            int sx = disp.getSizeX(), sy = disp.getSizeY();
+disp.setSizeX(size);
+disp.setSizeY(size);
+
+int frameCounter = 0;
+while (true) {
+disp.checkPixmapAllocation();
+int n = size * size;
+float[] f = disp.getPixmapArray();
+int sx = disp.getSizeX(), sy = disp.getSizeY();
 //                for (int x = 0; x < sx; x++) {
 //                    for (int y = 0; y < sy; y++) {
 //                        int ind = imageDisplay.getPixMapIndex(x, y);
@@ -73,17 +54,17 @@ import javax.swing.JFrame;
 //                        f[ind + 2] = r.nextFloat();
 //                    }
 //                }
-            // randomly select one color of one pixel to change
-            synchronized (disp) {
-                int ind = disp.getPixMapIndex(r.nextInt(disp.getSizeX()), r.nextInt(disp.getSizeY())) + r.nextInt(3);
-                f[ind] = r.nextFloat();
-            }
-            disp.setTitleLabel("Frame " + (frameCounter++));
-            disp.repaint();
+// randomly select one color of one pixel to change
+synchronized (disp) {
+int ind = disp.getPixMapIndex(r.nextInt(disp.getSizeX()), r.nextInt(disp.getSizeY())) + r.nextInt(3);
+f[ind] = r.nextFloat();
+}
+disp.setTitleLabel("Frame " + (frameCounter++));
+disp.repaint();
 
-        }
-    }
-    </pre>
+}
+}
+</pre>
  * @author Tobi Delbruck
  */
 public class ImageDisplay extends GLCanvas implements GLEventListener {
@@ -128,13 +109,13 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 
     /** Factory method for creating an ImageDisplay with following capabilities:
      * <pre>
-        caps.setDoubleBuffered(true);
-        caps.setHardwareAccelerated(true);
-        caps.setAlphaBits(8);
-        caps.setRedBits(8);
-        caps.setGreenBits(8);
-        caps.setBlueBits(8);
-</pre>
+    caps.setDoubleBuffered(true);
+    caps.setHardwareAccelerated(true);
+    caps.setAlphaBits(8);
+    caps.setRedBits(8);
+    caps.setGreenBits(8);
+    caps.setBlueBits(8);
+    </pre>
      *
      * @return a new ImageDisplay
      */
@@ -166,7 +147,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         GL gl = this.getGL();
         if (reshapePending) {
             reshapePending = false;
-            reshape(drawable,  0, 0,getWidth(), getHeight());
+            reshape(drawable, 0, 0, getWidth(), getHeight());
         }
         try {
             gl.glClear(GL.GL_COLOR_BUFFER_BIT);
@@ -226,7 +207,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         checkPixmapAllocation();
         {
             try {
-                pixmap.position(0);
+                pixmap.rewind();
                 gl.glDrawPixels(sizeX, sizeY, GL.GL_RGB, GL.GL_FLOAT, pixmap);
             } catch (IndexOutOfBoundsException e) {
                 log.warning(e.toString());
@@ -288,16 +269,56 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         return pixmap;
     }
 
-//    public void setPixmapRGB(int x, int y, float[] rgb) {
-//        setPixmapPosition(x, y);
-//        pixmap.put(rgb);
-//    }
-//    private float[] rgb = new float[3];
-//    public float[] getPixmapRGB(int x, int y) {
-//        setPixmapPosition(x, y);
-//        pixmap.get(rgb);
-//        return rgb;
-//    }
+    /** Sets the pixel RGB value.
+     *
+     * @param x row
+     * @param y column
+     * @param rgb an array of RGB values in range 0-1.
+     */
+    synchronized public void setPixmapRGB(int x, int y, float[] rgb) {
+        setPixmapPosition(x, y);
+        pixmap.put(rgb);
+    }
+
+    /** Sets the pixel RGB value.
+     * 
+     * @param x row
+     * @param y column
+     * @param r red value, 0-1 range.
+     * @param g green value, 0-1 range.
+     * @param b blue value, 0-1 range.
+     */
+    synchronized public void setPixmapRGB(int x, int y, float r, float g, float b) {
+        setPixmapPosition(x, y);
+        pixmap.put(r);
+        pixmap.put(g);
+        pixmap.put(b);
+    }
+
+    /** Sets a gray value for pixel x,y. Convenience wrapper around setPixmapRGB.
+     *
+     * @param x
+     * @param y
+     * @param gray the gray value, in range 0-1.
+     */
+    synchronized public void setPixmapGray(int x, int y, float gray) {
+        setPixmapPosition(x, y);
+        pixmap.put(new float[]{gray, gray, gray});
+    }
+    private float[] rgb = new float[3];
+
+    /** Returns a re-used float[] of pixmap RGB values at location x,y.
+     *
+     * @param x column
+     * @param y row
+     * @return float[3] array of RGB values.
+     */
+    synchronized public float[] getPixmapRGB(int x, int y) {
+        setPixmapPosition(x, y);
+        pixmap.get(rgb);
+        return rgb;
+    }
+
     /** Returns an int that can be used to index to a particular pixel's RGB start location in the pixmap.
      * The successive 3 entries are the float (0-1) RGB values.
      *
@@ -319,11 +340,16 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         return pixmap.array();
     }
 
-//    public void setPixmapPosition(int x, int y) {
-//        pixmap.position(3 * (x + y * sizeX));
-//    }
+    /** Position the pixmap buffer at pixel x,y.
+     *
+     * @param x row
+     * @param y column
+     */
+    synchronized private void setPixmapPosition(int x, int y) {
+        pixmap.position(3 * (x + y * sizeX));
+    }
+
 //    private float pixmapGrayValue = 0;
-    
     /** Sets full pixmap to some gray level. An internal buffer is created if needed
      * so that gray level can be set back quickly using System.arraycopy.
      *
@@ -506,9 +532,26 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         if (sizeX != this.sizeX) {
             this.sizeX = sizeX;
             checkPixmapAllocation();
-            reshapePending=true;
+            reshapePending = true;
             invalidate();
             repaint();
+        }
+    }
+
+    /** Sets both horizontal and vertical dimensions of image.
+     *
+     * @param sizeX rows
+     * @param sizeY columns
+     */
+    synchronized public void setSize(int sizeX, int sizeY) {
+        if (sizeX != this.sizeX || sizeY != this.sizeY) {
+            this.sizeX = sizeX;
+            this.sizeY = sizeY;
+            checkPixmapAllocation();
+            reshapePending = true;
+            invalidate();
+            repaint();
+
         }
     }
 
@@ -530,7 +573,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         if (sizeY != this.sizeY) {
             this.sizeY = sizeY;
             checkPixmapAllocation();
-            reshapePending=true;
+            reshapePending = true;
             invalidate();
             repaint();
         }
@@ -639,7 +682,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 
         if (xLabel != null) {
             Rectangle2D r = textRenderer.getBounds(xLabel);
-            textRenderer.draw(xLabel, (int) (getWidth() - r.getWidth()) / 2, (int)((-clipArea.bottom/s)-r.getHeight()));
+            textRenderer.draw(xLabel, (int) (getWidth() - r.getWidth()) / 2, (int) ((-clipArea.bottom / s) - r.getHeight()));
         }
         if (titleLabel != null) {
             Rectangle2D r = textRenderer.getBounds(titleLabel);
@@ -650,13 +693,13 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         if (yLabel != null) { // TODO fix rendering of y axis label to be constant screen size.  rotatef doesn't work with draw(), must use draw3D but don't understand scalling
             textRenderer.begin3DRendering();
             gl.glMatrixMode(GL.GL_MODELVIEW);
-           gl.glPushMatrix();
+            gl.glPushMatrix();
 
             Rectangle2D r = textRenderer.getBounds(yLabel);
-            gl.glTranslated(   -r.getHeight()*s, sizeY/2-r.getWidth()/2*s,           0);
+            gl.glTranslated(-r.getHeight() * s, sizeY / 2 - r.getWidth() / 2 * s, 0);
             gl.glRotatef(90, 0, 0, 1);
 
-            textRenderer.draw3D(yLabel, 0, 0,0,s);
+            textRenderer.draw3D(yLabel, 0, 0, 0, s);
             textRenderer.end3DRendering();
 
             gl.glPopMatrix();
@@ -673,8 +716,6 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     public static void main(String[] args) {
 
         final ImageDisplay disp = ImageDisplay.createOpenGLCanvas();
-
-
         JFrame frame = new JFrame("ImageFrame");
         frame.setPreferredSize(new Dimension(400, 400));
         Random r = new Random();
@@ -727,10 +768,20 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 //                    }
 //                }
             // randomly select one color of one pixel to change
-            synchronized (disp) {
-                int ind = disp.getPixMapIndex(r.nextInt(disp.getSizeX()), r.nextInt(disp.getSizeY())) + r.nextInt(3);
-                f[ind] = r.nextFloat();
-            }
+//                int ind = disp.getPixMapIndex(r.nextInt(disp.getSizeX()), r.nextInt(disp.getSizeY())) + r.nextInt(3);
+//                f[ind] = r.nextFloat();
+//
+//            disp.resetFrame(0);
+//            int xx = r.nextInt(disp.getSizeX());
+//            int yy = r.nextInt(disp.getSizeY());
+//            disp.setPixmapGray(xx, yy, r.nextFloat());
+
+//            disp.resetFrame(0);
+            int xx = r.nextInt(disp.getSizeX());
+            int yy = r.nextInt(disp.getSizeY());
+            disp.setPixmapRGB(xx, yy, r.nextFloat(), r.nextFloat(), r.nextFloat());
+
+
             disp.setTitleLabel("Frame " + (frameCounter++));
             disp.repaint();
 
