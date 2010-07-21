@@ -14,6 +14,8 @@ import java.awt.geom.Rectangle2D;
 import java.util.Random;
 import javax.media.opengl.*;
 import java.nio.FloatBuffer;
+import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.media.opengl.glu.GLU;
@@ -98,6 +100,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     private Borders borders = new Borders();
     private String xLabel = null, yLabel = null, titleLabel = null;
     boolean reshapePending = false;
+    private HashMap<Integer, String> xticks, yticks;
 
     /** Creates a new ImageDisplay, given some Open GL capabilities.
      *
@@ -462,7 +465,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
      * orthographic projection that is the size of the
     canvas with z volume -ZCLIP to ZCLIP padded with
      * extra space around the sides.
-
+    
     @param g the GL context
     @param d the GLAutoDrawable canvas
      */
@@ -656,6 +659,44 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         repaint();
     }
 
+    /** Clears all x axis tick labels.
+     *
+     */
+    synchronized public void clearXTicks() {
+        xticks = null;
+    }
+
+    /** Add an xtick at axis location location.
+     *
+     * @param location
+     * @param tickLabel
+     */
+    synchronized public void addXTick(int location, String tickLabel) {
+        if (xticks == null) {
+            xticks = new HashMap();
+        }
+        xticks.put(location, tickLabel);
+    }
+
+    /** Clears all y axis tick labels.
+     *
+     */
+    synchronized public void clearYTicks() {
+        yticks = null;
+    }
+
+    /** Add an ytick at axis location location.
+     *
+     * @param location
+     * @param tickLabel
+     */
+    synchronized public void addYTick(int location, String tickLabel) {
+        if (yticks == null) {
+            yticks = new HashMap();
+        }
+        yticks.put(location, tickLabel);
+    }
+
     /**
      * Returns the current labeling font size.
      *
@@ -703,7 +744,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
      * @param gl
      */
     private void drawText(GL gl) {
-        if (textRenderer == null && (xLabel != null || yLabel != null || titleLabel != null)) {
+        if (textRenderer == null && (xLabel != null || yLabel != null || titleLabel != null || xticks != null || yticks != null)) {
             textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getFontSize()), true, true);
         }
         textRenderer.setColor(1, 1, 1, 1);
@@ -712,7 +753,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 
         if (xLabel != null) {
             Rectangle2D r = textRenderer.getBounds(xLabel);
-            textRenderer.draw(xLabel, (int) (getWidth() - r.getWidth()) / 2, (int) ((-clipArea.bottom / s) - r.getHeight()));
+            textRenderer.draw(xLabel, (int) (getWidth() - r.getWidth()) / 2, (int) ((-clipArea.bottom / s) - 2 * r.getHeight()));
         }
         if (titleLabel != null) {
             Rectangle2D r = textRenderer.getBounds(titleLabel);
@@ -726,7 +767,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             gl.glPushMatrix();
 
             Rectangle2D r = textRenderer.getBounds(yLabel);
-            gl.glTranslated(-r.getHeight() * s, sizeY / 2 - r.getWidth() / 2 * s, 0);
+            gl.glTranslated(-r.getHeight() * s-10, sizeY / 2 - r.getWidth() / 2 * s, 0);
             gl.glRotatef(90, 0, 0, 1);
 
             textRenderer.draw3D(yLabel, 0, 0, 0, s);
@@ -735,6 +776,30 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             gl.glPopMatrix();
 
         }
+
+
+        if (xticks != null) {
+            textRenderer.beginRendering(getWidth(), getHeight());
+            for (int tickLocation : xticks.keySet()) {
+                String tickLabel = xticks.get(tickLocation);
+                Rectangle2D r = textRenderer.getBounds(tickLabel);
+                textRenderer.draw(tickLabel, (int) (-clipArea.left / s + tickLocation / s - r.getWidth() / 2), (int) ((-clipArea.bottom / s) - r.getHeight()));
+            }
+            textRenderer.endRendering();
+        }
+
+
+        if (yticks != null) {
+            textRenderer.beginRendering(getWidth(), getHeight());
+            for (int tickLocation : yticks.keySet()) {
+                String tickLabel = yticks.get(tickLocation);
+                Rectangle2D r = textRenderer.getBounds(tickLabel);
+                textRenderer.draw(tickLabel, (int) (-clipArea.left / s - r.getWidth()), (int) ((-clipArea.bottom / s) +tickLocation / s -r.getHeight()/2));
+            }
+            textRenderer.endRendering();
+        }
+
+
         checkGLError(gl, "after text");
     }
 
@@ -777,7 +842,14 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         frame.pack();
         frame.setVisible(true);
         disp.setxLabel("x label");
+        disp.addXTick(0, "0");
+        disp.addXTick(size, Integer.toString(size));
+        disp.addXTick(size / 2, Integer.toString(size / 2));
+
         disp.setyLabel("y label");
+       disp.addYTick(0, "0");
+        disp.addYTick(size, Integer.toString(size));
+        disp.addYTick(size / 2, Integer.toString(size / 2));
 
         disp.setSizeX(size);
         disp.setSizeY(size);
@@ -810,9 +882,9 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             int xx = r.nextInt(disp.getSizeX());
             int yy = r.nextInt(disp.getSizeY());
             disp.setPixmapRGB(xx, yy, r.nextFloat(), r.nextFloat(), r.nextFloat());
-            if(frameCounter%1000==0){
-                disp.setFontSize(r.nextInt(60));
-            }
+//            if(frameCounter%1000==0){
+//                disp.setFontSize(r.nextInt(60));
+//            }
 
 
             disp.setTitleLabel("Frame " + (frameCounter++));
