@@ -656,6 +656,27 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         repaint();
     }
 
+    /**
+     * Returns the current labeling font size.
+     *
+     * @return the fontSize
+     */
+    public int getFontSize() {
+        return fontSize;
+    }
+
+    /**
+     * Sets a new font size for the axes labels and title.
+     *
+     * @param fontSize the fontSize to set
+     */
+    synchronized public void setFontSize(int fontSize) {
+        if (this.fontSize != fontSize) {
+            this.fontSize = fontSize;
+            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getFontSize()), true, true);
+        }
+    }
+
     /** Orthographic projection clipping area. */
     private class ClipArea {
 
@@ -683,7 +704,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
      */
     private void drawText(GL gl) {
         if (textRenderer == null && (xLabel != null || yLabel != null || titleLabel != null)) {
-            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, true);
+            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getFontSize()), true, true);
         }
         textRenderer.setColor(1, 1, 1, 1);
         textRenderer.beginRendering(getWidth(), getHeight());
@@ -789,6 +810,9 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             int xx = r.nextInt(disp.getSizeX());
             int yy = r.nextInt(disp.getSizeY());
             disp.setPixmapRGB(xx, yy, r.nextFloat(), r.nextFloat(), r.nextFloat());
+            if(frameCounter%1000==0){
+                disp.setFontSize(r.nextInt(60));
+            }
 
 
             disp.setTitleLabel("Frame " + (frameCounter++));
