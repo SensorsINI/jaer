@@ -6,6 +6,7 @@ package net.sf.jaer.graphics;
 
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.KeyAdapter;
@@ -160,6 +161,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     boolean reshapePending = false;
     private HashMap<Integer, String> xticks, yticks;
     private float[] textColor = new float[]{1, 1, 1};
+    private ArrayList<Legend> legends = new ArrayList();
 
     /** Creates a new ImageDisplay, given some Open GL capabilities.
      *
@@ -883,15 +885,23 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 
 
         for (Legend legend : legends) {
-            drawMultilineString(legend.s, legend.x, legend.y);
+            drawMultilineString(legend);
         }
         checkGLError(gl, "after text");
     }
 
-    private class Legend {
+    /** This object is the legend drawn starting at position x,y. */
+    public class Legend {
 
-        String s;
-        int x, y;
+        /** The rendered multi-line string. */
+        public String s;
+        /** The location starting at 0,0 at lower left corner of image. */
+        public int x, y;
+//        /** The drawn font size. */
+//        public int fontSize=ImageDisplay.this.fontSize;
+
+        /** The Legend font color. */
+        public float[] color=ImageDisplay.this.textColor;
 
         public Legend(String s, int x, int y) {
             this.s = s;
@@ -899,20 +909,24 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             this.y = y;
         }
     }
-    private ArrayList<Legend> legends = new ArrayList();
 
-    /** Adds a string with newlines ('\n') starting at x,y image position, using the text renderer font size.
-     * Each embedded '\n' starts a new line of text. Each successive line of text is indented with two spaces.
+    /** Adds a multi-line string starting with UL corner at x,y image position, using the text renderer font size.
+     * Each embedded '\n' starts a new line of text. 
+     * Each successive line of text after the first is indented with two spaces.
      *
-     * @param s the string to render.
+     * @param s the string to render; embed '\n' to start each new line of text.
      * @param x the x location in the image, 0 is the left of the image.
      * @param y the y location in the image, 0 is the bottom of the image.
+     * @return the Legend object, which may be modified as desired.
+     *
      */
-    synchronized public void addLegend(String s, int x, int y) {
-        legends.add(new Legend(s, x, y));
+    synchronized public Legend addLegend(String s, int x, int y) {
+        Legend legend = new Legend(s, x, y);
+        legends.add(legend);
+        return legend;
     }
 
-    /** Clears the legend strings.
+    /** Clears all the legend strings.
      *
      */
     synchronized public void clearLegends() {
@@ -927,12 +941,12 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
      * @param x the x location in the image, 0 is the left of the image.
      * @param y the y location in the image, 0 is the bottom of the image.
      */
-    private void drawMultilineString(String s, int x, int y) {
+    private void drawMultilineString(Legend legend) {
         if (textRenderer == null) {
             return;  // not visible yet, no init called
         }
         final int additionalSpace = 2;
-        String[] lines = s.split("\n");
+        String[] lines = legend.s.split("\n");
         if (lines == null) {
             return;
         }
@@ -952,7 +966,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
                     line = "  " + line;
                 }
                 first = false;
-                textRenderer.draw(line, (int)(x/scale-clipArea.left/scale), Math.round(y/scale-clipArea.bottom/scale+yshift));
+                textRenderer.setColor(legend.color[0],legend.color[1],legend.color[2], 1);
+                textRenderer.draw(line, (int) (legend.x / scale - clipArea.left / scale), Math.round(legend.y / scale - clipArea.bottom / scale + yshift));
             }
             textRenderer.endRendering();
         } catch (GLException e) {
@@ -1011,10 +1026,12 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         disp.addYTick(size, Integer.toString(size));
         disp.addYTick(size / 2, Integer.toString(size / 2));
 
+        // Add a 3 line legend starting at pixel x=10, y=size (near UL corner).
         String mls = "This is a multi-line string\nIt has three lines\nand ends with this one";
-        disp.addLegend(mls,10, size);  // drawa a multiline string - only do this once!  Or clear the list each time.
-
-        disp.setTextColor(new float[]{.8f,1,1});
+        Legend legend=disp.addLegend(mls, 10, size);  // drawa a multiline string - only do this once!  Or clear the list each time.
+        legend.color=new float[]{1,0,0};
+        
+        disp.setTextColor(new float[]{.8f, 1, 1});
 
         Random r = new Random();  // will use to fill display with noise
 
