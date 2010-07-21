@@ -919,7 +919,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         legends.clear();
     }
 
-    /** Renders the string with newlines ('\n') starting at x,y image position, using the text renderer font size.
+    /** Renders the string with newlines ('\n') starting at x,y image position (with origin at lower left corner),
+     * using the text renderer font size.
      * Each embedded '\n' starts a new line of text. Each successive line of text is indented with two spaces.
      *
      * @param s the string to render.
@@ -946,12 +947,12 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
                     continue;
                 }
                 Rectangle2D r = textRenderer.getBounds(line);
-                yshift -= r.getHeight();
+                yshift -= r.getHeight(); // shifts down because origin is UL and y increases downwards according to Java 2D convention
                 if (!first) {
                     line = "  " + line;
                 }
                 first = false;
-                textRenderer.draw(line, (int)(x-clipArea.left/scale), Math.round(y+clipArea.bottom/scale+yshift));
+                textRenderer.draw(line, (int)(x/scale-clipArea.left/scale), Math.round(y/scale-clipArea.bottom/scale+yshift));
             }
             textRenderer.endRendering();
         } catch (GLException e) {
@@ -1011,9 +1012,9 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         disp.addYTick(size / 2, Integer.toString(size / 2));
 
         String mls = "This is a multi-line string\nIt has three lines\nand ends with this one";
-        disp.addLegend(mls, size / 4, 3 * size / 4);  // drawa a multiline string - only do this once!  Or clear the list each time.
+        disp.addLegend(mls,10, size);  // drawa a multiline string - only do this once!  Or clear the list each time.
 
-        disp.setTextColor(new float[]{0,0,1});
+        disp.setTextColor(new float[]{.8f,1,1});
 
         Random r = new Random();  // will use to fill display with noise
 
