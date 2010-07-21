@@ -6,18 +6,19 @@ package net.sf.jaer.graphics;
 
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Random;
 import javax.media.opengl.*;
 import java.nio.FloatBuffer;
 import java.util.HashMap;
-import java.util.Hashtable;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.media.opengl.glu.GLU;
@@ -899,9 +900,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         public int x, y;
 //        /** The drawn font size. */
 //        public int fontSize=ImageDisplay.this.fontSize;
-
         /** The Legend font color. */
-        public float[] color=ImageDisplay.this.textColor;
+        public float[] color = ImageDisplay.this.textColor;
 
         public Legend(String s, int x, int y) {
             this.s = s;
@@ -966,7 +966,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
                     line = "  " + line;
                 }
                 first = false;
-                textRenderer.setColor(legend.color[0],legend.color[1],legend.color[2], 1);
+                textRenderer.setColor(legend.color[0], legend.color[1], legend.color[2], 1);
                 textRenderer.draw(line, (int) (legend.x / scale - clipArea.left / scale), Math.round(legend.y / scale - clipArea.bottom / scale + yshift));
             }
             textRenderer.endRendering();
@@ -974,6 +974,20 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             log.warning("caught " + e + " when trying to render text into the current OpenGL context");
         }
         yshift -= additionalSpace;  // add additional space between multiline strings
+    }
+
+    /** Returns the image position of a mouse event, translating back from OpenGL coordinates to image location.
+     *
+     * @param evt a  mouse event
+     * @return the image location, with 0,0 at the lower left corner.
+     * 
+     */
+    public Point2D.Float getMouseImagePosition(MouseEvent evt) {
+        Point2D.Float p = new Point2D.Float(evt.getPoint().x, evt.getPoint().y);
+        float scale = (clipArea.top - clipArea.bottom) / getHeight();  // TODO mysterious scalling of text
+        p.x = p.x * scale + clipArea.left;
+        p.y = sizeY - (p.y * scale + clipArea.bottom);
+        return p;
     }
 
     /////////////////////////////////////////////////////////////////////
@@ -988,6 +1002,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         frame.setPreferredSize(new Dimension(400, 400));  // set the window size
         frame.getContentPane().add(disp, BorderLayout.CENTER); // add the GLCanvas to the center of the window
         int size = 200;  // used later to define image size
+        final Point2D.Float mousePoint = new Point2D.Float();
 
         disp.setSize(size, size); // set dimensions of image
 
@@ -1012,6 +1027,19 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
                 }
             }
         });
+
+        disp.addMouseMotionListener(new MouseAdapter() {
+
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                super.mouseDragged(e);
+                Point2D.Float p = disp.getMouseImagePosition(e); // save the mouse point in image coordinates
+                mousePoint.x = p.x;
+                mousePoint.y = p.y;
+            }
+        });
+
+
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // closing the frame exits
         frame.pack(); // otherwise it wont fill up the display
         frame.setVisible(true); // make the frame visible
@@ -1028,9 +1056,9 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 
         // Add a 3 line legend starting at pixel x=10, y=size (near UL corner).
         String mls = "This is a multi-line string\nIt has three lines\nand ends with this one";
-        Legend legend=disp.addLegend(mls, 10, size);  // drawa a multiline string - only do this once!  Or clear the list each time.
-        legend.color=new float[]{1,0,0};
-        
+        Legend legend = disp.addLegend(mls, 10, size);  // drawa a multiline string - only do this once!  Or clear the list each time.
+        legend.color = new float[]{1, 0, 0};
+
         disp.setTextColor(new float[]{.8f, 1, 1});
 
         Random r = new Random();  // will use to fill display with noise
@@ -1068,6 +1096,15 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             int yy = r.nextInt(disp.getSizeY());
             disp.setPixmapRGB(xx, yy, r.nextFloat(), r.nextFloat(), r.nextFloat());
 
+
+            // move the legend around sinusoidally
+//            double phase = Math.PI * 2 * (frameCounter % 1000000) / 1000000;
+//            legend.x = (int) (disp.getSizeX() * .5 * (1 + Math.cos(phase)));
+//            legend.y = (int) (disp.getSizeX() * .5 * (1 + Math.sin(phase)));
+
+            // mouse the legend to the mouse point
+            legend.x = (int) (mousePoint.x);
+            legend.y = (int) (mousePoint.y);
 
 
             // randomly change axes font size
