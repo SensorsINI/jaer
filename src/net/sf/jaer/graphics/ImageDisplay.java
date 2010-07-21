@@ -11,6 +11,7 @@ import java.awt.Font;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.geom.Rectangle2D;
+import java.util.ArrayList;
 import java.util.Random;
 import javax.media.opengl.*;
 import java.nio.FloatBuffer;
@@ -34,29 +35,62 @@ import javax.swing.JFrame;
  *
  *
  *<pre>
-public static void main(String[] args) {
-final ImageDisplay disp = ImageDisplay.createOpenGLCanvas();
-JFrame frame = new JFrame("ImageFrame");
-frame.setPreferredSize(new Dimension(400, 400));
-Random r = new Random();
-frame.getContentPane().add(disp, BorderLayout.CENTER);
-int size = 200;
 
-frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-frame.pack();
-frame.setVisible(true);
-disp.setxLabel("x label");
-disp.setyLabel("y label");
+ *     public static void main(String[] args) {
 
-disp.setSizeX(size);
-disp.setSizeY(size);
+final ImageDisplay disp = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
+JFrame frame = new JFrame("ImageFrame");  // make a JFrame to hold it
+frame.setPreferredSize(new Dimension(400, 400));  // set the window size
+frame.getContentPane().add(disp, BorderLayout.CENTER); // add the GLCanvas to the center of the window
+int size = 200;  // used later to define image size
 
-int frameCounter = 0;
+disp.setSize(size,size); // set dimensions of image
+
+disp.addKeyListener(new KeyAdapter() { // add some key listeners to the ImageDisplay
+
+@Override
+public void keyReleased(KeyEvent e) {
+System.out.println(e.toString());
+int k = e.getKeyCode();
+if (k == KeyEvent.VK_ESCAPE || k == KeyEvent.VK_X) {
+System.exit(0);
+} else if (k == KeyEvent.VK_UP) {
+disp.setSizeY(disp.getSizeY() * 2); // UP arrow incrases vertical dimension
+} else if (k == KeyEvent.VK_DOWN) {
+disp.setSizeY(disp.getSizeY() / 2);
+} else if (k == KeyEvent.VK_RIGHT) {
+disp.setSizeX(disp.getSizeX() * 2);
+} else if (k == KeyEvent.VK_LEFT) {
+disp.setSizeX(disp.getSizeX() / 2);
+} else if (k == KeyEvent.VK_G) { // 'g' resets the frame to gray level 0.5f
+disp.resetFrame(.5f);
+}
+}
+});
+frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // closing the frame exits
+frame.pack(); // otherwise it wont fill up the display
+frame.setVisible(true); // make the frame visible
+
+disp.setxLabel("x label"); // add xaxis label and some tick markers
+disp.addXTick(0, "0");
+disp.addXTick(size, Integer.toString(size));
+disp.addXTick(size / 2, Integer.toString(size / 2));
+
+disp.setyLabel("y label"); // same for y axis
+disp.addYTick(0, "0");
+disp.addYTick(size, Integer.toString(size));
+disp.addYTick(size / 2, Integer.toString(size / 2));
+
+
+Random r = new Random();  // will use to fill display with noise
+
+int frameCounter = 0; // iterate over frame updates
 while (true) {
-disp.checkPixmapAllocation();
+disp.checkPixmapAllocation(); // make sure we have a pixmaps (not resally necessary since setting size will allocate pixmap
 int n = size * size;
-float[] f = disp.getPixmapArray();
+float[] f = disp.getPixmapArray(); // get reference to pixmap array so we can set pixel values
 int sx = disp.getSizeX(), sy = disp.getSizeY();
+// randomly update all pixels
 //                for (int x = 0; x < sx; x++) {
 //                    for (int y = 0; y < sy; y++) {
 //                        int ind = imageDisplay.getPixMapIndex(x, y);
@@ -66,15 +100,39 @@ int sx = disp.getSizeX(), sy = disp.getSizeY();
 //                    }
 //                }
 // randomly select one color of one pixel to change
-synchronized (disp) {
-int ind = disp.getPixMapIndex(r.nextInt(disp.getSizeX()), r.nextInt(disp.getSizeY())) + r.nextInt(3);
-f[ind] = r.nextFloat();
-}
+//                int ind = disp.getPixMapIndex(r.nextInt(disp.getSizeX()), r.nextInt(disp.getSizeY())) + r.nextInt(3);
+//                f[ind] = r.nextFloat();
+//
+// randomly set one pixel to some gray level
+//            disp.resetFrame(0);
+//            int xx = r.nextInt(disp.getSizeX());
+//            int yy = r.nextInt(disp.getSizeY());
+//            disp.setPixmapGray(xx, yy, r.nextFloat());
+
+// clear frame to black
+//            disp.resetFrame(0);
+
+// randomly set a pixel to some RGB value
+int xx = r.nextInt(disp.getSizeX());
+int yy = r.nextInt(disp.getSizeY());
+disp.setPixmapRGB(xx, yy, r.nextFloat(), r.nextFloat(), r.nextFloat());
+
+// randomly change axes font size
+//            if(frameCounter%1000==0){
+//                disp.setFontSize(r.nextInt(60));
+//            }
+
+
 disp.setTitleLabel("Frame " + (frameCounter++));
+
+// ask for a repaint
 disp.repaint();
 
 }
 }
+
+ *
+ *
 </pre>
  * @author Tobi Delbruck
  */
@@ -101,6 +159,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     private String xLabel = null, yLabel = null, titleLabel = null;
     boolean reshapePending = false;
     private HashMap<Integer, String> xticks, yticks;
+    private float[] textColor = new float[]{1, 1, 1};
 
     /** Creates a new ImageDisplay, given some Open GL capabilities.
      *
@@ -191,6 +250,10 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         // color set to white, raster to LL  corner
         gl.glRasterPos3f(0, 0, 0);
         gl.glColor3f(1, 1, 1);
+
+
+        textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getFontSize()), true, true);
+
     }
 
     /** Displays the pixmap of pixel values.
@@ -730,6 +793,22 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             top = t;
         }
     }
+
+    /** Sets the text color.
+     *
+     * @param rgb
+     */
+    public void setTextColor(float[] rgb) {
+        textColor = rgb;
+    }
+
+    /** Returns the current text color.
+     *
+     * @return an RGB array for all the text colors.
+     */
+    public float[] getTextColor() {
+        return textColor;
+    }
     /** The actual clipping box bounds for the default orthographic projection. */
     private ClipArea clipArea = new ClipArea(0, 0, 0, 0);
 
@@ -739,21 +818,24 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         float leftRight = 0, bottomTop = 0;
     }
 
-    /** Draws the labels.
+    /** 
+     * Draws the labels and tick marks, if they exist.
      *
      * @param gl
      */
     private void drawText(GL gl) {
-        if (textRenderer == null && (xLabel != null || yLabel != null || titleLabel != null || xticks != null || yticks != null)) {
-            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getFontSize()), true, true);
+        if (xLabel == null && yLabel == null && titleLabel == null && xticks == null && yticks == null) {
+            return;
         }
-        textRenderer.setColor(1, 1, 1, 1);
+
+        textRenderer.setColor(textColor[0], textColor[1], textColor[2], 1);
+
         textRenderer.beginRendering(getWidth(), getHeight());
         float s = (clipArea.top - clipArea.bottom) / getHeight();  // TODO mysterious scalling of text
 
         if (xLabel != null) {
             Rectangle2D r = textRenderer.getBounds(xLabel);
-            textRenderer.draw(xLabel, (int) (getWidth() - r.getWidth()) / 2, (int) ((-clipArea.bottom / s) - 2 * r.getHeight()));
+            textRenderer.draw(xLabel, (int) (getWidth() - r.getWidth()) / 2, (int) ((-clipArea.bottom / s) - (xticks != null ? 2 : 1) * r.getHeight()));  // shift text down if there are tick markers
         }
         if (titleLabel != null) {
             Rectangle2D r = textRenderer.getBounds(titleLabel);
@@ -761,13 +843,13 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         }
         textRenderer.endRendering();
 
-        if (yLabel != null) { // TODO fix rendering of y axis label to be constant screen size.  rotatef doesn't work with draw(), must use draw3D but don't understand scalling
+        if (yLabel != null) {
             textRenderer.begin3DRendering();
             gl.glMatrixMode(GL.GL_MODELVIEW);
             gl.glPushMatrix();
 
             Rectangle2D r = textRenderer.getBounds(yLabel);
-            gl.glTranslated(-r.getHeight() * s-10, sizeY / 2 - r.getWidth() / 2 * s, 0);
+            gl.glTranslated(-r.getHeight() * s - (yticks != null ? 10 : 0), sizeY / 2 - r.getWidth() / 2 * s, 0); // shift label left if there are ytick markers
             gl.glRotatef(90, 0, 0, 1);
 
             textRenderer.draw3D(yLabel, 0, 0, 0, s);
@@ -794,13 +876,88 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             for (int tickLocation : yticks.keySet()) {
                 String tickLabel = yticks.get(tickLocation);
                 Rectangle2D r = textRenderer.getBounds(tickLabel);
-                textRenderer.draw(tickLabel, (int) (-clipArea.left / s - r.getWidth()), (int) ((-clipArea.bottom / s) +tickLocation / s -r.getHeight()/2));
+                textRenderer.draw(tickLabel, (int) (-clipArea.left / s - r.getWidth()), (int) ((-clipArea.bottom / s) + tickLocation / s - r.getHeight() / 2));
             }
             textRenderer.endRendering();
         }
 
 
+        for (Legend legend : legends) {
+            drawMultilineString(legend.s, legend.x, legend.y);
+        }
         checkGLError(gl, "after text");
+    }
+
+    private class Legend {
+
+        String s;
+        int x, y;
+
+        public Legend(String s, int x, int y) {
+            this.s = s;
+            this.x = x;
+            this.y = y;
+        }
+    }
+    private ArrayList<Legend> legends = new ArrayList();
+
+    /** Adds a string with newlines ('\n') starting at x,y image position, using the text renderer font size.
+     * Each embedded '\n' starts a new line of text. Each successive line of text is indented with two spaces.
+     *
+     * @param s the string to render.
+     * @param x the x location in the image, 0 is the left of the image.
+     * @param y the y location in the image, 0 is the bottom of the image.
+     */
+    synchronized public void addLegend(String s, int x, int y) {
+        legends.add(new Legend(s, x, y));
+    }
+
+    /** Clears the legend strings.
+     *
+     */
+    synchronized public void clearLegends() {
+        legends.clear();
+    }
+
+    /** Renders the string with newlines ('\n') starting at x,y image position, using the text renderer font size.
+     * Each embedded '\n' starts a new line of text. Each successive line of text is indented with two spaces.
+     *
+     * @param s the string to render.
+     * @param x the x location in the image, 0 is the left of the image.
+     * @param y the y location in the image, 0 is the bottom of the image.
+     */
+    private void drawMultilineString(String s, int x, int y) {
+        if (textRenderer == null) {
+            return;  // not visible yet, no init called
+        }
+        final int additionalSpace = 2;
+        String[] lines = s.split("\n");
+        if (lines == null) {
+            return;
+        }
+        float yshift = 0;
+        float scale = (clipArea.top - clipArea.bottom) / getHeight();  // TODO mysterious scalling of text
+
+        try {
+            textRenderer.beginRendering(getWidth(), getHeight());
+            boolean first = true;
+            for (String line : lines) {
+                if (line == null) {
+                    continue;
+                }
+                Rectangle2D r = textRenderer.getBounds(line);
+                yshift -= r.getHeight();
+                if (!first) {
+                    line = "  " + line;
+                }
+                first = false;
+                textRenderer.draw(line, (int)(x-clipArea.left/scale), Math.round(y+clipArea.bottom/scale+yshift));
+            }
+            textRenderer.endRendering();
+        } catch (GLException e) {
+            log.warning("caught " + e + " when trying to render text into the current OpenGL context");
+        }
+        yshift -= additionalSpace;  // add additional space between multiline strings
     }
 
     /////////////////////////////////////////////////////////////////////
@@ -810,14 +967,15 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
      */
     public static void main(String[] args) {
 
-        final ImageDisplay disp = ImageDisplay.createOpenGLCanvas();
-        JFrame frame = new JFrame("ImageFrame");
-        frame.setPreferredSize(new Dimension(400, 400));
-        Random r = new Random();
-        frame.getContentPane().add(disp, BorderLayout.CENTER);
-        int size = 200;
+        final ImageDisplay disp = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
+        JFrame frame = new JFrame("ImageFrame");  // make a JFrame to hold it
+        frame.setPreferredSize(new Dimension(400, 400));  // set the window size
+        frame.getContentPane().add(disp, BorderLayout.CENTER); // add the GLCanvas to the center of the window
+        int size = 200;  // used later to define image size
 
-        disp.addKeyListener(new KeyAdapter() {
+        disp.setSize(size, size); // set dimensions of image
+
+        disp.addKeyListener(new KeyAdapter() { // add some key listeners to the ImageDisplay
 
             @Override
             public void keyReleased(KeyEvent e) {
@@ -826,41 +984,46 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
                 if (k == KeyEvent.VK_ESCAPE || k == KeyEvent.VK_X) {
                     System.exit(0);
                 } else if (k == KeyEvent.VK_UP) {
-                    disp.setSizeY(disp.getSizeY() * 2);
+                    disp.setSizeY(disp.getSizeY() * 2); // UP arrow incrases vertical dimension
                 } else if (k == KeyEvent.VK_DOWN) {
                     disp.setSizeY(disp.getSizeY() / 2);
                 } else if (k == KeyEvent.VK_RIGHT) {
                     disp.setSizeX(disp.getSizeX() * 2);
                 } else if (k == KeyEvent.VK_LEFT) {
                     disp.setSizeX(disp.getSizeX() / 2);
-                } else if (k == KeyEvent.VK_G) {
+                } else if (k == KeyEvent.VK_G) { // 'g' resets the frame to gray level 0.5f
                     disp.resetFrame(.5f);
                 }
             }
         });
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.pack();
-        frame.setVisible(true);
-        disp.setxLabel("x label");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // closing the frame exits
+        frame.pack(); // otherwise it wont fill up the display
+        frame.setVisible(true); // make the frame visible
+
+        disp.setxLabel("x label"); // add xaxis label and some tick markers
         disp.addXTick(0, "0");
         disp.addXTick(size, Integer.toString(size));
         disp.addXTick(size / 2, Integer.toString(size / 2));
 
-        disp.setyLabel("y label");
-       disp.addYTick(0, "0");
+        disp.setyLabel("y label"); // same for y axis
+        disp.addYTick(0, "0");
         disp.addYTick(size, Integer.toString(size));
         disp.addYTick(size / 2, Integer.toString(size / 2));
 
-        disp.setSizeX(size);
-        disp.setSizeY(size);
+        String mls = "This is a multi-line string\nIt has three lines\nand ends with this one";
+        disp.addLegend(mls, size / 4, 3 * size / 4);  // drawa a multiline string - only do this once!  Or clear the list each time.
 
+        disp.setTextColor(new float[]{0,0,1});
 
-        int frameCounter = 0;
+        Random r = new Random();  // will use to fill display with noise
+
+        int frameCounter = 0; // iterate over frame updates
         while (true) {
-            disp.checkPixmapAllocation();
+            disp.checkPixmapAllocation(); // make sure we have a pixmaps (not resally necessary since setting size will allocate pixmap
             int n = size * size;
-            float[] f = disp.getPixmapArray();
+            float[] f = disp.getPixmapArray(); // get reference to pixmap array so we can set pixel values
             int sx = disp.getSizeX(), sy = disp.getSizeY();
+            // randomly update all pixels
 //                for (int x = 0; x < sx; x++) {
 //                    for (int y = 0; y < sy; y++) {
 //                        int ind = imageDisplay.getPixMapIndex(x, y);
@@ -873,21 +1036,31 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 //                int ind = disp.getPixMapIndex(r.nextInt(disp.getSizeX()), r.nextInt(disp.getSizeY())) + r.nextInt(3);
 //                f[ind] = r.nextFloat();
 //
+            // randomly set one pixel to some gray level
 //            disp.resetFrame(0);
 //            int xx = r.nextInt(disp.getSizeX());
 //            int yy = r.nextInt(disp.getSizeY());
 //            disp.setPixmapGray(xx, yy, r.nextFloat());
 
+            // clear frame to black
 //            disp.resetFrame(0);
+
+            // randomly set a pixel to some RGB value
             int xx = r.nextInt(disp.getSizeX());
             int yy = r.nextInt(disp.getSizeY());
             disp.setPixmapRGB(xx, yy, r.nextFloat(), r.nextFloat(), r.nextFloat());
+
+
+
+            // randomly change axes font size
 //            if(frameCounter%1000==0){
 //                disp.setFontSize(r.nextInt(60));
 //            }
 
 
             disp.setTitleLabel("Frame " + (frameCounter++));
+
+            // ask for a repaint
             disp.repaint();
 
         }
