@@ -5,8 +5,11 @@
 package net.sf.jaer.util;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
@@ -165,6 +168,7 @@ public class RemoteControl /* implements RemoteControlled */{
     }
     private class RemoteControlDatagramSocketThread extends Thread{
         DatagramPacket packet;
+        private String CHARSET="UTF8";
 
         RemoteControlDatagramSocketThread (){
             setName("RemoteControlDatagramSocketThread");
@@ -176,10 +180,38 @@ public class RemoteControl /* implements RemoteControlled */{
                 try{
                     packet = new DatagramPacket(new byte[ MAX_COMMAND_LENGTH_BYTES ],MAX_COMMAND_LENGTH_BYTES);
                     datagramSocket.receive(packet);
-                    ByteArrayInputStream bis;
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(( bis = new ByteArrayInputStream(packet.getData(),0,packet.getLength()) )));
-                    String line = reader.readLine(); // .toLowerCase();
-                    System.out.println(line); // debug
+                    InputStream is = new ByteArrayInputStream(packet.getData(),0,packet.getLength());
+                    byte[] b=new byte[packet.getLength()];
+                    is.read(b);
+                    for(int i=0;i<b.length;i++){
+
+                        // all kinds of machinations here to make sure to warn the sender that they have possibly sent a java string escape
+                        // sequence as part of their command!
+                        if((0xff&b[i])==0x5c){ // backslash
+                            StringBuilder sb=new StringBuilder("WARNING: Received command line contains at least one \"\\\" at position "+i+" - this backslash could be interpreted as escape sequence; replace with \"/\" for file separation:\n"+new String(b));
+                            for(int j=0;j<i;j++){
+                                sb.append(" ");
+                            }
+                            sb.append("^");
+                            log.warning(sb.toString());
+                            echo(sb.toString()+"\n");
+                            break;
+                        }
+                    }
+                    String line=new String(b,0,b.length-1);
+//                    char[] c=new char[b.length];
+//                    for(int i=0;i<b.length;i++){
+//                        c[i]=(char)b[i];
+//                    }
+
+//                    String line=new String(c);
+//                    StringBuilder sb=new StringBuilder();
+//                    for(int i=0;i<b.length;i++){
+//                        sb.append((char)b[i]);
+//                    }
+//                    String line = sb.toString(); //new String(b,CHARSET); // .toLowerCase();
+//                    line.replaceAll("\n","\\n");
+                    log.info("received line \""+line+"\""); // debug
                     parseAndDispatchCommand(line);
 
                 } catch ( SocketException e ){
