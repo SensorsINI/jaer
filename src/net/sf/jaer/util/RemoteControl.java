@@ -5,6 +5,7 @@
 package net.sf.jaer.util;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -183,22 +184,39 @@ public class RemoteControl /* implements RemoteControlled */{
                     InputStream is = new ByteArrayInputStream(packet.getData(),0,packet.getLength());
                     byte[] b=new byte[packet.getLength()];
                     is.read(b);
-                    for(int i=0;i<b.length;i++){
-
-                        // all kinds of machinations here to make sure to warn the sender that they have possibly sent a java string escape
-                        // sequence as part of their command!
-                        if((0xff&b[i])==0x5c){ // backslash
-                            StringBuilder sb=new StringBuilder("WARNING: Received command line contains at least one \"\\\" at position "+i+" - this backslash could be interpreted as escape sequence; replace with \"/\" for file separation:\n"+new String(b));
-                            for(int j=0;j<i;j++){
-                                sb.append(" ");
-                            }
-                            sb.append("^");
-                            log.warning(sb.toString());
-                            echo(sb.toString()+"\n");
-                            break;
-                        }
+//                    ByteArrayOutputStream bos=new ByteArrayOutputStream(b.length+10);
+//                    boolean showedWarning=false;
+//                    StringBuilder deb1=new StringBuilder(), deb2=new StringBuilder();
+//                    for(int i=0;i<b.length;i++){
+//
+//                        deb1.append((char)b[i]+"    ");
+//                        deb2.append(HexString.toString(b[i])+" ");
+//                        // all kinds of machinations here to make sure to warn the sender that they have possibly sent a java string escape
+//                        // sequence as part of their command!
+////                        if((0xff&b[i])==0x5c){ // backslash
+////                            bos.write(b[i]);
+////                            bos.write(b[i]);
+////                            if(!showedWarning){
+////                            StringBuilder sb=new StringBuilder("WARNING: Received command line contains at least one \"\\\" at position "+i+" - this backslash could be interpreted as escape sequence; replace with \"/\" for file separation:\n"+new String(b));
+////                            for(int j=0;j<i;j++){
+////                                sb.append(" ");
+////                            }
+////                            sb.append("^");
+////                            log.warning(sb.toString());
+////                            echo(sb.toString()+"\n");
+////                            showedWarning=true;
+////                            }
+////                        }else{
+//                            bos.write(b[i]);
+////                        }
+//                    }
+//                    System.out.println(deb1.toString());
+//                    System.out.println(deb2.toString());
+//                    String line=new String(bos.toByteArray());
+                    String line=new String(b);  // decode using default encoding
+                    if(line.endsWith("\n")){
+                        line=line.substring(0,line.length()-1);
                     }
-                    String line=new String(b,0,b.length-1);
 //                    char[] c=new char[b.length];
 //                    for(int i=0;i<b.length;i++){
 //                        c[i]=(char)b[i];
