@@ -579,7 +579,7 @@ public abstract class EventFilter extends Observable {
      * @return true is a String "get" on the key returns non-null.
      */
     protected boolean isPreferenceStored(String key){
-        if(get(key,null)==null) return true; else return false;
+        if(get(key,null)==null) return false; else return true;
     }
 
     /** The header part of the Preferences key, e.g. "BackgroundActivityFilter.".
