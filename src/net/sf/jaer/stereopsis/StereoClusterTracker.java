@@ -561,7 +561,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
         if (  ! isFilterEnabled () ){
             return;
         }
-        GL gl = drawable.getGL (); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl = drawable.getGL (); // when we get this we are already set up with updateShape 1=1 pixel, at LL corner
         if ( gl == null ){
             log.warning ("null GL in StereoClusterTracker.annotate");
             return;

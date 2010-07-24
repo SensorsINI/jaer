@@ -102,6 +102,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     // Dimensions of the pixel array
     int numX;
     int numY;
+    int numPix;
     // Histogram data
     private float[][] pixData = null;
     // Total sum of histogram points
@@ -239,6 +240,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         int oldNumY = numY;
         numX = chip.getSizeX();
         numY = chip.getSizeY();
+        numPix=numX*numY;
 
         if ((oldNumX != numX) || (oldNumY != numY)) {
             pixData = new float[numY][numX];
@@ -278,7 +280,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
             // Return original image
             for (int i = 0; i < numY; i++) {
                 for (int j = 0; j < numX; j++) {
-                    if ((pixData[i][j] / totalSum) > histThresh) {
+                    if ((pixData[i][j] * numPix / totalSum) > histThresh) {
                         bitmap[i][j] = true;
                     } else {
                         bitmap[i][j] = false;
@@ -296,7 +298,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
                     for (int l = -erSize; l <= erSize; l++) {
                         int pixY = clip(i + k, numY-1); // limit to size-1 to avoid arrayoutofbounds exceptions 
                         int pixX = clip(j + l, numX-1);
-                        if ((pixData[pixY][pixX] / totalSum) < histThresh) {
+                        if ((pixData[pixY][pixX] *numPix / totalSum) < histThresh) {
                             keep = false;
                             break;
                         }

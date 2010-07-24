@@ -59,8 +59,7 @@ public abstract class EventFilter extends Observable {
     /** Used by filterPacket to say whether to filter events; default false */
     protected boolean filterEnabled = false;
     /** Flags this EventFilter as "selected" for purposes of control */
-    public boolean selected=false;
-
+    public boolean selected = false;
 //    /** true means the events are filtered in place, replacing the contents of the input packet and more
 //     *efficiently using memory. false means a new event packet is created and populated for the output of the filter.
 //     *<p>
@@ -114,7 +113,6 @@ public abstract class EventFilter extends Observable {
 //     * @deprecated - no one uses this
 //     */
 //    abstract public Object getFilterState();
-
     /** should reset the filter to initial state */
     abstract public void resetFilter();
 
@@ -124,10 +122,9 @@ public abstract class EventFilter extends Observable {
     abstract public void initFilter();
 
     /** Clean up that should run when before filter is finalized, e.g. dispose of Components.
-     Subclasses can override this method which does nothing by default.
+    Subclasses can override this method which does nothing by default.
      */
-    synchronized public void cleanup(){
-
+    synchronized public void cleanup() {
     }
 
     /** Filters can be enabled for processing.
@@ -225,7 +222,6 @@ public abstract class EventFilter extends Observable {
             enclosedFilter.setEnclosed(true, enclosingFilter);
         }
     }
-    
     /** This boolean controls annotation for filters that are FrameAnnotator */
     protected boolean annotationEnabled = true;
 
@@ -242,7 +238,9 @@ public abstract class EventFilter extends Observable {
      * @return true to show filter annotation should be shown
      */
     public boolean isAnnotationEnabled() {
-        if(!(this instanceof FrameAnnotater)) return false;
+        if (!(this instanceof FrameAnnotater)) {
+            return false;
+        }
         if (annotationEnabled && isFilterEnabled() && !isEnclosed()) {
             return true;
         }
@@ -275,16 +273,11 @@ public abstract class EventFilter extends Observable {
     }
     /** The key,value table of property tooltip strings. */
     protected HashMap<String, String> propertyTooltipMap = null;
-
     /** The key,value table of propery group associations.
      * The key the property name and the value is the group name.*/
     protected HashMap<String, String> property2GroupMap = null;
-
     /** The keys are the names of property groups, and the values are lists of properties in the key's group.*/
-    protected HashMap<String, ArrayList<String>> group2PropertyListMap=null;
-
-
-
+    protected HashMap<String, ArrayList<String>> group2PropertyListMap = null;
 
     /** Developers can use setPropertyTooltip to add an optional tooltip for a filter property so that the tip is shown
      * as the tooltip for the label or checkbox property in the generated GUI.
@@ -303,13 +296,12 @@ public abstract class EventFilter extends Observable {
         }
         propertyTooltipMap.put(propertyName.toLowerCase(), tooltip);
     }
-
     /** Use this key for global parameters in your filter constructor, as in
      * <pre>
-           setPropertyTooltip(PARAM_GROUP_GLOBAL, "propertyName", "property tip string");
-     </pre>
+    setPropertyTooltip(PARAM_GROUP_GLOBAL, "propertyName", "property tip string");
+    </pre>
      */
-    public static final String PARAM_GROUP_GLOBAL="Global";
+    public static final String PARAM_GROUP_GLOBAL = "Global";
 
     /** Convenience method to add properties to groups along with adding a tip for the property.
      *
@@ -319,7 +311,7 @@ public abstract class EventFilter extends Observable {
      * @see #PARAM_GROUP_GLOBAL
      */
     protected void setPropertyTooltip(String groupName, String propertyName, String tooltip) {
-        setPropertyTooltip(propertyName.toLowerCase(),tooltip);
+        setPropertyTooltip(propertyName.toLowerCase(), tooltip);
         addPropertyToGroup(groupName, propertyName.toLowerCase());
     }
 
@@ -340,19 +332,19 @@ public abstract class EventFilter extends Observable {
         if (property2GroupMap == null) {
             property2GroupMap = new HashMap();
         }
-        if(group2PropertyListMap==null){
-            group2PropertyListMap=new HashMap();
+        if (group2PropertyListMap == null) {
+            group2PropertyListMap = new HashMap();
         }
         // add the mapping from property to group
-        property2GroupMap.put(propertyName.toLowerCase(),groupName);
+        property2GroupMap.put(propertyName.toLowerCase(), groupName);
 
         // create the list of properties in the group
         ArrayList<String> propList;
-        if(!group2PropertyListMap.containsKey(groupName)){
-            propList=new ArrayList<String>(2);
-            group2PropertyListMap.put(groupName,propList);
-        }else{
-            propList=group2PropertyListMap.get(groupName);
+        if (!group2PropertyListMap.containsKey(groupName)) {
+            propList = new ArrayList<String>(2);
+            group2PropertyListMap.put(groupName, propList);
+        } else {
+            propList = group2PropertyListMap.get(groupName);
         }
         propList.add(propertyName.toLowerCase());
     }
@@ -362,8 +354,10 @@ public abstract class EventFilter extends Observable {
      * @param propertyName the property name string.
      * @return the property group name.
      */
-    public String getPropertyGroup(String propertyName){
-        if(property2GroupMap==null) return null;
+    public String getPropertyGroup(String propertyName) {
+        if (property2GroupMap == null) {
+            return null;
+        }
         return property2GroupMap.get(propertyName.toLowerCase());
     }
 
@@ -373,7 +367,9 @@ public abstract class EventFilter extends Observable {
      * @return the ArrayList of property names in the group.
      */
     protected ArrayList<String> getPropertyGroupList(String groupName) {
-        if(group2PropertyListMap==null) return null;
+        if (group2PropertyListMap == null) {
+            return null;
+        }
         return group2PropertyListMap.get(groupName);
     }
 
@@ -381,11 +377,13 @@ public abstract class EventFilter extends Observable {
      * 
      * @return Set view of property groups.
      */
-    protected Set<String> getPropertyGroupSet(){
-        if(group2PropertyListMap==null) return null;
+    protected Set<String> getPropertyGroupSet() {
+        if (group2PropertyListMap == null) {
+            return null;
+        }
         return group2PropertyListMap.keySet();
     }
-    
+
     /**
      * Returns the mapping from property name to group name.
      * If null, no groups have been declared.
@@ -393,15 +391,15 @@ public abstract class EventFilter extends Observable {
      * @return the map, or null if no groups have been declared by adding any properties.
      * @see #property2GroupMap
      */
-    public HashMap<String,String> getPropertyGroupMap(){
+    public HashMap<String, String> getPropertyGroupMap() {
         return property2GroupMap;
     }
 
     /** Returns true if the filter has property groups.
      *
      */
-    public boolean hasPropertyGroups(){
-        return property2GroupMap!=null;
+    public boolean hasPropertyGroups() {
+        return property2GroupMap != null;
     }
 
     /** Returns the enclosed filter chain
@@ -416,8 +414,8 @@ public abstract class EventFilter extends Observable {
      *@param enclosedFilterChain the chain
      **/
     public void setEnclosedFilterChain(FilterChain enclosedFilterChain) {
-        if(this.enclosedFilterChain!=null){
-            log.warning("replacing existing enclosedFilterChain= "+this.enclosedFilterChain+" with new enclosedFilterChain= "+enclosedFilterChain);
+        if (this.enclosedFilterChain != null) {
+            log.warning("replacing existing enclosedFilterChain= " + this.enclosedFilterChain + " with new enclosedFilterChain= " + enclosedFilterChain);
         }
         this.enclosedFilterChain = enclosedFilterChain;
         if (enclosedFilterChain != null) {
@@ -438,12 +436,12 @@ public abstract class EventFilter extends Observable {
         return prefs;
     }
 
-    /** Synonym for getPrefs()
+    /** Synonym for getPrefs().
      *
      * @return the prefs node
      * @see #getPrefs()
      */
-    public Preferences prefs(){
+    public Preferences prefs() {
         return prefs;
     }
 
@@ -496,7 +494,7 @@ public abstract class EventFilter extends Observable {
                 Class enclClass = Class.forName(enclClassName);
                 if (EventFilter.class.isAssignableFrom(enclClass)) {
                     prefs = getPrefsForEnclosedFilter(prefs, enclClassName);
-                    log.info("This filter "+this.getClass()+" is enclosed in "+enclClass+" and has new Preferences node="+prefs);
+                    log.info("This filter " + this.getClass() + " is enclosed in " + enclClass + " and has new Preferences node=" + prefs);
                 }
             }
         } catch (ClassNotFoundException e) {
@@ -537,7 +535,7 @@ public abstract class EventFilter extends Observable {
     /**
      * @return the selected
      */
-    public boolean isSelected (){
+    public boolean isSelected() {
         return selected;
     }
 
@@ -546,10 +544,10 @@ public abstract class EventFilter extends Observable {
      * this is not selected.
      * @param selected the selected to set, true means this is "selected".
      */
-    public void setSelected (boolean selected){
-        boolean old=this.selected;
+    public void setSelected(boolean selected) {
+        boolean old = this.selected;
         this.selected = selected;
-        support.firePropertyChange("selected",old,selected);
+        support.firePropertyChange("selected", old, selected);
     }
 
     /** The development status of an EventFilter. An EventFilter can implement the static method getDevelopmentStatus which
@@ -561,13 +559,166 @@ public abstract class EventFilter extends Observable {
      * <li>Unknown - the status is not known.
      * </ul>
      */
-    public enum DevelopmentStatus {Alpha,Beta,Released,Unknown};
+    public enum DevelopmentStatus {
 
-   /** Override this enum to show the EventFilter's developement status.
+        Alpha, Beta, Released, Unknown
+    };
+
+    /** Override this enum to show the EventFilter's developement status.
     @see DevelopmentStatus
-    */
+     */
     public static DevelopmentStatus getDevelopmentStatus() {
         return DevelopmentStatus.Unknown;
     }
 
+    // preferences methods that add the filter name to the key automatically
+
+
+    /** Returns if the property preference has previously been stored. Can be used to set a default value for a property if it has not yet been initialized.
+     *
+     * @return true is a String "get" on the key returns non-null.
+     */
+    protected boolean isPreferenceStored(String key){
+        if(get(key,null)==null) return true; else return false;
+    }
+
+    /** The header part of the Preferences key, e.g. "BackgroundActivityFilter.".
+     *
+     * @return the string header for built-in preferences.
+     */
+    protected String prefsKeyHeader() {
+        return getClass().getSimpleName() + ".";
+    }
+
+    /** Puts a preference.
+     *
+     * @param key the property name, e.g. "tauMs"
+     * @param value the value to be stored
+     */
+    public void putLong(String key, long value) {
+        prefs.putLong(prefsKeyHeader() + key, value);
+    }
+
+    /** Puts a preference.
+     *
+     * @param key the property name, e.g. "tauMs"
+     * @param value the value to be stored
+     */
+    public void putInt(String key, int value) {
+        prefs.putInt(prefsKeyHeader() + key, value);
+    }
+
+    /** Puts a preference.
+     *
+     * @param key the property name, e.g. "tauMs"
+     * @param value the value to be stored
+     */
+    public void putFloat(String key, float value) {
+        prefs.putFloat(prefsKeyHeader() + key, value);
+    }
+
+    /** Puts a preference.
+     *
+     * @param key the property name, e.g. "tauMs"
+     * @param value the value to be stored
+     */
+    public void putDouble(String key, double value) {
+        prefs.putDouble(prefsKeyHeader() + key, value);
+    }
+
+    /** Puts a preference.
+     *
+     * @param key the property name, e.g. "tauMs"
+     * @param value the value to be stored
+     */
+    public void putByteArray(String key, byte[] value) {
+        prefs.putByteArray(prefsKeyHeader() + key, value);
+    }
+
+    /** Puts a preference.
+     *
+     * @param key the property name, e.g. "tauMs"
+     * @param value the value to be stored
+     */
+    public void putBoolean(String key, boolean value) {
+        prefs.putBoolean(prefsKeyHeader() + key, value);
+    }
+
+    /** Puts a preference.
+     *
+     * @param key the property name, e.g. "tauMs"
+     * @param value the value to be stored
+     */
+    public void put(String key, String value) {
+        prefs.put(prefsKeyHeader() + key, value);
+    }
+
+    /** Puts a preference.
+     *
+     * @param key the property name, e.g. "tauMs"
+     * @param value the value to be stored
+     */
+    public long getLong(String key, long def) {
+        return prefs.getLong(prefsKeyHeader() + key, def);
+    }
+
+    /** Gets a preference from the built in preferences node.
+     *
+     * @param key the property name, e.g. "tauMs".
+     * @param def the default value if there is no preference already stored.
+     * @return
+     */
+    public int getInt(String key, int def) {
+        return prefs.getInt(prefsKeyHeader() + key, def);
+    }
+
+    /** Gets a preference from the built in preferences node.
+     *
+     * @param key the property name, e.g. "tauMs".
+     * @param def the default value if there is no preference already stored.
+     * @return
+     */
+    public float getFloat(String key, float def) {
+        return prefs.getFloat(prefsKeyHeader() + key, def);
+    }
+
+    /** Gets a preference from the built in preferences node.
+     *
+     * @param key the property name, e.g. "tauMs".
+     * @param def the default value if there is no preference already stored.
+     * @return
+     */
+    public double getDouble(String key, double def) {
+        return prefs.getDouble(prefsKeyHeader() + key, def);
+    }
+
+    /** Gets a preference from the built in preferences node.
+     *
+     * @param key the property name, e.g. "tauMs".
+     * @param def the default value if there is no preference already stored.
+     * @return
+     */
+    public byte[] getByteArray(String key, byte[] def) {
+        return prefs.getByteArray(prefsKeyHeader() + key, def);
+    }
+
+    /** Gets a preference from the built in preferences node.
+     *
+     * @param key the property name, e.g. "tauMs".
+     * @param def the default value if there is no preference already stored.
+     * @return
+     */
+    public boolean getBoolean(String key, boolean def) {
+        return prefs.getBoolean(prefsKeyHeader() + key, def);
+    }
+
+    /** Gets a preference from the built in preferences node.
+     *
+     * @param key the property name, e.g. "tauMs".
+     * @param def the default value if there is no preference already stored.
+     * @return
+     */
+    public String get(String key, String def) {
+        return prefs.get(prefsKeyHeader() + key, def);
+    }
 }
