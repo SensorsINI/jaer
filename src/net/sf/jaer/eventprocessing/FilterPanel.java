@@ -1310,14 +1310,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
 
     /** Set visibility of individual filter controls; hides other filters.
-     * @param yes true to show filter parameter controls, false to hide this filter's controls and to show all filters in chain.
+     * @param visible true to show filter parameter controls, false to hide this filter's controls and to show all filters in chain.
      */
-    public void setControlsVisible(boolean yes) {
-        controlsVisible = yes;
-        getFilter().setSelected(yes); // exposing controls 'selects' this filter
-        setBorderActive(yes);
+    public void setControlsVisible(boolean visible) {
+        controlsVisible = visible;
+        getFilter().setSelected(visible); // exposing controls 'selects' this filter
+        setBorderActive(visible);
         for (JComponent p : controls) {
-            p.setVisible(yes);
+            p.setVisible(visible);
             p.invalidate();
         }
 
@@ -1332,12 +1332,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 // hide all filters except one that is being modified, *unless* we are an enclosed filter
                 FilterFrame ff = (FilterFrame) c;
                 for (FilterPanel f : ff.filterPanels) {
-                    if (f == this) {
-                        f.setVisible(yes);
-                        continue;  // don't do anything to ourselves
+                    if (f == this) {  // for us and if !visible
+                        f.setVisible(true); // always set us visible in chain since we are the one being touched
+                        continue;  
                     }
 
-                    f.setVisible(!yes); // hide other filters
+                    f.setVisible(!visible); // hide / show other filters
                 }
 
             }
