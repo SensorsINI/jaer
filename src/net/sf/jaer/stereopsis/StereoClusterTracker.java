@@ -146,10 +146,10 @@ public class StereoClusterTracker extends RectangularClusterTracker{
         }
     }
 
-    synchronized private void track (EventPacket<BasicEvent> ae){
+    synchronized protected EventPacket track (EventPacket<BasicEvent> ae){
         int n = ae.getSize ();
         if ( n == 0 ){
-            return;
+            return ae;
         }
         int maxNumClusters = getMaxNumClusters ();
 
@@ -248,7 +248,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
         }
 
 //        if(clusters.size()>beforeMergeCount) throw new RuntimeException("more clusters after merge than before");
-
+        return ae;
 
     }
 

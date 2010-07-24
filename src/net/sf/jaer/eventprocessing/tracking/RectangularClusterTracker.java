@@ -1701,7 +1701,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
          * The path is trimmed to maximum length if logging is not enabled.
          * @param t current timestamp.
          */
-        final protected void updatePath(int t) {
+        public void updatePath(int t) {
             if (!pathsEnabled && !useVelocity) {
                 return;
             }
