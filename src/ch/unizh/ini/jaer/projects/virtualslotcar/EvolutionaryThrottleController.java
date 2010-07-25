@@ -91,7 +91,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                 log.warning("null track model - can't compute control");
                 return getThrottle();
             }
-            this.track = track; // set track for logging
+            this.setTrack(track); // set track for logging
             track.setPointTolerance(maxDistanceFromTrackPoint);
 
             if (currentProfile == null || currentProfile.getNumPoints() != track.getNumPoints()) {
@@ -231,7 +231,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     @Override
     public String logControllerState() {
-        return String.format("%d\t%f\t%s", currentTrackPos, throttle, track == null ? null : track.getCarState());
+        return String.format("%d\t%f\t%s", currentTrackPos, throttle, getTrack() == null ? null : getTrack().getCarState());
     }
 
     @Override
@@ -279,14 +279,14 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     /** Displays the extracted track points */
     private void drawThrottleProfile(GL gl) {
-        if (track != null && track.getPointList() != null && currentProfile != null) {
+        if (getTrack() != null && getTrack().getPointList() != null && currentProfile != null) {
 
             gl.glColor4f(.5f, 0, 0, .5f);
             // Draw extracted points
             Point2D startPoint = null, selectedPoint = null;
             float maxSize = 40f;
             int idx = 0;
-            for (Point2D p : track.getPointList()) {
+            for (Point2D p : getTrack().getPointList()) {
                 float size = maxSize * currentProfile.getThrottle(idx);
                 gl.glPointSize(size);
                 gl.glBegin(gl.GL_POINTS);
@@ -299,7 +299,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             // Plot lines
             gl.glLineWidth(.5f);
             gl.glBegin(gl.GL_LINE_STRIP);
-            for (Point2D p : track.getPointList()) {
+            for (Point2D p : getTrack().getPointList()) {
                 gl.glVertex2d(p.getX(), p.getY());
             }
             gl.glEnd();
@@ -323,7 +323,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         this.maxDistanceFromTrackPoint = maxDistanceFromTrackPoint;
         prefs().putFloat("CurvatureBasedController.maxDistanceFromTrackPoint", maxDistanceFromTrackPoint);
         // Define tolerance for track model
-        track.setPointTolerance(maxDistanceFromTrackPoint);
+        getTrack().setPointTolerance(maxDistanceFromTrackPoint);
     }
 
     /**
@@ -390,12 +390,26 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     }
 
     private void drawCurrentTrackPoint(GL gl) {
-        if (currentTrackPos == -1 || track == null) {
+        if (currentTrackPos == -1 || getTrack() == null) {
             return;
         }
         gl.glColor4f(1,0, 0, .5f);
-        Point2D p = track.getPoint(currentTrackPos);
+        Point2D p = getTrack().getPoint(currentTrackPos);
         gl.glRectd(p.getX() - 1, p.getY() - 1, p.getX() + 1, p.getY() + 1);
+    }
+
+    /**
+     * @return the track
+     */
+    public SlotcarTrack getTrack() {
+        return track;
+    }
+
+    /**
+     * @param track the track to set
+     */
+    public void setTrack(SlotcarTrack track) {
+        this.track = track;
     }
 
     private class ThrottleProfile implements Cloneable, Serializable {

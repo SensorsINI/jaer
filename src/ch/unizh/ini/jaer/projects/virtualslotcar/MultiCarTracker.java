@@ -22,13 +22,13 @@ public class MultiCarTracker extends RectangularClusterTracker {
 
     public MultiCarTracker(AEChip chip) {
         super(chip);
+        // set reasonable defaults
         if (!isPreferenceStored("maxNumClusters")) {
             setMaxNumClusters(2);
         }
         if (!isPreferenceStored("highwayPerspectiveEnabled")) {
             setHighwayPerspectiveEnabled(false);
         }
-        // etc to set reasonable defaults
     }
 
     /**

@@ -123,65 +123,26 @@ setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for a
  */
 public class FilterPanel extends javax.swing.JPanel implements PropertyChangeListener {
 
-    private class SliderParams {
 
-        Class paramClass = null;
-        int minIntValue, maxIntValue;
-        float minFloatValue, maxFloatValue;
-
-        SliderParams(Class clazz, int minIntValue, int maxIntValue, float minFloatValue, float maxFloatValue) {
-            this.minIntValue = minIntValue;
-            this.minFloatValue = minFloatValue;
-            this.maxIntValue = maxIntValue;
-            this.maxFloatValue = maxFloatValue;
-        }
-    }
-
-    private SliderParams isSliderType(PropertyDescriptor p, net.sf.jaer.eventprocessing.EventFilter filter) throws SecurityException {
-//                if(c instanceof Class) System.out.println("filter="+filter+" propertyType="+c);
-        //TODO add slider control type if property has getMin and getMax methods
-        boolean isSliderType = false;
-        // check for min/max methods for property, e.g. getMinDt, getMaxDt for property dt
-        String propCapped = p.getName().substring(0, 1).toUpperCase() + p.getName().substring(1); // eg. Dt for dt
-        String minMethName = "getMin" + propCapped;
-        String maxMethName = "getMax" + propCapped;
-        SliderParams params = null;
-        try {
-            Method minMethod = filter.getClass().getMethod(minMethName, (Class[]) null);
-            Method maxMethod = filter.getClass().getMethod(maxMethName, (Class[]) null);
-            isSliderType = true;
-//            log.info("property " + p.getName() + " for filter " + filter + " has min/max methods, constructing slider control for it");
-            if (p.getPropertyType() == Integer.TYPE) {
-                int min = (Integer) minMethod.invoke(filter);
-                int max = (Integer) maxMethod.invoke(filter);
-                params = new SliderParams(Integer.class, min, max, 0, 0);
-            } else if (p.getPropertyType() == Float.TYPE) {
-                float min = (Float) minMethod.invoke(filter);
-                float max = (Float) maxMethod.invoke(filter);
-                params = new SliderParams(Integer.class, 0, 0, min, max);
-            }
-        } catch (NoSuchMethodException e) {
-        } catch (Exception iae) {
-            log.warning(iae.toString() + " for property " + p + " in filter " + filter);
-        }
-        return params;
-    }
 
     private interface HasSetter {
 
         void set(Object o);
     }
     static final float ALIGNMENT = Component.LEFT_ALIGNMENT;
-    BeanInfo info;
-    PropertyDescriptor[] props;
-    Method[] methods;
+    private BeanInfo info;
+    private PropertyDescriptor[] props;
+    private Method[] methods;
     private static Logger log = Logger.getLogger("Filters");
     private EventFilter filter = null;
     final float fontSize = 10f;
     private Border normalBorder, redLineBorder;
     private TitledBorder titledBorder;
-    HashMap<String, HasSetter> setterMap = new HashMap<String, HasSetter>(); // map from filter to property, to apply property change events to control
-
+    private HashMap<String, HasSetter> setterMap = new HashMap<String, HasSetter>(); // map from filter to property, to apply property change events to control
+    private java.util.ArrayList<JComponent> controls = new ArrayList<JComponent>();
+    private HashMap<String, Container> groupContainerMap = new HashMap();
+    private JPanel inheritedPanel=null;
+    
     /** Creates new form FilterPanel */
     public FilterPanel() {
         initComponents();
@@ -207,17 +168,18 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         ToolTipManager.sharedInstance().setDismissDelay(10000); // to show tips
         setToolTipText(f.getDescription());
     }
-    java.util.ArrayList<JComponent> controls = new ArrayList<JComponent>();
-    HashMap<String, Container> groupContainerMap = new HashMap();
 
     // checks for group container and adds to that if needed.
-    private void myadd(JComponent comp, String propertyName) {
+    private void myadd(JComponent comp, String propertyName, boolean inherited) {
         JPanel pan = new JPanel();
         pan.setLayout(new BoxLayout(pan, BoxLayout.X_AXIS));
         controls.add(pan);
         if (!getFilter().hasPropertyGroups()) {
             pan.add(comp);
-            pan.add(Box.createVerticalStrut(0));
+//        if(inherited){
+//            pan.setBorder(BorderFactory.createLineBorder(Color.yellow) );
+//        }
+           pan.add(Box.createVerticalStrut(0));
             add(pan);
             controls.add(comp);
             return;
@@ -226,7 +188,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         if (groupName != null) {
             Container container = groupContainerMap.get(groupName);
             comp.setAlignmentX(Component.LEFT_ALIGNMENT);
-            container.add(comp);
+//            if(inherited){
+//                JPanel inherPan=new JPanel();
+//                inherPan.setBorder(BorderFactory.createLineBorder(Color.yellow) );
+//                inherPan.add(comp,BorderLayout.WEST);
+//                container.add(inherPan);
+//            }else{
+                container.add(comp);
+//            }
         } else {
 //            add(Box.createHorizontalGlue());
             comp.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -235,7 +204,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
         add(pan); // to fix horizontal all left alignment
         controls.add(comp);
-    }
+     }
 
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
     private void addIntrospectedControls() {
@@ -378,11 +347,19 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 ////                    System.out.println("");
 //                }
                 try {
-
+                    boolean inherited=false;
 
                     // TODO handle indexed properties 
                     Class c = p.getPropertyType();
                     String name = p.getName();
+
+                     // check if method comes from a superclass of this EventFilter
+                    if(control!=null && p.getReadMethod()!=null && p.getWriteMethod()!=null){
+                        Method m=p.getReadMethod();
+                        if(m.getDeclaringClass()!=getFilter().getClass()){
+                            inherited=true;
+                        }
+                    }
 
                     if (c == Integer.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
 
@@ -392,7 +369,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         } else {
                             control = new IntControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
                         }
-                        myadd(control, name);
+                        myadd(control, name, inherited);
                     } else if (c == Float.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
                         SliderParams params;
                         if ((params = isSliderType(p, filter)) != null) {
@@ -401,7 +378,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             control = new FloatControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
 
                         }
-                        myadd(control, name);
+                        myadd(control, name, inherited);
                     } else if (c == Boolean.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
                         if (p.getName().equals("filterEnabled")) { // built in, skip
                             continue;
@@ -415,7 +392,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
 
                         control = new BooleanControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
-                        myadd(control, name);
+                        myadd(control, name, inherited);
                     } else if (c == String.class && p.getReadMethod() != null && p.getWriteMethod() != null) {
                         if (p.getName().equals("filterEnabled")) {
                             continue;
@@ -424,21 +401,22 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             continue;
                         }
                         control = new StringControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
-                        myadd(control, name);
+                        myadd(control, name, inherited);
                     } else if (c!=null && c.isEnum() && p.getReadMethod() != null && p.getWriteMethod() != null) {
                         control = new EnumControl(c, getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
-                        myadd(control, name);
+                        myadd(control, name, inherited);
                     } else {
 //                    log.warning("unknown property type "+p.getPropertyType()+" for property "+p.getName());
                     }
                     if (control != null) {
                         control.setToolTipText(getFilter().getPropertyTooltip(name));
                     }
-                } catch (Exception e) {
+                   
+                 } catch (Exception e) {
                     log.warning(e + " caught on property " + p.getName() + " from EventFilter " + filter);
                 }
             }
-            groupContainerMap = null;
+           groupContainerMap = null;
 //             sortedControls=null;
         } catch (Exception e) {
             log.warning("on adding controls for EventFilter " + filter + " caught " + e);
@@ -1409,4 +1387,49 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private javax.swing.JButton resetButton;
     private javax.swing.JToggleButton showControlsToggleButton;
     // End of variables declaration//GEN-END:variables
+
+    private class SliderParams {
+
+        Class paramClass = null;
+        int minIntValue, maxIntValue;
+        float minFloatValue, maxFloatValue;
+
+        SliderParams(Class clazz, int minIntValue, int maxIntValue, float minFloatValue, float maxFloatValue) {
+            this.minIntValue = minIntValue;
+            this.minFloatValue = minFloatValue;
+            this.maxIntValue = maxIntValue;
+            this.maxFloatValue = maxFloatValue;
+        }
+    }
+
+    private SliderParams isSliderType(PropertyDescriptor p, net.sf.jaer.eventprocessing.EventFilter filter) throws SecurityException {
+//                if(c instanceof Class) System.out.println("filter="+filter+" propertyType="+c);
+        //TODO add slider control type if property has getMin and getMax methods
+        boolean isSliderType = false;
+        // check for min/max methods for property, e.g. getMinDt, getMaxDt for property dt
+        String propCapped = p.getName().substring(0, 1).toUpperCase() + p.getName().substring(1); // eg. Dt for dt
+        String minMethName = "getMin" + propCapped;
+        String maxMethName = "getMax" + propCapped;
+        SliderParams params = null;
+        try {
+            Method minMethod = filter.getClass().getMethod(minMethName, (Class[]) null);
+            Method maxMethod = filter.getClass().getMethod(maxMethName, (Class[]) null);
+            isSliderType = true;
+//            log.info("property " + p.getName() + " for filter " + filter + " has min/max methods, constructing slider control for it");
+            if (p.getPropertyType() == Integer.TYPE) {
+                int min = (Integer) minMethod.invoke(filter);
+                int max = (Integer) maxMethod.invoke(filter);
+                params = new SliderParams(Integer.class, min, max, 0, 0);
+            } else if (p.getPropertyType() == Float.TYPE) {
+                float min = (Float) minMethod.invoke(filter);
+                float max = (Float) maxMethod.invoke(filter);
+                params = new SliderParams(Integer.class, 0, 0, min, max);
+            }
+        } catch (NoSuchMethodException e) {
+        } catch (Exception iae) {
+            log.warning(iae.toString() + " for property " + p + " in filter " + filter);
+        }
+        return params;
+    }
+
 }

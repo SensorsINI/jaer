@@ -1060,4 +1060,6 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
             extractPoints = extractedTrack.getPointList();
         }
     }
+
+
 }

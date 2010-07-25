@@ -62,7 +62,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     private float lastSoundThrottleValue = 0;
     private long lastTimeSoundPlayed;
     private LapTimer lapTimer = new LapTimer();
-    private int currentTrackPos=-1;
+    private int currentTrackPos = -1;
 
     public enum ControllerToUse {
 
@@ -141,9 +141,9 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         out = getEnclosedFilterChain().filterPacket(in);
         car = carTracker.getCarCluster();
-        track=trackDefineFilter.getTrack();
-        if (car != null && track!=null) {
-            currentTrackPos=trackDefineFilter.getTrack().findClosest(car.getLocation(), crashDistancePixels);
+        track = trackDefineFilter.getTrack();
+        if (car != null && track != null) {
+            currentTrackPos = trackDefineFilter.getTrack().findClosest(car.getLocation(), crashDistancePixels);
             lapTimer.update(currentTrackPos, ((RectangularClusterTracker.Cluster) car).getLastEventTimestamp());
         } else {
             lapTimer.reset();
@@ -151,20 +151,20 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         chooseNextState();
         return out;
     }
-    private float lastThrottle = 0;
+    private float throttle = 0;
 
     ;
     private boolean showedMissingTrackWarning = false;
 
     synchronized private void chooseNextState() {
 
-        float prevThrottle = lastThrottle;
+        float prevThrottle = throttle;
+        float nextThrottle = throttleController.computeControl(carTracker, trackDefineFilter.getTrack());
         if (isOverrideThrottle()) {
-            lastThrottle = getOverriddenThrottleSetting();
+            throttle = getOverriddenThrottleSetting();
         } else {
             if (state.get() == State.STARTING) {
-                throttleController.computeControl(carTracker, trackDefineFilter.getTrack());
-                lastThrottle = getOverriddenThrottleSetting();
+                throttle = getOverriddenThrottleSetting();
                 if (state.timeSinceChanged() > 300) {
                     state.set(State.RUNNING);
                 }
@@ -181,32 +181,34 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
                         state.set(State.CRASHED);
                     } else {
                     }
-                    lastThrottle = throttleController.computeControl(carTracker, trackDefineFilter.getTrack());
+                    throttle = nextThrottle;
                 }
             } else if (state.get() == State.CRASHED) {
-                throttleController.computeControl(carTracker, trackDefineFilter.getTrack());
+                throttle = getOverriddenThrottleSetting();
                 if (car != null && state.timeSinceChanged() > 1000) {
                     state.set(State.STARTING);
                 }
             } else if (state.get() == State.STALLED) {
+                throttle = getOverriddenThrottleSetting();
                 if (state.timeSinceChanged() > 1000) {
                     state.set(State.STARTING);
                 }
             }
         }
 
-        lastThrottle = lastThrottle > maxThrottle ? maxThrottle : lastThrottle;
-        hw.setThrottle(lastThrottle);
-        if (playThrottleSound && Math.abs(lastThrottle - lastSoundThrottleValue) > playSoundThrottleChangeThreshold) {
+        // clip throttle to maxThrottle
+        throttle = throttle > maxThrottle ? maxThrottle : throttle;
+        hw.setThrottle(throttle);
+        if (playThrottleSound && Math.abs(throttle - lastSoundThrottleValue) > playSoundThrottleChangeThreshold) {
             long now;
-            if (lastThrottle > lastSoundThrottleValue && (now = System.currentTimeMillis()) - lastTimeSoundPlayed > 5) {
+            if (throttle > lastSoundThrottleValue && (now = System.currentTimeMillis()) - lastTimeSoundPlayed > 5) {
                 if (spikeSound == null) {
                     spikeSound = new SpikeSound();
                 }
                 spikeSound.play();
                 lastTimeSoundPlayed = now;
             }
-            lastSoundThrottleValue = lastThrottle;
+            lastSoundThrottleValue = throttle;
         }
 
         if (isLogRacerDataEnabled()) {
@@ -218,12 +220,12 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
                     measuredSpeedPPS = c.getSpeedPPS();
                     pos = c.getLocation();
                 }
-                logRacerData(String.format("%f %f %f %f", pos.getX(), pos.getY(), measuredSpeedPPS, lastThrottle));
+                logRacerData(String.format("%f %f %f %f", pos.getX(), pos.getY(), measuredSpeedPPS, throttle));
             } else {
-                if(car!=null){
-                    String lt=lapTimer.toString().replace('\n', ' ');
-                    logRacerData(String.format("%d %f %f %f %f %s %s", ((RectangularClusterTracker.Cluster)car).getLastEventTimestamp(), car.getLocation().x, car.getLocation().y, car.getSpeedPPS(), lastThrottle, throttleController.logControllerState(), lt));
-                }else{
+                if (car != null) {
+                    String lt = lapTimer.toString().replace('\n', ' ');
+                    logRacerData(String.format("%d %f %f %f %f %s %s", ((RectangularClusterTracker.Cluster) car).getLastEventTimestamp(), car.getLocation().x, car.getLocation().y, car.getSpeedPPS(), throttle, throttleController.logControllerState(), lt));
+                } else {
                     logRacerData(throttleController.logControllerState());
                 }
             }
@@ -254,7 +256,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         if (!trackDefineFilter.isFilterEnabled()) {
             trackDefineFilter.annotate(drawable);// show track always
         }
-        String s = "SlotCarRacer\nstate: " + state.toString() + "\nthrottle: " + lastThrottle+"\n"+lapTimer;
+        String s = "SlotCarRacer\nstate: " + state.toString() + "\nthrottle: " + throttle + "\n" + lapTimer;
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 
