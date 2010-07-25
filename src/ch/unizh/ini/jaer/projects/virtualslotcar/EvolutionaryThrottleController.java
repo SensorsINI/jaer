@@ -58,7 +58,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     private int successfulLapCounter = 0, lastRewardLap = 0;
     private ThrottleProfile currentProfile, lastSuccessfulProfile;
     private Random random = new Random();
-    LapTimer lapTimer=new LapTimer();
+    LapTimer lapTimer = new LapTimer();
     private int lapTime;
     private int prevLapTime;
 
@@ -99,7 +99,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                 log.info("made a new ThrottleProfile :" + currentProfile);
             }
 
-            SlotcarState carState = track.updateSlotcarState(car==null? null: car.getLocation(), car==null? 0: car.getSpeedPPS());
+            SlotcarState carState = track.updateSlotcarState(car == null ? null : car.getLocation(), car == null ? 0 : car.getSpeedPPS());
             crash = !carState.onTrack;
             if (!crash) {
                 // did we lap?
@@ -107,19 +107,19 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                 boolean lapped = lapTimer.update(currentTrackPos, car.getLastEventTimestamp());
 //                currentTrackPos<lastTrackPos; // passed start line
 
-                 if (lapped) {
+                if (lapped) {
 //                    successfulLapCounter++;
-                    lapTime=lapTimer.getLastLap().laptimeUs;
-                    int dt=lapTime-prevLapTime;
-                    if(dt<0){
-                        log.info("lap time improved by "+dt/1000+" ms");
-                    }else{
-                        log.info("lap time worsened by "+dt/1000+" ms");
+                    lapTime = lapTimer.getLastLap().laptimeUs;
+                    int dt = lapTime - prevLapTime;
+                    if (dt < 0) {
+                        log.info("lap time improved by " + dt / 1000 + " ms");
+                    } else {
+                        log.info("lap time worsened by " + dt / 1000 + " ms");
                     }
-                    prevLapTime=lapTime;
+                    prevLapTime = lapTime;
                 }
 //                lastTrackPos = currentTrackPos;
-                if (learningEnabled && lapTimer.lapCounter-lastRewardLap >= numSuccessfulLapsToReward) {
+                if (learningEnabled && lapTimer.lapCounter - lastRewardLap >= numSuccessfulLapsToReward) {
                     try {
                         log.info("successfully drove " + lapTimer.lapCounter + " laps; cloning this profile and rewarding currentProfile");
                         lastSuccessfulProfile = (ThrottleProfile) currentProfile.clone();
@@ -148,8 +148,6 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             return throttle;
         }
     }
-
-
 
     synchronized public void doResetAllThrottleValues() {
         if (currentProfile == null) {
@@ -191,16 +189,20 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             }
             ByteArrayInputStream bis = new ByteArrayInputStream(b);
             ObjectInputStream ois = new ObjectInputStream(bis);
-            Object o=ois.readObject();
-            if(o==null) throw new NullPointerException("Couldn't read Integer number of throttle points from preferences");
+            Object o = ois.readObject();
+            if (o == null) {
+                throw new NullPointerException("Couldn't read Integer number of throttle points from preferences");
+            }
             int n = ((Integer) o).intValue();
-            o=ois.readObject();
-            if(o==null)  throw new NullPointerException("Couldn't read float array of throttle points from preferences");
-            float[] f = (float[])o;
-            currentProfile=new ThrottleProfile(f);
+            o = ois.readObject();
+            if (o == null) {
+                throw new NullPointerException("Couldn't read float array of throttle points from preferences");
+            }
+            float[] f = (float[]) o;
+            currentProfile = new ThrottleProfile(f);
             ois.close();
             bis.close();
-            log.info("loaded throttle profile from preferencdes: "+currentProfile);
+            log.info("loaded throttle profile from preferencdes: " + currentProfile);
         } catch (Exception e) {
             log.warning("couldn't load throttle profile: " + e);
         }
@@ -271,6 +273,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         String s = String.format("EvolutionaryThrottleController\ncurrentTrackPos: %d\nThrottle: %8.3f", currentTrackPos, throttle);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
         drawThrottleProfile(drawable.getGL());
+        drawCurrentTrackPoint(drawable.getGL());
     }
     GLU glu = new GLU();
 
@@ -386,6 +389,15 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         prefs().putInt("EvolutionaryThrottleController.numSuccessfulLapsToReward", numSuccessfulLapsToReward);
     }
 
+    private void drawCurrentTrackPoint(GL gl) {
+        if (currentTrackPos == -1 || track == null) {
+            return;
+        }
+        gl.glColor4f(1,0, 0, .5f);
+        Point2D p = track.getPoint(currentTrackPos);
+        gl.glRectd(p.getX() - 1, p.getY() - 1, p.getX() + 1, p.getY() + 1);
+    }
+
     private class ThrottleProfile implements Cloneable, Serializable {
 
         float[] throttleProfile;
@@ -400,15 +412,13 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             this.n = throttleSettings.length;
         }
 
-
-
         /** Creates a new ThrottleProfile with n points.
          *
          * @param n number of throttle points.
          */
         public ThrottleProfile(int n) {
             super();
-            this.n=n;
+            this.n = n;
             throttleProfile = new float[n];
             Arrays.fill(throttleProfile, getDefaultThrottle());
         }
@@ -424,13 +434,19 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         }
 
         public float getThrottle(int section) {
-            if(section==-1) return defaultThrottle;
+            if (section == -1) {
+                return defaultThrottle;
+            }
             return throttleProfile[section];
         }
 
-        public int getNumPoints(){ return n;}
+        public int getNumPoints() {
+            return n;
+        }
 
-        public float[] getProfile(){ return throttleProfile;}
+        public float[] getProfile() {
+            return throttleProfile;
+        }
 
         public void reward() {
             // increase throttle settings around randomly around some track point
@@ -445,9 +461,9 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             }
         }
 
-        public void slowDown(){
-            for(int i=0;i<n;i++){
-                throttleProfile[i]=clipThrottle(throttleProfile[i]-throttleChange);
+        public void slowDown() {
+            for (int i = 0; i < n; i++) {
+                throttleProfile[i] = clipThrottle(throttleProfile[i] - throttleChange);
             }
         }
 
