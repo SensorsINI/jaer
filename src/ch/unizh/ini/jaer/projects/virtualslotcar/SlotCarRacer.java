@@ -82,7 +82,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
      */
     public enum State {
 
-        STARTING, RUNNING, CRASHED, STALLED
+        OVERRIDDEN, STARTING, RUNNING, CRASHED, STALLED
     }
 
     protected class RacerState extends StateMachineStates {
@@ -91,7 +91,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
 
         @Override
         public Enum getInitial() {
-            return State.STARTING;
+            return isOverrideThrottle() ? State.OVERRIDDEN : State.STARTING;
         }
     }
     private RacerState state = new RacerState();
@@ -143,7 +143,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         car = carTracker.getCarCluster();
         track = trackDefineFilter.getTrack();
         if (car != null && track != null) {
-            currentTrackPos = trackDefineFilter.getTrack().findClosest(car.getLocation(), crashDistancePixels);
+            currentTrackPos = trackDefineFilter.getTrack().findClosest(car.getLocation(), crashDistancePixels, true);
             lapTimer.update(currentTrackPos, ((RectangularClusterTracker.Cluster) car).getLastEventTimestamp());
         } else {
             lapTimer.reset();
@@ -160,39 +160,38 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
 
         float prevThrottle = throttle;
         float nextThrottle = throttleController.computeControl(carTracker, trackDefineFilter.getTrack());
-        if (isOverrideThrottle()) {
+        if (state.get() == State.OVERRIDDEN) {
             throttle = getOverriddenThrottleSetting();
-        } else {
-            if (state.get() == State.STARTING) {
-                throttle = getOverriddenThrottleSetting();
-                if (state.timeSinceChanged() > 300) {
-                    state.set(State.RUNNING);
+
+        } else if (state.get() == State.STARTING) {
+            throttle = getOverriddenThrottleSetting();
+            if (state.timeSinceChanged() > 300) {
+                state.set(State.RUNNING);
+            }
+        } else if (state.get() == State.RUNNING) {
+            if (track == null) {
+                if (!showedMissingTrackWarning) {
+                    log.warning("Track not defined yet. Use the TrackdefineFilter to extract the slot car track or load the track from a file.");
                 }
-            } else if (state.get() == State.RUNNING) {
-                if (track == null) {
-                    if (!showedMissingTrackWarning) {
-                        log.warning("Track not defined yet. Use the TrackdefineFilter to extract the slot car track or load the track from a file.");
-                    }
-                    showedMissingTrackWarning = true;
+                showedMissingTrackWarning = true;
+            } else {
+                if (car == null) {
+                    state.set(State.STALLED);
+                } else if (currentTrackPos == -1) {
+                    state.set(State.CRASHED);
                 } else {
-                    if (car == null) {
-                        state.set(State.STALLED);
-                    } else if (currentTrackPos == -1) {
-                        state.set(State.CRASHED);
-                    } else {
-                    }
-                    throttle = nextThrottle;
                 }
-            } else if (state.get() == State.CRASHED) {
-                throttle = getOverriddenThrottleSetting();
-                if (car != null && state.timeSinceChanged() > 1000) {
-                    state.set(State.STARTING);
-                }
-            } else if (state.get() == State.STALLED) {
-                throttle = getOverriddenThrottleSetting();
-                if (state.timeSinceChanged() > 1000) {
-                    state.set(State.STARTING);
-                }
+                throttle = nextThrottle;
+            }
+        } else if (state.get() == State.CRASHED) {
+            throttle = getOverriddenThrottleSetting();
+            if (car != null && state.timeSinceChanged() > 1000) {
+                state.set(State.STARTING);
+            }
+        } else if (state.get() == State.STALLED) {
+            throttle = getOverriddenThrottleSetting();
+            if (state.timeSinceChanged() > 1000) {
+                state.set(State.STARTING);
             }
         }
 
@@ -275,6 +274,11 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     public void setOverrideThrottle(boolean overrideThrottle) {
         this.overrideThrottle = overrideThrottle;
         prefs().putBoolean("SlotCarRacer.overrideThrottle", overrideThrottle);
+        if (overrideThrottle) {
+            state.set(State.OVERRIDDEN);
+        } else {
+            state.set(State.STARTING);
+        }
     }
 
     /**

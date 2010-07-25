@@ -4,12 +4,10 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
-import java.lang.Float;
 import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.Iterator;
 import java.awt.geom.Point2D;
-import java.util.AbstractSequentialList;
 
 /**
  * Class for storing race tracks for slot cars. 
@@ -139,36 +137,39 @@ public class SlotcarTrack implements java.io.Serializable {
         }
     }
 
-    /** Returns the approximate normal distance of a point from the track. 
-     * From <a href="http://www.tpub.com/math2/8.htm">http://www.tpub.com/math2/8.htm</a>.
-     *
-     * @param pos the xy position of interest.
-     * @return the distance from the track in pixels.
-     */
-    public float getDistanceToNearestTrackPoint(Point2D pos) {
-        int nearestIdx = findClosest(pos, java.lang.Float.MAX_VALUE);
-        Point2D trackPoint = trackPoints.get(nearestIdx);
-        float dist = (float) trackPoint.distance(pos);
-        return dist;
-    }
+//    /** Returns the approximate normal distance of a point from the track.
+//     * From <a href="http://www.tpub.com/math2/8.htm">http://www.tpub.com/math2/8.htm</a>.
+//     *
+//     * @param pos the xy position of interest.
+//     * @return the distance from the track in pixels.
+//     */
+//    public float getDistanceToNearestTrackPoint(Point2D pos) {
+//        int nearestIdx = findClosest(pos, java.lang.Float.MAX_VALUE);
+//        Point2D trackPoint = trackPoints.get(nearestIdx);
+//        float dist = (float) trackPoint.distance(pos);
+//        return dist;
+//    }
     private int lastFindIdx = 0;  // cache last starting point to make search cheaper
     private int lastNumberIterantions = 0;  // statistics on search
 
-    /** Find the closest point on the track.
+    /** Find the closest point on the track with option for local minimum distance or global minimum distance search.
      * @param pos Point in x,y Cartesian space for which to search closest track point.
+     * @param maxDist the maximum allowed distance.
+     * @param fastLocalSearchEnabled if true, the search starts at the position found previously and searches for a local minimum. If false, an exhaustive global search is performed.
      * @return Index of closest point on track or -1 if no track point is <= maxDist from pos.
      */
-    public int findClosest(Point2D pos, float maxDist) {
+    public int findClosest(Point2D pos, float maxDist, boolean fastLocalSearchEnabled) {
         if (pos == null) {
             return -1;
         }
         int n = getNumPoints();
+        if(n==0) return -1;
 
+        if(fastLocalSearchEnabled){
         // march in both directions until with find a local minimum - this is the nearest point. This scheme may get wrong answers until it locks in to the current
         // car position but it saves a lot of cycles.
 
         if(lastFindIdx==-1) lastFindIdx=0; // reset to start of list
-        if (n > 0) {
             ListIterator<Point2D.Float> itr = trackPoints.listIterator(lastFindIdx); // start from last idx
             int idx = lastFindIdx;
             int closestIdx = -1;
@@ -213,8 +214,20 @@ public class SlotcarTrack implements java.io.Serializable {
             lastFindIdx = closestIdx;
 //            System.out.println("lastNumberIterantions=" + lastNumberIterantions + " closestIdx=" + closestIdx + " closestDist=" + closestDist);
             return closestIdx;
-        } else {
-            return -1;
+        }else{
+            int idx = 0, closestIdx = -1;
+            float closestDist = Float.MAX_VALUE;
+            for (Point2D.Float p : trackPoints) {
+                float d = (float) p.distance(pos);
+                if (d <= maxDist) {
+                    if (d < closestDist) {
+                        closestDist = d;
+                        closestIdx = idx;
+                    }
+                }
+                idx++;
+            }
+            return closestIdx;
         }
     }
 
@@ -363,7 +376,7 @@ public class SlotcarTrack implements java.io.Serializable {
      */
     public UpcomingCurvature getApproxCurvature(Point2D XYpos, int numPoints, float dt, float speed) {
 
-        int closestIdx = findClosest(XYpos, pointTolerance);
+        int closestIdx = findClosest(XYpos, pointTolerance, true);
         float pos = smoothTrack.getParam(closestIdx);
         return getApproxCurvature(pos, numPoints, dt, speed, closestIdx);
     }
@@ -419,7 +432,7 @@ public class SlotcarTrack implements java.io.Serializable {
      */
     public UpcomingCurvature getCurvature(Point2D XYpos, int numPoints, float dt, float speed) {
 
-        int closestIdx = findClosest(XYpos, pointTolerance);
+        int closestIdx = findClosest(XYpos, pointTolerance, false);
         float pos = smoothTrack.getParam(closestIdx);
         return getCurvature(pos, numPoints, dt, speed);
     }
@@ -557,11 +570,16 @@ public class SlotcarTrack implements java.io.Serializable {
      * @return The current state of the car
      */
     public SlotcarState updateSlotcarState(Point2D XYpos, float speed) {
-        int closestIdx = findClosest(XYpos, pointTolerance);
+        int closestIdx = findClosest(XYpos, pointTolerance, true);
 
         carState.pos = smoothTrack.getParam(closestIdx);
+        int lastIdx=carState.segmentIdx;
+        boolean lastOnTrack=carState.onTrack;
         carState.segmentIdx = closestIdx;
         carState.onTrack = closestIdx != -1;
+        if(carState.onTrack!=lastOnTrack){
+            System.out.println("carState.onTrack changed to "+carState.onTrack+" when changing from segment "+lastIdx+" to segment "+carState.segmentIdx);
+        }
         carState.speed = speed;
         carState.XYpos = XYpos;
 

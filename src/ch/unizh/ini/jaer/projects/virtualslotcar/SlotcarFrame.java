@@ -265,7 +265,7 @@ public class SlotcarFrame extends javax.swing.JFrame {
                 break;
             }
             case DELETE_POINT_MODE: {
-                int closestIdx = track.findClosest(normPoint, MAX_DIST);
+                int closestIdx = track.findClosest(normPoint, MAX_DIST, false);
                 System.out.println("Deleting Point " + track.getPoint(closestIdx));
                 track.deletePoint(closestIdx);
                 pointLabel.setText(String.valueOf(track.getNumPoints()));
@@ -321,7 +321,7 @@ public class SlotcarFrame extends javax.swing.JFrame {
         // TODO add your handling code here:
         if (pointDragged < 0) {
             Point2D.Float normPoint = normalizedPosition(evt.getPoint());
-            pointDragged=track.findClosest(normPoint, MAX_DIST);
+            pointDragged=track.findClosest(normPoint, MAX_DIST, false);
 
             System.out.println("Dragging Point " + pointDragged);
         }
