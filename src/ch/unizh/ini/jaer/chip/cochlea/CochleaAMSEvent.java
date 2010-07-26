@@ -37,7 +37,7 @@ public class CochleaAMSEvent extends BinauralCochleaEvent{
      * @return ganglion cell type.
      */
     public FilterType getFilterType(){
-        if((type%8)==0) return FilterType.LPF; else return FilterType.BPF;
+        if((type&8)==0) return FilterType.LPF; else return FilterType.BPF;
     }
 
     /** Returns ganglion cell threshold.
