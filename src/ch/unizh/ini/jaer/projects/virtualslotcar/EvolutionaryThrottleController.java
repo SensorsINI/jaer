@@ -101,13 +101,11 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             SlotcarState carState = track.updateSlotcarState(car == null ? null : car.getLocation(), car == null ? 0 : car.getSpeedPPS());
             crash = !carState.onTrack;
             if (!crash) {
+                currentTrackPos=carState.segmentIdx;
                 // did we lap?
-                currentTrackPos = carState.segmentIdx;
                 boolean lapped = lapTimer.update(currentTrackPos, car.getLastEventTimestamp());
-//                currentTrackPos<lastTrackPos; // passed start line
 
                 if (lapped) {
-//                    successfulLapCounter++;
                     lapTime = lapTimer.getLastLap().laptimeUs;
                     int dt = lapTime - prevLapTime;
                     if (dt < 0) {
@@ -117,7 +115,6 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                     }
                     prevLapTime = lapTime;
                 }
-//                lastTrackPos = currentTrackPos;
                 if (learningEnabled && lapTimer.lapCounter - lastRewardLap >= numSuccessfulLapsToReward) {
                     try {
                         log.info("successfully drove " + lapTimer.lapCounter + " laps; cloning this profile and rewarding currentProfile");
@@ -126,18 +123,17 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                     } catch (CloneNotSupportedException e) {
                         throw new RuntimeException("couldn't clone the current throttle profile: " + e);
                     }
-                    currentProfile.reward();
+                    currentProfile.addBump();
                     lastRewardLap = lapTimer.lapCounter;
                 }
             } else { // crashed, go back to last successful profile if we are not already using it
                 if (lapTimer.lapCounter > 0) {
                     log.info("crashed after " + (lapTimer.lapCounter) + " laps");
                 }
-//                successfulLapCounter = 0;
-// 
                 if (learningEnabled && lastSuccessfulProfile != null && currentProfile != lastSuccessfulProfile) {
                     log.info("crashed, switching back to " + lastSuccessfulProfile);
                     currentProfile = lastSuccessfulProfile;
+                    currentProfile.subtractBump(currentTrackPos);
                 }
                 lapTimer.reset();
                 lastRewardLap = 0;
@@ -167,8 +163,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             ObjectOutputStream oos = new ObjectOutputStream(bos);
-            oos.writeObject(currentProfile.n);
-            oos.writeObject(currentProfile.throttleProfile);
+            oos.writeObject(currentProfile.numPoints);
+            oos.writeObject(currentProfile.profile);
             prefs().putByteArray("EvolutionaryThrottleController.throttleProfile", bos.toByteArray());
             oos.close();
             bos.close();
@@ -305,6 +301,13 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             for (Point2D p : getTrack().getPointList()) {
                 float size = maxSize * currentProfile.getThrottle(idx);
                 gl.glPointSize(size);
+                if (currentProfile.spedUpSegments[idx]) {
+                    gl.glColor3f(0, 1, 0);
+                } else if (currentProfile.slowedDownSegments[idx]) {
+                    gl.glColor3f(1, 0, 0);
+                } else {
+                    gl.glColor3f(0, 0, 1);
+                }
                 gl.glBegin(gl.GL_POINTS);
                 gl.glVertex2d(p.getX(), p.getY());
                 gl.glEnd();
@@ -431,35 +434,40 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     private class ThrottleProfile implements Cloneable, Serializable {
 
-        float[] throttleProfile;
-        int n;
+        float[] profile;
+        boolean[] spedUpSegments, slowedDownSegments;
+        int numPoints=0;
 
         /** Creates a new ThrottleProfile using existing array of throttle settngs.
          *
-         * @param throttleProfile array of throttle points.
+         * @param profile array of throttle points.
          */
         public ThrottleProfile(float[] throttleSettings) {
-            this.throttleProfile = throttleSettings;
-            this.n = throttleSettings.length;
+            this.profile = throttleSettings;
+            this.numPoints = throttleSettings.length;
+            spedUpSegments=new boolean[numPoints];
+            slowedDownSegments=new boolean[numPoints];
         }
 
-        /** Creates a new ThrottleProfile with n points.
+        /** Creates a new ThrottleProfile with numPoints points.
          *
-         * @param n number of throttle points.
+         * @param numPoints number of throttle points.
          */
-        public ThrottleProfile(int n) {
+        public ThrottleProfile(int numPoints) {
             super();
-            this.n = n;
-            throttleProfile = new float[n];
-            Arrays.fill(throttleProfile, getDefaultThrottle());
+            this.numPoints = numPoints;
+            profile = new float[numPoints];
+            spedUpSegments=new boolean[numPoints];
+            slowedDownSegments=new boolean[numPoints];
+            Arrays.fill(profile, getDefaultThrottle());
         }
 
         @Override
         public Object clone() throws CloneNotSupportedException {
             ThrottleProfile newProfile = (ThrottleProfile) super.clone();
-            newProfile.throttleProfile = new float[n];
-            for (int i = 0; i < n; i++) {
-                newProfile.throttleProfile[i] = throttleProfile[i];
+            newProfile.profile = new float[numPoints];
+            for (int i = 0; i < numPoints; i++) {
+                newProfile.profile[i] = profile[i];
             }
             return newProfile;
         }
@@ -468,64 +476,95 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             if (section == -1) {
                 return defaultThrottle;
             }
-            return throttleProfile[section];
+            return profile[section];
         }
 
+        /** Number of points in the profile (same as number of spline points in the track). */
         public int getNumPoints() {
-            return n;
+            return numPoints;
         }
 
         public float[] getProfile() {
-            return throttleProfile;
+            return profile;
         }
 
-        public void reward() {
+        /** Adds a throttle bump at a random location. */
+        public void addBump() {
+            Arrays.fill(spedUpSegments,false);
+            Arrays.fill(slowedDownSegments,false);
             // increase throttle settings around randomly around some track point
             int center = getNextThrottleBumpPoint();
-            int m = (int) (n * getFractionOfTrackToPerturb());
-            log.info("rewarding " + m + " of " + n + " throttle settings around track point " + center);
+            int m = (int) (numPoints * getFractionOfTrackToPerturb());
+            log.info("rewarding " + m + " of " + numPoints + " throttle settings around track point " + center);
             for (int i = 0; i < m; i++) {
                 float dist = (float) Math.abs(i - m / 2);
                 float factor = (m / 2 - dist) / (m / 2);
                 int ind = getIndexFrom(center, i);
-                throttleProfile[ind] = clipThrottle(throttleProfile[ind] + (float) throttleChange * factor); // increase throttle by tent around random center point
+                profile[ind] = clipThrottle(profile[ind] + (float) throttleChange * factor); // increase throttle by tent around random center point
+                spedUpSegments[ind]=true;
+            }
+        }
+
+        /** Subtracts a rectangle of throttle starting at segment and continuing back for fractionOfTrackToPunish.
+         * The amount subtracted is a fraction of the throttleChange.
+         * @param segment the starting point of the subtraction, e.g. the location just before the last crash.
+         */
+        public void subtractBump(int segment){
+            Arrays.fill(slowedDownSegments,false);
+            Arrays.fill(spedUpSegments,false);
+            log.info("reducing throttle starting from segment "+segment);
+            int n = (int) (numPoints * fractionOfTrackToPerturb);
+            for (int i = 0; i < n; i++) {
+                int seg = (segment - i);
+                if (seg < 0) {
+                    seg = seg + numPoints;
+                }
+//                System.out.println("reducing "+seg);
+                profile[seg] = clipThrottle(profile[seg] - throttleChange / 2);
+                slowedDownSegments[seg] = true;
             }
         }
 
         /** Reduces speed on current profile uniformly by throttleChange/3 */
         public void slowDown() {
-            for (int i = 0; i < n; i++) {
-                throttleProfile[i] = clipThrottle(throttleProfile[i] - throttleChange/3);
+            for (int i = 0; i < numPoints; i++) {
+                profile[i] = clipThrottle(profile[i] - throttleChange/3);
             }
         }
 
        /** Increases speed on current profile uniformly by throttleChange/3 */
         public void speedUp() {
-            for (int i = 0; i < n; i++) {
-                throttleProfile[i] = clipThrottle(throttleProfile[i] + throttleChange/3);
+            for (int i = 0; i < numPoints; i++) {
+                profile[i] = clipThrottle(profile[i] + throttleChange/3);
             }
         }
 
+        /** returns the segment at distance from center.
+         *
+         * @param center the center segment index of the computation.
+         * @param distance the distance; positive to advance, negative to retard.
+         * @return the segment index.
+         */
         private int getIndexFrom(int center, int distance) {
             int index = center + distance;
-            if (index > n - 1) {
-                index = index - n;
+            if (index > numPoints - 1) {
+                index = index - numPoints;
             } else if (index < 0) {
-                index = index + n;
+                index = index + numPoints;
             }
             return index;
         }
 
         public String toString() {
             StringBuilder sb = new StringBuilder("ThrottleProfile: ");
-            for (int i = 0; i < n; i++) {
-                sb.append(String.format(" %d:%.2f", i, throttleProfile[i]));
+            for (int i = 0; i < numPoints; i++) {
+                sb.append(String.format(" %d:%.2f", i, profile[i]));
             }
             return sb.toString();
         }
 
         private void reset() {
-            Arrays.fill(throttleProfile, defaultThrottle);
+            Arrays.fill(profile, defaultThrottle);
             log.info("reset all throttle settings to defaultThrottle=" + defaultThrottle);
         }
 
@@ -534,20 +573,20 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         private int getNextThrottleBumpPoint() {
             // do accept/reject sampling to get next throttle bump center point, such that
             // the higher the throttle is now, the smaller the chance we increase the throttle there.
-            // So, we treat (1-throttleProfile[i]) as a likehood of choosing a new throttle.
-            // We uniformly pick a bin from B in 1:n and a value V in 0:1 and see if that particular
-            // throttleProfile[B]<V then we select it as the center. That way, the higher the throttle,
+            // So, we treat (1-profile[i]) as a likehood of choosing a new throttle.
+            // We uniformly pick a bin from B in 1:numPoints and a value V in 0:1 and see if that particular
+            // profile[B]<V then we select it as the center. That way, the higher the throttle,
             // the less the chance to selecting that location to be the center of the next bump.
 
-            int tries=n*3;
+            int tries=numPoints*3;
             while (tries-->0) {
                 float v = random.nextFloat();
-                int b = random.nextInt(n);
-                if (throttleProfile[b] < v) {
+                int b = random.nextInt(numPoints);
+                if (profile[b] < v) {
                     return b;
                 }
             }
-            return random.nextInt(n); //. give up and just choose one uniformly
+            return random.nextInt(numPoints); //. give up and just choose one uniformly
         }
     }
 }
