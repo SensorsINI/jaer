@@ -275,7 +275,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
         if (updateIntervalMs < 1) {
             updateIntervalMs = 1;
         }
-        support.firePropertyChange("updateIntervalMs", this.updateIntervalMs, updateIntervalMs);
+        getSupport().firePropertyChange("updateIntervalMs", this.updateIntervalMs, updateIntervalMs);
         this.updateIntervalMs = updateIntervalMs;
         getPrefs().putInt("RectangularClusterTracker.updateIntervalMs", updateIntervalMs);
     }
@@ -1753,7 +1753,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
      * @param pathsEnabled true to show the history of the cluster locations on each packet.
      */
     public void setPathsEnabled(boolean pathsEnabled) {
-        support.firePropertyChange("pathsEnabled", this.pathsEnabled, pathsEnabled);
+        getSupport().firePropertyChange("pathsEnabled", this.pathsEnabled, pathsEnabled);
         this.pathsEnabled = pathsEnabled;
         getPrefs().putBoolean("RectangularClusterTracker.pathsEnabled", pathsEnabled);
     }
@@ -1975,7 +1975,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
         if (useVelocity) {
             setPathsEnabled(true);
         }
-        support.firePropertyChange("useVelocity", this.useVelocity, useVelocity);
+        getSupport().firePropertyChange("useVelocity", this.useVelocity, useVelocity);
         this.useVelocity = useVelocity;
         getPrefs().putBoolean("RectangularClusterTracker.useVelocity", useVelocity);
     }
@@ -1989,7 +1989,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
     }
 
     public synchronized void setLogDataEnabled(boolean logDataEnabled) {
-        support.firePropertyChange("logDataEnabled", this.logDataEnabled, logDataEnabled);
+        getSupport().firePropertyChange("logDataEnabled", this.logDataEnabled, logDataEnabled);
         this.logDataEnabled = logDataEnabled;
         if (!logDataEnabled) {
             logStream.flush();

@@ -87,7 +87,7 @@ public class ChannelFilter extends EventFilter2D implements Observer{
     }
     public void setChMin(int chMin){
         getPrefs().putInt("ChannelFilter.chMin",chMin);
-        support.firePropertyChange("chMin",this.chMin,chMin);
+        getSupport().firePropertyChange("chMin",this.chMin,chMin);
         this.chMin=chMin;
         
     }
@@ -97,7 +97,7 @@ public class ChannelFilter extends EventFilter2D implements Observer{
     }
     public void setChMax(int chMax){
         getPrefs().putInt("ChannelFilter.chMax",chMax);
-        support.firePropertyChange("chMax",this.chMax,chMax);
+        getSupport().firePropertyChange("chMax",this.chMax,chMax);
         this.chMax=chMax;
         
     }

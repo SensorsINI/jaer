@@ -355,7 +355,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     }
     public void setLowPass(int lowPass){
         getPrefs().putInt("ControlFilter.lowPass",lowPass);
-        support.firePropertyChange("lowPass",this.lowPass,lowPass);
+        getSupport().firePropertyChange("lowPass",this.lowPass,lowPass);
         this.lowPass=lowPass;
         
     }
@@ -365,7 +365,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     }
     public void setDriveSteps(int driveSteps){
         getPrefs().putInt("ControlFilter.driveSteps",driveSteps);
-        support.firePropertyChange("driveSteps",this.driveSteps,driveSteps);
+        getSupport().firePropertyChange("driveSteps",this.driveSteps,driveSteps);
         this.driveSteps=driveSteps;
         
     }
@@ -374,7 +374,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     }
     public void setDriveSpeed(int driveSpeed){
         getPrefs().putInt("ControlFilter.driveSpeed",driveSpeed);
-        support.firePropertyChange("driveSpeed",this.driveSpeed,driveSpeed);
+        getSupport().firePropertyChange("driveSpeed",this.driveSpeed,driveSpeed);
         this.driveSpeed=driveSpeed;
         
     }
@@ -383,7 +383,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     }
     public void setMinAngle(int minAngle){
         getPrefs().putInt("ControlFilter.minAngle",minAngle);
-        support.firePropertyChange("minAngle",this.minAngle,minAngle);
+        getSupport().firePropertyChange("minAngle",this.minAngle,minAngle);
         this.minAngle=minAngle;
         
     }
@@ -392,7 +392,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     }
     public void setGoPanTiltX(int goPanTiltX){
         getPrefs().putInt("ControlFilter.goPanTiltX",goPanTiltX);
-        support.firePropertyChange("goPanTiltX",this.goPanTiltX,goPanTiltX);
+        getSupport().firePropertyChange("goPanTiltX",this.goPanTiltX,goPanTiltX);
         this.goPanTiltX=goPanTiltX;
         this.controller.setDegreePT(1,goPanTiltX);
         
@@ -404,7 +404,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     public void setRegisterPath(boolean registerPath){
         this.registerPath=registerPath;
         getPrefs().putBoolean("ControlFilter.registerPath",registerPath);
-        support.firePropertyChange("ControlFilter.registerPath",this.registerPath,registerPath);
+        getSupport().firePropertyChange("ControlFilter.registerPath",this.registerPath,registerPath);
         controller.registerPath=this.registerPath;
         if(isRegisterPath())              // reset File every time it is clicked...
             controller.resetRegFile();
@@ -416,7 +416,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     public void setDetectCollision(boolean detectCollision){
         this.detectCollision=detectCollision;
         getPrefs().putBoolean("ControlFilter.detectCollision",detectCollision);
-        support.firePropertyChange("ControlFilter.detectCollision",this.detectCollision,detectCollision);
+        getSupport().firePropertyChange("ControlFilter.detectCollision",this.detectCollision,detectCollision);
         controller.detCollision=this.detectCollision;
     }
     
@@ -426,7 +426,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     public void setStopRobot(boolean stopRobot){
         this.stopRobot=stopRobot;
         getPrefs().putBoolean("ControlFilter.stopRobot",stopRobot);
-        support.firePropertyChange("ControlFilter.stopRobot",this.stopRobot,stopRobot);
+        getSupport().firePropertyChange("ControlFilter.stopRobot",this.stopRobot,stopRobot);
         controller.setSpeeds(0,0);  // make robot stop
         if(isStopRobot())
             state="stop";
@@ -439,7 +439,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     public void setConnectKoala(boolean connectKoala){
         this.connectKoala=connectKoala;
         getPrefs().putBoolean("ControlFilter.connectKoala",connectKoala);
-        support.firePropertyChange("ControlFilter.connectKoala",this.connectKoala,connectKoala);
+        getSupport().firePropertyChange("ControlFilter.connectKoala",this.connectKoala,connectKoala);
         
         if(isConnectKoala()) 
             controller.initiate(port);
@@ -452,7 +452,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     public void setConnectPanTilt(boolean connectPanTilt){
         this.connectPanTilt=connectPanTilt;
         getPrefs().putBoolean("ControlFilter.connectPanTilt",connectPanTilt);
-        support.firePropertyChange("ControlFilter.connectPanTilt",this.connectPanTilt,connectPanTilt);
+        getSupport().firePropertyChange("ControlFilter.connectPanTilt",this.connectPanTilt,connectPanTilt);
         
         if(isConnectPanTilt()) 
             controller.initPanTilt();
@@ -465,7 +465,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
     public void setUseRetina(boolean useRetina){
         this.useRetina=useRetina;
         getPrefs().putBoolean("ControlFilter.useRetina",useRetina);
-        support.firePropertyChange("ControlFilter.useRetina",this.useRetina,useRetina);
+        getSupport().firePropertyChange("ControlFilter.useRetina",this.useRetina,useRetina);
         
     }
         

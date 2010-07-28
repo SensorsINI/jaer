@@ -323,7 +323,7 @@ public class MultiLineModelTracker extends EventFilter2D implements FrameAnnotat
         if(polyDecay>1)polyDecay=1;else if(polyDecay<0)polyDecay=0;
         float old=this.polyDecay;
         this.polyDecay = polyDecay;
-        support.firePropertyChange("polyDecay",old,polyDecay);
+        getSupport().firePropertyChange("polyDecay",old,polyDecay);
         getPrefs().putFloat("PencilBalancer.polyDecay",polyDecay);
     }
 
@@ -344,7 +344,7 @@ public class MultiLineModelTracker extends EventFilter2D implements FrameAnnotat
         if(motionDecay>1)motionDecay=1; else if(motionDecay<0)motionDecay=0;
         float old=this.motionDecay;
         this.motionDecay = motionDecay;
-        support.firePropertyChange("motionDecay",old,motionDecay);
+        getSupport().firePropertyChange("motionDecay",old,motionDecay);
         getPrefs().putFloat("PencilBalancer.motionDecay",motionDecay);
     }
 

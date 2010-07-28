@@ -99,7 +99,7 @@ public class RepetitiousFilter extends EventFilter2D implements Observer{
             return;
         }
         getPrefs().putInt("RepetitiousFilter.averagingSamples",averagingSamples);
-        support.firePropertyChange("averagingSamples",this.averagingSamples,averagingSamples);
+        getSupport().firePropertyChange("averagingSamples",this.averagingSamples,averagingSamples);
         this.averagingSamples = averagingSamples;
     }
 
@@ -109,7 +109,7 @@ public class RepetitiousFilter extends EventFilter2D implements Observer{
 
     public void setMinDtToStore (final int minDtToStore){
         getPrefs().putInt("RepetitiousFilter.minDtToStore",minDtToStore);
-        support.firePropertyChange("minDtToStore",this.minDtToStore,minDtToStore);
+        getSupport().firePropertyChange("minDtToStore",this.minDtToStore,minDtToStore);
         this.minDtToStore = minDtToStore;
     }
 
@@ -121,7 +121,7 @@ public class RepetitiousFilter extends EventFilter2D implements Observer{
         if ( ratioShorter < 1 ){
             return;
         }
-        support.firePropertyChange("ratioShorter",this.ratioLonger,ratioShorter);
+        getSupport().firePropertyChange("ratioShorter",this.ratioLonger,ratioShorter);
         getPrefs().putInt("RepetitiousFilter.ratioShorter",ratioShorter);
         this.ratioShorter = ratioShorter;
     }
@@ -134,7 +134,7 @@ public class RepetitiousFilter extends EventFilter2D implements Observer{
         if ( ratioLonger < 1 ){
             return;
         }
-        support.firePropertyChange("ratioLonger",this.ratioLonger,ratioLonger);
+        getSupport().firePropertyChange("ratioLonger",this.ratioLonger,ratioLonger);
         getPrefs().putInt("RepetitiousFilter.ratioLonger",ratioLonger);
         this.ratioLonger = ratioLonger;
     }

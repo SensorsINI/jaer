@@ -158,7 +158,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
 
     synchronized public void setVleak(float vleak) {
         getPrefs().putFloat("LIFLineFilter.vleak",vleak);
-        support.firePropertyChange("vleak",this.vleak,vleak);
+        getSupport().firePropertyChange("vleak",this.vleak,vleak);
 
         this.vleak = vleak;
         if (horizontal_cells != null) {
@@ -175,7 +175,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
 
     synchronized public void setVreset(float vreset) {
         getPrefs().putFloat("LIFLineFilter.vreset",vreset);
-        support.firePropertyChange("vreset",this.vreset,vreset);
+        getSupport().firePropertyChange("vreset",this.vreset,vreset);
 
         this.vreset = vreset;
         if (horizontal_cells != null) {
@@ -192,7 +192,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
 
     synchronized public void setTau(float tau) {
         getPrefs().putFloat("LIFLineFilter.tau",tau);
-        support.firePropertyChange("tau",this.tau,tau);
+        getSupport().firePropertyChange("tau",this.tau,tau);
 
         this.tau = tau;
         if (horizontal_cells != null) {
@@ -209,7 +209,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
 
     synchronized public void setThresh(float thresh) {
         getPrefs().putFloat("LIFLineFilter.thresh",thresh);
-        support.firePropertyChange("thresh",this.thresh,thresh);
+        getSupport().firePropertyChange("thresh",this.thresh,thresh);
 
         this.thresh = thresh;
         if (horizontal_cells != null) {
@@ -226,7 +226,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
 
     public void setScalew(float scalew) {
         getPrefs().putFloat("LIFLineFilter.scalew",scalew);
-        support.firePropertyChange("scalew",this.scalew,scalew);
+        getSupport().firePropertyChange("scalew",this.scalew,scalew);
 
         this.scalew = scalew;
     }
@@ -237,7 +237,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
 
     public void setRecfieldsize(int recfieldsize) {
         getPrefs().putFloat("LIFLineFilter.recfieldsize",recfieldsize);
-        support.firePropertyChange("recfieldsize",this.recfieldsize,recfieldsize);
+        getSupport().firePropertyChange("recfieldsize",this.recfieldsize,recfieldsize);
         this.recfieldsize = recfieldsize;
     }
 

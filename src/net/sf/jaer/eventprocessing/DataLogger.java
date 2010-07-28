@@ -84,7 +84,7 @@ public class DataLogger extends EventFilter2D {
             } catch (IOException e) {
                 log.warning("while logging data to " + loggingFile + " caught " + e + ", will try to close file");
                 loggingEnabled = false;
-                support.firePropertyChange("loggingEnabled", null, false);
+                getSupport().firePropertyChange("loggingEnabled", null, false);
                 try {
                     loggingOutputStream.close();
                     log.info("closed logging file " + loggingFile);
@@ -144,14 +144,14 @@ public class DataLogger extends EventFilter2D {
 
             loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), 100000));
             loggingEnabled = true;
-            support.firePropertyChange("loggingEnabled", null, true);
+            getSupport().firePropertyChange("loggingEnabled", null, true);
             log.info("starting logging to " + loggingFile);
 
         } catch (FileNotFoundException e) {
             loggingFile = null;
             log.warning("exception on starting to log data to file "+filename+": "+e.toString());
             loggingEnabled=false;
-            support.firePropertyChange("loggingEnabled", null, false);
+            getSupport().firePropertyChange("loggingEnabled", null, false);
         }
 
         return loggingFile;
@@ -300,7 +300,7 @@ public class DataLogger extends EventFilter2D {
         }
 
         loggingEnabled = false;
-        support.firePropertyChange("loggingEnabled", null, false);
+        getSupport().firePropertyChange("loggingEnabled", null, false);
         return loggingFile;
     }
 
@@ -318,7 +318,7 @@ public class DataLogger extends EventFilter2D {
         String old = loggingFolder;
         this.loggingFolder = loggingFolder;
         getPrefs().put("DataLogger.loggingFolder", loggingFolder);
-        support.firePropertyChange("loggingFolder", old, loggingFolder);
+        getSupport().firePropertyChange("loggingFolder", old, loggingFolder);
     }
 
     /**
@@ -351,7 +351,7 @@ public class DataLogger extends EventFilter2D {
             }
         }
             this.loggingEnabled = loggingEnabled;
-            support.firePropertyChange("loggingEnabled", old, loggingEnabled);
+            getSupport().firePropertyChange("loggingEnabled", old, loggingEnabled);
     }
 
     /**

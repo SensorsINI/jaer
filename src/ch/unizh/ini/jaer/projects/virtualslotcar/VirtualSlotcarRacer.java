@@ -72,7 +72,7 @@ public class VirtualSlotcarRacer extends EventFilter2D implements FrameAnnotater
         
         filterChain = new FilterChain(chip);
 
-        carTracker = new CarTracker(chip);
+        carTracker = new CarTracker(chip, null, null);
         filterChain.add(carTracker);
 
         speedController = new SimpleSpeedController(chip);

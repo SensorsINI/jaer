@@ -126,7 +126,7 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
      */
     public void setDt(final int dt) {
         getPrefs().putInt("BackgroundActivityFilter.dt",dt);
-        support.firePropertyChange("dt",this.dt,dt);
+        getSupport().firePropertyChange("dt",this.dt,dt);
         this.dt = dt;
     }
 

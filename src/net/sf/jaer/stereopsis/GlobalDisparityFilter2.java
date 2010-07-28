@@ -123,7 +123,7 @@ public class GlobalDisparityFilter2 extends EventFilter2D implements Observer {
     /** Set the scaling factor for the event correlation depending on time difference. */
     public synchronized void setDistFactor(float distFactor) {
         getPrefs().putFloat("GlobalXDisparityFilter2.distFactor", distFactor);
-        support.firePropertyChange("distFactor", this.distFactor, distFactor);
+        getSupport().firePropertyChange("distFactor", this.distFactor, distFactor);
         this.distFactor = distFactor;
     }
     
@@ -139,7 +139,7 @@ public class GlobalDisparityFilter2 extends EventFilter2D implements Observer {
     public synchronized void setYRes(int yRes) {
         if (yRes < 1) yRes = 1;
         getPrefs().putInt("GlobalXDisparityFilter2.yRes", yRes);
-        support.firePropertyChange("yRes", this.yRes, yRes);
+        getSupport().firePropertyChange("yRes", this.yRes, yRes);
         this.yRes = yRes;
         
         lastTime = new int[2][(chip.getSizeY()/yRes)+1][chip.getSizeX()];
@@ -155,7 +155,7 @@ public class GlobalDisparityFilter2 extends EventFilter2D implements Observer {
     public synchronized void setMaxDisp(int maxDisp) {
         if (maxDisp < 1) maxDisp = 1;
         getPrefs().putInt("GlobalXDisparityFilter2.maxDisp", maxDisp);
-        support.firePropertyChange("maxDisp", this.maxDisp, maxDisp);
+        getSupport().firePropertyChange("maxDisp", this.maxDisp, maxDisp);
         this.maxDisp = maxDisp;
         
         dispWeights = new float[2*maxDisp + 1];

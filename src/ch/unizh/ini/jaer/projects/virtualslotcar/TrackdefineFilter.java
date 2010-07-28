@@ -90,6 +90,10 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     public static String getDescription() {
         return "Detects a track from incoming pixels and user input";
     }
+
+    /** PropertyChangeEvent that is fired when track is changed, e.g. by loading from file. */
+    public static final String EVENT_TRACK_CHANGED="trackChanged";
+    
     // Variables declared in XYTypeFilter
     public short x = 0, y = 0;
     public byte type = 0;
@@ -522,7 +526,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
 
             // Move point 
             extractedTrack.setPoint(currentPointIdx, new Point2D.Float(currentMousePoint.x,currentMousePoint.y));
-            extractedTrack.updateSpline();
+            extractedTrack.updateTrack();
             extractPoints = extractedTrack.getPointList();
             smoothPoints = extractedTrack.getSmoothPoints(stepSize);
         }
@@ -533,7 +537,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     public void mouseMoved(MouseEvent e) {
         if (insertOnClick) {
             currentMousePoint = canvas.getPixelFromMouseEvent(e);
-            currentInsertMarkPoints = getClosestInsertPoints(currentMousePoint);
+            currentInsertMarkPoints = findClosestTwoPointsForInsert(currentMousePoint);
         }
     }
 
@@ -553,7 +557,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
 
             // Select point for dragging
             if (currentPointIdx < 0) {
-                int idx = extractedTrack.findClosest(currentMousePoint, clickTolerance, false);
+                int idx = extractedTrack.findClosest(currentMousePoint, clickTolerance, false, -1);
                 // System.out.println("New drag " + idx + " / " + clickTolerance);
                 if (idx >= 0) {
                     currentPointIdx = idx;
@@ -573,14 +577,19 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         return a > b ? a : b;
     }
 
-    private Point getClosestInsertPoints(Point p) {
+    /** Finds the nearest two track points to a point for insertion of a new track point.
+     *
+     * @param p the Point to test for. This Point has int x and y values.
+     * @return a Point with the indices of the two points as x and y values.
+     */
+    private Point findClosestTwoPointsForInsert(Point p) {
         Point idxP = new Point(-1, -1);
 
         if (extractedTrack == null) {
             return idxP;
         }
 
-        int idx1 = extractedTrack.findClosest(p, Float.MAX_VALUE, false);
+        int idx1 = extractedTrack.findClosest(p, Float.MAX_VALUE, false, -1);
         if (idx1 >= 0) {
             // Find which one of the neighbors is closest
             int idx2 = idx1 - 1;
@@ -608,16 +617,18 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         return idxP;
     }
 
+ 
+
     public void mouseClicked(MouseEvent e) {
         // System.out.println("Click " + currentPointIdx);
         Point p = canvas.getPixelFromMouseEvent(e);
         if (deleteOnClick) {
             // Delete point
             if (extractedTrack != null) {
-                int idx = extractedTrack.findClosest(p, clickTolerance, false);
+                int idx = extractedTrack.findClosest(p, clickTolerance, false, -1);
                 if (idx >= 0) {
                     extractedTrack.deletePoint(idx);
-                    extractedTrack.updateSpline();
+                    extractedTrack.updateTrack();
                     extractPoints = extractedTrack.getPointList();
                     smoothPoints = extractedTrack.getSmoothPoints(stepSize);
                 }
@@ -625,7 +636,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         } else if (insertOnClick) {
             // Insert point between existing points
             if (extractedTrack != null) {
-                Point idxP = getClosestInsertPoints(p);
+                Point idxP = findClosestTwoPointsForInsert(p);
                 if ((idxP.getX() >= 0) && (idxP.getY() >= 0)) {
                     if ((idxP.getX() == extractedTrack.getNumPoints() - 1) && (idxP.getY() == 0)) {
                         extractedTrack.addPoint(new Point2D.Float(p.x,p.y));
@@ -633,7 +644,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
                         extractedTrack.insertPoint((int) idxP.getX(), new Point2D.Float(p.x,p.y));
                     }
                 }
-                extractedTrack.updateSpline();
+                extractedTrack.updateTrack();
                 extractPoints = extractedTrack.getPointList();
                 smoothPoints = extractedTrack.getSmoothPoints(stepSize);
             }
@@ -739,7 +750,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     public void setDeleteOnClick(boolean deleteOnClick) {
         boolean old=this.deleteOnClick;
         this.deleteOnClick = deleteOnClick;
-        support.firePropertyChange("deleteOnClick", old, deleteOnClick);
+        getSupport().firePropertyChange("deleteOnClick", old, deleteOnClick);
         if (deleteOnClick) {
             if(isInsertOnClick()) setInsertOnClick(false);
         }
@@ -752,7 +763,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     public void setInsertOnClick(boolean insertOnClick) {
         boolean old=this.insertOnClick;
         this.insertOnClick = insertOnClick;
-      support.firePropertyChange("insertOnClick", old, insertOnClick);
+        getSupport().firePropertyChange("insertOnClick", old, insertOnClick);
 
         if (insertOnClick) {
             if(isDeleteOnClick()) setDeleteOnClick(false);
@@ -1016,6 +1027,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     }
 
     private void loadTrackFromFile(File file) throws HeadlessException, IOException, ClassNotFoundException {
+        Object old=extractedTrack;
         if (file == null) {
             throw new IOException("null filename, can't load track from file - track needs to be saved first");
         }
@@ -1031,6 +1043,8 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         }
         ois.close();
         fis.close();
+        extractedTrack.updateTrack(); // update other internal vars of track
+        getSupport().firePropertyChange(EVENT_TRACK_CHANGED,old, extractedTrack); // inform listeners we have a new track model
     }
 
     /**

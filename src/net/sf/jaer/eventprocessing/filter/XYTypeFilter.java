@@ -214,7 +214,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         startX = clip(startX,chip.getSizeX());
         this.startX = startX;
         getPrefs().putInt("XYTypeFilter.startX",startX);
-        support.firePropertyChange("startX",old,startX);
+        getSupport().firePropertyChange("startX",old,startX);
         setXEnabled(true);
     }
 
@@ -227,7 +227,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         endX = clip(endX,chip.getSizeX());
         this.endX = endX;
         getPrefs().putInt("XYTypeFilter.endX",endX);
-        support.firePropertyChange("endX",old,endX);
+        getSupport().firePropertyChange("endX",old,endX);
         setXEnabled(true);
 
     }
@@ -240,7 +240,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         boolean old=this.xEnabled;
         this.xEnabled = xEnabled;
         getPrefs().putBoolean("XYTypeFilter.xEnabled",xEnabled);
-        support.firePropertyChange("xEnabled",old,xEnabled);
+        getSupport().firePropertyChange("xEnabled",old,xEnabled);
     }
 
     public int getStartY (){
@@ -252,7 +252,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         startY = clip(startY,chip.getSizeY());
         this.startY = startY;
         getPrefs().putInt("XYTypeFilter.startY",startY);
-        support.firePropertyChange("startY",old,startY);
+        getSupport().firePropertyChange("startY",old,startY);
         setYEnabled(true);
     }
 
@@ -265,7 +265,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         endY = clip(endY,chip.getSizeY());
         this.endY = endY;
         getPrefs().putInt("XYTypeFilter.endY",endY);
-        support.firePropertyChange("endY",old,endY);
+        getSupport().firePropertyChange("endY",old,endY);
         setYEnabled(true);
     }
 
@@ -277,7 +277,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         boolean old=this.yEnabled;
         this.yEnabled = yEnabled;
         getPrefs().putBoolean("XYTypeFilter.yEnabled",yEnabled);
-        support.firePropertyChange("yEnabled",old,yEnabled);
+        getSupport().firePropertyChange("yEnabled",old,yEnabled);
     }
 
     public int getStartType (){
@@ -289,7 +289,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         startType = clip(startType,chip.getNumCellTypes());
         this.startType = startType;
         getPrefs().putInt("XYTypeFilter.startType",startType);
-        support.firePropertyChange("startType",old,startType);
+        getSupport().firePropertyChange("startType",old,startType);
         setTypeEnabled(true);
     }
 
@@ -302,7 +302,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         endType = clip(endType,chip.getNumCellTypes());
         this.endType = endType;
         getPrefs().putInt("XYTypeFilter.endType",endType);
-        support.firePropertyChange("endType",old,endType);
+        getSupport().firePropertyChange("endType",old,endType);
         setTypeEnabled(true);
     }
 
@@ -314,7 +314,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         boolean old=this.typeEnabled;
         this.typeEnabled = typeEnabled;
         getPrefs().putBoolean("XYTypeFilter.typeEnabled",typeEnabled);
-        support.firePropertyChange("typeEnabled",old,typeEnabled);
+        getSupport().firePropertyChange("typeEnabled",old,typeEnabled);
     }
 
     public void annotate (GLAutoDrawable drawable){

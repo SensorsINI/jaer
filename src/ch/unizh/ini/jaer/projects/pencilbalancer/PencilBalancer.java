@@ -560,7 +560,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater,Obse
         if(polyDecay>1)polyDecay=1;else if(polyDecay<0)polyDecay=0;
         float old=this.polyDecay;
         this.polyDecay = polyDecay;
-        support.firePropertyChange("polyDecay",old,polyDecay);
+        getSupport().firePropertyChange("polyDecay",old,polyDecay);
         getPrefs().putFloat("PencilBalancer.polyDecay",polyDecay);
     }
 
@@ -599,7 +599,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater,Obse
         if(motionDecay>1)motionDecay=1; else if(motionDecay<0)motionDecay=0;
         float old=this.motionDecay;
         this.motionDecay = motionDecay;
-        support.firePropertyChange("motionDecay",old,motionDecay);
+        getSupport().firePropertyChange("motionDecay",old,motionDecay);
         getPrefs().putFloat("PencilBalancer.motionDecay",motionDecay);
     }
 
@@ -637,7 +637,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater,Obse
     }
 
     synchronized public void setOffsetX (float offsetX){
-        support.firePropertyChange("offsetX",this.offsetX,offsetX);
+        getSupport().firePropertyChange("offsetX",this.offsetX,offsetX);
         getPrefs().putFloat("PencilBalancer.offsetX",offsetX);
         this.offsetX = offsetX;
     }
@@ -647,7 +647,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater,Obse
     }
 
     synchronized public void setOffsetY (float offsetY){
-        support.firePropertyChange("offsetY",this.offsetY,offsetY);
+        getSupport().firePropertyChange("offsetY",this.offsetY,offsetY);
         getPrefs().putFloat("PencilBalancer.offsetY",offsetY);
         this.offsetY = offsetY;
     }

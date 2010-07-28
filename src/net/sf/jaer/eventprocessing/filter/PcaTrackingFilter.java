@@ -165,7 +165,7 @@ public class PcaTrackingFilter extends EventFilter2D implements FrameAnnotater {
      */
     public void setScale_stddev(final int scale_stddev) {
         getPrefs().putInt("PcaTrackingFilter.scale_stddev",scale_stddev);
-        support.firePropertyChange("scale_std",this.scale_stddev,scale_stddev);
+        getSupport().firePropertyChange("scale_std",this.scale_stddev,scale_stddev);
         this.scale_stddev = scale_stddev;
     }
 
@@ -185,15 +185,15 @@ public class PcaTrackingFilter extends EventFilter2D implements FrameAnnotater {
 
         if (ring_buffer_length < 16) {
             getPrefs().putInt("PcaTrackingFilter.ring_buffer_length",16);
-            support.firePropertyChange("ring_buffer_length",this.ring_buffer_length,16);
+            getSupport().firePropertyChange("ring_buffer_length",this.ring_buffer_length,16);
             this.ring_buffer_length = 16;
         } else if (ring_buffer_length > 4096) {
             getPrefs().putInt("PcaTrackingFilter.ring_buffer_length",4096);
-            support.firePropertyChange("ring_buffer_length",this.ring_buffer_length,4096);
+            getSupport().firePropertyChange("ring_buffer_length",this.ring_buffer_length,4096);
             this.ring_buffer_length = 4096;
         } else {
             getPrefs().putInt("PcaTrackingFilter.ring_buffer_length",ring_buffer_length);
-            support.firePropertyChange("ring_buffer_length",this.ring_buffer_length,ring_buffer_length);
+            getSupport().firePropertyChange("ring_buffer_length",this.ring_buffer_length,ring_buffer_length);
             this.ring_buffer_length = ring_buffer_length;
         }
     //At this point I think I need to reinitialize the filter

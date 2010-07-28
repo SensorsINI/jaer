@@ -351,7 +351,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater,Obse
             chip.getFilterFrame().rebuildContents();
         }
 
-        support.firePropertyChange("trackerToUse",old.toString(),trackerToUse.toString()); // TODO may not be right property change to update GUI
+        getSupport().firePropertyChange("trackerToUse",old.toString(),trackerToUse.toString()); // TODO may not be right property change to update GUI
     }
 
     /** Handles updates from enclosed tracker during iteration over packet.

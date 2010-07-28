@@ -4,19 +4,13 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
-import java.util.LinkedList;
+import java.beans.PropertyChangeEvent;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
-import com.sun.opengl.util.j2d.TextRenderer;
-import java.awt.Font;
 import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
-import java.lang.reflect.InvocationTargetException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.beans.PropertyChangeListener;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -107,10 +101,10 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         filterChain.add(trackDefineFilter);
 
 
-        carTracker = new CarTracker(chip);
+        carTracker = new CarTracker(chip, trackDefineFilter.getTrack(), null); // TODO clean up car state
         filterChain.add(carTracker);
         carTracker.setEnclosed(true, this);
-
+        trackDefineFilter.getSupport().addPropertyChangeListener(TrackdefineFilter.EVENT_TRACK_CHANGED,carTracker);
         setControllerToUse(controllerToUse);
 
         setEnclosedFilterChain(filterChain);
@@ -143,7 +137,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         car = carTracker.getCarCluster();
         track = trackDefineFilter.getTrack();
         if (car != null && track != null) {
-            currentTrackPos = trackDefineFilter.getTrack().findClosest(car.getLocation(), crashDistancePixels, true);
+            currentTrackPos = trackDefineFilter.getTrack().findClosest(car.getLocation(), crashDistancePixels, true, -1);
             lapTimer.update(currentTrackPos, ((RectangularClusterTracker.Cluster) car).getLastEventTimestamp());
         } else {
             lapTimer.reset();
@@ -231,11 +225,11 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         }
     }
 
-    public void doExtractTrack() {
-        setFilterEnabled(true);
-        trackDefineFilter.setFilterEnabled(true);  // do this second so that trackDefineFilter is enabled
-        JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "TrackdefineFilter is now enabled; adjust it's parameters to extract track points from data");
-    }
+//    public void doExtractTrack() {
+//        setFilterEnabled(true);
+//        trackDefineFilter.setFilterEnabled(true);  // do this second so that trackDefineFilter is enabled
+//        JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "TrackdefineFilter is now enabled; adjust it's parameters to extract track points from data");
+//    }
 
     @Override
     public void resetFilter() {
@@ -451,4 +445,5 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     public void setPlaySoundThrottleChangeThreshold(float playSoundThrottleChangeThreshold) {
         this.playSoundThrottleChangeThreshold = playSoundThrottleChangeThreshold;
     }
+
 }

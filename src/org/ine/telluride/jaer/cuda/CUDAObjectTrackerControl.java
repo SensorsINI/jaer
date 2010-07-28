@@ -560,7 +560,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
     }
 
     public void setControlPort(int port) {
-        support.firePropertyChange("controlPort", controlPort, port);
+        getSupport().firePropertyChange("controlPort", controlPort, port);
         this.controlPort = port;
         getPrefs().putInt("CUDAObjectTrackerControl.controlPort", controlPort);
     }
@@ -580,7 +580,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
             log.warning("tried to set inputPort to " + inputPort + " which is the same as controlPort or sendToPort, not changing it");
             return;
         }
-        support.firePropertyChange("inputPort", this.recvOnPort, inputPort);
+        getSupport().firePropertyChange("inputPort", this.recvOnPort, inputPort);
         this.recvOnPort = inputPort;
         getPrefs().putInt("CUDAObjectTrackerControl.inputPort", inputPort);
         if (unicastInput != null) {
@@ -604,7 +604,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
             log.warning("tried to set outputPort same as controlPort or sendToPort, not changing it");
             return;
         }
-        support.firePropertyChange("outputPort", this.sendToPort, outputPort);
+        getSupport().firePropertyChange("outputPort", this.sendToPort, outputPort);
         this.sendToPort = outputPort;
         getPrefs().putInt("CUDAObjectTrackerControl.outputPort", outputPort);
         if (unicastOutput != null) {
@@ -622,11 +622,11 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
             cudaInetAddress = InetAddress.getByName(hostname);
         } catch (UnknownHostException ex) {
             log.warning("CUDA hostname " + hostname + " unknown? " + ex.toString());
-            support.firePropertyChange("hostname", null, this.hostname);
+            getSupport().firePropertyChange("hostname", null, this.hostname);
             return;
         }
 
-        support.firePropertyChange("hostname", this.hostname, hostname);
+        getSupport().firePropertyChange("hostname", this.hostname, hostname);
         this.hostname = hostname;
         getPrefs().put("CUDAObjectTrackerControl.hostname", hostname);
     }
@@ -636,7 +636,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
     }
 
     public void setThreshold(float threshold) {
-        support.firePropertyChange("threshold", this.threshold, threshold);
+        getSupport().firePropertyChange("threshold", this.threshold, threshold);
         this.threshold = threshold;
         getPrefs().putFloat("CUDAObjectTrackerControl.threshold", threshold);
         sendParameter(CMD_THRESHOLD, threshold);
@@ -653,7 +653,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
      * @param cudaExecutablePath the cudaExecutablePath to set
      */
     public void setCudaExecutablePath(String cudaExecutablePath) {
-        support.firePropertyChange("cudaExecutablePath", this.cudaExecutablePath, cudaExecutablePath);
+        getSupport().firePropertyChange("cudaExecutablePath", this.cudaExecutablePath, cudaExecutablePath);
         this.cudaExecutablePath = cudaExecutablePath;
         getPrefs().put("CUDAObjectTrackerControl.cudaExecutablePath", cudaExecutablePath);
     }
@@ -669,7 +669,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
      * @param cudaEnvironmentPath the cudaEnvironmentPath to set
      */
     public void setCudaEnvironmentPath(String cudaEnvironmentPath) {
-        support.firePropertyChange("cudaEnvironmentPath", this.cudaEnvironmentPath, cudaEnvironmentPath);
+        getSupport().firePropertyChange("cudaEnvironmentPath", this.cudaEnvironmentPath, cudaEnvironmentPath);
         this.cudaEnvironmentPath = cudaEnvironmentPath;
         getPrefs().put("CUDAObjectTrackerControl.cudaEnvironmentPath", cudaEnvironmentPath);
     }
@@ -685,7 +685,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
      * @param membraneTauUs the membraneTauUs to set
      */
     public void setMembraneTauUs(float membraneTauUs) {
-        support.firePropertyChange("membraneTauUs", this.membraneTauUs, membraneTauUs);
+        getSupport().firePropertyChange("membraneTauUs", this.membraneTauUs, membraneTauUs);
         this.membraneTauUs = membraneTauUs;
         getPrefs().putFloat("CUDAObjectTrackerControl.membraneTauUs", membraneTauUs);
         sendParameter(CMD_MEMBRANE_TAU, membraneTauUs);
@@ -702,7 +702,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
      * @param membranePotentialMin the membranePotentialMin to set
      */
     public void setMembranePotentialMin(float membranePotentialMin) {
-        support.firePropertyChange("membranePotentialMin", this.membranePotentialMin, membranePotentialMin);
+        getSupport().firePropertyChange("membranePotentialMin", this.membranePotentialMin, membranePotentialMin);
         this.membranePotentialMin = membranePotentialMin;
         getPrefs().putFloat("CUDAObjectTrackerControl.membranePotentialMin", membranePotentialMin);
         sendParameter(CMD_MEMBRANE_POTENTIAL_MIN, membranePotentialMin);
@@ -739,7 +739,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         if (eISynWeight < 0) {
             eISynWeight = 0; // clamp to non negative
         }
-        support.firePropertyChange("eISynWeight", this.eISynWeight, eISynWeight);
+        getSupport().firePropertyChange("eISynWeight", this.eISynWeight, eISynWeight);
         this.eISynWeight = eISynWeight;
         getPrefs().putFloat("CUDAObjectTrackerControl.eISynWeight", eISynWeight);
         sendParameter(CMD_E_I_NEURON_POTENTIAL, eISynWeight);
@@ -759,7 +759,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         if (iESynWeight < 0) {
             iESynWeight = 0; // clamp nonnegative
         }
-        support.firePropertyChange("iESynWeight", this.iESynWeight, iESynWeight);
+        getSupport().firePropertyChange("iESynWeight", this.iESynWeight, iESynWeight);
         this.iESynWeight = iESynWeight;
         getPrefs().putFloat("CUDAObjectTrackerControl.iESynWeight", iESynWeight);
         sendParameter(CMD_I_E_NEURON_POTENTIAL, iESynWeight);
@@ -776,7 +776,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
      * @param kernelShape the kernelShape to set
      */
     public void setKernelShape(KernelShape kernelShape) {
-        support.firePropertyChange("kernelShape", this.kernelShape, kernelShape);
+        getSupport().firePropertyChange("kernelShape", this.kernelShape, kernelShape);
         this.kernelShape = kernelShape;
         getPrefs().put("CUDAObjectTrackerControl.kernelShape", kernelShape.toString());
         writeCommandToCuda(CMD_KERNEL_SHAPE + " " + kernelShape.toString());
@@ -813,7 +813,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
      * @param cudaEnabled the cudaEnabled to set
      */
     public void setCudaEnabled(boolean cudaEnabled) {
-        support.firePropertyChange("cudaEnabled", this.cudaEnabled, cudaEnabled);
+        getSupport().firePropertyChange("cudaEnabled", this.cudaEnabled, cudaEnabled);
         this.cudaEnabled = cudaEnabled;
         getPrefs().putBoolean("CUDAObjectTrackerControl.cudaEnabled", cudaEnabled);
         writeCommandToCuda(CMD_CUDA_ENABLED + " " + cudaEnabled);
@@ -830,7 +830,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
      * @param debugLevel the debugLevel to set
      */
     public void setDebugLevel(int debugLevel) {
-        support.firePropertyChange("debugLevel", this.debugLevel, debugLevel);
+        getSupport().firePropertyChange("debugLevel", this.debugLevel, debugLevel);
         this.debugLevel = debugLevel;
         getPrefs().putInt("CUDAObjectTrackerControl.debugLevel", debugLevel);
         writeCommandToCuda(CMD_DEBUG_LEVEL + " " + debugLevel);
@@ -847,7 +847,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
      * @param maxXmitIntervalMs the maxXmitIntervalMs to set
      */
     public void setMaxXmitIntervalMs(int maxXmitIntervalMs) {
-        support.firePropertyChange("maxXmitIntervalMs", this.maxXmitIntervalMs, maxXmitIntervalMs);
+        getSupport().firePropertyChange("maxXmitIntervalMs", this.maxXmitIntervalMs, maxXmitIntervalMs);
         this.maxXmitIntervalMs = maxXmitIntervalMs;
         getPrefs().putInt("CUDAObjectTrackerControl.maxXmitIntervalMs", maxXmitIntervalMs);
         writeCommandToCuda(CMD_MAX_XMIT_INTERVAL_MS + " " + maxXmitIntervalMs);
@@ -864,7 +864,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
      * @param deltaTimeUs the deltaTimeUs to set
      */
     public void setDeltaTimeUs(int deltaTimeUs) {
-        support.firePropertyChange("deltaTimeUs", this.deltaTimeUs, deltaTimeUs);
+        getSupport().firePropertyChange("deltaTimeUs", this.deltaTimeUs, deltaTimeUs);
         this.deltaTimeUs = deltaTimeUs;
         getPrefs().putInt("CUDAObjectTrackerControl.deltaTimeUs", deltaTimeUs);
         writeCommandToCuda(CMD_DELTA_TIME_US + " " + deltaTimeUs);
@@ -888,7 +888,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         }
         int old = this.numObject;
         this.numObject = numObject;
-        support.firePropertyChange("numObject", old, numObject);
+        getSupport().firePropertyChange("numObject", old, numObject);
         if (cudaChip != null) {
             cudaChip.setNumCellTypes(numObject);
         }
@@ -941,7 +941,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         }
 
         public void set(Object obj) {
-            support.firePropertyChange(name, get(), obj);
+            getSupport().firePropertyChange(name, get(), obj);
             this.obj = obj;
             getPrefs().put("CUDAObjectTrackerControl." + name, obj.toString());
         }
@@ -1018,17 +1018,17 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         public GaborTemplate(String name, int index) {
             super(name, index, TEMPLATE_SIZE);
             computeValues();
-            support.addPropertyChangeListener("gaborMaxAmp", this);
-            support.addPropertyChangeListener("gaborLambda", this);
-            support.addPropertyChangeListener("gaborGamma", this);
-            support.addPropertyChangeListener("gaborBandwidth", this);
+            getSupport().addPropertyChangeListener("gaborMaxAmp", this);
+            getSupport().addPropertyChangeListener("gaborLambda", this);
+            getSupport().addPropertyChangeListener("gaborGamma", this);
+            getSupport().addPropertyChangeListener("gaborBandwidth", this);
         }
 
         public void Remove() {
-            support.removePropertyChangeListener("gaborMaxAmp", this);
-            support.removePropertyChangeListener("gaborLambda", this);
-            support.removePropertyChangeListener("gaborGamma", this);
-            support.removePropertyChangeListener("gaborBandwidth", this);
+            getSupport().removePropertyChangeListener("gaborMaxAmp", this);
+            getSupport().removePropertyChangeListener("gaborLambda", this);
+            getSupport().removePropertyChangeListener("gaborGamma", this);
+            getSupport().removePropertyChangeListener("gaborBandwidth", this);
         }
 
         public void computeValues() {
@@ -1283,7 +1283,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         float old = this.gaborBandwidth;
         this.gaborBandwidth = gaborBandwidth;
         getPrefs().putFloat("CUDAObjectTrackerControl.gaborBandwidth", gaborBandwidth);
-        support.firePropertyChange("gaborBandwidth", old, gaborBandwidth);
+        getSupport().firePropertyChange("gaborBandwidth", old, gaborBandwidth);
         sendGabors();
     }
 
@@ -1301,7 +1301,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         float old = this.gaborLambda;
         this.gaborLambda = gaborLambda;
         getPrefs().putFloat("CUDAObjectTrackerControl.gaborLambda", gaborLambda);
-        support.firePropertyChange("gaborGamma", old, gaborGamma);
+        getSupport().firePropertyChange("gaborGamma", old, gaborGamma);
         sendGabors();
     }
 
@@ -1319,7 +1319,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         float old = this.gaborGamma;
         this.gaborGamma = gaborGamma;
         getPrefs().putFloat("CUDAObjectTrackerControl.gaborGamma", gaborGamma);
-        support.firePropertyChange("gaborGamma", old, gaborGamma);
+        getSupport().firePropertyChange("gaborGamma", old, gaborGamma);
         sendGabors();
     }
 
@@ -1337,7 +1337,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         float old = this.gaborMaxAmp;
         this.gaborMaxAmp = gaborMaxAmp;
         getPrefs().putFloat("CUDAObjectTrackerControl.gaborMaxAmp", gaborMaxAmp);
-        support.firePropertyChange("gaborMaxAmp", old, gaborMaxAmp);
+        getSupport().firePropertyChange("gaborMaxAmp", old, gaborMaxAmp);
         sendGabors();
     }
 

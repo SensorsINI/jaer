@@ -281,7 +281,7 @@ public class SingleLineTracker extends EventFilter2D implements FrameAnnotater,O
         }
         float old = this.polyDecay;
         this.polyDecay = polyDecay;
-        support.firePropertyChange("polyDecay",old,polyDecay);
+        getSupport().firePropertyChange("polyDecay",old,polyDecay);
         getPrefs().putFloat("SingleLineTracker.polyDecay",polyDecay);
     }
 

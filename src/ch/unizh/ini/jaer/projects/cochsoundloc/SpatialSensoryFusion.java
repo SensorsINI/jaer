@@ -101,7 +101,7 @@ public class SpatialSensoryFusion extends EventFilter2D implements FrameAnnotate
 
     public void setReceiveITDEvents(boolean receiveITDEvents) {
         getPrefs().putBoolean("ITDFilter.receiveITDEvents", receiveITDEvents);
-        support.firePropertyChange("receiveITDEvents", this.receiveITDEvents, receiveITDEvents);
+        getSupport().firePropertyChange("receiveITDEvents", this.receiveITDEvents, receiveITDEvents);
         this.receiveITDEvents = receiveITDEvents;
     }
 
@@ -111,7 +111,7 @@ public class SpatialSensoryFusion extends EventFilter2D implements FrameAnnotate
 
     public void setWriteEventsToFile(boolean writeEventsToFile) {
         getPrefs().putBoolean("ITDFilter.writeEventsToFile", writeEventsToFile);
-        support.firePropertyChange("writeEventsToFile", this.writeEventsToFile, writeEventsToFile);
+        getSupport().firePropertyChange("writeEventsToFile", this.writeEventsToFile, writeEventsToFile);
         this.writeEventsToFile = writeEventsToFile;
         if (writeEventsToFile == true) {
             try {

@@ -257,7 +257,7 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
         State old = this.state;
         this.state = state;
         if(isFilterEnabled())     log.info("State " + old + " -> State " + state);
-        support.firePropertyChange("state", old, state);
+        getSupport().firePropertyChange("state", old, state);
     }
 
     public State getState() {

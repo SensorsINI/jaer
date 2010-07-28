@@ -157,7 +157,7 @@ public class RefractoryFilter extends EventFilter2D implements Observer  {
         boolean old=this.passShortISIsEnabled;
         this.passShortISIsEnabled = passShortISIsEnabled;
         prefs().putBoolean("RefractoryFilter.passShortISIsEnabled", passShortISIsEnabled);
-        support.firePropertyChange("passShortISIsEnabled",old,passShortISIsEnabled);
+        getSupport().firePropertyChange("passShortISIsEnabled",old,passShortISIsEnabled);
     }
     
     

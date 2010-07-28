@@ -51,7 +51,7 @@ public class StereoTranslateRotate extends EventFilter2D {
     
     public void setDx(final int dx) {
         getPrefs().putInt("StereoTranslateRotate.dx", dx);
-        support.firePropertyChange("dx", this.dx, dx);
+        getSupport().firePropertyChange("dx", this.dx, dx);
         this.dx = dx;
     }
     
@@ -61,7 +61,7 @@ public class StereoTranslateRotate extends EventFilter2D {
     
     public void setDy(int dy) {
         getPrefs().putInt("StereoTranslateRotate.dy", dy);
-        support.firePropertyChange("dy", this.dy, dy);
+        getSupport().firePropertyChange("dy", this.dy, dy);
         this.dy = dy;
     }
     
@@ -74,7 +74,7 @@ public class StereoTranslateRotate extends EventFilter2D {
      */
     public void setPhi(final float phi) {
         getPrefs().putFloat("StereoTranslateRotate.phi", phi);
-        support.firePropertyChange("phi", this.phi, phi);
+        getSupport().firePropertyChange("phi", this.phi, phi);
         this.phi = phi;
     }
     

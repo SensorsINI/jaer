@@ -694,7 +694,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater,Mou
             int old = this.isiMinUs;
             this.isiMinUs = isiMinUs;
             if ( isiAutoScalingEnabled ){
-                support.firePropertyChange("isiMinUs",old,isiMinUs);
+                getSupport().firePropertyChange("isiMinUs",old,isiMinUs);
             } else{
                 prefs().putInt("CellStatsProber.isiMinUs",isiMinUs);
             }
@@ -718,7 +718,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater,Mou
             int old = this.isiMaxUs;
             this.isiMaxUs = isiMaxUs;
             if ( isiAutoScalingEnabled ){
-                support.firePropertyChange("isiMaxUs",old,isiMaxUs);
+                getSupport().firePropertyChange("isiMaxUs",old,isiMaxUs);
             } else{
                 prefs().putInt("CellStatsProber.isiMaxUs",isiMaxUs);
             }
@@ -765,7 +765,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater,Mou
             this.isiNumBins = isiNumBins;
             resetISIs();
             prefs().putInt("CellStatsProber.isiNumBins",isiNumBins);
-            support.firePropertyChange("isiNumBins",old,isiNumBins);
+            getSupport().firePropertyChange("isiNumBins",old,isiNumBins);
         }
 
         /**

@@ -58,7 +58,7 @@ public class BusSaturationFilter extends EventFilter2D {
      * @param saturationPeriodUs new value of saturationPeriodUs
      */
     public void setSaturationPeriodUs(float saturationPeriodUs) {
-        support.firePropertyChange("saturationPeriodUs", this.saturationPeriodUs, saturationPeriodUs);
+        getSupport().firePropertyChange("saturationPeriodUs", this.saturationPeriodUs, saturationPeriodUs);
         this.saturationPeriodUs = saturationPeriodUs;
         getPrefs().putFloat("BusSaturationFilter.saturationPeriodUs", saturationPeriodUs);
     }
@@ -104,7 +104,7 @@ public class BusSaturationFilter extends EventFilter2D {
      * @param tauMs the tauMs to set
      */
     public void setTauMs(float tauMs) {
-        support.firePropertyChange("tauMs", this.tauMs, tauMs);
+        getSupport().firePropertyChange("tauMs", this.tauMs, tauMs);
         this.tauMs = tauMs;
         getPrefs().putFloat("BusSaturationFilter.tauMs", tauMs);
     }

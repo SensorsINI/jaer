@@ -48,7 +48,9 @@ public abstract class EventFilter extends Observable {
      * @see setEnclosed
      */
     private Preferences prefs = null; // default null, constructed when AEChip is known Preferences.userNodeForPackage(EventFilter.class);
-    /** Can be used to provide change support, e.g. for enabled state */
+    /** Provides change support, e.g. for enabled state. Filters can cause their FilterPanel GUI control for a property to update if they
+     * fire a PropertyChangeEvent in the property setter, giving the name of the property as the event. For example, 
+     * Filters can also use support to inform each other about changes in state. */
     protected PropertyChangeSupport support = new PropertyChangeSupport(this);
     /** All filters can log to this logger */
     public Logger log = Logger.getLogger("EventFilter");
@@ -548,6 +550,29 @@ public abstract class EventFilter extends Observable {
         boolean old = this.selected;
         this.selected = selected;
         support.firePropertyChange("selected", old, selected);
+    }
+
+    /**
+     * Every filter has a PropertyChangeSupport object. This support is used by the FilterPanel GUI to be
+     * informed of property changes when property setters
+     * fire a property change with the property name and old and new values. 
+     * This change in the property then will update the FilterPanel GUI control value.
+     * For example, the following shows haw the boolean property <code>pathsEnabled</code> is handled.
+     * <pre>
+    public void setPathsEnabled(boolean pathsEnabled) {
+        boolean old=this.pathsEnabled;
+        this.pathsEnabled = pathsEnabled;
+        getSupport().firePropertyChange("pathsEnabled", old, pathsEnabled);
+        putBoolean("pathsEnabled", pathsEnabled);
+    }
+</pre>
+     * EventFilters can also use support for informing each other about changes in state.  An EventFilter declares itself to be a PropertyChangeListener
+     * and then adds itself to another EventFilters support as a PropertyChangeListener.
+     * 
+     * @return the support
+     */
+    public PropertyChangeSupport getSupport() {
+        return support;
     }
 
     /** The development status of an EventFilter. An EventFilter can implement the static method getDevelopmentStatus which

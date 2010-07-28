@@ -145,7 +145,7 @@ public class LEDTracker extends EventFilter2D implements Observer, FrameAnnotate
     
     public void setMinEventRate(float minEventRate){       
         getPrefs().putFloat("RetinaCochleaFilter.minEventRate",minEventRate);
-        support.firePropertyChange("minEventRate",this.minEventRate,minEventRate);
+        getSupport().firePropertyChange("minEventRate",this.minEventRate,minEventRate);
         this.minEventRate=minEventRate;
     }
     public int getMinLifeTime(){
@@ -154,7 +154,7 @@ public class LEDTracker extends EventFilter2D implements Observer, FrameAnnotate
     
     public void setMinLifeTime(int minLifeTime){       
         getPrefs().putInt("RetinaCochleaFilter.minLifeTime",minLifeTime);
-        support.firePropertyChange("minLifeTime",this.minLifeTime,minLifeTime);
+        getSupport().firePropertyChange("minLifeTime",this.minLifeTime,minLifeTime);
         this.minLifeTime=minLifeTime;
     }
     
@@ -164,7 +164,7 @@ public class LEDTracker extends EventFilter2D implements Observer, FrameAnnotate
     
     public void setMaxSizeChange(float maxSizeChange){       
         getPrefs().putFloat("RetinaCochleaFilter.maxSizeChange",maxSizeChange);
-        support.firePropertyChange("maxSizeChange",this.maxSizeChange,maxSizeChange);
+        getSupport().firePropertyChange("maxSizeChange",this.maxSizeChange,maxSizeChange);
         this.maxSizeChange=maxSizeChange;
     }
     

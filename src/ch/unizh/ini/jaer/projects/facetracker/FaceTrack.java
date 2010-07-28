@@ -180,7 +180,7 @@ public class FaceTrack extends EventFilter2D implements FrameAnnotater, Observer
     //Setting the NEVENTS parameters in the parameter box in the GUI.
     public void setNEVENTS(final int NEVENTS) {
         getPrefs().putInt("FaceTracker.NEVENTS",NEVENTS);
-        support.firePropertyChange("NEVENTS",this.NEVENTS,NEVENTS);
+        getSupport().firePropertyChange("NEVENTS",this.NEVENTS,NEVENTS);
         this.NEVENTS = NEVENTS;
     }
     
@@ -192,7 +192,7 @@ public class FaceTrack extends EventFilter2D implements FrameAnnotater, Observer
     //Setting the LEDBOX parameters in the parameter box in the GUI.
     public void setLEDBOX(final int LEDBOX) {
         getPrefs().putInt("FaceTracker.LEDBOX",LEDBOX);
-        support.firePropertyChange("LEDBOX",this.LEDBOX,LEDBOX);
+        getSupport().firePropertyChange("LEDBOX",this.LEDBOX,LEDBOX);
         this.LEDBOX = LEDBOX;
     }
 

@@ -472,7 +472,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
     }
     public void setV_decay(float v_decay){
         getPrefs().putFloat("Distinguish.v_decay", v_decay);
-        support.firePropertyChange("v_decay", this.v_decay, v_decay);
+        getSupport().firePropertyChange("v_decay", this.v_decay, v_decay);
         this.v_decay = v_decay;
     }
 
@@ -482,7 +482,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
     }
     public void setA_decay(float a_decay){
         getPrefs().putFloat("Distinguish.a_decay", a_decay);
-        support.firePropertyChange("a_decay", this.a_decay, a_decay);
+        getSupport().firePropertyChange("a_decay", this.a_decay, a_decay);
         this.a_decay = a_decay;
     }
 
@@ -491,7 +491,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
     }
     public void setC_decay(float c_decay){
         getPrefs().putFloat("Distinguish.c_decay", c_decay);
-        support.firePropertyChange("c_decay", this.c_decay, c_decay);
+        getSupport().firePropertyChange("c_decay", this.c_decay, c_decay);
         this.c_decay = c_decay;
     }
 
@@ -500,7 +500,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
     }
     public void setClusterThresh(float ClusterThresh){
         getPrefs().putFloat("Distinguish.ClusterThresh", ClusterThresh);
-        support.firePropertyChange("ClusterThresh", this.ClusterThresh, ClusterThresh);
+        getSupport().firePropertyChange("ClusterThresh", this.ClusterThresh, ClusterThresh);
         this.ClusterThresh = ClusterThresh;
     }
     public float getAudioEventThresh(){
@@ -508,7 +508,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
     }
     public void setAudioEventThresh(float audioEventThresh){
         getPrefs().putFloat("Distinguish.audioEventThresh", audioEventThresh);
-        support.firePropertyChange("audioEventThresh", this.audioEventThresh, audioEventThresh);
+        getSupport().firePropertyChange("audioEventThresh", this.audioEventThresh, audioEventThresh);
         this.audioEventThresh = audioEventThresh;
     }
 
@@ -517,7 +517,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
     }
     public void setCoherenceWindow(int CoherenceWindow) {
         getPrefs().putInt("Distinguish.CoherenceWindow", CoherenceWindow);
-        support.firePropertyChange("CoherenceWindow", this.CoherenceWindow, CoherenceWindow);
+        getSupport().firePropertyChange("CoherenceWindow", this.CoherenceWindow, CoherenceWindow);
         this.CoherenceWindow = CoherenceWindow;
     }
 

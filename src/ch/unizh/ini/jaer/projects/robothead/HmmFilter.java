@@ -243,7 +243,7 @@ public class HmmFilter extends EventFilter2D implements Observer {
     }
     public void setHmmTime(int hmmTime){
         getPrefs().putInt("HmmFilter.hmmTime",hmmTime);
-        support.firePropertyChange("hmmTime",this.hmmTime,hmmTime);
+        getSupport().firePropertyChange("hmmTime",this.hmmTime,hmmTime);
         this.hmmTime=hmmTime;
         resetFilter();
     }

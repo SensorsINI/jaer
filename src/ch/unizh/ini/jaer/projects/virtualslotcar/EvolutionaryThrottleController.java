@@ -43,7 +43,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     // prefs
     private float fractionOfTrackToPerturb = prefs().getFloat("EvolutionaryThrottleController.fractionOfTrackToPunish", 0.2f);
     private float defaultThrottle = prefs().getFloat("EvolutionaryThrottleController.defaultThrottle", .1f); // default throttle setting if no car is detected
-    private float maxDistanceFromTrackPoint = prefs().getFloat("CurvatureBasedController.maxDistanceFromTrackPoint", 15); // pixels - need to set in track model
+    private float maxDistanceFromTrackPoint = prefs().getFloat("EvolutionaryThrottleController.maxDistanceFromTrackPoint", 15); // pixels - need to set in track model
     private boolean learningEnabled = prefs().getBoolean("EvolutionaryThrottleController.learningEnabled", false);
     private float throttleChange = prefs().getFloat("EvolutionaryThrottleController.throttleChange", 0.1f);
     private int numSuccessfulLapsToReward = prefs().getInt("EvolutionaryThrottleController.numSuccessfulLapsToReward", 3);
@@ -61,6 +61,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     LapTimer lapTimer = new LapTimer();
     private int lapTime;
     private int prevLapTime;
+    private float distanceFromTrack;
 
     public EvolutionaryThrottleController(AEChip chip) {
         super(chip);
@@ -102,6 +103,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             crash = !carState.onTrack;
             if (!crash) {
                 currentTrackPos=carState.segmentIdx;
+                distanceFromTrack=track.findDistanceToTrack(carState.XYpos, currentTrackPos);
                 // did we lap?
                 boolean lapped = lapTimer.update(currentTrackPos, car.getLastEventTimestamp());
 
@@ -277,12 +279,12 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
      */
     public void setDefaultThrottle(float defaultThrottle) {
         this.defaultThrottle = defaultThrottle;
-        prefs().putFloat("CurvatureBasedController.defaultThrottle", defaultThrottle);
+        prefs().putFloat("EvolutionaryThrottleController.defaultThrottle", defaultThrottle);
     }
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        String s = String.format("EvolutionaryThrottleController\ncurrentTrackPos: %d\nThrottle: %8.3f", currentTrackPos, throttle);
+        String s = String.format("EvolutionaryThrottleController\ncurrentTrackPos: %d\nDistance from track: %.1f\nThrottle: %8.3f", currentTrackPos, distanceFromTrack, throttle);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
         drawThrottleProfile(drawable.getGL());
         drawCurrentTrackPoint(drawable.getGL());
@@ -340,7 +342,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
      */
     public void setMaxDistanceFromTrackPoint(float maxDistanceFromTrackPoint) {
         this.maxDistanceFromTrackPoint = maxDistanceFromTrackPoint;
-        prefs().putFloat("CurvatureBasedController.maxDistanceFromTrackPoint", maxDistanceFromTrackPoint);
+        prefs().putFloat("EvolutionaryThrottleController.maxDistanceFromTrackPoint", maxDistanceFromTrackPoint);
         // Define tolerance for track model
         getTrack().setPointTolerance(maxDistanceFromTrackPoint);
     }

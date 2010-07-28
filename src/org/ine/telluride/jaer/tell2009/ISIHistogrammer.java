@@ -197,7 +197,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
         Direction old=this.direction;
         this.direction = direction;
         getPrefs().put("ISIHistogrammer.direction",direction.toString());
-        support.firePropertyChange("direction",old,this.direction);
+        getSupport().firePropertyChange("direction",old,this.direction);
     }
 
     /**
@@ -218,7 +218,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
         this.nBins = nBins;
         getPrefs().putInt("ISIHistogrammer.nBins",nBins);
         resetBins();
-        support.firePropertyChange("nBins",old,this.nBins);
+        getSupport().firePropertyChange("nBins",old,this.nBins);
     }
 
     /**
@@ -245,7 +245,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
         if ( isiFrame != null ){
             isiFrame.repaint();
         }
-        support.firePropertyChange("maxIsiUs",old,maxIsiUs);
+        getSupport().firePropertyChange("maxIsiUs",old,maxIsiUs);
     }
 
     /**
@@ -272,7 +272,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
         if ( isiFrame != null ){
             isiFrame.repaint();
         }
-        support.firePropertyChange("minIsiUs",old, minIsiUs);
+        getSupport().firePropertyChange("minIsiUs",old, minIsiUs);
     }
 
     /**
@@ -289,7 +289,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
         float oldtau=this.tauDecayMs;
         this.tauDecayMs = tauDecayMs;
         getPrefs().putFloat("ISIHistogrammer.tauDecayMs",tauDecayMs);
-        support.firePropertyChange("tauDecayMs",oldtau,this.tauDecayMs);
+        getSupport().firePropertyChange("tauDecayMs",oldtau,this.tauDecayMs);
     }
 
     @Override

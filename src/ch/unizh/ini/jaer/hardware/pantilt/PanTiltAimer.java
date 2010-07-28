@@ -82,7 +82,7 @@ public class PanTiltAimer extends EventFilter2D implements FrameAnnotater, PanTi
     
     public float getJitterAmplitude() {
         float old = panTiltHardware.getJitterAmplitude();
-        support.firePropertyChange("jitterAmplitude", jitterAmplitude, old);
+        getSupport().firePropertyChange("jitterAmplitude", jitterAmplitude, old);
         return old;
     }
 
@@ -139,8 +139,8 @@ public class PanTiltAimer extends EventFilter2D implements FrameAnnotater, PanTi
     public void setPanTiltValues(float pan, float tilt) throws HardwareInterfaceException {
         float[] old=getPanTiltHardware().getPanTiltValues();
         getPanTiltHardware().setPanTiltValues(pan, tilt);
-        support.firePropertyChange("panValue", old[0], panValue);
-        support.firePropertyChange("tiltValue",old[1], tiltValue);
+        getSupport().firePropertyChange("panValue", old[0], panValue);
+        getSupport().firePropertyChange("tiltValue",old[1], tiltValue);
         prefs().putFloat("PanTiltAimer.panValue",pan);
         prefs().putFloat("PanTiltAimer.tiltValue",tilt);
     }

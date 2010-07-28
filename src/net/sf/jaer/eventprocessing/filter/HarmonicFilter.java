@@ -348,7 +348,7 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
 //        if(threshold>1) threshold=1; else if(threshold<0) threshold=0;
         this.threshold = threshold;
         getPrefs().putFloat("HarmonicFilter.threshold",threshold);
-        support.firePropertyChange("threshold",old,threshold);
+        getSupport().firePropertyChange("threshold",old,threshold);
     }
 
     public float getQuality (){

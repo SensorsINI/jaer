@@ -152,7 +152,7 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
     }
     public void setShiftSize(int shiftSize){
         getPrefs().putInt("CorrelatorFilter.shiftSize",shiftSize);
-        support.firePropertyChange("shiftSize",this.shiftSize,shiftSize);
+        getSupport().firePropertyChange("shiftSize",this.shiftSize,shiftSize);
         this.shiftSize=shiftSize;
         myBins.genBins(shiftSize,binSize,numberOfPairs);
         
@@ -162,7 +162,7 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
     }
     public void setBinSize(int binSize){
         getPrefs().putInt("CorrelatorFilter.binSize",binSize);
-        support.firePropertyChange("binSize",this.binSize,binSize);
+        getSupport().firePropertyChange("binSize",this.binSize,binSize);
         this.binSize=binSize;
         myBins.genBins(shiftSize,binSize,numberOfPairs);
         
@@ -172,7 +172,7 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
     }
     public void setNumberOfPairs(int numberOfPairs){
         getPrefs().putInt("CorrelatorFilter.numberOfPairs",numberOfPairs);
-        support.firePropertyChange("numberOfPairs",this.numberOfPairs,numberOfPairs);
+        getSupport().firePropertyChange("numberOfPairs",this.numberOfPairs,numberOfPairs);
         this.numberOfPairs=numberOfPairs;
         myBins.genBins(shiftSize,binSize,numberOfPairs);
         
@@ -182,7 +182,7 @@ public class CorrelatorFilter extends EventFilter2D implements Observer, FrameAn
     }
     public void setDimLastTs(int dimLastTs){
         getPrefs().putInt("CorrelatorFilter.dimLastTs",dimLastTs);
-        support.firePropertyChange("dimLastTs",this.dimLastTs,dimLastTs);
+        getSupport().firePropertyChange("dimLastTs",this.dimLastTs,dimLastTs);
         int[][][] lastTs = new int[32][2][dimLastTs];
         this.dimLastTs=dimLastTs;
     }

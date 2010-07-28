@@ -190,7 +190,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         AvgITDFile = new BufferedWriter(fstream);
         AvgITDFile.write("time\tITD\tconf\n");
         getPrefs().putBoolean("ITDFilter.writeAvgITD2File", true);
-        support.firePropertyChange("writeAvgITD2File", this.writeAvgITD2File, true);
+        getSupport().firePropertyChange("writeAvgITD2File", this.writeAvgITD2File, true);
         this.writeAvgITD2File = true;
     }
 
@@ -210,7 +210,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         titles += "\n";
         freqBinFile.write(titles);
         getPrefs().putBoolean("ITDFilter.saveFrequenciesSeperately", true);
-        support.firePropertyChange("saveFrequenciesSeperately", this.saveFrequenciesSeperately, true);
+        getSupport().firePropertyChange("saveFrequenciesSeperately", this.saveFrequenciesSeperately, true);
         this.saveFrequenciesSeperately = true;
     }
 
@@ -707,7 +707,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setMaxITD(int maxITD) {
         getPrefs().putInt("ITDFilter.maxITD", maxITD);
-        support.firePropertyChange("maxITD", this.maxITD, maxITD);
+        getSupport().firePropertyChange("maxITD", this.maxITD, maxITD);
         this.maxITD = maxITD;
         createBins();
     }
@@ -718,7 +718,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setNumOfBins(int numOfBins) {
         getPrefs().putInt("ITDFilter.numOfBins", numOfBins);
-        support.firePropertyChange("numOfBins", this.numOfBins, numOfBins);
+        getSupport().firePropertyChange("numOfBins", this.numOfBins, numOfBins);
         this.numOfBins = numOfBins;
         createBins();
     }
@@ -729,7 +729,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setMaxWeight(int maxWeight) {
         getPrefs().putInt("ITDFilter.maxWeight", maxWeight);
-        support.firePropertyChange("maxWeight", this.maxWeight, maxWeight);
+        getSupport().firePropertyChange("maxWeight", this.maxWeight, maxWeight);
         this.maxWeight = maxWeight;
         if (!isFilterEnabled()) {
             return;
@@ -743,7 +743,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setConfidenceThreshold(int confidenceThreshold) {
         getPrefs().putInt("ITDFilter.confidenceThreshold", confidenceThreshold);
-        support.firePropertyChange("confidenceThreshold", this.confidenceThreshold, confidenceThreshold);
+        getSupport().firePropertyChange("confidenceThreshold", this.confidenceThreshold, confidenceThreshold);
         this.confidenceThreshold = confidenceThreshold;
     }
 
@@ -753,7 +753,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setActivityThreshold(int activityThreshold) {
         getPrefs().putInt("ITDFilter.activityThreshold", activityThreshold);
-        support.firePropertyChange("activityThreshold", this.activityThreshold, activityThreshold);
+        getSupport().firePropertyChange("activityThreshold", this.activityThreshold, activityThreshold);
         this.activityThreshold = activityThreshold;
     }
 
@@ -763,7 +763,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setItdEventQueueSize(int itdEventQueueSize) {
         getPrefs().putInt("ITDFilter.itdEventQueueSize", itdEventQueueSize);
-        support.firePropertyChange("itdEventQueueSize", this.itdEventQueueSize, itdEventQueueSize);
+        getSupport().firePropertyChange("itdEventQueueSize", this.itdEventQueueSize, itdEventQueueSize);
         this.itdEventQueueSize = itdEventQueueSize;
         if (this.sendITDsToOtherThread) {
             ITDEventQueue = new ArrayBlockingQueue(itdEventQueueSize);
@@ -776,7 +776,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setTimeLocalExtremaDetection(int timeLocalExtremaDetection) {
         getPrefs().putInt("ITDFilter.timeLocalExtremaDetection", timeLocalExtremaDetection);
-        support.firePropertyChange("timeLocalExtremaDetection", this.timeLocalExtremaDetection, timeLocalExtremaDetection);
+        getSupport().firePropertyChange("timeLocalExtremaDetection", this.timeLocalExtremaDetection, timeLocalExtremaDetection);
         this.timeLocalExtremaDetection = timeLocalExtremaDetection;
     }
 
@@ -786,7 +786,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setMaxWeightTime(int maxWeightTime) {
         getPrefs().putInt("ITDFilter.maxWeightTime", maxWeightTime);
-        support.firePropertyChange("maxWeightTime", this.maxWeightTime, maxWeightTime);
+        getSupport().firePropertyChange("maxWeightTime", this.maxWeightTime, maxWeightTime);
         this.maxWeightTime = maxWeightTime;
         if (!isFilterEnabled()) {
             return;
@@ -800,7 +800,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setDimLastTs(int dimLastTs) {
         getPrefs().putInt("ITDFilter.dimLastTs", dimLastTs);
-        support.firePropertyChange("dimLastTs", this.dimLastTs, dimLastTs);
+        getSupport().firePropertyChange("dimLastTs", this.dimLastTs, dimLastTs);
         //lastTs = new int[numOfCochleaChannels][numNeuronTypes][2][dimLastTs];
         this.dimLastTs = dimLastTs;
         this.initFilter();
@@ -812,7 +812,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setNumLoopMean(int numLoopMean) {
         getPrefs().putInt("ITDFilter.numLoopMean", numLoopMean);
-        support.firePropertyChange("numLoopMean", this.numLoopMean, numLoopMean);
+        getSupport().firePropertyChange("numLoopMean", this.numLoopMean, numLoopMean);
         this.numLoopMean = numLoopMean;
         if (!isFilterEnabled() || this.computeMeanInLoop == false) {
             return;
@@ -830,7 +830,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setNumOfCochleaChannels(int numOfCochleaChannels) {
         getPrefs().putInt("ITDFilter.numOfCochleaChannels", numOfCochleaChannels);
-        support.firePropertyChange("numOfCochleaChannels", this.numOfCochleaChannels, numOfCochleaChannels);
+        getSupport().firePropertyChange("numOfCochleaChannels", this.numOfCochleaChannels, numOfCochleaChannels);
         this.numOfCochleaChannels = numOfCochleaChannels;
         lastTs = new int[numOfCochleaChannels][numNeuronTypes][2][dimLastTs];
         lastTsCursor = new int[numOfCochleaChannels][numNeuronTypes][2];
@@ -842,7 +842,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setAveragingDecay(float averagingDecay) {
         getPrefs().putDouble("ITDFilter.averagingDecay", averagingDecay);
-        support.firePropertyChange("averagingDecay", this.averagingDecay, averagingDecay);
+        getSupport().firePropertyChange("averagingDecay", this.averagingDecay, averagingDecay);
         this.averagingDecay = averagingDecay;
         if (!isFilterEnabled()) {
             return;
@@ -858,7 +858,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     public void doToggleITDDisplay() {
         boolean old = isDisplay();
         setDisplay(!isDisplay());
-        support.firePropertyChange("display", old, display);
+        getSupport().firePropertyChange("display", old, display);
     }
 
     /** Adds button to show display */
@@ -898,7 +898,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setDisplay(boolean display) {
         getPrefs().putBoolean("ITDFilter.display", display);
-        support.firePropertyChange("display", this.display, display);
+        getSupport().firePropertyChange("display", this.display, display);
         this.display = display;
         if (!isFilterEnabled()) {
             return;
@@ -950,7 +950,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setUseLaterSpikeForWeight(boolean useLaterSpikeForWeight) {
         getPrefs().putBoolean("ITDFilter.useLaterSpikeForWeight", useLaterSpikeForWeight);
-        support.firePropertyChange("useLaterSpikeForWeight", this.useLaterSpikeForWeight, useLaterSpikeForWeight);
+        getSupport().firePropertyChange("useLaterSpikeForWeight", this.useLaterSpikeForWeight, useLaterSpikeForWeight);
         this.useLaterSpikeForWeight = useLaterSpikeForWeight;
         if (!isFilterEnabled()) {
             return;
@@ -964,7 +964,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setUsePriorSpikeForWeight(boolean usePriorSpikeForWeight) {
         getPrefs().putBoolean("ITDFilter.usePriorSpikeForWeight", usePriorSpikeForWeight);
-        support.firePropertyChange("usePriorSpikeForWeight", this.usePriorSpikeForWeight, usePriorSpikeForWeight);
+        getSupport().firePropertyChange("usePriorSpikeForWeight", this.usePriorSpikeForWeight, usePriorSpikeForWeight);
         this.usePriorSpikeForWeight = usePriorSpikeForWeight;
         if (!isFilterEnabled()) {
             return;
@@ -999,7 +999,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             }
         }
         getPrefs().putBoolean("ITDFilter.writeBin2File", writeBin2File);
-        support.firePropertyChange("writeBin2File", this.writeBin2File, writeBin2File);
+        getSupport().firePropertyChange("writeBin2File", this.writeBin2File, writeBin2File);
         this.writeBin2File = writeBin2File;
     }
 
@@ -1032,7 +1032,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             freqBins = null;
         }
         getPrefs().putBoolean("ITDFilter.saveFrequenciesSeperately", saveFrequenciesSeperately);
-        support.firePropertyChange("saveFrequenciesSeperately", this.saveFrequenciesSeperately, saveFrequenciesSeperately);
+        getSupport().firePropertyChange("saveFrequenciesSeperately", this.saveFrequenciesSeperately, saveFrequenciesSeperately);
         this.saveFrequenciesSeperately = saveFrequenciesSeperately;
     }
 
@@ -1060,7 +1060,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 AvgITDFile.close();
                 AvgITDFile = null;
                 getPrefs().putBoolean("ITDFilter.writeAvgITD2File", writeAvgITD2File);
-                support.firePropertyChange("writeAvgITD2File", this.writeAvgITD2File, writeAvgITD2File);
+                getSupport().firePropertyChange("writeAvgITD2File", this.writeAvgITD2File, writeAvgITD2File);
                 this.writeAvgITD2File = writeAvgITD2File;
             } catch (Exception e) {//Catch exception if any
                 log.warning("Error: " + e.getMessage());
@@ -1074,7 +1074,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setWriteITD2File(boolean writeITD2File) {
         getPrefs().putBoolean("ITDFilter.writeITD2File", writeITD2File);
-        support.firePropertyChange("writeITD2File", this.writeITD2File, writeITD2File);
+        getSupport().firePropertyChange("writeITD2File", this.writeITD2File, writeITD2File);
         this.writeITD2File = writeITD2File;
 
         if (writeITD2File == true) {
@@ -1091,7 +1091,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                     ITDFile.write("time\tITD\tchan\tweight\n");
 
                     getPrefs().putBoolean("ITDFilter.writeITD2File", writeITD2File);
-                    support.firePropertyChange("writeITD2File", this.writeITD2File, writeITD2File);
+                    getSupport().firePropertyChange("writeITD2File", this.writeITD2File, writeITD2File);
                     this.writeITD2File = writeITD2File;
                 }
             } catch (Exception e) {//Catch exception if any
@@ -1114,7 +1114,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setSendITDsToOtherThread(boolean sendITDsToOtherThread) {
         getPrefs().putBoolean("ITDFilter.sendITDsToOtherThread", sendITDsToOtherThread);
-        support.firePropertyChange("sendITDsToOtherThread", this.sendITDsToOtherThread, sendITDsToOtherThread);
+        getSupport().firePropertyChange("sendITDsToOtherThread", this.sendITDsToOtherThread, sendITDsToOtherThread);
         this.sendITDsToOtherThread = sendITDsToOtherThread;
         if (sendITDsToOtherThread == true) {
             ITDEventQueue = new ArrayBlockingQueue(this.itdEventQueueSize);
@@ -1129,7 +1129,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setDisplaySoundDetected(boolean displaySoundDetected) {
         getPrefs().putBoolean("ITDFilter.displaySoundDetected", displaySoundDetected);
-        support.firePropertyChange("displaySoundDetected", this.displaySoundDetected, displaySoundDetected);
+        getSupport().firePropertyChange("displaySoundDetected", this.displaySoundDetected, displaySoundDetected);
         this.displaySoundDetected = displaySoundDetected;
         if (frame != null) {
             this.frame.binsPanel.setDisplaySoundDetected(displaySoundDetected);
@@ -1142,7 +1142,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setDisplayNormalize(boolean displayNormalize) {
         getPrefs().putBoolean("ITDFilter.displayNormalize", displayNormalize);
-        support.firePropertyChange("displayNormalize", this.displayNormalize, displayNormalize);
+        getSupport().firePropertyChange("displayNormalize", this.displayNormalize, displayNormalize);
         this.displayNormalize = displayNormalize;
         if (frame != null) {
             this.frame.binsPanel.setDisplayNormalize(displayNormalize);
@@ -1155,7 +1155,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setWrite2FileForEverySpike(boolean write2FileForEverySpike) {
         getPrefs().putBoolean("ITDFilter.write2FileForEverySpike", write2FileForEverySpike);
-        support.firePropertyChange("write2FileForEverySpike", this.write2FileForEverySpike, write2FileForEverySpike);
+        getSupport().firePropertyChange("write2FileForEverySpike", this.write2FileForEverySpike, write2FileForEverySpike);
         this.write2FileForEverySpike = write2FileForEverySpike;
     }
 
@@ -1165,7 +1165,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setWeightFrequencies(boolean weightFrequencies) {
         getPrefs().putBoolean("ITDFilter.weightFrequencies", weightFrequencies);
-        support.firePropertyChange("weightFrequencies", this.weightFrequencies, weightFrequencies);
+        getSupport().firePropertyChange("weightFrequencies", this.weightFrequencies, weightFrequencies);
         this.weightFrequencies = weightFrequencies;
         if (weightFrequencies) {
             JFileChooser fc = new JFileChooser();
@@ -1221,7 +1221,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             }
         }
         getPrefs().putBoolean("ITDFilter.use1DRegression", use1DRegression);
-        support.firePropertyChange("use1DRegression", this.use1DRegression, use1DRegression);
+        getSupport().firePropertyChange("use1DRegression", this.use1DRegression, use1DRegression);
         this.use1DRegression = use1DRegression;
     }
 
@@ -1258,7 +1258,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             }
         }
         getPrefs().putBoolean("ITDFilter.useRidgeRegression", useRidgeRegression);
-        support.firePropertyChange("useRidgeRegression", this.useRidgeRegression, useRidgeRegression);
+        getSupport().firePropertyChange("useRidgeRegression", this.useRidgeRegression, useRidgeRegression);
         this.useRidgeRegression = useRidgeRegression;
     }
 
@@ -1268,7 +1268,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setNormToConfThresh(boolean normToConfThresh) {
         getPrefs().putBoolean("ITDFilter.normToConfThresh", normToConfThresh);
-        support.firePropertyChange("normToConfThresh", this.normToConfThresh, normToConfThresh);
+        getSupport().firePropertyChange("normToConfThresh", this.normToConfThresh, normToConfThresh);
         this.normToConfThresh = normToConfThresh;
     }
 
@@ -1278,7 +1278,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setShowAnnotations(boolean showAnnotations) {
         getPrefs().putBoolean("ITDFilter.showAnnotations", showAnnotations);
-        support.firePropertyChange("showAnnotations", this.showAnnotations, showAnnotations);
+        getSupport().firePropertyChange("showAnnotations", this.showAnnotations, showAnnotations);
         this.showAnnotations = showAnnotations;
     }
 
@@ -1288,7 +1288,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setComputeMeanInLoop(boolean computeMeanInLoop) {
         getPrefs().putBoolean("ITDFilter.computeMeanInLoop", computeMeanInLoop);
-        support.firePropertyChange("computeMeanInLoop", this.computeMeanInLoop, computeMeanInLoop);
+        getSupport().firePropertyChange("computeMeanInLoop", this.computeMeanInLoop, computeMeanInLoop);
         this.computeMeanInLoop = computeMeanInLoop;
         if (!isFilterEnabled()) {
             return;
@@ -1314,7 +1314,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setUseCalibration(boolean useCalibration) {
         getPrefs().putBoolean("ITDFilter.useCalibration", useCalibration);
-        support.firePropertyChange("useCalibration", this.useCalibration, useCalibration);
+        getSupport().firePropertyChange("useCalibration", this.useCalibration, useCalibration);
         this.useCalibration = useCalibration;
         createBins();
     }
@@ -1325,7 +1325,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     public void setInvert(boolean invert) {
         getPrefs().putBoolean("ITDFilter.invert", invert);
-        support.firePropertyChange("invert", this.invert, invert);
+        getSupport().firePropertyChange("invert", this.invert, invert);
         this.invert = invert;
     }
 
@@ -1371,7 +1371,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
      * @param calibrationFilePath the calibrationFilePath to set
      */
     public void setCalibrationFilePath(String calibrationFilePath) {
-        support.firePropertyChange("calibrationFilePath", this.calibrationFilePath, calibrationFilePath);
+        getSupport().firePropertyChange("calibrationFilePath", this.calibrationFilePath, calibrationFilePath);
         this.calibrationFilePath = calibrationFilePath;
         getPrefs().put("ITDFilter.calibrationFilePath", calibrationFilePath);
     }
@@ -1381,7 +1381,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     synchronized public void setEstimationMethod(EstimationMethod estimationMethod) {
-        support.firePropertyChange("estimationMethod", this.estimationMethod, estimationMethod);
+        getSupport().firePropertyChange("estimationMethod", this.estimationMethod, estimationMethod);
         getPrefs().put("ITDfilter.estimationMethod", estimationMethod.toString());
         this.estimationMethod = estimationMethod;
     }
@@ -1391,7 +1391,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     synchronized public void setAmsProcessingMethod(AMSprocessingMethod amsProcessingMethod) {
-        support.firePropertyChange("amsProcessingMethod", this.amsProcessingMethod, amsProcessingMethod);
+        getSupport().firePropertyChange("amsProcessingMethod", this.amsProcessingMethod, amsProcessingMethod);
         getPrefs().put("ITDfilter.amsProcessingMethod", amsProcessingMethod.toString());
         this.amsProcessingMethod = amsProcessingMethod;
         this.initFilter();
@@ -1402,7 +1402,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     synchronized public void setUseGanglionCellType(CochleaAMSEvent.FilterType useGanglionCellType) {
-        support.firePropertyChange("useGanglionCellType", this.useGanglionCellType, useGanglionCellType);
+        getSupport().firePropertyChange("useGanglionCellType", this.useGanglionCellType, useGanglionCellType);
         getPrefs().put("ITDfilter.useGanglionCellType", useGanglionCellType.toString());
         this.useGanglionCellType = useGanglionCellType;
     }
@@ -1433,7 +1433,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             if (calibration == null) {
                 calibration = new ITDCalibrationGaussians();
                 calibration.loadCalibrationFile(calibrationFilePath);
-                support.firePropertyChange("numOfBins", this.numOfBins, calibration.getNumOfBins());
+                getSupport().firePropertyChange("numOfBins", this.numOfBins, calibration.getNumOfBins());
                 this.numOfBins = calibration.getNumOfBins();
             }
             //log.info("create Bins with averagingDecay=" + averagingDecay + " and calibration file");

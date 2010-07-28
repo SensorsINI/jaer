@@ -1376,7 +1376,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
      * @param pathsEnabled true to show the history of the cluster locations on each packet.
      */
     public void setPathsEnabled (boolean pathsEnabled){
-        support.firePropertyChange("pathsEnabled",this.pathsEnabled,pathsEnabled);
+        getSupport().firePropertyChange("pathsEnabled",this.pathsEnabled,pathsEnabled);
         this.pathsEnabled = pathsEnabled;
         getPrefs().putBoolean("BlurringTunnelTracker.pathsEnabled",pathsEnabled);
     }
@@ -1497,7 +1497,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         if ( useVelocity ){
             setPathsEnabled(true);
         }
-        support.firePropertyChange("useVelocity",this.useVelocity,useVelocity);
+        getSupport().firePropertyChange("useVelocity",this.useVelocity,useVelocity);
         this.useVelocity = useVelocity;
         getPrefs().putBoolean("BlurringTunnelTracker.useVelocity",useVelocity);
     }
@@ -1546,7 +1546,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         int old = this.pathLength;
         this.pathLength = pathLength;
         getPrefs().putInt("BlurringTunnelTracker.pathLength",pathLength);
-        support.firePropertyChange("pathLength",old,pathLength);
+        getSupport().firePropertyChange("pathLength",old,pathLength);
         if ( numVelocityPoints > pathLength ){
             setNumVelocityPoints(pathLength);
         }
@@ -1633,7 +1633,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         float old = this.maximumClusterLifetimeMs;
         this.maximumClusterLifetimeMs = maximumClusterLifetimeMs;
         getPrefs().putFloat("BlurringTunnelTracker.maximumClusterLifetimeMs",maximumClusterLifetimeMs);
-        support.firePropertyChange("maximumClusterLifetimeMs",old,this.maximumClusterLifetimeMs);
+        getSupport().firePropertyChange("maximumClusterLifetimeMs",old,this.maximumClusterLifetimeMs);
     }
 
     /**
@@ -1673,7 +1673,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         int old = this.numVelocityPoints;
         this.numVelocityPoints = velocityPoints;
         getPrefs().putInt("BlurringTunnelTracker.numVelocityPoints",velocityPoints);
-        support.firePropertyChange("velocityPoints",old,this.numVelocityPoints);
+        getSupport().firePropertyChange("velocityPoints",old,this.numVelocityPoints);
     }
 
     /** @see #setMinCellsPerCluster(int)
@@ -1692,7 +1692,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         int old = this.minCellsPerCluster;
         this.minCellsPerCluster = minCellsPerCluster;
         getPrefs().putInt("BlurringTunnelTracker.minCellsPerCluster",minCellsPerCluster);
-        support.firePropertyChange("minCellsPerCluster",old,this.minCellsPerCluster);
+        getSupport().firePropertyChange("minCellsPerCluster",old,this.minCellsPerCluster);
 
     }
 
@@ -1713,7 +1713,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         float old = this.activityDecayFactor;
         this.activityDecayFactor = activityDecayFactor;
         getPrefs().putFloat("BlurringTunnelTracker.activityDecayFactor",activityDecayFactor);
-        support.firePropertyChange("activityDecayFactor",old,this.activityDecayFactor);
+        getSupport().firePropertyChange("activityDecayFactor",old,this.activityDecayFactor);
     }
 
     public boolean getSendPosition (){

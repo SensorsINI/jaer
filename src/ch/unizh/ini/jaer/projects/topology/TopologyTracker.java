@@ -461,7 +461,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
             initialized = false;
         }
         getPrefs().putInt("TopologyTracker.neighborhoodSize", value);
-        support.firePropertyChange("neighborhoodSize", neighborhoodSize, value);
+        getSupport().firePropertyChange("neighborhoodSize", neighborhoodSize, value);
         neighborhoodSize = value;
     }
 
@@ -471,7 +471,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
 
     synchronized public void setLearningWindowShape(int value) {
         getPrefs().putInt("TopologyTracker.learningWindowShape", value);
-        support.firePropertyChange("learningWindowShape", learningWindowShape, value);
+        getSupport().firePropertyChange("learningWindowShape", learningWindowShape, value);
         learningWindowShape = value;
         updateLearningWindow();
     }
@@ -482,7 +482,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
 
     synchronized public void setLearningWindowMean(float value) {
         getPrefs().putFloat("TopologyTracker.learningWindowMean", value);
-        support.firePropertyChange("learningWindowMean", learningWindowMean, value);
+        getSupport().firePropertyChange("learningWindowMean", learningWindowMean, value);
         learningWindowMean = value;
         updateLearningWindow();
     }
@@ -493,7 +493,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
 
     synchronized public void setLearningWindowStandardDeviation(float value) {
         getPrefs().putFloat("TopologyTracker.learningWindowStandardDeviation", value);
-        support.firePropertyChange("learningWindowStandardDeviation", learningWindowStandardDeviation, value);
+        getSupport().firePropertyChange("learningWindowStandardDeviation", learningWindowStandardDeviation, value);
         learningWindowStandardDeviation = value;
         updateLearningWindow();
     }
@@ -504,7 +504,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
 
     synchronized public void setInhibit2ndOrderNeighbors(boolean value) {
         getPrefs().putBoolean("TopologyTracker.inhibit2ndOrderNeighbors", value);
-        support.firePropertyChange("inhibit2ndOrderNeighbors", inhibit2ndOrderNeighbors, value);
+        getSupport().firePropertyChange("inhibit2ndOrderNeighbors", inhibit2ndOrderNeighbors, value);
         inhibit2ndOrderNeighbors = value;
     }
 
@@ -514,7 +514,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
 
     public void setSymmetricPlasticityChange(boolean value) {
         getPrefs().putBoolean("TopologyTracker.symmetricPlasticityChange", value);
-        support.firePropertyChange("symmetricPlasticityChange", symmetricPlasticityChange, value);
+        getSupport().firePropertyChange("symmetricPlasticityChange", symmetricPlasticityChange, value);
         symmetricPlasticityChange = value;
     }
 
@@ -524,7 +524,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
 
     synchronized public void setIgnoreReset(boolean value) {
         getPrefs().putBoolean("TopologyTracker.ignoreReset", value);
-        support.firePropertyChange("ignoreReset", ignoreReset, value);
+        getSupport().firePropertyChange("ignoreReset", ignoreReset, value);
         ignoreReset = value;
     }
 
@@ -534,7 +534,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
 
     public void setReinforcement(float value) {
         getPrefs().putFloat("TopologyTracker.reinforcement", value);
-        support.firePropertyChange("reinforcement", reinforcement, value);
+        getSupport().firePropertyChange("reinforcement", reinforcement, value);
         reinforcement = value;
     }
 
@@ -544,7 +544,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
 
     public void setShowStatus(boolean value) {
         getPrefs().putBoolean("TopologyTracker.showStatus", value);
-        support.firePropertyChange("showStatus", showStatus, value);
+        getSupport().firePropertyChange("showStatus", showStatus, value);
         showStatus = value;
         if (window != null) {
             window.setVisible(showStatus); // will get set visible next time around loop
@@ -557,7 +557,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
 
     public void setShowFalseEdges(boolean value) {
         getPrefs().putBoolean("TopologyTracker.showFalseEdges", value);
-        support.firePropertyChange("showFalseEdges", showFalseEdges, value);
+        getSupport().firePropertyChange("showFalseEdges", showFalseEdges, value);
         showFalseEdges = value;
         if (showFalseEdges) {
             for (int i = 0; i < neighbors.length; i++) {
@@ -572,7 +572,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
 
     public void setOnResetWriteStatsAndExit(boolean value) {
         getPrefs().putBoolean("TopologyTracker.onResetWriteStatsAndExit", value);
-        support.firePropertyChange("onResetWriteStatsAndExit", onResetWriteStatsAndExit, value);
+        getSupport().firePropertyChange("onResetWriteStatsAndExit", onResetWriteStatsAndExit, value);
         onResetWriteStatsAndExit = value;
     }
 
@@ -679,7 +679,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     }
 
     synchronized public void setMapEventsToLearnedTopologyEnabled(boolean mapEventsToLearnedTopologyEnabled) {
-        support.firePropertyChange("mapEventsToLearnedTopologyEnabled", this.mapEventsToLearnedTopologyEnabled, mapEventsToLearnedTopologyEnabled);
+        getSupport().firePropertyChange("mapEventsToLearnedTopologyEnabled", this.mapEventsToLearnedTopologyEnabled, mapEventsToLearnedTopologyEnabled);
         this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
         getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled);
     }
@@ -689,7 +689,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
     }
 
     synchronized public void setLearningEnabled(boolean learningEnabled) {
-        support.firePropertyChange("learningEnabled", this.learningEnabled, learningEnabled);
+        getSupport().firePropertyChange("learningEnabled", this.learningEnabled, learningEnabled);
         this.learningEnabled = learningEnabled;
         getPrefs().putBoolean("TopologyTracker.learningEnabled", learningEnabled);
     }

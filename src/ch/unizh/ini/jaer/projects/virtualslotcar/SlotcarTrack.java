@@ -4,10 +4,15 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
+import java.awt.Point;
 import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.Iterator;
 import java.awt.geom.Point2D;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.logging.Logger;
+import net.sf.jaer.chip.AEChip;
 
 /**
  * Class for storing race tracks for slot cars. 
@@ -20,46 +25,49 @@ import java.awt.geom.Point2D;
  */
 public class SlotcarTrack implements java.io.Serializable {
 
+    private static Logger log = Logger.getLogger("SlotcarTrack");
     private static final long serialVersionUID = 8769462155491049760L; // define so that rebuilds don't cause load failure
     /** All points of the track added by the user */
-    LinkedList<Point2D.Float> trackPoints;
+    LinkedList<Point2D.Float> trackPoints = new LinkedList<Point2D.Float>();
+    /** Vectors pointing from each segment point to the next one. The last element points back to the first. */
+    ArrayList<Point2D.Float> segmentVectors = new ArrayList<Point2D.Float>();
     /** The spline object for smooth approximation */
-    PeriodicSpline smoothTrack = null;
+    PeriodicSpline smoothTrack = new PeriodicSpline();
     /** Tolerance for finding nearby spline points */
     private float pointTolerance = 5.0f;
     /** State of the slot car. */
-    private SlotcarState carState;
+    private SlotcarState carState = new SlotcarState();
     /** Physics object */
-    private SlotcarPhysics physics;
+    private SlotcarPhysics physics = new SlotcarPhysics();
     /** Integration step for arc-length calculations */
     private float integrationStep = 0.1f;
-    /** Curvature at track points */
-    private float[] curvatureAtPoints;
+    /** Curvature at track points. The curvature is the radius of curvature, so the straighter the track, the larger the curvature.  */
+    private float[] curvatureAtPoints = null;
+
+    private ClosestPointComputer closestPointComputer=null;
 
     /** Creates a new track. */
     public SlotcarTrack() {
-        trackPoints = new LinkedList<Point2D.Float>();
+    }
 
-        smoothTrack = new PeriodicSpline();
-
-        carState = new SlotcarState();
-
-        physics = new SlotcarPhysics();
-
-        curvatureAtPoints = null;
+    private Point2D.Float vectorA2B(Point2D.Float a, Point2D.Float b) {
+        if (a == null || b == null) {
+            return null;
+        }
+        return new Point2D.Float(b.x - a.x, b.y - a.y);
     }
 
     /** Adds a Point2D2D to the end of the track */
     public void addPoint(Point2D.Float newPoint) {
         trackPoints.addLast(newPoint);
-        updateSpline();
+        updateTrack();
     }
 
     /** Deletes the last Point2D of the track */
     public void deleteEndPoint() {
         trackPoints.removeLast();
         if (trackPoints.size() >= 3) {
-            updateSpline();
+            updateTrack();
         } else {
             smoothTrack = new PeriodicSpline();
         }
@@ -68,7 +76,7 @@ public class SlotcarTrack implements java.io.Serializable {
     /** Inserts a Point2D at the given index */
     public void addPoint(int i, Point2D.Float newPoint) {
         trackPoints.add(i, newPoint);
-        updateSpline();
+        updateTrack();
     }
 
     /** Deletes a Point2D according to index */
@@ -78,7 +86,7 @@ public class SlotcarTrack implements java.io.Serializable {
         } else {
             trackPoints.remove(i);
             if (trackPoints.size() >= 3) {
-                updateSpline();
+                updateTrack();
             } else {
                 smoothTrack = new PeriodicSpline();
             }
@@ -96,7 +104,7 @@ public class SlotcarTrack implements java.io.Serializable {
         } else {
             trackPoints.add(idx, p);
             if (trackPoints.size() >= 3) {
-                updateSpline();
+                updateTrack();
             }
             return trackPoints.size();
         }
@@ -111,7 +119,55 @@ public class SlotcarTrack implements java.io.Serializable {
         return curvatureAtPoints;
     }
 
-    /** Computes the curvatures at every spline point */
+    /** Updates the spline coefficients for this track and other statistics such as the segment vectors. Also checks for and corrects duplicate successive points.
+     */
+    public void updateTrack() {
+        if (trackPoints.size() > 2) {
+            removeDuplicatePoints();
+            smoothTrack.computeCoefficients(trackPoints);
+            updateCurvature();
+            updateSegmentVectors();
+        }
+    }
+
+    protected void updateSegmentVectors() {
+        Point2D.Float a;
+        Point2D.Float b;
+        if (segmentVectors == null) {
+            segmentVectors = new ArrayList<Point2D.Float>();
+        }
+        segmentVectors.clear();
+        for (int i = 0; i < getNumPoints() - 1; i++) {
+            a = trackPoints.get(i);
+            b = trackPoints.get(i + 1);
+            if (a.equals(b)) {
+                log.warning("tried to add a zero length segment vector from identical track points at position " + i);
+            }
+            segmentVectors.add(vectorA2B(a, b));
+        }
+        segmentVectors.add(vectorA2B(trackPoints.getLast(), trackPoints.getFirst()));
+    }
+
+    private void removeDuplicatePoints() { // TODO may not remove multiple successive identical points
+        if (trackPoints.getFirst().equals(trackPoints.getLast())) {
+            Object o = trackPoints.removeLast();
+            log.info("first and last track point were identical, removed last point " + o);
+        }
+        int n = getNumPoints();
+        for (int i = 0; i < n - 1; i++) {
+            Point2D.Float a = trackPoints.get(i), b = trackPoints.get(i + 1);
+            if (a.equals(b)) {
+                Object o = trackPoints.remove(i + 1);
+                log.warning("Points " + i + " and " + (i + 1) + " were identical, removed second point " + o);
+                n--;
+            } else {
+                segmentVectors.add(vectorA2B(a, b));
+            }
+        }
+
+    }
+
+    /** Computes the curvatures at every spline point. The curvature is the radius of curvature, so the straighter the track, the larger the curvature. */
     private void updateCurvature() {
         if (trackPoints == null) {
             return;
@@ -129,47 +185,199 @@ public class SlotcarTrack implements java.io.Serializable {
 
     }
 
-    /** Updates the spline coefficients for this track */
-    public void updateSpline() {
-        if (trackPoints.size() > 2) {
-            smoothTrack.computeCoefficients(trackPoints);
-            updateCurvature();
+    /** Finds the nearest two track points to a Point2D double point.
+     * This method uses the fast local minimum search to find the nearest point, then checks in each direction for the next nearest point.
+     *
+     * @param p the Point2D in x,y space.
+     * @return a Point with the two nearest track points as x (nearest) and y (next nearest).
+     */
+    public Point findClosestTwoPoints(Point2D p) {
+        Point idxP = new Point(-1, -1);
+
+        if (trackPoints == null) {
+            return idxP;
         }
+
+        int idx1 = findClosest(p, Float.MAX_VALUE, true, -1); // true=fast search, starting where last one ended.
+        if (idx1 >= 0) {
+            // Find which one of the neighbors is closest
+            int idx2 = idx1 - 1;
+            if (idx2 < 0) {
+                idx2 = getNumPoints() - 1;
+            }
+
+            int idx3 = idx1 + 1;
+            if (idx3 >= getNumPoints()) {
+                idx3 = 0;
+            }
+
+            Point2D p2 = getPoint(idx2);
+            Point2D p3 = getPoint(idx3);
+
+            double dist2 = p2.distance(p);
+            double dist3 = p3.distance(p);
+
+            if (dist2 < dist3) {
+                idxP.setLocation(max(idx1, idx2), min(idx1, idx2));
+            } else {
+                idxP.setLocation(max(idx1, idx3), min(idx1, idx3));
+            }
+        }
+        return idxP;
     }
 
-//    /** Returns the approximate normal distance of a point from the track.
-//     * From <a href="http://www.tpub.com/math2/8.htm">http://www.tpub.com/math2/8.htm</a>.
-//     *
-//     * @param pos the xy position of interest.
-//     * @return the distance from the track in pixels.
-//     */
-//    public float getDistanceToNearestTrackPoint(Point2D pos) {
-//        int nearestIdx = findClosest(pos, java.lang.Float.MAX_VALUE);
-//        Point2D trackPoint = trackPoints.get(nearestIdx);
-//        float dist = (float) trackPoint.distance(pos);
-//        return dist;
-//    }
+    private int min(int a, int b) {
+        return a < b ? a : b;
+    }
+
+    private int max(int a, int b) {
+        return a > b ? a : b;
+    }
+
+    /** Returns the approximate normal distance of a point from the track.
+     * From <a href="http://www.tpub.com/math2/8.htm">http://www.tpub.com/math2/8.htm</a>
+     * and <a href="http://softsurfer.com/Archive/algorithm_0102/algorithm_0102.htm#Distance%20to%202-Point%20Line">http://softsurfer.com/Archive/algorithm_0102/algorithm_0102.htm#Distance%20to%202-Point%20Line</a>
+     *
+     * @param pos the xy position of interest.
+     * @return the distance from the track in pixels using the nearest two track points.
+     */
+    public float findDistanceToTrack(Point2D pos) {
+        Point twoPointIndices = findClosestTwoPoints(pos);
+        Point2D a = getPoint(twoPointIndices.x);
+        if (a == null) {
+            return Float.MAX_VALUE;
+        }
+        Point2D b = getPoint(twoPointIndices.y);
+        if (b == null) {
+            return Float.MAX_VALUE;
+        }
+        Point2D vl = new Point2D.Double(b.getX() - a.getX(), b.getY() - a.getY());  // vector pointing from a to b
+        Point2D w = new Point2D.Double(pos.getX() - a.getX(), pos.getY() - a.getY()); // vector pointing from a to pos
+        double vlnorm = vl.distance(0, 0); // length of vl
+        double cross = Math.abs(vl.getX() * w.getY() - vl.getY() * w.getX());
+        double dist = cross / vlnorm;
+        return (float) dist;
+    }
+
+    /** Returns the approximate normal distance of a point from the track.
+     * From <a href="http://www.tpub.com/math2/8.htm">http://www.tpub.com/math2/8.htm</a>
+     * and <a href="http://softsurfer.com/Archive/algorithm_0102/algorithm_0102.htm#Distance%20to%202-Point%20Line">http://softsurfer.com/Archive/algorithm_0102/algorithm_0102.htm#Distance%20to%202-Point%20Line</a>
+     *
+     * @param pos the x,y position of interest.
+     * @param closestIdx  the closest track point, found previously.
+     * @return the distance from the track in pixels using the nearest two track points.
+     */
+    public float findDistanceToTrack(Point2D pos, int closestIdx) {
+
+        int aIdx = -1, bIdx = -1;
+        if (closestIdx >= 0) {
+            // Find which one of the neighbors is closest
+            int idx2 = closestIdx - 1;
+            if (idx2 < 0) {
+                idx2 = getNumPoints() - 1;
+            }
+
+            int idx3 = closestIdx + 1;
+            if (idx3 >= getNumPoints()) {
+                idx3 = 0;
+            }
+
+            Point2D p2 = getPoint(idx2);
+            Point2D p3 = getPoint(idx3);
+
+            double dist2 = p2.distance(pos);
+            double dist3 = p3.distance(pos);
+
+            if (dist2 < dist3) {
+                aIdx = max(closestIdx, idx2);
+                bIdx = min(closestIdx, idx2);
+            } else {
+                aIdx = max(closestIdx, idx3);
+                bIdx = min(closestIdx, idx3);
+            }
+        }
+        Point2D a = getPoint(aIdx);
+        Point2D b = getPoint(bIdx);
+        Point2D vl = new Point2D.Double(b.getX() - a.getX(), b.getY() - a.getY());  // vector pointing from a to b
+        Point2D w = new Point2D.Double(pos.getX() - a.getX(), pos.getY() - a.getY()); // vector pointing from a to pos
+        double vlnorm = vl.distance(0, 0); // length of vl
+        double cross = Math.abs(vl.getX() * w.getY() - vl.getY() * w.getX());
+        double dist = cross / vlnorm;
+        return (float) dist;
+    }
     private int lastFindIdx = 0;  // cache last starting point to make search cheaper
     private int lastNumberIterantions = 0;  // statistics on search
+
+    class ClosestPointComputer {
+
+        private int size = 25;
+        private int[] map = new int[size * size];
+        int sx, sy;
+        float xPixPerUnit, yPixPerUnit = 1;
+
+        public ClosestPointComputer(AEChip chip, SlotcarTrack track) {
+            init(chip, track);
+        }
+
+        final void init(AEChip chip, SlotcarTrack track) {
+            sx = chip.getSizeX();
+            sy = chip.getSizeY();
+            xPixPerUnit = (float) sx / size;
+            yPixPerUnit = (float) sy / size;
+            Arrays.fill(map, -1);
+            for (int x = 0; x < size; x++) {
+                for (int y = 0; y < size; y++) {
+                    Point2D.Float pos = new Point2D.Float(x * xPixPerUnit + xPixPerUnit / 2, y * yPixPerUnit + yPixPerUnit / 2);
+                    int idx = findClosest(pos, getPointTolerance(), false, -1);
+                    map[x + size * y] = idx;
+                }
+            }
+        }
+
+        int getMapEntry(int x, int y){
+            return map[x+size*y];
+        }
+
+        void setMapEntry(int val, int x, int y){
+            map[x+size*y]=val;
+        }
+
+        int findPoint(Point2D.Float pos) {
+            int x = (int) (size * pos.x / sx);
+            int y = (int) (size * pos.y / sy);
+            return map[x + size * y];
+        }
+    }
 
     /** Find the closest point on the track with option for local minimum distance or global minimum distance search.
      * @param pos Point in x,y Cartesian space for which to search closest track point.
      * @param maxDist the maximum allowed distance.
-     * @param fastLocalSearchEnabled if true, the search starts at the position found previously and searches for a local minimum. If false, an exhaustive global search is performed.
+     * @param fastLocalSearchEnabled if true, the search starts at the position found previously and searches for a local minimum. 
+     * If false, an exhaustive global search is performed.
+     * @param startIdx the starting index for the fast local search. Necessary because this method may be used by
+     * multiple sources that don't try to locate same object. If startIdx==-1, then last successful find result is used.
      * @return Index of closest point on track or -1 if no track point is <= maxDist from pos.
      */
-    public int findClosest(Point2D pos, float maxDist, boolean fastLocalSearchEnabled) {
+    public int findClosest(Point2D pos, float maxDist, boolean fastLocalSearchEnabled, int startIdx) {
+        fastLocalSearchEnabled=false; // debug
         if (pos == null) {
             return -1;
         }
         int n = getNumPoints();
-        if(n==0) return -1;
+        if (n == 0) {
+            return -1;
+        }
 
-        if(fastLocalSearchEnabled){
-        // march in both directions until with find a local minimum - this is the nearest point. This scheme may get wrong answers until it locks in to the current
-        // car position but it saves a lot of cycles.
+        if (fastLocalSearchEnabled) {
+            // march in both directions until with find a local minimum - this is the nearest point. This scheme may get wrong answers until it locks in to the current
+            // car position but it saves a lot of cycles.
 
-        if(lastFindIdx==-1) lastFindIdx=0; // reset to start of list
+            if (startIdx != -1) {
+                lastFindIdx = startIdx;
+            }
+            if (lastFindIdx == -1) {
+                lastFindIdx = 0; // reset to start of list
+            }
             ListIterator<Point2D.Float> itr = trackPoints.listIterator(lastFindIdx); // start from last idx
             int idx = lastFindIdx;
             int closestIdx = -1;
@@ -193,7 +401,7 @@ public class SlotcarTrack implements java.io.Serializable {
             }
             if (!foundLocalMin) {
                 itr = trackPoints.listIterator(); // start from start of track because we reached the end and didn't find min
-                idx=0;
+                idx = 0;
                 while (!foundLocalMin && itr.hasNext()) {
                     Point2D p = itr.next();
                     lastNumberIterantions++;
@@ -214,7 +422,7 @@ public class SlotcarTrack implements java.io.Serializable {
             lastFindIdx = closestIdx;
 //            System.out.println("lastNumberIterantions=" + lastNumberIterantions + " closestIdx=" + closestIdx + " closestDist=" + closestDist);
             return closestIdx;
-        }else{
+        } else {
             int idx = 0, closestIdx = -1;
             float closestDist = Float.MAX_VALUE;
             for (Point2D.Float p : trackPoints) {
@@ -244,7 +452,7 @@ public class SlotcarTrack implements java.io.Serializable {
     public void setPoint(int idx, Point2D.Float newPoint) {
         if ((idx >= 0) && (idx < trackPoints.size())) {
             trackPoints.set(idx, newPoint);
-            updateSpline();
+            updateTrack();
         }
     }
 
@@ -376,7 +584,7 @@ public class SlotcarTrack implements java.io.Serializable {
      */
     public UpcomingCurvature getApproxCurvature(Point2D XYpos, int numPoints, float dt, float speed) {
 
-        int closestIdx = findClosest(XYpos, pointTolerance, true);
+        int closestIdx = findClosest(XYpos, pointTolerance, true, -1);
         float pos = smoothTrack.getParam(closestIdx);
         return getApproxCurvature(pos, numPoints, dt, speed, closestIdx);
     }
@@ -432,7 +640,7 @@ public class SlotcarTrack implements java.io.Serializable {
      */
     public UpcomingCurvature getCurvature(Point2D XYpos, int numPoints, float dt, float speed) {
 
-        int closestIdx = findClosest(XYpos, pointTolerance, false);
+        int closestIdx = findClosest(XYpos, pointTolerance, false, -1);
         float pos = smoothTrack.getParam(closestIdx);
         return getCurvature(pos, numPoints, dt, speed);
     }
@@ -559,7 +767,7 @@ public class SlotcarTrack implements java.io.Serializable {
             }
         }
 
-        updateSpline();
+        updateTrack();
     }
 
     /**
@@ -570,15 +778,15 @@ public class SlotcarTrack implements java.io.Serializable {
      * @return The current state of the car
      */
     public SlotcarState updateSlotcarState(Point2D XYpos, float speed) {
-        int closestIdx = findClosest(XYpos, pointTolerance, true);
+        int closestIdx = findClosest(XYpos, pointTolerance, true, -1);
 
         carState.pos = smoothTrack.getParam(closestIdx);
-        int lastIdx=carState.segmentIdx;
-        boolean lastOnTrack=carState.onTrack;
+        int lastIdx = carState.segmentIdx;
+        boolean lastOnTrack = carState.onTrack;
         carState.segmentIdx = closestIdx;
         carState.onTrack = closestIdx != -1;
-        if(carState.onTrack!=lastOnTrack){
-            System.out.println("carState.onTrack changed to "+carState.onTrack+" when changing from segment "+lastIdx+" to segment "+carState.segmentIdx);
+        if (carState.onTrack != lastOnTrack) {
+            System.out.println("carState.onTrack changed to " + carState.onTrack + " when changing from segment " + lastIdx + " to segment " + carState.segmentIdx);
         }
         carState.speed = speed;
         carState.XYpos = XYpos;
@@ -597,13 +805,15 @@ public class SlotcarTrack implements java.io.Serializable {
         }
         trackPoints = reversePoints;
 
-        updateSpline();
+        updateTrack();
     }
 
+    /** Tolerance for finding nearby spline points */
     public float getPointTolerance() {
         return pointTolerance;
     }
 
+    /** Tolerance for finding nearby spline points */
     public void setPointTolerance(float pointTolerance) {
         this.pointTolerance = pointTolerance;
     }

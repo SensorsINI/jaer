@@ -1236,7 +1236,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      * @param pathsEnabled true to show the history of the cluster locations on each packet.
      */
     public void setPathsEnabled (boolean pathsEnabled){
-        support.firePropertyChange("pathsEnabled",this.pathsEnabled,pathsEnabled);
+        getSupport().firePropertyChange("pathsEnabled",this.pathsEnabled,pathsEnabled);
         this.pathsEnabled = pathsEnabled;
         getPrefs().putBoolean("BluringFilter2DTracker.pathsEnabled",pathsEnabled);
     }
@@ -1375,7 +1375,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         if ( useVelocity ){
             setPathsEnabled(true);
         }
-        support.firePropertyChange("useVelocity",this.useVelocity,useVelocity);
+        getSupport().firePropertyChange("useVelocity",this.useVelocity,useVelocity);
         this.useVelocity = useVelocity;
         getPrefs().putBoolean("BluringFilter2DTracker.useVelocity",useVelocity);
     }
@@ -1424,7 +1424,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         int old = this.pathLength;
         this.pathLength = pathLength;
         getPrefs().putInt("BluringFilter2DTracker.pathLength",pathLength);
-        support.firePropertyChange("pathLength",old,pathLength);
+        getSupport().firePropertyChange("pathLength",old,pathLength);
         if ( numVelocityPoints > pathLength ){
             setNumVelocityPoints(pathLength);
         }
@@ -1529,7 +1529,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         float old = this.maximumClusterLifetimeMs;
         this.maximumClusterLifetimeMs = maximumClusterLifetimeMs;
         getPrefs().putFloat("BluringFilter2DTracker.maximumClusterLifetimeMs",maximumClusterLifetimeMs);
-        support.firePropertyChange("maximumClusterLifetimeMs",old,this.maximumClusterLifetimeMs);
+        getSupport().firePropertyChange("maximumClusterLifetimeMs",old,this.maximumClusterLifetimeMs);
     }
 
     /**
@@ -1564,7 +1564,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         float old = this.maximumClusterLifetimeMs;
         this.clusterRadiusLifetimeMs = clusterRadiusLifetimeMs;
         getPrefs().putFloat("BluringFilter2DTracker.clusterRadiusLifetimeMs",clusterRadiusLifetimeMs);
-        support.firePropertyChange("clusterRadiusLifetimeMs",old,this.clusterRadiusLifetimeMs);
+        getSupport().firePropertyChange("clusterRadiusLifetimeMs",old,this.clusterRadiusLifetimeMs);
     }
 
     /**
@@ -1584,7 +1584,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         int old = this.minimumClusterSizePixels;
         this.minimumClusterSizePixels = minimumClusterSizePixels;
         getPrefs().putInt("BluringFilter2DTracker.minimumClusterSizePixels",minimumClusterSizePixels);
-        support.firePropertyChange("minimumClusterSizePixels",old,this.minimumClusterSizePixels);
+        getSupport().firePropertyChange("minimumClusterSizePixels",old,this.minimumClusterSizePixels);
     }
 
     /** @see #setNumVelocityPoints(int)
@@ -1609,7 +1609,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         int old = this.numVelocityPoints;
         this.numVelocityPoints = velocityPoints;
         getPrefs().putInt("BluringFilter2DTracker.numVelocityPoints",velocityPoints);
-        support.firePropertyChange("velocityPoints",old,this.numVelocityPoints);
+        getSupport().firePropertyChange("velocityPoints",old,this.numVelocityPoints);
     }
 
     /**

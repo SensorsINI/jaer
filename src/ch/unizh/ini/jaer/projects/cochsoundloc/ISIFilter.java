@@ -192,7 +192,7 @@ public class ISIFilter extends EventFilter2D implements Observer {
         this.nBins = nBins;
         getPrefs().putInt("ISIFilter.nBins", nBins);
         resetBins();
-        support.firePropertyChange("nBins", old, this.nBins);
+        getSupport().firePropertyChange("nBins", old, this.nBins);
     }
 
     /**
@@ -209,7 +209,7 @@ public class ISIFilter extends EventFilter2D implements Observer {
         int oldneighborhoodRangeLower = this.neighborhoodRangeLower;
         this.neighborhoodRangeLower = neighborhoodRangeLower;
         getPrefs().putFloat("ISIFilter.neighborhoodRangeLower", neighborhoodRangeLower);
-        support.firePropertyChange("neighborhoodRangeLower", oldneighborhoodRangeLower, this.neighborhoodRangeLower);
+        getSupport().firePropertyChange("neighborhoodRangeLower", oldneighborhoodRangeLower, this.neighborhoodRangeLower);
     }
 
     /**
@@ -226,7 +226,7 @@ public class ISIFilter extends EventFilter2D implements Observer {
         int oldneighborhoodRangeUpper = this.neighborhoodRangeUpper;
         this.neighborhoodRangeUpper = neighborhoodRangeUpper;
         getPrefs().putFloat("ISIFilter.neighborhoodRangeUpper", neighborhoodRangeUpper);
-        support.firePropertyChange("neighborhoodRangeUpper", oldneighborhoodRangeUpper, this.neighborhoodRangeUpper);
+        getSupport().firePropertyChange("neighborhoodRangeUpper", oldneighborhoodRangeUpper, this.neighborhoodRangeUpper);
     }
 
     /**
@@ -253,7 +253,7 @@ public class ISIFilter extends EventFilter2D implements Observer {
         if (isiFrame != null) {
             isiFrame.repaint();
         }
-        support.firePropertyChange("maxIsiUs", old, maxIsiUs);
+        getSupport().firePropertyChange("maxIsiUs", old, maxIsiUs);
     }
 
     /**
@@ -280,7 +280,7 @@ public class ISIFilter extends EventFilter2D implements Observer {
         if (isiFrame != null) {
             isiFrame.repaint();
         }
-        support.firePropertyChange("minIsiUs", old, minIsiUs);
+        getSupport().firePropertyChange("minIsiUs", old, minIsiUs);
     }
 
     /**
@@ -297,7 +297,7 @@ public class ISIFilter extends EventFilter2D implements Observer {
         int oldtau = this.tauDecayMs;
         this.tauDecayMs = tauDecayMs;
         getPrefs().putFloat("ISIFilter.tauDecayMs", tauDecayMs);
-        support.firePropertyChange("tauDecayMs", oldtau, this.tauDecayMs);
+        getSupport().firePropertyChange("tauDecayMs", oldtau, this.tauDecayMs);
     }
 
     @Override
@@ -451,7 +451,7 @@ public class ISIFilter extends EventFilter2D implements Observer {
      * @param useChannels the channels to use
      */
     public void setUseChannels(String useChannels) {
-        support.firePropertyChange("useChannels", this.useChannels, useChannels);
+        getSupport().firePropertyChange("useChannels", this.useChannels, useChannels);
         this.useChannels = useChannels;
         getPrefs().put("ISIFilter.useChannels", useChannels);
         parseUseChannel();

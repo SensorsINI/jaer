@@ -392,7 +392,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         }catch(Exception e){
             log.warning(e.toString()+": disabling sendControlToBlenderEnabled");
             sendControlToBlenderEnabled=false;
-            support.firePropertyChange("sendControlToBlenderEnabled",true,false);
+            getSupport().firePropertyChange("sendControlToBlenderEnabled",true,false);
         }
     }
 

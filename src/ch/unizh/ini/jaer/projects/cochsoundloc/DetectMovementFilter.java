@@ -113,7 +113,7 @@ public class DetectMovementFilter extends EventFilter2D implements FrameAnnotate
 
     public void setConfidenceThreshold(int confidenceThreshold) {
         getPrefs().putInt("ITDFilter.confidenceThreshold", confidenceThreshold);
-        support.firePropertyChange("confidenceThreshold", this.confidenceThreshold, confidenceThreshold);
+        getSupport().firePropertyChange("confidenceThreshold", this.confidenceThreshold, confidenceThreshold);
         this.confidenceThreshold = confidenceThreshold;
     }
 
@@ -133,7 +133,7 @@ public class DetectMovementFilter extends EventFilter2D implements FrameAnnotate
 
     public void setInvertHorizontalOutput(boolean invertHorizontalOutput) {
         getPrefs().putBoolean("ITDFilter.invertHorizontalOutput", invertHorizontalOutput);
-        support.firePropertyChange("invertHorizontalOutput", this.invertHorizontalOutput, invertHorizontalOutput);
+        getSupport().firePropertyChange("invertHorizontalOutput", this.invertHorizontalOutput, invertHorizontalOutput);
         this.invertHorizontalOutput = invertHorizontalOutput;
     }
 }

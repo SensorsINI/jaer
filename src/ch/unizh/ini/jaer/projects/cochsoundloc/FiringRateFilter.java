@@ -139,7 +139,7 @@ public class FiringRateFilter extends EventFilter2D implements Observer {
         int oldtau = this.tauDecayMs;
         this.tauDecayMs = tauDecayMs;
         getPrefs().putFloat("FiringRateFilter.tauDecayMs", tauDecayMs);
-        support.firePropertyChange("tauDecayMs", oldtau, this.tauDecayMs);
+        getSupport().firePropertyChange("tauDecayMs", oldtau, this.tauDecayMs);
     }
 
     @Override
@@ -431,7 +431,7 @@ public class FiringRateFilter extends EventFilter2D implements Observer {
 
     public void setFractionNN(float fractionNN) {
         getPrefs().putDouble("ITDFilter.fractionNN", fractionNN);
-        support.firePropertyChange("fractionNN", this.fractionNN, fractionNN);
+        getSupport().firePropertyChange("fractionNN", this.fractionNN, fractionNN);
         this.fractionNN = fractionNN;
     }
 
@@ -441,7 +441,7 @@ public class FiringRateFilter extends EventFilter2D implements Observer {
 
     public void setFractionNNN(float fractionNNN) {
         getPrefs().putDouble("ITDFilter.fractionNNN", fractionNNN);
-        support.firePropertyChange("fractionNNN", this.fractionNNN, fractionNNN);
+        getSupport().firePropertyChange("fractionNNN", this.fractionNNN, fractionNNN);
         this.fractionNNN = fractionNNN;
     }
 
@@ -456,7 +456,7 @@ public class FiringRateFilter extends EventFilter2D implements Observer {
      * @param useChannels the channels to use
      */
     public void setUseChannels(String useChannels) {
-        support.firePropertyChange("useChannels", this.useChannels, useChannels);
+        getSupport().firePropertyChange("useChannels", this.useChannels, useChannels);
         this.useChannels = useChannels;
         getPrefs().put("ISIFilter.useChannels", useChannels);
         parseUseChannel();

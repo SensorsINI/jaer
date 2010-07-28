@@ -105,7 +105,7 @@ public class CochleaGenderClassifier extends ISIHistogrammer implements FrameAnn
         float old = this.threshold;
         this.threshold = threshold;
         getPrefs().putFloat("CochleaGenderClassifier.threshold",threshold);
-        support.firePropertyChange("threshold",old,this.threshold);
+        getSupport().firePropertyChange("threshold",old,this.threshold);
     }
 
     public void annotate (float[][][] frame){

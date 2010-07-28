@@ -289,7 +289,7 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
     /** Set the scaling factor for the event correlation depending on time difference. */
     public synchronized void setDistFactor (float distFactor){
         getPrefs().putFloat("DisparityFilter.distFactor",distFactor);
-        support.firePropertyChange("distFactor",this.distFactor,distFactor);
+        getSupport().firePropertyChange("distFactor",this.distFactor,distFactor);
         this.distFactor = distFactor;
     }
 
@@ -299,7 +299,7 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
 
     public synchronized void setRangeFactor (float rf){
         getPrefs().putFloat("DisparityFilter.rangeFactor",rf);
-        support.firePropertyChange("rangeFactor",rangeFactor,rf);
+        getSupport().firePropertyChange("rangeFactor",rangeFactor,rf);
         rangeFactor = rf;
     }
 
@@ -318,7 +318,7 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
             smoothFactor = .95f;
         }
         getPrefs().putFloat("DisparityFilter.smoothFactor",smoothFactor);
-        support.firePropertyChange("smoothFactor",this.smoothFactor,smoothFactor);
+        getSupport().firePropertyChange("smoothFactor",this.smoothFactor,smoothFactor);
         this.smoothFactor = smoothFactor;
     }
 
@@ -335,7 +335,7 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
             maxDisp = chip.getSizeX();
         }
         getPrefs().putInt("DisparityFilter.maxDisp",maxDisp);
-        support.firePropertyChange("maxDisp",this.maxDisp,maxDisp);
+        getSupport().firePropertyChange("maxDisp",this.maxDisp,maxDisp);
         this.maxDisp = maxDisp;
     }
 
