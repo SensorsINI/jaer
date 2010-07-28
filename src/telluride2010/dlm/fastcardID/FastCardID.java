@@ -41,6 +41,7 @@ import org.ine.telluride.jaer.tell2010.spinningcardclassifier.CardNamePlayer;
 
 //DLM additions
 import java.lang.Math;
+import java.io.*;
 
 
 
@@ -209,11 +210,16 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
     //mle
     int max_bin_mle = 0;
 
+    //FIle IO
+    boolean first_event = true;
     
 
     //==========================================================================
     //This is the Dictionary of pip hist values used to identify the cards
-    
+
+    int num_cards_considered = 10;
+
+    /*
     double[][] pip_hist_dictionary = {
         {446, 8, 40, 396, 127, 136, 32, 608, 26, 24, 176},          //A
         {38, 56, 86, 34, 194, 186, 146, 28, 46, 22, 54},            //2
@@ -229,9 +235,41 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
         {746, 1022, 605, 1163, 693, 207, 568, 921, 701, 928, 830},  //Q
         {38, 23, 16, 57, 23, 26, 22, 70, 3, 35, 24},                //K
     };
+     */
+
+    double[][] pip_hist_dictionary = {
+        {0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0},          			//A
+        //{0, 0, 0, 0, 100, 0, 100, 0, 0, 0, 0},            			//2
+        //{0, 0, 0, 0, 100, 100, 100, 0, 0, 0, 0},    				//3
+        
+        //{446, 8, 40, 396, 127, 136, 32, 608, 26, 24, 176},                      //A
+        //{38, 56, 86, 34, 194, 186, 146, 28, 46, 22, 54},                        //2
+        {1432, 22, 9, 106, 412, 10, 473, 842, 12, 45, 812},        //Tobi settings for 2
+        //{52, 157, 147, 129, 620, 1044, 744, 323, 240, 142, 200},                //3
+        {1643, 66, 415, 77, 1120, 2270, 562, 273, 131, 194, 676},  //Tobi settings for 3
+        {1830, 438, 158, 1048, 354, 62, 84, 1967, 1179, 385, 774},		//4
+        {100, 0, 0, 100, 0, 100, 0, 100, 0, 0, 100},				//5
+	{289, 204, 347, 284, 18, 77, 58, 356, 383, 197, 464},                   //6
+        //{289, 204, 347, 284, 18, 300, 58, 356, 383, 197, 464},                  //7 (This is the same as 6.  I just took out the middle element and replaced it with 300 to indicate a middle pip)
+	{371, 2296, 1823, 1180, 232, 405, 2492, 206, 2194, 1780, 1278  }, //Tobi settings for 7
+        //{289, 204, 347, 284, 300, 77, 300, 356, 383, 197, 464},                 //8  (This is the same as 6.  I just took out the outer two middle element and replaced them with 300 to indicate a outer middle pip)
+        {1139, 1763, 1695, 952, 1940, 862, 1984, 995, 1140, 1752, 1118},    // Tobi settings for 8
+
+        {100, 100, 100, 100, 0, 100, 0, 100, 100, 100, 100},                    //9
+        {100, 100, 100, 100, 100, 0, 100, 100, 100, 100, 100},                  //10
+        {527, 501, 614, 856, 370, 1350, 264, 972, 474, 572, 579},               //J
+        {746, 1022, 605, 1163, 693, 207, 568, 921, 701, 928, 830},              //Q
+        {38, 23, 16, 57, 23, 26, 22, 70, 3, 35, 24},                            //K
+    };
+
 
     //now the pip_hist_dictionary needs to be normalized across the rows.
+    //This normalization is taken care of in the metric functions.  
     
+    //This is a version of the pip_hist_dictionary I determined by eye.
+    //I left six alone since it seems to work so well.
+    //I just put values of 100 where I think pips should be and 0 otherwise
+ 
     
 
     
@@ -272,6 +310,9 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
 
         //Normalize the Pip_Bin_Hist_Dictionary across the rows to sum to 1;
         normalizePipBinHistDictionary();
+
+       
+
 
 
     }
@@ -327,7 +368,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
 
         //int width = pip_bin_hist.length;  //(11)This is the number of pip hist bins
         int width = 11;
-        int height = 13; //This is the number of cards.
+        int height = num_cards_considered; //This is the number of cards.
 
         //Go through row by row to find the sums
 
@@ -380,7 +421,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
         //Just initilize to 10
 
         int width = pip_bin_hist.length;  //(11)This is the number of pip hist bins
-        int height = 13; //This is the number of cards.
+        int height = num_cards_considered; //This is the number of cards.
 
         //Normalize the pip bin hist
         normalizePipBinHist();
@@ -407,7 +448,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
         
         //First find the max value of the euclidean metric and do maxeuclidean - each bin
         double euclidean_max = 0;
-        for (int jj = 0; jj < 13; jj++ ){
+        for (int jj = 0; jj < num_cards_considered; jj++ ){
                  if (euclidean_metric[jj] > euclidean_max) {
                      euclidean_max = euclidean_metric[jj];
                  }
@@ -415,7 +456,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
 
         //Now set the cardHist matrix
         cardHist.reset();
-        for (int jj = 0; jj < 13; jj++ ){
+        for (int jj = 0; jj < num_cards_considered; jj++ ){
              cardHist.setValue(jj + 1,(int) (euclidean_max - euclidean_metric[jj]) );   //The jj+1 reflects the fact that toby reserves the 0 bin for unknown.  
         }
 
@@ -426,7 +467,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
 
 
         int width = pip_bin_hist.length;  //(11)This is the number of pip hist bins
-        int height = 13; //This is the number of cards.
+        int height = num_cards_considered; //This is the number of cards.
 
         //Normalize the pip bin hist
         normalizePipBinHist();
@@ -454,7 +495,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
 
         //First find the max value of the euclidean metric and do maxeuclidean - each bin
         double hellinger_max = 0;
-        for (int jj = 0; jj < 13; jj++ ){
+        for (int jj = 0; jj < num_cards_considered; jj++ ){
                  if (hellinger_metric[jj] > hellinger_max) {
                      hellinger_max = hellinger_metric[jj];
                  }
@@ -462,7 +503,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
 
         //Now set the cardHist matrix
         cardHist.reset();
-        for (int jj = 0; jj < 13; jj++ ){
+        for (int jj = 0; jj < num_cards_considered; jj++ ){
              cardHist.setValue(jj + 1,(int) (hellinger_max - hellinger_metric[jj]) );   //The jj+1 reflects the fact that toby reserves the 0 bin for unknown.
         }
           
@@ -547,13 +588,14 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
         checkOutputPacketEventType(in); //This is what actually initiates the out EventPacket of the correct type.
         OutputEventIterator outItr=out.outputIterator();
 
-        /*
-        try {
-            msgSender.open();
-        } catch (IOException ex) {
-            log.warning("couldn't open the UDPMesssgeSender to send messages about card stats: " + ex);
-        }
-        */
+
+        
+       
+        
+        
+
+
+       
 
 
             for(Object o:in){
@@ -823,6 +865,9 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
                         //Send the max card out on the console
                         System.out.println("The MLE of the card is: " + cardHist.getMaxValueBin());
                         System.out.println(cardHist.toString());
+                        
+                        //Print the pip bin hist to file
+  
                         }
 
                     }
@@ -985,7 +1030,10 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
                 card_event_index++;
             }
 
-        return out; //I just put this there since it seems necessary and Tobi said to do it.
+
+            
+
+        return in; //I just put this there since it seems necessary and Tobi said to do it.
     }
 
 
@@ -1009,7 +1057,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
 
         
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() - 2);
-        String ss="FastCardID, David Mascarenas and Tobi Delbruck, Telluride, Co, July,2010 \n";// + cardHist.toString().substring(0, 50);
+        String ss="FastCardID, David Mascarenas and Tobi Delbruck, Telluride, CO, July,2010 \n";// + cardHist.toString().substring(0, 50);
         ss += "\nPip bin histogram\n";
         if (card_present_flag == true) {
             ss += "Card Present\n";
@@ -1017,6 +1065,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
             ss += "Card Not Present\n";
         }
         ss += "pip_count = " + pip_count + "\n";
+        ss += "card_event_index = " + card_event_index +"\n";
         //ss += "MLE count = " + max_bin_mle + "\n";
         ss += "pip bin  0 =" + pip_bin_hist[0] + "\n";
         ss += "pip bin  1 =" + pip_bin_hist[1] + "\n";
