@@ -42,7 +42,7 @@ public class VirtualSlotcarRacer extends EventFilter2D implements FrameAnnotater
     // Filter for extracting tracks from retina input
     private TrackdefineFilter trackExtractor = null;
 
-    private CarTracker carTracker;
+    private TwoCarTracker carTracker;
     private FilterChain filterChain;
     private boolean overrideThrottle = prefs().getBoolean("VirtualSlotcarRacer.overrideThrottle",true);
     private float overriddenThrottleSetting = prefs().getFloat("VirtualSlotcarRacer.overriddenThrottleSetting",0);
@@ -72,7 +72,7 @@ public class VirtualSlotcarRacer extends EventFilter2D implements FrameAnnotater
         
         filterChain = new FilterChain(chip);
 
-        carTracker = new CarTracker(chip, null, null);
+        carTracker = new TwoCarTracker(chip, null, null);
         filterChain.add(carTracker);
 
         speedController = new SimpleSpeedController(chip);
