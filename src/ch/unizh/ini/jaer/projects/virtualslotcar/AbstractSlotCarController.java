@@ -46,6 +46,7 @@ abstract public class AbstractSlotCarController extends EventFilter2D implements
      * @return the throttle setting ranging from 0 to 1.
      */
     abstract public float computeControl(CarTracker tracker, SlotcarTrack track);
+    
 
    /** Returns the last computed throttle setting.
      *

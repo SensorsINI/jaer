@@ -4,13 +4,10 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
-import java.beans.PropertyChangeEvent;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import java.awt.geom.Point2D;
-import java.beans.PropertyChangeListener;
 import javax.media.opengl.GLAutoDrawable;
-import javax.swing.JOptionPane;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -45,7 +42,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     private boolean playThrottleSound = prefs().getBoolean("SlotCarRacer.playThrottleSound", true);
     private TobiLogger tobiLogger;
     private SlotCarHardwareInterface hw;
-    private CarTracker carTracker;
+    private TwoCarTracker carTracker;
     private ClusterInterface car = null;
     private FilterChain filterChain;
     private AbstractSlotCarController throttleController;
@@ -101,7 +98,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         filterChain.add(trackDefineFilter);
 
 
-        carTracker = new CarTracker(chip, trackDefineFilter.getTrack(), null); // TODO clean up car state
+        carTracker = new TwoCarTracker(chip, trackDefineFilter.getTrack(), null); // TODO clean up car state
         filterChain.add(carTracker);
         carTracker.setEnclosed(true, this);
         trackDefineFilter.getSupport().addPropertyChangeListener(TrackdefineFilter.EVENT_TRACK_CHANGED,carTracker);

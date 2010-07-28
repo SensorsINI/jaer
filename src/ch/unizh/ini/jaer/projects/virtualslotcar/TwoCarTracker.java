@@ -6,6 +6,8 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 
 import com.sun.opengl.util.GLUT;
 import java.awt.geom.Point2D;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.HashMap;
 import javax.media.opengl.GL;
@@ -14,6 +16,8 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.eventprocessing.tracking.*;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
@@ -24,15 +28,15 @@ import net.sf.jaer.util.filter.LowpassFilter;
  *
  * @author tobi
  */
-public class TwoCarTracker extends RectangularClusterTracker implements FrameAnnotater {
+public class TwoCarTracker extends RectangularClusterTracker implements FrameAnnotater, PropertyChangeListener, CarTracker {
 
     private boolean onlyFollowTrack=getBoolean("onlyFollowTrack", true);
     private float relaxToTrackFactor=getFloat("relaxToTrackFactor",0.05f);
     private float distanceFromTrackMetricTauMs=getFloat("distanceFromTrackMetricTauMs",200);
     private SlotcarTrack track;
     private SlotcarState carState;
-    private CarCluster currentCarCluster=null;
-    private HashMap<CarCluster,LowpassFilter> distanceMap=new HashMap();
+    private TwoCarCluster currentCarCluster=null;
+    private HashMap<TwoCarCluster,LowpassFilter> distanceMap=new HashMap();
 
     public TwoCarTracker(AEChip chip) {
         super(chip);
@@ -85,6 +89,11 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         if(!isPreferenceStored("colorClustersDifferentlyEnabled")){
             setColorClustersDifferentlyEnabled(true);
         }
+
+        FilterChain filterChain=new FilterChain(chip);
+        filterChain.add(new BackgroundActivityFilter(chip));
+       setEnclosedFilterChain(filterChain);
+
     }
 
     public TwoCarTracker(AEChip chip, SlotcarTrack track, SlotcarState carState) {
@@ -95,22 +104,22 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 
     @Override
     public Cluster createCluster() {
-        return new CarCluster();
+        return new TwoCarCluster();
     }
 
     @Override
     public Cluster createCluster(BasicEvent ev) {
-        return new CarCluster(ev);
+        return new TwoCarCluster(ev);
     }
 
     @Override
     public Cluster createCluster(Cluster one, Cluster two) {
-        return new CarCluster(one, two);
+        return new TwoCarCluster(one, two);
     }
 
     @Override
     public Cluster createCluster(BasicEvent ev, OutputEventIterator itr) {
-        return new CarCluster(ev, itr);
+        return new TwoCarCluster(ev, itr);
     }
 
     @Override
@@ -149,11 +158,11 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         }
         
         // purge avg distance map
-        ArrayList<CarCluster> purgeList=new ArrayList();
-        for(CarCluster c:distanceMap.keySet()){
+        ArrayList<TwoCarCluster> purgeList=new ArrayList();
+        for(TwoCarCluster c:distanceMap.keySet()){
             if(!clusters.contains(c)) purgeList.add(c);
         }
-        for(CarCluster c:purgeList)  distanceMap.remove(c);
+        for(TwoCarCluster c:purgeList)  distanceMap.remove(c);
         
             return in;
     }
@@ -162,10 +171,9 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
      *
      * @return the car cluster, or null if there is no good cluster
      */
-    public ClusterInterface getCarCluster() {
+    public TwoCarCluster getCarCluster() {
         // defines the criteria for a visible car cluster
         // very simple now
-        ClusterInterface carCluster = null;
         float minDist = Float.MAX_VALUE;
         ClusterInterface ret = null;
 
@@ -174,7 +182,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 
         for (ClusterInterface cc : clusters) {
             if(!cc.isVisible()) continue;
-            CarCluster c=(CarCluster)cc;
+            TwoCarCluster c=(TwoCarCluster)cc;
             if (c != null && c.isVisible()) {
                 float dist= track.findDistanceToTrack(c.getLocation());
                 if(!distanceMap.containsKey(c)){
@@ -192,8 +200,8 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                 }
             }
         }
-        currentCarCluster=(CarCluster) ret;
-        return ret;
+        currentCarCluster=(TwoCarCluster) ret;
+        return (TwoCarCluster)ret;
     }
 
     private void addEventToClustersOrSpawnNewCluster(BasicEvent ev) {
@@ -239,23 +247,27 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 
 
 
-    public class CarCluster extends RectangularClusterTracker.Cluster {
-        protected float factor;
-        int segmentIdx=-1; // nearest segment index to track model, used to start search
+    /** The cluster used for tracking cars. It extends the RectangularClusterTracker.Cluster with segment index and crashed status fields.
+     * 
+     */
+    public class TwoCarCluster extends RectangularClusterTracker.Cluster implements CarCluster {
+        private float factor;
+        private int segmentIdx=-1;
+        private boolean crashed = false;
 
-        public CarCluster(BasicEvent ev, OutputEventIterator outItr) {
+        public TwoCarCluster(BasicEvent ev, OutputEventIterator outItr) {
             super(ev, outItr);
         }
 
-        public CarCluster(Cluster one, Cluster two) {
+        public TwoCarCluster(Cluster one, Cluster two) {
             super(one, two);
         }
 
-        public CarCluster(BasicEvent ev) {
+        public TwoCarCluster(BasicEvent ev) {
             super(ev);
         }
 
-        public CarCluster() {
+        public TwoCarCluster() {
             super();
         }
 
@@ -336,7 +348,35 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             return super.toString()+" segmentIdx="+segmentIdx;
         }
 
-    } // CarCluster
+        /**
+         * @return the segmentIdx
+         */
+        public int getSegmentIdx() {
+            return segmentIdx;
+        }
+
+        /**
+         * @param segmentIdx the segmentIdx to set
+         */
+        public void setSegmentIdx(int segmentIdx) {
+            this.segmentIdx = segmentIdx;
+        }
+
+        /**
+         * @return the crashed
+         */
+        public boolean isCrashed() {
+            return crashed;
+        }
+
+        /**
+         * @param crashed the crashed to set
+         */
+        public void setCrashed(boolean crashed) {
+            this.crashed = crashed;
+        }
+
+    } // TwoCarCluster
 
     /**
      * @param track the track to set
@@ -397,5 +437,20 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         this.distanceFromTrackMetricTauMs = distanceFromTrackMetricTauMs;
         putFloat("distanceFromTrackMetricTauMs", distanceFromTrackMetricTauMs);
     }
+
+       @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (evt.getPropertyName() == TrackdefineFilter.EVENT_TRACK_CHANGED) {
+            try {
+                track = (SlotcarTrack) evt.getNewValue();
+                setTrack(track);
+                log.info("new track with "+track.getNumPoints()+" points");
+            } catch (Exception e) {
+                log.warning("caught " + e + " when handling property change");
+            }
+        }
+    }
+
+
 
 }
