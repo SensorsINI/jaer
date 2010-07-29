@@ -72,7 +72,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
         // find the csar, pass it to the track if there is one to get it's location, the use the UpcomingCurvature to compute the curvature coming up,
         // then compute the throttle to get our speed at the limit of traction.
 
-        ClusterInterface car = tracker.getCarCluster();
+        ClusterInterface car = tracker.findCarCluster();
         if (car == null) {
             // lost car tracking or just starting out
             return getThrottle();  // return last throttle

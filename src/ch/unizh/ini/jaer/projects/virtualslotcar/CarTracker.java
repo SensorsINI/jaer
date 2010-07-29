@@ -27,11 +27,11 @@ licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_Genera
  */
 public interface CarTracker{
 
-    /** Returns the putative car cluster.
+    /** Finds and then Returns the putative car cluster. This method may be expensive.
      *
      * @return the car cluster, or null if there is no good cluster
      */
-    public CarCluster getCarCluster();
+    public CarCluster findCarCluster();
 
 
 }

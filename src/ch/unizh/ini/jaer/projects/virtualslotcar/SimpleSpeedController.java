@@ -47,7 +47,7 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
 
     @Override
     public float computeControl(CarTracker tracker, SlotcarTrack track) {
-        ClusterInterface car = tracker.getCarCluster();
+        ClusterInterface car = tracker.findCarCluster();
         if (useModelEnabled) {
             throttle=throttleModel.computeThrottle(desiredSpeedPPS);
         } else {

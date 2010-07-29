@@ -83,7 +83,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     synchronized public float computeControl(CarTracker tracker, SlotcarTrack track) {
         // find the csar, pass it to the track if there is one to get it's location, the use the UpcomingCurvature to compute the curvature coming up,
         // then compute the throttle to get our speed at the limit of traction.
-        ClusterInterface car = tracker.getCarCluster();
+        ClusterInterface car = tracker.findCarCluster();
         {
             if (track == null) {
                 log.warning("null track model - can't compute control");
@@ -131,7 +131,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                     log.info("crashed after " + (lapTimer.lapCounter) + " laps");
                 }
                 if (learningEnabled && lastSuccessfulProfile != null && currentProfile != lastSuccessfulProfile) {
-                    log.info("crashed, switching back to " + lastSuccessfulProfile);
+                    log.info("crashed, switching back to previous profile");
                     currentProfile = lastSuccessfulProfile;
                     currentProfile.subtractBump(currentTrackPos);
                 }
@@ -512,16 +512,20 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         public void subtractBump(int segment){
             Arrays.fill(slowedDownSegments,false);
             Arrays.fill(spedUpSegments,false);
-            log.info("reducing throttle starting from segment "+segment);
             int n = (int) (numPoints * fractionOfTrackToPerturb);
+            log.info("reducing throttle starting from segment "+segment);
+            try{
             for (int i = 0; i < n; i++) {
                 int seg = (segment - i);
-                if (seg < 0) {
-                    seg = seg + numPoints;
+                if (seg < 0) { // if segment=1, then reduce 1, 0,
+                    seg = numPoints +seg;
                 }
 //                System.out.println("reducing "+seg);
                 profile[seg] = clipThrottle(profile[seg] - throttleChange / 2);
                 slowedDownSegments[seg] = true;
+            }
+            }catch(ArrayIndexOutOfBoundsException e){
+                log.warning(e.toString());
             }
         }
 

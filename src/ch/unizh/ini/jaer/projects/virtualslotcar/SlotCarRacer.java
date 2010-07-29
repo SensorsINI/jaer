@@ -73,7 +73,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
      */
     public enum State {
 
-        OVERRIDDEN, STARTING, RUNNING, CRASHED, STALLED
+        OVERRIDDEN, STARTING, RUNNING, CRASHED
     }
 
     protected class RacerState extends StateMachineStates {
@@ -131,7 +131,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         out = getEnclosedFilterChain().filterPacket(in);
-        car = carTracker.getCarCluster();
+        car = carTracker.findCarCluster();
         track = trackDefineFilter.getTrack();
         if (car != null && track != null) {
             currentTrackPos = trackDefineFilter.getTrack().findClosest(car.getLocation(), crashDistancePixels, true, -1);
@@ -166,22 +166,14 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
                 }
                 showedMissingTrackWarning = true;
             } else {
-                if (car == null) {
-                    state.set(State.STALLED);
-                } else if (currentTrackPos == -1) {
+                if (car == null || currentTrackPos==-1) {
                     state.set(State.CRASHED);
-                } else {
+                    throttle = getOverriddenThrottleSetting();
                 }
-                throttle = nextThrottle;
             }
         } else if (state.get() == State.CRASHED) {
             throttle = getOverriddenThrottleSetting();
             if (car != null && state.timeSinceChanged() > 1000) {
-                state.set(State.STARTING);
-            }
-        } else if (state.get() == State.STALLED) {
-            throttle = getOverriddenThrottleSetting();
-            if (state.timeSinceChanged() > 1000) {
                 state.set(State.STARTING);
             }
         }
@@ -205,8 +197,8 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
             if (overrideThrottle) {
                 float measuredSpeedPPS = Float.NaN;
                 Point2D.Float pos = new Point2D.Float(Float.NaN, Float.NaN);
-                if (carTracker.getCarCluster() != null) {
-                    ClusterInterface c = carTracker.getCarCluster();
+                if (carTracker.findCarCluster() != null) {
+                    ClusterInterface c = carTracker.findCarCluster();
                     measuredSpeedPPS = c.getSpeedPPS();
                     pos = c.getLocation();
                 }
