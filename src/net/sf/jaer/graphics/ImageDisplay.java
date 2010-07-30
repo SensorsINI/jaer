@@ -821,6 +821,24 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         float leftRight = 0, bottomTop = 0;
     }
 
+    /** Draws a string centered at x,y.
+     * 
+     * @param x horizontal coordinate in image units.
+     * @param y coordinate in image units.
+     * @param s the string to draw.
+     */
+    public void drawCenteredString(float x, float y, String string) {
+        if (string == null || textRenderer==null) {
+            return;
+        }
+        textRenderer.beginRendering(getWidth(), getHeight());
+        float scale = (clipArea.top - clipArea.bottom) / getHeight();  // TODO mysterious scalling of text
+
+        Rectangle2D r = textRenderer.getBounds(string);
+        textRenderer.draw(string, (int) (x / scale - clipArea.left / scale), Math.round(y / scale - clipArea.bottom / scale));
+        textRenderer.endRendering();
+    }
+
     /** 
      * Draws the labels and tick marks, if they exist.
      *

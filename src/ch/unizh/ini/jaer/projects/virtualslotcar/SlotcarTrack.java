@@ -4,8 +4,10 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Point;
-import java.awt.Rectangle;
 import java.awt.geom.Rectangle2D;
 import java.util.LinkedList;
 import java.util.ListIterator;
@@ -14,7 +16,10 @@ import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.logging.Logger;
-import net.sf.jaer.chip.AEChip;
+import javax.media.opengl.GLAutoDrawable;
+import javax.media.opengl.GLEventListener;
+import javax.swing.JFrame;
+import net.sf.jaer.graphics.ImageDisplay;
 
 /**
  * Class for storing race tracks for slot cars. 
@@ -317,6 +322,8 @@ public class SlotcarTrack implements java.io.Serializable {
             closestPointComputer.init();
         }
     }
+    JFrame closestPointFrame = null;
+    ImageDisplay closestPointImage = null;
 
     /** Computes nearest track point using lookup from table */
     class ClosestPointLookupTable {
@@ -343,6 +350,57 @@ public class SlotcarTrack implements java.io.Serializable {
                     setMapEntry(idx, x, y);
                 }
             }
+            if (true) {
+                if (closestPointFrame == null) {
+                    closestPointFrame = new JFrame("Closest Point Map");
+                    closestPointFrame.setPreferredSize(new Dimension(200, 200));
+
+                    closestPointImage = ImageDisplay.createOpenGLCanvas();
+                    closestPointImage.setFontSize(10);
+                    closestPointImage.setSize(size, size);
+                    closestPointImage.setxLabel("x");
+                    closestPointImage.setyLabel("y");
+
+                    closestPointImage.addGLEventListener(new GLEventListener() {
+
+                        @Override
+                        public void init(GLAutoDrawable drawable) {
+                        }
+
+                        @Override
+                        public void display(GLAutoDrawable drawable) {
+                            closestPointImage.checkPixmapAllocation();
+                            for (int x = 0; x < size; x++) {
+                                for (int y = 0; y < size; y++) {
+                                    int point = getMapEntry(x, y);
+                                    if (point == -1) {
+                                        closestPointImage.setPixmapGray(x, y, 0);
+                                    } else {
+                                        Color c=Color.getHSBColor((float)point/getNumPoints(), .5f, .5f);
+                                        float[] rgb=c.getColorComponents(null);
+                                        closestPointImage.setPixmapRGB(x, y,rgb);
+                                        closestPointImage.drawCenteredString(x, y, Integer.toString(point));
+                                    }
+                                }
+                            }
+                        }
+
+                        @Override
+                        public void reshape(GLAutoDrawable drawable, int x, int y, int width, int height) {
+                        }
+
+                        @Override
+                        public void displayChanged(GLAutoDrawable drawable, boolean modeChanged, boolean deviceChanged) {
+                        }
+                    });
+
+
+                    closestPointFrame.getContentPane().add(closestPointImage, BorderLayout.CENTER);
+                    closestPointFrame.setVisible(true);
+
+                }
+                closestPointImage.repaint();
+            }
         }
 
         int getMapEntry(int x, int y) {
@@ -362,19 +420,19 @@ public class SlotcarTrack implements java.io.Serializable {
         }
 
         int findPoint(Point2D.Float pos) {
-            int x = (int) (size * (pos.x - bounds.getX()-xPixPerUnit/2) / bounds.getWidth());
-            int y = (int) (size * (pos.y - bounds.getY()-yPixPerUnit/2) / bounds.getHeight());
+            int x = (int) (size * (pos.x - bounds.getX() - xPixPerUnit / 2) / bounds.getWidth());
+            int y = (int) (size * (pos.y - bounds.getY() - yPixPerUnit / 2) / bounds.getHeight());
             return getMapEntry(x, y);
         }
 
-        int findPoint(double x, double y){
-            int xx = (int) (size * (x - bounds.getX()-xPixPerUnit/2) / bounds.getWidth());
-            int yy = (int) (size * (y - bounds.getY()-yPixPerUnit/2) / bounds.getHeight());
+        int findPoint(double x, double y) {
+            int xx = (int) (size * (x - bounds.getX() - xPixPerUnit / 2) / bounds.getWidth());
+            int yy = (int) (size * (y - bounds.getY() - yPixPerUnit / 2) / bounds.getHeight());
             return getMapEntry(xx, yy);
         }
 
         private void computeBounds() {
-            final float extraFraction=.1f;
+            final float extraFraction = .25f;
             if (trackPoints == null) {
                 return;
             }
@@ -393,8 +451,8 @@ public class SlotcarTrack implements java.io.Serializable {
                     maxy = p.y;
                 }
             }
-            final float w=maxx-minx, h=maxy-miny;
-            bounds.setRect(minx-w*extraFraction, miny-h*extraFraction, w*(1+extraFraction), h*(1+extraFraction) );
+            final float w = maxx - minx, h = maxy - miny;
+            bounds.setRect(minx - w * extraFraction, miny - h * extraFraction, w * (1 + 2*extraFraction), h * (1 + 2*extraFraction));
         }
     }
 
@@ -414,7 +472,7 @@ public class SlotcarTrack implements java.io.Serializable {
         }
 
         if (fastLocalSearchEnabled) {
-            lastFindIdx = closestPointComputer.findPoint( pos.getX(),  pos.getY());
+            lastFindIdx = closestPointComputer.findPoint(pos.getX(), pos.getY());
             return lastFindIdx;
         } else {
             int idx = 0, closestIdx = -1;

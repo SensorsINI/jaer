@@ -35,6 +35,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
     private boolean onlyFollowTrack = getBoolean("onlyFollowTrack", true);
     private float relaxToTrackFactor = getFloat("relaxToTrackFactor", 0.05f);
     private float distanceFromTrackMetricTauMs = getFloat("distanceFromTrackMetricTauMs", 200);
+    private int minSegmentsToBeCarCluster = getInt("minSegmentsToBeCarCluster", 20);
     private SlotcarTrack track;
     private SlotcarState carState;
     private TwoCarCluster currentCarCluster = null;
@@ -44,6 +45,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         setPropertyTooltip("onlyFollowTrack", "If set, clusters will only follow the track. If false, clusters can follow car off the track.");
         setPropertyTooltip("relaxToTrackFactor", "Tracking will normally only parallel the track. This factor control how much the cluster converges onto the track, i.e., the allowed normal motion as fraction of the parallel motion.");
         setPropertyTooltip("distanceFromTrackMetricTauMs", "Each car cluster distance from track model is lowpass filtered with this time constant in ms; the closest one is chosen as the computer controlled car");
+        setPropertyTooltip("minSegmentsToBeCarCluster", "a CarCluster needs to pass at least this many segments to be marked as the car cluster");
         // set reasonable defaults
         if (!isPreferenceStored("maxNumClusters")) {
             setMaxNumClusters(2);
@@ -176,33 +178,37 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         // iterate over clusters to find distance of each from track model.
         // Accumulate the results in a LowPassFilter for each cluster.
 
-        for (ClusterInterface cc : clusters) {
-            TwoCarCluster c = (TwoCarCluster) cc;
-            if (!c.isVisible()) {
-                c.computerControlledCar = false;
+        for (ClusterInterface c : clusters) {
+            TwoCarCluster cc = (TwoCarCluster) c;
+            if (!cc.isVisible()) {
+                cc.computerControlledCar = false;
                 continue;
             }
-            if (c != null) {
-                c.lastDistanceFromTrack = track.findDistanceToTrack(c.getLocation());
-                c.computerControlledCar = false; // mark all false
-                if (Float.isNaN(c.lastDistanceFromTrack)) {
-                    c.crashed = true;
-                    c.distFilter.reset();
-                    c.avgDistanceFromTrack = Float.NaN;
+            if (cc != null) {
+                cc.lastDistanceFromTrack = track.findDistanceToTrack(cc.getLocation());
+                cc.computerControlledCar = false; // mark all false
+                if (Float.isNaN(cc.lastDistanceFromTrack)) {
+                    System.out.println(cc + " is crashed");
+                    cc.crashed = true;
+                    cc.distFilter.reset();
+                    cc.avgDistanceFromTrack = Float.NaN;
                 } else {
-                    c.crashed = false;
-                    c.avgDistanceFromTrack = c.distFilter.filter(c.lastDistanceFromTrack, c.getLastEventTimestamp());
-                    if (c.avgDistanceFromTrack < minDist) {
-                        minDist = c.avgDistanceFromTrack;
-                        ret = c;
-                    } else {
+                    cc.crashed = false;
+                    cc.avgDistanceFromTrack = cc.distFilter.filter(cc.lastDistanceFromTrack, cc.getLastEventTimestamp());
+                    if (cc.avgDistanceFromTrack < minDist && cc.numSegmentIncreases>minSegmentsToBeCarCluster) {
+                        minDist = cc.avgDistanceFromTrack;
+                        ret = cc;
                     }
                 }
             }
         }
 
-
-        if(ret!=null) ret.computerControlledCar=true; // closest avg to track is computer controlled car
+        if (ret != null) {
+            ret.computerControlledCar = true; // closest avg to track is computer controlled car
+        }
+        if(ret!=currentCarCluster){
+            log.info("chose new CarCluster "+ret);
+        }
         currentCarCluster = (TwoCarCluster) ret;
         return (TwoCarCluster) ret;
     }
@@ -254,6 +260,21 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         }
     }
 
+    /**
+     * @return the minSegmentsToBeCarCluster
+     */
+    public int getMinSegmentsToBeCarCluster() {
+        return minSegmentsToBeCarCluster;
+    }
+
+    /**
+     * @param minSegmentsToBeCarCluster the minSegmentsToBeCarCluster to set
+     */
+    public void setMinSegmentsToBeCarCluster(int minSegmentsToBeCarCluster) {
+        this.minSegmentsToBeCarCluster = minSegmentsToBeCarCluster;
+        putInt("minSegmentsToBeCarCluster", minSegmentsToBeCarCluster);
+    }
+
     /** The cluster used for tracking cars. It extends the RectangularClusterTracker.Cluster with segment index and crashed status fields.
      * 
      */
@@ -264,8 +285,8 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         private boolean crashed = false;
         float lastDistanceFromTrack = 0, avgDistanceFromTrack = 0;
         LowpassFilter distFilter = new LowpassFilter();
-        int birthSegmentIdx=-1;
-        int numSegmentIncreases=0;
+        int birthSegmentIdx = -1;
+        int numSegmentIncreases = 0;
 
         {
             distFilter.setTauMs(distanceFromTrackMetricTauMs);
@@ -354,10 +375,10 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                 return -1;
             }
             int idx = track.findClosestIndex(location, track.getPointTolerance(), true);
-            if(birthSegmentIdx==-1 && idx!=-1){
-                birthSegmentIdx=idx;
+            if (birthSegmentIdx == -1 && idx != -1) {
+                birthSegmentIdx = idx;
             }
-            if(idx>segmentIdx){
+            if (idx > segmentIdx) {
                 numSegmentIncreases++;
             }
             segmentIdx = idx;
