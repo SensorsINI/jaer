@@ -557,7 +557,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
 
             // Select point for dragging
             if (currentPointIdx < 0) {
-                int idx = extractedTrack.findClosest(currentMousePoint, clickTolerance, false, -1);
+                int idx = extractedTrack.findClosestIndex(currentMousePoint, clickTolerance, false);
                 // System.out.println("New drag " + idx + " / " + clickTolerance);
                 if (idx >= 0) {
                     currentPointIdx = idx;
@@ -589,7 +589,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
             return idxP;
         }
 
-        int idx1 = extractedTrack.findClosest(p, Float.MAX_VALUE, false, -1);
+        int idx1 = extractedTrack.findClosestIndex(p, Float.MAX_VALUE, false);
         if (idx1 >= 0) {
             // Find which one of the neighbors is closest
             int idx2 = idx1 - 1;
@@ -625,7 +625,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         if (deleteOnClick) {
             // Delete point
             if (extractedTrack != null) {
-                int idx = extractedTrack.findClosest(p, clickTolerance, false, -1);
+                int idx = extractedTrack.findClosestIndex(p, clickTolerance, false);
                 if (idx >= 0) {
                     extractedTrack.deletePoint(idx);
                     extractedTrack.updateTrack();

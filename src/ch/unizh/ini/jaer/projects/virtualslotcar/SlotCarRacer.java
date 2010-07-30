@@ -4,6 +4,11 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import java.awt.geom.Point2D;
@@ -29,6 +34,7 @@ import net.sf.jaer.util.TobiLogger;
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
+    public static final int NUM_SEGMENT_INCREASES_TO_EXIT_STARTING = 15;
 
     public static String getDescription() {
         return "Slot car racer project, Telluride 2010";
@@ -43,7 +49,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     private TobiLogger tobiLogger;
     private SlotCarHardwareInterface hw;
     private TwoCarTracker carTracker;
-    private ClusterInterface car = null;
+    private TwoCarTracker.TwoCarCluster car = null;
     private FilterChain filterChain;
     private AbstractSlotCarController throttleController;
     private TrackdefineFilter trackDefineFilter;
@@ -54,6 +60,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     private long lastTimeSoundPlayed;
     private LapTimer lapTimer = new LapTimer();
     private int currentTrackPos = -1;
+    private SlotcarSoundEffects sounds=null;
 
     public enum ControllerToUse {
 
@@ -119,7 +126,11 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip(con, "controllerToUse", "Which controller to use to control car throttle");
         setPropertyTooltip("playThrottleSound", "plays a spike when throttle is increased to indicate controller active");
         setPropertyTooltip("playSoundThrottleChangeThreshold", "threshold change in throttle to play sound");
-
+        try {
+            sounds = new SlotcarSoundEffects(0);
+        } catch (Exception ex) {
+            log.warning("No sound effects available: "+ex.toString());
+        }
     }
 
     @Override
@@ -134,7 +145,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         car = carTracker.findCarCluster();
         track = trackDefineFilter.getTrack();
         if (car != null && track != null) {
-            currentTrackPos = trackDefineFilter.getTrack().findClosest(car.getLocation(), crashDistancePixels, true, -1);
+            currentTrackPos = trackDefineFilter.getTrack().findClosestIndex(car.getLocation(), crashDistancePixels, true);
             lapTimer.update(currentTrackPos, ((RectangularClusterTracker.Cluster) car).getLastEventTimestamp());
         } else {
             lapTimer.reset();
@@ -150,13 +161,13 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     synchronized private void chooseNextState() {
 
         float prevThrottle = throttle;
-        float nextThrottle = throttleController.computeControl(carTracker, trackDefineFilter.getTrack());
+        throttleController.computeControl(carTracker, trackDefineFilter.getTrack());
         if (state.get() == State.OVERRIDDEN) {
             throttle = getOverriddenThrottleSetting();
 
         } else if (state.get() == State.STARTING) {
             throttle = getOverriddenThrottleSetting();
-            if (state.timeSinceChanged() > 300) {
+            if (state.timeSinceChanged() > 4000  && car!=null && car.numSegmentIncreases>NUM_SEGMENT_INCREASES_TO_EXIT_STARTING) {
                 state.set(State.RUNNING);
             }
         } else if (state.get() == State.RUNNING) {
@@ -169,6 +180,10 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
                 if (car == null || currentTrackPos==-1) {
                     state.set(State.CRASHED);
                     throttle = getOverriddenThrottleSetting();
+                    sounds.play();
+                    log.info("CRASHED");
+                }else{
+                    throttle=throttleController.getThrottle();
                 }
             }
         } else if (state.get() == State.CRASHED) {

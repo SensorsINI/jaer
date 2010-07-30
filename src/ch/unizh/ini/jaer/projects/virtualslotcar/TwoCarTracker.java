@@ -5,6 +5,7 @@
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
 import com.sun.opengl.util.GLUT;
+import java.awt.Point;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -170,7 +171,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         // defines the criteria for a visible car cluster
         // very simple now
         float minDist = Float.MAX_VALUE;
-        ClusterInterface ret = null;
+        TwoCarCluster ret = null;
 
         // iterate over clusters to find distance of each from track model.
         // Accumulate the results in a LowPassFilter for each cluster.
@@ -181,23 +182,27 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                 c.computerControlledCar = false;
                 continue;
             }
-            if (c != null && c.isVisible()) {
-                float distFromTrackNow = track.findDistanceToTrack(c.getLocation());
-                if (distFromTrackNow == Float.MAX_VALUE) {
+            if (c != null) {
+                c.lastDistanceFromTrack = track.findDistanceToTrack(c.getLocation());
+                c.computerControlledCar = false; // mark all false
+                if (Float.isNaN(c.lastDistanceFromTrack)) {
                     c.crashed = true;
+                    c.distFilter.reset();
+                    c.avgDistanceFromTrack = Float.NaN;
                 } else {
                     c.crashed = false;
-                }
-                float lpdist = c.distFilter.filter(distFromTrackNow, c.getLastEventTimestamp());
-                if (lpdist < minDist) {
-                    minDist = lpdist;
-                    c.computerControlledCar = true;
-                    ret = c;
-                } else {
-                    c.computerControlledCar = false;
+                    c.avgDistanceFromTrack = c.distFilter.filter(c.lastDistanceFromTrack, c.getLastEventTimestamp());
+                    if (c.avgDistanceFromTrack < minDist) {
+                        minDist = c.avgDistanceFromTrack;
+                        ret = c;
+                    } else {
+                    }
                 }
             }
         }
+
+
+        if(ret!=null) ret.computerControlledCar=true; // closest avg to track is computer controlled car
         currentCarCluster = (TwoCarCluster) ret;
         return (TwoCarCluster) ret;
     }
@@ -226,10 +231,13 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             int r = random.nextInt(addList.size());
             addList.get(r).cluster.addEvent(ev);
 
-        } else if (clusters.size() < getMaxNumClusters()) { // start a new cluster
-            Cluster newCluster = null;
-            newCluster = createCluster(ev); // new Cluster(ev);
-            clusters.add(newCluster);
+        } else if (clusters.size() < getMaxNumClusters()) {
+            // start a new cluster bu tonly if event in range of track
+            if (track == null || track.findClosestIndex(new Point(ev.x, ev.y), track.getPointTolerance(), true) != -1) {
+                Cluster newCluster = null;
+                newCluster = createCluster(ev); // new Cluster(ev);
+                clusters.add(newCluster);
+            }
         }
 
     }
@@ -254,8 +262,10 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         private float factor;
         private int segmentIdx = -1;
         private boolean crashed = false;
-        float avgDistanceFromTrack = 0;
+        float lastDistanceFromTrack = 0, avgDistanceFromTrack = 0;
         LowpassFilter distFilter = new LowpassFilter();
+        int birthSegmentIdx=-1;
+        int numSegmentIncreases=0;
 
         {
             distFilter.setTauMs(distanceFromTrackMetricTauMs);
@@ -289,7 +299,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                 super.updatePosition(event, m);
                 return;
             } else {
-                int idx = findNearestTrackIndex();
+                int idx = updateSegmentInfo();
                 // move cluster, but only along the track
                 Point2D.Float v = findClosestTrackSegmentVector();
                 if (v == null) {
@@ -314,7 +324,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         @Override
         public void draw(GLAutoDrawable drawable) {
             super.draw(drawable);
-            final float BOX_LINE_WIDTH = 4f; // in chip
+            final float BOX_LINE_WIDTH = 8f; // in chip
             GL gl = drawable.getGL();
 
             // set color and line width of cluster annotation
@@ -339,11 +349,17 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 
         }
 
-        private int findNearestTrackIndex() {
+        private int updateSegmentInfo() {
             if (track == null) {
                 return -1;
             }
-            int idx = track.findClosest(location, track.getPointTolerance(), true, segmentIdx);
+            int idx = track.findClosestIndex(location, track.getPointTolerance(), true);
+            if(birthSegmentIdx==-1 && idx!=-1){
+                birthSegmentIdx=idx;
+            }
+            if(idx>segmentIdx){
+                numSegmentIncreases++;
+            }
             segmentIdx = idx;
             return idx;
         }
