@@ -10,7 +10,7 @@ import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
@@ -21,7 +21,6 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.eventprocessing.tracking.*;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
@@ -176,7 +175,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
      */
     @Override
     public TwoCarCluster findCarCluster() {
-        if(track==null){
+        if (track == null) {
             log.warning("null track - perhaps deserialization failed or no track was saved?");
             return null;
         }
@@ -199,12 +198,15 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                 cc.computerControlledCar = false; // mark all false
                 if (Float.isNaN(cc.lastDistanceFromTrack)) {
 //                    System.out.println(cc + " is crashed");
+                    if (cc.crashed == false) {
+                        cc.determineCrashLocation();
+                    }
                     cc.crashed = true;
-                    cc.determineCrashLocation();
                     cc.distFilter.reset();
                     cc.avgDistanceFromTrack = Float.NaN;
                 } else {
                     cc.crashed = false;
+                    cc.crashSegment = -1;
                     cc.avgDistanceFromTrack = cc.distFilter.filter(cc.lastDistanceFromTrack, cc.getLastEventTimestamp());
                     if (cc.avgDistanceFromTrack < minDist && cc.numSegmentIncreases > minSegmentsToBeCarCluster) {
                         minDist = cc.avgDistanceFromTrack;
@@ -297,11 +299,14 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         float lastDistanceFromTrack = 0, avgDistanceFromTrack = 0; // instantaneous and lowpassed distance from track model
         int birthSegmentIdx = -1; // which segment we were born on
         int numSegmentIncreases = 0; // how many times segment number increased
-        int crashSegment=-1; // where we crashed
-        final int SEGMENT_HISTORY_LENGTH=50; // number of segments to keep track of in past
-        int[] segmentHistory=new int[SEGMENT_HISTORY_LENGTH]; // ring buffer of segment history
-        int segmentHistoryPointer=0; // ring pointer, points to next location in ring buffer
+        int crashSegment = -1; // where we crashed
+        final int SEGMENT_HISTORY_LENGTH = 50; // number of segments to keep track of in past
+        int[] segmentHistory = new int[SEGMENT_HISTORY_LENGTH]; // ring buffer of segment history
 
+        {
+            Arrays.fill(segmentHistory, Integer.MIN_VALUE);
+        }
+        int segmentHistoryPointer = 0; // ring pointer, points to next location in ring buffer
         LowpassFilter distFilter = new LowpassFilter();
 
         {
@@ -394,9 +399,9 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             if (birthSegmentIdx == -1 && idx != -1) {
                 birthSegmentIdx = idx;
             }
-            if(idx!=segmentIdx){
-                segmentHistory[segmentHistoryPointer]=idx;
-                segmentHistoryPointer=(segmentHistoryPointer+1)%SEGMENT_HISTORY_LENGTH; // LENGTH=2,pointer =0, 1, 0, 1, etc
+            if (idx != segmentIdx) {
+                segmentHistory[segmentHistoryPointer] = idx;
+                segmentHistoryPointer = (segmentHistoryPointer + 1) % SEGMENT_HISTORY_LENGTH; // LENGTH=2,pointer =0, 1, 0, 1, etc
             }
             if (idx > segmentIdx) {
                 numSegmentIncreases++;
@@ -447,38 +452,93 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 
         private void determineCrashLocation() {
             // looks over segment history to find last index of increasing sequence of track points - this is crash point
-            int j=segmentHistoryPointer;
-            int[] history=new int[SEGMENT_HISTORY_LENGTH];
-            for(int i=0;i<SEGMENT_HISTORY_LENGTH;i++){
-                history[i]=segmentHistory[j];
-                j--;
-                if(j<0) j=SEGMENT_HISTORY_LENGTH-1;
-            }
-            int crashSeg=-1;
-            int count=0;
-            int lastSeq=Integer.MAX_VALUE;
-            final int SEGMENTS_BEFORE_CRASH=5;
-            for(int h:history){
-                if(h==-1){
-                    count=0;
-                    lastSeq=Integer.MAX_VALUE;
-                }else if (h < lastSeq) {
-                    count++;
-                    if(count>=SEGMENTS_BEFORE_CRASH){
-                        crashSeg=h;
+            // march up the history (first point is then the oldest) until we stop increasing (counting wraparound as an increase).
+            // the last point of increase is the crash location.
+            final int LOOKING_FOR_LAST = 0, COUNTING = 1, FOUND_CRASH = 2;
+            final int SEGMENTS_BEFORE_CRASH = 5; // need this many upwards to see a crash
+
+            int state = LOOKING_FOR_LAST;
+            int crashSeg = -1;
+            int count = 0;
+            int lastValidSeg = Integer.MAX_VALUE;
+            int startSeg = -1;
+
+            StringBuilder sb = new StringBuilder("Pre-crash segment history, counting backwards in time = ");
+            search:
+            for (int i = 0; i < SEGMENT_HISTORY_LENGTH; i++) { // for all the recorded segments
+                int segPointer = segmentHistoryPointer - i - 1;
+                if (segPointer < 0) {
+                    segPointer = SEGMENT_HISTORY_LENGTH + segPointer; // wrap back on ring buffer
+                }
+                int thisSeg = segmentHistory[segPointer];
+                sb.append(Integer.toString(thisSeg)).append(" ");
+
+                switch (state) {
+                    case LOOKING_FOR_LAST:
+                        if (thisSeg == Integer.MIN_VALUE) {
+                            break search; // done with valid points that have had something put in them
+                        }
+                        if (thisSeg == -1) {
+                            continue; // not initialized yet or in crash state
+                        }
+                        lastValidSeg = thisSeg;
+                        startSeg = thisSeg;
+                        count = 1;
+                        state = COUNTING;
                         break;
-                    }
-                    lastSeq=h;
+                    case COUNTING:
+                        if (thisSeg == Integer.MIN_VALUE) {
+                            state = LOOKING_FOR_LAST;
+                            count = 0;
+                            break search;
+                        }else if (thisSeg == -1) {
+                            state = LOOKING_FOR_LAST;
+                            count = 0;
+                            continue;
+                        } else if ((thisSeg <= lastValidSeg+1) // if this segment less that last one, accounting for jiggle around nearby points
+                                || ( // OR wrap backwards:
+                                thisSeg > track.getNumPoints() - SEGMENTS_BEFORE_CRASH // this seg at end of track
+                                && lastValidSeg < SEGMENTS_BEFORE_CRASH // previuos was at start of track
+                                )) { // normal decrement or wraparound
+                            count++; // then count this
+                            lastValidSeg = thisSeg;
+
+                            if (count >= SEGMENTS_BEFORE_CRASH) {
+                                state = FOUND_CRASH;
+                                crashSeg = startSeg; // mark this one as crash point
+                                break search;
+                            }
+                        } else { // either backwards or -1 (off track)
+                            state = LOOKING_FOR_LAST;
+                            count = 0;
+                            startSeg = thisSeg;
+                        }
+                        break;
+                    case FOUND_CRASH:
+                        break search;
+                    default:
+                        throw new Error("invalid state=" + state);
                 }
             }
-            StringBuilder sb=new StringBuilder("Pre-crash segment history, going backwards = ");
-            for(int i:history){
-                sb.append(Integer.toString(i)+" ");
+            switch (state) {
+                case LOOKING_FOR_LAST:
+                    sb.append("could't find last crash segment, using lastValidSeg=" + lastValidSeg);
+                    crashSegment = lastValidSeg;
+                    break;
+                case COUNTING:
+                    sb.append("could't find last crash segment, using startSeg=" + startSeg);
+                    crashSegment = startSeg;
+                    break;
+                case FOUND_CRASH:
+                    sb.append("\ndetermined crash was at segment " + crashSeg);
+                    crashSegment = crashSeg;
+                    break;
+                default:
+                    sb.append("\ncoulnt' determine crash segment; invalid state=" + state);
+
             }
-            sb.append("\ncrashed at segment "+crashSeg);
-            crashSegment=crashSeg;
             log.info(sb.toString());
-        }
+        } // determineCrashLocation
     } // TwoCarCluster
 
     /**
@@ -489,7 +549,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         this.track = track;
         nearbyTrackFilter.setTrack(track);
         if (this.track != old) {
-            if(this.track!=null){
+            if (this.track != null) {
                 this.track.setPointTolerance(maxDistanceFromTrackPoint);
             }
             log.info("new track with " + track.getNumPoints() + " points");
