@@ -194,8 +194,9 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                 cc.lastDistanceFromTrack = track.findDistanceToTrack(cc.getLocation());
                 cc.computerControlledCar = false; // mark all false
                 if (Float.isNaN(cc.lastDistanceFromTrack)) {
-                    System.out.println(cc + " is crashed");
+//                    System.out.println(cc + " is crashed");
                     cc.crashed = true;
+                    cc.determineCrashLocation();
                     cc.distFilter.reset();
                     cc.avgDistanceFromTrack = Float.NaN;
                 } else {
@@ -287,12 +288,17 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
     public class TwoCarCluster extends RectangularClusterTracker.Cluster implements CarCluster {
 
         private float factor;
-        private int segmentIdx = -1;
-        private boolean crashed = false;
-        float lastDistanceFromTrack = 0, avgDistanceFromTrack = 0;
+        private int segmentIdx = -1; // current segment
+        private boolean crashed = false; // flag that we crashed
+        float lastDistanceFromTrack = 0, avgDistanceFromTrack = 0; // instantaneous and lowpassed distance from track model
+        int birthSegmentIdx = -1; // which segment we were born on
+        int numSegmentIncreases = 0; // how many times segment number increased
+        int crashSegment=-1; // where we crashed
+        final int SEGMENT_HISTORY_LENGTH=50; // number of segments to keep track of in past
+        int[] segmentHistory=new int[SEGMENT_HISTORY_LENGTH]; // ring buffer of segment history
+        int segmentHistoryPointer=0; // ring pointer, points to next location in ring buffer
+
         LowpassFilter distFilter = new LowpassFilter();
-        int birthSegmentIdx = -1;
-        int numSegmentIncreases = 0;
 
         {
             distFilter.setTauMs(distanceFromTrackMetricTauMs);
@@ -384,6 +390,10 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             if (birthSegmentIdx == -1 && idx != -1) {
                 birthSegmentIdx = idx;
             }
+            if(idx!=segmentIdx){
+                segmentHistory[segmentHistoryPointer]=idx;
+                segmentHistoryPointer=(segmentHistoryPointer+1)%SEGMENT_HISTORY_LENGTH; // LENGTH=2,pointer =0, 1, 0, 1, etc
+            }
             if (idx > segmentIdx) {
                 numSegmentIncreases++;
             }
@@ -429,6 +439,41 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
          */
         public void setCrashed(boolean crashed) {
             this.crashed = crashed;
+        }
+
+        private void determineCrashLocation() {
+            // looks over segment history to find last index of increasing sequence of track points - this is crash point
+            int j=segmentHistoryPointer;
+            int[] history=new int[SEGMENT_HISTORY_LENGTH];
+            for(int i=0;i<SEGMENT_HISTORY_LENGTH;i++){
+                history[i]=segmentHistory[j];
+                j--;
+                if(j<0) j=SEGMENT_HISTORY_LENGTH-1;
+            }
+            int crashSeg=-1;
+            int count=0;
+            int lastSeq=Integer.MAX_VALUE;
+            final int SEGMENTS_BEFORE_CRASH=5;
+            for(int h:history){
+                if(h==-1){
+                    count=0;
+                    lastSeq=Integer.MAX_VALUE;
+                }else if (h < lastSeq) {
+                    count++;
+                    if(count>=SEGMENTS_BEFORE_CRASH){
+                        crashSeg=h;
+                        break;
+                    }
+                    lastSeq=h;
+                }
+            }
+            StringBuilder sb=new StringBuilder("Pre-crash segment history, going backwards = ");
+            for(int i:history){
+                sb.append(Integer.toString(i)+" ");
+            }
+            sb.append("\ncrashed at segment "+crashSeg);
+            crashSegment=crashSeg;
+            log.info(sb.toString());
         }
     } // TwoCarCluster
 
