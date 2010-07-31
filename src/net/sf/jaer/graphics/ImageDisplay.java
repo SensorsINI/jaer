@@ -238,7 +238,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     @Override
     public void init(GLAutoDrawable drawable) {
 
-        log.info("init");
+//        log.info("init");
 
         GL gl = getGL();
 
@@ -496,7 +496,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     @Override
     public synchronized void reshape(GLAutoDrawable drawable, int x, int y, int width, int height) {
         super.reshape(x, y, width, height);
-        log.info("reshape ");
+//        log.info("reshape ");
         GL gl = drawable.getGL();
         gl.glLoadIdentity();
         float newscale;

@@ -51,10 +51,15 @@ public class SlotcarTrack implements java.io.Serializable {
     private float integrationStep = 0.1f;
     /** Curvature at track points. The curvature is the radius of curvature, so the straighter the track, the larger the curvature.  */
     private float[] curvatureAtPoints = null;
-    private ClosestPointLookupTable closestPointComputer = new ClosestPointLookupTable();
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     /** PropertyChangeEvent that is fired when track is changed, e.g. by loading from file. */
     public static final String EVENT_TRACK_CHANGED = "trackChanged";
+    
+    
+    
+    transient private ClosestPointLookupTable closestPointComputer = new ClosestPointLookupTable(); // transient so we don't try to serialize it, since it must be rebuilt after deserialization in any case.
+    transient JFrame closestPointFrame = null;
+    transient ImageDisplay closestPointImage = null;
 
     /** Creates a new track. */
     public SlotcarTrack() {
@@ -327,8 +332,6 @@ public class SlotcarTrack implements java.io.Serializable {
             closestPointComputer.init();
         }
     }
-    JFrame closestPointFrame = null;
-    ImageDisplay closestPointImage = null;
 
     /**
      * @return the support

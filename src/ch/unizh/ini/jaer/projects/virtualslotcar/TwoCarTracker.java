@@ -176,6 +176,10 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
      */
     @Override
     public TwoCarCluster findCarCluster() {
+        if(track==null){
+            log.warning("null track - perhaps deserialization failed or no track was saved?");
+            return null;
+        }
         // defines the criteria for a visible car cluster
         // very simple now
         float minDist = Float.MAX_VALUE;
