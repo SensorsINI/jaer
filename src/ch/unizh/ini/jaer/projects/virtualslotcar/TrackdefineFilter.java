@@ -11,6 +11,7 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 
 import java.awt.*;
 import java.awt.event.MouseEvent;
+import java.beans.PropertyChangeEvent;
 import javax.swing.JOptionPane;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
@@ -25,6 +26,7 @@ import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 import java.io.*;
 import java.awt.geom.Point2D;
+import java.beans.PropertyChangeListener;
 import javax.media.opengl.glu.GLU;
 import javax.swing.SwingUtilities;
 // import java.lang.reflect.InvocationTargetException;
@@ -54,46 +56,13 @@ point).
  * 
  * @author Michael Pfeiffer
  */
-/**
- * A utility class for points in a priority queue, ordered by their distance to
- * other points in the queue.
- */
-class TrackPoint implements Comparable<TrackPoint>, Observer { // Observer to handle chip changes - to get chip size after construction
 
-    public int x;
-    public int y;
-    public float minDistance;
-
-    public TrackPoint(int x, int y, float minDistance) {
-        this.x = x;
-        this.y = y;
-        this.minDistance = minDistance;
-    }
-
-    public int compareTo(TrackPoint p) {
-        if (p.minDistance < minDistance) {
-            return +1;
-        } else if (p.minDistance == minDistance) {
-            return 0;
-        } else {
-            return -1;
-        }
-    }
-
-    public void update(Observable o, Object arg) {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-}
-
-public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, Observer, MouseListener, MouseMotionListener {
+public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, Observer, MouseListener, MouseMotionListener, PropertyChangeListener {
 
     public static String getDescription() {
         return "Detects a track from incoming pixels and user input";
     }
 
-    /** PropertyChangeEvent that is fired when track is changed, e.g. by loading from file. */
-    public static final String EVENT_TRACK_CHANGED="trackChanged";
-    
     // Variables declared in XYTypeFilter
     public short x = 0, y = 0;
     public byte type = 0;
@@ -201,6 +170,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
      *@param in input events can be null or empty.
      *@return the processed events, may be fewer in number. filtering may occur in place in the in packet.
      */
+    @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
         int i;
 
@@ -235,6 +205,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         outItr.nextOutput().copyFrom(te);
     }
 
+    @Override
     synchronized final public void resetFilter() {
 //        startX=0; endX=chip.getSizeX();
 //        startY=0; endY=chip.getSizeY();
@@ -465,6 +436,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
 
     }
 
+    @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
         if (counter < 1) {
             counter++;
@@ -502,16 +474,19 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
 
     }
 
+    @Override
     public void update(Observable o, Object arg) {
         if (o instanceof AEChip && (arg == AEChip.EVENT_SIZEX || arg == AEChip.EVENT_SIZEY)) {
             resetFilter();
         }
     }
 
+    @Override
     public void mousePressed(MouseEvent e) {
         Point p = canvas.getPixelFromMouseEvent(e);
     }
 
+    @Override
     public void mouseReleased(MouseEvent e) {
         if ((currentPointIdx < 0) || (extractedTrack == null)) {
             return;
@@ -534,6 +509,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         currentPointIdx = -1;
     }
 
+    @Override
     public void mouseMoved(MouseEvent e) {
         if (insertOnClick) {
             currentMousePoint = canvas.getPixelFromMouseEvent(e);
@@ -541,12 +517,15 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         }
     }
 
+    @Override
     public void mouseExited(MouseEvent e) {
     }
 
+    @Override
     public void mouseEntered(MouseEvent e) {
     }
 
+    @Override
     public void mouseDragged(MouseEvent e) {
         // System.out.println("Dragging " + currentPointIdx);
         currentMousePoint = canvas.getPixelFromMouseEvent(e);
@@ -619,6 +598,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
 
  
 
+    @Override
     public void mouseClicked(MouseEvent e) {
         // System.out.println("Click " + currentPointIdx);
         Point p = canvas.getPixelFromMouseEvent(e);
@@ -903,9 +883,11 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
 
         // Create track object and spline
         extractedTrack = new SlotcarTrack();
+        extractedTrack.getSupport().addPropertyChangeListener(this);
         extractedTrack.create(extractPoints);
 
         smoothPoints = extractedTrack.getSmoothPoints(stepSize);
+        extractedTrack.getSupport().addPropertyChangeListener(SlotcarTrack.EVENT_TRACK_CHANGED, this);
     }
 
     /**
@@ -938,6 +920,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
 
         SwingUtilities.invokeLater(new Runnable() {
 
+            @Override
             public void run() {
                 fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
                 fc.setSelectedFile(new File("test.track"));
@@ -1043,8 +1026,8 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         }
         ois.close();
         fis.close();
+        extractedTrack.getSupport().addPropertyChangeListener(this);
         extractedTrack.updateTrack(); // update other internal vars of track
-        getSupport().firePropertyChange(EVENT_TRACK_CHANGED,old, extractedTrack); // inform listeners we have a new track model
     }
 
     /**
@@ -1074,6 +1057,55 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
             extractPoints = extractedTrack.getPointList();
         }
     }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        getSupport().firePropertyChange(evt); // pass on event from SlotcarTrack
+    }
+
+
+
+
+
+
+
+
+
+
+
+    /**
+ * A utility class for points in a priority queue, ordered by their distance to
+ * other points in the queue.
+ */
+class TrackPoint implements Comparable<TrackPoint>, Observer { // Observer to handle chip changes - to get chip size after construction
+
+    public int x;
+    public int y;
+    public float minDistance;
+
+    public TrackPoint(int x, int y, float minDistance) {
+        this.x = x;
+        this.y = y;
+        this.minDistance = minDistance;
+    }
+
+    public int compareTo(TrackPoint p) {
+        if (p.minDistance < minDistance) {
+            return +1;
+        } else if (p.minDistance == minDistance) {
+            return 0;
+        } else {
+            return -1;
+        }
+    }
+
+    public void update(Observable o, Object arg) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+
+}
+
 
 
 }

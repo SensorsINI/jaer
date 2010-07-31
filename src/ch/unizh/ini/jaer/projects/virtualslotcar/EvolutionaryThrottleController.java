@@ -41,7 +41,6 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     // prefs
     private float fractionOfTrackToPerturb = prefs().getFloat("EvolutionaryThrottleController.fractionOfTrackToPunish", 0.2f);
     private float defaultThrottle = prefs().getFloat("EvolutionaryThrottleController.defaultThrottle", .1f); // default throttle setting if no car is detected
-    private float maxDistanceFromTrackPoint = prefs().getFloat("EvolutionaryThrottleController.maxDistanceFromTrackPoint", 15); // pixels - need to set in track model
     private boolean learningEnabled = prefs().getBoolean("EvolutionaryThrottleController.learningEnabled", false);
     private float throttleChange = prefs().getFloat("EvolutionaryThrottleController.throttleChange", 0.1f);
     private int numSuccessfulLapsToReward = prefs().getInt("EvolutionaryThrottleController.numSuccessfulLapsToReward", 3);
@@ -64,7 +63,6 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     public EvolutionaryThrottleController(AEChip chip) {
         super(chip);
         setPropertyTooltip("defaultThrottle", "default throttle setting if no car is detected; also starting throttle after resetting learning and minimum allowed throttle");
-        setPropertyTooltip("maxDistanceFromTrackPoint", "Maximum allowed distance in pixels from track spline point to find nearest spline point; if currentTrackPos=-1 increase maxDistanceFromTrackPoint");
         setPropertyTooltip("fractionOfTrackToPunish", "fraction of track to reduce throttle and mark for no reward");
         setPropertyTooltip("learningEnabled", "enable evolution - successful profiles are sped up, crashes cause reversion to last successful profile");
         setPropertyTooltip("throttleChange", "max amount to increase throttle for perturbation");
@@ -90,8 +88,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                 return getThrottle();
             }
             this.setTrack(track); // set track for logging
-            track.setPointTolerance(maxDistanceFromTrackPoint);
-
+ 
             if (currentProfile == null || currentProfile.getNumPoints() != track.getNumPoints()) {
                 currentProfile = new ThrottleProfile(track.getNumPoints());
                 log.info("made a new ThrottleProfile :" + currentProfile);
@@ -328,22 +325,6 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     }
 
-    /**
-     * @return the maxDistanceFromTrackPoint
-     */
-    public float getMaxDistanceFromTrackPoint() {
-        return maxDistanceFromTrackPoint;
-    }
-
-    /**
-     * @param maxDistanceFromTrackPoint the maxDistanceFromTrackPoint to set
-     */
-    public void setMaxDistanceFromTrackPoint(float maxDistanceFromTrackPoint) {
-        this.maxDistanceFromTrackPoint = maxDistanceFromTrackPoint;
-        prefs().putFloat("EvolutionaryThrottleController.maxDistanceFromTrackPoint", maxDistanceFromTrackPoint);
-        // Define tolerance for track model
-        getTrack().setPointTolerance(maxDistanceFromTrackPoint);
-    }
 
     /**
      * @return the learning

@@ -4,6 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
+import java.beans.PropertyChangeEvent;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -12,6 +13,7 @@ import javax.sound.sampled.UnsupportedAudioFileException;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import java.awt.geom.Point2D;
+import java.beans.PropertyChangeListener;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
@@ -33,7 +35,8 @@ import net.sf.jaer.util.TobiLogger;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
-public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
+public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
+
     public static final int NUM_SEGMENT_INCREASES_TO_EXIT_STARTING = 15;
 
     public static String getDescription() {
@@ -60,7 +63,9 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     private long lastTimeSoundPlayed;
     private LapTimer lapTimer = new LapTimer();
     private int currentTrackPos = -1;
-    private SlotcarSoundEffects sounds=null;
+    private SlotcarSoundEffects sounds = null;
+    private float throttle = 0;
+    private boolean showedMissingTrackWarning = false;
 
     public enum ControllerToUse {
 
@@ -108,7 +113,10 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         carTracker = new TwoCarTracker(chip, trackDefineFilter.getTrack(), null); // TODO clean up car state
         filterChain.add(carTracker);
         carTracker.setEnclosed(true, this);
-        trackDefineFilter.getSupport().addPropertyChangeListener(TrackdefineFilter.EVENT_TRACK_CHANGED,carTracker);
+        trackDefineFilter.getSupport().addPropertyChangeListener(SlotcarTrack.EVENT_TRACK_CHANGED, carTracker);
+        trackDefineFilter.getSupport().addPropertyChangeListener(SlotcarTrack.EVENT_TRACK_CHANGED, this);
+        track=trackDefineFilter.getTrack();
+        carTracker.setTrack(track);
         setControllerToUse(controllerToUse);
 
         setEnclosedFilterChain(filterChain);
@@ -129,7 +137,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         try {
             sounds = new SlotcarSoundEffects(0);
         } catch (Exception ex) {
-            log.warning("No sound effects available: "+ex.toString());
+            log.warning("No sound effects available: " + ex.toString());
         }
     }
 
@@ -143,7 +151,6 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         out = getEnclosedFilterChain().filterPacket(in);
         car = carTracker.findCarCluster();
-        track = trackDefineFilter.getTrack();
         if (car != null && track != null) {
             currentTrackPos = trackDefineFilter.getTrack().findClosestIndex(car.getLocation(), crashDistancePixels, true);
             lapTimer.update(currentTrackPos, ((RectangularClusterTracker.Cluster) car).getLastEventTimestamp());
@@ -153,10 +160,6 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         chooseNextState();
         return out;
     }
-    private float throttle = 0;
-
-    ;
-    private boolean showedMissingTrackWarning = false;
 
     synchronized private void chooseNextState() {
 
@@ -167,7 +170,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
 
         } else if (state.get() == State.STARTING) {
             throttle = getOverriddenThrottleSetting();
-            if (state.timeSinceChanged() > 4000  && car!=null && car.numSegmentIncreases>NUM_SEGMENT_INCREASES_TO_EXIT_STARTING) {
+            if (state.timeSinceChanged() > 4000 && car != null && car.numSegmentIncreases > NUM_SEGMENT_INCREASES_TO_EXIT_STARTING) {
                 state.set(State.RUNNING);
             }
         } else if (state.get() == State.RUNNING) {
@@ -177,13 +180,13 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
                 }
                 showedMissingTrackWarning = true;
             } else {
-                if (car == null || currentTrackPos==-1) {
+                if (car == null || currentTrackPos == -1) {
                     state.set(State.CRASHED);
                     throttle = getOverriddenThrottleSetting();
                     sounds.play();
                     log.info("CRASHED");
-                }else{
-                    throttle=throttleController.getThrottle();
+                } else {
+                    throttle = throttleController.getThrottle();
                 }
             }
         } else if (state.get() == State.CRASHED) {
@@ -234,7 +237,6 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
 //        trackDefineFilter.setFilterEnabled(true);  // do this second so that trackDefineFilter is enabled
 //        JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "TrackdefineFilter is now enabled; adjust it's parameters to extract track points from data");
 //    }
-
     @Override
     public void resetFilter() {
         if (hw.isOpen()) {
@@ -450,4 +452,10 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater {
         this.playSoundThrottleChangeThreshold = playSoundThrottleChangeThreshold;
     }
 
+    @Override
+    synchronized public void propertyChange(PropertyChangeEvent evt) {
+        if(evt.getPropertyName().equals(SlotcarTrack.EVENT_TRACK_CHANGED)){
+            track=(SlotcarTrack)evt.getNewValue();
+        }
+    }
 }

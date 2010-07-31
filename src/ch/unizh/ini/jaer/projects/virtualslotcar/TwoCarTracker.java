@@ -39,6 +39,8 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
     private SlotcarTrack track;
     private SlotcarState carState;
     private TwoCarCluster currentCarCluster = null;
+    private NearbyTrackEventFilter nearbyTrackFilter = null;
+    private float maxDistanceFromTrackPoint = getFloat("maxDistanceFromTrackPoint", 15); // pixels - need to set in track model
 
     public TwoCarTracker(AEChip chip) {
         super(chip);
@@ -46,6 +48,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         setPropertyTooltip("relaxToTrackFactor", "Tracking will normally only parallel the track. This factor control how much the cluster converges onto the track, i.e., the allowed normal motion as fraction of the parallel motion.");
         setPropertyTooltip("distanceFromTrackMetricTauMs", "Each car cluster distance from track model is lowpass filtered with this time constant in ms; the closest one is chosen as the computer controlled car");
         setPropertyTooltip("minSegmentsToBeCarCluster", "a CarCluster needs to pass at least this many segments to be marked as the car cluster");
+        setPropertyTooltip("maxDistanceFromTrackPoint", "Maximum allowed distance in pixels from track spline point to find nearest spline point; if currentTrackPos=-1 increase maxDistanceFromTrackPoint");
         // set reasonable defaults
         if (!isPreferenceStored("maxNumClusters")) {
             setMaxNumClusters(2);
@@ -95,13 +98,16 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 
         FilterChain filterChain = new FilterChain(chip);
         filterChain.add(new BackgroundActivityFilter(chip));
+        nearbyTrackFilter = new NearbyTrackEventFilter(chip);
+        filterChain.add(nearbyTrackFilter);
+
         setEnclosedFilterChain(filterChain);
 
     }
 
     public TwoCarTracker(AEChip chip, SlotcarTrack track, SlotcarState carState) {
         this(chip);
-        this.track = track;
+        setTrack(track);
         this.carState = carState;
     }
 
@@ -195,7 +201,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                 } else {
                     cc.crashed = false;
                     cc.avgDistanceFromTrack = cc.distFilter.filter(cc.lastDistanceFromTrack, cc.getLastEventTimestamp());
-                    if (cc.avgDistanceFromTrack < minDist && cc.numSegmentIncreases>minSegmentsToBeCarCluster) {
+                    if (cc.avgDistanceFromTrack < minDist && cc.numSegmentIncreases > minSegmentsToBeCarCluster) {
                         minDist = cc.avgDistanceFromTrack;
                         ret = cc;
                     }
@@ -206,8 +212,8 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         if (ret != null) {
             ret.computerControlledCar = true; // closest avg to track is computer controlled car
         }
-        if(ret!=currentCarCluster){
-            log.info("chose new CarCluster "+ret);
+        if (ret != currentCarCluster) {
+            log.info("chose new CarCluster " + ret);
         }
         currentCarCluster = (TwoCarCluster) ret;
         return (TwoCarCluster) ret;
@@ -429,8 +435,17 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
     /**
      * @param track the track to set
      */
-    public void setTrack(SlotcarTrack track) {
+    public final void setTrack(SlotcarTrack track) {
+        SlotcarTrack old = this.track;
         this.track = track;
+        nearbyTrackFilter.setTrack(track);
+        if (this.track != old) {
+            if(this.track!=null){
+                this.track.setPointTolerance(maxDistanceFromTrackPoint);
+            }
+            log.info("new track with " + track.getNumPoints() + " points");
+            getSupport().firePropertyChange("track", old, this.track);
+        }
     }
 
     /**
@@ -492,14 +507,37 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName() == TrackdefineFilter.EVENT_TRACK_CHANGED) {
+        if (evt.getPropertyName() == SlotcarTrack.EVENT_TRACK_CHANGED) {
             try {
                 track = (SlotcarTrack) evt.getNewValue();
                 setTrack(track);
-                log.info("new track with " + track.getNumPoints() + " points");
             } catch (Exception e) {
                 log.warning("caught " + e + " when handling property change");
             }
         }
+    }
+
+    /**
+     * @return the maxDistanceFromTrackPoint
+     */
+    public float getMaxDistanceFromTrackPoint() {
+        return maxDistanceFromTrackPoint;
+    }
+
+    /**
+     * @param maxDistanceFromTrackPoint the maxDistanceFromTrackPoint to set
+     */
+    public void setMaxDistanceFromTrackPoint(float maxDistanceFromTrackPoint) {
+        float old = this.maxDistanceFromTrackPoint;
+        // Define tolerance for track model
+        if (track != null) {
+            this.maxDistanceFromTrackPoint = maxDistanceFromTrackPoint;
+            track.setPointTolerance(maxDistanceFromTrackPoint);
+        } else {
+            log.warning("cannot set point tolerance on track yet - track is null");
+        }
+        putFloat("maxDistanceFromTrackPoint", maxDistanceFromTrackPoint);
+        getSupport().firePropertyChange("maxDistanceFromTrackPoint", old, maxDistanceFromTrackPoint);
+
     }
 }

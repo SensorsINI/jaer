@@ -13,6 +13,7 @@ import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.Iterator;
 import java.awt.geom.Point2D;
+import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.logging.Logger;
@@ -51,6 +52,9 @@ public class SlotcarTrack implements java.io.Serializable {
     /** Curvature at track points. The curvature is the radius of curvature, so the straighter the track, the larger the curvature.  */
     private float[] curvatureAtPoints = null;
     private ClosestPointLookupTable closestPointComputer = new ClosestPointLookupTable();
+    private PropertyChangeSupport support = new PropertyChangeSupport(this);
+    /** PropertyChangeEvent that is fired when track is changed, e.g. by loading from file. */
+    public static final String EVENT_TRACK_CHANGED = "trackChanged";
 
     /** Creates a new track. */
     public SlotcarTrack() {
@@ -134,6 +138,7 @@ public class SlotcarTrack implements java.io.Serializable {
             updateCurvature();
             updateSegmentVectors();
             updateClosestPointComputer();
+            getSupport().firePropertyChange(EVENT_TRACK_CHANGED, null, this);
         }
     }
 
@@ -325,6 +330,16 @@ public class SlotcarTrack implements java.io.Serializable {
     JFrame closestPointFrame = null;
     ImageDisplay closestPointImage = null;
 
+    /**
+     * @return the support
+     */
+    public PropertyChangeSupport getSupport() {
+        if (support == null) {
+            support = new PropertyChangeSupport(this);
+        }
+        return support;
+    }
+
     /** Computes nearest track point using lookup from table */
     class ClosestPointLookupTable {
 
@@ -376,13 +391,24 @@ public class SlotcarTrack implements java.io.Serializable {
                                     if (point == -1) {
                                         closestPointImage.setPixmapGray(x, y, 0);
                                     } else {
-                                        Color c=Color.getHSBColor((float)point/getNumPoints(), .5f, .5f);
-                                        float[] rgb=c.getColorComponents(null);
-                                        closestPointImage.setPixmapRGB(x, y,rgb);
+                                        Color c = Color.getHSBColor((float) point / getNumPoints(), .5f, .5f);
+                                        float[] rgb = c.getColorComponents(null);
+                                        closestPointImage.setPixmapRGB(x, y, rgb);
                                         closestPointImage.drawCenteredString(x, y, Integer.toString(point));
                                     }
                                 }
                             }
+//                            GL gl=drawable.getGL();
+//                            gl.glPushMatrix();
+//                            gl.glLineWidth(.5f);
+//                            gl.glColor3f(0,0,1);
+//                            gl.glBegin(GL.GL_LINE_LOOP);
+//                            for(Point2D.Float p:trackPoints){
+//                                gl.glVertex2f(p.x, p.y);
+//                            }
+//                            gl.glEnd();
+//                            gl.glBegin
+//                            gl.glPopMatrix();  // TODO needs coordinate transform to ImageDisplay pixels to draw track
                         }
 
                         @Override
@@ -452,7 +478,7 @@ public class SlotcarTrack implements java.io.Serializable {
                 }
             }
             final float w = maxx - minx, h = maxy - miny;
-            bounds.setRect(minx - w * extraFraction, miny - h * extraFraction, w * (1 + 2*extraFraction), h * (1 + 2*extraFraction));
+            bounds.setRect(minx - w * extraFraction, miny - h * extraFraction, w * (1 + 2 * extraFraction), h * (1 + 2 * extraFraction));
         }
     }
 
@@ -867,7 +893,12 @@ public class SlotcarTrack implements java.io.Serializable {
 
     /** Tolerance for finding nearby spline points */
     public void setPointTolerance(float pointTolerance) {
+        float old = this.pointTolerance;
         this.pointTolerance = pointTolerance;
+        if (this.pointTolerance != old) {
+            updateClosestPointComputer();
+            getSupport().firePropertyChange(EVENT_TRACK_CHANGED, null, this);
+        }
     }
 
     public float getIntegrationStep() {
