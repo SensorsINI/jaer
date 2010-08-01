@@ -34,10 +34,9 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
     private boolean onlyFollowTrack = getBoolean("onlyFollowTrack", true);
     private float relaxToTrackFactor = getFloat("relaxToTrackFactor", 0.05f);
     private float distanceFromTrackMetricTauMs = getFloat("distanceFromTrackMetricTauMs", 200);
-    private int minSegmentsToBeCarCluster = getInt("minSegmentsToBeCarCluster", 20);
+    private int minSegmentsToBeCarCluster = getInt("minSegmentsToBeCarCluster", 4);
     private SlotcarTrack track;
-    private SlotcarState carState;
-    private TwoCarCluster currentCarCluster = null;
+    private TwoCarCluster currentCarCluster = null, lastValidCarCluster = null;
     private NearbyTrackEventFilter nearbyTrackFilter = null;
     private float maxDistanceFromTrackPoint = getFloat("maxDistanceFromTrackPoint", 15); // pixels - need to set in track model
 
@@ -104,12 +103,6 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 
     }
 
-    public TwoCarTracker(AEChip chip, SlotcarTrack track, SlotcarState carState) {
-        this(chip);
-        setTrack(track);
-        this.carState = carState;
-    }
-
     @Override
     public Cluster createCluster() {
         return new TwoCarCluster();
@@ -143,7 +136,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
     @Override
     synchronized protected EventPacket<? extends BasicEvent> track(EventPacket<BasicEvent> in) {
         boolean updatedClusterList = false;
-        in = getEnclosedFilterChain().filterPacket(in);
+        out = getEnclosedFilterChain().filterPacket(in);
 
         // record cluster locations before packet is processed
         for (Cluster c : clusters) {
@@ -166,7 +159,75 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             updateClusterList(in, in.getLastTimestamp()); // at laest once per packet update list
         }
 
-        return in;
+        if (track == null) {
+            log.warning("null track - perhaps deserialization failed or no track was saved?");
+            return null;
+        }
+
+        // now accumulate votes for the car cluster, e.g. closest, oldest, nearest last choice as last; winner of voting is the CC cluster
+
+        // iterate over clusters to find distance of each from track model.
+        // Accumulate the results in a LowPassFilter for each cluster.
+        TwoCarCluster closestAvgToTrack = null,
+                oldest = null,
+                nearestLast = null;
+        float minDistFromTrack = Float.MAX_VALUE, maxAge = Integer.MIN_VALUE, minFromLast = Float.MAX_VALUE;
+        for (ClusterInterface c : clusters) {
+            TwoCarCluster cc = (TwoCarCluster) c;
+            cc.computerControlledCar = false; // mark all false
+            cc.updateState();
+            if (cc.avgDistanceFromTrack < minDistFromTrack) {
+                minDistFromTrack = cc.avgDistanceFromTrack;
+                closestAvgToTrack = cc;
+            }
+            if (cc.getLifetime() > maxAge) {
+                maxAge = cc.getLifetime();
+                oldest = cc;
+            }
+            if (currentCarCluster != null) {
+                float d;
+                if ((d = (float) cc.getLocation().distanceSq(currentCarCluster.getLocation())) < minFromLast) {
+                    minFromLast = d;
+                    nearestLast = cc;
+                }
+            }
+        }
+        TwoCarCluster compControlled = null;
+        int[] votes = new int[getNumClusters()];
+        int idx = 0;
+        for (ClusterInterface c : clusters) {
+            TwoCarCluster cc = (TwoCarCluster) c;
+            if (cc == nearestLast) {
+                votes[idx]++;
+            }
+            if (cc == closestAvgToTrack) {
+                votes[idx]++;
+            }
+            if (cc == oldest) {
+                votes[idx]++;
+            }
+        }
+        int maxVote = 0, maxbin = 0;
+        for (int i = 0; i < votes.length; i++) {
+            if (votes[i] > maxVote) {
+                maxVote = votes[i];
+                maxbin = i;
+            }
+        }
+        if (clusters.size() > 0) {
+            compControlled = (TwoCarCluster) clusters.get(maxbin);
+            compControlled.computerControlledCar = true;
+            if (compControlled != currentCarCluster) {
+                log.info("Switched CarCluster from " + currentCarCluster + " \n to \n" + compControlled);
+            }
+            currentCarCluster = (TwoCarCluster) compControlled;
+        } else {
+            currentCarCluster = null;
+        }
+        if (currentCarCluster != null) {
+            lastValidCarCluster = currentCarCluster;
+        }
+        return out;
     }
 
     /** Returns the putative car cluster.
@@ -175,55 +236,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
      */
     @Override
     public TwoCarCluster findCarCluster() {
-        if (track == null) {
-            log.warning("null track - perhaps deserialization failed or no track was saved?");
-            return null;
-        }
-        // defines the criteria for a visible car cluster
-        // very simple now
-        float minDist = Float.MAX_VALUE;
-        TwoCarCluster ret = null;
-
-        // iterate over clusters to find distance of each from track model.
-        // Accumulate the results in a LowPassFilter for each cluster.
-
-        for (ClusterInterface c : clusters) {
-            TwoCarCluster cc = (TwoCarCluster) c;
-            if (!cc.isVisible()) {
-                cc.computerControlledCar = false;
-                continue;
-            }
-            if (cc != null) {
-                cc.lastDistanceFromTrack = track.findDistanceToTrack(cc.getLocation());
-                cc.computerControlledCar = false; // mark all false
-                if (Float.isNaN(cc.lastDistanceFromTrack)) {
-//                    System.out.println(cc + " is crashed");
-                    if (cc.crashed == false) {
-                        cc.determineCrashLocation();
-                    }
-                    cc.crashed = true;
-                    cc.distFilter.reset();
-                    cc.avgDistanceFromTrack = Float.NaN;
-                } else {
-                    cc.crashed = false;
-                    cc.crashSegment = -1;
-                    cc.avgDistanceFromTrack = cc.distFilter.filter(cc.lastDistanceFromTrack, cc.getLastEventTimestamp());
-                    if (cc.avgDistanceFromTrack < minDist && cc.numSegmentIncreases > minSegmentsToBeCarCluster) {
-                        minDist = cc.avgDistanceFromTrack;
-                        ret = cc;
-                    }
-                }
-            }
-        }
-
-        if (ret != null) {
-            ret.computerControlledCar = true; // closest avg to track is computer controlled car
-        }
-        if (ret != currentCarCluster) {
-            log.info("chose new CarCluster " + ret);
-        }
-        currentCarCluster = (TwoCarCluster) ret;
-        return (TwoCarCluster) ret;
+        return lastValidCarCluster;
     }
 
     private void addEventToClustersOrSpawnNewCluster(BasicEvent ev) {
@@ -293,15 +306,19 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
      */
     public class TwoCarCluster extends RectangularClusterTracker.Cluster implements CarCluster {
 
-        private float factor;
-        private int segmentIdx = -1; // current segment
-        private boolean crashed = false; // flag that we crashed
+        private final int SEGMENT_HISTORY_LENGTH = 50; // number of segments to keep track of in past
+        private final int NUM_SEGMENTS_TO_BE_MARKED_RUNNING = 30;
+        int segmentIdx = -1; // current segment
+        boolean crashed = false; // flag that we crashed
+        boolean wasRunningSuccessfully = false; // marked true when car has been running successfully over segments for a while
         float lastDistanceFromTrack = 0, avgDistanceFromTrack = 0; // instantaneous and lowpassed distance from track model
         int birthSegmentIdx = -1; // which segment we were born on
         int numSegmentIncreases = 0; // how many times segment number increased
         int crashSegment = -1; // where we crashed
-        final int SEGMENT_HISTORY_LENGTH = 50; // number of segments to keep track of in past
         int[] segmentHistory = new int[SEGMENT_HISTORY_LENGTH]; // ring buffer of segment history
+        private float relaxToTrackFactor;
+        float segmentSpeedSPS = 0;
+        private int lastSegmentChangeTimestamp = 0;
 
         {
             Arrays.fill(segmentHistory, Integer.MIN_VALUE);
@@ -341,7 +358,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                 super.updatePosition(event, m);
                 return;
             } else {
-                int idx = updateSegmentInfo();
+                int idx = updateSegmentInfo(event.timestamp);
                 // move cluster, but only along the track
                 Point2D.Float v = findClosestTrackSegmentVector();
                 if (v == null) {
@@ -352,14 +369,14 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                 }
                 float vnorm = (float) v.distance(0, 0);
                 if (vnorm < 1) {
-                    log.warning("track segment vector is zero; track has idential track points. Edit the track to remove these identical points. carState=" + carState); // warn about idential track points
+                    log.warning("track segment vector is zero; track has idential track points. Edit the track to remove these identical points."); // warn about idential track points
                 }
                 float ex = event.x - location.x;
                 float ey = event.y - location.y;
                 float proj = m * (v.x * ex + v.y * ey) / vnorm;
-                factor = relaxToTrackFactor * m;
-                location.x += (proj * v.x) + factor * ex;
-                location.y += (proj * v.y) + factor * ey;
+                relaxToTrackFactor = relaxToTrackFactor * m;
+                location.x += (proj * v.x) + relaxToTrackFactor * ex;
+                location.y += (proj * v.y) + relaxToTrackFactor * ey;
             }
         }
 
@@ -387,15 +404,15 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             gl.glRasterPos3f(location.x, location.y - 4, 0);
             chip.getCanvas().getGlut().glutBitmapString(
                     GLUT.BITMAP_HELVETICA_18,
-                    String.format("dist=%.1f ", distFilter.getValue()));
+                    String.format("dist=%.1f segSp=%.1f", distFilter.getValue(), segmentSpeedSPS));
 
         }
 
-        private int updateSegmentInfo() {
+        private int updateSegmentInfo(int lastTimestamp) {
             if (track == null) {
                 return -1;
             }
-            int idx = track.findClosestIndex(location, track.getPointTolerance(), true);
+            int idx = track.findClosestIndex(location, 0, true);
             if (birthSegmentIdx == -1 && idx != -1) {
                 birthSegmentIdx = idx;
             }
@@ -405,6 +422,16 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             }
             if (idx > segmentIdx) {
                 numSegmentIncreases++;
+                if (numSegmentIncreases > NUM_SEGMENTS_TO_BE_MARKED_RUNNING) {
+                    wasRunningSuccessfully = true;
+                }
+                if (this.lastSegmentChangeTimestamp == 0) {
+                    segmentSpeedSPS = Float.NaN;
+                } else {
+                    int dt = lastTimestamp - this.lastSegmentChangeTimestamp; // TODO handle dt<0
+                    segmentSpeedSPS = (Float.isInfinite(segmentSpeedSPS) || Float.isNaN(segmentSpeedSPS)) ? 1e6f / dt : .95f * segmentSpeedSPS + .05f * 1e6f / dt;
+                }
+                this.lastSegmentChangeTimestamp = lastTimestamp;
             }
             segmentIdx = idx;
             return idx;
@@ -419,12 +446,13 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         }
 
         public String toString() {
-            return super.toString() + " segmentIdx=" + segmentIdx;
+            return "CarCluster segmentIdx=" + segmentIdx + " segmentSpeedSPS=" + segmentSpeedSPS + " crashed=" + crashed + " numSegmentIncreases=" + numSegmentIncreases + " wasRunningSuccessfully=" + wasRunningSuccessfully + " " + super.toString();
         }
 
         /**
          * @return the segmentIdx
          */
+        @Override
         public int getSegmentIdx() {
             return segmentIdx;
         }
@@ -432,6 +460,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         /**
          * @param segmentIdx the segmentIdx to set
          */
+        @Override
         public void setSegmentIdx(int segmentIdx) {
             this.segmentIdx = segmentIdx;
         }
@@ -439,6 +468,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         /**
          * @return the crashed
          */
+        @Override
         public boolean isCrashed() {
             return crashed;
         }
@@ -446,11 +476,20 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         /**
          * @param crashed the crashed to set
          */
+        @Override
         public void setCrashed(boolean crashed) {
             this.crashed = crashed;
         }
 
-        private void determineCrashLocation() {
+        private void determineIfcrashed() {
+//         final float SPEED_FOR_CRASH = 10;
+            if (getSpeedPPS() < getThresholdVelocityForVisibleCluster() && wasRunningSuccessfully && getLifetime() > 300000) {
+                crashed = true;
+                distFilter.reset();
+            } else {
+                crashed=false;
+                return;
+            }
             // looks over segment history to find last index of increasing sequence of track points - this is crash point
             // march up the history (first point is then the oldest) until we stop increasing (counting wraparound as an increase).
             // the last point of increase is the crash location.
@@ -491,11 +530,11 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                             state = LOOKING_FOR_LAST;
                             count = 0;
                             break search;
-                        }else if (thisSeg == -1) {
+                        } else if (thisSeg == -1) {
                             state = LOOKING_FOR_LAST;
                             count = 0;
                             continue;
-                        } else if ((thisSeg <= lastValidSeg+1) // if this segment less that last one, accounting for jiggle around nearby points
+                        } else if ((thisSeg <= lastValidSeg + 1) // if this segment less that last one, accounting for jiggle around nearby points
                                 || ( // OR wrap backwards:
                                 thisSeg > track.getNumPoints() - SEGMENTS_BEFORE_CRASH // this seg at end of track
                                 && lastValidSeg < SEGMENTS_BEFORE_CRASH // previuos was at start of track
@@ -537,8 +576,16 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                     sb.append("\ncoulnt' determine crash segment; invalid state=" + state);
 
             }
+            sb.append(" for ").append(this.toString());
             log.info(sb.toString());
         } // determineCrashLocation
+
+        private void updateState() {
+            lastDistanceFromTrack = track.findDistanceToTrack(getLocation());
+            avgDistanceFromTrack = distFilter.filter(lastDistanceFromTrack, getLastEventTimestamp());
+            determineIfcrashed();
+
+        }
     } // TwoCarCluster
 
     /**
@@ -555,13 +602,6 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             log.info("new track with " + track.getNumPoints() + " points");
             getSupport().firePropertyChange("track", old, this.track);
         }
-    }
-
-    /**
-     * @param carState the carState to set
-     */
-    public void setCarState(SlotcarState carState) {
-        this.carState = carState;
     }
 
     /**

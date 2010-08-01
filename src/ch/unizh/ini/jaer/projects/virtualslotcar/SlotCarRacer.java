@@ -35,37 +35,42 @@ import net.sf.jaer.util.TobiLogger;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
-public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
+public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
 
-    public static final int NUM_SEGMENT_INCREASES_TO_EXIT_STARTING = 15;
 
     public static String getDescription() {
         return "Slot car racer project, Telluride 2010";
     }
-    private boolean showTrackEnabled = prefs().getBoolean("SlotCarRacer.showTrack", true);
-    private boolean virtualCarEnabled = prefs().getBoolean("SlotCarRacer.virtualCar", false);
     private boolean overrideThrottle = prefs().getBoolean("SlotCarRacer.overrideThrottle", true);
     private float overriddenThrottleSetting = prefs().getFloat("SlotCarRacer.overriddenThrottleSetting", 0);
     private float maxThrottle = prefs().getFloat("SlotCarRacer.maxThrottle", 1);
-    private int crashDistancePixels = prefs().getInt("SlotCarRacer.crashDistancePixels", 20);
     private boolean playThrottleSound = prefs().getBoolean("SlotCarRacer.playThrottleSound", true);
     private TobiLogger tobiLogger;
     private SlotCarHardwareInterface hw;
-    private TwoCarTracker carTracker;
     private TwoCarTracker.TwoCarCluster car = null;
     private FilterChain filterChain;
     private AbstractSlotCarController throttleController;
     private TrackdefineFilter trackDefineFilter;
-    private SlotcarTrack track;
     private SpikeSound spikeSound;
     private float playSoundThrottleChangeThreshold = 0.01F;
     private float lastSoundThrottleValue = 0;
     private long lastTimeSoundPlayed;
     private LapTimer lapTimer = new LapTimer();
-    private int currentTrackPos = -1;
-    private SlotcarSoundEffects sounds = null;
     private float throttle = 0;
-    private boolean showedMissingTrackWarning = false;
+
+    private void playThrottleSounds() {
+        if (playThrottleSound && Math.abs(throttle - lastSoundThrottleValue) > playSoundThrottleChangeThreshold) {
+            long now;
+            if (throttle > lastSoundThrottleValue && (now = System.currentTimeMillis()) - lastTimeSoundPlayed > 5) {
+                if (spikeSound == null) {
+                    spikeSound = new SpikeSound();
+                }
+                spikeSound.play();
+                lastTimeSoundPlayed = now;
+            }
+            lastSoundThrottleValue = throttle;
+        }
+    }
 
     public enum ControllerToUse {
 
@@ -106,17 +111,6 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, Prope
 
         filterChain = new FilterChain(chip);
 
-        trackDefineFilter = new TrackdefineFilter(chip);
-        filterChain.add(trackDefineFilter);
-
-
-        carTracker = new TwoCarTracker(chip, trackDefineFilter.getTrack(), null); // TODO clean up car state
-        filterChain.add(carTracker);
-        carTracker.setEnclosed(true, this);
-        trackDefineFilter.getSupport().addPropertyChangeListener(SlotcarTrack.EVENT_TRACK_CHANGED, carTracker);
-        trackDefineFilter.getSupport().addPropertyChangeListener(SlotcarTrack.EVENT_TRACK_CHANGED, this);
-        track=trackDefineFilter.getTrack();
-        carTracker.setTrack(track);
         setControllerToUse(controllerToUse);
 
         setEnclosedFilterChain(filterChain);
@@ -129,117 +123,55 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, Prope
         setPropertyTooltip(ov, "overrideThrottle", "Select to override the controller throttle setting");
         setPropertyTooltip(con, "maxThrottle", "Absolute limit on throttle for safety");
         setPropertyTooltip(ov, "overriddenThrottleSetting", "Manual overidden throttle setting");
-        setPropertyTooltip(vir, "virtualCarEnabled", "Enable display of virtual car on virtual track");
+//        setPropertyTooltip(vir, "virtualCarEnabled", "Enable display of virtual car on virtual track");
         setPropertyTooltip(lg, "logRacerDataEnabled", "enables logging of racer data");
         setPropertyTooltip(con, "controllerToUse", "Which controller to use to control car throttle");
         setPropertyTooltip("playThrottleSound", "plays a spike when throttle is increased to indicate controller active");
         setPropertyTooltip("playSoundThrottleChangeThreshold", "threshold change in throttle to play sound");
-        try {
-            sounds = new SlotcarSoundEffects(0);
-        } catch (Exception ex) {
-            log.warning("No sound effects available: " + ex.toString());
-        }
+
     }
 
-    @Override
-    public synchronized void setFilterEnabled(boolean yes) {
-        super.setFilterEnabled(yes);
-        trackDefineFilter.setFilterEnabled(false); // don't enable by default
-    }
+ 
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         out = getEnclosedFilterChain().filterPacket(in);
-        car = carTracker.findCarCluster();
-        if (car != null && track != null) {
-            currentTrackPos = trackDefineFilter.getTrack().findClosestIndex(car.getLocation(), crashDistancePixels, true);
-            lapTimer.update(currentTrackPos, ((RectangularClusterTracker.Cluster) car).getLastEventTimestamp());
-        } else {
-            lapTimer.reset();
-        }
-        chooseNextState();
+        
+        throttle=throttleController.getThrottle();
+        throttle = throttle > maxThrottle ? maxThrottle : throttle;
+        throttle=isOverrideThrottle()? getOverriddenThrottleSetting():throttle;
+        
+        hw.setThrottle(throttle);
+
+//        if (isLogRacerDataEnabled()) {
+//            if (overrideThrottle) {
+//                float measuredSpeedPPS = Float.NaN;
+//                Point2D.Float pos = new Point2D.Float(Float.NaN, Float.NaN);
+//                if (carTracker.findCarCluster() != null) {
+//                    ClusterInterface c = carTracker.findCarCluster();
+//                    measuredSpeedPPS = c.getSpeedPPS();
+//                    pos = c.getLocation();
+//                }
+//                logRacerData(String.format("%f %f %f %f", pos.getX(), pos.getY(), measuredSpeedPPS, throttle));
+//            } else {
+//                if (car != null) {
+//                    String lt = lapTimer.toString().replace('\n', ' ');
+//                    logRacerData(String.format("%d %f %f %f %f %s %s", ((RectangularClusterTracker.Cluster) car).getLastEventTimestamp(), car.getLocation().x, car.getLocation().y, car.getSpeedPPS(), throttle, throttleController.logControllerState(), lt));
+//                } else {
+//                    logRacerData(throttleController.logControllerState());
+//                }
+//            }
+//        }
+
+        playThrottleSounds();
         return out;
     }
 
-    synchronized private void chooseNextState() {
 
-        float prevThrottle = throttle;
-        throttleController.computeControl(carTracker, trackDefineFilter.getTrack());
-        if (state.get() == State.OVERRIDDEN) {
-            throttle = getOverriddenThrottleSetting();
-
-        } else if (state.get() == State.STARTING) {
-            throttle = getOverriddenThrottleSetting();
-            if (state.timeSinceChanged() > 4000 && car != null && car.numSegmentIncreases > NUM_SEGMENT_INCREASES_TO_EXIT_STARTING) {
-                state.set(State.RUNNING);
-            }
-        } else if (state.get() == State.RUNNING) {
-            if (track == null) {
-                if (!showedMissingTrackWarning) {
-                    log.warning("Track not defined yet. Use the TrackdefineFilter to extract the slot car track or load the track from a file.");
-                }
-                showedMissingTrackWarning = true;
-            } else {
-                if (car == null || currentTrackPos == -1) {
-                    state.set(State.CRASHED);
-                    throttle = getOverriddenThrottleSetting();
-                    sounds.play();
-                    log.info("CRASHED");
-                } else {
-                    throttle = throttleController.getThrottle();
-                }
-            }
-        } else if (state.get() == State.CRASHED) {
-            throttle = getOverriddenThrottleSetting();
-            if (car != null && state.timeSinceChanged() > 1000) {
-                state.set(State.STARTING);
-            }
-        }
-
-        // clip throttle to maxThrottle
-        throttle = throttle > maxThrottle ? maxThrottle : throttle;
-        hw.setThrottle(throttle);
-        if (playThrottleSound && Math.abs(throttle - lastSoundThrottleValue) > playSoundThrottleChangeThreshold) {
-            long now;
-            if (throttle > lastSoundThrottleValue && (now = System.currentTimeMillis()) - lastTimeSoundPlayed > 5) {
-                if (spikeSound == null) {
-                    spikeSound = new SpikeSound();
-                }
-                spikeSound.play();
-                lastTimeSoundPlayed = now;
-            }
-            lastSoundThrottleValue = throttle;
-        }
-
-        if (isLogRacerDataEnabled()) {
-            if (overrideThrottle) {
-                float measuredSpeedPPS = Float.NaN;
-                Point2D.Float pos = new Point2D.Float(Float.NaN, Float.NaN);
-                if (carTracker.findCarCluster() != null) {
-                    ClusterInterface c = carTracker.findCarCluster();
-                    measuredSpeedPPS = c.getSpeedPPS();
-                    pos = c.getLocation();
-                }
-                logRacerData(String.format("%f %f %f %f", pos.getX(), pos.getY(), measuredSpeedPPS, throttle));
-            } else {
-                if (car != null) {
-                    String lt = lapTimer.toString().replace('\n', ' ');
-                    logRacerData(String.format("%d %f %f %f %f %s %s", ((RectangularClusterTracker.Cluster) car).getLastEventTimestamp(), car.getLocation().x, car.getLocation().y, car.getSpeedPPS(), throttle, throttleController.logControllerState(), lt));
-                } else {
-                    logRacerData(throttleController.logControllerState());
-                }
-            }
-        }
-    }
-
-//    public void doExtractTrack() {
-//        setFilterEnabled(true);
-//        trackDefineFilter.setFilterEnabled(true);  // do this second so that trackDefineFilter is enabled
-//        JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "TrackdefineFilter is now enabled; adjust it's parameters to extract track points from data");
-//    }
     @Override
     public void resetFilter() {
         if (hw.isOpen()) {
+            hw.setThrottle(0);
             hw.close();
         }
         lapTimer.reset();
@@ -252,9 +184,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, Prope
 
     public synchronized void annotate(GLAutoDrawable drawable) { // TODO may not want to synchronize here since this will block filtering durring annotation
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() - 2);
-        if (!trackDefineFilter.isFilterEnabled()) {
-            trackDefineFilter.annotate(drawable);// show track always
-        }
+
         String s = "SlotCarRacer\nstate: " + state.toString() + "\nthrottle: " + throttle + "\n" + lapTimer;
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
@@ -305,22 +235,6 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, Prope
 
     public float getMinOverriddenThrottleSetting() {
         return 0;
-    }
-
-    /**
-     * @return the virtualCarEnabled
-     */
-    public boolean isVirtualCarEnabled() {
-        return virtualCarEnabled;
-    }
-
-    /**
-     * @param virtualCarEnabled the virtualCarEnabled to set
-     */
-    public void setVirtualCarEnabled(boolean virtualCarEnabled) {
-        this.virtualCarEnabled = virtualCarEnabled;
-        prefs().putBoolean("SlotCarRacer.virtualCarEnabled", virtualCarEnabled);
-
     }
 
     public synchronized void setLogRacerDataEnabled(boolean logDataEnabled) {
@@ -452,10 +366,4 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, Prope
         this.playSoundThrottleChangeThreshold = playSoundThrottleChangeThreshold;
     }
 
-    @Override
-    synchronized public void propertyChange(PropertyChangeEvent evt) {
-        if(evt.getPropertyName().equals(SlotcarTrack.EVENT_TRACK_CHANGED)){
-            track=(SlotcarTrack)evt.getNewValue();
-        }
-    }
 }

@@ -346,7 +346,7 @@ public class SlotcarTrack implements java.io.Serializable {
     /** Computes nearest track point using lookup from table */
     class ClosestPointLookupTable {
 
-        private int size = 40;
+        private int size = 64;
         private int[] map = new int[size * size];
         int sx, sy;
         float xPixPerUnit, yPixPerUnit = 1;

@@ -1209,7 +1209,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
             //annotate the cluster with the velocityPPT in pps
             if (showClusterVelocity) {
-                Point2D.Float velpps = getVelocityPPS();
+//                Point2D.Float velpps = getVelocityPPS();
                 chip.getCanvas().getGlut().glutBitmapString(font, String.format("v=%.0fpps ", getSpeedPPS()));
             }
 
@@ -1677,7 +1677,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         /** Flags whether cluster has gotten enough support. This flag is sticky and will be true from when the cluster
         has gotten sufficient support and has enough velocityPPT (when using velocityPPT).
         When the cluster is first marked visible, it's birthLocation is set to the current location.
-        @return true if cluster has enough support.
+        @return true if cluster has ever obtained enough support.
          */
         final public boolean isVisible() {
 //            if (hasObtainedSupport) {
@@ -2158,75 +2158,75 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     /** Useful for subclasses. */
     protected Random random = new Random();
 
-    private final void drawCluster(final Cluster c, float[][][] fr) {
-        int x = (int) c.getLocation().x;
-        int y = (int) c.getLocation().y;
-
-
-        int sy = (int) c.getRadius(); // sx sy are (half) size of rectangle
-        int sx = sy;
-        int ix, iy;
-        int mn, mx;
-
-        if (isColorClustersDifferentlyEnabled()) {
-        } else {
-            c.setColorAccordingToSize();
-        }
-
-        Color color = c.getColor();
-        if (true) { // draw boxes
-            iy = y - sy;    // line under center
-            mn = x - sx;
-            mx = x + sx;
-            for (ix = mn; ix <= mx; ix++) {
-                colorPixel(ix, iy, fr, clusterColorChannel, color);
-            }
-            iy = y + sy;    // line over center
-            for (ix = mn; ix <= mx; ix++) {
-                colorPixel(ix, iy, fr, clusterColorChannel, color);
-            }
-            ix = x - sx;        // line to left
-            mn = y - sy;
-            mx = y + sy;
-            for (iy = mn; iy <= mx; iy++) {
-                colorPixel(ix, iy, fr, clusterColorChannel, color);
-            }
-            ix = x + sx;    // to right
-            for (iy = mn; iy <= mx; iy++) {
-                colorPixel(ix, iy, fr, clusterColorChannel, color);
-            }
-        } else { // draw diamond reflecting manhatten distance measure doesn't look very nice because not antialiased at all
-            iy = y - sy;    // line up right from bot
-            ix = x;
-            mx = x + sx;
-            while (ix < mx) {
-                colorPixel(ix++, iy++, fr, clusterColorChannel, color);
-            }
-            mx = x + sx;
-            ix = x;
-            iy = y + sy;    // line down right from top
-            while (ix < mx) {
-                colorPixel(ix++, iy--, fr, clusterColorChannel, color);
-            }
-            ix = x;        // line from top down left
-            iy = y + sy;
-            while (iy >= y) {
-                colorPixel(ix--, iy--, fr, clusterColorChannel, color);
-            }
-            ix = x;
-            iy = y - sy;
-            while (iy < y) {
-                colorPixel(ix--, iy++, fr, clusterColorChannel, color);
-            }
-        }
-
-        List<ClusterPathPoint> points = c.getPath();
-        for (Point2D.Float p : points) {
-            colorPixel(Math.round(p.x), Math.round(p.y), fr, clusterColorChannel, color);
-        }
-
-    }
-    private static final int clusterColorChannel = 2;
+//    private final void drawCluster(final Cluster c, float[][][] fr) {
+//        int x = (int) c.getLocation().x;
+//        int y = (int) c.getLocation().y;
+//
+//
+//        int sy = (int) c.getRadius(); // sx sy are (half) size of rectangle
+//        int sx = sy;
+//        int ix, iy;
+//        int mn, mx;
+//
+//        if (isColorClustersDifferentlyEnabled()) {
+//        } else {
+//            c.setColorAccordingToSize();
+//        }
+//
+//        Color color = c.getColor();
+//        if (true) { // draw boxes
+//            iy = y - sy;    // line under center
+//            mn = x - sx;
+//            mx = x + sx;
+//            for (ix = mn; ix <= mx; ix++) {
+//                colorPixel(ix, iy, fr, clusterColorChannel, color);
+//            }
+//            iy = y + sy;    // line over center
+//            for (ix = mn; ix <= mx; ix++) {
+//                colorPixel(ix, iy, fr, clusterColorChannel, color);
+//            }
+//            ix = x - sx;        // line to left
+//            mn = y - sy;
+//            mx = y + sy;
+//            for (iy = mn; iy <= mx; iy++) {
+//                colorPixel(ix, iy, fr, clusterColorChannel, color);
+//            }
+//            ix = x + sx;    // to right
+//            for (iy = mn; iy <= mx; iy++) {
+//                colorPixel(ix, iy, fr, clusterColorChannel, color);
+//            }
+//        } else { // draw diamond reflecting manhatten distance measure doesn't look very nice because not antialiased at all
+//            iy = y - sy;    // line up right from bot
+//            ix = x;
+//            mx = x + sx;
+//            while (ix < mx) {
+//                colorPixel(ix++, iy++, fr, clusterColorChannel, color);
+//            }
+//            mx = x + sx;
+//            ix = x;
+//            iy = y + sy;    // line down right from top
+//            while (ix < mx) {
+//                colorPixel(ix++, iy--, fr, clusterColorChannel, color);
+//            }
+//            ix = x;        // line from top down left
+//            iy = y + sy;
+//            while (iy >= y) {
+//                colorPixel(ix--, iy--, fr, clusterColorChannel, color);
+//            }
+//            ix = x;
+//            iy = y - sy;
+//            while (iy < y) {
+//                colorPixel(ix--, iy++, fr, clusterColorChannel, color);
+//            }
+//        }
+//
+//        List<ClusterPathPoint> points = c.getPath();
+//        for (Point2D.Float p : points) {
+//            colorPixel(Math.round(p.x), Math.round(p.y), fr, clusterColorChannel, color);
+//        }
+//
+//    }
+//    private static final int clusterColorChannel = 2;
 
     /** @param x x location of pixel
      *@param y y location
