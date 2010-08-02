@@ -897,13 +897,11 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         }
 
         @Override
-        public String toString (){
-            return String.format("Cluster number=#%d numEvents=%d locationX=%d locationY=%d lifetime=%d speedPPS=%.2f",
-                    getClusterNumber(), 1,
-                    (int)location.x,
-                    (int)location.y,
-                    getLifetime(),
-                    getSpeedPPS());
+        public String toString() {
+            return String.format("Cluster #=%d, location = (%d, %d), mass = %.2f, ageUs = %d, lifeTime = %d",
+                    clusterNumber,
+                    (int) location.x, (int) location.y,
+                    mass, ageUs, getLifetime());
         }
 
         public ArrayList<ClusterPathPoint> getPath (){
@@ -1247,9 +1245,10 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      * @param arg an UpdateMessage if caller is notify from EventFilter2D.
      */
     public void update (Observable o,Object arg){
-        if ( o instanceof EventFilter2D ){
+        if ( o instanceof BlurringFilter2D ){
             NeuronGroup tmpNeuronGroup = null;
             Collection<NeuronGroup> ngCollection = bfilter.getNeuronGroups();
+            HashSet<NeuronGroup> ngListForPrune = new HashSet<NeuronGroup> ();
             UpdateMessage msg = (UpdateMessage)arg;
 
             int defaultUpdateInterval = (int) Math.min(msg.packet.getDurationUs(), 1000 * chip.getFilterChain().getUpdateIntervalMs());
@@ -1269,8 +1268,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                                 ng.setMatched(true);
                             } else{
                                 tmpNeuronGroup.merge(ng);
-                                ngCollection.remove(ng);
-                                itr = ngCollection.iterator();
+                                ngListForPrune.add(ng);
                             }
                         }
                     }
@@ -1278,10 +1276,14 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                 if ( tmpNeuronGroup != null ){
                     c.addGroup(tmpNeuronGroup);
                     c.setUpdated(true);
-                    ngCollection.remove(tmpNeuronGroup);
+                    ngListForPrune.add(tmpNeuronGroup);
                 } else{
                     c.increaseAgeUs(-updateInterval);
                 }
+
+                // clean up the used neuron groups
+                ngCollection.removeAll(ngListForPrune);
+                ngListForPrune.clear();
 
                 if ( c.getAgeUs() <= 0 || c.dead){
                     if(!c.dead){
@@ -1293,18 +1295,20 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             }
 
             // Create cluster for the rest neuron groups
-            if ( ngCollection.size() != 0 && ( clusters.size() == 0 || !trackSingleCluster ) ){
-                if ( trackSingleCluster ){ // if we track only one cluster, find the largest group for new cluster
-                    int maxSize = 0;
-                    NeuronGroup maxGroup = null;
-                    for ( NeuronGroup ng:ngCollection ){
-                        if ( ng.getNumMemberNeurons() > maxSize ){
-                            maxSize = ng.getNumMemberNeurons();
-                            maxGroup = ng;
+            if ( ngCollection.size() != 0 ){
+                if ( trackSingleCluster ){ // if we track only one cluster
+                    if(clusters.size() == 0){ // if tere is no cluster found, find the largest group for a new cluster
+                        int maxSize = 0;
+                        NeuronGroup maxGroup = null;
+                        for ( NeuronGroup ng:ngCollection ){
+                            if ( ng.getNumMemberNeurons() > maxSize ){
+                                maxSize = ng.getNumMemberNeurons();
+                                maxGroup = ng;
+                            }
                         }
-                    }
 
-                    clusters.add(new Cluster(maxGroup, defaultUpdateInterval));
+                        clusters.add(new Cluster(maxGroup, defaultUpdateInterval));
+                    }
                 } else{
                     for ( NeuronGroup ng:ngCollection ){
                         track(ng, defaultUpdateInterval);
