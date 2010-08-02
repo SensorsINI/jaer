@@ -568,7 +568,9 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
      * @param startingThrottleValue the startingThrottleValue to set
      */
     public void setStartingThrottleValue(float startingThrottleValue) {
+        if(startingThrottleValue<0) startingThrottleValue=0; else if(startingThrottleValue>1) startingThrottleValue=1;
         this.startingThrottleValue = startingThrottleValue;
+        putFloat("startingThrottleValue",startingThrottleValue);
     }
 
     /** Profile of throttle values around track. */
