@@ -169,7 +169,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                     sounds.play();
                     log.info("CRASHED");
                 } else {
-                    throttle = getThrottle();
+                    throttle = currentProfile.getThrottle(car.segmentIdx);
                 }
             }
         } else if (state.get() == State.CRASHED) {
