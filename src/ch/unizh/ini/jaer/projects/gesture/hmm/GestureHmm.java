@@ -478,7 +478,7 @@ public class GestureHmm implements Serializable{
                 if(!gth.isAboveThreshold(rawAngles))
                     return null;
         }
-        
+
         // checks with dynamic threshold.
         if((thresholdOption&DYNAMIC_THRESHOLD)>0){
             if(maxProb < getGestureLikelyhoodTM(1.0, obs))

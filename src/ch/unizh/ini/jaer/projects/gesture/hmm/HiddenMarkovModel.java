@@ -691,7 +691,7 @@ public class HiddenMarkovModel implements Serializable{
      * @param obs : observation sequence
      * @return : probability to observe the target sequence in this HMM
      */
-    public double forward(String[] obs)
+/*    public double forward(String[] obs)
     {
         int T =  obs.length;
         // initializeHmm
@@ -727,7 +727,7 @@ public class HiddenMarkovModel implements Serializable{
             }
         }
         alpha.put(new String("1"), alphaInit);
-
+        
         for (int t = 2; t <= T; t++)
         {
             Hashtable<String, Double> alphaNext = new Hashtable<String, Double>();
@@ -785,6 +785,128 @@ public class HiddenMarkovModel implements Serializable{
                 retSum += getAlpha(new String(""+T), state);
 
         return retSum;
+    }
+*/
+    public double forward(String[] obs)
+    {
+        int T =  obs.length;
+        // initializeHmm
+        alpha.clear();
+
+        Hashtable<String, Double> alphaInit = forwardInitialize(obs[0]);
+        alpha.put(new String("1"), alphaInit);
+
+        Hashtable<String, Double> alphaNext = alphaInit;
+        for (int t = 2; t <= T; t++)
+        {
+            String currObs = new String(""+t);
+            alphaNext = forwardUpdate(alphaNext, obs[t-1]);
+            alpha.put(currObs, alphaNext);
+        }
+
+        double retSum = 0;
+        for (String state : states)
+            if(!isSilentState(state))
+                retSum += getAlpha(new String(""+T), state);
+
+        return retSum;
+    }
+
+    /**
+     * Calculates initial forward probability with the first observation.
+     * Silent states are considered.
+     * @param obs : observation
+     * @return
+     */
+    public Hashtable<String, Double> forwardInitialize(String obs)
+    {
+        Hashtable<String, Double> alphaInit = new Hashtable<String, Double>();
+        for(String state : states){
+            if(isSilentState(state)){
+                alphaInit.put(state, getStartProbability(state));
+            }
+            else
+                alphaInit.put(state, getStartProbability(state)*getEmissionProbability(state, obs));
+        }
+        // Consider silent states
+        for(int i=0; i<depthSilentStates; i++){
+            for (String nextState : states)
+            {
+                double sum = getStartProbability(nextState);
+                boolean update = false;
+                for (String sourceState : states){
+                    if(isSilentState(sourceState)){
+                        double tp = getTransitionProbability(sourceState, nextState);
+                        if(tp != 0) // to reduce the computational cost
+                            sum += alphaInit.get(sourceState)*tp;
+                        update = true;
+                    }
+                }
+                if(update){
+                    if(!isSilentState(nextState))
+                        sum *= getEmissionProbability(nextState, obs);
+                    alphaInit.put(nextState, sum);
+                }
+            }
+        }
+
+        return alphaInit;
+    }
+
+
+    /**
+     * Updates forward probability with one additional observation.
+     * Silent states are considered.
+     * @param obs : observation
+     * @return
+     */
+    public Hashtable<String, Double> forwardUpdate(Hashtable<String, Double> alphaPrev, String obs)
+    {
+        Hashtable<String, Double> alphaNext = new Hashtable<String, Double>();
+
+        for (String nextState : states)
+        {
+            double sum = 0;
+            for (String sourceState : states){
+                double tp = getTransitionProbability(sourceState, nextState);
+                if(tp != 0) // to reduce the computational cost
+                    sum += alphaPrev.get(sourceState)*tp;
+            }
+
+            if(!isSilentState(nextState))
+                sum *= getEmissionProbability(nextState, obs);
+
+            alphaNext.put(nextState, sum);
+        }
+        // Consider silent states
+        for(int i=0; i<depthSilentStates; i++){
+            for (String nextState2 : states)
+            {
+                double sum2 = 0;
+                boolean update = false;
+                for (String sourceState2 : states){
+                    if(isSilentState(sourceState2)){
+                        double tp = getTransitionProbability(sourceState2, nextState2);
+                        if(tp != 0) // to reduce the computational cost
+                            sum2 += alphaNext.get(sourceState2)*tp;
+                        update = true;
+                    }else{
+                        double tp = getTransitionProbability(sourceState2, nextState2);
+                        if(tp != 0) // to reduce the computational cost
+                            sum2 += alphaPrev.get(sourceState2)*tp;
+                    }
+                }
+
+                if(update){
+                    if(!isSilentState(nextState2))
+                        sum2 *= getEmissionProbability(nextState2, obs);
+
+                    alphaNext.put(nextState2, sum2);
+                }
+            }
+        }
+
+        return alphaNext;
     }
 
     /**

@@ -6,8 +6,6 @@ import java.awt.geom.Point2D;
 import java.util.HashSet;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
 import javax.swing.JTextField;
 
 /*
@@ -318,7 +316,7 @@ public class HmmTestMain
                 System.out.println(msg);
             }else{
                 msg = String.format("Best matching gesture is %s", bmg);
-                System.out.println(msg +" with probability "+Math.log10(ghmm.getGestureLikelyhood(bmg, fv)));
+//                System.out.println(msg +" with probability "+Math.log10(ghmm.getGestureLikelyhood(bmg, fv)));
 //                ghmm.getGestureHmm(bmg).viterbi(fv);
 //                System.out.println("Viterbi path : " + ghmm.getGestureHmm(bmg).getViterbiPathString(fv.length));
             }
