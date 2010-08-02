@@ -103,8 +103,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         setPropertyTooltip("numSuccessfulLapsToReward", "number of successful (no crash) laps between rewards");
         setPropertyTooltip("fractionOfTrackToSpeedUp", "fraction of track spline points to increase throttle on after successful laps");
         setPropertyTooltip("fractionOfTrackToSlowDownPreCrash", "fraction of track spline points before crash point to reduce throttle on");
-        setPropertyTooltip("startingThrottleValue","throttle value when starting (no car cluster detected)");
-        
+        setPropertyTooltip("startingThrottleValue", "throttle value when starting (no car cluster detected)");
+
         doLoadThrottleSettings();
 
         filterChain = new FilterChain(chip);
@@ -165,7 +165,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             } else {
                 if (car != null && car.crashed) {
                     state.set(State.CRASHED);
-                        lastCrashLocation = car.crashSegment;
+                    lastCrashLocation = car.crashSegment;
                     throttle = getStartingThrottleValue();
                     sounds.play();
                     log.info("CRASHED");
@@ -221,8 +221,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             if (learningEnabled && lastSuccessfulProfile != null && currentProfile != lastSuccessfulProfile) {
                 log.info("crashed, switching back to previous profile");
                 currentProfile = lastSuccessfulProfile;
-                currentProfile.subtractBump(currentTrackPos);
             }
+            currentProfile.subtractBump(currentTrackPos);
             lastRewardLap = 0;
         }
 
@@ -351,7 +351,10 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     public void resetFilter() {
         lapTimer.reset();
         getEnclosedFilterChain().reset();
-        lastCrashLocation=-1;
+        lastCrashLocation = -1;
+        if (currentProfile != null) {
+            currentProfile.resetMarkedSegments();
+        }
 
     }
 
@@ -382,7 +385,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        String s = String.format("EvolutionaryThrottleController\nState: %s\ncurrentTrackPos: %d\nDistance from track: %.1f\nThrottle: %8.3f\n%s", state.toString(), currentTrackPos, distanceFromTrack, throttle,lapTimer.toString());
+        String s = String.format("EvolutionaryThrottleController\nState: %s\ncurrentTrackPos: %d\nDistance from track: %.1f\nThrottle: %8.3f\n%s", state.toString(), currentTrackPos, distanceFromTrack, throttle, lapTimer.toString());
         MultilineAnnotationTextRenderer.renderMultilineString(s);
         drawThrottleProfile(drawable.getGL());
         drawCurrentTrackPoint(drawable.getGL());
@@ -403,13 +406,14 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             for (Point2D p : getTrack().getPointList()) {
                 float size = maxSize * currentProfile.getThrottle(idx);
                 gl.glPointSize(size);
+                float rgb[] = {0, 0, .5f};
                 if (currentProfile.spedUpSegments[idx]) {
-                    gl.glColor3f(0, 1, 0);
-                } else if (currentProfile.slowedDownSegments[idx]) {
-                    gl.glColor3f(1, 0, 0);
-                } else {
-                    gl.glColor3f(0, 0, 1);
+                    rgb[1] = 1;
                 }
+                if (currentProfile.slowedDownSegments[idx]) {
+                    rgb[0] = 1;
+                }
+                gl.glColor3fv(rgb, 0);
                 gl.glBegin(gl.GL_POINTS);
                 gl.glVertex2d(p.getX(), p.getY());
                 gl.glEnd();
@@ -500,7 +504,11 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
      * @param fractionOfTrackToSpeedUp the fractionOfTrackToPunish to set
      */
     synchronized public void setFractionOfTrackToSpeedUp(float fractionOfTrackToSpeedUp) {
-        if(fractionOfTrackToSpeedUp<0) fractionOfTrackToSpeedUp=0; else if(fractionOfTrackToSpeedUp>1)fractionOfTrackToSpeedUp=1;
+        if (fractionOfTrackToSpeedUp < 0) {
+            fractionOfTrackToSpeedUp = 0;
+        } else if (fractionOfTrackToSpeedUp > 1) {
+            fractionOfTrackToSpeedUp = 1;
+        }
         this.fractionOfTrackToSpeedUp = fractionOfTrackToSpeedUp;
         putFloat("fractionOfTrackToSpeedUp", fractionOfTrackToSpeedUp);
     }
@@ -541,7 +549,11 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
      * @param fractionOfTrackToSlowDownPreCrash the fractionOfTrackToSlowDownPreCrash to set
      */
     public void setFractionOfTrackToSlowDownPreCrash(float fractionOfTrackToSlowDownPreCrash) {
-        if(fractionOfTrackToSlowDownPreCrash<0) fractionOfTrackToSlowDownPreCrash=0; else if(fractionOfTrackToSlowDownPreCrash>1) fractionOfTrackToSlowDownPreCrash=1;
+        if (fractionOfTrackToSlowDownPreCrash < 0) {
+            fractionOfTrackToSlowDownPreCrash = 0;
+        } else if (fractionOfTrackToSlowDownPreCrash > 1) {
+            fractionOfTrackToSlowDownPreCrash = 1;
+        }
         this.fractionOfTrackToSlowDownPreCrash = fractionOfTrackToSlowDownPreCrash;
     }
 
@@ -619,7 +631,6 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         /** Adds a throttle bump at a random location. */
         public void addBump() {
             Arrays.fill(spedUpSegments, false);
-            Arrays.fill(slowedDownSegments, false);
             // increase throttle settings around randomly around some track point
             int center = getNextThrottleBumpPoint();
             int m = (int) (numPoints * getFractionOfTrackToSpeedUp());
@@ -639,7 +650,6 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
          */
         public void subtractBump(int segment) {
             Arrays.fill(slowedDownSegments, false);
-            Arrays.fill(spedUpSegments, false);
             int n = (int) (numPoints * fractionOfTrackToSlowDownPreCrash);
             log.info("reducing throttle starting from segment " + segment);
             try {
@@ -655,6 +665,11 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             } catch (ArrayIndexOutOfBoundsException e) {
                 log.warning(e.toString());
             }
+        }
+
+        public void resetMarkedSegments() {
+            Arrays.fill(slowedDownSegments, false);
+            Arrays.fill(spedUpSegments, false);
         }
 
         /** Reduces speed on current profile uniformly by throttleChange/3 */

@@ -454,7 +454,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             }
             if (idx > highestSegment || idx<=2 && highestSegment>track.getNumPoints()-2) {
                 numSegmentIncreases++;
-                if (Math.abs(segmentIdx - birthSegmentIdx) > track.getNumPoints() / 3 && numSegmentIncreases > NUM_SEGMENTS_TO_BE_MARKED_RUNNING) {
+                if (numSegmentIncreases> track.getNumPoints() / 4 ) {
                     wasRunningSuccessfully = true;
                 }
                 highestSegment=idx;
