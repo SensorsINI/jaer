@@ -81,22 +81,22 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     private boolean logClustersSeparatelyEnabled = getBoolean("logClustersSeparatelyEnabled", false);
 //    private boolean classifierEnabled = getBoolean("classifierEnabled", false);
 //    private float classifierThreshold = getFloat("classifierThreshold", 0.2f);
-    private boolean showAllClusters = getBoolean("showAllClusters", false);
-    private boolean useNearestCluster = getBoolean("useNearestCluster", false); // use the nearest cluster to an event, not the first containing it
-    private boolean clusterLifetimeIncreasesWithAge = getBoolean("clusterLifetimeIncreasesWithAge", true);
-    private float predictiveVelocityFactor = getFloat("predictiveVelocityFactor",1);// making this M=10, for example, will cause cluster to substantially lead the events, then slow down, speed up, etc.
-    private boolean highwayPerspectiveEnabled = getBoolean("highwayPerspectiveEnabled", false);
-    private int thresholdEventsForVisibleCluster = getInt("thresholdEventsForVisibleCluster", 10);
-    private float thresholdVelocityForVisibleCluster = getFloat("thresholdVelocityForVisibleCluster", 0);
-    private int clusterLifetimeWithoutSupportUs = getInt("clusterLifetimeWithoutSupport", 10000);
-    private boolean enableClusterExitPurging = getBoolean("enableClusterExitPurging", true);
-    private float velAngDiffDegToNotMerge = getFloat("velAngDiffDegToNotMerge", 60);
-    private boolean showClusterNumber = getBoolean("showClusterNumber", false);
-    private boolean showClusterEps = getBoolean("showClusterEps", false);
-    private boolean showClusterVelocity = getBoolean("showClusterVelocity", false);
-    private float velocityVectorScaling = getFloat("velocityVectorScaling", 1);
+    protected boolean showAllClusters = getBoolean("showAllClusters", false);
+    protected boolean useNearestCluster = getBoolean("useNearestCluster", false); // use the nearest cluster to an event, not the first containing it
+    protected boolean clusterLifetimeIncreasesWithAge = getBoolean("clusterLifetimeIncreasesWithAge", true);
+    protected float predictiveVelocityFactor = getFloat("predictiveVelocityFactor",1);// making this M=10, for example, will cause cluster to substantially lead the events, then slow down, speed up, etc.
+    protected boolean highwayPerspectiveEnabled = getBoolean("highwayPerspectiveEnabled", false);
+    protected int thresholdEventsForVisibleCluster = getInt("thresholdEventsForVisibleCluster", 10);
+    protected float thresholdVelocityForVisibleCluster = getFloat("thresholdVelocityForVisibleCluster", 0);
+    protected int clusterLifetimeWithoutSupportUs = getInt("clusterLifetimeWithoutSupport", 10000);
+    protected boolean enableClusterExitPurging = getBoolean("enableClusterExitPurging", true);
+    protected float velAngDiffDegToNotMerge = getFloat("velAngDiffDegToNotMerge", 60);
+    protected boolean showClusterNumber = getBoolean("showClusterNumber", false);
+    protected boolean showClusterEps = getBoolean("showClusterEps", false);
+    protected boolean showClusterVelocity = getBoolean("showClusterVelocity", false);
+    protected float velocityVectorScaling = getFloat("velocityVectorScaling", 1);
     private final float VELOCITY_VECTOR_SCALING = 1e6f; // to updateShape rendering of cluster velocityPPT vector, velocityPPT is in pixels/tick=pixels/us so this gives 1 screen pixel per 1 pix/s actual vel
-    private int loggingIntervalUs = getInt("loggingIntervalUs", 1000);
+    protected int loggingIntervalUs = getInt("loggingIntervalUs", 1000);
     private int logFrameNumber = 0;
     protected ClusterLogger clusterLogger = new ClusterLogger();
     private boolean initializeVelocityToAverage = getBoolean("initializeVelocityToAverage", false);
@@ -104,7 +104,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     private final float averageVelocityMixingFactor = 0.001f; // average velocities of all clusters mixed with this factor to produce this "prior" on initial cluster velocityPPT
     private boolean showClusterMass = getBoolean("showClusterMass", false);
     private boolean filterEventsEnabled = getBoolean("filterEventsEnabled", false); // enables filtering events so that output events only belong to clustera and point to the clusters.
-    private float velocityTauMs = getFloat("velocityTauMs", 10);
+    protected float velocityTauMs = getFloat("velocityTauMs", 10);
     private int maxNumClusters = getInt("maxNumClusters", 10);
     private boolean surroundInhibitionEnabled=getBoolean("surroundInhibitionEnabled",false);
     private boolean dontMergeEver=getBoolean("dontMergeEver", false);
@@ -428,6 +428,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     }
 
     /** Prunes out old clusters that don't have support or that should be purged for some other reason.
+     * @param t the timestamp of the purge operation
      */
     protected void pruneClusters(int t) {
         pruneList.clear();
@@ -463,6 +464,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 // ordinarily, we discard the cluster if it hasn't gotten any support for a while, but we also discard it if there
                 // is something funny about the timestamps
                 pruneList.add(c);
+                c.prune();
             }
 //            if(t0>t1){
 //                log.warning("last cluster timestamp is later than last packet timestamp");
@@ -1679,6 +1681,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         When the cluster is first marked visible, it's birthLocation is set to the current location.
         @return true if cluster has ever obtained enough support.
          */
+        @Override
         final public boolean isVisible() {
 //            if (hasObtainedSupport) {
 //                return true;
@@ -1991,6 +1994,15 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             this.angle = angle;
             cosAngle = (float) Math.cos(angle);
             sinAngle = 1 - cosAngle * cosAngle;
+        }
+
+        /** prune is called when the cluster is about to be pruned from the list of clusters.  By default no special action is taken.
+         * Subclasses can override this method to take a special
+         * action on pruning.
+         *
+         */
+        protected void prune() {
+            
         }
 
         /**

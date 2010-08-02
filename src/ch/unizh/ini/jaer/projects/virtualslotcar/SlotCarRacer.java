@@ -55,7 +55,6 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     private float playSoundThrottleChangeThreshold = 0.01F;
     private float lastSoundThrottleValue = 0;
     private long lastTimeSoundPlayed;
-    private LapTimer lapTimer = new LapTimer();
     private float throttle = 0;
 
     private void playThrottleSounds() {
@@ -90,16 +89,16 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
      */
     public enum State {
 
-        OVERRIDDEN, STARTING, RUNNING, CRASHED
+        OVERRIDDEN, RUNNING
     }
 
     protected class RacerState extends StateMachineStates {
 
-        State state = State.STARTING;
+        State state = State.RUNNING;
 
         @Override
         public Enum getInitial() {
-            return isOverrideThrottle() ? State.OVERRIDDEN : State.STARTING;
+            return isOverrideThrottle() ? State.OVERRIDDEN : State.RUNNING;
         }
     }
     private RacerState state = new RacerState();
@@ -174,7 +173,6 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
             hw.setThrottle(0);
             hw.close();
         }
-        lapTimer.reset();
         filterChain.reset();
     }
 
@@ -185,7 +183,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     public synchronized void annotate(GLAutoDrawable drawable) { // TODO may not want to synchronize here since this will block filtering durring annotation
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() - 2);
 
-        String s = "SlotCarRacer\nstate: " + state.toString() + "\nthrottle: " + throttle + "\n" + lapTimer;
+        String s = "SlotCarRacer\nstate: " + state.toString() + "\nthrottle: " + throttle ;
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 
@@ -207,7 +205,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
         if (overrideThrottle) {
             state.set(State.OVERRIDDEN);
         } else {
-            state.set(State.STARTING);
+            state.set(State.RUNNING);
         }
     }
 

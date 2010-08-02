@@ -103,7 +103,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         setPropertyTooltip("numSuccessfulLapsToReward", "number of successful (no crash) laps between rewards");
         setPropertyTooltip("fractionOfTrackToSpeedUp", "fraction of track spline points to increase throttle on after successful laps");
         setPropertyTooltip("fractionOfTrackToSlowDownPreCrash", "fraction of track spline points before crash point to reduce throttle on");
-
+        setPropertyTooltip("startingThrottleValue","throttle value when starting (no car cluster detected)");
+        
         doLoadThrottleSettings();
 
         filterChain = new FilterChain(chip);
@@ -176,6 +177,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             throttle = getStartingThrottleValue();
             if (car != null && state.timeSinceChanged() > 1000) {
                 state.set(State.STARTING);
+//                lapTimer.reset();
             }
         }
 
@@ -221,7 +223,6 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                 currentProfile = lastSuccessfulProfile;
                 currentProfile.subtractBump(currentTrackPos);
             }
-            lapTimer.reset();
             lastRewardLap = 0;
         }
 
@@ -350,6 +351,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     public void resetFilter() {
         lapTimer.reset();
         getEnclosedFilterChain().reset();
+        lastCrashLocation=-1;
+
     }
 
     @Override
@@ -379,7 +382,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        String s = String.format("EvolutionaryThrottleController\nState: %s\ncurrentTrackPos: %d\nDistance from track: %.1f\nThrottle: %8.3f", state.toString(), currentTrackPos, distanceFromTrack, throttle);
+        String s = String.format("EvolutionaryThrottleController\nState: %s\ncurrentTrackPos: %d\nDistance from track: %.1f\nThrottle: %8.3f\n%s", state.toString(), currentTrackPos, distanceFromTrack, throttle,lapTimer.toString());
         MultilineAnnotationTextRenderer.renderMultilineString(s);
         drawThrottleProfile(drawable.getGL());
         drawCurrentTrackPoint(drawable.getGL());
@@ -497,6 +500,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
      * @param fractionOfTrackToSpeedUp the fractionOfTrackToPunish to set
      */
     synchronized public void setFractionOfTrackToSpeedUp(float fractionOfTrackToSpeedUp) {
+        if(fractionOfTrackToSpeedUp<0) fractionOfTrackToSpeedUp=0; else if(fractionOfTrackToSpeedUp>1)fractionOfTrackToSpeedUp=1;
         this.fractionOfTrackToSpeedUp = fractionOfTrackToSpeedUp;
         putFloat("fractionOfTrackToSpeedUp", fractionOfTrackToSpeedUp);
     }
@@ -537,6 +541,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
      * @param fractionOfTrackToSlowDownPreCrash the fractionOfTrackToSlowDownPreCrash to set
      */
     public void setFractionOfTrackToSlowDownPreCrash(float fractionOfTrackToSlowDownPreCrash) {
+        if(fractionOfTrackToSlowDownPreCrash<0) fractionOfTrackToSlowDownPreCrash=0; else if(fractionOfTrackToSlowDownPreCrash>1) fractionOfTrackToSlowDownPreCrash=1;
         this.fractionOfTrackToSlowDownPreCrash = fractionOfTrackToSlowDownPreCrash;
     }
 

@@ -21,7 +21,7 @@ public abstract class Filter{
     /** ticks per ms of input time */
     public final int TICK_PER_MS=1000;
     
-    /** The filter time constant in ms */
+    /** The filter time constant in ms. Default value is 100ms. */
     protected float tauMs=100;
     
     /** The last timestamp used */
@@ -82,5 +82,24 @@ public abstract class Filter{
      */
     public void reset(){
         initialized=false;
+    }
+
+    /**
+     * Returns true if the filter has had at least one value applied.
+     * 
+     * @return the initialized
+     */
+    public boolean isInitialized() {
+        return initialized;
+    }
+
+    /**
+     * Sets the filter to initialized state, so that subsequent filtering operations treat the last time value as having been stored and the
+     * internal value as having been set already.  Can also be used to check if the filter has had a value applied to it.
+     * 
+     * @param initialized the initialized to set
+     */
+    public void setInitialized(boolean initialized) {
+        this.initialized = initialized;
     }
 }

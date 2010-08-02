@@ -4,6 +4,23 @@ package net.sf.jaer.util.filter;
  A first-order lowpass IIR filter. The first value filtered initializes the filter to the value and stores the first time as reference.
  */
 public  class LowpassFilter extends Filter{
+
+    /** Constructs a new LowpassFilter with default time constant.
+     * 
+     */
+    public LowpassFilter() {
+    }
+
+
+    /** Constructs a new LowpassFilter filter with a specified RC time constant.
+     *
+     * @param tauMs the time constant in ms.
+     */
+    public LowpassFilter(float tauMs) {
+        this();
+        setTauMs(tauMs);
+    }
+
     
     /** The current state of the filter */
     protected float lpVal;
