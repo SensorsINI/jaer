@@ -181,7 +181,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     }
 
     public synchronized void annotate(GLAutoDrawable drawable) { // TODO may not want to synchronize here since this will block filtering durring annotation
-        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() - 2);
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(2*chip.getSizeY()/3);
 
         String s = "SlotCarRacer\nstate: " + state.toString() + "\nthrottle: " + throttle ;
         MultilineAnnotationTextRenderer.renderMultilineString(s);

@@ -4,9 +4,17 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
+import com.sun.opengl.util.GLUT;
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.Point;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
+import javax.media.opengl.GLCanvas;
+import javax.media.opengl.GLException;
+import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import java.awt.geom.Point2D;
 import java.io.ByteArrayInputStream;
@@ -19,6 +27,7 @@ import java.util.Random;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
+import javax.media.opengl.glu.GLUquadric;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -40,7 +49,7 @@ import net.sf.jaer.util.StateMachineStates;
  *
  * @author Juston, Tobi
  */
-public class EvolutionaryThrottleController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater {
+public class EvolutionaryThrottleController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater, MouseListener, MouseMotionListener {
 
     // prefs
     private float fractionOfTrackToSpeedUp = getFloat("fractionOfTrackToSpeedUp", 0.2f);
@@ -85,7 +94,6 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     LapTimer lapTimer = null;
     private int lapTime;
     private int prevLapTime;
-    private float distanceFromTrack;
     private TrackdefineFilter trackDefineFilter;
     private FilterChain filterChain;
     private TwoCarTracker carTracker;
@@ -93,6 +101,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     private boolean showedMissingTrackWarning = false;
     private SlotcarSoundEffects sounds = null;
     private int lastCrashLocation = -1;
+    private GLCanvas glCanvas;
+    private ChipCanvas canvas;
 
     public EvolutionaryThrottleController(AEChip chip) {
         super(chip);
@@ -120,8 +130,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
         trackDefineFilter.getSupport().addPropertyChangeListener(SlotcarTrack.EVENT_TRACK_CHANGED, carTracker);
 
-        lapTimer=new LapTimer(getTrack());
-        trackDefineFilter.getSupport().addPropertyChangeListener(SlotcarTrack.EVENT_TRACK_CHANGED,lapTimer);
+        lapTimer = new LapTimer(getTrack());
+        trackDefineFilter.getSupport().addPropertyChangeListener(SlotcarTrack.EVENT_TRACK_CHANGED, lapTimer);
 
         setEnclosedFilterChain(filterChain);
         try {
@@ -129,6 +139,11 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         } catch (Exception ex) {
             log.warning("No sound effects available: " + ex.toString());
         }
+
+        if (chip.getCanvas() != null && chip.getCanvas().getCanvas() != null) {
+            glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
+        }
+
     }
 
     @Override
@@ -148,7 +163,6 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         car = carTracker.findCarCluster();
         if (car != null) {
             currentTrackPos = car.segmentIdx;
-            distanceFromTrack = car.lastDistanceFromTrack;
         }
 
         // choose state & set throttle
@@ -352,7 +366,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         if (currentProfile != null) {
             currentProfile.resetMarkedSegments();
         }
-        lastRewardLap=0;
+        lastRewardLap = 0;
 
     }
 
@@ -380,17 +394,22 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         this.defaultThrottle = defaultThrottle;
         putFloat("defaultThrottle", defaultThrottle);
     }
+    GLU glu = new GLU();
+    GLUquadric quad = null;
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        String s = String.format("EvolutionaryThrottleController\nState: %s\ncurrentTrackPos: %d\nDistance from track: %.1f\nThrottle: %8.3f\n%s", state.toString(), currentTrackPos, distanceFromTrack, throttle, lapTimer.toString());
+        String s = String.format("EvolutionaryThrottleController\nState: %s\ncurrentTrackPos: %d\nThrottle: %8.3f\n%s", state.toString(), currentTrackPos, throttle, lapTimer.toString());
         MultilineAnnotationTextRenderer.renderMultilineString(s);
         drawThrottleProfile(drawable.getGL());
         drawCurrentTrackPoint(drawable.getGL());
         drawLastCrashLocation(drawable.getGL());
 
+        canvas = chip.getCanvas();
+        glCanvas = (GLCanvas) canvas.getCanvas();
+        drawThrottlePainter(drawable);
+
     }
-    GLU glu = new GLU();
 
     /** Displays the extracted track points */
     private void drawThrottleProfile(GL gl) {
@@ -403,6 +422,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             int idx = 0;
             for (Point2D p : getTrack().getPointList()) {
                 float size = maxSize * currentProfile.getThrottle(idx);
+                if(size<1) size=1;
                 gl.glPointSize(size);
                 float rgb[] = {0, 0, .5f};
                 if (currentProfile.spedUpSegments[idx]) {
@@ -429,7 +449,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             gl.glEnd();
         }
 
-        chip.getCanvas().checkGLError(gl, glu, "in TrackdefineFilter.drawExtractedTrack");
+        chip.getCanvas().checkGLError(gl, glu, "in TrackdefineFilter.drawThrottleProfile");
 
     }
     private TextRenderer textRenderer = null;
@@ -567,9 +587,13 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
      * @param startingThrottleValue the startingThrottleValue to set
      */
     public void setStartingThrottleValue(float startingThrottleValue) {
-        if(startingThrottleValue<0) startingThrottleValue=0; else if(startingThrottleValue>1) startingThrottleValue=1;
+        if (startingThrottleValue < 0) {
+            startingThrottleValue = 0;
+        } else if (startingThrottleValue > 1) {
+            startingThrottleValue = 1;
+        }
         this.startingThrottleValue = startingThrottleValue;
-        putFloat("startingThrottleValue",startingThrottleValue);
+        putFloat("startingThrottleValue", startingThrottleValue);
     }
 
     /** Profile of throttle values around track. */
@@ -736,6 +760,177 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                 }
             }
             return random.nextInt(numPoints); //. give up and just choose one uniformly
+        }
+
+        private void increaseThrottle(int idx) {
+            if (idx < 0 || idx >= numPoints) {
+                return;
+            }
+            profile[idx] = min(profile[idx] + throttleChange / 4, 1);
+        }
+
+        private void decreaseThrottle(int idx) {
+            if (idx < 0 || idx >= numPoints) {
+                return;
+            }
+            profile[idx] = max(profile[idx] - throttleChange / 4, 0);
+        }
+    }
+
+    private float min(float a, float b) {
+        return a < b ? a : b;
+    }
+
+    private float max(float a, float b) {
+        return a > b ? a : b;
+    }
+
+    // mouse control of throttle profile
+    @Override
+    public void setSelected(boolean yes) {
+        super.setSelected(yes);
+        if (glCanvas == null) {
+            return;
+        }
+        if (yes) {
+            glCanvas.addMouseListener(this);
+            glCanvas.addMouseMotionListener(this);
+
+        } else {
+            glCanvas.removeMouseListener(this);
+            glCanvas.removeMouseMotionListener(this);
+        }
+    }
+
+    @Override
+    public void mouseClicked(MouseEvent e) {
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent e) {
+    }
+
+    @Override
+    public void mouseExited(MouseEvent e) {
+    }
+
+    // helpers
+    private Point getPixel(MouseEvent e) {
+        if (canvas == null) {
+            return null;
+        }
+        Point p = canvas.getPixelFromMouseEvent(e);
+        if (canvas.wasMousePixelInsideChipBounds()) {
+            return p;
+        } else {
+            return null;
+        }
+    }
+
+    private boolean isShift(MouseEvent e) {
+        if (e.isShiftDown() && !e.isControlDown()) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private boolean isControl(MouseEvent e) {
+        if (!e.isShiftDown() && e.isControlDown()) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private int getIndex(MouseEvent e) {
+        if (getTrack() == null) {
+            log.warning("null track model");
+            return -1;
+        }
+        Point p = getPixel(e);
+        if (p == null) {
+            return -1;
+        }
+        return getTrack().findClosestIndex(p, 0, true);
+    }
+    private int lastEditIdx = -1;
+
+    @Override
+    public void mouseDragged(MouseEvent e) {
+        if (currentProfile == null) {
+            return;
+        }
+        int idx = -1;
+        if ((idx = getIndex(e)) == -1) {
+            return;
+        }
+        if (idx != lastEditIdx) {
+            if (isShift(e)) {
+                currentProfile.increaseThrottle(idx);
+                glCanvas.repaint();
+            } else if (isControl(e)) {
+                currentProfile.decreaseThrottle(idx);
+                glCanvas.repaint();
+            }
+        }
+        lastEditIdx = idx;
+    }
+
+    @Override
+    public void mouseMoved(MouseEvent e) {
+    }
+    private boolean hasBlendChecked = false;
+    private boolean hasBlend = false;
+
+//    GLUT glut=new GLUT();
+    /** Displays the extracted track points */
+    private void drawThrottlePainter(GLAutoDrawable drawable) {
+        if (isSelected() && getTrack() != null && getTrack().getPointList() != null && currentProfile != null) {
+            Point mp = glCanvas.getMousePosition();
+            Point p = canvas.getPixelFromPoint(mp);
+            if (p == null) {
+                return;
+            }
+            GL gl = drawable.getGL();
+            if (!hasBlendChecked) {
+                hasBlendChecked = true;
+                String glExt = gl.glGetString(GL.GL_EXTENSIONS);
+                if (glExt.indexOf("GL_EXT_blend_color") != -1) {
+                    hasBlend = true;
+                }
+            }
+            if (hasBlend) {
+                try {
+                    gl.glEnable(GL.GL_BLEND);
+                    gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+                    gl.glBlendEquation(GL.GL_FUNC_ADD);
+                } catch (GLException e) {
+                    e.printStackTrace();
+                    hasBlend = false;
+                }
+            }
+            gl.glColor4f(.25f, .45f, 0, .3f);
+            gl.glPushMatrix();
+            gl.glTranslatef(p.x, p.y, 0);
+            if (quad == null) {
+                quad = glu.gluNewQuadric();
+            }
+            glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
+            glu.gluDisk(quad, 0, 5, 32, 1);
+            gl.glPopMatrix();
+
+
+            chip.getCanvas().checkGLError(gl, glu, "in drawThrottlePainterk");
+
         }
     }
 }
