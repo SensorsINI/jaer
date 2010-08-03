@@ -82,7 +82,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     private int lastRewardLap = 0;
     private ThrottleProfile currentProfile, lastSuccessfulProfile, lastSuccessfulProfileEvenOlder;
     private Random random = new Random();
-    LapTimer lapTimer = new LapTimer();
+    LapTimer lapTimer = null;
     private int lapTime;
     private int prevLapTime;
     private float distanceFromTrack;
@@ -120,6 +120,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
         trackDefineFilter.getSupport().addPropertyChangeListener(SlotcarTrack.EVENT_TRACK_CHANGED, carTracker);
 
+        lapTimer=new LapTimer(getTrack());
+        trackDefineFilter.getSupport().addPropertyChangeListener(SlotcarTrack.EVENT_TRACK_CHANGED,lapTimer);
 
         setEnclosedFilterChain(filterChain);
         try {
@@ -350,6 +352,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         if (currentProfile != null) {
             currentProfile.resetMarkedSegments();
         }
+        lastRewardLap=0;
 
     }
 
@@ -417,6 +420,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
 
             // Plot lines
+            gl.glColor4f(.5f, 0, 0, .5f);
             gl.glLineWidth(.5f);
             gl.glBegin(gl.GL_LINE_STRIP);
             for (Point2D p : getTrack().getPointList()) {
@@ -708,8 +712,9 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         }
 
         private void reset() {
-            Arrays.fill(profile, defaultThrottle);
             log.info("reset all throttle settings to defaultThrottle=" + defaultThrottle);
+            Arrays.fill(profile, defaultThrottle);
+            resetMarkedSegments();
         }
 
         // chooses next spot to add throttle, based on previous throttle profile.

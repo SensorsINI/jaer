@@ -1,12 +1,15 @@
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.LinkedList;
 
 /**
  * Measures lap times and lap count.
  */
-class LapTimer {
+class LapTimer implements PropertyChangeListener {
 
+    SlotcarTrack track;
     int lastSegment = Integer.MAX_VALUE;
     int startSegment = 0;
     int lastLapTime = 0;
@@ -14,6 +17,22 @@ class LapTimer {
     boolean initialized = false;
     int sumTime = 0;
     int bestTime = Integer.MAX_VALUE;
+    int quarters = 0;
+
+    /** Constructs a new LapTimer for a track with numSegments points.
+     * 
+     * @param numSegments
+     */
+    public LapTimer(SlotcarTrack track) {
+        this.track = track;
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (evt.getPropertyName().equals(SlotcarTrack.EVENT_TRACK_CHANGED)) {
+            track = (SlotcarTrack) evt.getNewValue();
+        }
+    }
 
     class Lap {
 
@@ -37,29 +56,38 @@ class LapTimer {
      * @return true if we just crossed finish line.
      */
     boolean update(int newSegment, int timeUs) {
-        if (!initialized  && newSegment==0) {
+        boolean ret = false;
+        if (track == null) {
+            return false;
+        }
+        if (!initialized && newSegment == 0) {
             lastSegment = 0;
             lastLapTime = timeUs;
             lapCounter = 0;
             startSegment = 0;
             initialized = true;
         } else if (newSegment != lastSegment) {
+            final int numPoints = track.getNumPoints();
+            if ( (quarters <= 3 && newSegment >= (numPoints * quarters) / 4)  ||  (quarters==4 && newSegment < numPoints /  4 ) ) {
+                quarters++;
+                if (quarters > 4) {
+                    quarters = 0;
+                    lapCounter++;
+                    int deltaTime = timeUs - lastLapTime;
+                    sumTime += deltaTime;
+                    if (deltaTime < bestTime) {
+                        bestTime = deltaTime;
+                    }
+                    laps.add(new Lap(deltaTime));
+                    initialized = true;
+                    lastLapTime = timeUs;
+                    ret = true;
+                }
+            }
             // only when segment changes
             lastSegment = newSegment;
-            if (newSegment == startSegment) {
-                lapCounter++;
-                int deltaTime = timeUs - lastLapTime;
-                sumTime += deltaTime;
-                if (deltaTime < bestTime) {
-                    bestTime = deltaTime;
-                }
-                laps.add(new Lap(deltaTime));
-                initialized = true;
-                lastLapTime = timeUs;
-                return true;
-            }
         }
-        return false;
+        return ret;
     }
 
     Lap getLastLap() {
@@ -77,9 +105,10 @@ class LapTimer {
         sumTime = 0;
         lapCounter = 0;
         bestTime = Integer.MAX_VALUE;
+        quarters = 0;
     }
 
     public String toString() {
-        return String.format("Laps: %d\nAvg: %.2f, Best: %.2f, Last: %s", lapCounter, (float) sumTime * 1.0E-6F / lapCounter, (float) bestTime * 1.0E-6F, getLastLap());
+        return String.format("Laps: %d %d/4\nAvg: %.2f, Best: %.2f, Last: %s", lapCounter, quarters-1, (float) sumTime * 1.0E-6F / lapCounter, (float) bestTime * 1.0E-6F, getLastLap());
     }
 }
