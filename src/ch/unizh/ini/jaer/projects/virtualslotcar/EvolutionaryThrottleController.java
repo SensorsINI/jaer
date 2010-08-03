@@ -863,6 +863,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         return getTrack().findClosestIndex(p, 0, true);
     }
     private int lastEditIdx = -1;
+    enum EditState{Increae,Decrease,None};
+    volatile EditState editState=EditState.None;
 
     @Override
     public void mouseDragged(MouseEvent e) {
@@ -876,10 +878,14 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         if (idx != lastEditIdx) {
             if (isShift(e)) {
                 currentProfile.increaseThrottle(idx);
+                editState=EditState.Increae;
                 glCanvas.repaint();
             } else if (isControl(e)) {
                 currentProfile.decreaseThrottle(idx);
+                editState=EditState.Decrease;
                 glCanvas.repaint();
+            }else{
+                editState=EditState.None;
             }
         }
         lastEditIdx = idx;
@@ -887,6 +893,13 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     @Override
     public void mouseMoved(MouseEvent e) {
+           if (isShift(e)) {
+                editState=EditState.Increae;
+            } else if (isControl(e)) {
+                editState=EditState.Decrease;
+            }else{
+                editState=EditState.None;
+            }
     }
     private boolean hasBlendChecked = false;
     private boolean hasBlend = false;
@@ -918,7 +931,17 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                     hasBlend = false;
                 }
             }
-            gl.glColor4f(.25f, .45f, 0, .3f);
+            switch(editState){
+                case None:
+                    gl.glColor4f(.25f, .25f, 0, .3f);
+                    break;
+                case Increae:
+                    gl.glColor4f(0, .45f, 0, .5f);
+                    break;
+                case Decrease:
+                    gl.glColor4f(.45f, .0f, 0, .5f);
+
+            }
             gl.glPushMatrix();
             gl.glTranslatef(p.x, p.y, 0);
             if (quad == null) {
