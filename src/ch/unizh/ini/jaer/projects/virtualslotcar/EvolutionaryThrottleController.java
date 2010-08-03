@@ -144,6 +144,10 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         out = getEnclosedFilterChain().filterPacket(in); // does cartracker and maybe trackdefinefilter
 
         car = carTracker.findCarCluster();
+        if (car != null) {
+            currentTrackPos = car.segmentIdx;
+            distanceFromTrack = car.lastDistanceFromTrack;
+        }
 
         // choose state & set throttle
 
@@ -163,68 +167,59 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                 }
                 showedMissingTrackWarning = true;
             } else {
+                if (car != null && !car.crashed) {
+                    // did we lap?
+                    boolean lapped = lapTimer.update(currentTrackPos, car.getLastEventTimestamp());
+
+                    if (lapped) {
+                        lapTime = lapTimer.getLastLap().laptimeUs;
+                        int dt = lapTime - prevLapTime;
+                        if (dt < 0) {
+                            log.info("lap time improved by " + dt / 1000 + " ms");
+                        } else {
+                            log.info("lap time worsened by " + dt / 1000 + " ms");
+                        }
+                        prevLapTime = lapTime;
+                    }
+                    if (learningEnabled && lapTimer.lapCounter - lastRewardLap >= numSuccessfulLapsToReward) {
+                        try {
+                            log.info("successfully drove " + lapTimer.lapCounter + " laps; cloning this profile and rewarding currentProfile");
+                            if (lastSuccessfulProfile != null) {
+                                lastSuccessfulProfileEvenOlder = (ThrottleProfile) lastSuccessfulProfile.clone(); // save backup copy of last successfull
+                            }
+                            if (currentProfile != null) {
+                                lastSuccessfulProfile = (ThrottleProfile) currentProfile.clone(); // save current as successful
+                            }
+                        } catch (CloneNotSupportedException e) {
+                            throw new RuntimeException("couldn't clone the current throttle profile: " + e);
+                        }
+                        currentProfile.addBump();
+                        lastRewardLap = lapTimer.lapCounter;
+                    }
+                }
                 if (car != null && car.crashed) {
                     state.set(State.CRASHED);
                     lastCrashLocation = car.crashSegment;
                     throttle = getStartingThrottleValue();
                     sounds.play();
                     log.info("CRASHED");
+                    if (learningEnabled) {
+                        if (lastSuccessfulProfile != null && currentProfile != lastSuccessfulProfile) {
+                            log.info("crashed, switching back to previous profile");
+                            currentProfile = lastSuccessfulProfile;
+                        }
+                        currentProfile.subtractBump(currentTrackPos);
+                    }
+                    lastRewardLap = lapTimer.lapCounter; // don't reward until we make some laps from here
                 } else {
                     throttle = currentProfile.getThrottle(car.segmentIdx);
                 }
             }
         } else if (state.get() == State.CRASHED) {
             throttle = getStartingThrottleValue();
-            if (car != null && state.timeSinceChanged() > 1000) {
-                state.set(State.STARTING);
-//                lapTimer.reset();
-            }
+            state.set(State.STARTING);
         }
 
-        // measure performance, do learning
-
-        if (car != null && !car.crashed) {
-            currentTrackPos = car.segmentIdx;
-            distanceFromTrack = car.lastDistanceFromTrack;
-            // did we lap?
-            boolean lapped = lapTimer.update(currentTrackPos, car.getLastEventTimestamp());
-
-            if (lapped) {
-                lapTime = lapTimer.getLastLap().laptimeUs;
-                int dt = lapTime - prevLapTime;
-                if (dt < 0) {
-                    log.info("lap time improved by " + dt / 1000 + " ms");
-                } else {
-                    log.info("lap time worsened by " + dt / 1000 + " ms");
-                }
-                prevLapTime = lapTime;
-            }
-            if (learningEnabled && lapTimer.lapCounter - lastRewardLap >= numSuccessfulLapsToReward) {
-                try {
-                    log.info("successfully drove " + lapTimer.lapCounter + " laps; cloning this profile and rewarding currentProfile");
-                    if (lastSuccessfulProfile != null) {
-                        lastSuccessfulProfileEvenOlder = (ThrottleProfile) lastSuccessfulProfile.clone(); // save backup copy of last successfull
-                    }
-                    if (currentProfile != null) {
-                        lastSuccessfulProfile = (ThrottleProfile) currentProfile.clone(); // save current as successful
-                    }
-                } catch (CloneNotSupportedException e) {
-                    throw new RuntimeException("couldn't clone the current throttle profile: " + e);
-                }
-                currentProfile.addBump();
-                lastRewardLap = lapTimer.lapCounter;
-            }
-        } else { // null or crashed car, go back to last successful profile if we are not already using it
-            if (lapTimer.lapCounter > 0) {
-                log.info("crashed after " + (lapTimer.lapCounter) + " laps");
-            }
-            if (learningEnabled && lastSuccessfulProfile != null && currentProfile != lastSuccessfulProfile) {
-                log.info("crashed, switching back to previous profile");
-                currentProfile = lastSuccessfulProfile;
-            }
-            currentProfile.subtractBump(currentTrackPos);
-            lastRewardLap = 0;
-        }
 
         return out;
     }
