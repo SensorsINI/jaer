@@ -184,8 +184,10 @@ public class SlotcarTrack implements java.io.Serializable {
 
     }
 
-    /** Computes the curvatures at every spline point. The curvature is the radius of curvature, so the straighter the track, the larger the curvature. */
-    private void updateCurvature() {
+    /** Computes the curvatures at every spline point. 
+     * The curvature is the radius of curvature,
+     * so the straighter the track, the larger the curvature. */
+    public void updateCurvature() {
         if (trackPoints == null) {
             return;
         }

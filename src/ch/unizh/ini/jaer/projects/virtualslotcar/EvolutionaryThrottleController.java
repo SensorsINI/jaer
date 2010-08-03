@@ -115,6 +115,16 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         setPropertyTooltip("fractionOfTrackToSlowDownPreCrash", "fraction of track spline points before crash point to reduce throttle on");
         setPropertyTooltip("startingThrottleValue", "throttle value when starting (no car cluster detected)");
 
+        // do methods
+        setPropertyTooltip("guessThrottleFromTrackModel", "guess initial throttle profile from track model");
+        setPropertyTooltip("resetAllThrottleSettings", "reset all profile points to defaultThrottle");
+        setPropertyTooltip("loadThrottleSettings", "load profile from preferences");
+        setPropertyTooltip("saveThrottleSettings", "save profile to preferences");
+        setPropertyTooltip("revertToLastSuccessfulProfile", "explicitly revert profile to last one that made it around the track at least numSuccessfulLapsToReward");
+        setPropertyTooltip("slowDown", "reduce all profile point throttle settings");
+        setPropertyTooltip("speedUp", "increase all profile point throttle settings");
+
+
         doLoadThrottleSettings();
 
         filterChain = new FilterChain(chip);
@@ -258,6 +268,14 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             return;
         }
         currentProfile.reset();
+    }
+
+    synchronized public void doGuessThrottleFromTrackModel() {
+        if (currentProfile == null) {
+            log.warning("cannot guess until profile exists");
+            return;
+        }
+        currentProfile.guessThrottleFromTrackModel();
     }
 
     synchronized public void doSaveThrottleSettings() {
@@ -422,7 +440,9 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             int idx = 0;
             for (Point2D p : getTrack().getPointList()) {
                 float size = maxSize * currentProfile.getThrottle(idx);
-                if(size<1) size=1;
+                if (size < 1) {
+                    size = 1;
+                }
                 gl.glPointSize(size);
                 float rgb[] = {0, 0, .5f};
                 if (currentProfile.spedUpSegments[idx]) {
@@ -775,7 +795,53 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             }
             profile[idx] = max(profile[idx] - throttleChange / 4, 0);
         }
-    }
+
+        private void guessThrottleFromTrackModel() {
+            if (getTrack() == null) {
+                log.warning("null track");
+                return;
+            }
+            getTrack().updateCurvature();
+            float[] curvatures = getTrack().getCurvatureAtPoints();
+            for (int i = 0; i < curvatures.length; i++) {
+                curvatures[i] = (float) Math.abs(curvatures[i]);
+            }
+            final int nfilt = numPoints/30;
+
+            float[] smoothed=new float[curvatures.length];
+
+            for (int i = nfilt - 1; i < curvatures.length; i++) {
+                float s = 0;
+                for (int j = 0; j < nfilt; j++) {
+                    s += curvatures[i - j];
+                }
+                s /= nfilt;
+                smoothed[i] = s;
+            }
+            for(int i=0;i<nfilt-1;i++){
+                smoothed[i]=curvatures[i]; // TODO no filter here yet
+            }
+
+            float minCurv = Float.MAX_VALUE;
+            for (float c : smoothed) {
+                if (c < minCurv) {
+                    minCurv = c;
+                }
+            }
+            float maxCurv = Float.MIN_VALUE;
+            for (float c : smoothed) {
+                if (c > maxCurv) {
+                    maxCurv = c;
+                }
+            }
+
+            for (int idx = 0; idx < numPoints; idx++) {
+                int shiftedIdx=idx-nfilt;
+                if(shiftedIdx<0) shiftedIdx=numPoints+shiftedIdx;
+                profile[shiftedIdx] = min(1,  startingThrottleValue * 2 * (float)Math.pow((smoothed[idx] / maxCurv),.15));
+            }
+        }
+    } // ThrottleProfile
 
     private float min(float a, float b) {
         return a < b ? a : b;
@@ -863,8 +929,12 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         return getTrack().findClosestIndex(p, 0, true);
     }
     private int lastEditIdx = -1;
-    enum EditState{Increae,Decrease,None};
-    volatile EditState editState=EditState.None;
+
+    enum EditState {
+
+        Increae, Decrease, None
+    };
+    volatile EditState editState = EditState.None;
 
     @Override
     public void mouseDragged(MouseEvent e) {
@@ -878,14 +948,14 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         if (idx != lastEditIdx) {
             if (isShift(e)) {
                 currentProfile.increaseThrottle(idx);
-                editState=EditState.Increae;
+                editState = EditState.Increae;
                 glCanvas.repaint();
             } else if (isControl(e)) {
                 currentProfile.decreaseThrottle(idx);
-                editState=EditState.Decrease;
+                editState = EditState.Decrease;
                 glCanvas.repaint();
-            }else{
-                editState=EditState.None;
+            } else {
+                editState = EditState.None;
             }
         }
         lastEditIdx = idx;
@@ -893,13 +963,13 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     @Override
     public void mouseMoved(MouseEvent e) {
-           if (isShift(e)) {
-                editState=EditState.Increae;
-            } else if (isControl(e)) {
-                editState=EditState.Decrease;
-            }else{
-                editState=EditState.None;
-            }
+        if (isShift(e)) {
+            editState = EditState.Increae;
+        } else if (isControl(e)) {
+            editState = EditState.Decrease;
+        } else {
+            editState = EditState.None;
+        }
     }
     private boolean hasBlendChecked = false;
     private boolean hasBlend = false;
@@ -931,7 +1001,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                     hasBlend = false;
                 }
             }
-            switch(editState){
+            switch (editState) {
                 case None:
                     gl.glColor4f(.25f, .25f, 0, .3f);
                     break;
