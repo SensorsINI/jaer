@@ -18,9 +18,10 @@ import javax.media.opengl.GLCanvas;
 import javax.swing.JFrame;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.graphics.ImageDisplay;
 
 /**
- *
+ * Shows live cochlea spectrogram in a separate ImageDisplay window.
  * @author Andrew
  */
 public final class SpectrogramFilter extends EventFilter2D implements Observer, FrameAnnotater {
@@ -28,24 +29,20 @@ public final class SpectrogramFilter extends EventFilter2D implements Observer, 
     public static String getDescription() {
         return "Generate a spectrogram from incoming spikes";
     }
+    private int numChannels = getPrefs().getInt("SpectrogramFilter.numChannels", 64);
+    private int binWidth = getPrefs().getInt("SpecdtrogramFilter.binWidth", 16000);
+    private int numTimeBins = getPrefs().getInt("SpecdtrogramFilter.numTimeBins", 50);
+    private int redundancy = getPrefs().getInt("SpecdtrogramFilter.redundancy", 1); //not used now
+    private int spikeBufferLength = getPrefs().getInt("SpecotragramFilter.spikeBufferLength", 10000);
+    private int colorScale = getPrefs().getInt("SpecdtrogramFilter.colorScale", 50);
     private float[][] spectrogram;
     private int currentTime;
     private int[] spikeBufferTs;
     private int[] spikeBufferChans;
     private boolean[] spikeBufferValid;
     private int spikeBufferIndex;
-    private int numChannels = getPrefs().getInt("SpectrogramFilter.numChannels", 64);
-    private int binWidth = getPrefs().getInt("SpecdtrogramFilter.binWidth", 16000);
-    private int numTimeBins = getPrefs().getInt("SpecdtrogramFilter.numTimeBins", 50);
-
-    ;
-    private int redundancy = getPrefs().getInt("SpecdtrogramFilter.redundancy", 1); //not used now
-
-    ;
-    private int spikeBufferLength = getPrefs().getInt("SpecotragramFilter.spikeBufferLength", 10000);
-    private int colorScale = getPrefs().getInt("SpecdtrogramFilter.colorScale", 50);
-
-    ;
+    private ImageDisplay imageDisplay = null;
+    private JFrame imageFrame = null;
 
     public SpectrogramFilter(AEChip chip) {
         super(chip);
@@ -55,6 +52,21 @@ public final class SpectrogramFilter extends EventFilter2D implements Observer, 
         spikeBufferTs = new int[spikeBufferLength];
         spikeBufferChans = new int[spikeBufferLength];
         resetFilter();
+    }
+
+    @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes);
+        if (yes) {
+            checkImageDisplay();
+            imageFrame.setVisible(true);
+        } else {
+            if (imageFrame != null) {
+                imageFrame.setVisible(false);
+            }
+
+        }
+
     }
 
     public void initFilter() {
@@ -118,55 +130,54 @@ public final class SpectrogramFilter extends EventFilter2D implements Observer, 
 
     /*
     private void makeSpecDisplay(){
-                if (specFrame == null) {
-            specFrame = new JFrame("SpecDisplay");
-            glCanvas = new GLCanvas() {
+    if (specFrame == null) {
+    specFrame = new JFrame("SpecDisplay");
+    glCanvas = new GLCanvas() {
 
-                @Override
-                public void reshape(int i, int i1, int i2, int i3) {
-                    super.reshape(i, i1, i2, i3);
-                }
+    @Override
+    public void reshape(int i, int i1, int i2, int i3) {
+    super.reshape(i, i1, i2, i3);
+    }
 
-                @Override
-                public void display() {
-                    super.display();
-                    GL gl = glCanvas.getGL();
-                    gl.glPushMatrix();
-//        GL gl = drawable.getGL();
-                    // make sure we're drawing back buffer (this is probably true anyhow)
+    @Override
+    public void display() {
+    super.display();
+    GL gl = glCanvas.getGL();
+    gl.glPushMatrix();
+    //        GL gl = drawable.getGL();
+    // make sure we're drawing back buffer (this is probably true anyhow)
 
-//        gl.glDrawBuffer(GL.GL_BACK);
-                    gl.glMatrixMode(GL.GL_PROJECTION);
-                    gl.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-                    int BORDER=10;
-                    gl.glOrtho(-BORDER,getWidth()+BORDER,-BORDER,getHeight()+BORDER,10000,-10000);
-                    gl.glMatrixMode(GL.GL_MODELVIEW);
-                    // translate origin to this point
-                    gl.glTranslatef(0, 0, 0);
-                    // scale everything by rastergram scale
-                    float ys = (glCanvas.getHeight()) / (float) chip.getSizeX();// scale vertical is draableHeight/numPixels
-                    float xs = (glCanvas.getWidth()) / (float) numTimeBins;
-                    gl.glScalef(xs, ys, 1);
+    //        gl.glDrawBuffer(GL.GL_BACK);
+    gl.glMatrixMode(GL.GL_PROJECTION);
+    gl.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
+    int BORDER=10;
+    gl.glOrtho(-BORDER,getWidth()+BORDER,-BORDER,getHeight()+BORDER,10000,-10000);
+    gl.glMatrixMode(GL.GL_MODELVIEW);
+    // translate origin to this point
+    gl.glTranslatef(0, 0, 0);
+    // scale everything by rastergram scale
+    float ys = (glCanvas.getHeight()) / (float) chip.getSizeX();// scale vertical is draableHeight/numPixels
+    float xs = (glCanvas.getWidth()) / (float) numTimeBins;
+    gl.glScalef(xs, ys, 1);
 
 
-                    gl.glClearColor(0, 0, 0, 0);
-                    gl.glClearDepth(0.0);
-                    gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
+    gl.glClearColor(0, 0, 0, 0);
+    gl.glClearDepth(0.0);
+    gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
 
-                    gl.glColor3d(1, 0, 0);
-                    gl.glRectd(0, 0, xs, ys);
-                    gl.glPopMatrix();
-
-                }
-            };
-            specFrame.getContentPane().add(glCanvas, BorderLayout.CENTER);
-            glCanvas.setPreferredSize(new Dimension(200, 200));
-            specFrame.setVisible(true);
-        }
+    gl.glColor3d(1, 0, 0);
+    gl.glRectd(0, 0, xs, ys);
+    gl.glPopMatrix();
 
     }
-*/
+    };
+    specFrame.getContentPane().add(glCanvas, BorderLayout.CENTER);
+    glCanvas.setPreferredSize(new Dimension(200, 200));
+    specFrame.setVisible(true);
+    }
 
+    }
+     */
     private void binSpikes() {
         /* this could be computationally more efficient if we just moved
          * previously binned spikes, but at the cost of having an exactly
@@ -178,18 +189,35 @@ public final class SpectrogramFilter extends EventFilter2D implements Observer, 
             chan = spikeBufferChans[spike];
             spikeT = spikeBufferTs[spike];
             t = currentTime - spikeT;       // - time relative to now
-            tOff = t/binWidth;              // above in units of bins
+            tOff = t / binWidth;              // above in units of bins
             tbin = numTimeBins - 1 - tOff;  // time bin index (current time is last column)
 
-            if (tbin>0 && chan != -1) {
-                if (chan<0 || chan>=numChannels || tbin<0 || tbin>=numTimeBins)
-                    //throw error here? this shouldn't happen
+            if (tbin > 0 && chan != -1) {
+                if (chan < 0 || chan >= numChannels || tbin < 0 || tbin >= numTimeBins) //throw error here? this shouldn't happen
+                {
                     spectrogram[chan][tbin]++;
-                else
+                } else {
                     spectrogram[chan][tbin]++;
+                }
             }
         }
 
+    }
+
+    private void checkImageDisplay() {
+        if (imageFrame == null) {
+            imageFrame = new JFrame("Spectrogram");
+            imageFrame.setPreferredSize(new Dimension(200, 200));
+            imageDisplay = ImageDisplay.createOpenGLCanvas();
+            imageFrame.getContentPane().add(imageDisplay, BorderLayout.CENTER);
+            imageFrame.pack();
+            imageDisplay.setxLabel("time");
+            imageDisplay.setyLabel("channel");
+
+        }
+        if (numChannels != imageDisplay.getSizeY() || numTimeBins != imageDisplay.getSizeX()) {
+            imageDisplay.setSize(numTimeBins, numChannels);
+        }
     }
 
     private void clearSpectrogram() {
@@ -205,25 +233,35 @@ public final class SpectrogramFilter extends EventFilter2D implements Observer, 
     private GLCanvas glCanvas = null;
 
     public void annotate(GLAutoDrawable drawable) {
+        checkImageDisplay();
 
-
-        GL gl=drawable.getGL();
-
-        int width = drawable.getWidth();
-        int height = drawable.getHeight();
-
+        imageDisplay.checkPixmapAllocation();
         float c;
         for (int chan = 0; chan < numChannels; chan++) {
             for (int time = 0; time < numTimeBins; time++) {
                 c = (float) spectrogram[chan][time] / colorScale;
-                gl.glColor3d(c, 1, c);
-                float x1 = (float)time / (float)numTimeBins * width;
-                float x2 = (float)(time+1) / (float)numTimeBins * width;
-
-                gl.glRectf(x1/1000,chan, x2/1000, chan+1);
+                imageDisplay.setPixmapGray(time, chan, c);
             }
         }
-        
+        imageDisplay.display();
+
+//        GL gl=drawable.getGL();
+//
+//        int width = drawable.getWidth();
+//        int height = drawable.getHeight();
+//
+//        float c;
+//        for (int chan = 0; chan < numChannels; chan++) {
+//            for (int time = 0; time < numTimeBins; time++) {
+//                c = (float) spectrogram[chan][time] / colorScale;
+//                gl.glColor3d(c, 1, c);
+//                float x1 = (float)time / (float)numTimeBins * width;
+//                float x2 = (float)(time+1) / (float)numTimeBins * width;
+//
+//                gl.glRectf(x1/1000,chan, x2/1000, chan+1);
+//            }
+//        }
+
 
 
 //        gl.glPushMatrix();
