@@ -258,7 +258,7 @@ public class SlotcarTrack implements java.io.Serializable {
      * and <a href="http://softsurfer.com/Archive/algorithm_0102/algorithm_0102.htm#Distance%20to%202-Point%20Line">http://softsurfer.com/Archive/algorithm_0102/algorithm_0102.htm#Distance%20to%202-Point%20Line</a>
      *
      * @param pos the xy position of interest.
-     * @return the distance from the track in pixels using the nearest two track points.
+     * @return the signed distance from the track in pixels using the nearest two track points.
      */
     public float findDistanceToTrack(Point2D pos) {
         Point twoPointIndices = findClosestTwoIndices(pos);
@@ -273,7 +273,7 @@ public class SlotcarTrack implements java.io.Serializable {
         Point2D vl = new Point2D.Double(b.getX() - a.getX(), b.getY() - a.getY());  // vector pointing from a to b
         Point2D w = new Point2D.Double(pos.getX() - a.getX(), pos.getY() - a.getY()); // vector pointing from a to pos
         double vlnorm = vl.distance(0, 0); // length of vl
-        double cross = Math.abs(vl.getX() * w.getY() - vl.getY() * w.getX());
+        double cross = (vl.getX() * w.getY() - vl.getY() * w.getX());
         double dist = cross / vlnorm;
         return (float) dist;
     }

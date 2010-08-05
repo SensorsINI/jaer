@@ -1779,12 +1779,13 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
         @Override
         public String toString() {
-            return String.format("Cluster number=#%d numEvents=%d locationX=%d locationY=%d radiusX=%.1f radiusY=%.1f lifetime=%d visible=%s speedPPS=%.2f",
+            return String.format("Cluster number=#%d numEvents=%d locationX=%d locationY=%d radiusX=%.1f radiusY=%.1f mass=%.1f lifetime=%d visible=%s speedPPS=%.2f",
                     getClusterNumber(), numEvents,
                     (int) location.x,
                     (int) location.y,
                     radiusX,
                     radiusY,
+                    getMass(),
                     getLifetime(),
                     isVisible(),
                     getSpeedPPS());

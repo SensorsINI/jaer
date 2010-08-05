@@ -31,6 +31,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * @author tobi
  */
 public class TwoCarTracker extends RectangularClusterTracker implements FrameAnnotater, PropertyChangeListener, CarTracker {
+   public static String getDescription(){ return "Slot car car tracker for finding closest car to track model";}
 
     // properties
     private boolean onlyFollowTrack = getBoolean("onlyFollowTrack", true);
@@ -46,12 +47,13 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 
     public TwoCarTracker(AEChip chip) {
         super(chip);
-        setPropertyTooltip("onlyFollowTrack", "If set, clusters will only follow the track. If false, clusters can follow car off the track.");
-        setPropertyTooltip("relaxToTrackFactor", "Tracking will normally only parallel the track. This factor control how much the cluster converges onto the track, i.e., the allowed normal motion as fraction of the parallel motion.");
-        setPropertyTooltip("distanceFromTrackMetricTauMs", "Each car cluster distance from track model is lowpass filtered with this time constant in ms; the closest one is chosen as the computer controlled car");
-        setPropertyTooltip("minSegmentsToBeCarCluster", "a CarCluster needs to pass at least this many segments to be marked as the car cluster");
-        setPropertyTooltip("maxDistanceFromTrackPoint", "Maximum allowed distance in pixels from track spline point to find nearest spline point; if currentTrackPos=-1 increase maxDistanceFromTrackPoint");
-        setPropertyTooltip("segmentSpeedTauMs", "time constant in ms for filtering segment speeed along track");
+        final String s="TwoCarTracker";
+        setPropertyTooltip(s,"onlyFollowTrack", "If set, clusters will only follow the track. If false, clusters can follow car off the track.");
+        setPropertyTooltip(s,"relaxToTrackFactor", "Tracking will normally only parallel the track. This factor control how much the cluster converges onto the track, i.e., the allowed normal motion as fraction of the parallel motion.");
+        setPropertyTooltip(s,"distanceFromTrackMetricTauMs", "Each car cluster distance from track model is lowpass filtered with this time constant in ms; the closest one is chosen as the computer controlled car");
+        setPropertyTooltip(s,"minSegmentsToBeCarCluster", "a CarCluster needs to pass at least this many segments to be marked as the car cluster");
+        setPropertyTooltip(s,"maxDistanceFromTrackPoint", "Maximum allowed distance in pixels from track spline point to find nearest spline point; if currentTrackPos=-1 increase maxDistanceFromTrackPoint");
+        setPropertyTooltip(s,"segmentSpeedTauMs", "time constant in ms for filtering segment speeed along track");
 
         // set reasonable defaults
         if (!isPreferenceStored("maxNumClusters")) {
@@ -617,6 +619,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 
         private void updateState() {
             lastDistanceFromTrack = track.findDistanceToTrack(getLocation());
+            if(Float.isNaN(avgDistanceFromTrack)) distFilter.reset();
             avgDistanceFromTrack = distFilter.filter(lastDistanceFromTrack, getLastEventTimestamp());
 //            determineIfcrashed();
 
