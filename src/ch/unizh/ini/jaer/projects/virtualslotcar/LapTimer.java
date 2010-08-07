@@ -18,6 +18,7 @@ class LapTimer implements PropertyChangeListener {
     int sumTime = 0;
     int bestTime = Integer.MAX_VALUE;
     int quarters = 0;
+    private static final int MAX_LAPS_TO_STORE=15;
 
     /** Constructs a new LapTimer for a track with numSegments points.
      * 
@@ -60,8 +61,9 @@ class LapTimer implements PropertyChangeListener {
         if (track == null) {
             return false;
         }
-        if (!initialized && newSegment == 0) {
-            lastSegment = 0;
+        if (!initialized ) {
+            quarters=(4*newSegment)/track.getNumPoints();
+            lastSegment = newSegment;
             lastLapTime = timeUs;
             lapCounter = 0;
             startSegment = 0;
@@ -79,6 +81,7 @@ class LapTimer implements PropertyChangeListener {
                         bestTime = deltaTime;
                     }
                     laps.add(new Lap(deltaTime));
+                    if(laps.size()>MAX_LAPS_TO_STORE) laps.removeFirst();
                     initialized = true;
                     lastLapTime = timeUs;
                     ret = true;
@@ -109,6 +112,17 @@ class LapTimer implements PropertyChangeListener {
     }
 
     public String toString() {
-        return String.format("Laps: %d %d/4\nAvg: %.2f, Best: %.2f, Last: %s", lapCounter, quarters-1, (float) sumTime * 1.0E-6F / lapCounter, (float) bestTime * 1.0E-6F, getLastLap());
+        StringBuilder  sb=new StringBuilder();
+       sb.append(String.format("Laps: %d %d/4\nAvg: %.2f, Best: %.2f, Last: %s",
+                lapCounter, quarters-1,
+                (float) sumTime * 1.0E-6F / lapCounter,
+                (float) bestTime * 1.0E-6F,
+                getLastLap())
+                );
+       int count=0;
+       for(Lap l:laps){
+           sb.append(String.format("\n%3d: %8.3f",count++,l.laptimeUs*1e-6f));
+       }
+       return sb.toString();
     }
 }

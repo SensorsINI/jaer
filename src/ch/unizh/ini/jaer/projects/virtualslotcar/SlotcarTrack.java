@@ -370,7 +370,7 @@ public class SlotcarTrack implements java.io.Serializable {
                     setMapEntry(idx, x, y);
                 }
             }
-            if (true) {
+            if (false) {
                 if (closestPointFrame == null) {
                     closestPointFrame = new JFrame("Closest Point Map");
                     closestPointFrame.setPreferredSize(new Dimension(200, 200));

@@ -11,6 +11,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Timer;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.aemonitor.AEConstants;
@@ -300,7 +301,9 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             }
 
         }
+
     }
+
 
     /**
      * @return the minSegmentsToBeCarCluster
@@ -512,7 +515,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         @Override
         protected void prune() {
             super.prune();
-            if (numSegmentIncreases > 50) {
+            if (numSegmentIncreases > NUM_SEGMENTS_TO_BE_MARKED_RUNNING) {
                 determineIfcrashed();
             }
         }
@@ -595,12 +598,12 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             }
             switch (state) {
                 case LOOKING_FOR_LAST:
-                    sb.append("could't find last crash segment, using lastValidSeg=" + lastValidSeg);
+                    sb.append("could't find last crash segment while looking for last segment, using lastValidSeg=" + lastValidSeg);
                     crashed = true;
                     crashSegment = lastValidSeg;
                     break;
                 case COUNTING:
-                    sb.append("could't find last crash segment, using startSeg=" + startSeg);
+                    sb.append("was still counting decreasing segments but could't find last crash segment, using startSeg=" + startSeg);
                     crashed = true;
                     crashSegment = startSeg;
                     break;
@@ -610,7 +613,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                     crashed = true;
                     break;
                 default:
-                    sb.append("\ninvalid state=" + state);
+                   throw new RuntimeException("invalid state "+state+"reached in determineIfcrashed() - this should not happen");
 
             }
             sb.append(" for ").append(this.toString());

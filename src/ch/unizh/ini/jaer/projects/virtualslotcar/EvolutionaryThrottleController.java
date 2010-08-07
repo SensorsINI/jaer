@@ -4,7 +4,6 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
-import com.sun.opengl.util.GLUT;
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.Color;
 import java.awt.Font;
@@ -24,6 +23,7 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.Timer;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
@@ -253,6 +253,17 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
         return out;
     }
+
+//    private Timer timer=new Timer("Status Flasher");
+//    private volatile boolean showFlashingStatus=false;
+//    private TextRenderer statusRenderer=null;
+//    private long last
+//
+//    private void flashBigStatusText(GLAutoDrawable drawable, int timeMs, String s){
+//
+//
+//    }
+//
 
     /** Computes throttle using tracker output and ThrottleProfile.
      *
