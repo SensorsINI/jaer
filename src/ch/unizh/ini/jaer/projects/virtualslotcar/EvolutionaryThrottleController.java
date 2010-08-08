@@ -227,7 +227,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                         lastRewardLap = lapTimer.lapCounter;
                     }
                 }
-                if (car != null && car.crashed) {
+                if (carTracker.getCrashedCar()!=null) {
                     state.set(State.CRASHED);
                     lastCrashLocation = car.crashSegment;
                     throttle = getStartingThrottleValue();
@@ -237,7 +237,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                             log.info("crashed at segment"+lastCrashLocation+", switching back to previous profile");
                             currentProfile = lastSuccessfulProfile;
                         }
-                        currentProfile.subtractBump(currentTrackPos);
+                        currentProfile.subtractBump(carTracker.getCrashedCar().crashSegment);
                     }
                     lastRewardLap = lapTimer.lapCounter; // don't reward until we make some laps from here
                 } else {
