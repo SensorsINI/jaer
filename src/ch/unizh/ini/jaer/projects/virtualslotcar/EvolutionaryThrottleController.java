@@ -232,10 +232,9 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                     lastCrashLocation = car.crashSegment;
                     throttle = getStartingThrottleValue();
                     sounds.play();
-                    log.info("CRASHED");
                     if (learningEnabled) {
                         if (lastSuccessfulProfile != null && currentProfile != lastSuccessfulProfile) {
-                            log.info("crashed, switching back to previous profile");
+                            log.info("crashed at segment"+lastCrashLocation+", switching back to previous profile");
                             currentProfile = lastSuccessfulProfile;
                         }
                         currentProfile.subtractBump(currentTrackPos);

@@ -539,7 +539,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             int lastValidSeg = Integer.MAX_VALUE;
             int startSeg = -1;
 
-            StringBuilder sb = new StringBuilder("Pre-crash segment history, counting backwards in time = ");
+//            StringBuilder sb = new StringBuilder("Pre-crash segment history, counting backwards in time = ");
             search:
             for (int i = 0; i < SEGMENT_HISTORY_LENGTH; i++) { // for all the recorded segments
                 int segPointer = segmentHistoryPointer - i - 1;
@@ -547,7 +547,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                     segPointer = SEGMENT_HISTORY_LENGTH + segPointer; // wrap back on ring buffer
                 }
                 int thisSeg = segmentHistory[segPointer];
-                sb.append(Integer.toString(thisSeg)).append(" ");
+//                sb.append(Integer.toString(thisSeg)).append(" ");
 
                 switch (state) {
                     case LOOKING_FOR_LAST:
@@ -598,17 +598,17 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             }
             switch (state) {
                 case LOOKING_FOR_LAST:
-                    sb.append("could't find last crash segment while looking for last segment, using lastValidSeg=" + lastValidSeg);
+//                    sb.append("could't find last crash segment while looking for last segment, using lastValidSeg=" + lastValidSeg);
                     crashed = true;
                     crashSegment = lastValidSeg;
                     break;
                 case COUNTING:
-                    sb.append("was still counting decreasing segments but could't find last crash segment, using startSeg=" + startSeg);
+//                    sb.append("was still counting decreasing segments but could't find last crash segment, using startSeg=" + startSeg);
                     crashed = true;
                     crashSegment = startSeg;
                     break;
                 case FOUND_CRASH:
-                    sb.append("\ndetermined crash was at segment " + crashSeg);
+//                    sb.append("\ndetermined crash was at segment " + crashSeg);
                     crashSegment = crashSeg;
                     crashed = true;
                     break;
@@ -616,8 +616,8 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                    throw new RuntimeException("invalid state "+state+"reached in determineIfcrashed() - this should not happen");
 
             }
-            sb.append(" for ").append(this.toString());
-            log.info(sb.toString());
+//            sb.append(" for ").append(this.toString());
+//            log.info(sb.toString());
         } // determineCrashLocation
 
         private void updateState() {
