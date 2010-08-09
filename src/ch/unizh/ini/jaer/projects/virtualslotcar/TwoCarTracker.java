@@ -108,6 +108,8 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         if (!isPreferenceStored("colorClustersDifferentlyEnabled")) {
             setColorClustersDifferentlyEnabled(true);
         }
+        if(!isPreferenceStored("onlyFollowTrack")) setOnlyFollowTrack(true);
+        if(!isPreferenceStored("relaxToTrackFactor")) setRelaxToTrackFactor(.1f);
 
         FilterChain filterChain = new FilterChain(chip);
         filterChain.add(new BackgroundActivityFilter(chip));
@@ -217,10 +219,10 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         for (ClusterInterface c : clusters) {
             TwoCarCluster cc = (TwoCarCluster) c;
             if (cc == nearestLast) {
-                votes[idx]+=1;
+                votes[idx]+=2;
             }
             if (cc == closestAvgToTrack) {
-                votes[idx]+=2;
+                votes[idx]+=3;
             }
             if (cc == oldest) {
                 votes[idx]+=1;
@@ -229,7 +231,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         }
         int maxVote = 0, maxbin = 0;
         for (int i = 0; i < votes.length; i++) {
-            if (votes[i] > maxVote) {
+            if (votes[i] >= maxVote) {
                 maxVote = votes[i];
                 maxbin = i;
             }

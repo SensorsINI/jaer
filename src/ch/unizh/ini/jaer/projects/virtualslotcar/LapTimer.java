@@ -102,7 +102,7 @@ class LapTimer implements PropertyChangeListener {
         } else { // initialized
             if (lastSegment == newSegment) { // if segment doesn't change, don't do anything
                 return false;
-            } else if (quarters == 0) { // if we haven't passed segment zero, then check if we have
+            } else if (quarters == 0 || quarters==4) { // if we haven't passed segment zero, then check if we have
                 if (lastSegment >= (3 * n) / 4 && newSegment < n / 4) { // passed segment 0 (the start segment)
                     if (currentLap != null) {
                         currentLap.storeSplit(3, timeUs - lapStartTime);
@@ -114,8 +114,8 @@ class LapTimer implements PropertyChangeListener {
                             bestTime = deltaTime;
                         }
                         lastUpdateTime = timeUs;
-                        ret = true;
-                    }
+                       ret = true;
+                   }
                     quarters = 1; //  next, look to pass 1st quarter of track
                     currentLap = new Lap();
                     laps.add(currentLap);
@@ -124,16 +124,12 @@ class LapTimer implements PropertyChangeListener {
                     }
                     lastUpdateTime = timeUs;
                     lapStartTime = timeUs;
-                    lapCounter = 0;
                     startSegment = 0;
                 }
             } else if (quarters > 0 && quarters < 4) {
                 if (newSegment >= (n * quarters) / 4) {
                     currentLap.storeSplit(quarters-1,  timeUs - lapStartTime);
                     quarters++;
-                    if (quarters == 4) {
-                        quarters = 0;
-                    }
                 }
             }
             lastSegment = newSegment;
@@ -154,7 +150,6 @@ class LapTimer implements PropertyChangeListener {
         laps.clear();
         lastSegment = Integer.MAX_VALUE;
         sumTime = 0;
-        lapCounter = 0;
         bestTime = Integer.MAX_VALUE;
         quarters = 0;
     }
