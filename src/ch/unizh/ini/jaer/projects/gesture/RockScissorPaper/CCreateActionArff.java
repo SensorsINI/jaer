@@ -5,8 +5,7 @@
 
 package ch.unizh.ini.jaer.projects.gesture.RockScissorPaper;
 
-import ch.unizh.ini.jaer.projects.gesture.GawiBawiBo2.*;
-import ch.unizh.ini.jaer.projects.gesture.GawiBawiBo.*;
+/* &&To
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -14,16 +13,18 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import weka.core.Attribute;
+
+ import weka.core.Attribute;
 import weka.core.FastVector;
 import weka.core.Instance;
 import weka.core.Instances;
-
+* &&From
 /**
  *
- * @author юнео PC
+ * @author Eun Yeong Ahn
  */
 public class CCreateActionArff {
+  /* &&From
     static int m_findex = 0;
     
     FastVector atts;
@@ -89,4 +90,6 @@ public class CCreateActionArff {
         }
         return "";
     }
+   * &&To
+   */
 }

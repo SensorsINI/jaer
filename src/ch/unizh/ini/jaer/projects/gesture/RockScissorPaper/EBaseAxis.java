@@ -7,7 +7,7 @@ package ch.unizh.ini.jaer.projects.gesture.RockScissorPaper;
 
 /**
  *
- * @author юнео PC
+ * @author Eun Yeong Ahn
  */
 public enum EBaseAxis {
     X,Y,XY;

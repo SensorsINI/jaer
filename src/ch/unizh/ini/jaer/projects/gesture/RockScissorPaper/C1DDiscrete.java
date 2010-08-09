@@ -4,8 +4,6 @@
  */
 
 package ch.unizh.ini.jaer.projects.gesture.RockScissorPaper;
-
-import ch.unizh.ini.jaer.projects.gesture.GawiBawiBo2.*;
 import java.util.ArrayList;
 import java.util.Iterator;
 import net.sf.jaer.event.BasicEvent;
@@ -13,7 +11,7 @@ import net.sf.jaer.event.EventPacket;
 
 /**
  *
- * @author 인턴 PC
+ * @author Eun Yeong Ahn
  */
 public class C1DDiscrete {
     int trow, tcol;
@@ -66,10 +64,10 @@ public class C1DDiscrete {
              int idx = 0;
              if(base == EBaseAxis.X){
                  idx = (int) Math.floor((ev.x - min)/interval);
-                 remainder = ev.x - min - (interval * idx);     //sliding window위하여
+                 remainder = ev.x - min - (interval * idx);     //sliding window
              }else if(base == EBaseAxis.Y){
                  idx = (int) Math.floor((ev.y - min)/interval);
-                 remainder = ev.y - min - (interval * idx);     //sliding window위하여
+                 remainder = ev.y - min - (interval * idx);     //sliding window
              }
 
              if(idx >= noOfBins){
@@ -141,10 +139,10 @@ public class C1DDiscrete {
              double remainder = 0;
              if(base == EBaseAxis.X){
                  idx = (int) Math.floor((ev.x - min)/interval);
-                 remainder = ev.x - min - (interval * idx);     //sliding window위하여
+                 remainder = ev.x - min - (interval * idx);     //sliding window
              }else if(base == EBaseAxis.Y){
                  idx = (int) Math.floor((ev.y - min)/interval);
-                 remainder = ev.y - min - (interval * idx);     //sliding window위하여
+                 remainder = ev.y - min - (interval * idx);     //sliding window
              }
 
              if(idx >= noOfBins){

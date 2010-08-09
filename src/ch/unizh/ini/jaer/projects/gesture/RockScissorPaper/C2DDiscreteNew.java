@@ -5,13 +5,12 @@
 
 package ch.unizh.ini.jaer.projects.gesture.RockScissorPaper;
 
-import ch.unizh.ini.jaer.projects.gesture.GawiBawiBo2.*;
 import java.util.ArrayList;
 import net.sf.jaer.event.BasicEvent;
 
 /**
  *
- * @author 인턴 PC
+ * @author Eun Yeong Ahn
  */
 public class C2DDiscreteNew {
     int noOfInstances;
@@ -91,11 +90,11 @@ public class C2DDiscreteNew {
 
             xIdx = (int) Math.floor(data[i][0] / xinterval);
             if(xIdx >= xbins) xIdx = xbins - 1;
-            xremainder = data[i][0] - (xinterval * xIdx);     //sliding window위하여
+            xremainder = data[i][0] - (xinterval * xIdx);     //sliding window
 
             yIdx = (int) Math.floor(data[i][1] / yinterval);
             if(yIdx >= ybins) yIdx = ybins - 1;
-            yremainder = data[i][1] - (yinterval * yIdx);     //sliding window위하여
+            yremainder = data[i][1] - (yinterval * yIdx);     //sliding window
 
 
             disDataCount[yIdx][xIdx] = disDataCount[yIdx][xIdx] + 1;

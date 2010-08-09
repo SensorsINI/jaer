@@ -4,23 +4,29 @@
  */
 
 package ch.unizh.ini.jaer.projects.gesture.RockScissorPaper;
-
+/* &&From
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import weka.classifiers.bayes.NaiveBayes;
 import weka.core.Instance;
 import weka.core.Instances;
+ * &&To
+ */
 
 /**
  *
- * @author юнео PC
+ * @author Eun Yeong Ahn
  */
 public class CLearningModel {
     //Naive Bayes
+    /*
+     * &&From
+
     NaiveBayes nb = new NaiveBayes();
     Instances data = null;
     void BuildModel(String path){
@@ -75,4 +81,5 @@ public class CLearningModel {
         BuildModel(CParameter.ClearArff);
        
     }
+     * */
 }

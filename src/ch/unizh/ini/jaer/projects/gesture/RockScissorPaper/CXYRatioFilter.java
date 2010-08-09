@@ -4,16 +4,23 @@
  */
 
 package ch.unizh.ini.jaer.projects.gesture.RockScissorPaper;
-
+/*
+ * &&From
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import weka.core.Instance;
+ * import weka.core.Instance;
+ * &&To
+ */
+
 
 /**
  *
- * @author юнео PC
+ * @author Eun Yeong Ahn
  */
 public class CXYRatioFilter {
+    /*
+     * &&From
+
     double ratio = 0;
 
     public void Filter(EventPacket<?> in){
@@ -64,4 +71,6 @@ public class CXYRatioFilter {
 
         return new_instance;
     }
+     &&To
+     */
 }

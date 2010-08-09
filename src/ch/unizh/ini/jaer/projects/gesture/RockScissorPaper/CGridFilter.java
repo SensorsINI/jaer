@@ -5,7 +5,6 @@
 
 package ch.unizh.ini.jaer.projects.gesture.RockScissorPaper;
 
-import ch.unizh.ini.jaer.projects.gesture.GawiBawiBo2.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -14,7 +13,7 @@ import net.sf.jaer.event.EventPacket;
 
 /**
  *
- * @author юнео PC
+ * @author Eun Yeong Ahn
  */
 public class CGridFilter {
 

@@ -4,21 +4,24 @@
  */
 
 package ch.unizh.ini.jaer.projects.gesture.RockScissorPaper;
-
+/* &&From
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import weka.core.Attribute;
+ import weka.core.Attribute;
 import weka.core.FastVector;
 import weka.core.Instance;
 import weka.core.Instances;
+ * &&To
+ */
 
 /*
  * Create data file
  */
 public class CData {
+    /* &&From
     FastVector m_atts;
     Instances m_data;
     int[] m_count;
@@ -81,5 +84,7 @@ public class CData {
     int numInstances(){
         return m_data.numInstances();
     }
+     * &&To
+     */
 
 }

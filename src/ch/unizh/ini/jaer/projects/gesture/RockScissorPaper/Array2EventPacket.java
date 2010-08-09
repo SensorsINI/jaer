@@ -12,7 +12,7 @@ import net.sf.jaer.event.EventPacket;
 
 /**
  *
- * @author юнео PC
+ * @author Eun Yeong Ahn
  */
 public class Array2EventPacket {
    EventPacket Convert(ArrayList<BasicEvent> array){

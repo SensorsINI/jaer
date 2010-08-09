@@ -2,7 +2,12 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-
+/*
+ * To execute this code, you need to
+ * 1. download weka.jar and wekasrc.jar
+ * 2. add the two jar files to the class path
+ * 3. make comments start with &&From to &&To to be active
+ */
 package ch.unizh.ini.jaer.projects.gesture.RockScissorPaper;
 
 import com.sun.opengl.util.GLUT;
@@ -10,8 +15,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
@@ -19,11 +22,14 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
-import weka.core.Instance;
+/* &&From
+ import weka.core.Instance;
+ * &&To
+ */
 
 /**
  *
- * @author юнео PC
+ * @author Eun Yeong Ahn
  */
 public class RockScissorPaper extends EventFilter2D implements FrameAnnotater, Observer /*, PreferenceChangeListener*/ {
     //private boolean enableSwapxy=getPrefs().getBoolean("Gawi.enableSwapxy", false);
@@ -43,7 +49,7 @@ public class RockScissorPaper extends EventFilter2D implements FrameAnnotater, O
 
     private boolean printArff = getPrefs().getBoolean("RockScissorPaper.printArff", false);
     private boolean learning = getPrefs().getBoolean("RockScissorPaper.learning", false);
-    private boolean initModel = getPrefs().getBoolean("RockScissorPaper.initModel", false);
+   // private boolean initModel = getPrefs().getBoolean("RockScissorPaper.initModel", false);
     private boolean updateModel = getPrefs().getBoolean("RockScissorPaper.initModel", false);
     private boolean clearModel = getPrefs().getBoolean("RockScissorPaper.clearModel", false);
     private boolean classification = getPrefs().getBoolean("RockScissorPaper.classification", false);
@@ -78,12 +84,15 @@ public class RockScissorPaper extends EventFilter2D implements FrameAnnotater, O
         super(chip);
         chip.addObserver(this);
         addObserver(this);
-
+        /* &&From
+        model.BuildModel(CParameter.TrainArff);
+         * &&To
+         */
         /****************************************************************************
          * Parameter Setting
          */
         final String toPlay = "Game";
-        setPropertyTooltip(toPlay, "game", "to play");
+        setPropertyTooltip(toPlay, "play", "to play");
 
         final String actionDetection = "Action Detection";
         setPropertyTooltip(actionDetection, "movingThreshold", "If the number of points is under this value, the state is regarded as bounding position.");
@@ -106,7 +115,7 @@ public class RockScissorPaper extends EventFilter2D implements FrameAnnotater, O
 
 
         final String learning = "Learning";
-        setPropertyTooltip(learning, "initModel", "initialize model");
+    //    setPropertyTooltip(learning, "initModel", "initialize model");
         setPropertyTooltip(learning, "clearModel", "clear model");
         setPropertyTooltip(learning, "classification", "classification");
         setPropertyTooltip(learning, "learning", "Learning");
@@ -124,11 +133,13 @@ public class RockScissorPaper extends EventFilter2D implements FrameAnnotater, O
         int lastTime = 0;
 
         DetectBounce(in); // at least once per packet update list
+        /* &&From
         if(clearModel)
             model.ClearModel();
+         
 
-        if(initModel)
-            model.BuildModel(CParameter.TrainArff);
+       // if(initModel)
+           
 
         if(m_training == null && printArff)
             m_training = new CData(m_noOfFeatures +1, noOfInstances);
@@ -148,7 +159,8 @@ public class RockScissorPaper extends EventFilter2D implements FrameAnnotater, O
         }
 
         maybeCallUpdateObservers(in, in.getLastTimestamp());
-
+        * &&To
+         */
         return in;
     }
 
@@ -221,8 +233,10 @@ public class RockScissorPaper extends EventFilter2D implements FrameAnnotater, O
             subPacket.setSize(subEventsIndex);
 
             // Extract Features
+            /* &&F
             if(subPacket.getSize() > 500)
                 ExtractFeatures(subPacket);
+            &&To */
             } else if (o instanceof AEChip) {
                 initFilter();
             }
@@ -284,13 +298,13 @@ public class RockScissorPaper extends EventFilter2D implements FrameAnnotater, O
         getPrefs().putBoolean("RockScissorPaper.secondWristFilter", secondWristFilter);
     }
 
-    public boolean isinitModel() {
+   /* public boolean isinitModel() {
         return initModel;
     }
     public void setinitModel(boolean initModel) {
         this.initModel = initModel;
         getPrefs().putBoolean("RockScissorPaper.initModel", initModel);
-    }
+    }*/
     
     public boolean isclearModel() {
         return clearModel;
@@ -450,6 +464,7 @@ public class RockScissorPaper extends EventFilter2D implements FrameAnnotater, O
         m_dirWindow.clear();
     }
 
+    /* &&From
     private void ExtractFeatures(EventPacket<?> in) {
         m_isAction = false;
         try {
@@ -550,6 +565,7 @@ public class RockScissorPaper extends EventFilter2D implements FrameAnnotater, O
             }
         }
     }
+     &&To*/
 
     private String GetAction(double c_value) {
         if(c_value == 0)

@@ -9,7 +9,7 @@ import java.util.Random;
 
 /**
  *
- * @author юнео PC
+ * @author Eun Yeong Ahn
  */
 public class CKMeans1D {
     double[] data;

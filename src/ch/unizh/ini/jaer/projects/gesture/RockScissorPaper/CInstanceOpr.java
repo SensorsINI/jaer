@@ -5,15 +5,19 @@
 
 package ch.unizh.ini.jaer.projects.gesture.RockScissorPaper;
 
-import ch.unizh.ini.jaer.projects.gesture.GawiBawiBo2.*;
-import weka.core.Instance;
+/*
+ * &&From
 
+import weka.core.Instance;
+ * &&To
+*/
 /**
  *
- * @author юнео PC
+ * @author Eun Yeong Ahn
  */
 public class CInstanceOpr {
-    Instance MergeInstance(Instance a, Instance b){
+    /* &&From
+     Instance MergeInstance(Instance a, Instance b){
         int numAttr = a.numAttributes() + b.numAttributes() - 1;
         double[] newvals = new double[numAttr];
         int idx = 0;
@@ -27,4 +31,6 @@ public class CInstanceOpr {
         Instance new_instance = new Instance(1.0, newvals);
         return new_instance;
     }
+     * &&To
+     */
 }

@@ -7,7 +7,7 @@ package ch.unizh.ini.jaer.projects.gesture.RockScissorPaper;
 
 /**
  *
- * @author юнео PC
+ * @author Eun Yeong Ahn
  */
 public class CParameter {
     static int cvalue = 3;  //1: rock, 2: scissor, 3: Paper

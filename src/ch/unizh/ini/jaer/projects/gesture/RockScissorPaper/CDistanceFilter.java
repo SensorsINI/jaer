@@ -4,6 +4,8 @@
  */
 
 package ch.unizh.ini.jaer.projects.gesture.RockScissorPaper;
+/*
+ * &&From
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -15,12 +17,18 @@ import java.util.logging.Logger;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import weka.core.Instance;
+ * 
+ * &&To
+ */
 
 /**
  *
- * @author юнео PC
+ * @author Eun Yeong Ahn
  */
 public class CDistanceFilter {
+    /*
+     * &&From
+
     ArrayList[] discreteData;
     double[] distData;
     double[] avgData;
@@ -87,9 +95,9 @@ public class CDistanceFilter {
         }
      }
 
-     /**************************************************************************
-      * Remove wrist
-      **************************************************************************/
+     //**************************************************************************
+     // * Remove wrist
+     // *************************************************************************
      public void HandDiscretization(EventPacket<?> in, EBaseAxis base, int bin, int decreaseThreshold, boolean dualDirection){
          binSize = bin;
          ArrayList inPacket = new ArrayList<BasicEvent>();
@@ -216,13 +224,13 @@ public class CDistanceFilter {
          return finger;
      }
 
-     /***************************************************************************
-     * Getting distance
-      * (1) max - min
-      * (2) variance
-      * (3) clustering
-      * (4) averaging data within the each tails (10%), and obtain the difference
-     ***************************************************************************/
+     //***************************************************************************
+     //* Getting distance
+     // * (1) max - min
+     // * (2) variance
+     // * (3) clustering
+     // * (4) averaging data within the each tails (10%), and obtain the difference
+     //***************************************************************************
 
     private double GetDist(ArrayList<BasicEvent> arrayList) {
         double max = -1, min = -1;
@@ -327,9 +335,9 @@ public class CDistanceFilter {
         return distData;
     }
 
-    /***************************************************************************
-     * For testing
-     ***************************************************************************/
+    //***************************************************************************
+    // * For testing
+    // ***************************************************************************
 
     void Print(){
         for(int i = 0; i< binSize; i ++){
@@ -354,4 +362,6 @@ public class CDistanceFilter {
             Logger.getLogger(CDistanceFilter.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+    * &&To
+    */
 }
