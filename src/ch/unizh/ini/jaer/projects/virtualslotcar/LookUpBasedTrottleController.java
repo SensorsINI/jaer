@@ -146,7 +146,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
     }
 
     @Override
-    public String getLogContentsHeader() {
+    public String logContents() {
         return "upcomingCurvature, lateralAccelerationLimitPPS2, desiredSpeedPPS, measuredSpeedPPS, throttle, slotCarState";
     }
 

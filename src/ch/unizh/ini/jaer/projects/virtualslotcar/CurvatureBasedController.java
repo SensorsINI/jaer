@@ -160,7 +160,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
     }
 
     @Override
-    public String getLogContentsHeader() {
+    public String logContents() {
         return "upcomingCurvature, lateralAccelerationLimitPPS2, desiredSpeedPPS, measuredSpeedPPS, throttle, slotCarState";
     }
 

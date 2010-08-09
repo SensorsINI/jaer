@@ -493,7 +493,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         } else if (isFilterEnabled() && o instanceof TwoCarTracker && arg instanceof UpdateMessage) {
             TwoCarTracker tracker = (TwoCarTracker) o;
 
-            CarCluster car = tracker.findCarCluster();
+            CarClusterInterface car = tracker.findCarCluster();
             if (car != null) {
                 Point2D.Float carPoint = car.getLocation();
                 if (lastTrackerPosition == null || lastTrackerPosition.distance(carPoint) > minDistance) {

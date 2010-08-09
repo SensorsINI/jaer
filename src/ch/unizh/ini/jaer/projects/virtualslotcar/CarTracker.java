@@ -19,7 +19,7 @@ public interface CarTracker{
      *
      * @return the car cluster, or null if there is no good cluster
      */
-    public CarCluster findCarCluster();
+    public CarClusterInterface findCarCluster();
 
 
 }

@@ -40,6 +40,6 @@ public interface SlotCarControllerInterface {
      *
      * @return the string description of the log contents.
      */
-    public String getLogContentsHeader();
+    public String logContents();
 
 }

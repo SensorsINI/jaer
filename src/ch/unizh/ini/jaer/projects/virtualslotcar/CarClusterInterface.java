@@ -11,7 +11,7 @@ import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
  * Interface for a tracked car.
  * @author tobi
  */
-public interface CarCluster extends ClusterInterface{
+public interface CarClusterInterface extends ClusterInterface{
 
     /**
      * @return the segmentIdx

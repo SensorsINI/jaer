@@ -114,7 +114,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
 
         setEnclosedFilterChain(filterChain);
 
-        tobiLogger = new TobiLogger("SlotCarRacer", "racer data " + throttleController.getLogContentsHeader());
+        tobiLogger = new TobiLogger("SlotCarRacer", "racer data " + throttleController.logContents());
 
         // tooltips for properties
         final String con = "Controller", dis = "Display", ov = "Override", vir = "Virtual car", lg = "Logging";

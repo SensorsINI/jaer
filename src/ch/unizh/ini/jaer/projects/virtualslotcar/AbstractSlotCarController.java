@@ -66,7 +66,7 @@ abstract public class AbstractSlotCarController extends EventFilter2D implements
      *
      * @return the string description of the log contents - by default empty
      */
-    public String getLogContentsHeader(){
+    public String logContents(){
         return "";
     }
 

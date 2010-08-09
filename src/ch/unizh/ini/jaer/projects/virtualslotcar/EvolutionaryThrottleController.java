@@ -16,6 +16,7 @@ import javax.media.opengl.GLException;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.ByteArrayInputStream;
@@ -25,6 +26,7 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.Timer;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
@@ -257,20 +259,33 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             state.set(State.STARTING);
         }
 
+        setBigStatusText(state.toString(), Color.RED);
 
         return out;
     }
+    private TextRenderer statusRenderer = null;
+    private Color bigStatusColor = Color.WHITE;
+    private String bigStatusText = null;
 
-//    private Timer timer=new Timer("Status Flasher");
-//    private volatile boolean showFlashingStatus=false;
-//    private TextRenderer statusRenderer=null;
-//    private long last
-//
-//    private void flashBigStatusText(GLAutoDrawable drawable, int timeMs, String s){
-//
-//
-//    }
-//
+    synchronized private void setBigStatusText(String s, Color c) {
+        bigStatusText = s;
+        bigStatusColor = c;
+    }
+
+    synchronized private void renderBigStatusText(GLAutoDrawable drawable) {
+        if (bigStatusText == null) {
+            return;
+        }
+        if (statusRenderer == null) {
+            statusRenderer = new TextRenderer(new Font("Serif", Font.BOLD, 60));
+        }
+        statusRenderer.setColor(bigStatusColor);
+        Rectangle2D bounds = statusRenderer.getBounds(bigStatusText);
+        statusRenderer.beginRendering(drawable.getWidth(), drawable.getHeight());
+        statusRenderer.draw(bigStatusText, (int) (drawable.getWidth() / 2 - bounds.getWidth() / 2), (int) (drawable.getHeight() / 2 - bounds.getHeight() / 2));
+        statusRenderer.endRendering();
+    }
+
     /** Computes throttle using tracker output and ThrottleProfile.
      *
      * @param tracker
@@ -389,12 +404,12 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     @Override
     public String logControllerState() {
-        return String.format("%d\t%f\t%s", currentTrackPos, throttle, getTrack() == null ? null : getTrack().getCarState());
+        return String.format("%s\t%d\t%f\t%s", state, currentTrackPos, throttle, car);
     }
 
     @Override
-    public String getLogContentsHeader() {
-        return " currentTrackPos throttle carState ";
+    public String logContents() {
+        return "state currentTrackPos throttle car ";
     }
 
     @Override
@@ -466,6 +481,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         canvas = chip.getCanvas();
         glCanvas = (GLCanvas) canvas.getCanvas();
         drawThrottlePainter(drawable);
+        renderBigStatusText(drawable);
 
     }
 

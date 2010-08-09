@@ -80,7 +80,7 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
     }
 
     @Override
-    public String getLogContentsHeader() {
+    public String logContents() {
         return "desiredSpeedPPS, measuredSpeedPPS, throttle";
     }
 
