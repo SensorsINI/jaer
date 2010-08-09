@@ -56,13 +56,11 @@ point).
  * 
  * @author Michael Pfeiffer
  */
-
 public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, Observer, MouseListener, MouseMotionListener, PropertyChangeListener {
 
     public static String getDescription() {
         return "Detects a track from incoming pixels and user input";
     }
-
     // Variables declared in XYTypeFilter
     public short x = 0, y = 0;
     public byte type = 0;
@@ -80,6 +78,8 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     private float[][] pixData = null;
     // Total sum of histogram points
     float totalSum;
+    // draw accumulated tracker locations
+    private boolean drawTrackerPoints = getBoolean("drawTrackerPoints", true);
     // Draw histogram in annotate or not
     private boolean drawHist = prefs().getBoolean("TrackdefineFilter.drawHist", false);
     // Threshold for accepting points as track points
@@ -113,6 +113,8 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     private LinkedList<Point2D.Float> smoothPoints;
     // Display extracted Points
     private boolean displayTrack = prefs().getBoolean("TrackdefineFilter.displayTrack", true);
+    private LinkedList<Point2D.Float> trackerPositions = new LinkedList();
+    static final private int MAX_TRACKER_POINTS = 1000;  // max points to accumulate from tracker
 
     public TrackdefineFilter(AEChip chip) {
         super(chip);
@@ -128,6 +130,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         String mod = "Modify Track";
         String extr = "Extraction Parameters";
         setPropertyTooltip(disp, "drawHist", "Draw Histogram");
+        setPropertyTooltip(disp, "drawTrackerPoints", "Draw tracker points accumulated");
         setPropertyTooltip(extr, "histThresh", "Threshold of histogram points to display");
         setPropertyTooltip(disp, "drawSmooth", "Draw smooth track or only points");
         setPropertyTooltip(disp, "displayTrack", "Display extracted Track Points");
@@ -140,6 +143,9 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         setPropertyTooltip(mod, "insertOnClick", "Insert track points on mouse click (otherwise move)");
         setPropertyTooltip(mod, "clickTolerance", "Tolerance for mouse clicks (deleting, dragging)");
         setPropertyTooltip(disp, "scalePointsCurvature", "Scale the size of a vertex by the curvature at that point");
+        setPropertyTooltip("extractTrack", "Extracts track model from accumulated histogram data");
+        setPropertyTooltip("reverseTrack", "Reverse the path numbering so that car increases point number - required for most algorithms");
+        setPropertyTooltip("extractTrackFromTrackerPoints", "extract track model from accumlated CarTracker points");
 
         // New in TrackdefineFilter
         // Initialize histogram
@@ -155,12 +161,12 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         extractedTrack = null;
         smoothPoints = null;
 
-            File f = getLastFilePrefs();
-            try {
-                loadTrackFromFile(f);
-            } catch (Exception ex) {
-                log.warning("couldn't load track information from file " + f+", caught "+ex+"; save a track to put preferences for track");
-            }
+        File f = getLastFilePrefs();
+        try {
+            loadTrackFromFile(f);
+        } catch (Exception ex) {
+            log.warning("couldn't load track information from file " + f + ", caught " + ex + "; save a track to put preferences for track");
+        }
         setStepSize(stepSize); // init smooth points too
 
     }
@@ -210,12 +216,13 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
 //        startX=0; endX=chip.getSizeX();
 //        startY=0; endY=chip.getSizeY();
 //        startType=0; endType=chip.getNumCellTypes();
+        trackerPositions.clear();
 
         int oldNumX = numX;
         int oldNumY = numY;
         numX = chip.getSizeX();
         numY = chip.getSizeY();
-        numPix=numX*numY;
+        numPix = numX * numY;
 
         if ((oldNumX != numX) || (oldNumY != numY)) {
             pixData = new float[numY][numX];
@@ -271,9 +278,9 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
                 boolean keep = true;
                 for (int k = -erSize; k <= erSize; k++) {
                     for (int l = -erSize; l <= erSize; l++) {
-                        int pixY = clip(i + k, numY-1); // limit to size-1 to avoid arrayoutofbounds exceptions 
-                        int pixX = clip(j + l, numX-1);
-                        if ((pixData[pixY][pixX] *numPix / totalSum) < histThresh) {
+                        int pixY = clip(i + k, numY - 1); // limit to size-1 to avoid arrayoutofbounds exceptions
+                        int pixX = clip(j + l, numX - 1);
+                        if ((pixData[pixY][pixX] * numPix / totalSum) < histThresh) {
                             keep = false;
                             break;
                         }
@@ -293,22 +300,22 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     private void drawHistogram(GL gl) {
         // System.out.println("Drawing histogram..." + gl);
 //        try {
-            boolean[][] bitmap = erosion();
-            gl.glColor3f(1.0f, 1.0f, 0);
-            gl.glBegin(gl.GL_POINTS);
-            for (int i = 0; i < numY; i++) {
-                for (int j = 0; j < numX; j++) {
-                    // if ((pixData[i][j] / totalSum) > histThresh) {
-                    if (bitmap[i][j]) {
-                        gl.glVertex2i(j, i);
-                        // gl.glRecti(i, j, i+1, j+1);
-                    }
+        boolean[][] bitmap = erosion();
+        gl.glColor3f(1.0f, 1.0f, 0);
+        gl.glBegin(gl.GL_POINTS);
+        for (int i = 0; i < numY; i++) {
+            for (int j = 0; j < numX; j++) {
+                // if ((pixData[i][j] / totalSum) > histThresh) {
+                if (bitmap[i][j]) {
+                    gl.glVertex2i(j, i);
+                    // gl.glRecti(i, j, i+1, j+1);
                 }
             }
+        }
 //        } catch (ArrayIndexOutOfBoundsException e) {
 //            log.warning(e.toString());
 //        } finally {
-            gl.glEnd();
+        gl.glEnd();
 //        }
 //        chip.getCanvas().checkGLError(gl, glu , "in TrackdefineFilter.drawExtractedTrack");
 
@@ -331,9 +338,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
 
         System.out.println("Max: " + maxH + " / Count: " + count);
     }
-
-
-    GLU glu=new GLU();
+    GLU glu = new GLU();
 
     /** Displays the extracted track points */
     private void drawExtractedTrack(GL gl) {
@@ -344,32 +349,34 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
             if (scalePointsCurvature) {
                 // Use curvature to set size of points
                 curvatureAtPoints = extractedTrack.getCurvatureAtPoints();
-                if (curvatureAtPoints == null)
+                if (curvatureAtPoints == null) {
                     return;
+                }
             } else {
                 int numPoints = extractPoints.size();
                 curvatureAtPoints = new float[numPoints];
-                for (int i=0; i<numPoints; i++)
+                for (int i = 0; i < numPoints; i++) {
                     curvatureAtPoints[i] = 5.0f;
+                }
             }
             //gl.glColor3d(1.0f, 0.0f, 1.0f);
             //gl.glPointSize(5.0f);
             gl.glColor3d(1.0f, 1.0f, 1.0f);
             Point2D startPoint = null, selectedPoint = null;
-            float startSize=10.0f, selectedSize=10.0f;
+            float startSize = 10.0f, selectedSize = 10.0f;
             float minSize = 3.0f;
             int idx = 0;
             for (Point2D p : extractPoints) {
                 if (idx == this.currentPointIdx) {
-                    selectedPoint=p;
-                    selectedSize = minSize+Math.min(200.0f, Math.abs(curvatureAtPoints[idx])) / 10.0f;
+                    selectedPoint = p;
+                    selectedSize = minSize + Math.min(200.0f, Math.abs(curvatureAtPoints[idx])) / 10.0f;
 
                 } else if (idx == 0) {
                     // Plot first point of the track in special color, but we cannot call setColor inside glBegin/glEnd
-                    startPoint=p;
-                    startSize = minSize+Math.min(200.0f, Math.abs(curvatureAtPoints[idx])) / 10.0f;
-               } else {
-                    float curveSize = minSize+Math.min(200.0f, Math.abs(curvatureAtPoints[idx])) / 10.0f;
+                    startPoint = p;
+                    startSize = minSize + Math.min(200.0f, Math.abs(curvatureAtPoints[idx])) / 10.0f;
+                } else {
+                    float curveSize = minSize + Math.min(200.0f, Math.abs(curvatureAtPoints[idx])) / 10.0f;
                     gl.glPointSize(curveSize);
                     gl.glBegin(gl.GL_POINTS);
                     gl.glVertex2d(p.getX(), p.getY());
@@ -377,7 +384,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
                 }
                 idx++;
             }
- 
+
             if (startPoint != null) {
                 gl.glColor3d(1.0f, 0.0f, 0.0f);
                 gl.glPointSize(startSize);
@@ -421,7 +428,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
                 }
             }
 
-            if (drawSmooth && smoothPoints!=null) {
+            if (drawSmooth && smoothPoints != null) {
                 // Draw smooth interpolated track
 
                 gl.glColor3f(0.0f, 1.0f, 1.0f);
@@ -432,7 +439,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
                 gl.glEnd();
             }
         }
-        chip.getCanvas().checkGLError(gl, glu , "in TrackdefineFilter.drawExtractedTrack");
+        chip.getCanvas().checkGLError(gl, glu, "in TrackdefineFilter.drawExtractedTrack");
 
     }
 
@@ -454,7 +461,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
             gl.glPushMatrix();
             if (drawHist) {
 //                try {
-                    drawHistogram(gl);
+                drawHistogram(gl);
 //                } catch (Exception e) {
 //                    log.warning(e.toString());
 //                }
@@ -463,21 +470,41 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
 
             if (displayTrack) {
 //                try {
-                    drawExtractedTrack(gl);
+                drawExtractedTrack(gl);
 //                } catch (Exception e) {
 //                    log.warning(e.toString());
 //                }
+            }
+
+            if (drawTrackerPoints) {
+                drawTrackerPoints(gl);
             }
 
             counter = 0;
         }
 
     }
+    private Point2D.Float lastTrackerPosition = null;
 
     @Override
     public void update(Observable o, Object arg) {
         if (o instanceof AEChip && (arg == AEChip.EVENT_SIZEX || arg == AEChip.EVENT_SIZEY)) {
             resetFilter();
+        } else if (isFilterEnabled() && o instanceof TwoCarTracker && arg instanceof UpdateMessage) {
+            TwoCarTracker tracker = (TwoCarTracker) o;
+
+            CarCluster car = tracker.findCarCluster();
+            if (car != null) {
+                Point2D.Float carPoint = car.getLocation();
+                if (lastTrackerPosition == null || lastTrackerPosition.distance(carPoint) > minDistance) {
+                    Point2D.Float newPoint = (Point2D.Float) carPoint.clone();
+                    trackerPositions.add(newPoint);
+                    lastTrackerPosition = newPoint;
+                    if (trackerPositions.size() > MAX_TRACKER_POINTS) {
+                        trackerPositions.removeFirst();
+                    }
+                }
+            }
         }
     }
 
@@ -500,7 +527,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
                 && (currentMousePoint.getX() < numX) && (currentMousePoint.getY() < numY)) {
 
             // Move point 
-            extractedTrack.setPoint(currentPointIdx, new Point2D.Float(currentMousePoint.x,currentMousePoint.y));
+            extractedTrack.setPoint(currentPointIdx, new Point2D.Float(currentMousePoint.x, currentMousePoint.y));
             extractedTrack.updateTrack();
             extractPoints = extractedTrack.getPointList();
             smoothPoints = extractedTrack.getSmoothPoints(stepSize);
@@ -542,7 +569,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
                     currentPointIdx = idx;
                 }
             } else {
-                extractedTrack.setPoint(currentPointIdx, new Point2D.Float(currentMousePoint.x,currentMousePoint.y));
+                extractedTrack.setPoint(currentPointIdx, new Point2D.Float(currentMousePoint.x, currentMousePoint.y));
                 extractPoints = extractedTrack.getPointList();
             }
         }
@@ -596,8 +623,6 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         return idxP;
     }
 
- 
-
     @Override
     public void mouseClicked(MouseEvent e) {
         // System.out.println("Click " + currentPointIdx);
@@ -619,9 +644,9 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
                 Point idxP = findClosestTwoPointsForInsert(p);
                 if ((idxP.getX() >= 0) && (idxP.getY() >= 0)) {
                     if ((idxP.getX() == extractedTrack.getNumPoints() - 1) && (idxP.getY() == 0)) {
-                        extractedTrack.addPoint(new Point2D.Float(p.x,p.y));
+                        extractedTrack.addPoint(new Point2D.Float(p.x, p.y));
                     } else {
-                        extractedTrack.insertPoint((int) idxP.getX(), new Point2D.Float(p.x,p.y));
+                        extractedTrack.insertPoint((int) idxP.getX(), new Point2D.Float(p.x, p.y));
                     }
                 }
                 extractedTrack.updateTrack();
@@ -728,11 +753,13 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     }
 
     public void setDeleteOnClick(boolean deleteOnClick) {
-        boolean old=this.deleteOnClick;
+        boolean old = this.deleteOnClick;
         this.deleteOnClick = deleteOnClick;
         getSupport().firePropertyChange("deleteOnClick", old, deleteOnClick);
         if (deleteOnClick) {
-            if(isInsertOnClick()) setInsertOnClick(false);
+            if (isInsertOnClick()) {
+                setInsertOnClick(false);
+            }
         }
     }
 
@@ -741,12 +768,14 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     }
 
     public void setInsertOnClick(boolean insertOnClick) {
-        boolean old=this.insertOnClick;
+        boolean old = this.insertOnClick;
         this.insertOnClick = insertOnClick;
         getSupport().firePropertyChange("insertOnClick", old, insertOnClick);
 
         if (insertOnClick) {
-            if(isDeleteOnClick()) setDeleteOnClick(false);
+            if (isDeleteOnClick()) {
+                setDeleteOnClick(false);
+            }
         } else {
             currentInsertMarkPoints = null;
         }
@@ -779,8 +808,6 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         prefs().putBoolean("TrackdefineFilter.scalePointsCurvature", scalePointsCurvature);
     }
 
-
-
     /**
      * Re-initializes the histogram of events.
      */
@@ -796,7 +823,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     }
 
     /** Invalidates all points within minDistance of (x,y) in the queue */
-    private void invalidateQueue(PriorityQueue<TrackPoint> pq, int x, int y) {
+    private void invalidateQueue(PriorityQueue<TrackPoint> pq, float x, float y) {
         Point2D.Float pos = new Point2D.Float(x, y);
 
         Iterator<TrackPoint> it = pq.iterator();
@@ -857,8 +884,8 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
             }
         }
 
-        int curX = maxX;
-        int curY = maxY;
+        float curX = maxX;
+        float curY = maxY;
         while (!trackFinished) {
             // Delete track point which are too close to current points
             invalidateQueue(pq, curX, curY);
@@ -888,7 +915,75 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
 
         smoothPoints = extractedTrack.getSmoothPoints(stepSize);
         extractedTrack.getSupport().addPropertyChangeListener(SlotcarTrack.EVENT_TRACK_CHANGED, this);
-    }
+        extractedTrack.updateTrack();
+    } // doExtractTrack
+
+    /**
+     * Extracts the track from the histogram of events.
+     */
+    synchronized public void doExtractTrackFromTrackerPoints() {
+        if (trackerPositions == null) {
+            log.warning("no trackerPositions to use");
+            return;
+        }
+        // Find starting point
+
+
+        Point2D.Float firstPoint = trackerPositions.getFirst();
+        float firstX = firstPoint.x, firstY = firstPoint.y;
+
+
+        // Insert starting point
+        extractPoints = new LinkedList<Point2D.Float>();
+        extractPoints.add(new Point2D.Float(firstPoint.x, firstPoint.y));
+        boolean trackFinished = false;
+
+
+        // Prepare queue of potential track points
+        PriorityQueue<TrackPoint> pq = new PriorityQueue<TrackPoint>();
+        Point2D.Float lastPoint = firstPoint;
+        for (Point2D.Float p : trackerPositions) {
+            // Insert into queue, maybe
+            float dist;
+            if ((dist = (float) p.distance(lastPoint)) > minDistance) {
+                TrackPoint tp = new TrackPoint(p.x, p.y, dist);
+                pq.add(tp);
+            }
+        }
+
+        float curX = firstX;
+        float curY = firstY;
+        while (!trackFinished) {
+            // Delete track point which are too close to current points
+            invalidateQueue(pq, curX, curY);
+
+            if (pq.isEmpty()) {
+                trackFinished = true;
+            } else {
+                // Add new track point
+                TrackPoint nextPoint = pq.remove();
+                if (Point2D.distance(nextPoint.x, nextPoint.y, curX, curY) < maxDistance) {
+                    extractPoints.add(new Point2D.Float(nextPoint.x, nextPoint.y));
+                    curX = nextPoint.x;
+                    curY = nextPoint.y;
+                } else {
+                    log.info("No more points within maxDistance=" + maxDistance);
+                    trackFinished = true;
+                }
+            }
+        }
+
+        log.info("Extracted " + extractPoints.size() + " track points!");
+
+        // Create track object and spline
+        extractedTrack = new SlotcarTrack();
+        extractedTrack.getSupport().addPropertyChangeListener(this);
+        extractedTrack.create(extractPoints);
+
+        smoothPoints = extractedTrack.getSmoothPoints(stepSize);
+        extractedTrack.getSupport().addPropertyChangeListener(SlotcarTrack.EVENT_TRACK_CHANGED, this); // TODO should fire property change
+        extractedTrack.updateTrack();
+    } // doExtractTrack
 
     /**
      * Saves the extracted track to an external file.
@@ -946,14 +1041,17 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         prefs().put("TrackdefineFilter.lastFile", file.toString());
     }
 
-    private File getLastFilePrefs(){
+    private File getLastFilePrefs() {
         return new File(prefs().get("TrackdefineFilter.lastFile", System.getProperty("user.dir")));
     }
 
-
     private void saveTrackToFile(File file) throws IOException {
-        if(extractedTrack==null) throw new IOException("null extractedTrack, can't save track");
-        if(extractPoints==null) throw new IOException("null extractPoints, can't save track");
+        if (extractedTrack == null) {
+            throw new IOException("null extractedTrack, can't save track");
+        }
+        if (extractPoints == null) {
+            throw new IOException("null extractPoints, can't save track");
+        }
         log.info("Saving track data to " + file.getName());
         FileOutputStream fos = new FileOutputStream(file);
         ObjectOutputStream oos = new ObjectOutputStream(fos);
@@ -992,7 +1090,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
             public void run() {
                 fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
                 fc.setSelectedFile(new File("test.track"));
-                state[0] = fc.showOpenDialog(chip.getAeViewer()!=null && chip.getAeViewer().getFilterFrame()!=null ? chip.getAeViewer().getFilterFrame(): null);
+                state[0] = fc.showOpenDialog(chip.getAeViewer() != null && chip.getAeViewer().getFilterFrame() != null ? chip.getAeViewer().getFilterFrame() : null);
                 if (state[0] == JFileChooser.APPROVE_OPTION) {
                     File file = fc.getSelectedFile();
                     putLastFilePrefs(file);
@@ -1010,7 +1108,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     }
 
     private void loadTrackFromFile(File file) throws HeadlessException, IOException, ClassNotFoundException {
-        Object old=extractedTrack;
+        Object old = extractedTrack;
         if (file == null) {
             throw new IOException("null filename, can't load track from file - track needs to be saved first");
         }
@@ -1021,7 +1119,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         // extractPoints = (LinkedList<Point2D.Float>) ois.readObject();  // unchecked cast exception
         LinkedList loadPoints = (LinkedList<?>) ois.readObject();
         extractPoints = new LinkedList<Point2D.Float>();
-        for (Object o:loadPoints) {
+        for (Object o : loadPoints) {
             extractPoints.add((Point2D.Float) o);
         }
         ois.close();
@@ -1063,49 +1161,63 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         getSupport().firePropertyChange(evt); // pass on event from SlotcarTrack
     }
 
-
-
-
-
-
-
-
-
-
-
     /**
- * A utility class for points in a priority queue, ordered by their distance to
- * other points in the queue.
- */
-class TrackPoint implements Comparable<TrackPoint>, Observer { // Observer to handle chip changes - to get chip size after construction
-
-    public int x;
-    public int y;
-    public float minDistance;
-
-    public TrackPoint(int x, int y, float minDistance) {
-        this.x = x;
-        this.y = y;
-        this.minDistance = minDistance;
+     * @return the drawTrackerPoints
+     */
+    public boolean isDrawTrackerPoints() {
+        return drawTrackerPoints;
     }
 
-    public int compareTo(TrackPoint p) {
-        if (p.minDistance < minDistance) {
-            return +1;
-        } else if (p.minDistance == minDistance) {
-            return 0;
-        } else {
-            return -1;
+    /**
+     * @param drawTrackerPoints the drawTrackerPoints to set
+     */
+    public void setDrawTrackerPoints(boolean drawTrackerPoints) {
+        this.drawTrackerPoints = drawTrackerPoints;
+    }
+
+    private void drawTrackerPoints(GL gl) {
+        if (trackerPositions == null) {
+            return;
+        }
+        for (Point2D p : trackerPositions) {
+            final float size = 2;
+            gl.glPointSize(size);
+            float rgb[] = {0, 0, .5f};
+            gl.glColor3fv(rgb, 0);
+            gl.glBegin(gl.GL_POINTS);
+            gl.glVertex2d(p.getX(), p.getY());
+            gl.glEnd();
         }
     }
 
-    public void update(Observable o, Object arg) {
-        throw new UnsupportedOperationException("Not supported yet.");
+    /**
+     * A utility class for points in a priority queue, ordered by their distance to
+     * other points in the queue.
+     */
+    class TrackPoint implements Comparable<TrackPoint>, Observer { // Observer to handle chip changes - to get chip size after construction
+
+        public float x;
+        public float y;
+        public float minDistance;
+
+        public TrackPoint(float x, float y, float minDistance) {
+            this.x = x;
+            this.y = y;
+            this.minDistance = minDistance;
+        }
+
+        public int compareTo(TrackPoint p) {
+            if (p.minDistance < minDistance) {
+                return +1;
+            } else if (p.minDistance == minDistance) {
+                return 0;
+            } else {
+                return -1;
+            }
+        }
+
+        public void update(Observable o, Object arg) {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
     }
-
-
-}
-
-
-
 }

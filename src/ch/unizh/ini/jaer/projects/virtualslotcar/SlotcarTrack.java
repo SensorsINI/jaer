@@ -75,7 +75,7 @@ public class SlotcarTrack implements java.io.Serializable {
     /** Adds a Point2D2D to the end of the track */
     public void addPoint(Point2D.Float newPoint) {
         trackPoints.addLast(newPoint);
-        updateTrack();
+//        updateTrack(); // don't update for every point or else it takes forvever when extracting track
     }
 
     /** Deletes the last Point2D of the track */

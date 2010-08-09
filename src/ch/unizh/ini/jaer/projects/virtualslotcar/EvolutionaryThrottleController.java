@@ -16,6 +16,8 @@ import javax.media.opengl.GLException;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import java.awt.geom.Point2D;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -23,7 +25,6 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Random;
-import java.util.Timer;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
@@ -49,9 +50,11 @@ import net.sf.jaer.util.StateMachineStates;
  *
  * @author Juston, Tobi
  */
-public class EvolutionaryThrottleController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater, MouseListener, MouseMotionListener {
+public class EvolutionaryThrottleController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater, MouseListener, MouseMotionListener, PropertyChangeListener {
 
-    public static String getDescription(){ return "Evolution-based slot car throttle controller";}
+    public static String getDescription() {
+        return "Evolution-based slot car throttle controller";
+    }
     // prefs
     private float fractionOfTrackToSpeedUp = getFloat("fractionOfTrackToSpeedUp", 0.3f);
     private float fractionOfTrackToSlowDownPreCrash = getFloat("fractionOfTrackToSlowDownPreCrash", .15f);
@@ -61,6 +64,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     private float editThrottleChange = getFloat("editThrottleChange", 0.2f);
     private int numSuccessfulLapsToReward = getInt("numSuccessfulLapsToReward", 2);
     private float startingThrottleValue = getFloat("startingThrottleValue", .1f);
+    private boolean showThrottleProfile = getBoolean("showThrottleProfile", true);
 
     /** possible states,
      * <ol>
@@ -108,25 +112,26 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     public EvolutionaryThrottleController(AEChip chip) {
         super(chip);
-        final String s="EvolutionaryThrottleController";
-        setPropertyTooltip(s,"defaultThrottle", "default throttle setting if no car is detected; also starting throttle after resetting learning and minimum allowed throttle");
-        setPropertyTooltip(s,"fractionOfTrackToPunish", "fraction of track to reduce throttle and mark for no reward");
-        setPropertyTooltip(s,"learningEnabled", "enable evolution - successful profiles are sped up, crashes cause reversion to last successful profile");
-        setPropertyTooltip(s,"throttleChange", "max amount to increase throttle for perturbation");
-        setPropertyTooltip(s,"editThrottleChange","amount to change throttle for mouse edits of the throttle profile");
-        setPropertyTooltip(s,"numSuccessfulLapsToReward", "number of successful (no crash) laps between rewards");
-        setPropertyTooltip(s,"fractionOfTrackToSpeedUp", "fraction of track spline points to increase throttle on after successful laps");
-        setPropertyTooltip(s,"fractionOfTrackToSlowDownPreCrash", "fraction of track spline points before crash point to reduce throttle on");
-        setPropertyTooltip(s,"startingThrottleValue", "throttle value when starting (no car cluster detected)");
+        final String s = "EvolutionaryThrottleController";
+        setPropertyTooltip(s, "defaultThrottle", "default throttle setting if no car is detected; also starting throttle after resetting learning and minimum allowed throttle");
+        setPropertyTooltip(s, "fractionOfTrackToPunish", "fraction of track to reduce throttle and mark for no reward");
+        setPropertyTooltip(s, "learningEnabled", "enable evolution - successful profiles are sped up, crashes cause reversion to last successful profile");
+        setPropertyTooltip(s, "throttleChange", "max amount to increase throttle for perturbation");
+        setPropertyTooltip(s, "editThrottleChange", "amount to change throttle for mouse edits of the throttle profile");
+        setPropertyTooltip(s, "numSuccessfulLapsToReward", "number of successful (no crash) laps between rewards");
+        setPropertyTooltip(s, "fractionOfTrackToSpeedUp", "fraction of track spline points to increase throttle on after successful laps");
+        setPropertyTooltip(s, "fractionOfTrackToSlowDownPreCrash", "fraction of track spline points before crash point to reduce throttle on");
+        setPropertyTooltip(s, "startingThrottleValue", "throttle value when starting (no car cluster detected)");
+        setPropertyTooltip(s, "showThrottleProfile", "displays the throttle profile, with dot size reprenting the throttle value");
 
         // do methods
-        setPropertyTooltip(s,"guessThrottleFromTrackModel", "guess initial throttle profile from track model");
-        setPropertyTooltip(s,"resetAllThrottleValues", "reset all profile points to defaultThrottle");
-        setPropertyTooltip(s,"loadThrottleSettings", "load profile from preferences");
-        setPropertyTooltip(s,"saveThrottleSettings", "save profile to preferences");
-        setPropertyTooltip(s,"revertToLastSuccessfulProfile", "explicitly revert profile to last one that made it around the track at least numSuccessfulLapsToReward");
-        setPropertyTooltip(s,"slowDown", "reduce all profile point throttle settings");
-        setPropertyTooltip(s,"speedUp", "increase all profile point throttle settings");
+        setPropertyTooltip(s, "guessThrottleFromTrackModel", "guess initial throttle profile from track model");
+        setPropertyTooltip(s, "resetAllThrottleValues", "reset all profile points to defaultThrottle");
+        setPropertyTooltip(s, "loadThrottleSettings", "load profile from preferences");
+        setPropertyTooltip(s, "saveThrottleSettings", "save profile to preferences");
+        setPropertyTooltip(s, "revertToLastSuccessfulProfile", "explicitly revert profile to last one that made it around the track at least numSuccessfulLapsToReward");
+        setPropertyTooltip(s, "slowDown", "reduce all profile point throttle settings");
+        setPropertyTooltip(s, "speedUp", "increase all profile point throttle settings");
 
 
         doLoadThrottleSettings();
@@ -139,9 +144,12 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         carTracker.setTrack(trackDefineFilter.getTrack());
         carTracker.setEnclosed(true, this);
 
+        carTracker.addObserver(trackDefineFilter); // so that track define filter can get the tracker output
+
         filterChain.add(trackDefineFilter);
         filterChain.add(carTracker);
 
+        trackDefineFilter.getSupport().addPropertyChangeListener(SlotcarTrack.EVENT_TRACK_CHANGED, this);
         trackDefineFilter.getSupport().addPropertyChangeListener(SlotcarTrack.EVENT_TRACK_CHANGED, carTracker);
 
         lapTimer = new LapTimer(getTrack());
@@ -227,14 +235,14 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                         lastRewardLap = lapTimer.lapCounter;
                     }
                 }
-                if (carTracker.getCrashedCar()!=null) {
+                if (carTracker.getCrashedCar() != null) {
                     state.set(State.CRASHED);
                     lastCrashLocation = car.crashSegment;
                     throttle = getStartingThrottleValue();
                     sounds.play();
                     if (learningEnabled) {
                         if (lastSuccessfulProfile != null && currentProfile != lastSuccessfulProfile) {
-                            log.info("crashed at segment"+lastCrashLocation+", switching back to previous profile");
+                            log.info("crashed at segment" + lastCrashLocation + ", switching back to previous profile");
                             currentProfile = lastSuccessfulProfile;
                         }
                         currentProfile.subtractBump(carTracker.getCrashedCar().crashSegment);
@@ -263,7 +271,6 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 //
 //    }
 //
-
     /** Computes throttle using tracker output and ThrottleProfile.
      *
      * @param tracker
@@ -412,6 +419,17 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         trackDefineFilter.setFilterEnabled(false); // don't enable by default
     }
 
+    @Override
+    synchronized public void propertyChange(PropertyChangeEvent evt) {
+        if (evt.getPropertyName() == SlotcarTrack.EVENT_TRACK_CHANGED) {
+            SlotcarTrack track = (SlotcarTrack) evt.getNewValue();
+            if (track.getNumPoints() != currentProfile.getNumPoints()) {
+                log.warning("new track has different number of points than current throttle profile, making a new default profile");
+                currentProfile = new ThrottleProfile(track.getNumPoints());
+            }
+        }
+    }
+
     /**
      * @return the defaultThrottle
      */
@@ -439,7 +457,9 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 //       }else{
 //       }
         MultilineAnnotationTextRenderer.renderMultilineString(s);
-        drawThrottleProfile(drawable.getGL());
+        if (showThrottleProfile) {
+            drawThrottleProfile(drawable.getGL());
+        }
         drawCurrentTrackPoint(drawable.getGL());
         drawLastCrashLocation(drawable.getGL());
 
@@ -455,7 +475,6 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
             gl.glColor4f(.5f, 0, 0, .5f);
             // Draw extracted points
-            Point2D startPoint = null, selectedPoint = null;
             float maxSize = 40f;
             int idx = 0;
             for (Point2D p : getTrack().getPointList()) {
@@ -516,10 +535,24 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         textRenderer.draw3D("last crash", (float) p.getX(), (float) p.getY(), 0, .2f);
         textRenderer.end3DRendering();
         gl.glPointSize(10);
-        gl.glColor3f(1,0,0);
+        gl.glColor3f(1, 0, 0);
         gl.glBegin(GL.GL_POINTS);
         gl.glVertex2d(p.getX(), p.getY());
         gl.glEnd();
+    }
+
+    /**
+     * @return the showThrottleProfile
+     */
+    public boolean isShowThrottleProfile() {
+        return showThrottleProfile;
+    }
+
+    /**
+     * @param showThrottleProfile the showThrottleProfile to set
+     */
+    public void setShowThrottleProfile(boolean showThrottleProfile) {
+        this.showThrottleProfile = showThrottleProfile;
     }
 
     /**
@@ -639,9 +672,13 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
      * @param editThrottleChange the editThrottleChange to set
      */
     public void setEditThrottleChange(float editThrottleChange) {
-        if(editThrottleChange<.001f) editThrottleChange=.001f; else if(editThrottleChange>1) editThrottleChange=1;
+        if (editThrottleChange < .001f) {
+            editThrottleChange = .001f;
+        } else if (editThrottleChange > 1) {
+            editThrottleChange = 1;
+        }
         this.editThrottleChange = editThrottleChange;
-        putFloat("editThrottleChange",editThrottleChange);
+        putFloat("editThrottleChange", editThrottleChange);
     }
 
     /**
@@ -834,7 +871,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             if (idx < 0 || idx >= numPoints) {
                 return;
             }
-            profile[idx] = max(profile[idx] - editThrottleChange , 0);
+            profile[idx] = max(profile[idx] - editThrottleChange, 0);
         }
 
         private void guessThrottleFromTrackModel() {
@@ -847,9 +884,9 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             for (int i = 0; i < curvatures.length; i++) {
                 curvatures[i] = (float) Math.abs(curvatures[i]);
             }
-            final int nfilt = numPoints/30;
+            final int nfilt = numPoints / 30;
 
-            float[] smoothed=new float[curvatures.length];
+            float[] smoothed = new float[curvatures.length];
 
             for (int i = nfilt - 1; i < curvatures.length; i++) {
                 float s = 0;
@@ -859,8 +896,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                 s /= nfilt;
                 smoothed[i] = s;
             }
-            for(int i=0;i<nfilt-1;i++){
-                smoothed[i]=curvatures[i]; // TODO no filter here yet
+            for (int i = 0; i < nfilt - 1; i++) {
+                smoothed[i] = curvatures[i]; // TODO no filter here yet
             }
 
             float minCurv = Float.MAX_VALUE;
@@ -877,9 +914,11 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             }
 
             for (int idx = 0; idx < numPoints; idx++) {
-                int shiftedIdx=idx-nfilt;
-                if(shiftedIdx<0) shiftedIdx=numPoints+shiftedIdx;
-                profile[shiftedIdx] = min(1,  startingThrottleValue * 2 * (float)Math.pow((smoothed[idx] / maxCurv),.15));
+                int shiftedIdx = idx - nfilt;
+                if (shiftedIdx < 0) {
+                    shiftedIdx = numPoints + shiftedIdx;
+                }
+                profile[shiftedIdx] = min(1, startingThrottleValue * 2 * (float) Math.pow((smoothed[idx] / maxCurv), .15));
             }
         }
     } // ThrottleProfile

@@ -256,9 +256,9 @@ public class SlotcarFrame extends javax.swing.JFrame {
             case ADD_POINT_MODE: {
                 System.out.println("Adding point " + normPoint);
                 track.addPoint(normPoint);
+                track.updateTrack();
                 pointLabel.setText(String.valueOf(track.getNumPoints()));
                 lengthLabel.setText(String.format("%.2g", track.getTrackLength()));
-
                 if (track.getNumPoints() > 2) {
                     RunButton.setEnabled(true);
                 }
@@ -268,7 +268,8 @@ public class SlotcarFrame extends javax.swing.JFrame {
                 int closestIdx = track.findClosestIndex(normPoint, MAX_DIST, false);
                 System.out.println("Deleting Point " + track.getPoint(closestIdx));
                 track.deletePoint(closestIdx);
-                pointLabel.setText(String.valueOf(track.getNumPoints()));
+                track.updateTrack();
+               pointLabel.setText(String.valueOf(track.getNumPoints()));
                 lengthLabel.setText(String.format("%.2g", track.getTrackLength()));
 
                 if (track.getNumPoints() < 3)

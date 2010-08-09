@@ -247,7 +247,7 @@ public class RacetrackFrame extends javax.swing.JFrame {
                 rT.addPoint(new Point2D.Float(1, 0));
                 rT.addPoint(new Point2D.Float(0.5f, -0.5f));
                 rT.addPoint(new Point2D.Float(-0.5f, 0.25f));
-
+                rT.updateTrack();
 
                 RacetrackFrame rf = new RacetrackFrame();
                 rf.setVisible(true);

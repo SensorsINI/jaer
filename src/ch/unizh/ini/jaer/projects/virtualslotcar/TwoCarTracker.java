@@ -217,14 +217,15 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         for (ClusterInterface c : clusters) {
             TwoCarCluster cc = (TwoCarCluster) c;
             if (cc == nearestLast) {
-                votes[idx]++;
+                votes[idx]+=1;
             }
             if (cc == closestAvgToTrack) {
-                votes[idx]++;
+                votes[idx]+=2;
             }
             if (cc == oldest) {
-                votes[idx]++;
+                votes[idx]+=1;
             }
+            idx++;
         }
         int maxVote = 0, maxbin = 0;
         for (int i = 0; i < votes.length; i++) {
@@ -380,16 +381,14 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
          */
         @Override
         protected void updatePosition(BasicEvent event, float m) {
-            if (track == null) {
+            if (track == null || !onlyFollowTrack) {
                 super.updatePosition(event, m);
                 return;
             } else {
                  // move cluster, but only along the track
                 Point2D.Float v = findClosestTrackSegmentVector();
                 if (v == null) {
-                    if (!onlyFollowTrack) {
-                        super.updatePosition(event, m);
-                    }
+                    super.updatePosition(event, m);
                     return;
                 }
                 float vnorm = (float) v.distance(0, 0);
