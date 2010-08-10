@@ -195,9 +195,9 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             cc.computerControlledCar = false; // mark all false
             cc.updateState();
             cc.updateSegmentInfo(in.getLastTimestamp());
-            if (!cc.isVisible()) {
-                continue;
-            }
+//            if (!cc.isVisible()) { // it could be that cluster has become invisible now but was the car cluster that just crashed, in which case we would miss the crash
+//                continue;
+//            }
             float mass;
             if ((mass=cc.getMass()) > maxMass) {
                 maxMass = mass;
@@ -238,6 +238,9 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             if(cc==highestMass){
                 votes[idx]+=1;
             }
+            if(cc.isVisible()){
+                votes[idx]++;
+            }
             idx++;
         }
         int maxVote = 0, maxbin = 0;
@@ -247,7 +250,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                 maxbin = i;
             }
         }
-        if (clusters.size() > 0 && maxVote > 0) {
+        if (clusters.size() > 0 && maxVote > 1) {
             computerControlledCarCluster = (TwoCarCluster) clusters.get(maxbin);
             computerControlledCarCluster.computerControlledCar = true;
 //            if (compControlled != currentCarCluster) {
