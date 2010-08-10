@@ -127,7 +127,7 @@ class LapTimer implements PropertyChangeListener {
                     startSegment = 0;
                 }
             } else if (quarters > 0 && quarters < 4) {
-                if (newSegment >= (n * quarters) / 4) {
+                if (newSegment >= (n * quarters) / 4 && newSegment <((n+1)*quarters)/4) {
                     currentLap.storeSplit(quarters-1,  timeUs - lapStartTime);
                     quarters++;
                 }
