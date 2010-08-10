@@ -483,7 +483,7 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
     private void loadFile(File f) {
         try {
             FileInputStream fis = new FileInputStream(f);
-            prefs.importPreferences(fis);  // we import the tree into *this* preference node, which is not the one exported (which is root node)
+            Preferences.importPreferences(fis);  // we import the tree into *this* preference node, which is not the one exported (which is root node)
             prefs.put("FilterFrame.lastFile", f.getCanonicalPath());
             log.info("imported preferences from " + f);
             recentFiles.addFile(f);
@@ -539,12 +539,13 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
                     log.warning("no filters to export");
                     return;
                 }
-                Preferences prefs = filterChain.get(0).getPrefs(); // assume all filters have same prefs node (derived from chip class)
+                Preferences chipPrefs = filterChain.get(0).getPrefs(); // assume all filters have same prefs node (derived from chip class)
                 FileOutputStream fos = new FileOutputStream(file);
-                prefs.exportSubtree(fos);
-                log.info("exported prefs subtree " + prefs.absolutePath() + " to file " + file);
+                chipPrefs.exportSubtree(fos);
+                log.info("exported prefs subtree " + chipPrefs.absolutePath() + " to file " + file);
                 fos.close();
                 recentFiles.addFile(file);
+                prefs.put("FilterFrame.lastFile", file.getCanonicalPath());
             } catch (Exception e) {
                 e.printStackTrace();
             }
