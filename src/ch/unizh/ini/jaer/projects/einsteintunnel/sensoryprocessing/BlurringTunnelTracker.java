@@ -13,6 +13,7 @@ import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.tracking.*;
 import net.sf.jaer.graphics.*;
+
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.awt.*;
@@ -21,7 +22,6 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import javax.media.opengl.*;
-import net.sf.jaer.event.EventPacket;
 /**
  * Tracks moving objects. Modified from BlurringFilter2DTracker.java
  *
@@ -40,12 +40,13 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     public int csx, csy, maxHistogramX, packetCounter;
     public int commandPort = 20021;
     public int maxClusters = 200;
-    public int dsx = 504;
-    public int dsy = 80;
+    public int dsx = 72;
+    public int dsy = 96;
     public short[] xHistogram;
 
     public DatagramSocket socket;
     public InetAddress address;
+    public OSCInterface oscInterface = new OSCInterface();
 
     /**
      * The list of clusters.
@@ -71,6 +72,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     private int minCellsPerCluster = getPrefs().getInt("BlurringTunnelTracker.minCellsPerCluster",20);
     private boolean pathsEnabled = getPrefs().getBoolean("BlurringTunnelTracker.pathsEnabled",true);
     private boolean udpEnabled = getPrefs().getBoolean("BlurringTunnelTracker.udpEnabled",true);
+    private boolean oscEnabled = getPrefs().getBoolean("BlurringTunnelTracker.oscEnabled",true);
     private float activityDecayFactor = getPrefs().getFloat("BlurringTunnelTracker.activityDecayFactor",0.9f);
     private boolean sendPosition = getPrefs().getBoolean("BlurringTunnelTracker.sendPosition",true);
     private boolean sendVelocity = getPrefs().getBoolean("BlurringTunnelTracker.sendVelocity",false);
@@ -99,6 +101,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         setPropertyTooltip(global,"maximumClusterLifetimeMs","upper limit of cluster lifetime. It increases by when the cluster is properly updated. Otherwise, it decreases. When the lifetime becomes zero, the cluster will be expired.");
         setPropertyTooltip(global,"minCellsPerCluster","the minimal amount of active cells in a cell group to be tracked");
         setPropertyTooltip(output,"udpEnabled","creates UDP output of the observed activities and cluster ");
+        setPropertyTooltip(output,"oscEnabled","enables a OSC output of the tracked information");
         setPropertyTooltip(output,"sendActivity","should a histogram of the x-activity be send out");
         setPropertyTooltip(output,"activityDecayFactor","how fast should the x-activity histogram decay");
         setPropertyTooltip(output,"sendPosition","should the cluster position be send out");
@@ -219,8 +222,31 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 
         update(this,new UpdateMessage(this,out,out.getLastTimestamp()));
         if(udpEnabled)sendOutput(in);
+        if(oscEnabled)sendOSC();
 
         return out;
+    }
+
+    public void sendOSC(){
+        if(sendActivity){
+
+        }
+        if(clusters.size()>0){
+            if(sendPosition){
+                for(int i=0; i<clusters.size(); i++){
+                    oscInterface.sendXPosition(clusters.get(i).getLocation().x);
+                    oscInterface.sendYPosition(clusters.get(i).getLocation().y);
+                } 
+            }
+            if(sendVelocity){
+                for(int i=0; i<clusters.size(); i++){
+                    oscInterface.sendSpeed(clusters.get(i).getSpeedPPS());
+                }
+            }
+            if(sendSize){
+
+            }
+        }
     }
 
     public void sendOutput(EventPacket<?> in){
@@ -1703,6 +1729,15 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     public void setUdpEnabled (boolean udpEnabled){
         this.udpEnabled = udpEnabled;
         getPrefs().putBoolean("BlurringTunnelTracker.udpEnabled",udpEnabled);
+    }
+
+    public boolean getOscEnabled (){
+        return oscEnabled;
+    }
+
+    public void setOscEnabled (boolean oscEnabled){
+        this.oscEnabled = oscEnabled;
+        getPrefs().putBoolean("BlurringTunnelTracker.oscEnabled",oscEnabled);
     }
 
     public float getActivityDecayFactor (){

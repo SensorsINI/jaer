@@ -29,9 +29,9 @@ public class EinsteinTunnelDisplay {
     public static int commandPort = 20021;
     public static int packetCount = 0;
     public static int csx = 128;
-    public static int csy = 1280;
-    public static int dsx = 504;
-    public static int dsy = 80;
+    public static int csy = 128;
+    public static int dsx = 78;
+    public static int dsy = 102;
     public static int maxClusters = 200;
     public static int packetLength;
     public static int maxHistogramX;
@@ -129,9 +129,9 @@ public class EinsteinTunnelDisplay {
         Insets displayInsets = displayFrame.getInsets();
         displayFrame.setSize(dsx+displayInsets.left+displayInsets.right, dsy+displayInsets.bottom+displayInsets.top+40);
         //histogramFrame.setSize(new Dimension(dsx,dsy));
-        displayFrame.setResizable(false);
+        //displayFrame.setResizable(false);
         displayFrame.setAlwaysOnTop(true);
-        displayFrame.setLocation(100, 100);
+        displayFrame.setLocation(0, 0);
         displayCanvas=new GLCanvas();
         displayCanvas.setSize(dsx,dsy);
         displayCanvas.addGLEventListener(new GLEventListener(){
@@ -214,6 +214,7 @@ public class EinsteinTunnelDisplay {
     static int margin = 3;
     static int maxPerls = 100;
     static int maxSize = 8;
+    static float refreshRate = 1; //in absolute numbers
     static ArrayList<Perl> perls = new ArrayList();
 
     static public void drawPerls(GL gl){
@@ -239,6 +240,13 @@ public class EinsteinTunnelDisplay {
                 gl.glVertex2i(perl.x,perl.y);
                 gl.glEnd();
             }
+        }
+        for(int i = 0; i<refreshRate; i++){
+            int rmIndex = random.nextInt(perls.size());
+            while(perls.get(rmIndex) == null){
+                rmIndex = random.nextInt(perls.size());
+            }
+            if(perls.get(rmIndex).color<0.05)perls.remove(rmIndex);
         }
         phase++;
     }
