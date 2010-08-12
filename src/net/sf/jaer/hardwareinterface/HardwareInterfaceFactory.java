@@ -10,12 +10,14 @@
 
 package net.sf.jaer.hardwareinterface;
 
+import java.util.*;
+import java.lang.reflect.*;
+
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.USBIOHardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.linux.HardwareInterfaceFactoryLinux;
-import java.lang.reflect.*;
-import java.util.*;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabs_USBIO_C8051F3xxFactory;
 import net.sf.jaer.hardwareinterface.usb.usbaermapper.USBAERatcFactory;
+import net.sf.jaer.hardwareinterface.udp.*;
 
 /**
  * This class builds a list of all available devices and lets you get one of them.
@@ -32,11 +34,12 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
     // TODO fix to used scanned classpath as in filter menu or chip classes
     static Class[] factories={
         //CypressFX2TmpdiffRetinaFactory.class, 
-            SiLabs_USBIO_C8051F3xxFactory.class,
-            USBIOHardwareInterfaceFactory.class,
-            HardwareInterfaceFactoryLinux.class,
-	    USBAERatcFactory.class
-          //  CypressFX2MonitorSequencerFactory.class  // this removed because all CypressFX2 devices are found by their common GUID now at the same time
+        //UDPInterfaceFactory.class,
+        SiLabs_USBIO_C8051F3xxFactory.class,
+        USBIOHardwareInterfaceFactory.class,
+        HardwareInterfaceFactoryLinux.class,
+	USBAERatcFactory.class
+        //  CypressFX2MonitorSequencerFactory.class  // this removed because all CypressFX2 devices are found by their common GUID now at the same time
     }; // raphael: added my class so i can still test before having refactored
     
     private static HardwareInterfaceFactory instance=new HardwareInterfaceFactory();
