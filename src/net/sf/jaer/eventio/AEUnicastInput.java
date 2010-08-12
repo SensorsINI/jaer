@@ -175,7 +175,12 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
             if(client instanceof InetSocketAddress)  {
                 packet.addClientAddress((InetSocketAddress)client, packet.getNumEvents());
             }else{
-                log.warning("unknown type of client address - should be InetSocketAddress: "+client);
+                if(client == null){
+                    paused = true;
+                    log.warning("Device not connected or wrong configured. Datagrams have to be sent to port: "+port+" .Input stream paused.");
+                } else {
+                    log.warning("unknown type of client address - should be InetSocketAddress: "+client);
+                }
             }
         } catch ( SocketTimeoutException to ){
             // just didn't fill the buffer in time, ignore
