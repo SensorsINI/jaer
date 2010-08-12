@@ -545,6 +545,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if ( jaerViewer != null && jaerViewer.getViewers().size() == 1 && chip.getHardwareInterface() == null && HardwareInterfaceFactory.instance().getNumInterfacesAvailable() == 1 ){
             log.info("opening unambiguous device");
             chip.setHardwareInterface(HardwareInterfaceFactory.instance().getFirstAvailableInterface()); // if blank cypress, returns bare CypressFX2
+
         }
     }
     private ArrayList<String> chipClassNames;
@@ -1145,6 +1146,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             if ( aemon != null && aemon.isOpen() ){
                 if ( getPlayMode() != PlayMode.SEQUENCING ){
+                    //log.info("Play mode: Live");
                     setPlayMode(PlayMode.LIVE);
                 }
                 // playMode=PlayMode.LIVE; // in case (like StereoPairHardwareInterface) where device can be open but not by AEViewer
