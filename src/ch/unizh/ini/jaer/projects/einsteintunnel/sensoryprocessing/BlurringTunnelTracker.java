@@ -40,8 +40,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     public int csx, csy, maxHistogramX, packetCounter;
     public int commandPort = 20021;
     public int maxClusters = 200;
-    public int dsx = 72;
-    public int dsy = 96;
+    public int dsx = 100;
+    public int dsy = 100;
     public short[] xHistogram;
 
     public DatagramSocket socket;
@@ -234,8 +234,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         if(clusters.size()>0){
             if(sendPosition){
                 for(int i=0; i<clusters.size(); i++){
-                    oscInterface.sendXPosition(clusters.get(i).getLocation().x);
-                    oscInterface.sendYPosition(clusters.get(i).getLocation().y);
+                    oscInterface.sendXPosition(clusters.get(i).getLocation().x*dsx/csx);
+                    oscInterface.sendYPosition(clusters.get(i).getLocation().y*dsy/csy);
                 } 
             }
             if(sendVelocity){
