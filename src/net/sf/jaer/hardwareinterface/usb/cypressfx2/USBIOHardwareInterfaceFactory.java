@@ -13,6 +13,7 @@ import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_AeSequence
 import net.sf.jaer.hardwareinterface.usb.*;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1bHardwareInterface;
 import ch.unizh.ini.jaer.chip.dvs320.DVS320HardwareInterface;
+import ch.unizh.ini.jaer.chip.dvs320.cDVSTestHardwareInterface;
 import net.sf.jaer.util.HexString;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
@@ -196,6 +197,8 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
                 return new CypressFX2MonitorSequencer(n);
             case SiLabsC8051F320_USBIO_AeSequencer.PID:
                 return new SiLabsC8051F320_USBIO_AeSequencer(n);
+            case cDVSTestHardwareInterface.PID:
+                return new cDVSTestHardwareInterface(n);
             case DVS320HardwareInterface.PID:
                 return new DVS320HardwareInterface(n);
             case CochleaAMS1bHardwareInterface.PID:

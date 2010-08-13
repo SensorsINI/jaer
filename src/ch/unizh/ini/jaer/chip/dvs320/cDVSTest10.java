@@ -203,9 +203,9 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
     public class cDVSTestBiasgen extends net.sf.jaer.biasgen.Biasgen {
 
         ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
-        private ConfigurableIPot cas,  diffOn,  diffOff,  diff,  bulk;
-        private ConstrainedConfigurableIPot refr,  pr,  foll,  lowpower;
-        private ArrayList<ConstrainedConfigurableIPot> sharedBufferBiasList = new ArrayList<ConstrainedConfigurableIPot>();
+        private ConfigurableIPot pcas,  diffOn,  diffOff,  diff, red, blue, amp  ;
+        private ConfigurableIPot refr,  pr,  foll;
+        
         cDVSTest10ControlPanel controlPanel;
         AllMuxes allMuxes = new AllMuxes(); // the output muxes
 
@@ -253,26 +253,23 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
              * test
              */
 
-            getPotArray().addPot(pr = new ConstrainedConfigurableIPot(this, "pr", 0, IPot.Type.NORMAL, IPot.Sex.P, false, true, 100, ConfigurableIPot.maxBuffeBitValue, 1, "Photoreceptor, also biasgen test transistor gate input", sharedBufferBiasList));
-            getPotArray().addPot(cas = new ConfigurableIPot(this, "cas", 1, IPot.Type.CASCODE, IPot.Sex.N, false, true, 200, ConfigurableIPot.maxBuffeBitValue, 2, "Photoreceptor cascode"));
-            getPotArray().addPot(foll = new ConstrainedConfigurableIPot(this, "foll", 2, IPot.Type.NORMAL, IPot.Sex.P, false, true, 1000, ConfigurableIPot.maxBuffeBitValue, 3, "Src follower buffer between photoreceptor and differentiator", sharedBufferBiasList));
-            getPotArray().addPot(bulk = new ConfigurableIPot(this, "bulk", 3, IPot.Type.NORMAL, IPot.Sex.N, false, true, 1000, ConfigurableIPot.maxBuffeBitValue, 4, "Differentiator switch bulk bias"));
+            getPotArray().addPot(pr = new ConfigurableIPot(this, "pr", 0, IPot.Type.NORMAL, IPot.Sex.P, false, true, 100, ConfigurableIPot.maxBuffeBitValue, 1, "Photoreceptor, also biasgen test transistor gate input"));
+            getPotArray().addPot(pcas = new ConfigurableIPot(this, "pcas", 1, IPot.Type.CASCODE, IPot.Sex.N, false, true, 200, ConfigurableIPot.maxBuffeBitValue, 2, "Photoreceptor cascode"));
+            getPotArray().addPot(foll = new ConfigurableIPot(this, "foll", 2, IPot.Type.NORMAL, IPot.Sex.P, false, true, 1000, ConfigurableIPot.maxBuffeBitValue, 3, "Src follower buffer between photoreceptor and differentiator"));
+            getPotArray().addPot(amp = new ConfigurableIPot(this, "amp", 3, IPot.Type.NORMAL, IPot.Sex.N, false, true, 1000, ConfigurableIPot.maxBuffeBitValue, 4, "amplifier first stage bias for color pixel "));
             getPotArray().addPot(diff = new ConfigurableIPot(this, "diff", 4, IPot.Type.NORMAL, IPot.Sex.N, false, true, 2000, ConfigurableIPot.maxBuffeBitValue, 5, "Differentiator"));
             getPotArray().addPot(diffOn = new ConfigurableIPot(this, "on", 5, IPot.Type.NORMAL, IPot.Sex.N, false, true, 500, ConfigurableIPot.maxBuffeBitValue, 6, "ON threshold - higher to raise threshold"));
             getPotArray().addPot(diffOff = new ConfigurableIPot(this, "off", 6, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBuffeBitValue, 7, "OFF threshold, lower to raise threshold"));
-            getPotArray().addPot(refr = new ConstrainedConfigurableIPot(this, "refr", 7, IPot.Type.NORMAL, IPot.Sex.P, false, true, 50, ConfigurableIPot.maxBuffeBitValue, 8, "Refractory period", sharedBufferBiasList));
-            getPotArray().addPot(lowpower = new ConstrainedConfigurableIPot(this, "lowpower", 8, IPot.Type.NORMAL, IPot.Sex.N, false, true, 50, ConfigurableIPot.maxBuffeBitValue, 9, "Source bias for low current biases (pr, foll, refr)", sharedBufferBiasList));
+            getPotArray().addPot(refr = new ConfigurableIPot(this, "refr", 7, IPot.Type.NORMAL, IPot.Sex.P, false, true, 50, ConfigurableIPot.maxBuffeBitValue, 8, "Refractory period"));
+            getPotArray().addPot(red = new ConfigurableIPot(this, "red", 8, IPot.Type.NORMAL, IPot.Sex.N, false, true, 50, ConfigurableIPot.maxBuffeBitValue, 9, "red threshold"));
+            getPotArray().addPot(blue = new ConfigurableIPot(this, "blue", 8, IPot.Type.NORMAL, IPot.Sex.N, false, true, 50, ConfigurableIPot.maxBuffeBitValue, 9, "blue threshold"));
             getPotArray().addPot(new ConfigurableIPot(this, "pux", 9, IPot.Type.NORMAL, IPot.Sex.P, false, true, ConfigurableIPot.maxBitValue, ConfigurableIPot.maxBuffeBitValue, 11, "2nd dimension AER static pullup"));
             getPotArray().addPot(new ConfigurableIPot(this, "puy", 10, IPot.Type.NORMAL, IPot.Sex.P, false, true, 0, ConfigurableIPot.maxBuffeBitValue, 10, "1st dimension AER static pullup"));
             getPotArray().addPot(new ConfigurableIPot(this, "pd", 11, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBuffeBitValue, 11, "AER request pulldown"));
             getPotArray().addPot(new ConfigurableIPot(this, "padfoll", 12, IPot.Type.NORMAL, IPot.Sex.P, false, true, 300, ConfigurableIPot.maxBuffeBitValue, 20, "voltage follower pads"));
             getPotArray().addPot(new ConfigurableIPot(this, "ifthr", 13, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBuffeBitValue, 30, "intensity (total photocurrent) IF neuron threshold, also gate and source biases for n/p test fets"));
-            getPotArray().addPot(new ConfigurableIPot(this, "test", 14, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBuffeBitValue, 100, "test bias - no functionality, NOT connected to test transistors"));
+            getPotArray().addPot(new ConfigurableIPot(this, "ifrefr", 14, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBuffeBitValue, 100, "IF neuron refractory period"));
 
-            sharedBufferBiasList.add(pr);
-            sharedBufferBiasList.add(foll);
-            sharedBufferBiasList.add(refr);
-            sharedBufferBiasList.add(lowpower);
 
             loadPreferences();
 
@@ -546,19 +543,6 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
             }
         }
 
-        class CurrentOutputMap extends OutputMap {
-
-            void put(int k, int v) {
-                put(k, v, "Current " + k);
-            }
-
-            CurrentOutputMap() {
-                put(0, 3); // in0 selected by bit3:0=3
-                put(1, 7);
-                put(2, 11);
-                put(3, 15);
-            }
-        }
 
         class VoltageOutputMux extends OutputMux {
 
@@ -576,24 +560,20 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
             }
         }
 
-        class CurrentOutputMux extends OutputMux {
+        class BiasOutputMux extends OutputMux {
 
-            CurrentOutputMux() {
-                super(4, 4, new CurrentOutputMap());
-                setName("Currents");
-                RemoteControl rc = getRemoteControl();
-                if (rc != null) {
-                    rc.addCommandListener(this, CMD_SELECTMUX + getName() + " <channelNumber>", "Selects a multiplexer output");
-                }
+            BiasOutputMux() {
+                super(4, 16, new DigitalOutputMap());
+                setName("Bias");
             }
         }
 
         // the output muxes on dvs320
         class AllMuxes extends ArrayList<OutputMux> {
 
-            OutputMux[] vmuxes = {new VoltageOutputMux(1), new VoltageOutputMux(2), new VoltageOutputMux(3)};
+            OutputMux[] vmuxes = {new VoltageOutputMux(1), new VoltageOutputMux(2), new VoltageOutputMux(3), new VoltageOutputMux(4)};
             OutputMux[] dmuxes = {new LogicMux(1), new LogicMux(2), new LogicMux(3), new LogicMux(4), new LogicMux(5)};
-            OutputMux imux = new CurrentOutputMux();
+            OutputMux biasmux = new BiasOutputMux();
 
             byte[] formatConfigurationBytes() {
                 int nBits = 0;
@@ -613,15 +593,28 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
             }
 
             AllMuxes() {
-                add(imux); // first in list since at end of chain - bits must be sent first, before any biasgen bits
-                addAll(Arrays.asList(dmuxes)); // next are 5 logic muxes
+               
+                addAll(Arrays.asList(dmuxes)); // 5 logic muxes, first in list since at end of chain - bits must be sent first, before any biasgen bits
                 addAll(Arrays.asList(vmuxes)); // finally send the 3 voltage muxes
+                add(biasmux); // biasMux is between biasgen and voltage muxes
 
                 // labels go back from end of chain which is imux, followed by pin DigMux4, DigMux3, etc
-                imux.put(0, "nTest"); // TODO these are swapped in the schematic on the biasgen symbol
-                imux.put(1, "pTest"); // TODO nTest/pTest are swapped in chip biasgen schematic
-                imux.put(2, "phC");
-                imux.put(3, "NC");
+                biasmux.put(0, "diffB");
+                biasmux.put(1, "onB");
+                biasmux.put(2, "offB");
+                biasmux.put(3, "redB");
+                biasmux.put(4, "blueB");
+                biasmux.put(5, "AmpB");
+                biasmux.put(6, "PcasB");
+                biasmux.put(7, "pixInvB");
+                biasmux.put(8, "prB");
+                biasmux.put(9, "fB");
+                biasmux.put(10, "refrB");
+                biasmux.put(11, "pdBias");
+                biasmux.put(12, "RxEB");
+                biasmux.put(13, "puXB");
+                biasmux.put(14, "puYB");
+                biasmux.put(15, "VthB");
 
                 dmuxes[0].setName("DigMux4");
                 dmuxes[1].setName("DigMux3");
@@ -629,122 +622,54 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
                 dmuxes[3].setName("DigMux1");
                 dmuxes[4].setName("DigMux0");
 
-                dmuxes[0].put(0, "RXTop");
-                dmuxes[0].put(1, "FF1c");
-                dmuxes[0].put(2, "ResetFF1c");
-                dmuxes[0].put(3, "reqY");
-                dmuxes[0].put(4, "reqX");
-                dmuxes[0].put(5, "nResetKeeperX");
-                dmuxes[0].put(6, "ackX");
-                dmuxes[0].put(7, "latch");
-                dmuxes[0].put(8, "nAckY");
-                dmuxes[0].put(9, "nRXOff");
-                dmuxes[0].put(10, "AX");
-                dmuxes[0].put(11, "nRXOn");
-                dmuxes[0].put(12, "FF2x");
-                dmuxes[0].put(13, "FF1x");
-                dmuxes[0].put(14, "RXArb");
-                dmuxes[0].put(15, "axArb");
-
-                dmuxes[1].put(0, "RXTop");
-                dmuxes[1].put(1, "FF1c");
-                dmuxes[1].put(2, "ResetFF1c");
-                dmuxes[1].put(3, "reqY");
-                dmuxes[1].put(4, "reqX");
-                dmuxes[1].put(5, "nResetKeeperX");
-                dmuxes[1].put(6, "ackX");
-                dmuxes[1].put(7, "latch");
-                dmuxes[1].put(8, "nAckY");
-                dmuxes[1].put(9, "nRXOff");
-                dmuxes[1].put(10, "AX");
-                dmuxes[1].put(11, "nRXOn");
-                dmuxes[1].put(12, "FF2x");
-                dmuxes[1].put(13, "FF1x");
-                dmuxes[1].put(14, "RXArb");
-                dmuxes[1].put(15, "axArb");
-
-                dmuxes[2].put(0, "RXTop");
-                dmuxes[2].put(1, "FF1c");
-                dmuxes[2].put(2, "ResetFF1c");
-                dmuxes[2].put(3, "reqY");
-                dmuxes[2].put(4, "reqX");
-                dmuxes[2].put(5, "nResetKeeperX");
-                dmuxes[2].put(6, "ackX");
-                dmuxes[2].put(7, "latch");
-                dmuxes[2].put(8, "nAckY");
-                dmuxes[2].put(9, "nRXOff");
-                dmuxes[2].put(10, "AX");
-                dmuxes[2].put(11, "nRXOn");
-                dmuxes[2].put(12, "FF2x");
-                dmuxes[2].put(13, "FF1x");
-                dmuxes[2].put(14, "RXArb");
-                dmuxes[2].put(15, "axArb");
-
-                dmuxes[3].put(0, "RXTop");
-                dmuxes[3].put(1, "FF1c");
-                dmuxes[3].put(2, "ResetFF1c");
-                dmuxes[3].put(3, "reqY");
-                dmuxes[3].put(4, "reqX");
-                dmuxes[3].put(5, "nResetKeeperX");
-                dmuxes[3].put(6, "ackX");
-                dmuxes[3].put(7, "latch");
-                dmuxes[3].put(8, "nAckY");
-                dmuxes[3].put(9, "nRXOff");
-                dmuxes[3].put(10, "AX");
-                dmuxes[3].put(11, "nRXOn");
-                dmuxes[3].put(12, "FF2x");
-                dmuxes[3].put(13, "FF1x");
-                dmuxes[3].put(14, "RXArb");
-                dmuxes[3].put(15, "axArb");
-
-                dmuxes[4].put(0, "RXTop");
-                dmuxes[4].put(1, "FF1c");
-                dmuxes[4].put(2, "ResetFF1c");
-                dmuxes[4].put(3, "reqY");
-                dmuxes[4].put(4, "reqX");
-                dmuxes[4].put(5, "nResetKeeperX");
-                dmuxes[4].put(6, "ackX");
-                dmuxes[4].put(7, "latch");
-                dmuxes[4].put(8, "nAckY");
-                dmuxes[4].put(9, "nRXOff");
-                dmuxes[4].put(10, "AX");
-                dmuxes[4].put(11, "nRXOn");
-                dmuxes[4].put(12, "FF2x");
-                dmuxes[4].put(13, "FF1x");
-                dmuxes[4].put(14, "RXArb");
-                dmuxes[4].put(15, "axArb");
+                for (int i = 0; i < 5; i++) {
+                    dmuxes[i].put(0, "RCarb");
+                    dmuxes[i].put(1, "FF2");
+                    dmuxes[i].put(2, "nArow");
+                    dmuxes[i].put(3, "RxcolG");
+                    dmuxes[i].put(4, "Rrow");
+                    dmuxes[i].put(5, "Rcol");
+                    dmuxes[i].put(6, "Acol");
+                    dmuxes[i].put(7, "FF1");
+                    dmuxes[i].put(8, "arbtopA");
+                    dmuxes[i].put(9, "arbtopR");
+                    dmuxes[i].put(10, "nRXon");
+                    dmuxes[i].put(11, "nAX0");
+                    dmuxes[i].put(12, "AY0");
+                    dmuxes[i].put(13, "nRY0");
+                    dmuxes[i].put(14, "nAxcolE");
+                    dmuxes[i].put(15, "nRxcolE");
+                }
 
 
-                vmuxes[0].setName("AnaMux2");
-                vmuxes[1].setName("AnaMux1");
-                vmuxes[2].setName("AnaMux0");
+                vmuxes[0].setName("AnaMux3");
+                vmuxes[1].setName("AnaMux2");
+                vmuxes[2].setName("AnaMux1");
+                vmuxes[3].setName("AnaMux0");
 
-                vmuxes[0].put(0, "testVpr");
-                vmuxes[0].put(1, "testnResettpixel");
-                vmuxes[0].put(2, "testOn");
-                vmuxes[0].put(3, "testVd1ff");
-                vmuxes[0].put(4, "testAY");
-                vmuxes[0].put(5, "testnRY");
-                vmuxes[0].put(6, "testAX");
-                vmuxes[0].put(7, "testnRXOff");
+                for (int i = 0; i < 4; i++) {
+                    vmuxes[i].put(0, "Vsb");
+                    vmuxes[i].put(1, "Vt");
+                    vmuxes[i].put(2, "Vtb");
+                    vmuxes[i].put(3, "Vs");
+                    vmuxes[i].put(4, "Vdiff");
+                }
 
-                vmuxes[1].put(0, "testVpr");
-                vmuxes[1].put(1, "testnResettpixel");
-                vmuxes[1].put(2, "testOn");
-                vmuxes[1].put(3, "testVd1ff");
-                vmuxes[1].put(4, "testAY");
-                vmuxes[1].put(5, "testnRY");
-                vmuxes[1].put(6, "testAX");
-                vmuxes[1].put(7, "testnRXOn");
+                vmuxes[0].put(5, "top");
+                vmuxes[0].put(6, "nResetColor2");
+                vmuxes[0].put(7, "topin");
 
-                vmuxes[2].put(0, "testVpr");
-                vmuxes[2].put(1, "testnResettpixel");
-                vmuxes[2].put(2, "testOn");
-                vmuxes[2].put(3, "testVd1ff");
-                vmuxes[2].put(4, "testAY");
-                vmuxes[2].put(5, "testnRY");
-                vmuxes[2].put(6, "testAX");
-                vmuxes[2].put(7, "testnOFF");
+                vmuxes[1].put(5, "top");
+                vmuxes[1].put(6, "nResetColor2");
+                vmuxes[1].put(7, "topin");
+
+                vmuxes[2].put(5, "Vcoldiff");
+                vmuxes[2].put(6, "sum");
+                vmuxes[2].put(7, "sumin");
+
+                vmuxes[3].put(5, "Vcoldiff");
+                vmuxes[3].put(6, "sum");
+                vmuxes[3].put(7, "sumin");
             }
         }
     }

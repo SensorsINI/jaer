@@ -66,9 +66,9 @@ public class cDVSTest10ControlPanel extends javax.swing.JPanel {
             return;
         }
         panelBuilt = true;
-        DVS320.DVS320Biasgen biasgen = (DVS320.DVS320Biasgen) chip.getBiasgen();
-        DVS320.DVS320Biasgen.AllMuxes muxes = biasgen.allMuxes;
-        for (DVS320.DVS320Biasgen.OutputMux m : muxes) {
+        cDVSTest10.cDVSTestBiasgen biasgen = (cDVSTest10.cDVSTestBiasgen) chip.getBiasgen();
+        cDVSTest10.cDVSTestBiasgen.AllMuxes muxes = biasgen.allMuxes;
+        for (cDVSTest10.cDVSTestBiasgen.OutputMux m : muxes) {
             JPanel p = new JPanel();
             p.setAlignmentY(0);
             p.setBorder(new TitledBorder(m.getName()));
