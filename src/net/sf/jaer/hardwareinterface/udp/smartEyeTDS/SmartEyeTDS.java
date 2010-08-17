@@ -23,10 +23,14 @@ import net.sf.jaer.hardwareinterface.udp.*;
 import at.ait.dss.sni.jaer.chip.atis.ATIS304.*;
 
 /**
+ * The SmartEyeTDS is a hardware interface class for the AIT SmartEye Traffic Sensor which sends information
+ * over UDP. The standard data port used is 22222.
  *
  * @author braendch
  */
-public class SmartEyeTDS implements UDPInterface, AEMonitorInterface, BiasgenHardwareInterface{
+public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorInterface{
+
+    //TODO: Make SmartEyeTDS an instance of BiasgenHardwareInterface
 
     /** Used to store preferences, e.g. the default firmware download file for blank devices */
     protected static Preferences prefs = Preferences.userNodeForPackage(SmartEyeTDS.class);
@@ -121,6 +125,8 @@ public class SmartEyeTDS implements UDPInterface, AEMonitorInterface, BiasgenHar
     @Override
     public void close(){
         isOpen=false;
+        socket.close();
+        input.close();
     }
 
     @Override
@@ -283,7 +289,7 @@ public class SmartEyeTDS implements UDPInterface, AEMonitorInterface, BiasgenHar
      */
     @Override
     public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
-        if (!isOpen) {
+        if (!isOpen || socket == null || input == null) {
             open();
         }
 
@@ -299,18 +305,18 @@ public class SmartEyeTDS implements UDPInterface, AEMonitorInterface, BiasgenHar
 
     }
 
-    @Override
+    //@Override
     public void setPowerDown (boolean powerDown) throws HardwareInterfaceException{
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    @Override
+    //@Override
     public void sendConfiguration (Biasgen biasgen) throws HardwareInterfaceException{
         if ( !isOpen() ){
             throw new HardwareInterfaceException("not open");
         }
         int MAX_COMMAND_LENGTH_BYTES = 256;
-        for ( Pot p:chip.getBiasgen().getPotArray().getPots() ){
+        /*for ( Pot p:chip.getBiasgen().getPotArray().getPots() ){
             UDP_VPot vp = (UDP_VPot)p;
             try{
                 String s = vp.getCommandString();
@@ -328,17 +334,22 @@ public class SmartEyeTDS implements UDPInterface, AEMonitorInterface, BiasgenHar
             } catch ( Exception ex ){
                 throw new HardwareInterfaceException("while sending biases to " + client + " caught " + ex.toString());
             }
-        }
+        }*/
     }
 
-    @Override
+    //@Override
     public void flashConfiguration (Biasgen biasgen) throws HardwareInterfaceException{
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    @Override
+    //@Override
     public byte[] formatConfigurationBytes (Biasgen biasgen){
         throw new UnsupportedOperationException("Not supported yet.");// TODO use this to send all biases at once?
+    }
+
+    @Override
+    public String toString() {
+        return "UDP: SmartEyeTDS";
     }
 
 }

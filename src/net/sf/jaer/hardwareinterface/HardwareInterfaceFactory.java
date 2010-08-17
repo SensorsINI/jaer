@@ -34,11 +34,11 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
     // TODO fix to used scanned classpath as in filter menu or chip classes
     static Class[] factories={
         //CypressFX2TmpdiffRetinaFactory.class, 
-        //UDPInterfaceFactory.class,
         SiLabs_USBIO_C8051F3xxFactory.class,
         USBIOHardwareInterfaceFactory.class,
         HardwareInterfaceFactoryLinux.class,
-	USBAERatcFactory.class
+	USBAERatcFactory.class,
+        UDPInterfaceFactory.class
         //  CypressFX2MonitorSequencerFactory.class  // this removed because all CypressFX2 devices are found by their common GUID now at the same time
     }; // raphael: added my class so i can still test before having refactored
     

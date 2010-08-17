@@ -12,6 +12,7 @@ import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.hardwareinterface.udp.SmartEyeTDS.*;
 
 /**
+ * Simple interface factory for the UDP devices.
  *
  * @author braendch
  */

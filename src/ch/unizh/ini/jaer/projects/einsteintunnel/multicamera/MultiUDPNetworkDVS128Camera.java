@@ -40,6 +40,7 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.hardwareinterface.udp.NetworkChip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
@@ -48,7 +49,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  *
  * @author tobi delbruck, christian braendli
  */
-public class MultiUDPNetworkDVS128Camera extends DVS128 {
+public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip{
 
     /** Maximum number of network cameras in the linear array. */
     public static final int MAX_NUM_CAMERAS = 10;
