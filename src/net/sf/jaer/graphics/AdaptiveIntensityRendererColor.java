@@ -6,11 +6,8 @@
 package net.sf.jaer.graphics;
 
 /**
- * Using the idea of Jenny Olsson employed in the UioCameraRenderer.java 
- * and making  a more general renderer suitable for Octopus type sensors:
- * Her idea was to define gray as the average pixel activity and a range from
- * 0 to 2*gray as black to white. The average pixel activity is adapted slowly,
- * i.e. not updated for every frame.
+ * Extending the adaptive intensity renderer for our first octopus colour retina
+ * Not sure yet about how to do the adaption best
  * @author hafliger
  */
 
@@ -18,11 +15,12 @@ import net.sf.jaer.chip.Calibratible;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.*;
 
-public class AdaptiveIntensityRenderer  extends AEChipRenderer implements Calibratible  { // this renderer implements Calibratible so the AEViewer menu has the calibration menu enabled.
+public class AdaptiveIntensityRendererColor  extends AdaptiveIntensityRenderer implements Calibratible //implements Calibratible
+{ // this renderer implements Calibratible so the AEViewer menu has the calibration menu enabled.
 
 
-    float[][] calibrationMatrix=new float[chip.getSizeY()][chip.getSizeX()];
-    float[][] lastEvent=new float[chip.getSizeY()][chip.getSizeX()];
+    float[][][] calibrationMatrix=new float[chip.getSizeY()][chip.getSizeX()][chip.getNumCellTypes()];
+    float[][][] lastEvent=new float[chip.getSizeY()][chip.getSizeX()][chip.getNumCellTypes()];
     float avgEventRateHz=1.0f;
     float meanSpikes =1;
     boolean calibrationStarted = false;
@@ -35,14 +33,15 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer implements Calibr
                                             // one can play with software gain directly with the 
                                             // FS parameter (up-arrow and down-arrow) which is the variable 'colorScale'
 
-    public AdaptiveIntensityRenderer(AEChip chip) {        
+    public AdaptiveIntensityRendererColor(AEChip chip) {
         super(chip);   
         
         AEViewer aev;
         for (int i = 0; i<chip.getSizeY(); i++)
-            for (int j = 0; j < chip.getSizeX(); j++){
-                calibrationMatrix[i][j] = 1.0f;
-                lastEvent[i][j] = 0.0f;
+            for (int j = 0; j < chip.getSizeX(); j++)
+                for (int k = 0;k < chip.getNumCellTypes(); k++){
+                calibrationMatrix[i][j][k] = 1.0f;
+                lastEvent[i][j][k] = 0.0f;
             }
         adaptAreaStart[0]=0;
         adaptAreaStart[1]=0;
@@ -51,20 +50,20 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer implements Calibr
         checkPixmapAllocation();  // make sure DisplayMethod (which uses this) has the array allocated.
     }
     
-    public void setCalibrationInProgress(final boolean calibrationInProgress) {
-        this.calibrationInProgress = calibrationInProgress;
-    }
+    //public void setCalibrationInProgress(final boolean calibrationInProgress) {
+    //    this.calibrationInProgress = calibrationInProgress;
+    //}
 
-    public boolean isCalibrationInProgress() {
-        return(this.calibrationInProgress);
-    }
+    //public boolean isCalibrationInProgress() {
+    //    return(this.calibrationInProgress);
+    //}
 
-    public void setAdaptiveArea(int sx, int ex, int sy, int ey){// to acount for the UiO foveated imager, where only the center is an Octopus type retina
-        adaptAreaStart[0]=sx;
-        adaptAreaStart[1]=sy;
-        adaptAreaStop[0]=ex;
-        adaptAreaStop[1]=ey;
-    }   
+    //public void setAdaptiveArea(int sx, int ex, int sy, int ey){// to acount for the UiO foveated imager, where only the center is an Octopus type retina
+    //    adaptAreaStart[0]=sx;
+    //    adaptAreaStart[1]=sy;
+    //    adaptAreaStop[0]=ex;
+    //    adaptAreaStop[1]=ey;
+    //}
         
     public synchronized void render(EventPacket packet){
         if(packet==null) return;
@@ -84,7 +83,8 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer implements Calibr
             if (!calibrationStarted){
                 for (int i = 0; i<chip.getSizeY(); i++)
                     for (int j = 0; j < chip.getSizeX(); j++)
-                        calibrationMatrix[i][j] = 0;
+                        for (int k = 0; k < chip.getNumCellTypes(); k++)
+                            calibrationMatrix[i][j][k] = 0;
                 numSpikes = packet.getSize();
                 meanSpikes = numSpikes/numPixels;
                 calibrationStarted = true;
@@ -96,11 +96,12 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer implements Calibr
             if (calibrationStarted){
             calibrationStarted = false;
             for (int i = 0; i<chip.getSizeY(); i++)
-                    for (int j = 0; j < chip.getSizeX(); j++){
-                        if (calibrationMatrix[i][j]!=0.0f){
-                            calibrationMatrix[i][j] = meanSpikes/calibrationMatrix[i][j];
-                        }else{
-                            calibrationMatrix[i][j] = 2;
+                    for (int j = 0; j < chip.getSizeX(); j++)
+                        for (int k = 0; k < chip.getNumCellTypes(); k++){
+                            if (calibrationMatrix[i][j][k]!=0.0f){
+                                calibrationMatrix[i][j][k] = meanSpikes/calibrationMatrix[i][j][k];
+                            }else{
+                                calibrationMatrix[i][j][k] = 2;
                         }
                     }
             }                                         
@@ -110,21 +111,26 @@ public class AdaptiveIntensityRenderer  extends AEChipRenderer implements Calibr
         try{
             if (packet.getNumCellTypes()<2){                    
                 for(Object obj:packet){
-                    BasicEvent e=(BasicEvent)obj;
+                    TypedEvent e=(TypedEvent)obj;
                     if (calibrationInProgress) {
-                        calibrationMatrix[e.y][e.x] += 1;
+                        calibrationMatrix[e.y][e.x][e.type] += 1;
                     }
 
                     tt = e.getTimestamp();                                       
                     
-                    dt = (int)(tt - lastEvent[e.y][e.x]);           //Finds the time since previous spike
-                    lastEvent[e.y][e.x] = tt; 
-                    a=0.5f*((float)Math.pow(2, colorScale))/((float)dt*1e-6f)/avgEventRateHz*calibrationMatrix[e.y][e.x]*intensity_scaling;
+                    dt = (int)(tt - lastEvent[e.y][e.x][e.type]);           //Finds the time since previous spike
+                    lastEvent[e.y][e.x][e.type] = tt;
+                    a=0.5f*((float)Math.pow(2, colorScale))/((float)dt*1e-6f)/avgEventRateHz*calibrationMatrix[e.y][e.x][e.type]*intensity_scaling;
 
                     int ind=getPixMapIndex(e.x, e.y);
-                    p[ind+0] =a;
-                    p[ind+1] =a;
-                    p[ind+2] =a;
+                    switch (e.type){
+                        case 0:
+                            p[ind + 0] = a; // R
+                        case 1:
+                            p[ind + 1] = a; // G
+                        case 3:
+                            p[ind + 2] = a; // B
+                    }
                     if ((e.x>=adaptAreaStart[0])&&(e.y>=adaptAreaStart[1])&&(e.x<=adaptAreaStop[0])&&(e.y<=adaptAreaStop[1])){
                         adaptAreaNumSpikes +=1;
                     }
