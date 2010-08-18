@@ -129,17 +129,17 @@ public class AdaptiveIntensityRendererColor extends AdaptiveIntensityRenderer im
                     switch (e.type) {
                         case 0:// R
                         {
-                            p[ind + 0] = a;
+                            p[ind + 0] = a / 437.0f * 574.0f;
                             break;
                         }
                         case 1:// B
                         {
-                            p[ind + 2] = a;
+                            p[ind + 2] = a / 83.0f * 574.0f;
                             break;
                         }
                         case 3:// G
                         {
-                            p[ind + 1] = a;
+                            p[ind + 1] = a / 54.0f * 574.0f;
                             break;
                         }
                         default:
