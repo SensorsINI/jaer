@@ -32,6 +32,7 @@ import java.util.*;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
+import net.sf.jaer.aemonitor.AEConstants;
 
 /**
  * Annotates the rendered data stream canvas
@@ -106,14 +107,14 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 return;
             }
             gl.glPushMatrix();
-            final int pos = 8, xpos = 25;
+            final int pos = chip.getSizeY() / 3, xpos = 25;
             gl.glColor3f(0, 0, 1);
-            gl.glTranslatef(0, chip.getSizeY() - pos, 0);
-            gl.glScalef((float) chip.getSizeX() / (endTime - startTime), (float)( chip.getSizeY()*.2f) / (maxRate), 1);
+            gl.glTranslatef(0, pos, 0);
+            gl.glScalef((float) chip.getSizeX() / (endTime - startTime), (float) (chip.getSizeY() * .2f) / (maxRate), 1);
             gl.glLineWidth(1);
             gl.glBegin(GL.GL_LINE_STRIP);
             for (RateSample s : rateSamples) {
-                gl.glVertex2f(s.time-startTime, s.rate);
+                gl.glVertex2f(s.time - startTime, s.rate);
             }
             gl.glEnd();
             gl.glPopMatrix();
@@ -214,14 +215,15 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 dataFileTimestampStartTimeMs = in.getFirstTimestamp();
             }
             relativeTimeInFileMs = (in.getLastTimestamp() - dataFileTimestampStartTimeMs) / 1000;
-        }
-        if (isEventRate()) {
-            eventRateFilter.filterPacket(in);
-            eventRateMeasured = eventRateFilter.getFilteredEventRate();
-            if (showRateTrace && in.getSize() > 1) {
-                rateHistory.addSample(in.getLastTimestamp(), eventRateMeasured);
+            if (isEventRate()) {
+                eventRateFilter.filterPacket(in);
+                eventRateMeasured = eventRateFilter.getFilteredEventRate();
+                if (showRateTrace && in.getSize() > 1) {
+                    rateHistory.addSample(relativeTimeInFileMs+wrappingCorrectionMs, eventRateMeasured);
+                }
             }
         }
+
         return in;
     }
 
@@ -355,7 +357,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         if (!showRateTrace) {
             return;
         }
-        synchronized(this){
+        synchronized (this) {
             rateHistory.draw(gl);
         }
     }
