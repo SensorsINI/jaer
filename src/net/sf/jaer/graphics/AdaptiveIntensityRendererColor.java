@@ -70,6 +70,9 @@ public class AdaptiveIntensityRendererColor extends AdaptiveIntensityRenderer im
         float alpha = 0.9f;
         float a;
         int tt, dt = 0;
+        float scaleR=2.0f*466.46f/354.739f;
+        float scaleG=2.0f*466.46f/45.005f;//54
+        float scaleB=1.0f*466.46f/66.886f;
 
         float adaptAreaNumSpikes = 0;
 
@@ -129,17 +132,17 @@ public class AdaptiveIntensityRendererColor extends AdaptiveIntensityRenderer im
                     switch (e.type) {
                         case 0:// R
                         {
-                            p[ind + 0] = a / 437.0f * 574.0f;
+                            p[ind + 0] = a * scaleR- p[ind + 1];
                             break;
                         }
                         case 1:// B
                         {
-                            p[ind + 2] = a / 83.0f * 574.0f;
+                            p[ind + 2] = a * scaleB;
                             break;
                         }
                         case 3:// G
                         {
-                            p[ind + 1] = a / 54.0f * 574.0f;
+                            p[ind + 1] = a * scaleG - p[ind + 2];
                             break;
                         }
                         default:
