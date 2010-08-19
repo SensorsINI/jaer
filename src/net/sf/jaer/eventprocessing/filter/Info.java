@@ -20,9 +20,9 @@ import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.EngineeringFormat;
-import net.sf.jaer.util.filter.LowpassFilter;
 import com.sun.opengl.util.*;
-import java.awt.Graphics2D;
+import com.sun.opengl.util.j2d.TextRenderer;
+import java.awt.Font;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -77,6 +77,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         ArrayList<RateSample> rateSamples = new ArrayList();
         float startTime = Float.MAX_VALUE, endTime = Float.MIN_VALUE;
         float minRate = Float.MAX_VALUE, maxRate = Float.MIN_VALUE;
+        TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.BOLD, 24));
 
         void clear() {
             rateSamples.clear();
@@ -107,9 +108,14 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 return;
             }
             gl.glPushMatrix();
-            final int pos = chip.getSizeY() / 3, xpos = 25;
+            final int pos = chip.getSizeY() / 3;
             gl.glColor3f(0, 0, 1);
             gl.glTranslatef(0, pos, 0);
+//            gl.glRotatef(90, 0, 0, 1);
+            renderer.begin3DRendering();
+            renderer.draw3D("Max rate="+engFmt.format(maxRate)+"eps", chip.getSizeY()*.3f, 0, 0,.2f);
+            renderer.end3DRendering();
+//            gl.glRotatef(-90, 0, 0, 1);
             gl.glScalef((float) chip.getSizeX() / (endTime - startTime), (float) (chip.getSizeY() * .2f) / (maxRate), 1);
             gl.glLineWidth(1);
             gl.glBegin(GL.GL_LINE_STRIP);
