@@ -1764,7 +1764,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     try{
                         wait(100);
                     } catch ( java.lang.InterruptedException e ){
-                        log.info("viewLoop idle wait() was interrupted: " + e.toString());
+//                        log.info("viewLoop idle wait() was interrupted: " + e.toString());
                     }
                 }
             }

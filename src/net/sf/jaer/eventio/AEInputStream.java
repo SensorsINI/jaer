@@ -26,7 +26,7 @@ public class AEInputStream implements Closeable {
 
     /** Property change event. */
      public static final String EVENT_EOF="eof", EVENT_WRAPPED_TIME="wrappedTime", EVENT_POSITION="posiiton", EVENT_REWIND="rewind",
-             EVENT_MARKSET="markset", EVENT_MARKCLEARED="markcleared", EVENT_INIT="init";
+             EVENT_MARKSET="markset", EVENT_MARKCLEARED="markcleared", EVENT_INIT="init", EVENT_NON_MONOTONIC_TIMESTAMP="nonMonotonicTimestamp";
 
     private InputStream is;
     AEPacketRaw packet = new AEPacketRaw();

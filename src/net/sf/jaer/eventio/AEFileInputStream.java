@@ -362,7 +362,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             log.warning(e.toString());
             getSupport().firePropertyChange(AEInputStream.EVENT_WRAPPED_TIME,e.getPreviousTimestamp(),e.getCurrentTimestamp());
         } catch ( NonMonotonicTimeException e ){
-//            log.info(e.getMessage());
+           getSupport().firePropertyChange(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP,e.getPreviousTimestamp(),e.getCurrentTimestamp());
+ //            log.info(e.getMessage());
         }
         packet.setNumEvents(count);
         getSupport().firePropertyChange(AEInputStream.EVENT_POSITION,oldPosition,position());
@@ -378,7 +379,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * <p>
      *Non-monotonic timestamps cause warning messages to be printed (up to MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT) and packet
      * reading is aborted when the non-monotonic timestamp is encountered. Normally this does not cause problems except that the packet
-     * is shorter in duration that called for. But when synchronized playback is enabled it causes the different threads to desychronize.
+     * is shorter in duration that called for. But when synchronized playback is enabled it causes the different threads to desynchronize.
      * Therefore the data files should not contain non-monotonic timestamps when synchronized playback is desired.
      * 
      *@param dt the timestamp different in units of the timestamp (usually us)
@@ -468,7 +469,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             }
             currentStartTimestamp = e.getCurrentTimestamp();
             mostRecentTimestamp = e.getCurrentTimestamp();
-        } finally{
+            getSupport().firePropertyChange(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP,lastTimestamp, mostRecentTimestamp);
+       } finally{
             currentStartTimestamp = mostRecentTimestamp;
         }
         packet.setNumEvents(i);

@@ -14,5 +14,10 @@ package net.sf.jaer.event;
  * @author tobi
  */
 public interface OutputEventIterator<T extends BasicEvent> {
+
+    /** Provide the next output event instance, which then should be copied from the input event and then modified according to function of desired operation.
+     *
+     * @return the next output event.
+     */
     public T nextOutput();
 }

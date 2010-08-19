@@ -80,8 +80,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
         void clear() {
             rateSamples.clear();
-            startTime = Float.MAX_VALUE;
-            endTime = Float.MIN_VALUE;
+            startTime = Float.POSITIVE_INFINITY;
+            endTime = Float.NEGATIVE_INFINITY;
             minRate = Float.MAX_VALUE;
             maxRate = Float.MIN_VALUE;
         }
@@ -118,6 +118,14 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             }
             gl.glEnd();
             gl.glPopMatrix();
+        }
+
+        private void initFromAEFileInputStream(AEFileInputStream fis) {
+            startTime = 1e-3f * AEConstants.TICK_DEFAULT_US * fis.getFirstTimestamp();
+            endTime = 1e-3f * AEConstants.TICK_DEFAULT_US * fis.getLastTimestamp();
+            if (endTime < startTime) {
+                clear();
+            }
         }
     }
 
@@ -177,10 +185,13 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             } else if (evt.getPropertyName().equals(AEInputStream.EVENT_INIT)) {
                 log.info("EVENT_INIT recieved, signaling new input stream");
                 AEFileInputStream fis = (AEFileInputStream) (evt.getSource());
+                rateHistory.initFromAEFileInputStream(fis);
+            } else if (evt.getPropertyName().equals(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP)) {
+                rateHistory.clear();
             }
         } else if (evt.getSource() instanceof AEViewer) {
             if (evt.getPropertyName().equals(AEViewer.EVENT_FILEOPEN)) { // TODO don't get this because AEViewer doesn't refire event from AEPlayer and we don't get this on initial fileopen because this filter has not yet been run so we have not added ourselves to the viewer
-                getAbsoluteStartingTimeMsFromFile();
+               rateHistory.clear();
             }
         }
     }
@@ -218,8 +229,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             if (isEventRate()) {
                 eventRateFilter.filterPacket(in);
                 eventRateMeasured = eventRateFilter.getFilteredEventRate();
-                if (showRateTrace && in.getSize() > 1) {
-                    rateHistory.addSample(relativeTimeInFileMs+wrappingCorrectionMs, eventRateMeasured);
+                if (showRateTrace ) {
+                    rateHistory.addSample(relativeTimeInFileMs + wrappingCorrectionMs, eventRateMeasured);
                 }
             }
         }
