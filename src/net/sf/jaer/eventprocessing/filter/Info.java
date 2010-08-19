@@ -60,6 +60,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private float timestampScaleFactor = getPrefs().getFloat("Info.timestampScaleFactor", 1);
     private float eventRateScaleMax = getPrefs().getFloat("Info.eventRateScaleMax", 1e5f);
     private boolean timeScaling = getPrefs().getBoolean("Info.timeScaling", true);
+    private boolean showRateTrace = getBoolean("showRateTrace", true);
     private long dataFileTimestampStartTimeMs = 0;
     private long wrappingCorrectionMs = 0;
     private long absoluteStartTimeMs = 0;
@@ -69,6 +70,66 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private boolean eventRate = getPrefs().getBoolean("Info.eventRate", true);
     private EventRateEstimator eventRateFilter;
     private EngineeringFormat engFmt = new EngineeringFormat();
+
+    private class RateHistory {
+
+        ArrayList<RateSample> rateSamples = new ArrayList();
+        float startTime = Float.MAX_VALUE, endTime = Float.MIN_VALUE;
+        float minRate = Float.MAX_VALUE, maxRate = Float.MIN_VALUE;
+
+        void clear() {
+            rateSamples.clear();
+            startTime = Float.MAX_VALUE;
+            endTime = Float.MIN_VALUE;
+            minRate = Float.MAX_VALUE;
+            maxRate = Float.MIN_VALUE;
+        }
+
+        void addSample(float time, float rate) {
+            rateSamples.add(new RateSample(time, rate));
+            if (time < startTime) {
+                startTime = time;
+            }
+            if (time > endTime) {
+                endTime = time;
+            }
+            if (rate < minRate) {
+                minRate = rate;
+            }
+            if (rate > maxRate) {
+                maxRate = rate;
+            }
+        }
+
+        private void draw(GL gl) {
+            if (rateSamples.size() < 2 || endTime - startTime == 0) {
+                return;
+            }
+            gl.glPushMatrix();
+            final int pos = 8, xpos = 25;
+            gl.glColor3f(0, 0, 1);
+            gl.glTranslatef(0, chip.getSizeY() - pos, 0);
+            gl.glScalef((float) chip.getSizeX() / (endTime - startTime), (float)( chip.getSizeY()*.2f) / (maxRate), 1);
+            gl.glLineWidth(1);
+            gl.glBegin(GL.GL_LINE_STRIP);
+            for (RateSample s : rateSamples) {
+                gl.glVertex2f(s.time-startTime, s.rate);
+            }
+            gl.glEnd();
+            gl.glPopMatrix();
+        }
+    }
+
+    private class RateSample {
+
+        float time, rate;
+
+        public RateSample(float time, float rate) {
+            this.time = time;
+            this.rate = rate;
+        }
+    }
+    private RateHistory rateHistory = new RateHistory();
 
     /** Creates a new instance of Info for the chip
     @param chip the chip object
@@ -92,6 +153,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         setPropertyTooltip("timeScaling", "shows time scaling relative to real time");
         setPropertyTooltip("eventRate", "shows average event rate");
         setPropertyTooltip("eventRateTauMs", "lowpass time constant in ms for filtering event rate");
+        setPropertyTooltip("showRateTrace", "shows a historical trace of event rate");
     }
 
     /** handles tricky property changes coming from AEViewer and AEFileInputStream */
@@ -101,17 +163,17 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 log.info("rewind PropertyChangeEvent received by " + this + " from " + evt.getSource());
                 wrappingCorrectionMs = 0;
             } else if (evt.getPropertyName().equals(AEInputStream.EVENT_WRAPPED_TIME)) {
-                long old=wrappingCorrectionMs;
-                int newtime=((Integer)evt.getNewValue()).intValue();
-                boolean fwds=true;
-                 if(newtime==0){
-                    wrappingCorrectionMs = wrappingCorrectionMs+(fwds? (long) (1L << 31L) / 1000:-(long)(1L<<31L)/1000); // 2G us, handles case of wrapping back to 0 and not -2^31
+                long old = wrappingCorrectionMs;
+                int newtime = ((Integer) evt.getNewValue()).intValue();
+                boolean fwds = true;
+                if (newtime == 0) {
+                    wrappingCorrectionMs = wrappingCorrectionMs + (fwds ? (long) (1L << 31L) / 1000 : -(long) (1L << 31L) / 1000); // 2G us, handles case of wrapping back to 0 and not -2^31
 //                System.out.println("incremented wrappingCorrectionMs");
-                }else{
-                    wrappingCorrectionMs = wrappingCorrectionMs+(fwds? (long) (1L << 32L) / 1000:-(long)(1L<<31L)/1000); // 4G us
+                } else {
+                    wrappingCorrectionMs = wrappingCorrectionMs + (fwds ? (long) (1L << 32L) / 1000 : -(long) (1L << 31L) / 1000); // 4G us
                 }
-                log.info("timestamp wrap event received by "+this+" from "+evt.getSource()+" oldValue="+evt.getOldValue()+" newValue="+evt.getNewValue()+", wrappingCorrectionMs increased by "+(wrappingCorrectionMs-old));
-           } else if (evt.getPropertyName().equals(AEInputStream.EVENT_INIT)) {
+                log.info("timestamp wrap event received by " + this + " from " + evt.getSource() + " oldValue=" + evt.getOldValue() + " newValue=" + evt.getNewValue() + ", wrappingCorrectionMs increased by " + (wrappingCorrectionMs - old));
+            } else if (evt.getPropertyName().equals(AEInputStream.EVENT_INIT)) {
                 log.info("EVENT_INIT recieved, signaling new input stream");
                 AEFileInputStream fis = (AEFileInputStream) (evt.getSource());
             }
@@ -156,12 +218,16 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         if (isEventRate()) {
             eventRateFilter.filterPacket(in);
             eventRateMeasured = eventRateFilter.getFilteredEventRate();
+            if (showRateTrace && in.getSize() > 1) {
+                rateHistory.addSample(in.getLastTimestamp(), eventRateMeasured);
+            }
         }
         return in;
     }
 
-    public void resetFilter() {
+    synchronized public void resetFilter() {
         eventRateFilter.resetFilter();
+        rateHistory.clear();
     }
 
     public void initFilter() {
@@ -184,7 +250,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         }
         drawClock(gl, t);
         drawEventRate(gl, eventRateMeasured);
-        if(chip.getAeViewer()!=null) drawTimeScaling(gl, chip.getAeViewer().getTimeExpansion());
+        if (chip.getAeViewer() != null) {
+            drawTimeScaling(gl, chip.getAeViewer().getTimeExpansion());
+        }
+        drawRateSamples(gl);
     }
 
     private void drawClock(GL gl, long t) {
@@ -280,6 +349,15 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         gl.glColor3f(0, 0, 1);
         gl.glRectf(xpos, chip.getSizeY() - pos, xpos + eventRateMeasured * chip.getSizeX() / getEventRateScaleMax(), chip.getSizeY() - pos + 3);
         gl.glPopMatrix();
+    }
+
+    private void drawRateSamples(GL gl) {
+        if (!showRateTrace) {
+            return;
+        }
+        synchronized(this){
+            rateHistory.draw(gl);
+        }
     }
 
     private void drawTimeScaling(GL gl, float timeExpansion) {
@@ -425,5 +503,20 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public void setTimeScaling(boolean timeScaling) {
         this.timeScaling = timeScaling;
         getPrefs().putBoolean("Info.timeScaling", timeScaling);
+    }
+
+    /**
+     * @return the showRateTrace
+     */
+    public boolean isShowRateTrace() {
+        return showRateTrace;
+    }
+
+    /**
+     * @param showRateTrace the showRateTrace to set
+     */
+    public void setShowRateTrace(boolean showRateTrace) {
+        this.showRateTrace = showRateTrace;
+        putBoolean("showRateTrace", showRateTrace);
     }
 }
