@@ -12,6 +12,9 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import de.thesycon.usbio.UsbIoBuf;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Biasgen;
+import de.thesycon.usbio.*;
+import de.thesycon.usbio.structs.*;
+import javax.swing.ProgressMonitor;
 
 /**
  * Adds functionality of DVS320 retina to base classes for Cypress FX2 interface.
@@ -56,6 +59,87 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         } catch (HardwareInterfaceException e) {
             log.warning("could not send vendor request to reset timestamps: " + e);
         }
+    }
+
+    @Override
+     synchronized public void writeCPLDfirmware(String svfFile) throws HardwareInterfaceException {
+        byte[] bytearray;
+        byte command;
+        int commandlength = 1, index = 0, length = 0, status;
+        USBIO_DATA_BUFFER dataBuffer = null;
+        USBIO_CLASS_OR_VENDOR_REQUEST VendorRequest;
+
+        try {
+            bytearray = this.loadBinaryFirmwareFile(svfFile);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return;
+        }
+        ProgressMonitor progressMonitor = makeProgressMonitor("Writing CPLD configuration - do not unplug", 0, bytearray.length);
+
+        if (bytearray == null || bytearray.length == 0) {
+            throw new NullPointerException("xsvf file seems to be empty. Did ISE compile it and did you generate the XSVF file?");
+        }
+        command = bytearray[index];
+
+
+            //System.out.println("command: " + command + " index: " + index + " commandlength " + commandlength);
+            //        System.out.println("max command length " + maxlen);
+
+
+            dataBuffer = new USBIO_DATA_BUFFER(commandlength);
+            System.arraycopy(bytearray, index, dataBuffer.Buffer(), 0, commandlength);
+
+            this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, command, (short) 0, dataBuffer);
+
+            VendorRequest = new USBIO_CLASS_OR_VENDOR_REQUEST();
+            dataBuffer = new USBIO_DATA_BUFFER(2);
+
+            VendorRequest.Flags = UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
+            VendorRequest.Type = UsbIoInterface.RequestTypeVendor;
+            VendorRequest.Recipient = UsbIoInterface.RecipientDevice;
+            VendorRequest.RequestTypeReservedBits = 0;
+            VendorRequest.Request = VR_DOWNLOAD_FIRMWARE;
+            VendorRequest.Index = 0;
+            VendorRequest.Value = 0;
+
+            dataBuffer.setNumberOfBytesToTransfer(2);
+            status = gUsbIo.classOrVendorInRequest(dataBuffer, VendorRequest);
+
+            if (status != USBIO_ERR_SUCCESS) {
+                throw new HardwareInterfaceException("Unable to receive xsvf error code: " + UsbIo.errorText(status));
+            }
+
+            HardwareInterfaceException.clearException();
+
+            // log.info("bytes transferred" + dataBuffer.getBytesTransferred());
+            if (dataBuffer.getBytesTransferred() == 0) {
+                this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
+                throw new HardwareInterfaceException("Unable to program CPLD, could not get xsvf Error code");
+            }
+            if (dataBuffer.Buffer()[1] == 10) {
+                this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
+                throw new HardwareInterfaceException("Unable to program CPLD, command too long, please report to raphael@ini.ch, command: " + command + " index: " + index + " commandlength " + commandlength);
+            } else if (dataBuffer.Buffer()[1] > 0) {
+                this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
+                throw new HardwareInterfaceException("Unable to program CPLD, error code: " + dataBuffer.Buffer()[1] + ", at command: " + command + " index: " + index + " commandlength " + commandlength);
+            // System.out.println("Unable to program CPLD, unable to program CPLD, error code: " + dataBuffer.Buffer()[1] + ", at command: " + command + " index: " + index + " commandlength " + commandlength);
+            }
+
+            index += commandlength;
+            command = bytearray[index];
+            // can't cancel
+            if (progressMonitor.isCanceled()) {
+                progressMonitor = makeProgressMonitor("Writing CPLD configuration - do not unplug", 0, bytearray.length);
+            }
+            progressMonitor.setProgress(index);
+            progressMonitor.setNote(String.format("sent %d of %d bytes of CPLD configuration", index, bytearray.length));
+         //complete
+
+        log.info("sending XCOMPLETE");
+        this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, (short)0, (short) 0);
+        progressMonitor.close();
+
     }
 
     /** 
