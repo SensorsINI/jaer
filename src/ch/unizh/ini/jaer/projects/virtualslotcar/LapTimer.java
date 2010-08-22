@@ -18,7 +18,7 @@ class LapTimer implements PropertyChangeListener {
     int sumTime = 0;
     int bestTime = Integer.MAX_VALUE;
     int quarters = 0;
-    private static final int MAX_LAPS_TO_STORE = 10;
+    private static final int MAX_LAPS_TO_STORE = 3;
     private int lapStartTime = 0;
 
     /** Constructs a new LapTimer for a track with numSegments points.
@@ -127,7 +127,7 @@ class LapTimer implements PropertyChangeListener {
                     startSegment = 0;
                 }
             } else if (quarters > 0 && quarters < 4) {
-                if (newSegment >= (n * quarters) / 4 && newSegment <((n+1)*quarters)/4) {
+                if (newSegment >= (n * quarters) / 4 && newSegment <((n*(quarters+1))/4)) {
                     currentLap.storeSplit(quarters-1,  timeUs - lapStartTime);
                     quarters++;
                 }

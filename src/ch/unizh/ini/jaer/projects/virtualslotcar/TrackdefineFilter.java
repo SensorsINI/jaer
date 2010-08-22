@@ -115,6 +115,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     private boolean displayTrack = prefs().getBoolean("TrackdefineFilter.displayTrack", true);
     private LinkedList<Point2D.Float> trackerPositions = new LinkedList();
     static final private int MAX_TRACKER_POINTS = 1000;  // max points to accumulate from tracker
+    private TwoCarTracker tracker; // obtained from udates from Observable TwoCarTracker
 
     public TrackdefineFilter(AEChip chip) {
         super(chip);
@@ -491,7 +492,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         if (o instanceof AEChip && (arg == AEChip.EVENT_SIZEX || arg == AEChip.EVENT_SIZEY)) {
             resetFilter();
         } else if (isFilterEnabled() && o instanceof TwoCarTracker && arg instanceof UpdateMessage) {
-            TwoCarTracker tracker = (TwoCarTracker) o;
+             tracker = (TwoCarTracker) o;
 
             CarClusterInterface car = tracker.findCarCluster();
             if (car != null) {
@@ -669,6 +670,10 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         } else {
             glCanvas.removeMouseListener(this);
             glCanvas.removeMouseMotionListener(this);
+        }
+        if(tracker!=null){
+            tracker.getNearbyTrackFilter().setFilterEnabled(!yes); // stop filtering out events that are not near track model if defiining a new track
+//            tracker.setOnlyFollowTrack(!yes); // if not defining track, then only follow the track model
         }
     }
 

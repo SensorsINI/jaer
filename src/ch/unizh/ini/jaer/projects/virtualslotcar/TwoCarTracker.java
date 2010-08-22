@@ -346,6 +346,13 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         return crashedCar;
     }
 
+    /**
+     * @return the nearbyTrackFilter
+     */
+    public NearbyTrackEventFilter getNearbyTrackFilter() {
+        return nearbyTrackFilter;
+    }
+
     /** The cluster used for tracking cars. It extends the RectangularClusterTracker.Cluster with segment index and crashed status fields.
      * 
      */
@@ -695,8 +702,10 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
      * @param onlyFollowTrack the onlyFollowTrack to set
      */
     public void setOnlyFollowTrack(boolean onlyFollowTrack) {
+        boolean old=this.onlyFollowTrack;
         this.onlyFollowTrack = onlyFollowTrack;
         putBoolean("onlyFollowTrack", onlyFollowTrack);
+        getSupport().firePropertyChange("onlyFollowTrack",old,onlyFollowTrack);
     }
 
     /**
