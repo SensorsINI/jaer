@@ -203,7 +203,7 @@ public class DVS320 extends AERetina implements HasIntensity {
     public class DVS320Biasgen extends net.sf.jaer.biasgen.Biasgen {
 
         ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
-        private ConfigurableIPot cas,  diffOn,  diffOff,  diff,  bulk;
+        private ConfigurableIPotRev0 cas,  diffOn,  diffOff,  diff,  bulk;
         private ConstrainedConfigurableIPot refr,  pr,  foll,  lowpower;
         private ArrayList<ConstrainedConfigurableIPot> sharedBufferBiasList = new ArrayList<ConstrainedConfigurableIPot>();
         DVS320ControlPanel controlPanel;
@@ -253,21 +253,21 @@ public class DVS320 extends AERetina implements HasIntensity {
              * test
              */
 
-            getPotArray().addPot(pr = new ConstrainedConfigurableIPot(this, "pr", 0, IPot.Type.NORMAL, IPot.Sex.P, false, true, 100, ConfigurableIPot.maxBuffeBitValue, 1, "Photoreceptor, also biasgen test transistor gate input", sharedBufferBiasList));
-            getPotArray().addPot(cas = new ConfigurableIPot(this, "cas", 1, IPot.Type.CASCODE, IPot.Sex.N, false, true, 200, ConfigurableIPot.maxBuffeBitValue, 2, "Photoreceptor cascode"));
-            getPotArray().addPot(foll = new ConstrainedConfigurableIPot(this, "foll", 2, IPot.Type.NORMAL, IPot.Sex.P, false, true, 1000, ConfigurableIPot.maxBuffeBitValue, 3, "Src follower buffer between photoreceptor and differentiator", sharedBufferBiasList));
-            getPotArray().addPot(bulk = new ConfigurableIPot(this, "bulk", 3, IPot.Type.NORMAL, IPot.Sex.N, false, true, 1000, ConfigurableIPot.maxBuffeBitValue, 4, "Differentiator switch bulk bias"));
-            getPotArray().addPot(diff = new ConfigurableIPot(this, "diff", 4, IPot.Type.NORMAL, IPot.Sex.N, false, true, 2000, ConfigurableIPot.maxBuffeBitValue, 5, "Differentiator"));
-            getPotArray().addPot(diffOn = new ConfigurableIPot(this, "on", 5, IPot.Type.NORMAL, IPot.Sex.N, false, true, 500, ConfigurableIPot.maxBuffeBitValue, 6, "ON threshold - higher to raise threshold"));
-            getPotArray().addPot(diffOff = new ConfigurableIPot(this, "off", 6, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBuffeBitValue, 7, "OFF threshold, lower to raise threshold"));
-            getPotArray().addPot(refr = new ConstrainedConfigurableIPot(this, "refr", 7, IPot.Type.NORMAL, IPot.Sex.P, false, true, 50, ConfigurableIPot.maxBuffeBitValue, 8, "Refractory period", sharedBufferBiasList));
-            getPotArray().addPot(lowpower = new ConstrainedConfigurableIPot(this, "lowpower", 8, IPot.Type.NORMAL, IPot.Sex.N, false, true, 50, ConfigurableIPot.maxBuffeBitValue, 9, "Source bias for low current biases (pr, foll, refr)", sharedBufferBiasList));
-            getPotArray().addPot(new ConfigurableIPot(this, "pux", 9, IPot.Type.NORMAL, IPot.Sex.P, false, true, ConfigurableIPot.maxBitValue, ConfigurableIPot.maxBuffeBitValue, 11, "2nd dimension AER static pullup"));
-            getPotArray().addPot(new ConfigurableIPot(this, "puy", 10, IPot.Type.NORMAL, IPot.Sex.P, false, true, 0, ConfigurableIPot.maxBuffeBitValue, 10, "1st dimension AER static pullup"));
-            getPotArray().addPot(new ConfigurableIPot(this, "pd", 11, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBuffeBitValue, 11, "AER request pulldown"));
-            getPotArray().addPot(new ConfigurableIPot(this, "padfoll", 12, IPot.Type.NORMAL, IPot.Sex.P, false, true, 300, ConfigurableIPot.maxBuffeBitValue, 20, "voltage follower pads"));
-            getPotArray().addPot(new ConfigurableIPot(this, "ifthr", 13, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBuffeBitValue, 30, "intensity (total photocurrent) IF neuron threshold, also gate and source biases for n/p test fets"));
-            getPotArray().addPot(new ConfigurableIPot(this, "test", 14, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBuffeBitValue, 100, "test bias - no functionality, NOT connected to test transistors"));
+            getPotArray().addPot(pr = new ConstrainedConfigurableIPot(this, "pr", 0, IPot.Type.NORMAL, IPot.Sex.P, false, true, 100, ConfigurableIPotRev0.maxBuffeBitValue, 1, "Photoreceptor, also biasgen test transistor gate input", sharedBufferBiasList));
+            getPotArray().addPot(cas = new ConfigurableIPotRev0(this, "cas", 1, IPot.Type.CASCODE, IPot.Sex.N, false, true, 200, ConfigurableIPotRev0.maxBuffeBitValue, 2, "Photoreceptor cascode"));
+            getPotArray().addPot(foll = new ConstrainedConfigurableIPot(this, "foll", 2, IPot.Type.NORMAL, IPot.Sex.P, false, true, 1000, ConfigurableIPotRev0.maxBuffeBitValue, 3, "Src follower buffer between photoreceptor and differentiator", sharedBufferBiasList));
+            getPotArray().addPot(bulk = new ConfigurableIPotRev0(this, "bulk", 3, IPot.Type.NORMAL, IPot.Sex.N, false, true, 1000, ConfigurableIPotRev0.maxBuffeBitValue, 4, "Differentiator switch bulk bias"));
+            getPotArray().addPot(diff = new ConfigurableIPotRev0(this, "diff", 4, IPot.Type.NORMAL, IPot.Sex.N, false, true, 2000, ConfigurableIPotRev0.maxBuffeBitValue, 5, "Differentiator"));
+            getPotArray().addPot(diffOn = new ConfigurableIPotRev0(this, "on", 5, IPot.Type.NORMAL, IPot.Sex.N, false, true, 500, ConfigurableIPotRev0.maxBuffeBitValue, 6, "ON threshold - higher to raise threshold"));
+            getPotArray().addPot(diffOff = new ConfigurableIPotRev0(this, "off", 6, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPotRev0.maxBuffeBitValue, 7, "OFF threshold, lower to raise threshold"));
+            getPotArray().addPot(refr = new ConstrainedConfigurableIPot(this, "refr", 7, IPot.Type.NORMAL, IPot.Sex.P, false, true, 50, ConfigurableIPotRev0.maxBuffeBitValue, 8, "Refractory period", sharedBufferBiasList));
+            getPotArray().addPot(lowpower = new ConstrainedConfigurableIPot(this, "lowpower", 8, IPot.Type.NORMAL, IPot.Sex.N, false, true, 50, ConfigurableIPotRev0.maxBuffeBitValue, 9, "Source bias for low current biases (pr, foll, refr)", sharedBufferBiasList));
+            getPotArray().addPot(new ConfigurableIPotRev0(this, "pux", 9, IPot.Type.NORMAL, IPot.Sex.P, false, true, ConfigurableIPotRev0.maxBitValue, ConfigurableIPotRev0.maxBuffeBitValue, 11, "2nd dimension AER static pullup"));
+            getPotArray().addPot(new ConfigurableIPotRev0(this, "puy", 10, IPot.Type.NORMAL, IPot.Sex.P, false, true, 0, ConfigurableIPotRev0.maxBuffeBitValue, 10, "1st dimension AER static pullup"));
+            getPotArray().addPot(new ConfigurableIPotRev0(this, "pd", 11, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPotRev0.maxBuffeBitValue, 11, "AER request pulldown"));
+            getPotArray().addPot(new ConfigurableIPotRev0(this, "padfoll", 12, IPot.Type.NORMAL, IPot.Sex.P, false, true, 300, ConfigurableIPotRev0.maxBuffeBitValue, 20, "voltage follower pads"));
+            getPotArray().addPot(new ConfigurableIPotRev0(this, "ifthr", 13, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPotRev0.maxBuffeBitValue, 30, "intensity (total photocurrent) IF neuron threshold, also gate and source biases for n/p test fets"));
+            getPotArray().addPot(new ConfigurableIPotRev0(this, "test", 14, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPotRev0.maxBuffeBitValue, 100, "test bias - no functionality, NOT connected to test transistors"));
 
             sharedBufferBiasList.add(pr);
             sharedBufferBiasList.add(foll);

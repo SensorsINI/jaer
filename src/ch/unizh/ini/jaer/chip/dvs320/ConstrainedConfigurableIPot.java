@@ -9,14 +9,14 @@ import net.sf.jaer.biasgen.Biasgen;
 import java.util.ArrayList;
 
 /**
- * A ConfigurableIPot constrained to share a buffer current in common with other ConstrainedConfigurableIPots.
+ * A ConfigurableIPotRev0 constrained to share a buffer current in common with other ConstrainedConfigurableIPots.
  * Used to ensure that a set of biases have the same buffer current, which is neccessary in the case of a chip that
  * uses multiple biases to generate a shared shifted psrc or nsrc. Since the biases all generate the same shared shifted source
  * voltage references, they must all also be set to be either normal or low current biases; otherwise the source voltage outputs will
  * fight each other. Thus the lowCurrentModeEnabled flag is also constrained to be identical.
  * @author tobi
  */
-public class ConstrainedConfigurableIPot extends ConfigurableIPot {
+public class ConstrainedConfigurableIPot extends ConfigurableIPotRev0 {
     ArrayList<ConstrainedConfigurableIPot> shared=new ArrayList<ConstrainedConfigurableIPot>();
     /** Creates a new instance of IPot
      *@param biasgen

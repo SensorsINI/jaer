@@ -1,5 +1,5 @@
 /*
-created 26 Oct 2008 for new DVS320 chip
+created 26 Oct 2008 for new cDVSTest chip
  */
 package ch.unizh.ini.jaer.chip.dvs320;
 
@@ -11,28 +11,32 @@ import net.sf.jaer.event.*;
 import net.sf.jaer.hardwareinterface.*;
 import java.awt.BorderLayout;
 import java.math.BigInteger;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Observable;
+import java.util.StringTokenizer;
+import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
+import net.sf.jaer.biasgen.Pot.Sex;
+import net.sf.jaer.biasgen.Pot.Type;
 import net.sf.jaer.graphics.DisplayMethod;
-import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 
 /**
- * Describes DVS320 retina and its event extractor and bias generator.
+ * Describes  retina and its event extractor and bias generator.
  * Two constructors ara available, the vanilla constructor is used for event playback and the
  *one with a HardwareInterface parameter is useful for live capture.
  * {@link #setHardwareInterface} is used when the hardware interface is constructed after the retina object.
  *The constructor that takes a hardware interface also constructs the biasgen interface.
  * <p>
- * The DVS320 features 320x240 pixels, a fully configurable bias generator, 
+ * cDVSTest features several arrays of pixels, a fully configurable bias generator,
  * and a configurable output selector for digital and analog current and voltage outputs for characterization.
  * The output is word serial and includes an intensity neuron which rides onto the other addresses.
- * DVS320 is built in UMC18 CIS process and has 14.5u pixels.
+ * cDVSTest10 is built in UMC18 CIS process and has 14.5u pixels.
  *
  * @author tobi
  */
@@ -45,7 +49,7 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
         return "cDVSTest color Dynamic Vision Test chip";
     }
 
-    /** Creates a new instance of DVS320.  */
+    /** Creates a new instance of cDVSTest10.  */
     public cDVSTest10() {
         setName("cDVSTest10");
         setSizeX(128);
@@ -63,8 +67,8 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
         getCanvas().setDisplayMethod(intenDisplayMethod);
     }
 
-    /** Creates a new instance of DVS320
-     * @param hardwareInterface an existing hardware interface. This constructer is preferred. It makes a new DVS320Biasgen object to talk to the on-chip biasgen.
+    /** Creates a new instance of cDVSTest10
+     * @param hardwareInterface an existing hardware interface. This constructer is preferred. It makes a new cDVSTest10Biasgen object to talk to the on-chip biasgen.
      */
     public cDVSTest10(HardwareInterface hardwareInterface) {
         this();
@@ -95,15 +99,13 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
     public class cDVSTestExtractor extends RetinaExtractor {
 
 //        public static final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0xff000,  YSHIFT = 12,  INTENSITYMASK = 0x40000;
-         public static final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0x3fc00,  YSHIFT = 10,  INTENSITYMASK = 0x40000;
+        public static final int XMASK = 0x3fe, XSHIFT = 1, YMASK = 0x3fc00, YSHIFT = 10, INTENSITYMASK = 0x40000;
         private int lastIntenTs = 0;
 
         public cDVSTestExtractor(cDVSTest10 chip) {
             super(chip);
         }
-
-
-        private float avdt=100; // used to compute rolling average of intensity
+        private float avdt = 100; // used to compute rolling average of intensity
 
         /** extracts the meaning of the raw events.
          *@param in the raw events, can be null
@@ -135,22 +137,22 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
                 if ((addr & INTENSITYMASK) != 0) {// intensity spike, along with regular spike, just add in intensity spike
                     int dt = timestamps[i] - lastIntenTs;
                     if (dt > 50) {
-                        avdt=0.2f*dt+0.8f*avdt;
+                        avdt = 0.2f * dt + 0.8f * avdt;
                         setIntensity(50f / avdt); // ISI of this much gives intensity 1
                     }
-                        lastIntenTs = timestamps[i];
+                    lastIntenTs = timestamps[i];
 //                    PolarityEvent e = (PolarityEvent) outItr.nextOutput();
 //                    e.timestamp = (timestamps[i]);
 //                    e.type = 2;
                 }
                 PolarityEvent e = (PolarityEvent) outItr.nextOutput();
-                e.address=addr;
+                e.address = addr;
                 e.timestamp = (timestamps[i]);
                 e.x = (short) (((addr & XMASK) >>> XSHIFT));
                 if (e.x < 0) {
                     e.x = 0;
                 } else if (e.x > 319) {
-                 //   e.x = 319; // TODO fix this artificial clamping of x address within space, masks symptoms
+                    //   e.x = 319; // TODO fix this artificial clamping of x address within space, masks symptoms
                 }
                 e.y = (short) ((addr & YMASK) >>> YSHIFT);
                 if (e.y > 239) {
@@ -184,9 +186,15 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
     }
 
     /**
-     * Describes ConfigurableIPots on DVS320 retina chip as well as the other configuration bits which control, for example, which
+     * Describes ConfigurableIPots on cDVSTest retina chip as well as the other configuration bits which control, for example, which
      * outputs are selected. These are all configured by a single shared shift register. 
      * <p>
+     * cDVSTest has a pair of shared shifted sources, one for n-type and one for p-type. These sources supply a regulated voltaqe near the power rail.
+     * The shifted sources are programed by bits at the start of the global shared shift register.
+     *
+     * <p>
+     * TODO check following javadoc
+     * 
      * The pr, foll, and refr biases use the lowpower bias for their p src bias and the pr, foll and refr pfets
      * all have their psrcs wired to this shifted p src bias. Also, the pr, foll and refr biases also drive the same
      * shifted psrc bias with their own shifted psrc bias. Therefore all 4 of these biases (pr, foll, refr, and lowpower) should
@@ -203,13 +211,16 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
     public class cDVSTestBiasgen extends net.sf.jaer.biasgen.Biasgen {
 
         ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
-        private ConfigurableIPot pcas,  diffOn,  diffOff,  diff, red, blue, amp  ;
-        private ConfigurableIPot refr,  pr,  foll;
-        
+        private ConfigurableIPotRev0 pcas, diffOn, diffOff, diff, red, blue, amp;
+        private ConfigurableIPotRev0 refr, pr, foll;
         cDVSTest10ControlPanel controlPanel;
         AllMuxes allMuxes = new AllMuxes(); // the output muxes
+        private ShiftedSourceBias nSS, pSS, nSSHi, pSSHi;
+        int pos = 0;
+        // utility method to quickly add pot
 
-        /** Creates a new instance of DVS320Biasgen for DVS320 with a given hardware interface
+
+        /** Creates a new instance of cDVSTestBiasgen for cDVSTest with a given hardware interface
          *@param chip the chip this biasgen belongs to
          */
         public cDVSTestBiasgen(Chip chip) {
@@ -220,59 +231,119 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
             getMasterbias().setMultiplier(9 * (24f / 2.4f) / (4.8f / 2.4f));  // =45  correct for dvs320
             getMasterbias().setWOverL(4.8f / 2.4f); // masterbias has nfet with w/l=2 at output 
 
+            nSS = new ShiftedSourceBias(this);
+            nSS.setSex(Pot.Sex.N);
+            nSS.setName("NSS");
+            nSS.setTooltipString("n-type shifted source that generates a regulated voltage near ground");
 
-            /*
-            @param biasgen
-            @param name
-            @param shiftRegisterNumber the position in the shift register, 0 based, starting on end from which bits are loaded
-            @param type (NORMAL, CASCODE)
-            @param sex Sex (N, P)
-            @param lowCurrentModeEnabled bias is normal (false) or in low current mode (true)
-            @param enabled bias is enabled (true) or weakly tied to rail (false)
-            @param bitValue initial bitValue
-            @param bufferBitValue buffer bias bit value
-            @param displayPosition position in GUI from top (logical order)
-            @param tooltipString a String to display to user of GUI telling them what the pots does
-             */
+            pSS = new ShiftedSourceBias(this);
+            pSS.setSex(Pot.Sex.P);
+            pSS.setName("PSS");
+            pSS.setTooltipString("p-type shifted source that generates a regulated voltage near Vdd");
+
+            nSSHi = new ShiftedSourceBias(this);
+            nSSHi.setSex(Pot.Sex.N);
+            nSSHi.setName("NSS high");
+            nSSHi.setTooltipString("n-type shifted source that generates a regulated voltage inside rail, about 2 diode drops from ground");
+
+            pSSHi = new ShiftedSourceBias(this);
+            pSSHi.setSex(Pot.Sex.P);
+            pSSHi.setName("PSS high");
+            pSSHi.setTooltipString("p-type shifted source that generates a regulated voltage about 2 diode drops from Vdd");
+
             setPotArray(new IPotArray(this));
             /*
-             * pr
-             * cas
-             * foll
-             * bulk
-             * diff
-             * on
-             * off
-             * refr
-             * lowpower
-             * pux
-             * puy
-             * pd
-             * padfoll
-             * ifThr
-             * test
+             *
+             * on cDVSTest10, shift register order is as follows
+            diff
+            ON
+            OFF
+            Red
+            Blue
+            Amp
+            pcas
+            ncas
+            pr
+            fb
+            refr
+            AEReqPd
+            AEReqEndPd
+            AEPuX
+            AEPuY
+            If_threshold
+            If_refractory
+            FollPadBias
              */
 
-            getPotArray().addPot(pr = new ConfigurableIPot(this, "pr", 0, IPot.Type.NORMAL, IPot.Sex.P, false, true, 100, ConfigurableIPot.maxBuffeBitValue, 1, "Photoreceptor, also biasgen test transistor gate input"));
-            getPotArray().addPot(pcas = new ConfigurableIPot(this, "pcas", 1, IPot.Type.CASCODE, IPot.Sex.N, false, true, 200, ConfigurableIPot.maxBuffeBitValue, 2, "Photoreceptor cascode"));
-            getPotArray().addPot(foll = new ConfigurableIPot(this, "foll", 2, IPot.Type.NORMAL, IPot.Sex.P, false, true, 1000, ConfigurableIPot.maxBuffeBitValue, 3, "Src follower buffer between photoreceptor and differentiator"));
-            getPotArray().addPot(amp = new ConfigurableIPot(this, "amp", 3, IPot.Type.NORMAL, IPot.Sex.N, false, true, 1000, ConfigurableIPot.maxBuffeBitValue, 4, "amplifier first stage bias for color pixel "));
-            getPotArray().addPot(diff = new ConfigurableIPot(this, "diff", 4, IPot.Type.NORMAL, IPot.Sex.N, false, true, 2000, ConfigurableIPot.maxBuffeBitValue, 5, "Differentiator"));
-            getPotArray().addPot(diffOn = new ConfigurableIPot(this, "on", 5, IPot.Type.NORMAL, IPot.Sex.N, false, true, 500, ConfigurableIPot.maxBuffeBitValue, 6, "ON threshold - higher to raise threshold"));
-            getPotArray().addPot(diffOff = new ConfigurableIPot(this, "off", 6, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBuffeBitValue, 7, "OFF threshold, lower to raise threshold"));
-            getPotArray().addPot(refr = new ConfigurableIPot(this, "refr", 7, IPot.Type.NORMAL, IPot.Sex.P, false, true, 50, ConfigurableIPot.maxBuffeBitValue, 8, "Refractory period"));
-            getPotArray().addPot(red = new ConfigurableIPot(this, "red", 8, IPot.Type.NORMAL, IPot.Sex.N, false, true, 50, ConfigurableIPot.maxBuffeBitValue, 9, "red threshold"));
-            getPotArray().addPot(blue = new ConfigurableIPot(this, "blue", 8, IPot.Type.NORMAL, IPot.Sex.N, false, true, 50, ConfigurableIPot.maxBuffeBitValue, 9, "blue threshold"));
-            getPotArray().addPot(new ConfigurableIPot(this, "pux", 9, IPot.Type.NORMAL, IPot.Sex.P, false, true, ConfigurableIPot.maxBitValue, ConfigurableIPot.maxBuffeBitValue, 11, "2nd dimension AER static pullup"));
-            getPotArray().addPot(new ConfigurableIPot(this, "puy", 10, IPot.Type.NORMAL, IPot.Sex.P, false, true, 0, ConfigurableIPot.maxBuffeBitValue, 10, "1st dimension AER static pullup"));
-            getPotArray().addPot(new ConfigurableIPot(this, "pd", 11, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBuffeBitValue, 11, "AER request pulldown"));
-            getPotArray().addPot(new ConfigurableIPot(this, "padfoll", 12, IPot.Type.NORMAL, IPot.Sex.P, false, true, 300, ConfigurableIPot.maxBuffeBitValue, 20, "voltage follower pads"));
-            getPotArray().addPot(new ConfigurableIPot(this, "ifthr", 13, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBuffeBitValue, 30, "intensity (total photocurrent) IF neuron threshold, also gate and source biases for n/p test fets"));
-            getPotArray().addPot(new ConfigurableIPot(this, "ifrefr", 14, IPot.Type.NORMAL, IPot.Sex.N, false, true, 0, ConfigurableIPot.maxBuffeBitValue, 100, "IF neuron refractory period"));
-
-
+            try {
+                pot("diff,n,normal,differencing amp");
+                pot("ON,n,normal,DVS brighter threshold");
+                pot("OFF,n,normal,DVS darker threshold");
+                pot("Red,n,normal,Redder threshold");
+                pot("Blue,n,normal,Bluer threshold");
+                pot("Amp,n,normal,DVS ON threshold");
+                pot("pcas,p,cascode,DVS ON threshold");
+                pot("ncas,n,cascode,DVS cascode voltage bias");
+                pot("pr,p,normal,photoreceptor bias current");
+                pot("fb,p,normal,photoreceptor follower bias current");
+                pot("refr,p,normal,DVS refractory current");
+                pot("AReqPd,n,normal,request pulldown threshold");
+                pot("AReqEndPd,n,normal,handshake state machine pulldown bias current");
+                pot("AEPuX,p,normal,AER column pullup");
+                pot("AEPuY,p,normal,AER row pullup");
+                pot("If_threshold,n,normal,integrate and fire intensity neuroon threshold");
+                pot("If_refractory,n,normal,integrate and fire intensity neuron refractory period bias current");
+                pot("FollPadBias,n,normal,follower pad buffer bias current");
+            } catch (Exception e) {
+                throw new Error(e.toString());
+            }
             loadPreferences();
 
+        }
+
+        private void pot(String s) throws ParseException {
+            try {
+                String d = ",";
+                StringTokenizer t = new StringTokenizer(s, d);
+                if (t.countTokens() != 4) {
+                    throw new Error("only " + t.countTokens() + " tokens in pot " + s + "; use , to separate tokens for name,sex,type,tooltip\nsex=n|p, type=normal|cascode");
+                }
+                String name = t.nextToken();
+                String a;
+                a = t.nextToken();
+                Sex sex = null;
+                if (a.equalsIgnoreCase("n")) {
+                    sex = Sex.N;
+                } else if (a.equalsIgnoreCase("p")) {
+                    sex = Sex.P;
+                } else {
+                    throw new ParseException(s, s.lastIndexOf(a));
+                }
+
+                a = t.nextToken();
+
+                Type type = null;
+                if (a.equalsIgnoreCase("normal")) {
+                    type = Type.NORMAL;
+                } else if (a.equalsIgnoreCase("cascode")) {
+                    type = Type.CASCODE;
+                } else {
+                    throw new ParseException(s, s.lastIndexOf(a));
+                }
+
+                String tip = t.nextToken();
+
+                /*     public ConfigurableIPotCDVSTest(Biasgen biasgen, String name, int shiftRegisterNumber,
+                Type type, Sex sex, boolean lowCurrentModeEnabled, boolean enabled,
+                int bitValue, int bufferBitValue, int displayPosition, String tooltipString) {
+                 */
+
+                getPotArray().addPot(new ConfigurableIPotCDVSTest(this, name, pos++,
+                        type, sex, false, true,
+                        ConfigurableIPotCDVSTest.maxBitValue / 2, ConfigurableIPotCDVSTest.maxBuffeBitValue, pos, tip));
+            } catch (Exception e) {
+                throw new Error(e.toString());
+            }
         }
 
         @Override
@@ -295,7 +366,7 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
 
         /**
          * 
-         * Overrides the default method to add the custom control panel for configuring the DVS320 output muxes.
+         * Overrides the default method to add the custom control panel for configuring the cDVSTest output muxes.
          * 
          * @return a new panel for controlling this bias generator functionally
          */
@@ -306,18 +377,26 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
             panel.setLayout(new BorderLayout());
             JTabbedPane pane = new JTabbedPane();
 
-            pane.addTab("Biases", super.buildControlPanel());
+            JPanel combinedBiasShiftedSourcePanel = new JPanel();
+            combinedBiasShiftedSourcePanel.setLayout(new BoxLayout(combinedBiasShiftedSourcePanel, BoxLayout.Y_AXIS));
+            combinedBiasShiftedSourcePanel.add(super.buildControlPanel());
+            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(nSS));
+            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(pSS));
+            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(nSSHi));
+            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(pSSHi));
+            pane.addTab("Biases", combinedBiasShiftedSourcePanel);
             pane.addTab("Output control", new cDVSTest10ControlPanel(cDVSTest10.this));
             panel.add(pane, BorderLayout.CENTER);
             return panel;
         }
 
+        /** Formats the data sent to the microcontroller to load bias and other configuration. */
         @Override
         public byte[] formatConfigurationBytes(Biasgen biasgen) {
             byte[] biasBytes = super.formatConfigurationBytes(biasgen);
             byte[] configBytes = allMuxes.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
             byte[] allBytes = new byte[biasBytes.length + configBytes.length];
-            System.arraycopy(configBytes, 0, allBytes, 0, configBytes.length); // first bits in byte array are loaded first to dvs320; the very first nibble is the imux since it is at the end of the long shift register.
+            System.arraycopy(configBytes, 0, allBytes, 0, configBytes.length); // first bits in byte array are loaded first to cDVSTest; the very first nibble is the imux since it is at the end of the long shift register.
             System.arraycopy(biasBytes, 0, allBytes, configBytes.length, biasBytes.length);
             return allBytes; // configBytes may be padded with extra bits to make up a byte, board needs to know this to chop off these bits
         }
@@ -543,7 +622,6 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
             }
         }
 
-
         class VoltageOutputMux extends OutputMux {
 
             VoltageOutputMux(int n) {
@@ -568,7 +646,7 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
             }
         }
 
-        // the output muxes on dvs320
+        // the output muxes
         class AllMuxes extends ArrayList<OutputMux> {
 
             OutputMux[] vmuxes = {new VoltageOutputMux(1), new VoltageOutputMux(2), new VoltageOutputMux(3), new VoltageOutputMux(4)};
@@ -593,7 +671,7 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
             }
 
             AllMuxes() {
-               
+
                 addAll(Arrays.asList(dmuxes)); // 5 logic muxes, first in list since at end of chain - bits must be sent first, before any biasgen bits
                 addAll(Arrays.asList(vmuxes)); // finally send the 3 voltage muxes
                 add(biasmux); // biasMux is between biasgen and voltage muxes
@@ -673,6 +751,4 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
             }
         }
     }
-} 
-    
-    
+}

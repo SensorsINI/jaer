@@ -1,7 +1,9 @@
 package org.ine.telluride.jaer.tell2010.pigtracker;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Container;
+import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -11,16 +13,17 @@ import java.util.prefs.Preferences;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 
-import javax.swing.JApplet;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFrame;
+import javax.swing.JPanel;
 import javax.swing.JSlider;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -35,11 +38,10 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         super(chip);
         chip.addObserver(this);
     }
-    private JFrame frame = new JFrame("DVS128 Viewer");
-    private boolean perspectiveEnabled=getBoolean("perspectiveEnabled", true);
-   private boolean shearEnabled=getBoolean("shearEnabled", true);
-
-   private GUIShow guiShow=null;
+    private JFrame frame = new JFrame("PigTracker");
+    private boolean perspectiveEnabled = getBoolean("perspectiveEnabled", true);
+    private boolean shearEnabled = getBoolean("shearEnabled", true);
+    private GUIShow guiShow = null;
     private JCheckBox enablePerspective = new JCheckBox();
     private JCheckBox enableShear = new JCheckBox();
     private JButton learnButton = new JButton();
@@ -55,23 +57,6 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
     int numberOfLinesInUse = 60;
     double m1, m2, m3, m4, m5, m6, m7, m8, m9;
     int sx = 0, sy = 0, sx2 = 0, sy2 = 0, sx1 = 0, sy1 = 0;
-
-    @Override
-    public void update(Observable o, Object arg) {
-        if (o instanceof AEChip && arg == AEChip.EVENT_SIZEX) {
-            sx = chip.getSizeX();
-        } else if (o instanceof AEChip && arg == AEChip.EVENT_SIZEX) {
-            sy = chip.getSizeY();
-        }
-        if (sx > 0 && sy > 0) {
-            sx2 = sx / 2;
-            sy = sy / 2;
-            sx1 = sx - 1;
-            sy1 = sy - 1;
-            initFilter();
-        }
-    }
-
 
 
     enum TrackingMode {
@@ -90,7 +75,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
     double lsy[] = new double[maxNumberOfLines];
     double lex[] = new double[maxNumberOfLines];		// "endpoint" of line
     double ley[] = new double[maxNumberOfLines];
-    double distanceThreshold = 0.04;
+    private double distanceThreshold = getFloat("distanceThreshold", 0.04f);
     long trackCaptureEventCounter = 0;
     final long numberOfCaptureEvents = 10000;
     boolean captureEventMatrix[][] = null;
@@ -126,9 +111,16 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+        checkOutputPacketEventType(PigTrackerEvent.class);
+        OutputEventIterator outItr = out.outputIterator();
         for (BasicEvent e : in) {
             PolarityEvent ev = (PolarityEvent) e;
-            processNewEvent(ev);
+            PigTrackerEvent oe = (PigTrackerEvent) outItr.nextOutput();
+            oe.copyFrom(ev);
+            if (processNewEvent(ev)) {
+                oe.colorIt = true;
+                oe.type=(byte)(ev.type+2);
+            }
         }
         return in;
     }
@@ -143,67 +135,98 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         init();
     }
 
-    public class GUIShow extends JApplet {
+    @Override
+    public void update(Observable o, Object arg) {
+        if (o instanceof AEChip && arg == AEChip.EVENT_SIZEX) {
+            sx = chip.getSizeX();
+        } else if (o instanceof AEChip && arg == AEChip.EVENT_SIZEY) {
+            sy = chip.getSizeY();
+        }
+        if (sx > 0 && sy > 0) {
+            sx2 = sx / 2;
+            sy2 = sy / 2;
+            sx1 = sx - 1;
+            sy1 = sy - 1;
+            initFilter();
+        }
+    }
+
+    /**
+     * @return the distanceThreshold
+     */
+    public float getDistanceThreshold() {
+        return (float)distanceThreshold;
+    }
+
+    /**
+     * @param distanceThreshold the distanceThreshold to set
+     */
+    public void setDistanceThreshold(double distanceThreshold) {
+        this.distanceThreshold = distanceThreshold;
+        putFloat("distanceThreshold",(float)distanceThreshold);
+    }
+
+
+    public class GUIShow extends JPanel {
 
         private static final long serialVersionUID = 1L;
 
         GUIShow() {
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.getContentPane().add(this);
+            frame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+            frame.getContentPane().add(this, BorderLayout.CENTER);
             frame.setSize(400, 500);
             frame.setResizable(true);				// allow changes in size
-            frame.setName("DVSViewerWindow");
+            frame.setName("PigTracker");
 
             frame.setLocation(1600, 100);
+            setLayout(new FlowLayout());
 
-            Container cp = getContentPane();
-            cp.setLayout(null);
 
-            cp.add(enablePerspective);
+            add(enablePerspective);
             enablePerspective.setText("enablePerspective");
             enablePerspective.setBounds(20, 20, 200, 30);
 
-            cp.add(enableShear);
+            add(enableShear);
             enableShear.setText("enableShear");
             enableShear.setBounds(20, 50, 200, 30);
 
-            cp.add(learnButton);
+            add(learnButton);
             learnButton.setText("learn");
             learnButton.setBounds(20, 100, 120, 30);
 
-            cp.add(resetButton);
+            add(resetButton);
             resetButton.setText("init");
             resetButton.setBounds(160, 100, 120, 30);
 
-            cp.add(distanceSlider);
+            add(distanceSlider);
             distanceSlider.setBounds(20, 150, 300, 30);
 
-            cp.add(trackA);
+            add(trackA);
             trackA.setText("track A");
             trackA.setBounds(20, 200, 200, 20);
 
-            cp.add(trackI);
+            add(trackI);
             trackI.setText("track I");
             trackI.setBounds(20, 230, 200, 20);
 
-            cp.add(trackSquare);
+            add(trackSquare);
             trackSquare.setText("track Square");
             trackSquare.setBounds(20, 260, 200, 20);
 
-            cp.add(trackP56);
+            add(trackP56);
             trackP56.setText("track P56");
             trackP56.setBounds(20, 290, 200, 20);
 
-            cp.add(trackP22);
+            add(trackP22);
             trackP22.setText("track P22");
             trackP22.setBounds(20, 320, 200, 20);
 
-            cp.add(trackCapture);
+            add(trackCapture);
             trackCapture.setText("track Capture");
             trackCapture.setBounds(20, 350, 200, 20);
 
 
- 
+
             ActionListener bl = new ButtonListener();
             learnButton.addActionListener(bl);
             resetButton.addActionListener(bl);
@@ -266,8 +289,8 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
     public class SliderListener implements ChangeListener {
 
         public void stateChanged(ChangeEvent e) {
-            distanceThreshold = ((double) distanceSlider.getValue()) / 5120;
-            log.info("new value: " + distanceThreshold);
+            setDistanceThreshold(((double) distanceSlider.getValue()) / 5120);
+            log.info("new value: " + getDistanceThreshold());
         }
     }
 
@@ -388,7 +411,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
         StringBuilder sb = new StringBuilder("Capture Done ... now computing object");
         for (int y = 0; y < sy; y++) {
-            for (int x = 0; x < chip.getSizeX(); x++) {
+            for (int x = 0; x < sx; x++) {
                 if (captureEventMatrix[x][y] == true) {
                     sb.append("*");
                 } else {
@@ -398,7 +421,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
             log.info(sb.toString());
         }
 
-        // this is your 128x128 matrix of booleans:
+        // this is your sx  x sy matrix of booleans:
         // captureEventMatrix[x][y]
 
         // check all line segments of length
@@ -408,14 +431,14 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
         int x, y, rot, i;
         int n, w = 0;
-        int lineX[] = new int[128];
-        int lineY[] = new int[128];
+        int lineX[] = new int[sx];
+        int lineY[] = new int[sy];
         int threshold = (int) (fractionOfEventsRequired * linelength);
 
         numberOfLinesInUse = 0;
 
-        for (y = linewidth; y < (128 - linewidth); y = (y + 106) % 128) {
-            for (x = linewidth; x < (128 - linewidth); x = (x + 62) % 128) {
+        for (y = linewidth; y < (sy - linewidth); y = (y + 106) % sy) {  // TODO why 106 here?
+            for (x = linewidth; x < (sx - linewidth); x = (x + 62) % sx) {  // TODO why 62 here?
                 int bestIndex = -1;
                 double bestValue = 0.0;
                 for (rot = 0; rot < 32; rot++) {
@@ -451,7 +474,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
                         if (ac >= 1.0) {
                             ac -= 1.0;
                             xx += sign_c;
-                            if (xx < linewidth || xx >= (128 - linewidth)) {
+                            if (xx < linewidth || xx >= (sx - linewidth)) {
                                 break;
                             }
                         }
@@ -460,7 +483,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
                         if (as >= 1.0) {
                             as -= 1.0;
                             yy++;
-                            if (yy >= (128 - linewidth)) {
+                            if (yy >= (sy - linewidth)) {
                                 break;
                             }
                         }
@@ -499,7 +522,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
                         if (ac >= 1.0) {
                             ac -= 1.0;
                             xx += sign_c;
-                            if (xx < linewidth || xx >= (128 - linewidth)) {
+                            if (xx < linewidth || xx >= (sx - linewidth)) {
                                 break;
                             }
                         }
@@ -508,16 +531,16 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
                         if (as >= 1.0) {
                             as -= 1.0;
                             yy++;
-                            if (yy >= (128 - linewidth)) {
+                            if (yy >= (sy - linewidth)) {
                                 break;
                             }
                         }
                     }
 
-                    lsx[numberOfLinesInUse] = 2.0 * (x / (double) 128) - 1.0;
-                    lsy[numberOfLinesInUse] = 2.0 * (y / (double) 128) - 1.0;
-                    lex[numberOfLinesInUse] = 2.0 * ((x + (int) (c * linelength)) / (double) 128) - 1.0;
-                    ley[numberOfLinesInUse] = 2.0 * ((y + (int) (s * linelength)) / (double) 128) - 1.0;
+                    lsx[numberOfLinesInUse] = 2.0 * (x / (double) sx) - 1.0;
+                    lsy[numberOfLinesInUse] = 2.0 * (y / (double) sy) - 1.0;
+                    lex[numberOfLinesInUse] = 2.0 * ((x + (int) (c * linelength)) / (double) sx) - 1.0;
+                    ley[numberOfLinesInUse] = 2.0 * ((y + (int) (s * linelength)) / (double) sx) - 1.0;
                     numberOfLinesInUse++;
                 }
             }
@@ -545,14 +568,14 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
-        if(yes){
-            if(guiShow==null){
-                guiShow=new GUIShow();
+        if (yes) {
+            if (guiShow == null) {
+                guiShow = new GUIShow();
             }
-            guiShow.setVisible(true);
-        }else{
-            if(guiShow!=null){
-                guiShow.setVisible(false);
+            frame.setVisible(true);
+        } else {
+            if (guiShow != null) {
+                frame.setVisible(false);
             }
         }
     }
@@ -587,15 +610,15 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
     }
 
     public void init() {
-        captureEventMatrix = new boolean[chip.getSizeX()][sy];
+        captureEventMatrix = new boolean[sx][sy];
         resetIdentityMatrix();
         initTemplate();
-     }
+    }
 
-       @Override
+    @Override
     public void annotate(GLAutoDrawable drawable) {
-           GL gl=drawable.getGL();
-       double l1, l2, l3, l4, l5, l6, l7, l8, l9;				// this is the inverse of the m matrix
+        GL gl = drawable.getGL();
+        double l1, l2, l3, l4, l5, l6, l7, l8, l9;				// this is the inverse of the m matrix
 
         double den = 1.0 / (m1 * m5 * m9 + m2 * m6 * m7 + m3 * m4 * m8 - m1 * m6 * m8 - m2 * m4 * m9 - m3 * m5 * m7);
         l1 = den * (m5 * m9 - m6 * m8);
@@ -609,7 +632,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         l9 = den * (m1 * m5 - m2 * m4);				// here we have the inverse of m
 
 
-        gl.glColor3i(Color.CYAN.getRed(), Color.CYAN.getGreen(), Color.CYAN.getBlue());
+        gl.glColor3f(0,1,1);
         gl.glLineWidth(1f);
         gl.glBegin(GL.GL_LINES);
         for (int n = 0; n < numberOfLinesInUse; n++) {
@@ -629,8 +652,8 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
             double gey = tmpY / den2;
 
 
-            gl.glVertex2d( (sx2 * (gsx + 1) * 4), (sy2 * (gsy + 1) * 4));
-            gl.glVertex2d( (sx2 * (gex + 1) * 4), (sy2 * (gey + 1) * 4));
+            gl.glVertex2d((sx2 * (gsx + 1) * 4), (sy2 * (gsy + 1) * 4));
+            gl.glVertex2d((sx2 * (gex + 1) * 4), (sy2 * (gey + 1) * 4));
 //            g.drawLine((int) (sx2 * (gsx + 1) * 4), (int) (sy2 * (gsy + 1) * 4), (int) (sx2 * (gex + 1) * 4), (int) (sy2 * (gey + 1) * 4));
 
             // reset template to current state
@@ -645,7 +668,6 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
 
     }
-
 
     public void paintComponent(Graphics g) {
 
@@ -693,7 +715,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
     }
 
-    public int processNewEvent(PolarityEvent ev) {
+    public boolean processNewEvent(PolarityEvent ev) {
         int eventX = ev.x, eventY = ev.y;
         int eventP = ev.type;
         if (trackCaptureEventCounter != 0) {
@@ -703,7 +725,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
             if (trackCaptureEventCounter == numberOfCaptureEvents) {
                 computeCaptureObject();
             }
-            return (0);
+            return true;
         }
 
         double eX = (((double) eventX) / chip.getSizeX() / 2) - 1.0;
@@ -739,7 +761,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
             }
         }
 
-        if (minErr <= distanceThreshold) {
+        if (minErr <= getDistanceThreshold()) {
 
             //log.info("This event " + eX + "/" + eY + " goes to line " + minDistIndex + "  with distance " + minDist + " minDistPerp: " + minDistPerp);
 //			log.info("Using line " + minDistIndex);
@@ -781,13 +803,11 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
                 log.info("Bad trackingMode: " + trackingMode);
             }
 //			log.info("m: " + m1 + " " + m2 + " " + m3 + " " + m4 + " " + m5 + " " + m6 + " " + m7 + " " + m8 + " " + m9);
-
+            return true;
         } else {
 //			log.info("MinDist too big: " + minDist);
-            return (1);
+            return false;
         }
-
-        return (2);
     }
 
     public void processSpecialData(String specialData) {

@@ -17,7 +17,7 @@ import de.thesycon.usbio.structs.*;
 import javax.swing.ProgressMonitor;
 
 /**
- * Adds functionality of DVS320 retina to base classes for Cypress FX2 interface.
+ * Adds functionality of cDVSTest10 retina test chip to base classes for Cypress FX2 interface.
  *
  * @author tobi
  */
@@ -31,7 +31,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         super(devNumber);
     }
 
-    /** Overrides the super's (CypressFX2Biasgen) sendConfiguration to use the DVS320.Biasgen to format the data
+    /** Overrides sendConfiguration to use this bias generator to format the data
      * 
      * @param biasgen the DVS320 biasgen which knows how to format the bias and bit configuration.
      * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
@@ -166,7 +166,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
         /** Method to translate the UsbIoBuffer for the DVS320 sensor which uses the 32 bit address space.
          *<p>
-         * It has a CPLD to timetamp events and uses the CypressFX2 in slave 
+         * It has a CPLD to timestamp events and uses the CypressFX2 in slave
          * FIFO mode. 
          *<p>The DVS320 has a burst mode readout mechanism that 
          * outputs a row address,

@@ -14,12 +14,13 @@ import net.sf.jaer.util.RemoteControlCommand;
 
 /**
  * An IPot with full configurability. 
- * The sex (N/P), type (NORMAL/CASCODE), current level (LOW,NORNAL), enabled state (normal, or weakly tied to rail), buffer bias current, and bias current can
+ * The sex (N/P), type (NORMAL/CASCODE), current level (LOW,NORNAL), enabled state (normal,
+ * or weakly tied to rail), buffer bias current, and bias current can
  * all be digitally configured. First implemented on TCVS320, improved on DVS320.
  *
  * @author tobi
  */
-public class ConfigurableIPot extends IPot {
+public class ConfigurableIPotRev0 extends IPot {
 
    /** Operating current level, defines whether to use shifted-source current mirrors for small currents. */
     public enum CurrentLevel {Normal, Low}
@@ -32,7 +33,7 @@ public class ConfigurableIPot extends IPot {
     /** If enabled=true the bias operates normally, if enabled=false,
      * then the bias is disabled by being weakly tied to the appropriate rail (depending on bias sex, N or P). */
     public enum BiasEnabled {Enabled, Disabled}
-    private BiasEnabled biasEnabled=BiasEnabled.Enabled;
+    protected BiasEnabled biasEnabled=BiasEnabled.Enabled;
     
     
     /** Bit mask for flag bias enabled (normal operation) or disabled (tied weakly to rail) */
@@ -68,9 +69,9 @@ public class ConfigurableIPot extends IPot {
     /** Max bias bit value */
     public static int maxBitValue=(1<<numBiasBits)-1;
     
-    private final String SETI="seti_", SETIBUF="setibuf_", SETSEX="setsex_", SETTYPE="settype_", SETLEVEL="setlevel_", SETENABLED="setenabled_";
+    protected final String SETI="seti_", SETIBUF="setibuf_", SETSEX="setsex_", SETTYPE="settype_", SETLEVEL="setlevel_", SETENABLED="setenabled_";
 
-    public ConfigurableIPot(Biasgen biasgen){
+    public ConfigurableIPotRev0(Biasgen biasgen){
         super(biasgen);
      }
     
@@ -87,7 +88,7 @@ public class ConfigurableIPot extends IPot {
      *@param displayPosition position in GUI from top (logical order)
      *@param tooltipString a String to display to user of GUI telling them what the pots does
      */
-    public ConfigurableIPot(Biasgen biasgen, String name, int shiftRegisterNumber,
+    public ConfigurableIPotRev0(Biasgen biasgen, String name, int shiftRegisterNumber,
             Type type, Sex sex, boolean lowCurrentModeEnabled, boolean enabled,
             int bitValue, int bufferBitValue, int displayPosition, String tooltipString) {
         this(biasgen);
@@ -115,7 +116,7 @@ public class ConfigurableIPot extends IPot {
     }
 
     // returns e.g. <NORMAL|CASCODE>
-    private String getEnumOptions(final Class<? extends Enum> en){
+    protected String getEnumOptions(final Class<? extends Enum> en){
         StringBuilder sb=new StringBuilder("<");
         Enum[] a=en.getEnumConstants();
         for(int i=0;i<a.length;i++){
@@ -333,7 +334,7 @@ public class ConfigurableIPot extends IPot {
     public void loadPreferences(){
         String s=prefsKey()+SEP;
         bitValue=prefs.getInt(s+KEY_BITVALUE,0);
-        bufferBitValue=prefs.getInt(s+KEY_BUFFER_BITVALUE,ConfigurableIPot.maxBuffeBitValue);
+        bufferBitValue=prefs.getInt(s+KEY_BUFFER_BITVALUE,ConfigurableIPotRev0.maxBuffeBitValue);
         setEnabled(prefs.getBoolean(s+KEY_ENABLED, true));
         setLowCurrentModeEnabled(prefs.getBoolean(s+KEY_LOWCURRENT_ENABLED, false));
         setSex(Pot.Sex.valueOf(prefs.get(s+KEY_SEX, Sex.N.toString())));
@@ -405,13 +406,13 @@ public class ConfigurableIPot extends IPot {
 
     /** Returns true if all parameters are identical, otherwise false.
      * 
-     * @param obj another ConfigurableIPot
+     * @param obj another ConfigurableIPotRev0
      * @return true if all parameters are identical, otherwise false.
      */
     @Override
     public boolean equals(Object obj) {
-        if(!(obj instanceof ConfigurableIPot)) return false;
-        ConfigurableIPot other=(ConfigurableIPot)obj;
+        if(!(obj instanceof ConfigurableIPotRev0)) return false;
+        ConfigurableIPotRev0 other=(ConfigurableIPotRev0)obj;
         if(!getName().equals(other.getName())) return false;
         if(getBitValue()!=other.getBitValue()) return false;
         if(getBufferBitValue()!=other.getBufferBitValue()) return false;

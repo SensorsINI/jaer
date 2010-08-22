@@ -19,7 +19,7 @@ import javax.swing.JRadioButton;
 import javax.swing.border.TitledBorder;
 
 /**
- * Control panel for DVS320 diagnostic output configuration.
+ * Control panel for cDVSTest10 diagnostic output configuration.
  * @author  tobi
  */
 public class cDVSTest10ControlPanel extends javax.swing.JPanel {
