@@ -173,11 +173,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
 
-        if (trackDefineFilter.getTrack() == null) {
-            return in;
-        }
-
-        if (currentProfile == null || currentProfile.getNumPoints() != getTrack().getNumPoints()) {
+        if (trackDefineFilter.getTrack() != null && (currentProfile == null || currentProfile.getNumPoints() != getTrack().getNumPoints())) {
             currentProfile = new ThrottleProfile(getTrack().getNumPoints());
             log.info("made a new ThrottleProfile :" + currentProfile);
         }

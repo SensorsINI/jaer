@@ -27,8 +27,10 @@ import javax.swing.filechooser.FileFilter;
 import java.io.*;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeListener;
+import java.util.List;
 import javax.media.opengl.glu.GLU;
 import javax.swing.SwingUtilities;
+import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 // import java.lang.reflect.InvocationTargetException;
 
 /**
@@ -505,6 +507,20 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
                         trackerPositions.removeFirst();
                     }
                 }
+            }else{ // no car because no track defined yet, get car if there is any cluster
+               List<Cluster> clusters=tracker.getClusters();
+               if(clusters.isEmpty())return;
+               Cluster c=clusters.get(0);
+                Point2D.Float carPoint = c.getLocation();
+                if (lastTrackerPosition == null || lastTrackerPosition.distance(carPoint) > minDistance) {
+                    Point2D.Float newPoint = (Point2D.Float) carPoint.clone();
+                    trackerPositions.add(newPoint);
+                    lastTrackerPosition = newPoint;
+                    if (trackerPositions.size() > MAX_TRACKER_POINTS) {
+                        trackerPositions.removeFirst();
+                    }
+                }
+
             }
         }
     }

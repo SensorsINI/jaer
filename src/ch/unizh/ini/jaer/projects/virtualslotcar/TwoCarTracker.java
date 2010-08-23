@@ -47,6 +47,9 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
     private NearbyTrackEventFilter nearbyTrackFilter = null;
     private TwoCarCluster computerControlledCarCluster = null;
 
+    private int warnedNullTrackerCounter=0;
+    private final int WARNED_NULL_TRACK_INTERVAL=1000;
+
     public TwoCarTracker(AEChip chip) {
         super(chip);
         final String s="TwoCarTracker";
@@ -180,8 +183,10 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         }
 
         if (track == null) {
-            log.warning("null track - perhaps deserialization failed or no track was saved?");
-            return null;
+            if(warnedNullTrackerCounter%WARNED_NULL_TRACK_INTERVAL==0){
+                log.warning("null track - perhaps deserialization failed or no track was saved?");
+            }
+            return in;
         }
 
         // now accumulate votes for the car cluster, e.g. closest, oldest, nearest last choice as last; winner of voting is the CC cluster
