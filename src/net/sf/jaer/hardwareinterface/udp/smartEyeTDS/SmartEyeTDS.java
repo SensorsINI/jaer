@@ -16,11 +16,8 @@ import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.eventio.*;
 import net.sf.jaer.biasgen.*;
-import net.sf.jaer.biasgen.VDAC.*;
 import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.hardwareinterface.udp.*;
-
-import at.ait.dss.sni.jaer.chip.atis.ATIS304.*;
 
 /**
  * The SmartEyeTDS is a hardware interface class for the AIT SmartEye Traffic Sensor which sends information
@@ -28,7 +25,7 @@ import at.ait.dss.sni.jaer.chip.atis.ATIS304.*;
  *
  * @author braendch
  */
-public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorInterface{
+public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorInterface, BiasgenHardwareInterface{
 
     //TODO: Make SmartEyeTDS an instance of BiasgenHardwareInterface
 
@@ -80,8 +77,12 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
                 if ( socket != null ){
                     socket.close();
                 }
+                port = CONTROL_PORT;
+                host = "localhost";
                 socket = new DatagramSocket(CONTROL_PORT);
                 socket.setSoTimeout(100);
+
+                client = new InetSocketAddress(host,port);
 
                 input = new AEUnicastInput(DATA_PORT);
                 input.setSequenceNumberEnabled(false);
@@ -91,7 +92,7 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
                 input.setTimestampsEnabled(false);
                 input.setBufferSize(1200);
                 input.setTimestampMultiplier(1);
-                input.setPort(DATA_PORT);
+                //input.setPort(DATA_PORT);
                 input.open();
                 isOpen = true;
             } catch ( IOException ex ){
@@ -305,21 +306,25 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
 
     }
 
-    //@Override
+    //Biasgen
+
+    @Override
     public void setPowerDown (boolean powerDown) throws HardwareInterfaceException{
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    //@Override
+    @Override
     public void sendConfiguration (Biasgen biasgen) throws HardwareInterfaceException{
         if ( !isOpen() ){
-            throw new HardwareInterfaceException("not open");
+            open();
         }
         int MAX_COMMAND_LENGTH_BYTES = 256;
-        /*for ( Pot p:chip.getBiasgen().getPotArray().getPots() ){
-            UDP_VPot vp = (UDP_VPot)p;
+        for ( Pot p:chip.getBiasgen().getPotArray().getPots() ){
             try{
-                String s = vp.getCommandString();
+                IPot ip = (IPot)p;
+                int v = (int)(ip.getCurrent()*255/ip.getMaxCurrent());
+                int n = ip.getShiftRegisterNumber();
+                String s = String.format("d %d %d mv\n",n,v);
                 byte[] b = s.getBytes(); // s.getBytes(Charset.forName("US-ASCII"));
                 socket.send(new DatagramPacket(b,b.length,client));
                 DatagramPacket packet = new DatagramPacket(new byte[ MAX_COMMAND_LENGTH_BYTES ],MAX_COMMAND_LENGTH_BYTES);
@@ -334,15 +339,15 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
             } catch ( Exception ex ){
                 throw new HardwareInterfaceException("while sending biases to " + client + " caught " + ex.toString());
             }
-        }*/
+        }
     }
 
-    //@Override
+    @Override
     public void flashConfiguration (Biasgen biasgen) throws HardwareInterfaceException{
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    //@Override
+    @Override
     public byte[] formatConfigurationBytes (Biasgen biasgen){
         throw new UnsupportedOperationException("Not supported yet.");// TODO use this to send all biases at once?
     }
