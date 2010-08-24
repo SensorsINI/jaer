@@ -289,7 +289,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
     public class SliderListener implements ChangeListener {
 
         public void stateChanged(ChangeEvent e) {
-            setDistanceThreshold(((double) distanceSlider.getValue()) / 5120);
+            setDistanceThreshold(((double) distanceSlider.getValue()) / 5120.0);
             log.info("new value: " + getDistanceThreshold());
         }
     }
@@ -719,15 +719,15 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         int eventX = ev.x, eventY = ev.y;
         int eventP = ev.type;
 
-//        if (trackCaptureEventCounter != 0) {
-//            //log.info("Collecting this event " + trackCaptureEventCounter);
-//            captureEventMatrix[eventX][eventY] = true;
-//            trackCaptureEventCounter++;
-//            if (trackCaptureEventCounter == numberOfCaptureEvents) {
-//                computeCaptureObject();
-//            }
-//            return true;
-//        }
+        if (trackCaptureEventCounter != 0) {
+            //log.info("Collecting this event " + trackCaptureEventCounter);
+            captureEventMatrix[eventX][eventY] = true;
+            trackCaptureEventCounter++;
+            if (trackCaptureEventCounter == numberOfCaptureEvents) {
+                computeCaptureObject();
+            }
+            return true;
+        }
 
         double eX = (((double) eventX) / (sx / 2)) - 1.0;
         double eY = (((double) eventY) / (sy / 2)) - 1.0;
