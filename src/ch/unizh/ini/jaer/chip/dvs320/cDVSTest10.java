@@ -11,6 +11,7 @@ import net.sf.jaer.event.*;
 import net.sf.jaer.hardwareinterface.*;
 import java.awt.BorderLayout;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -216,6 +217,7 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
         cDVSTest10ControlPanel controlPanel;
         AllMuxes allMuxes = new AllMuxes(); // the output muxes
         private ShiftedSourceBias nSS, pSS, nSSHi, pSSHi;
+        private ShiftedSourceBias[] ssBiases=new ShiftedSourceBias[4];
         int pos = 0;
         // utility method to quickly add pot
 
@@ -250,6 +252,11 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
             pSSHi.setSex(Pot.Sex.P);
             pSSHi.setName("PSS high");
             pSSHi.setTooltipString("p-type shifted source that generates a regulated voltage about 2 diode drops from Vdd");
+
+            ssBiases[0]=nSSHi;
+            ssBiases[1]=nSS;
+            ssBiases[2]=pSSHi;
+            ssBiases[3]=pSS;
 
             setPotArray(new IPotArray(this));
             /*
@@ -393,11 +400,17 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
         /** Formats the data sent to the microcontroller to load bias and other configuration. */
         @Override
         public byte[] formatConfigurationBytes(Biasgen biasgen) {
+            ByteBuffer bb=ByteBuffer.allocate(1000);
             byte[] biasBytes = super.formatConfigurationBytes(biasgen);
             byte[] configBytes = allMuxes.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
-            byte[] allBytes = new byte[biasBytes.length + configBytes.length];
-            System.arraycopy(configBytes, 0, allBytes, 0, configBytes.length); // first bits in byte array are loaded first to cDVSTest; the very first nibble is the imux since it is at the end of the long shift register.
-            System.arraycopy(biasBytes, 0, allBytes, configBytes.length, biasBytes.length);
+            bb.put(configBytes);
+            bb.put(biasBytes);
+            for(ShiftedSourceBias ss:ssBiases){
+                bb.put(ss.getBinaryRepresentation());
+            }
+
+            byte[] allBytes = bb.array();
+
             return allBytes; // configBytes may be padded with extra bits to make up a byte, board needs to know this to chop off these bits
         }
         /** the change in current from an increase* or decrease* call */

@@ -210,7 +210,7 @@ public class ShiftedSourceBias extends IPot {
 
     @Override
     public byte[] getBinaryRepresentation() {
-        int n = 4;
+        int n = 2;
         if (bytes == null) {
             bytes = new byte[n];
         }
