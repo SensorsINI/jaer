@@ -30,7 +30,7 @@ public class ShiftedSourceBias extends IPot {
             return bits << Integer.numberOfTrailingZeros(mask);
         }
     };
-    protected OperatingMode operatingMode = OperatingMode.ShiftedSource;
+    private OperatingMode operatingMode = OperatingMode.ShiftedSource;
 
     public enum VoltageLevel {
 
@@ -46,7 +46,7 @@ public class ShiftedSourceBias extends IPot {
             return bits << Integer.numberOfTrailingZeros(mask);
         }
     }
-    protected VoltageLevel voltageLevel = VoltageLevel.SplitGate;
+    private VoltageLevel voltageLevel = VoltageLevel.SplitGate;
     protected static int bitValueMask = 0x003f; // 22 bits at lsb position
     /** Bit mask for buffer bias bits */
     protected static int bufferBiasMask = 0x3f00;
@@ -202,7 +202,7 @@ public class ShiftedSourceBias extends IPot {
 
     /** Computes the actual bit pattern to be sent to chip based on configuration values */
     protected int computeBinaryRepresentation() {
-        int ret = operatingMode.bits() | bufferBitValue << Integer.numberOfTrailingZeros(bufferBiasMask) | voltageLevel.bits() | bitValue << Integer.numberOfTrailingZeros(bitValueMask);
+        int ret = getOperatingMode().bits() | bufferBitValue << Integer.numberOfTrailingZeros(bufferBiasMask) | getVoltageLevel().bits() | bitValue << Integer.numberOfTrailingZeros(bitValueMask);
 
         return ret;
     }
@@ -242,8 +242,8 @@ public class ShiftedSourceBias extends IPot {
         String s = prefsKey() + SEP;
         prefs.putInt(s + KEY_BITVALUE, getBitValue());
         prefs.putInt(s + KEY_BUFFER_BITVALUE, getBufferBitValue());
-        prefs.put(s + KEY_OPERATINGMODE, operatingMode.toString());
-        prefs.put(s + KEY_VOLTAGELEVEL, voltageLevel.toString());
+        prefs.put(s + KEY_OPERATINGMODE, getOperatingMode().toString());
+        prefs.put(s + KEY_VOLTAGELEVEL, getVoltageLevel().toString());
         setModified(false);
     }
 
@@ -253,8 +253,8 @@ public class ShiftedSourceBias extends IPot {
         String s = prefsKey() + SEP;
         bitValue = prefs.getInt(s + KEY_BITVALUE, 0);
         bufferBitValue = prefs.getInt(s + KEY_BUFFER_BITVALUE, ConfigurableIPotRev0.maxBuffeBitValue);
-        operatingMode = OperatingMode.valueOf(prefs.get(s + KEY_OPERATINGMODE, OperatingMode.ShiftedSource.toString()));
-        voltageLevel = VoltageLevel.valueOf(prefs.get(s + KEY_VOLTAGELEVEL, VoltageLevel.SplitGate.toString()));
+        setOperatingMode(OperatingMode.valueOf(prefs.get(s + KEY_OPERATINGMODE, OperatingMode.ShiftedSource.toString())));
+        setVoltageLevel(VoltageLevel.valueOf(prefs.get(s + KEY_VOLTAGELEVEL, VoltageLevel.SplitGate.toString())));
         setModified(false);
     }
 
@@ -287,7 +287,7 @@ public class ShiftedSourceBias extends IPot {
     }
 
     public String toString() {
-        return super.toString() + " Sex=" + getSex() +" bitValue="+bitValue+ " bufferBitValue=" + bufferBitValue+" operatingMode="+operatingMode+" voltageLevel="+voltageLevel;
+        return super.toString() + " Sex=" + getSex() +" bitValue="+bitValue+ " bufferBitValue=" + bufferBitValue+" operatingMode="+getOperatingMode()+" voltageLevel="+getVoltageLevel();
     }
 
     /** Overrides super of type (NORNAL or CASCODE) to call observers */
@@ -343,25 +343,39 @@ public class ShiftedSourceBias extends IPot {
             return false;
         }
 
-        if (operatingMode != other.operatingMode) {
+        if (getOperatingMode() != other.getOperatingMode()) {
             return false;
         }
 
-        if (voltageLevel != other.voltageLevel) {
+        if (getVoltageLevel() != other.getVoltageLevel()) {
             return false;
         }
         return true;
     }
 
-    private void setOperatingMode(OperatingMode operatingMode) {
+    public void setOperatingMode(OperatingMode operatingMode) {
         if(operatingMode!=this.operatingMode) setChanged();
         this.operatingMode = operatingMode;
         notifyObservers();
     }
 
-    private void setVoltageLevel(VoltageLevel voltageLevel) {
+    public void setVoltageLevel(VoltageLevel voltageLevel) {
         if(voltageLevel!=this.voltageLevel) setChanged();
         this.voltageLevel = voltageLevel;
         notifyObservers();
+    }
+
+    /**
+     * @return the voltageLevel
+     */
+    public VoltageLevel getVoltageLevel() {
+        return voltageLevel;
+    }
+
+    /**
+     * @return the operatingMode
+     */
+    public OperatingMode getOperatingMode() {
+        return operatingMode;
     }
 }

@@ -71,6 +71,9 @@
           </StringArray>
         </Property>
       </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="operatingModeComboBoxActionPerformed"/>
+      </Events>
     </Component>
     <Component class="javax.swing.JComboBox" name="voltageLevelComboBox">
       <Properties>
@@ -83,6 +86,9 @@
           </StringArray>
         </Property>
       </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="voltageLevelComboBoxActionPerformed"/>
+      </Events>
     </Component>
     <Component class="javax.swing.JSlider" name="biasSlider">
       <Properties>

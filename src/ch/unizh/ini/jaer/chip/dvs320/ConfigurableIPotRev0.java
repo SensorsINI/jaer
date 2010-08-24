@@ -190,6 +190,13 @@ public class ConfigurableIPotRev0 extends IPot {
         }
     }
 
+    @Override
+    public int getMaxBitValue() {
+        return maxBitValue;
+    }
+
+
+
     /** Change buffer bias current value by ratio, or at least by one bit value.
      @param ratio between new current and old value, e.g. 1.1f or 0.9f
      */

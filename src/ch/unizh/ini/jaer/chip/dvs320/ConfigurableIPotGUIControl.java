@@ -38,8 +38,8 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
     // thus if the slider changes the pot value, the pot calls us back here to update the appearance of the slider and of the
     // text field. likewise, if code changes the pot, the appearance here will automagically be updated.
 
-    static Preferences prefs = Preferences.userNodeForPackage(IPotSliderTextControl.class);
-    static Logger log = Logger.getLogger("ConfigurableIPotGUIControl");
+    final static Preferences prefs = Preferences.userNodeForPackage(IPotSliderTextControl.class);
+    static final Logger log = Logger.getLogger("ConfigurableIPotGUIControl");
     static double ln2 = Math.log(2.);
     ConfigurableIPotRev0 pot;
     StateEdit edit = null;
@@ -127,6 +127,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
         allInstances.add(this);
     }
 
+    @Override
     public String toString() {
         return "ConfigurableIPot for pot " + pot.getName();
     }
@@ -656,6 +657,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     final String KEY_CURRENTLEVEL = "currentLevel";
     final String KEY_ENABLED = "enabled";
 
+    @Override
     public void restoreState(Hashtable<?, ?> hashtable) {
 //        System.out.println("restore state");
         if (hashtable == null) {
@@ -679,6 +681,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         pot.setEnabled((Boolean) hashtable.get(KEY_ENABLED));
     }
 
+    @Override
     public void storeState(Hashtable<Object, Object> hashtable) {
 //        System.out.println(" storeState "+pot);
         hashtable.put(KEY_BITVALUE, new Integer(pot.getBitValue()));
@@ -686,7 +689,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         hashtable.put(KEY_SEX, pot.getSex()); // TODO assumes sex nonnull
         hashtable.put(KEY_CASCODENORMALTYPE, pot.getType());
         hashtable.put(KEY_CURRENTLEVEL, pot.getCurrentLevel());
-        hashtable.put(KEY_ENABLED, new Boolean(pot.isEnabled()));
+        hashtable.put(KEY_ENABLED, pot.isEnabled());
 
     }
 
@@ -696,6 +699,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
             super(o, s);
         }
 
+        @Override
         protected void removeRedundantState() {
         }
 
@@ -817,11 +821,13 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     }
 
     /** called when Observable changes (pot changes) */
+    @Override
     public void update(Observable observable, Object obj) {
         if (observable instanceof IPot) {
 //            log.info("observable="+observable);
             SwingUtilities.invokeLater(new Runnable() {
 
+                @Override
                 public void run() {
                     // don't do the following - it sometimes prevents display updates or results in double updates
 //                        slider.setValueIsAdjusting(true); // try to prevent a new event from the slider
@@ -941,6 +947,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
             }
             addActionListener(new ActionListener() {
 
+                @Override
                 public void actionPerformed(ActionEvent e) {
                     try {
                         setMethod.invoke(ConfigurableIPotGUIControl.class, new Boolean(isSelected()));

@@ -348,7 +348,7 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
         return getPotArray().getPotByNumber(number);
     }
 
-    /** @return interface, or null if none has been sucessfully opened */
+    /** @return interface, or null if none has been successfully opened */
     public BiasgenHardwareInterface getHardwareInterface (){
         return this.hardwareInterface;
     }
@@ -395,14 +395,16 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
 
     /** opens the first available hardware interface found */
     public void open () throws HardwareInterfaceException{
-        if ( hardwareInterface == null ){
-//            log.info("Biasgen.open(): hardwareInterface is null, creating a new interface to open");
-            try{
-                hardwareInterface = (BiasgenHardwareInterface)( HardwareInterfaceFactory.instance().getFirstAvailableInterface() );
-            } catch ( ClassCastException e ){
-                log.warning(this + " is not a BiasgenHardwareInterface, ignoring open(): " + e.toString());
-            }
-        }
+        // tobi removed automatic open of any available interface for biasgen since the addition of the UDPInteface hardware interface,
+        // which would open this interface and throw an exception.
+//        if ( hardwareInterface == null ){
+////            log.info("Biasgen.open(): hardwareInterface is null, creating a new interface to open");
+//            try{
+//                hardwareInterface = (BiasgenHardwareInterface)( HardwareInterfaceFactory.instance().getFirstAvailableInterface() );
+//            } catch ( ClassCastException e ){
+//                log.warning(this + " is not a BiasgenHardwareInterface, ignoring open(): " + e.toString());
+//            }
+//        }
         // doesn't throw exception, just returns null if there is no device
         if ( hardwareInterface == null ){
 //            log.warning("Biasgen.open(): no device found");

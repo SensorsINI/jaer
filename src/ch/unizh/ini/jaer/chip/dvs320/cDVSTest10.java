@@ -216,11 +216,10 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
         private ConfigurableIPotRev0 refr, pr, foll;
         cDVSTest10ControlPanel controlPanel;
         AllMuxes allMuxes = new AllMuxes(); // the output muxes
-        private ShiftedSourceBias nSS, pSS, nSSHi, pSSHi;
-        private ShiftedSourceBias[] ssBiases=new ShiftedSourceBias[4];
+        private ShiftedSourceBias ssn, ssp, ssnMid, sspMid;
+        private ShiftedSourceBias[] ssBiases = new ShiftedSourceBias[4];
         int pos = 0;
         // utility method to quickly add pot
-
 
         /** Creates a new instance of cDVSTestBiasgen for cDVSTest with a given hardware interface
          *@param chip the chip this biasgen belongs to
@@ -233,30 +232,34 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
             getMasterbias().setMultiplier(9 * (24f / 2.4f) / (4.8f / 2.4f));  // =45  correct for dvs320
             getMasterbias().setWOverL(4.8f / 2.4f); // masterbias has nfet with w/l=2 at output 
 
-            nSS = new ShiftedSourceBias(this);
-            nSS.setSex(Pot.Sex.N);
-            nSS.setName("NSS");
-            nSS.setTooltipString("n-type shifted source that generates a regulated voltage near ground");
+            ssn = new ShiftedSourceBias(this);
+            ssn.setSex(Pot.Sex.N);
+            ssn.setName("NSS");
+            ssn.setTooltipString("n-type shifted source that generates a regulated voltage near ground");
+            ssn.addObserver(this);
 
-            pSS = new ShiftedSourceBias(this);
-            pSS.setSex(Pot.Sex.P);
-            pSS.setName("PSS");
-            pSS.setTooltipString("p-type shifted source that generates a regulated voltage near Vdd");
+            ssp = new ShiftedSourceBias(this);
+            ssp.setSex(Pot.Sex.P);
+            ssp.setName("PSS");
+            ssp.setTooltipString("p-type shifted source that generates a regulated voltage near Vdd");
+            ssp.addObserver(this);
 
-            nSSHi = new ShiftedSourceBias(this);
-            nSSHi.setSex(Pot.Sex.N);
-            nSSHi.setName("NSS high");
-            nSSHi.setTooltipString("n-type shifted source that generates a regulated voltage inside rail, about 2 diode drops from ground");
+            ssnMid = new ShiftedSourceBias(this);
+            ssnMid.setSex(Pot.Sex.N);
+            ssnMid.setName("NSS high");
+            ssnMid.setTooltipString("n-type shifted source that generates a regulated voltage inside rail, about 2 diode drops from ground");
+            ssnMid.addObserver(this);
 
-            pSSHi = new ShiftedSourceBias(this);
-            pSSHi.setSex(Pot.Sex.P);
-            pSSHi.setName("PSS high");
-            pSSHi.setTooltipString("p-type shifted source that generates a regulated voltage about 2 diode drops from Vdd");
+            sspMid = new ShiftedSourceBias(this);
+            sspMid.setSex(Pot.Sex.P);
+            sspMid.setName("PSS high");
+            sspMid.setTooltipString("p-type shifted source that generates a regulated voltage about 2 diode drops from Vdd");
+            sspMid.addObserver(this);
 
-            ssBiases[0]=nSSHi;
-            ssBiases[1]=nSS;
-            ssBiases[2]=pSSHi;
-            ssBiases[3]=pSS;
+            ssBiases[0] = ssnMid;
+            ssBiases[1] = ssn;
+            ssBiases[2] = sspMid;
+            ssBiases[3] = ssp;
 
             setPotArray(new IPotArray(this));
             /*
@@ -387,10 +390,10 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
             JPanel combinedBiasShiftedSourcePanel = new JPanel();
             combinedBiasShiftedSourcePanel.setLayout(new BoxLayout(combinedBiasShiftedSourcePanel, BoxLayout.Y_AXIS));
             combinedBiasShiftedSourcePanel.add(super.buildControlPanel());
-            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(nSS));
-            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(pSS));
-            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(nSSHi));
-            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(pSSHi));
+            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(ssn));
+            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(ssp));
+            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(ssnMid));
+            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(sspMid));
             pane.addTab("Biases", combinedBiasShiftedSourcePanel);
             pane.addTab("Output control", new cDVSTest10ControlPanel(cDVSTest10.this));
             panel.add(pane, BorderLayout.CENTER);
@@ -400,12 +403,12 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
         /** Formats the data sent to the microcontroller to load bias and other configuration. */
         @Override
         public byte[] formatConfigurationBytes(Biasgen biasgen) {
-            ByteBuffer bb=ByteBuffer.allocate(1000);
+            ByteBuffer bb = ByteBuffer.allocate(1000);
             byte[] biasBytes = super.formatConfigurationBytes(biasgen);
             byte[] configBytes = allMuxes.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
             bb.put(configBytes);
             bb.put(biasBytes);
-            for(ShiftedSourceBias ss:ssBiases){
+            for (ShiftedSourceBias ss : ssBiases) {
                 bb.put(ss.getBinaryRepresentation());
             }
 

@@ -80,7 +80,7 @@ public class ShiftedSourceControls extends javax.swing.JPanel implements Observe
     }
 
     public String toString() {
-        return "ConfigurableIPot for pot " + pot.getName();
+        return "ShiftedSourceControls " + pot.getName();
     }
 
     void rr() {
@@ -142,9 +142,19 @@ public class ShiftedSourceControls extends javax.swing.JPanel implements Observe
         add(flagsPanel);
 
         operatingModeComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        operatingModeComboBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                operatingModeComboBoxActionPerformed(evt);
+            }
+        });
         add(operatingModeComboBox);
 
         voltageLevelComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        voltageLevelComboBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                voltageLevelComboBoxActionPerformed(evt);
+            }
+        });
         add(voltageLevelComboBox);
 
         biasSlider.setToolTipText("Slide to adjust bias");
@@ -488,6 +498,18 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     }
 }//GEN-LAST:event_formAncestorAdded
 
+private void operatingModeComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_operatingModeComboBoxActionPerformed
+    startEdit();
+    pot.setOperatingMode((OperatingMode) operatingModeComboBox.getSelectedItem());
+    endEdit();
+}//GEN-LAST:event_operatingModeComboBoxActionPerformed
+
+private void voltageLevelComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_voltageLevelComboBoxActionPerformed
+    startEdit();
+    pot.setVoltageLevel((VoltageLevel) voltageLevelComboBox.getSelectedItem());
+    endEdit();
+}//GEN-LAST:event_voltageLevelComboBoxActionPerformed
+
 //     private int oldPotValue=0;
     /** when slider is moved, event is sent here. The slider is the 'master' of the value in the text field.
      * Slider is log scale, from pot min to pot max with caveat that zero position is zero current (no current splitter
@@ -514,8 +536,8 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     }
     final String KEY_BITVALUE = "bitValue";
     final String KEY_BUFFERBITVALUE = "bufferBitValue";
-    final String KEY_OPERATINGMODE="operatingMode";
-    final String KEY_VOLTAGELEVEL="voltageLevel";
+    final String KEY_OPERATINGMODE = "operatingMode";
+    final String KEY_VOLTAGELEVEL = "voltageLevel";
     final String KEY_ENABLED = "enabled";
 
     public void restoreState(Hashtable<?, ?> hashtable) {
@@ -535,16 +557,16 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         }
         pot.setBitValue((Integer) hashtable.get(KEY_BITVALUE));
         pot.setBufferBitValue((Integer) hashtable.get(KEY_BUFFERBITVALUE));
-        pot.operatingMode=(OperatingMode)hashtable.get(KEY_OPERATINGMODE);
-        pot.voltageLevel=(VoltageLevel)hashtable.get(KEY_VOLTAGELEVEL);
+        pot.setOperatingMode((OperatingMode) hashtable.get(KEY_OPERATINGMODE));
+        pot.setVoltageLevel((VoltageLevel) hashtable.get(KEY_VOLTAGELEVEL));
     }
 
     public void storeState(Hashtable<Object, Object> hashtable) {
 //        System.out.println(" storeState "+pot);
         hashtable.put(KEY_BITVALUE, new Integer(pot.getBitValue()));
         hashtable.put(KEY_BUFFERBITVALUE, new Integer(pot.getBufferBitValue()));
-        hashtable.put(KEY_VOLTAGELEVEL, pot.voltageLevel);
-        hashtable.put(KEY_OPERATINGMODE,pot.operatingMode);
+        hashtable.put(KEY_VOLTAGELEVEL, pot.getVoltageLevel());
+        hashtable.put(KEY_OPERATINGMODE, pot.getOperatingMode());
 
     }
 
@@ -555,16 +577,14 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         }
 
         protected void removeRedundantState() {
-        }
-
-        ; // override this to actually get a state stored!!
+        }// override this to actually get a state stored!!
     }
     private static EngineeringFormat engFormat = new EngineeringFormat();
 
     /** updates the GUI slider and text
     fields to match actual pot values. Neither of these trigger events.
      */
-    protected void updateAppearance() {
+    protected final void updateAppearance() {
         if (pot == null) {
             return;
         }
@@ -589,8 +609,8 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         bufferBiasSlider.setValue(bufferSliderValueFromBitValue());
         bufferBiasTextField.setText(engFormat.format(pot.getBufferCurrent()));
 
-        voltageLevelComboBox.setSelectedItem(pot.voltageLevel);
-        operatingModeComboBox.setSelectedItem(pot.operatingMode);
+        voltageLevelComboBox.setSelectedItem(pot.getVoltageLevel());
+        operatingModeComboBox.setSelectedItem(pot.getOperatingMode());
 
     }
     // following two methods compute slider/bit value inverses
@@ -799,4 +819,3 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         }
     }
 }
-
