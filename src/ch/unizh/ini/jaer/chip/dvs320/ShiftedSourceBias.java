@@ -20,7 +20,7 @@ public class ShiftedSourceBias extends IPot {
 
         ShiftedSource(0), TiedToRail(1), HiZ(2);
         private final int bits;
-        private final int mask = 0xc000; // at head of 16 bit shift register for shifted source
+        private final int mask = 0x0003; // at head of 16 bit shift register for shifted source
 
         OperatingMode(int b) {
             this.bits = b;
@@ -36,7 +36,7 @@ public class ShiftedSourceBias extends IPot {
 
         SplitGate(0), SingleDiode(1), DoubleDiode(2);
         private final int bits;
-        private final int mask = 0x00c0; // at start of second byte of 16 bit shift register for shifted source
+        private final int mask = 0x0300; // at start of second byte of 16 bit shift register for shifted source
 
         VoltageLevel(int b) {
             this.bits = b;
@@ -47,9 +47,9 @@ public class ShiftedSourceBias extends IPot {
         }
     }
     private VoltageLevel voltageLevel = VoltageLevel.SplitGate;
-    protected static int bitValueMask = 0x003f; // 22 bits at lsb position
+    protected static int bitValueMask = 0xfc00; // 22 bits at lsb position
     /** Bit mask for buffer bias bits */
-    protected static int bufferBiasMask = 0x3f00;
+    protected static int bufferBiasMask = 0x00fc;
     /** Number of bits used for bias value */
     protected static int numBiasBits = Integer.bitCount(bitValueMask);
     /** The number of bits specifying buffer bias current as fraction of master bias current */

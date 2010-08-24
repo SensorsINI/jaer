@@ -21,22 +21,22 @@ public class ConfigurableIPotCDVSTest extends ConfigurableIPotRev0 {
     public ConfigurableIPotCDVSTest(Biasgen biasgen) {
         super(biasgen);
         /** Bit mask for flag bias enabled (normal operation) or disabled (tied weakly to rail) */
-        enabledMask = 0x80000000; // TODO change for pots on cdvstest
+        enabledMask = 0x00000001; // TODO change for pots on cdvstest
 
         /** Bit mask for flag low current mode enabled */
-        lowCurrentModeMask = 0x10000000;
+        lowCurrentModeMask = 0x00000008;
 
         /** Bit mask for flag for bias sex (N or P) */
-        sexMask = 0x40000000;
+        sexMask = 0x00000002;
 
         /** Bit mask for flag for bias type (normal or cascode) */
-        typeMask = 0x20000000;
+        typeMask = 0x00000004;
 
         /** Bit mask for bias current value bits */
-        bitValueMask = 0x003fffff; // 22 bits at lsb position
+        bitValueMask = 0xfffffc00; // 22 bits at msb position
 
         /** Bit mask for buffer bias bits */
-        bufferBiasMask = 0x0fc00000; // 6 bits just to left of bias value bits
+        bufferBiasMask = 0x000003f0; // 6 bits just to right of bias value bits
 
         /** Number of bits used for bias value */
         numBiasBits = Integer.bitCount(bitValueMask);

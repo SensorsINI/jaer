@@ -293,7 +293,7 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
                 pot("Blue,n,normal,Bluer threshold");
                 pot("Amp,n,normal,DVS ON threshold");
                 pot("pcas,p,cascode,DVS ON threshold");
-                pot("ncas,n,cascode,DVS cascode voltage bias");
+                pot("pixInvB,n,normal,pixel inverter bias");
                 pot("pr,p,normal,photoreceptor bias current");
                 pot("fb,p,normal,photoreceptor follower bias current");
                 pot("refr,p,normal,DVS refractory current");
@@ -412,7 +412,9 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
                 bb.put(ss.getBinaryRepresentation());
             }
 
-            byte[] allBytes = bb.array();
+            byte[] allBytes = new byte[bb.position()];
+            bb.flip();
+            bb.get(allBytes);
 
             return allBytes; // configBytes may be padded with extra bits to make up a byte, board needs to know this to chop off these bits
         }

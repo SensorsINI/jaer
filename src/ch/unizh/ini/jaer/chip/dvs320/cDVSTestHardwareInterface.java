@@ -15,7 +15,8 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Biasgen;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
 import javax.swing.ProgressMonitor;
-
+import java.io.*;
+import java.util.StringTokenizer;
 /**
  * Adds functionality of cDVSTest10 retina test chip to base classes for Cypress FX2 interface.
  *
@@ -61,85 +62,192 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         }
     }
 
+    private byte[] parseHexData(String firmwareFile) throws IOException
+    {
+
+        byte[] fwBuffer;
+        // load firmware file (this is binary file of 8051 firmware)
+
+        log.info("reading firmware file " + firmwareFile);
+        FileReader reader;
+        LineNumberReader lineReader;
+        String line;
+        int length;
+        // load firmware file (this is a lattice c file)
+        try {
+
+            reader = new FileReader(firmwareFile);
+            lineReader = new LineNumberReader(reader);
+
+            line = lineReader.readLine();
+            while (!line.startsWith("xdata"))
+            {
+                line = lineReader.readLine();
+            }
+            int scIndex=line.indexOf(";");
+            int eqIndex= line.indexOf("=");
+            int index=0;
+            length=Integer.parseInt(line.substring(eqIndex+2, scIndex));
+           // log.info("File length: " + length);
+            String[] tokens;
+            fwBuffer = new byte[length];
+            Short value;
+            while (!line.endsWith("};"))
+            {
+                line = lineReader.readLine();
+                tokens = line.split("0x");
+            //    System.out.println(line);
+                for (int i=1; i< tokens.length; i++)
+                {
+                    value = Short.valueOf(tokens[i].substring(0, 2),16);
+                    fwBuffer[index++]= value.byteValue();
+                 //   System.out.println(fwBuffer[index-1]);
+                }
+            }
+           // log.info("index" + index);
+
+            lineReader.close();
+        } catch (IOException e) {
+            close();
+            log.warning(e.getMessage());
+            throw new IOException("can't load binary Cypress FX2 firmware file " + firmwareFile);
+        }
+        return fwBuffer;
+    }
+
     @Override
-     synchronized public void writeCPLDfirmware(String svfFile) throws HardwareInterfaceException {
+    synchronized public void writeCPLDfirmware(String svfFile) throws HardwareInterfaceException {
         byte[] bytearray;
-        byte command;
-        int commandlength = 1, index = 0, length = 0, status;
+        int status, index;
         USBIO_DATA_BUFFER dataBuffer = null;
-        USBIO_CLASS_OR_VENDOR_REQUEST VendorRequest;
 
         try {
-            bytearray = this.loadBinaryFirmwareFile(svfFile);
+            bytearray = this.parseHexData(svfFile);
         } catch (Exception e) {
             e.printStackTrace();
             return;
         }
         ProgressMonitor progressMonitor = makeProgressMonitor("Writing CPLD configuration - do not unplug", 0, bytearray.length);
 
-        if (bytearray == null || bytearray.length == 0) {
-            throw new NullPointerException("xsvf file seems to be empty. Did ISE compile it and did you generate the XSVF file?");
-        }
-        command = bytearray[index];
+
+        int result;
+        USBIO_CLASS_OR_VENDOR_REQUEST vendorRequest = new USBIO_CLASS_OR_VENDOR_REQUEST();
 
 
-            //System.out.println("command: " + command + " index: " + index + " commandlength " + commandlength);
-            //        System.out.println("max command length " + maxlen);
+        int numChunks;
+
+        vendorRequest.Flags = UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
+        vendorRequest.Type = UsbIoInterface.RequestTypeVendor;  // this is a vendor, not generic USB, request
+        vendorRequest.Recipient = UsbIoInterface.RecipientDevice; // device (not endpoint, interface, etc) receives it
+        vendorRequest.RequestTypeReservedBits = 0;    // set these bits to zero for Cypress-specific 'vendor request' rather that user defined
+        vendorRequest.Request = VR_DOWNLOAD_FIRMWARE; // this is download/upload firmware request. really it is just a 'fill RAM request'
+        vendorRequest.Index = 0;
+
+        //	2) send the firmware to Control Endpoint 0
+        // when sending firmware, we need to break up the loaded fimware
+        //		into MAX_CONTROL_XFER_SIZE blocks
+        //
+        // this means:
+        //	a) the address to load it to needs to be changed (VendorRequest.Value)
+        //	b) need a pointer that moves through FWbuffer (pBuffer)
+        //	c) keep track of remaining bytes to transfer (FWsize_left);
 
 
-            dataBuffer = new USBIO_DATA_BUFFER(commandlength);
-            System.arraycopy(bytearray, index, dataBuffer.Buffer(), 0, commandlength);
+        //send all but last chunk
+        vendorRequest.Value = 0;			//address of firmware location
+        dataBuffer = new USBIO_DATA_BUFFER(MAX_CONTROL_XFER_SIZE);
+        dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
 
-            this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, command, (short) 0, dataBuffer);
-
-            VendorRequest = new USBIO_CLASS_OR_VENDOR_REQUEST();
-            dataBuffer = new USBIO_DATA_BUFFER(2);
-
-            VendorRequest.Flags = UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
-            VendorRequest.Type = UsbIoInterface.RequestTypeVendor;
-            VendorRequest.Recipient = UsbIoInterface.RecipientDevice;
-            VendorRequest.RequestTypeReservedBits = 0;
-            VendorRequest.Request = VR_DOWNLOAD_FIRMWARE;
-            VendorRequest.Index = 0;
-            VendorRequest.Value = 0;
-
-            dataBuffer.setNumberOfBytesToTransfer(2);
-            status = gUsbIo.classOrVendorInRequest(dataBuffer, VendorRequest);
-
-            if (status != USBIO_ERR_SUCCESS) {
-                throw new HardwareInterfaceException("Unable to receive xsvf error code: " + UsbIo.errorText(status));
+        numChunks = bytearray.length / MAX_CONTROL_XFER_SIZE;  // this is number of full chunks to send
+        for (int i = 0; i < numChunks; i++) {
+            System.arraycopy(bytearray, i * MAX_CONTROL_XFER_SIZE, dataBuffer.Buffer(), 0, MAX_CONTROL_XFER_SIZE);
+            result = gUsbIo.classOrVendorOutRequest(dataBuffer, vendorRequest);
+            if (result != USBIO_ERR_SUCCESS) {
+                close();
+                throw new HardwareInterfaceException("Error on downloading segment number " + i + " of CPLD firmware: " + UsbIo.errorText(result));
             }
-
-            HardwareInterfaceException.clearException();
-
-            // log.info("bytes transferred" + dataBuffer.getBytesTransferred());
-            if (dataBuffer.getBytesTransferred() == 0) {
-                this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
-                throw new HardwareInterfaceException("Unable to program CPLD, could not get xsvf Error code");
-            }
-            if (dataBuffer.Buffer()[1] == 10) {
-                this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
-                throw new HardwareInterfaceException("Unable to program CPLD, command too long, please report to raphael@ini.ch, command: " + command + " index: " + index + " commandlength " + commandlength);
-            } else if (dataBuffer.Buffer()[1] > 0) {
-                this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
-                throw new HardwareInterfaceException("Unable to program CPLD, error code: " + dataBuffer.Buffer()[1] + ", at command: " + command + " index: " + index + " commandlength " + commandlength);
-            // System.out.println("Unable to program CPLD, unable to program CPLD, error code: " + dataBuffer.Buffer()[1] + ", at command: " + command + " index: " + index + " commandlength " + commandlength);
-            }
-
-            index += commandlength;
-            command = bytearray[index];
-            // can't cancel
+            progressMonitor.setProgress(vendorRequest.Value);
+            progressMonitor.setNote(String.format("sent %d of %d bytes of CPLD configuration", vendorRequest.Value, bytearray.length));
+            vendorRequest.Value += MAX_CONTROL_XFER_SIZE;			//change address of firmware location
             if (progressMonitor.isCanceled()) {
                 progressMonitor = makeProgressMonitor("Writing CPLD configuration - do not unplug", 0, bytearray.length);
             }
-            progressMonitor.setProgress(index);
-            progressMonitor.setNote(String.format("sent %d of %d bytes of CPLD configuration", index, bytearray.length));
-         //complete
+        }
 
-        log.info("sending XCOMPLETE");
-        this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, (short)0, (short) 0);
+        // now send final (short) chunk
+        int numBytesLeft = bytearray.length % MAX_CONTROL_XFER_SIZE;  // remainder
+        if (numBytesLeft > 0) {
+            dataBuffer = new USBIO_DATA_BUFFER(numBytesLeft);
+            dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
+        //    vendorRequest.Index = 1; // indicate that this is the last chuck, now program CPLD
+            System.arraycopy(bytearray, numChunks * MAX_CONTROL_XFER_SIZE, dataBuffer.Buffer(), 0, numBytesLeft);
+
+            // send remaining part of firmware
+            result = gUsbIo.classOrVendorOutRequest(dataBuffer, vendorRequest);
+            if (result != USBIO_ERR_SUCCESS) {
+                close();
+                throw new HardwareInterfaceException("Error on downloading final segment of CPLD firmware: " + UsbIo.errorText(result));
+            }
+        }
+
+        vendorRequest = new USBIO_CLASS_OR_VENDOR_REQUEST();
+        dataBuffer = new USBIO_DATA_BUFFER(1);
+
+        vendorRequest.Flags = UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
+        vendorRequest.Type = UsbIoInterface.RequestTypeVendor;
+        vendorRequest.Recipient = UsbIoInterface.RecipientDevice;
+        vendorRequest.RequestTypeReservedBits = 0;
+        vendorRequest.Request = VR_DOWNLOAD_FIRMWARE;
+        vendorRequest.Index = 1;
+        vendorRequest.Value = 0;
+
+        dataBuffer.setNumberOfBytesToTransfer(1);
+        status = gUsbIo.classOrVendorOutRequest(dataBuffer, vendorRequest);
+
+        if (status != USBIO_ERR_SUCCESS) {
+            log.info(UsbIo.errorText(status));
+            try{
+            Thread.sleep(2000);
+            this.open();
+            }
+            catch (Exception e)
+            {}
+        }
+        
+        vendorRequest = new USBIO_CLASS_OR_VENDOR_REQUEST();
+        dataBuffer = new USBIO_DATA_BUFFER(10);
+
+        vendorRequest.Flags = UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
+        vendorRequest.Type = UsbIoInterface.RequestTypeVendor;
+        vendorRequest.Recipient = UsbIoInterface.RecipientDevice;
+        vendorRequest.RequestTypeReservedBits = 0;
+        vendorRequest.Request = VR_DOWNLOAD_FIRMWARE;
+        vendorRequest.Index = 0;
+        vendorRequest.Value = 0;
+
+        dataBuffer.setNumberOfBytesToTransfer(10);
+        status = gUsbIo.classOrVendorInRequest(dataBuffer, vendorRequest);
+
+        if (status != USBIO_ERR_SUCCESS) {
+            throw new HardwareInterfaceException("Unable to receive error code: " + UsbIo.errorText(status));
+        }
+
+        HardwareInterfaceException.clearException();
+
+        // log.info("bytes transferred" + dataBuffer.getBytesTransferred());
+        if (dataBuffer.getBytesTransferred() == 0) {
+            //this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
+            throw new HardwareInterfaceException("Unable to program CPLD, could not get xsvf Error code");
+        }
         progressMonitor.close();
 
+        if (dataBuffer.Buffer()[1] != 0) {
+            //this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
+            int dataindex = (dataBuffer.Buffer()[6] << 24 ) |  (dataBuffer.Buffer()[7] << 16 ) | (dataBuffer.Buffer()[8] << 8 ) | (dataBuffer.Buffer()[9]);
+            int algoindex = (dataBuffer.Buffer()[2] << 24 ) |  (dataBuffer.Buffer()[3] << 16 ) | (dataBuffer.Buffer()[4] << 8 ) | (dataBuffer.Buffer()[5]);
+            throw new HardwareInterfaceException("Unable to program CPLD, error code: " + dataBuffer.Buffer()[1] + " algo index: " + algoindex + " data index " + dataindex);
+        // System.out.println("Unable to program CPLD, unable to program CPLD, error code: " + dataBuffer.Buffer()[1] + ", at command: " + command + " index: " + index + " commandlength " + commandlength);
+        }
     }
 
     /** 
