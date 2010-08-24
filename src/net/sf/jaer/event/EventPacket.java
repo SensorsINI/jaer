@@ -511,6 +511,14 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return eventPrototype;
     }
 
+    /** Sets the prototype event of the packet.
+     * E the event prototype which is an instance of an event.
+     *
+     */
+    final public void setEventPrototype(E e) {
+        eventPrototype=e;
+    }
+
     /** Initializes and returns the iterator */
     final public Iterator<E> iterator() {
         return inputIterator();

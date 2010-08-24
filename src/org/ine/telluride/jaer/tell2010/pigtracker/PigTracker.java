@@ -2,7 +2,6 @@ package org.ine.telluride.jaer.tell2010.pigtracker;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Container;
 import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.event.ActionEvent;
@@ -25,6 +24,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
@@ -111,14 +111,13 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-        checkOutputPacketEventType(PigTrackerEvent.class);
+        checkOutputPacketEventType(TypedEvent.class);
         OutputEventIterator outItr = out.outputIterator();
         for (BasicEvent e : in) {
             PolarityEvent ev = (PolarityEvent) e;
-            PigTrackerEvent oe = (PigTrackerEvent) outItr.nextOutput();
+            TypedEvent oe = (TypedEvent) outItr.nextOutput();
             oe.copyFrom(ev);
             if (processNewEvent(ev)) {
-                oe.colorIt = true;
                 oe.type=(byte)(ev.type+2);
             }
         }
@@ -284,6 +283,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         trackCapture.setSelected(prefs.getBoolean("trackCapture", false));
 
         computeTrackingMode();
+        initTemplate();
     }
 
     public class SliderListener implements ChangeListener {
@@ -409,17 +409,17 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
     private void computeCaptureObject() {
 
-        StringBuilder sb = new StringBuilder("Capture Done ... now computing object");
-        for (int y = 0; y < sy; y++) {
-            for (int x = 0; x < sx; x++) {
-                if (captureEventMatrix[x][y] == true) {
-                    sb.append("*");
-                } else {
-                    sb.append("\n");
-                }
-            }
-            log.info(sb.toString());
-        }
+//        StringBuilder sb = new StringBuilder("Capture Done ... now computing object");
+//        for (int y = 0; y < sy; y++) {
+//            for (int x = 0; x < sx; x++) {
+//                if (captureEventMatrix[x][y] == true) {
+//                    sb.append("*");
+//                } else {
+//                    sb.append("\n");
+//                }
+//            }
+//            log.info(sb.toString());
+//        }
 
         // this is your sx  x sy matrix of booleans:
         // captureEventMatrix[x][y]
@@ -652,8 +652,8 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
             double gey = tmpY / den2;
 
 
-            gl.glVertex2d((sx2 * (gsx + 1) * 4), (sy2 * (gsy + 1) * 4));
-            gl.glVertex2d((sx2 * (gex + 1) * 4), (sy2 * (gey + 1) * 4));
+            gl.glVertex2d((sx2 * (gsx + 1)), (sy2 * (gsy + 1)));
+            gl.glVertex2d((sx2 * (gex + 1)), (sy2 * (gey + 1)));
 //            g.drawLine((int) (sx2 * (gsx + 1) * 4), (int) (sy2 * (gsy + 1) * 4), (int) (sx2 * (gex + 1) * 4), (int) (sy2 * (gey + 1) * 4));
 
             // reset template to current state
@@ -669,7 +669,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
     }
 
-    public void paintComponent(Graphics g) {
+    public void XXpaintComponent(Graphics g) {
 
         double l1, l2, l3, l4, l5, l6, l7, l8, l9;				// this is the inverse of the m matrix
 
@@ -718,18 +718,19 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
     public boolean processNewEvent(PolarityEvent ev) {
         int eventX = ev.x, eventY = ev.y;
         int eventP = ev.type;
-        if (trackCaptureEventCounter != 0) {
-            //log.info("Collecting this event " + trackCaptureEventCounter);
-            captureEventMatrix[eventX][eventY] = true;
-            trackCaptureEventCounter++;
-            if (trackCaptureEventCounter == numberOfCaptureEvents) {
-                computeCaptureObject();
-            }
-            return true;
-        }
 
-        double eX = (((double) eventX) / chip.getSizeX() / 2) - 1.0;
-        double eY = (((double) eventY) / sy / 2) - 1.0;
+//        if (trackCaptureEventCounter != 0) {
+//            //log.info("Collecting this event " + trackCaptureEventCounter);
+//            captureEventMatrix[eventX][eventY] = true;
+//            trackCaptureEventCounter++;
+//            if (trackCaptureEventCounter == numberOfCaptureEvents) {
+//                computeCaptureObject();
+//            }
+//            return true;
+//        }
+
+        double eX = (((double) eventX) / (sx / 2)) - 1.0;
+        double eY = (((double) eventY) / (sy / 2)) - 1.0;
 
         double minErr = 100000;
         int minDistIndex = -1;
@@ -1100,6 +1101,11 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         ley[55] = 0.756614;
 
         numberOfLinesInUse = 56;
+
+        for (int fy=0; fy<=numberOfLinesInUse; fy++) {
+            lsy[fy] = -lsy[fy];
+            ley[fy] = -ley[fy];
+        }
     }
 
     private void initPig20() {
@@ -1204,6 +1210,12 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         ley[19] = 0.650794;
 
         numberOfLinesInUse = 20;
+
+        for (int fy=0; fy<=numberOfLinesInUse; fy++) {
+            lsy[fy] = -lsy[fy];
+            ley[fy] = -ley[fy];
+        }
+
     }
 
     private void initSquare() {
@@ -1237,6 +1249,10 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
             ley[n] = (ley[n] / sy2) - 1.0;
         }
 
+        for (int fy=0; fy<=numberOfLinesInUse; fy++) {
+            lsy[fy] = -lsy[fy];
+            ley[fy] = -ley[fy];
+        }
     }
 
     private void initA() {
@@ -1265,6 +1281,10 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
             ley[n] = (ley[n] / 64.0) - 1.0;
         }
 
+        for (int fy=0; fy<=numberOfLinesInUse; fy++) {
+            lsy[fy] = -lsy[fy];
+            ley[fy] = -ley[fy];
+        }
     }
 
     private void initI() {
@@ -1293,5 +1313,9 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
             ley[n] = (ley[n] / 64.0) - 1.0;
         }
 
+        for (int fy=0; fy<=numberOfLinesInUse; fy++) {
+            lsy[fy] = -lsy[fy];
+            ley[fy] = -ley[fy];
+        }
     }
 }
