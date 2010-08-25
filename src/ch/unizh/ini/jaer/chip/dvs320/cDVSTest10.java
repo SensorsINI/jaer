@@ -261,6 +261,7 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
             ssBiases[2] = sspMid;
             ssBiases[3] = ssp;
 
+
             setPotArray(new IPotArray(this));
             /*
              *
@@ -364,6 +365,7 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
                     hp.loadPreference();
                 }
             }
+            if(ssBiases!=null) for(ShiftedSourceBias ss:ssBiases) ss.loadPreferences();
         }
 
         @Override
@@ -372,6 +374,7 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
             for (HasPreference hp : hasPreferencesList) {
                 hp.storePreference();
             }
+            if(ssBiases!=null) for(ShiftedSourceBias ss:ssBiases) ss.storePreferences();
         }
 
         /**

@@ -7,7 +7,6 @@ package ch.unizh.ini.jaer.chip.dvs320;
 import javax.swing.JComponent;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.IPot;
-import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.util.RemoteControlCommand;
 
 /**
@@ -47,19 +46,19 @@ public class ShiftedSourceBias extends IPot {
         }
     }
     private VoltageLevel voltageLevel = VoltageLevel.SplitGate;
-    protected static int bitValueMask = 0xfc00; // 22 bits at lsb position
+    protected int bitValueMask = 0xfc00; // 22 bits at lsb position
     /** Bit mask for buffer bias bits */
-    protected static int bufferBiasMask = 0x00fc;
+    protected  int bufferBiasMask = 0x00fc;
     /** Number of bits used for bias value */
-    protected static int numBiasBits = Integer.bitCount(bitValueMask);
+    protected int numBiasBits = Integer.bitCount(bitValueMask);
     /** The number of bits specifying buffer bias current as fraction of master bias current */
-    protected static int numBufferBiasBits = Integer.bitCount(bufferBiasMask);
+    protected int numBufferBiasBits = Integer.bitCount(bufferBiasMask);
     /** The bit value of the buffer bias current */
     protected int bufferBitValue = (1 << numBufferBiasBits) - 1;
     /** Maximum buffer bias value (all bits on) */
-    public static int maxBuffeBitValue = (1 << numBufferBiasBits) - 1;
+    public int maxBuffeBitValue = (1 << numBufferBiasBits) - 1;
     /** Max bias bit value */
-    public static int maxBitValue = (1 << numBiasBits) - 1;
+    public int maxBitValue = (1 << numBiasBits) - 1;
     protected final String SETBUFBITVAL = "setbufbitval_", SETVLEVEL = "setvlevel_", SETMODE = "setmode_", SETVBITVAL = "setvbitval_";
 
     public ShiftedSourceBias(Biasgen biasgen) {
@@ -228,7 +227,7 @@ public class ShiftedSourceBias extends IPot {
      */
     @Override
     protected String prefsKey() {
-        return biasgen.getChip().getClass().getSimpleName() + ".ConfigurableIPot." + name;
+        return biasgen.getChip().getClass().getSimpleName() + ".ShiftedSourceBias." + name;
     }
     static String KEY_BITVALUE = "BitValue",
             KEY_BUFFER_BITVALUE = "BufferBitValue",
@@ -249,10 +248,10 @@ public class ShiftedSourceBias extends IPot {
 
     /** loads and makes active the preference value. The name should be set before this is called. */
     @Override
-    public void loadPreferences() {
+    public final void loadPreferences() {
         String s = prefsKey() + SEP;
         bitValue = prefs.getInt(s + KEY_BITVALUE, 0);
-        bufferBitValue = prefs.getInt(s + KEY_BUFFER_BITVALUE, ConfigurableIPotRev0.maxBuffeBitValue);
+        bufferBitValue = prefs.getInt(s + KEY_BUFFER_BITVALUE, maxBuffeBitValue);
         setOperatingMode(OperatingMode.valueOf(prefs.get(s + KEY_OPERATINGMODE, OperatingMode.ShiftedSource.toString())));
         setVoltageLevel(VoltageLevel.valueOf(prefs.get(s + KEY_VOLTAGELEVEL, VoltageLevel.SplitGate.toString())));
         setModified(false);
@@ -286,13 +285,14 @@ public class ShiftedSourceBias extends IPot {
         return i;
     }
 
+    @Override
     public String toString() {
         return super.toString() + " Sex=" + getSex() +" bitValue="+bitValue+ " bufferBitValue=" + bufferBitValue+" operatingMode="+getOperatingMode()+" voltageLevel="+getVoltageLevel();
     }
 
     /** Overrides super of type (NORNAL or CASCODE) to call observers */
     @Override
-    public void setType(Type type) {
+    public final void setType(Type type) {
         if (type == null) {
             return;
         }
@@ -305,7 +305,7 @@ public class ShiftedSourceBias extends IPot {
 
     /** Overrides super of setSex (N or P) to call observers */
     @Override
-    public void setSex(Sex sex) {
+    public final void setSex(Sex sex) {
         if (sex == null) {
             return;
         }
