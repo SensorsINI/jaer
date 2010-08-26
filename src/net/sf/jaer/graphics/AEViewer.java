@@ -1576,7 +1576,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }
                         }
                         if ( packet == null ){
-                            log.warning("null packet after filtering");
+                         //   log.warning("null packet after filtering");
                             continue;
                         }
                     }
