@@ -190,6 +190,7 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
     /** Loads preferences (preferred values) for the potArray and masterbias. Subclasses should override this method
      * to load additional information.
      */
+    @Override
     public void loadPreferences (){
 //        log.info("Biasgen.loadPreferences()");
         startBatchEdit();
@@ -210,9 +211,9 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      * call storePreferences explicitly for additional configuration.
      */
     public void storePreferences (){
+        log.info("storing preferences to preferences tree");
         potArray.storePreferences();
         masterbias.storePreferences();
-        log.info("stored preferences to preferences tree");
     }
 
     /** Use this method to put a value only if the value is different than the stored Preference value.

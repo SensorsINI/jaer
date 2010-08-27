@@ -247,7 +247,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
         biasSlider.setAlignmentX(0.0F);
         biasSlider.setMaximumSize(new java.awt.Dimension(32767, 16));
         biasSlider.setMinimumSize(new java.awt.Dimension(36, 10));
-        biasSlider.setPreferredSize(new java.awt.Dimension(400, 25));
+        biasSlider.setPreferredSize(new java.awt.Dimension(300, 25));
         biasSlider.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mousePressed(java.awt.event.MouseEvent evt) {
                 biasSliderMousePressed(evt);
@@ -634,7 +634,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
      */
     void startEdit() {
 //        System.out.println("ipot start edit "+pot);
-        edit = new MyStateEdit(this, "pot change");
+        edit = new MyStateEdit(this, "ConfigurableIPotGUIControl");
 //         oldPotValue=pot.getBitValue();
     }
 
@@ -823,7 +823,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     /** called when Observable changes (pot changes) */
     @Override
     public void update(Observable observable, Object obj) {
-        if (observable instanceof IPot) {
+        if (observable instanceof ConfigurableIPotRev0) {
 //            log.info("observable="+observable);
             SwingUtilities.invokeLater(new Runnable() {
 

@@ -157,12 +157,12 @@ public class ShiftedSourceControls extends javax.swing.JPanel implements Observe
         });
         add(voltageLevelComboBox);
 
-        biasSlider.setToolTipText("Slide to adjust bias");
+        biasSlider.setToolTipText("Slide to adjust shifted source voltage");
         biasSlider.setValue(0);
         biasSlider.setAlignmentX(0.0F);
         biasSlider.setMaximumSize(new java.awt.Dimension(32767, 16));
         biasSlider.setMinimumSize(new java.awt.Dimension(36, 10));
-        biasSlider.setPreferredSize(new java.awt.Dimension(400, 25));
+        biasSlider.setPreferredSize(new java.awt.Dimension(300, 25));
         biasSlider.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mousePressed(java.awt.event.MouseEvent evt) {
                 biasSliderMousePressed(evt);
@@ -223,7 +223,7 @@ public class ShiftedSourceControls extends javax.swing.JPanel implements Observe
         });
         bufferBiasPanel.setLayout(new javax.swing.BoxLayout(bufferBiasPanel, javax.swing.BoxLayout.X_AXIS));
 
-        bufferBiasSlider.setToolTipText("Slide to adjust buffer bias");
+        bufferBiasSlider.setToolTipText("Slide to adjust internal buffer bias for shifted source");
         bufferBiasSlider.setValue(0);
         bufferBiasSlider.setAlignmentX(0.0F);
         bufferBiasSlider.setMaximumSize(new java.awt.Dimension(32767, 50));
@@ -518,7 +518,7 @@ private void voltageLevelComboBoxActionPerformed(java.awt.event.ActionEvent evt)
      */
     void startEdit() {
 //        System.out.println("ipot start edit "+pot);
-        edit = new MyStateEdit(this, "pot change");
+        edit = new MyStateEdit(this, "ShiftedSourceControlsEdit");
 //         oldPotValue=pot.getBitValue();
     }
 
@@ -581,8 +581,8 @@ private void voltageLevelComboBoxActionPerformed(java.awt.event.ActionEvent evt)
     }
     private static EngineeringFormat engFormat = new EngineeringFormat();
 
-    /** updates the GUI slider and text
-    fields to match actual pot values. Neither of these trigger events.
+    /** updates the GUI slider and text fields to match actual pot values.
+     * These updates should not trigger events that cause edits to be stored.
      */
     protected final void updateAppearance() {
         if (pot == null) {
@@ -609,8 +609,13 @@ private void voltageLevelComboBoxActionPerformed(java.awt.event.ActionEvent evt)
         bufferBiasSlider.setValue(bufferSliderValueFromBitValue());
         bufferBiasTextField.setText(engFormat.format(pot.getBufferCurrent()));
 
-        voltageLevelComboBox.setSelectedItem(pot.getVoltageLevel());
-        operatingModeComboBox.setSelectedItem(pot.getOperatingMode());
+
+        if(voltageLevelComboBox.getSelectedItem()!=pot.getVoltageLevel()){
+            voltageLevelComboBox.setSelectedItem(pot.getVoltageLevel());
+        }
+        if(operatingModeComboBox.getSelectedItem()!=pot.getOperatingMode()){
+            operatingModeComboBox.setSelectedItem(pot.getOperatingMode());
+        }
 
     }
     // following two methods compute slider/bit value inverses
@@ -685,7 +690,7 @@ private void voltageLevelComboBoxActionPerformed(java.awt.event.ActionEvent evt)
 
     /** called when Observable changes (pot changes) */
     public void update(Observable observable, Object obj) {
-        if (observable instanceof IPot) {
+        if (observable instanceof ShiftedSourceBias) {
 //            log.info("observable="+observable);
             SwingUtilities.invokeLater(new Runnable() {
 

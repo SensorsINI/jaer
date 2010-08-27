@@ -48,7 +48,7 @@ public class ShiftedSourceBias extends IPot {
     private VoltageLevel voltageLevel = VoltageLevel.SplitGate;
     protected int bitValueMask = 0xfc00; // 22 bits at lsb position
     /** Bit mask for buffer bias bits */
-    protected  int bufferBiasMask = 0x00fc;
+    protected int bufferBiasMask = 0x00fc;
     /** Number of bits used for bias value */
     protected int numBiasBits = Integer.bitCount(bitValueMask);
     /** The number of bits specifying buffer bias current as fraction of master bias current */
@@ -63,6 +63,7 @@ public class ShiftedSourceBias extends IPot {
 
     public ShiftedSourceBias(Biasgen biasgen) {
         super(biasgen);
+
     }
 
     /** Creates a new instance of IPot
@@ -92,13 +93,19 @@ public class ShiftedSourceBias extends IPot {
         this.tooltipString = tooltipString;
         this.shiftRegisterNumber = shiftRegisterNumber;
         loadPreferences(); // do this after name is set
+
+//        System.out.println(this);
+    }
+
+    @Override
+    public void setName(String name) {
+        super.setName(name);
         if (chip.getRemoteControl() != null) {
             chip.getRemoteControl().addCommandListener(this, String.format(SETBUFBITVAL + "%s <bitvalue>", getName()), "Set the bufferBitValue of shifted source " + getName());
             chip.getRemoteControl().addCommandListener(this, String.format(SETVBITVAL + "%s <bitvalue>", getName()), "Set the voltage bit level of shifted source " + getName());
             chip.getRemoteControl().addCommandListener(this, String.format(SETVLEVEL + "%s " + getEnumOptions(VoltageLevel.class), getName()), "Set the type of shifted source " + getName());
             chip.getRemoteControl().addCommandListener(this, String.format(SETMODE + "%s " + getEnumOptions(OperatingMode.class), getName()), "Set the current level of shifted source " + getName());
         }
-//        System.out.println(this);
     }
 
     // returns e.g. <NORMAL|CASCODE>
@@ -287,7 +294,7 @@ public class ShiftedSourceBias extends IPot {
 
     @Override
     public String toString() {
-        return super.toString() + " Sex=" + getSex() +" bitValue="+bitValue+ " bufferBitValue=" + bufferBitValue+" operatingMode="+getOperatingMode()+" voltageLevel="+getVoltageLevel();
+        return super.toString() + " Sex=" + getSex() + " bitValue=" + bitValue + " bufferBitValue=" + bufferBitValue + " operatingMode=" + getOperatingMode() + " voltageLevel=" + getVoltageLevel();
     }
 
     /** Overrides super of type (NORNAL or CASCODE) to call observers */
@@ -354,13 +361,17 @@ public class ShiftedSourceBias extends IPot {
     }
 
     public void setOperatingMode(OperatingMode operatingMode) {
-        if(operatingMode!=this.operatingMode) setChanged();
+        if (operatingMode != this.operatingMode) {
+            setChanged();
+        }
         this.operatingMode = operatingMode;
         notifyObservers();
     }
 
     public void setVoltageLevel(VoltageLevel voltageLevel) {
-        if(voltageLevel!=this.voltageLevel) setChanged();
+        if (voltageLevel != this.voltageLevel) {
+            setChanged();
+        }
         this.voltageLevel = voltageLevel;
         notifyObservers();
     }

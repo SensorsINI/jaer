@@ -234,25 +234,25 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
 
             ssn = new ShiftedSourceBias(this);
             ssn.setSex(Pot.Sex.N);
-            ssn.setName("NSS");
+            ssn.setName("SSN");
             ssn.setTooltipString("n-type shifted source that generates a regulated voltage near ground");
             ssn.addObserver(this);
 
             ssp = new ShiftedSourceBias(this);
             ssp.setSex(Pot.Sex.P);
-            ssp.setName("PSS");
+            ssp.setName("SSP");
             ssp.setTooltipString("p-type shifted source that generates a regulated voltage near Vdd");
             ssp.addObserver(this);
 
             ssnMid = new ShiftedSourceBias(this);
             ssnMid.setSex(Pot.Sex.N);
-            ssnMid.setName("NSS high");
+            ssnMid.setName("SSNMid");
             ssnMid.setTooltipString("n-type shifted source that generates a regulated voltage inside rail, about 2 diode drops from ground");
             ssnMid.addObserver(this);
 
             sspMid = new ShiftedSourceBias(this);
             sspMid.setSex(Pot.Sex.P);
-            sspMid.setName("PSS high");
+            sspMid.setName("SSPMid");
             sspMid.setTooltipString("p-type shifted source that generates a regulated voltage about 2 diode drops from Vdd");
             sspMid.addObserver(this);
 

@@ -7,6 +7,7 @@ package ch.unizh.ini.jaer.chip.dvs320;
 
 
 
+import java.util.prefs.PreferenceChangeEvent;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.IPot;
 import javax.swing.JComponent;
@@ -348,11 +349,42 @@ public class ConfigurableIPotRev0 extends IPot {
         setType(Pot.Type.valueOf(prefs.get(s+KEY_TYPE,Type.NORMAL.toString())));
         setModified(false);
     }
-    
-    /** returns the preference value */
+
+    @Override
+    public void preferenceChange(PreferenceChangeEvent e) {
+        // TODO we get pref change events here but by this time the new values have already been set and there is no change in value so the GUI elements are not updated
+        try {
+            String base = prefsKey() + SEP;
+            String key = e.getKey();
+            if(!key.startsWith(base)) return;
+            String val = e.getNewValue();
+            log.info("key="+key+" value="+val);
+            if (key.equals(base + KEY_BITVALUE)) {
+                if(getBitValue()!=Integer.parseInt(val)){
+                    log.info("bit value change from preferences");
+                }
+                setBitValue(Integer.parseInt(val));
+            } else if (key.equals(base + KEY_BUFFER_BITVALUE)) {
+                setBufferBitValue(Integer.parseInt(val));
+            } else if (key.equals(base + KEY_ENABLED)) {
+                setEnabled(Boolean.parseBoolean(val));
+            } else if (key.equals(base + KEY_LOWCURRENT_ENABLED)) {
+                setLowCurrentModeEnabled(Boolean.parseBoolean(val));
+            } else if (key.equals(base + KEY_SEX)) {
+                setSex(Pot.Sex.valueOf(val));
+            } else if (key.equals(base + KEY_TYPE)) {
+                setType(Pot.Type.valueOf(val));
+            }
+        } catch (Exception ex) {
+            log.warning("while responding to preference change event " + e + ", caught " + ex.toString());
+        }
+    }
+
+    /** returns the preference value of the bias current.
+     */
     @Override
     public int getPreferedBitValue(){
-        String key=prefsKey();
+        String key=prefsKey()+SEP+KEY_BITVALUE;
         int v=prefs.getInt(key,0);
         return v;
     }
