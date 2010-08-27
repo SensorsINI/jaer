@@ -24,6 +24,7 @@ import javax.swing.JTabbedPane;
 import net.sf.jaer.biasgen.Pot.Sex;
 import net.sf.jaer.biasgen.Pot.Type;
 import net.sf.jaer.graphics.DisplayMethod;
+import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 
@@ -664,7 +665,11 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
             BiasOutputMux() {
                 super(4, 16, new DigitalOutputMap());
                 setName("Bias");
-            }
+                 RemoteControl rc = getRemoteControl();
+                if (rc != null) {
+                    rc.addCommandListener(this, CMD_SELECTMUX + getName() + " <channelNumber>", "Selects a multiplexer output");
+                }
+           }
         }
 
         // the output muxes
