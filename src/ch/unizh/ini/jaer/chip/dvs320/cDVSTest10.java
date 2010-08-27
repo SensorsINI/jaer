@@ -100,8 +100,8 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
      */
     public class cDVSTestExtractor extends RetinaExtractor {
 
-//        public static final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0xff000,  YSHIFT = 12,  INTENSITYMASK = 0x40000;
-        public static final int XMASK = 0x3fe, XSHIFT = 1, YMASK = 0x3fc00, YSHIFT = 10, INTENSITYMASK = 0x40000;
+//        public static final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0x000,  YSHIFT = 12,  INTENSITYMASK = 0x40000;
+        public static final int XMASK = 0x0fe, XSHIFT = 1, YMASK = 0x3f000, YSHIFT = 12, INTENSITYMASK = 0x40000;
         private int lastIntenTs = 0;
 
         public cDVSTestExtractor(cDVSTest10 chip) {
