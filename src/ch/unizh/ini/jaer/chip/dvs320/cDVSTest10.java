@@ -189,7 +189,9 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
 
     /**
      * Describes ConfigurableIPots on cDVSTest retina chip as well as the other configuration bits which control, for example, which
-     * outputs are selected. These are all configured by a single shared shift register. 
+     * outputs are selected. These are all configured by a single shared shift register.
+     * <p>
+     * With Rx=82k, measured Im=2uA. With Rx=27k, measured Im=8uA.
      * <p>
      * cDVSTest has a pair of shared shifted sources, one for n-type and one for p-type. These sources supply a regulated voltaqe near the power rail.
      * The shifted sources are programed by bits at the start of the global shared shift register.

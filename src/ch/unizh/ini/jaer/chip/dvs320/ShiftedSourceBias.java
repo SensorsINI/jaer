@@ -19,7 +19,7 @@ public class ShiftedSourceBias extends IPot {
 
         ShiftedSource(0), TiedToRail(1), HiZ(2);
         private final int bits;
-        private final int mask = 0x0003; // at head of 16 bit shift register for shifted source
+        public static final int mask = 0x0003; // at head of 16 bit shift register for shifted source
 
         OperatingMode(int b) {
             this.bits = b;
@@ -35,7 +35,7 @@ public class ShiftedSourceBias extends IPot {
 
         SplitGate(0), SingleDiode(1), DoubleDiode(2);
         private final int bits;
-        private final int mask = 0x0300; // at start of second byte of 16 bit shift register for shifted source
+        public static final int mask = 0x0300; // at start of second byte of 16 bit shift register for shifted source
 
         VoltageLevel(int b) {
             this.bits = b;
@@ -46,9 +46,9 @@ public class ShiftedSourceBias extends IPot {
         }
     }
     private VoltageLevel voltageLevel = VoltageLevel.SplitGate;
-    protected int bitValueMask = 0xfc00; // 22 bits at lsb position
+    protected int bitValueMask = 0xfc00; // 6 bits for level of shifted source
     /** Bit mask for buffer bias bits */
-    protected int bufferBiasMask = 0x00fc;
+    protected int bufferBiasMask = 0x00fc; // 6 bits for bias current for shifted source buffer amplifier
     /** Number of bits used for bias value */
     protected int numBiasBits = Integer.bitCount(bitValueMask);
     /** The number of bits specifying buffer bias current as fraction of master bias current */
@@ -56,7 +56,7 @@ public class ShiftedSourceBias extends IPot {
     /** The bit value of the buffer bias current */
     protected int bufferBitValue = (1 << numBufferBiasBits) - 1;
     /** Maximum buffer bias value (all bits on) */
-    public int maxBuffeBitValue = (1 << numBufferBiasBits) - 1;
+    public int maxBufferBitValue = (1 << numBufferBiasBits) - 1;
     /** Max bias bit value */
     public int maxBitValue = (1 << numBiasBits) - 1;
     protected final String SETBUFBITVAL = "setbufbitval_", SETVLEVEL = "setvlevel_", SETMODE = "setmode_", SETVBITVAL = "setvbitval_";
@@ -167,7 +167,7 @@ public class ShiftedSourceBias extends IPot {
     }
 
     /** Set the buffer bias bit value
-     * @param bufferBitValue the value which has maxBuffeBitValue as maximum and specifies fraction of master bias
+     * @param bufferBitValue the value which has maxBufferBitValue as maximum and specifies fraction of master bias
      */
     public void setBufferBitValue(int bufferBitValue) {
         int oldBitValue = this.bufferBitValue;
@@ -200,20 +200,33 @@ public class ShiftedSourceBias extends IPot {
         if (o < 0) {
             n = 0;
         }
-        if (o > maxBuffeBitValue) {
-            n = maxBuffeBitValue;
+        if (o > maxBufferBitValue) {
+            n = maxBufferBitValue;
         }
         return n;
     }
 
-    /** Computes the actual bit pattern to be sent to chip based on configuration values */
+    /** Computes the actual bit pattern to be sent to chip based on configuration values.
+     * The order of the bits from the input end of the shift register is 
+     * operating mode config bits, buffer bias current code bits, voltage level config bits, voltage level code bits.
+     */
     protected int computeBinaryRepresentation() {
-        int ret = getOperatingMode().bits() | bufferBitValue << Integer.numberOfTrailingZeros(bufferBiasMask) | getVoltageLevel().bits() | bitValue << Integer.numberOfTrailingZeros(bitValueMask);
-
+        int ret = ((OperatingMode.mask & getOperatingMode().bits()) //0x0003
+                | (bufferBiasMask& (bufferBitValue << Integer.numberOfTrailingZeros(bufferBiasMask))) // 0xfc00
+                | (VoltageLevel.mask & (getVoltageLevel().bits())) // 0x0300
+                | (bitValueMask& (bitValue << Integer.numberOfTrailingZeros(bitValueMask)))
+                &0xffff); // 0x00fc
+        System.out.println("bit value = "+Integer.toBinaryString(bitValue << Integer.numberOfTrailingZeros(bitValueMask))+" for "+this);
+//        log.info("binary value="+Integer.toBinaryString(ret)+" for "+this);
         return ret;
     }
     private byte[] bytes = null;
 
+    /** returns a byte[] with the short binary representation in big endian order (MSB to LSB) of the binary representation
+     * of the shifted source to be written to the SPI port.
+     * The SPI routine writes bytes in the order passed from here. The bits in each byte are written in big endian order, msb to lsb.
+     * @return byte[] of length 2.
+     */
     @Override
     public byte[] getBinaryRepresentation() {
         int n = 2;
@@ -258,7 +271,7 @@ public class ShiftedSourceBias extends IPot {
     public final void loadPreferences() {
         String s = prefsKey() + SEP;
         bitValue = prefs.getInt(s + KEY_BITVALUE, 0);
-        bufferBitValue = prefs.getInt(s + KEY_BUFFER_BITVALUE, maxBuffeBitValue);
+        bufferBitValue = prefs.getInt(s + KEY_BUFFER_BITVALUE, maxBufferBitValue);
         setOperatingMode(OperatingMode.valueOf(prefs.get(s + KEY_OPERATINGMODE, OperatingMode.ShiftedSource.toString())));
         setVoltageLevel(VoltageLevel.valueOf(prefs.get(s + KEY_VOLTAGELEVEL, VoltageLevel.SplitGate.toString())));
         setModified(false);
@@ -280,7 +293,7 @@ public class ShiftedSourceBias extends IPot {
     public float setBufferCurrent(float current) {
         float im = masterbias.getCurrent();
         float r = current / im;
-        setBufferBitValue(Math.round(r * maxBuffeBitValue));
+        setBufferBitValue(Math.round(r * maxBufferBitValue));
         return getBufferCurrent();
     }
 
@@ -288,13 +301,25 @@ public class ShiftedSourceBias extends IPot {
      * @return current in amps */
     public float getBufferCurrent() {
         float im = masterbias.getCurrent();
-        float i = im * getBufferBitValue() / maxBuffeBitValue;
+        float i = im * getBufferBitValue() / maxBufferBitValue;
         return i;
     }
 
     @Override
     public String toString() {
-        return super.toString() + " Sex=" + getSex() + " bitValue=" + bitValue + " bufferBitValue=" + bufferBitValue + " operatingMode=" + getOperatingMode() + " voltageLevel=" + getVoltageLevel();
+        return "ShiftedSourceBias name="+name+" Sex=" + getSex() + " bitValue=" + bitValue + " bufferBitValue=" + bufferBitValue + " operatingMode=" + getOperatingMode() + " voltageLevel=" + getVoltageLevel()+ " maxBitValue="+maxBitValue+" maxBuffeBitValue="+maxBufferBitValue;
+    }
+
+        /** return the max value representing all stages of current splitter enabled */
+    @Override
+    public int getMaxBitValue(){
+        return maxBitValue;
+    }
+
+    /** no current: zero */
+    @Override
+    public int getMinBitValue(){
+        return 0;
     }
 
     /** Overrides super of type (NORNAL or CASCODE) to call observers */

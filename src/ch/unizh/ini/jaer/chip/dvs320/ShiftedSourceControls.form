@@ -92,6 +92,7 @@
     </Component>
     <Component class="javax.swing.JSlider" name="biasSlider">
       <Properties>
+        <Property name="maximum" type="int" value="63"/>
         <Property name="toolTipText" type="java.lang.String" value="Slide to adjust shifted source voltage"/>
         <Property name="value" type="int" value="0"/>
         <Property name="alignmentX" type="float" value="0.0"/>
@@ -102,7 +103,7 @@
           <Dimension value="[36, 10]"/>
         </Property>
         <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-          <Dimension value="[300, 25]"/>
+          <Dimension value="[200, 25]"/>
         </Property>
       </Properties>
       <Events>
@@ -158,6 +159,7 @@
       <SubComponents>
         <Component class="javax.swing.JSlider" name="bufferBiasSlider">
           <Properties>
+            <Property name="maximum" type="int" value="63"/>
             <Property name="toolTipText" type="java.lang.String" value="Slide to adjust internal buffer bias for shifted source"/>
             <Property name="value" type="int" value="0"/>
             <Property name="alignmentX" type="float" value="0.0"/>
@@ -168,7 +170,7 @@
               <Dimension value="[36, 10]"/>
             </Property>
             <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-              <Dimension value="[50, 10]"/>
+              <Dimension value="[100, 10]"/>
             </Property>
           </Properties>
           <Events>

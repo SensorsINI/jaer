@@ -157,12 +157,13 @@ public class ShiftedSourceControls extends javax.swing.JPanel implements Observe
         });
         add(voltageLevelComboBox);
 
+        biasSlider.setMaximum(63);
         biasSlider.setToolTipText("Slide to adjust shifted source voltage");
         biasSlider.setValue(0);
         biasSlider.setAlignmentX(0.0F);
         biasSlider.setMaximumSize(new java.awt.Dimension(32767, 16));
         biasSlider.setMinimumSize(new java.awt.Dimension(36, 10));
-        biasSlider.setPreferredSize(new java.awt.Dimension(300, 25));
+        biasSlider.setPreferredSize(new java.awt.Dimension(200, 25));
         biasSlider.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mousePressed(java.awt.event.MouseEvent evt) {
                 biasSliderMousePressed(evt);
@@ -223,12 +224,13 @@ public class ShiftedSourceControls extends javax.swing.JPanel implements Observe
         });
         bufferBiasPanel.setLayout(new javax.swing.BoxLayout(bufferBiasPanel, javax.swing.BoxLayout.X_AXIS));
 
+        bufferBiasSlider.setMaximum(63);
         bufferBiasSlider.setToolTipText("Slide to adjust internal buffer bias for shifted source");
         bufferBiasSlider.setValue(0);
         bufferBiasSlider.setAlignmentX(0.0F);
         bufferBiasSlider.setMaximumSize(new java.awt.Dimension(32767, 50));
         bufferBiasSlider.setMinimumSize(new java.awt.Dimension(36, 10));
-        bufferBiasSlider.setPreferredSize(new java.awt.Dimension(50, 10));
+        bufferBiasSlider.setPreferredSize(new java.awt.Dimension(100, 10));
         bufferBiasSlider.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mousePressed(java.awt.event.MouseEvent evt) {
                 bufferBiasSliderMousePressed(evt);
@@ -678,13 +680,13 @@ private void voltageLevelComboBoxActionPerformed(java.awt.event.ActionEvent evt)
 
     /** Returns slider value for this pots buffer bit value. */
     private int bufferSliderValueFromBitValue() {
-        int v = bitVal2SliderVal(pot.getBufferBitValue(), ConfigurableIPotRev0.maxBuffeBitValue, bufferBiasSlider);
+        int v = bitVal2SliderVal(pot.getBufferBitValue(), pot.maxBufferBitValue, bufferBiasSlider);
         return v;
     }
 
     /** Returns buffer bit value from the slider value. */
     private int bufferBitValueFromSliderValue() {
-        int v = sliderVal2BitVal(ConfigurableIPotRev0.maxBuffeBitValue, bufferBiasSlider);
+        int v = sliderVal2BitVal(pot.maxBufferBitValue, bufferBiasSlider);
         return v;
     }
 
