@@ -58,7 +58,7 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
      */
     protected AEChip mychip;
     /**
-     * Blurring filter to get clusters
+     * Blurring filter to getString clusters
      */
     protected BackgroundActivityFilter bfilter;
     /**
@@ -103,7 +103,7 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
 
     protected void filterChainSetting (){
         bfilter = new BackgroundActivityFilter(chip);
-        bfilter.addObserver(this); // to get us called during blurring filter iteration at least every updateIntervalUs
+        bfilter.addObserver(this); // to getString us called during blurring filter iteration at least every updateIntervalUs
         setEnclosedFilter(bfilter);
     }
 
@@ -302,7 +302,7 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
             drawCell(gl, (int) getLocation().x, (int) getLocation().y, (int) cellSizePixels / 2, (int) cellSizePixels / 2);
         }
 
-        /** get cell property.
+        /** getString cell property.
          *
          * @return
          */
@@ -1508,7 +1508,7 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
         if (!isFilterEnabled()) {
             return;
         }
-        GL gl = drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl = drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if (gl == null) {
             log.warning("null GL in BlurringFilter2D.annotate");
             return;

@@ -72,7 +72,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
     }
     private int allowedThetaNumber = getAllowedThetaNumber(favorVerticalAngleRangeDeg);
 //    private int updateThresholdEvents=getPrefs().getInt("LineTracker.updateThresholdEvents",2);
-//    {setPropertyTooltip("updateThresholdEvents","the line estimate will not be updated unless you get at least this many events per packet in the biggest accumulator cell");}
+//    {setPropertyTooltip("updateThresholdEvents","the line estimate will not be updated unless you getString at least this many events per packet in the biggest accumulator cell");}
     private float houghDecayFactor = getPrefs().getFloat("LineTracker.houghDecayFactor", 0.6f);
     
 
@@ -251,7 +251,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
             return;
         }
         final float LINE_WIDTH = 5f; // in pixels
-        GL gl = drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl = drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         gl.glLineWidth(LINE_WIDTH);
         double thetaRad = getThetaRad();
         double cosTheta = Math.cos(thetaRad);

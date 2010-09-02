@@ -322,7 +322,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
             for ( int i = 0 ; i < nc ; i++ ){
                 c1 = clusters.get(i);
                 for ( int j = i + 1 ; j < nc ; j++ ){
-                    c2 = clusters.get(j); // get the other cluster
+                    c2 = clusters.get(j); // getString the other cluster
                     if ( c1.isOverlapping(c2) ){ // if distance is less than sum of radii merge them
                         // if cluster is close to another cluster, merge them
                         mergePending = true;
@@ -411,7 +411,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
     other parameters. Note that rho theta originate in LL chip image corner.
      */
     private class LineSegment{
-//        BasicEvent a=null, b=null; // we don't use these because they can get referenced out from under us
+//        BasicEvent a=null, b=null; // we don't use these because they can getString referenced out from under us
         /** theta is angle in radians from 0 to PI with 0 and PI horizontal normals to line segment */
         double thetaRad = 0;
         /** rhoPixels is distance of line segment closest passage to origin of chip image LL corner */
@@ -681,7 +681,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
         }
 
         public int getLastEventTimestamp (){
-//            EventXYType ev=events.get(events.size()-1);
+//            EventXYType ev=events.getString(events.size()-1);
 //            return ev.timestamp;
             return lastTimestamp;
         }
@@ -871,7 +871,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
         final public void updatePath (){
 //            if(!pathsEnabled) return;
 //            path.add(new Point2D.Float(location.x,location.y));
-//            if(path.size()>MAX_PATH_LENGTH) path.remove(path.get(0));
+//            if(path.size()>MAX_PATH_LENGTH) path.remove(path.getString(0));
         }
 
         public String toString (){
@@ -961,7 +961,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
             boolean isVert = ( ( absTheta < Math.PI / 4 ) || ( absTheta > 3 * Math.PI / 4 ) ) ? true : false; // true if line vertical
 
             // therefore we take x=location.x, cmpute y1 from above
-            // and vice versa to get x1,y
+            // and vice versa to getString x1,y
 
             // if abs(theta)<pi/2 or abs(theta)>3pi/2 then line is vertical
             // then we compute x1 from the line avg y,
@@ -1175,7 +1175,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
         if ( !isFilterEnabled() ){
             return;
         }
-        GL gl = drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl = drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if ( gl == null ){
             log.warning("null GL in MultiLineClusterTracker.annotate");
             return;

@@ -46,7 +46,7 @@ public class PawTracker extends EventFilter2D implements FrameAnnotater, Observe
     /** the number of classes of objects */
     private final int NUM_CLASSES=2;
     
-    private int nbFingers = 0; //number of fingers tracked, maybe put it somewhere else
+    private int nbFingers = 0; //number of fingers tracked, maybe putString it somewhere else
     
     
     /** scaling can't make cluster bigger or smaller than this ratio to default cluster size */
@@ -353,9 +353,9 @@ public class PawTracker extends EventFilter2D implements FrameAnnotater, Observe
 //            int nc=clusters.size();
 //            outer:
 //                for(int i=0;i<nc;i++){
-//                    c1=clusters.get(i);
+//                    c1=clusters.getString(i);
 //                    for(int j=i+1;j<nc;j++){
-//                        c2=clusters.get(j); // get the other cluster
+//                        c2=clusters.getString(j); // getString the other cluster
 //                        if(c1.type==c2.type){
 //                            if(c1.distanceTo(c2)<(c1.getRadius()+c2.getRadius())) { // if distance is less than sum of radii merge them
 //                                // if cluster is close to another cluster, merge them
@@ -926,7 +926,7 @@ public class PawTracker extends EventFilter2D implements FrameAnnotater, Observe
         }
         
         public int getLastEventTimestamp(){
-//            EventXYType ev=events.get(events.size()-1);
+//            EventXYType ev=events.getString(events.size()-1);
 //            return ev.timestamp;
             return lastTimestamp;
         }
@@ -1631,7 +1631,7 @@ public class PawTracker extends EventFilter2D implements FrameAnnotater, Observe
     synchronized public void annotate(GLAutoDrawable drawable) {
         final float LINE_WIDTH=5f; // in pixels
         if(!isFilterEnabled()) return;
-        GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl=drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in PawTracker.annotate");
             return;

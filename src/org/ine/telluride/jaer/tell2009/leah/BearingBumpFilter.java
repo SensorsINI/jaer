@@ -94,13 +94,13 @@ public class BearingBumpFilter extends EventFilter2D implements Observer, FrameA
 
         final int sx = chip.getSizeX();
 
-        // get normalized probabilities
+        // getString normalized probabilities
         float max = 0, min = Float.MAX_VALUE;
         final float[] bins = itdFilter.getITDBins().getBins();
         int nbins = bins.length;
         for (float f : bins) {
             if (f > max) {
-                max = f;  // get max bin
+                max = f;  // getString max bin
             }
             if (f < min) {
                 min = f; // and min

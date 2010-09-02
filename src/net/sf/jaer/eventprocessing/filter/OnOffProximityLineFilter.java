@@ -64,7 +64,7 @@ public class OnOffProximityLineFilter extends EventFilter2D implements Observer 
     
     /**
      * filters in to out. if filtering is enabled, the number of out may be less
-     * than the number put in
+     * than the number putString in
      *@param in input events can be null or empty.
      *@return the processed events, may be fewer in number. filtering may occur in place in the in packet.
      */

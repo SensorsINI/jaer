@@ -269,7 +269,7 @@ public class PanTiltCalibrator implements PropertyChangeListener, FrameAnnotater
     }
 
     public void annotate(GLAutoDrawable drawable) {
-        GL gl=drawable.getGL(); // when we get this we are already set up with updateShape 1=1 pixel, at LL corner
+        GL gl=drawable.getGL(); // when we getString this we are already set up with updateShape 1=1 pixel, at LL corner
 
         if(gl==null) {
             log.warning("null GL");

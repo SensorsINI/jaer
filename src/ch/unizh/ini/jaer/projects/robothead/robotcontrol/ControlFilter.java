@@ -143,7 +143,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
         controller = new KoalaControl();
         port=6;
         
-        retinaLUT=loadRetinaLUT();      // get saved RetinaLUT
+        retinaLUT=loadRetinaLUT();      // getString saved RetinaLUT
         dispLUT();
         
         resetFilter();
@@ -172,7 +172,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
             soundFilterChain.filterPacket(in);
             if(Bins.getSumOfBins()>=correlator.getNumberOfPairs()){     // wait till Correlation Buffer is filled
                 
-                int ANG=correlator.getAngle();                    // get Angle and fill into LowPassBuffer lastAngles
+                int ANG=correlator.getAngle();                    // getString Angle and fill into LowPassBuffer lastAngles
                 for(int i=0; i<lastAngles.length-1; i++){
                     lastAngles[i]=lastAngles[i+1];
                 }
@@ -233,7 +233,7 @@ public class ControlFilter extends EventFilter2D implements Observer, FrameAnnot
             }
         }
         
-        if(state=="driveNTurn"){        // this state is necessery to get to the retina coordinates before turning 
+        if(state=="driveNTurn"){        // this state is necessery to getString to the retina coordinates before turning
                                         // hopefully to remove..
             if(!controller.IsRobotMoving()){        // robot ended moving
                 if(Math.abs(actualAngle)>this.minAngle){         //TODO HERE: maybe check if angle = 90 deg, turn and listen again, , first do this in state diagram

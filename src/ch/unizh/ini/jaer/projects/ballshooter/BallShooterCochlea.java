@@ -97,7 +97,7 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater
         co.setItdValue(calcITD/packetBufferSize);
         try
         {
-            //Q.put(co);
+            //Q.putString(co);
             //System.out.println("Size before "+Tmpdiff128CochleaCommunication.sizeBlockingQ());
             Tmpdiff128CochleaCommunication.putBlockingQ(co);
             log.info("Gave retina ITD");

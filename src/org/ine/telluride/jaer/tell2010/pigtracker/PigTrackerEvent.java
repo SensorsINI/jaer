@@ -1,12 +1,13 @@
 package org.ine.telluride.jaer.tell2010.pigtracker;
 
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.event.TypedEvent;
 
 /** Output event from the PigTracker object tracker.
  * 
  * @author tobi
  */
-public class PigTrackerEvent extends PolarityEvent {
+public class PigTrackerEvent extends TypedEvent {
 
     boolean colorIt = false;
 
@@ -17,6 +18,6 @@ public class PigTrackerEvent extends PolarityEvent {
 
     @Override
     public int getType() {
-        return colorIt ? super.getType() + 2 : super.getType();
+        return colorIt ? type + 2 : type;
     }
 }

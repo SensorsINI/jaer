@@ -53,7 +53,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
      */
     protected java.util.List<Cluster> clusters = new LinkedList();
     /**
-     * Blurring filter to get clusters
+     * Blurring filter to getString clusters
      */
     protected BlurringTunnelFilter bfilter;
     /**
@@ -127,7 +127,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
      */
     protected void filterChainSetting (){
         bfilter = new BlurringTunnelFilter(chip);
-        bfilter.addObserver(this); // to get us called during blurring filter iteration at least every updateIntervalUs
+        bfilter.addObserver(this); // to getString us called during blurring filter iteration at least every updateIntervalUs
         setEnclosedFilter(bfilter);
     }
 
@@ -148,7 +148,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             for ( int i = 0 ; i < nc ; i++ ){
                 c1 = clusters.get(i);
                 for ( int j = i + 1 ; j < nc ; j++ ){
-                    c2 = clusters.get(j); // get the other cluster
+                    c2 = clusters.get(j); // getString the other cluster
                     final boolean overlapping = c1.distanceTo(c2) < ( c1.getMaxRadius() + c2.getMaxRadius() );
                     boolean velSimilar = true; // start assuming velocities are similar
                     if ( overlapping && velAngDiffDegToNotMerge > 0 && c1.isVelocityValid() && c2.isVelocityValid() && c1.velocityAngleTo(c2) > velAngDiffDegToNotMerge * Math.PI / 180 ){
@@ -300,7 +300,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             message[9]=(byte)(clusters.size() & 0x000000ff);
             //data
             for(int i=0; i<clusters.size(); i++){
-                //System.out.println("location: "+clusters.get(i).getLocation().x+"  NrCells: "+clusters.get(i).numCells);
+                //System.out.println("location: "+clusters.getString(i).getLocation().x+"  NrCells: "+clusters.getString(i).numCells);
                 int offset=8*i;
                 //x position
                 int xInt = Float.floatToRawIntBits(clusters.get(i).getLocation().x*dsx/csx);
@@ -994,7 +994,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             }
         }
 
-        /** get the cluster location
+        /** getString the cluster location
          *
          * @return location
          */
@@ -1128,7 +1128,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             this.clusterNumber = clusterNumber;
         }
 
-        /** get the age of cluster.
+        /** getString the age of cluster.
          *
          * @return age of cluster in us
          */
@@ -1493,7 +1493,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             return;
 
         }
-        GL gl = drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl = drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if ( gl == null ){
             log.warning("null GL in BlurringTunnelTracker.annotate");
             return;

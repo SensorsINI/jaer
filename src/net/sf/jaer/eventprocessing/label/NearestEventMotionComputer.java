@@ -167,7 +167,7 @@ public class NearestEventMotionComputer extends EventFilter2D implements Observe
     
     /**
      * filters in to out. if filtering is enabled, the number of out may be less
-     * than the number put in
+     * than the number putString in
      *@param in input events can be null or empty.
      *@return the processed events, may be fewer in number.
      */
@@ -191,7 +191,7 @@ public class NearestEventMotionComputer extends EventFilter2D implements Observe
                 x=(short)(e.x+P); // x and y are offset inside our timestamp storage array to avoid array access violations
                 y=(short)(e.y+P);
                 type=e.type;
-                ts=e.timestamp;  // get event x,y,type,timestamp of *this* event
+                ts=e.timestamp;  // getString event x,y,type,timestamp of *this* event
                 
                 // for each output cell type (which codes a direction of motion), find the dt
                 // between the orientation cell type perdindicular

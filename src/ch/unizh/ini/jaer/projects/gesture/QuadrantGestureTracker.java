@@ -262,7 +262,7 @@ public class QuadrantGestureTracker extends EventFilter2D implements FrameAnnota
                 for(int i=0;i<nc;i++){
                     c1=clusters.get(i);
                     for(int j=i+1;j<nc;j++){
-                        c2=clusters.get(j); // get the other cluster
+                        c2=clusters.get(j); // getString the other cluster
                         if(c1.distanceTo(c2)<(c1.getRadius()+c2.getRadius())) { // if distance is less than sum of radii merge them
                             // if cluster is close to another cluster, merge them
                             mergePending=true;
@@ -492,7 +492,7 @@ public class QuadrantGestureTracker extends EventFilter2D implements FrameAnnota
         }
         
         public int getLastEventTimestamp(){
-//            EventXYType ev=events.get(events.size()-1);
+//            EventXYType ev=events.getString(events.size()-1);
 //            return ev.timestamp;
             return lastTimestamp;
         }
@@ -1222,7 +1222,7 @@ public class QuadrantGestureTracker extends EventFilter2D implements FrameAnnota
         if(!isFilterEnabled()) return;
         final float BOX_LINE_WIDTH=5f; // in pixels
         final float PATH_LINE_WIDTH=3f;
-        GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl=drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in GestureTracker.annotate");
             return;

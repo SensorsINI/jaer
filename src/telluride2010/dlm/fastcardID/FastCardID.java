@@ -268,7 +268,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
     
     //This is a version of the pip_hist_dictionary I determined by eye.
     //I left six alone since it seems to work so well.
-    //I just put values of 100 where I think pips should be and 0 otherwise
+    //I just putString values of 100 where I think pips should be and 0 otherwise
  
     
 
@@ -1006,7 +1006,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
                 }
                 //max_bin_mle = cardHist.getMaxValueBin();
 
-                //Here put code to display the pip_hist
+                //Here putString code to display the pip_hist
                 double max_pip_bin_hist = getMaxPipBinHist();
                 
                 
@@ -1033,7 +1033,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
 
             
 
-        return in; //I just put this there since it seems necessary and Tobi said to do it.
+        return in; //I just putString this there since it seems necessary and Tobi said to do it.
     }
 
 

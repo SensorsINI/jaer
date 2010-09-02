@@ -306,7 +306,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
                 int y=((e.y>>>subSampleShift)+P);
                 int polValue=((e.polarity==PolarityEvent.Polarity.On?1:2));
                 byte type=(byte)(e.orientation*polValue); // type information here is mixture of input orientation and polarity, in order to match both characteristics
-                int ts=e.timestamp;  // get event x,y,type,timestamp of *this* event
+                int ts=e.timestamp;  // getString event x,y,type,timestamp of *this* event
                 // update the map here - this is ok because we never refer to ourselves anyhow in computing motion
                 lastTimesMap[x][y][type]=ts;
                 

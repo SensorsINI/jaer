@@ -344,7 +344,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
             ArrayList<Double> left = movingAverageFiltering(histogramLeft.get(i), 4);
             ArrayList<Double> right = movingAverageFiltering(histogramRight.get(i), 4);
 
-            // if there'smore than one section, add all histogram to get the global disparity
+            // if there'smore than one section, add all histogram to getString the global disparity
             if(numSectionsY != 1){
                 if(left.get(size) != 0){
                     if(!initializedGlobalLeft){
@@ -378,7 +378,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
             right.remove(size);
 
 
-//            System.out.println("prevDisparity("+i+") = " + prevDisparity.get(i).getDisparity()+", "+prevDisparity.get(i).isValid());
+//            System.out.println("prevDisparity("+i+") = " + prevDisparity.getString(i).getDisparity()+", "+prevDisparity.getString(i).isValid());
             // sets the range of delays to check the cross-correlation
             startDelay = findStartDelay(i, negativeLimit);
             endDelay = findEndDelay(i, positiveLimit);
@@ -396,7 +396,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
             else{
                 float upgradeInterval = Math.min(packetDurationUs/1000f, chip.getFilterChain().getUpdateIntervalMs());
                 float deltaDis = (float) Math.abs((maxPos - preDis)/(float) upgradeInterval);
-//                System.out.println("delta disparity = "+deltaDis +" (curDis = "+ maxPos +", preDis = "+preDis+"), preDisValid = "+prevDisparity.get(i).isValid());
+//                System.out.println("delta disparity = "+deltaDis +" (curDis = "+ maxPos +", preDis = "+preDis+"), preDisValid = "+prevDisparity.getString(i).isValid());
                 if(deltaDis < maxDisparityChangePixelsPerMs || preDis == 0)
                     disparityValues.get(i).setDisparity(maxPos, true);
                 else
@@ -409,13 +409,13 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
 /*        if(numSectionsY != 1){
             int maxDsp = -size;
             for(int k=0; k<numSectionsY; k++){
-                if(disparityValues.get(k).isValid() && disparityValues.get(k).getDisparity() > maxDsp)
-                    maxDsp = disparityValues.get(k).getDisparity();
+                if(disparityValues.getString(k).isValid() && disparityValues.getString(k).getDisparity() > maxDsp)
+                    maxDsp = disparityValues.getString(k).getDisparity();
             }
             if(maxDsp == -size)
-                disparityValues.get(numSectionsY).setDisparity(0, false);
+                disparityValues.getString(numSectionsY).setDisparity(0, false);
             else
-                disparityValues.get(numSectionsY).setDisparity(maxDsp, true);
+                disparityValues.getString(numSectionsY).setDisparity(maxDsp, true);
         }
 */
         // estimation of global disparity
@@ -451,7 +451,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
 
             preDis = maxPos;
 
-//            System.out.println("prevDisparity = " + prevDisparity.get(numSectionsY).getDisparity()+", "+prevDisparity.get(numSectionsY).isValid());            
+//            System.out.println("prevDisparity = " + prevDisparity.getString(numSectionsY).getDisparity()+", "+prevDisparity.getString(numSectionsY).isValid());
         }
     }
 
@@ -461,7 +461,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
         if(prevDisparity.get(section).isValid() && prevDp - size/6 > negativeLimit)
             startDelay = prevDp - size/6;
 
-//        System.out.println(">>>>>Deciding start delay : prevDp = " + prevDp + ", prevDisValid = "+prevDisparity.get(section).isValid()+", sDelay = "+startDelay);
+//        System.out.println(">>>>>Deciding start delay : prevDp = " + prevDp + ", prevDisValid = "+prevDisparity.getString(section).isValid()+", sDelay = "+startDelay);
         return startDelay;
     }
 
@@ -472,7 +472,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
         if(prevDisparity.get(section).isValid() && prevDp + size/6 < positiveLimit)
             endDelay = prevDp + size/6;
 
-//        System.out.println(">>>>>Deciding end delay : prevDp = " + prevDp + ", prevDisValid = "+prevDisparity.get(section).isValid()+", sDelay = "+endDelay);
+//        System.out.println(">>>>>Deciding end delay : prevDp = " + prevDp + ", prevDisValid = "+prevDisparity.getString(section).isValid()+", sDelay = "+endDelay);
         return endDelay;
     }
 
@@ -734,7 +734,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
         if (  ! isFilterEnabled () || !showHistogram){
             return;
         }
-        GL gl = drawable.getGL (); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl = drawable.getGL (); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if ( gl == null ){
             log.warning ("null GL in StereoVergenceFilter.annotate");
             return;
@@ -1016,7 +1016,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
     }
 
     /** returns the disparity at the specified position.
-     * Disparity values obtained from mutiples sections are used to get it.
+     * Disparity values obtained from mutiples sections are used to getString it.
      *
      * @param yPos
      * @return disparity

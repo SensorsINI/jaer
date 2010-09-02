@@ -88,7 +88,7 @@ public class EpipolarRectification extends EventFilter2D implements Observer  {
    
     /**
      * filters in to out. if filtering is enabled, the number of out may be less
-     * than the number put in 
+     * than the number putString in
      *@param in input events can be null or empty.
      *@return the processed events, may be fewer in number. filtering may occur in place in the in packet.
      */
@@ -158,7 +158,7 @@ public class EpipolarRectification extends EventFilter2D implements Observer  {
     }
     
     
-      // get the new x,y location for an incoming event
+      // getString the new x,y location for an incoming event
     private boolean canCorrectIndex(BinocularEvent evin ){
         int ind = (evin.x)*y_size+(y_size-evin.y);
         Integer newInd = (Integer)indexLookup.get(new Integer(ind));
@@ -179,7 +179,7 @@ public class EpipolarRectification extends EventFilter2D implements Observer  {
         return true;
     }
     
-    // get the new x,y location for an incoming event
+    // getString the new x,y location for an incoming event
     private boolean correctIndex(BinocularEvent evin, BinocularEvent evout){
         int ind = (evin.x)*y_size+(y_size-evin.y);
         Integer newInd = (Integer)indexLookup.get(new Integer(ind));

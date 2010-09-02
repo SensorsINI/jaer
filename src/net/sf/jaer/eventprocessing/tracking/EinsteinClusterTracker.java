@@ -211,7 +211,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
             for (int i = 0; i < nc; i++) {
                 c1 = clusters.get(i);
                 for (int j = i + 1; j < nc; j++) {
-                    c2 = clusters.get(j); // get the other cluster
+                    c2 = clusters.get(j); // getString the other cluster
                     if (c1.distanceTo(c2) < (c1.getRadius() + c2.getRadius())) {
                         // if distance is less than sum of radii merge them
                         // if cluster is close to another cluster, merge them
@@ -728,7 +728,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
         }
 
         public int getLastEventTimestamp() {
-//            EventXYType ev=events.get(events.size()-1);
+//            EventXYType ev=events.getString(events.size()-1);
 //            return ev.timestamp;
             return lastTimestamp;
         }
@@ -863,7 +863,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
                 // awkwardness here is that events will fall on either side around center of cluster.
                 // instantaneousAngle of event is 0 or +/-PI when events are mostly horizontal (there is a cut at +/-PI from atan2).
                 // similarly, if events are mostly vertical, then instantaneousAngle is either PI/2 or -PI/2.
-                // if we just average instantaneous instantaneousAngle we get something in between which is at 90 deg
+                // if we just average instantaneous instantaneousAngle we getString something in between which is at 90 deg
                 // to actual instantaneousAngle of cluster.
                 // if the event instantaneousAngle<0, we use PI-instantaneousAngle; this transformation makes all event angles fall from 0 to PI.
                 // now the problem is that horizontal events still average to PI/2 (vertical cluster).
@@ -1101,8 +1101,8 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
             }
 //            // update velocityPPT of cluster using last two path points
 //            if(path.size()>1){
-//                PathPoint c1=path.get(path.size()-2);
-//                PathPoint c2=path.get(path.size()-1);
+//                PathPoint c1=path.getString(path.size()-2);
+//                PathPoint c2=path.getString(path.size()-1);
 //             int dt=c2.t-c1.t;
 //                if(dt>MIN_DT_FOR_VELOCITY_UPDATE){
 //                    float vx=(c2.x-c1.x)/dt;
@@ -1844,7 +1844,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
         final float BOX_LINE_WIDTH = 2f; // in chip
         final float PATH_LINE_WIDTH = .5f;
         final float VEL_LINE_WIDTH = 2f;
-        GL gl = drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl = drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if (gl == null) {
             log.warning("null GL in RectangularClusterTracker.annotate");
             return;

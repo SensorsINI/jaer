@@ -47,7 +47,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
     
     
     final String LOGGING_FILENAME="goalie.csv";
-    private final int RELAXED_POSITION_DELAY_MS=100; // ms to get to middle relaxed position
+    private final int RELAXED_POSITION_DELAY_MS=100; // ms to getString to middle relaxed position
     private final String stateCat="State Criteria", armCat="Arm control", geomCat="Geometry", ballCat="Ball";
     private boolean useVelocityForGoalie=getPrefs().getBoolean("Goalie.useVelocityForGoalie",true);
     {setPropertyTooltip(armCat, "useVelocityForGoalie","uses ball velocity to calc impact position");}
@@ -168,7 +168,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
         servoArm.filterPacket(in);
 
         synchronized (ballLock) {
-            ball=getPutativeBallCluster(); // whether ball is returned also depends on state, if sleeping, harder to get one
+            ball=getPutativeBallCluster(); // whether ball is returned also depends on state, if sleeping, harder to getString one
             checkAndSetState(ball);
         }
         // not enough time has passed to relax and we might have a ball
@@ -200,7 +200,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
      */
     private float computeRequiredArmPosition(RectangularClusterTracker.Cluster ball){
         // compute intersection of velocityPPT vector of ball with bottom of view.
-        // this is the place we should put the goalie.
+        // this is the place we should putString the goalie.
         // this is computed from time to reach bottom (y/vy) times vx plus the x location.
         // we also include a parameter pixelsToTipOfArm which is where the goalie arm is in the field of view,
         // and a parallax correction factor for the learned position of the hand.
@@ -436,7 +436,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
 
         // after relaxationDelayMs position to middle for next ball.
         if( getState() == State.RELAXED &&
-                (timeSinceLastPosition > relaxationDelayMs+RELAXED_POSITION_DELAY_MS) // wait for arm to get to middle
+                (timeSinceLastPosition > relaxationDelayMs+RELAXED_POSITION_DELAY_MS) // wait for arm to getString to middle
                 && checkToRelax_state == 1) {
             servoArm.relax(); // turn off servo (if it is one that turns off when you stop sending pulses)
             checkToRelax_state = 2;
@@ -444,7 +444,7 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
 
          
         // if we have relaxed to the middle and sufficient time has gone by since we got a ball, then we go to sleep state where its harder
-        // to get a ball
+        // to getString a ball
         if(getState()==State.RELAXED && checkToRelax_state==2 &&
                 (System.currentTimeMillis()-lastDefiniteBallTime)>sleepDelaySec*1000){
             setState(State.SLEEPING);

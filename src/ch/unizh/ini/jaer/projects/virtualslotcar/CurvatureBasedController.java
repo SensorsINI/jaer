@@ -56,7 +56,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
         speedController = new SimpleSpeedController(chip);
         setEnclosedFilterChain(new FilterChain(chip));
         getEnclosedFilterChain().add(speedController);
-        speedController.setEnclosed(true, this); // to get GUI to show up properly
+        speedController.setEnclosed(true, this); // to getString GUI to show up properly
 
         osculatingCircleCenter = new Point2D.Float();
     }
@@ -69,8 +69,8 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
      */
     @Override
     public float computeControl(CarTracker tracker, SlotcarTrack track) {
-        // find the csar, pass it to the track if there is one to get it's location, the use the UpcomingCurvature to compute the curvature coming up,
-        // then compute the throttle to get our speed at the limit of traction.
+        // find the csar, pass it to the track if there is one to getString it's location, the use the UpcomingCurvature to compute the curvature coming up,
+        // then compute the throttle to getString our speed at the limit of traction.
 
         ClusterInterface car = tracker.findCarCluster();
         if (car == null) {
@@ -91,7 +91,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
             3. Update the car state SlotcarState of the track model - not clear how this should be done from the CarTracker data.
             4. Ask the track model for the list of upcoming curvatures.
             5. From the parameter throttleDelayMs, find the curvature at this time in the future.
-            6. Compute the throttle needed to get us to a speed at this future time that puts us at the limit of traction.
+            6. Compute the throttle needed to getString us to a speed at this future time that puts us at the limit of traction.
 
 
             This still requires us to have an estimated relation between throttle and resulting speed. We don't have any such model yet.

@@ -102,7 +102,7 @@ public class SpatialBandpassFilter extends EventFilter2D implements Observer{
     // these arrays hold relative offsets to write to for center and surround timestamp splatts
     Offset[] centerOffsets, surroundOffsets;
     
-    // computes an array of offsets that we write to when we get an event
+    // computes an array of offsets that we write to when we getString an event
     synchronized void computeOffsets(){
         ArrayList<Offset> surList=new ArrayList<Offset>();
         ArrayList<Offset> cenList=new ArrayList<Offset>();

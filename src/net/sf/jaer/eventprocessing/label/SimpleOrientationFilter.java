@@ -197,7 +197,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
      */
     protected Dir[][] offsets = null;
     /** The basic offsets for each orientation.
-    You get the perpindicular orientation to i by indexing (i+2)%NUM_TYPES.
+    You getString the perpindicular orientation to i by indexing (i+2)%NUM_TYPES.
      */
     protected final Dir[] baseOffsets = {
         new Dir(1,0), // right
@@ -380,7 +380,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
 
     /**
      * filters in to out. if filtering is enabled, the number of out may be less
-     * than the number put in
+     * than the number putString in
      *@param in input events can be null or empty.
      *@return the processed events, may be fewer in number.
      */
@@ -445,7 +445,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
             }
             lastTimesMap[x][y][type] = e.timestamp;
 
-            // get times to neighbors in all directions
+            // getString times to neighbors in all directions
             // check if search distance has been changed before iterating - for some reason the synchronized doesn't work
             int xx, yy;
             for ( int ori = 0 ; ori < NUM_TYPES ; ori++ ){
@@ -467,7 +467,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
             }
 
             if ( useAverageDtEnabled ){
-                // now get sum of dts to neighbors in each direction
+                // now getString sum of dts to neighbors in each direction
                 for ( int j = 0 ; j < NUM_TYPES ; j++ ){
                     maxdts[j] = 0; // this is sum here despite name maxdts
                     int m = dts[j].length;
@@ -489,7 +489,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
                     }
                 }
             } else{ // use max dt
-                // now get maxdt to neighbors in each directoin
+                // now getString maxdt to neighbors in each directoin
                 for ( int j = 0 ; j < NUM_TYPES ; j++ ){
                     maxdts[j] = Integer.MIN_VALUE;
                     int m = dts[j].length;

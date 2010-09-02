@@ -222,7 +222,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater,Obse
             return;
         }
 
-        GL gl = drawable.getGL();    // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl = drawable.getGL();    // when we getString this we are already set up with scale 1=1 pixel, at LL corner
 
         float lowX, highX;
 
@@ -439,7 +439,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater,Obse
         // which we receive as a base and slope, for example
         //   base b1 = (x0/(y0+yr), 0)  and slope s1=dx/dz = x1-x0*y1/(y0+yr)
         //   base b2 = (y0/(xr-x0), 0)  and slope s2=dy/dz = y1+y0*x1/(xr-x0)
-        // If we solve these for x0,x1,y0,y1 in terms of b1,s1,b2,s2, we get
+        // If we solve these for x0,x1,y0,y1 in terms of b1,s1,b2,s2, we getString
         //   x0 = (b1*yr + b1*b2*xr) / (b1*b2+1)
         //   x1 = (s1 + b1*s2) / (b1*b2+1)
         //   y0 = (b2*xr - b1*b2*yr) / (b1*b2+1)

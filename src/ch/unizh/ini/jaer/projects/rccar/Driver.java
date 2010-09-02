@@ -257,7 +257,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
     private class DrivingController {
 
         void control(EventPacket in) {
-            // get values from radio receiver (user sets speed or steers)
+            // getString values from radio receiver (user sets speed or steers)
             if (servo != null) {
                 radioSteer = servo.getRadioSteer();
                 radioSpeed = servo.getRadioSpeed();
@@ -553,7 +553,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
 //     When this is enabled, all enclosed
 //     filters are automatically enabled, thus generating
 //     propertyChangeEvents and setting the prefs.
-//     To get around this we set the flag for filterEnabled and
+//     To getString around this we set the flag for filterEnabled and
 //     don't call the super which sets the enclosed filter chain enabled.
 //     */
 //    @Override public void setFilterEnabled(boolean yes) {

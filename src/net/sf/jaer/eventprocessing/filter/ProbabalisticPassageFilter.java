@@ -36,7 +36,7 @@ public class ProbabalisticPassageFilter extends EventFilter2D{
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
         checkOutputPacketEventType(in); // make sure the built-in output packet has same event type as input packet
-        OutputEventIterator outItr=out.outputIterator(); // get the built in iterator for output events
+        OutputEventIterator outItr=out.outputIterator(); // getString the built in iterator for output events
         for(Object o:in){ // iterate over input events
             PolarityEvent e=(PolarityEvent)o; // cast to asssumed input type
             if(r.nextFloat()<getPassProb()){

@@ -1673,7 +1673,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         if (!isFilterEnabled()) {
             return;
         }
-        GL gl = drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl = drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if (gl == null) {
             log.warning("null GL in BlurringFilter2D.annotate");
             return;

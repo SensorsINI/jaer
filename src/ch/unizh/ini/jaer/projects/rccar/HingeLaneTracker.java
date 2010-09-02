@@ -244,7 +244,7 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
                         }
                     }
                 }
-                //the attention has to be put on the spot where the next upper hinge might be
+                //the attention has to be putString on the spot where the next upper hinge might be
                 if(i+2<hingeNumber && isPaoli[i+2]){
                      virtualX = width*(2*maxIndex[i]-maxIndex[i+2]);
                      virtualY = 2*hingeArray[i]-hingeArray[i+2];
@@ -257,7 +257,7 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
                         }
                     }
                 }
-                // the attention has to be put on the spot where the next lower hinge might be
+                // the attention has to be putString on the spot where the next lower hinge might be
                 if(i-2>=0 && i<hingeNumber && isPaoli[i-2]){
                      virtualX = width*(2*maxIndex[i]-maxIndex[i-2]);
                      virtualY = 2*hingeArray[i]-hingeArray[i-2];

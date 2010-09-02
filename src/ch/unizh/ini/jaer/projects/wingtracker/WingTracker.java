@@ -75,7 +75,7 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
     private Point2D.Float bodyOffset = new Point2D.Float(0f,0f); //offset to original body position, corrected by human
     /*
      *The following 2 variables are not stored in rads but in points. They indicate the current mean of one wing. Their
-     *initial position they get from the k-means algo. After a whole wingbeat they are updated to the new mean of all events
+     *initial position they getString from the k-means algo. After a whole wingbeat they are updated to the new mean of all events
      *in the searchrange
      */
     private Point2D.Float prototypeL;
@@ -173,7 +173,7 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
             nextState = State.TRACKING;
     }
     private Point getPixelFromMouseEvent(MouseEvent e){
-        //get the right pixel from the canvas
+        //getString the right pixel from the canvas
         Point p = chip.getCanvas().getPixelFromMouseEvent(e);
         return p;
     }
@@ -234,7 +234,7 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
                         initMask[ae.getEvent(n).x][ae.getEvent(n).y] = true;//set the entry in the mask
                     }
             }
-            eventCounter += ae.getSize();//increase the counter so we get finished once
+            eventCounter += ae.getSize();//increase the counter so we getString finished once
         }
         
         String logLine = new String();//this is a line which is appended by the bufferedWriter in the end of one iteration(per event)
@@ -310,7 +310,7 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
                 //if the event is outside of the searchRange, we dont care. The searchRangeOffset is set by human.
                 if(body.distance(ev.x,ev.y) > searchRange+searchRangeOffset)
                     continue;
-                //get the radians of the event
+                //getString the radians of the event
                 rads = radiansInHeadingCircle(eventPoint);
                 if(rads < Math.PI ){//left or right wing
                     /*
@@ -478,7 +478,7 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
         
         /*
          *There are 2 different dimensions. Our statevector consists of ( position, amplitude, phase, angular freq.).
-         *The measurement we get is a one dimensional measurements in radians.
+         *The measurement we getString is a one dimensional measurements in radians.
          */
         final int dimStateVector = 4;
         final int dimMeasurement = 1;
@@ -997,7 +997,7 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
             PolarityEvent e = (PolarityEvent)ewp.getEvent();
             if(e.polarity == On) continue; //we only care about the leading edges(where the polarity is off)
             if((body.x-e.x)*(body.x-e.x)+(body.y-e.y)*(body.y-e.y) <= searchRange*searchRange){ //is the event in searchrange
-                float rads = radiansInHeadingCircle(e.x,e.y);//get radians
+                float rads = radiansInHeadingCircle(e.x,e.y);//getString radians
                 if(ewp.getWingType() == WingType.Left){
                     cL = (1-mixingFactor)*cL+mixingFactor*rads; //simulate the lowpass filter
                     if(maxLeft < cL) //search for maximal position

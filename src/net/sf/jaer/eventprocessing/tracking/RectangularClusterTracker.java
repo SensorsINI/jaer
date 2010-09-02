@@ -114,7 +114,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
         LogFrames, LogClusters
     };
-    private ClusterLoggingMethod clusterLoggingMethod = ClusterLoggingMethod.valueOf(get("clusterLoggingMethod", ClusterLoggingMethod.LogFrames.toString()));
+    private ClusterLoggingMethod clusterLoggingMethod = ClusterLoggingMethod.valueOf(getString("clusterLoggingMethod", ClusterLoggingMethod.LogFrames.toString()));
 
     /**
      * Creates a new instance of RectangularClusterTracker.
@@ -394,7 +394,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             for (int i = 0; i < nc; i++) {
                 c1 = clusters.get(i);
                 for (int j = i + 1; j < nc; j++) {
-                    c2 = clusters.get(j); // get the other cluster
+                    c2 = clusters.get(j); // getString the other cluster
                     final boolean overlapping = c1.distanceTo(c2) < (c1.getRadius() + c2.getRadius());
                     boolean velSimilar = true; // start assuming velocities are similar
                     if (overlapping && velAngDiffDegToNotMerge > 0 && c1.isVisible() && c2.isVisible() && c1.isVelocityValid() && c2.isVelocityValid() && c1.velocityAngleToRad(c2) > velAngDiffDegToNotMerge * Math.PI / 180) {
@@ -1332,7 +1332,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
 
         public int getLastEventTimestamp() {
-//            EventXYType ev=events.get(events.size()-1);
+//            EventXYType ev=events.getString(events.size()-1);
 //            return ev.timestamp;
             return lastEventTimestamp;
         }
@@ -1454,7 +1454,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 // awkwardness here is that events will fall on either side around center of cluster.
                 // instantaneousAngle of event is 0 or +/-PI when events are mostly horizontal (there is a cut at +/-PI from atan2).
                 // similarly, if events are mostly vertical, then instantaneousAngle is either PI/2 or -PI/2.
-                // if we just average instantaneous instantaneousAngle we get something in between which is at 90 deg
+                // if we just average instantaneous instantaneousAngle we getString something in between which is at 90 deg
                 // to actual instantaneousAngle of cluster.
                 // if the event instantaneousAngle<0, we use PI-instantaneousAngle; this transformation makes all event angles fall from 0 to PI.
                 // now the problem is that horizontal events still average to PI/2 (vertical cluster).
@@ -1735,7 +1735,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
             if (path.size() > pathLength) {
                 if (!logDataEnabled || clusterLoggingMethod != clusterLoggingMethod.LogClusters) {
-//                    path.remove(path.get(0)); // if we're logging cluster paths, then save all cluster history regardless of pathLength
+//                    path.remove(path.getString(0)); // if we're logging cluster paths, then save all cluster history regardless of pathLength
                     path.remove(path.get(0)); // if we're logging cluster paths, then save all cluster history regardless of pathLength
                 }
             }
@@ -2579,7 +2579,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         final float PATH_LINE_WIDTH = .5f;
         final float VEL_LINE_WIDTH = 4f;
         final float PATH_POINT_SIZE = 4f;
-        GL gl = drawable.getGL(); // when we get this we are already set up with updateShape 1=1 pixel, at LL corner
+        GL gl = drawable.getGL(); // when we getString this we are already set up with updateShape 1=1 pixel, at LL corner
         if (gl == null) {
             log.warning("null GL in RectangularClusterTracker.annotate");
             return;
@@ -2980,7 +2980,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         ClusterLoggingMethod old = this.clusterLoggingMethod;
         this.clusterLoggingMethod = clusterLoggingMethod;
         getSupport().firePropertyChange("clusterLoggingMethod", old, clusterLoggingMethod);
-        put("clusterLoggingMethod", clusterLoggingMethod.toString());
+        putString("clusterLoggingMethod", clusterLoggingMethod.toString());
     }
 
     /**

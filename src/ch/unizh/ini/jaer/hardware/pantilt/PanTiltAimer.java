@@ -57,7 +57,7 @@ public class PanTiltAimer extends EventFilter2D implements FrameAnnotater, PanTi
 
     public void annotate(GLAutoDrawable drawable) {
 
-//        GL gl = drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+//        GL gl = drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
 
     }
 

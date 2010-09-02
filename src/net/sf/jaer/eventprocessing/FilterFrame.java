@@ -468,7 +468,7 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
 
     private void loadMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadMenuItemActionPerformed
         JFileChooser fileChooser = new JFileChooser();
-        String lastFilePath = prefs.get("FilterFrame.lastFile", defaultFolder); // get the last folder
+        String lastFilePath = prefs.get("FilterFrame.lastFile", defaultFolder); // getString the last folder
         lastFile = new File(lastFilePath);
         XMLFileFilter fileFilter = new XMLFileFilter();
         fileChooser.addChoosableFileFilter(fileFilter);
@@ -505,7 +505,7 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
 
     private void saveAsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveAsMenuItemActionPerformed
         JFileChooser fileChooser = new JFileChooser();
-        String lastFilePath = prefs.get("FilterFrame.lastFile", defaultFolder); // get the last folder
+        String lastFilePath = prefs.get("FilterFrame.lastFile", defaultFolder); // getString the last folder
         lastFile = new File(lastFilePath);
         XMLFileFilter fileFilter = new XMLFileFilter();
         fileChooser.addChoosableFileFilter(fileFilter);

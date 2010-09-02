@@ -118,7 +118,7 @@ public class ServoReaction extends EventFilter2D implements FrameAnnotater{
                     }else{
                         // goalie:
                         // compute intersection of velocity vector of cluster with bottom of view
-                        // this is the place we should put the goalie
+                        // this is the place we should putString the goalie
                         // this is computed from time to reach bottom (y/vy) times vx plus the x location
                         float x=(float)p.getX();
                         if(useVelocityForGoalie){

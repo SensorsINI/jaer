@@ -248,7 +248,7 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
         try {
             
             
-            // get filename from current dat
+            // getString filename from current dat
        
     //   System.out.println("trying initlog: ");
        
@@ -447,7 +447,7 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
     {setPropertyTooltip("cage_platform_length","length toward retina of cage's platform, in mm");}
     private float cage_door_width=getPrefs().getFloat("PawTrackerStereoBoard3Fast.cage_door_width",10.0f);
     {setPropertyTooltip("cage_door_width","width of the cage's door, in mm");}
-    // add get/set for these above
+    // add getString/set for these above
 
     private float cage_base_height=getPrefs().getFloat("PawTrackerStereoBoard3Fast.cage_base_height",0.0f);
     {setPropertyTooltip("cage_base_height","ground eleveation, compared to camera, of the cage, in mm");}
@@ -1518,7 +1518,7 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
  
     
     
-    // do not forget to add a set and a get/is method for each new parameter, at the end of this .java file
+    // do not forget to add a set and a getString/is method for each new parameter, at the end of this .java file
     
     
     // Global variables
@@ -1579,7 +1579,7 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
   
     
     
-    private int nbFingers = 0; //number of fingers tracked, maybe put it somewhere else
+    private int nbFingers = 0; //number of fingers tracked, maybe putString it somewhere else
     private int nbFingerClusters = 1;//number of created trackers
     private int idFingerClusters = 1;//id of created trackers
     
@@ -2012,7 +2012,7 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
         
     } //end compute3DParameters
     
-     // load pixel -> voxels correpondances from file and put them all into VoxelTable
+     // load pixel -> voxels correpondances from file and putString them all into VoxelTable
     private void loadCalibrationFromFile(String filename ) {
         try {
             //use buffering, reading one line at a time
@@ -2820,7 +2820,7 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
                             leadPoints[x][y].changed = true;
                             
                             // commented out to check speed of matching
-                            // to put back!
+                            // to putString back!
                             new3DEvent(x,y,x,i,leadPoints[x][y].updateTime,leadPoints[x][y].sign);
                           //  addToFingerTracker(leadPoints[x][y],method);
                             
@@ -2932,7 +2932,7 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
                            // addToGCAround(leadPoints,x,yl,dispAvgRange);
                             
                              // commented out to check speed of matching
-                            // to put back!
+                            // to putString back!
                          //   addToFingerTracker(leadPoints[x][y],method);
                             
                             
@@ -3503,7 +3503,7 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
                             //influencedPoint.previousUpdate = influencedPoint.updateTime;
                             
                             influencedPoint.shortFilteredValue += (ep.lastValue * f)/shortRangeTotal;
-                            // use get..Value(time) to decay value
+                            // use getString..Value(time) to decay value
                             influencedPoint.decayedFilteredValue = influencedPoint.getDecayedFilteredValue(ep.updateTime) + (ep.lastValue * f)/shortRangeTotal;
                             influencedPoint.updateTime = ep.updateTime;
                             //influencedPoint.updateTime = ep.updateTime;
@@ -3895,8 +3895,8 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
                     for (int j = 0; j<intMatrix[i].length; j++){
                         float f = 0;
                        // if(showCorrectionGradient){
-                            // to get it in gradient
-                         //   f = (float)intMatrix[i][j]/(float)retinaSize; // to get it in gradient
+                            // to getString it in gradient
+                         //   f = (float)intMatrix[i][j]/(float)retinaSize; // to getString it in gradient
                          //   gl.glColor3f(f,f,f);
                        // } else {
                             
@@ -4344,7 +4344,7 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
                         zOrigY=0;
                         
                     } else {
-                        // get final x,y for translation
+                        // getString final x,y for translation
                         dragOrigX = x;
                         dragOrigY = y;
                         
@@ -4353,14 +4353,14 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
                     // System.out.println("Left mousePressed tx:"+tx+" ty:"+ty+" origX:"+origX+" origY:"+origY);
                     
                 }  else if ((e.getModifiersEx()&but2mask)==but2mask){
-                    // get final x,y for depth translation
+                    // getString final x,y for depth translation
                 
                     zdragOrigY = y;
                     //   System.out.println(" x:"+x+" y:"+y);
                   //   System.out.println("Middle mousePressed y:"+y+" zty:"+zty+" zOrigY:"+zOrigY);
                     
                 }else if ((e.getModifiersEx()&but3mask)==but3mask){
-                    // get final x,y for rotation
+                    // getString final x,y for rotation
                     rdragOrigX = x;
                     rdragOrigY = y;
                     //   System.out.println(" x:"+x+" y:"+y);
@@ -4416,7 +4416,7 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
                 int but2mask = InputEvent.BUTTON2_DOWN_MASK;
                 int but3mask = InputEvent.BUTTON3_DOWN_MASK;
                 if ((e.getModifiersEx()&but1mask)==but1mask){
-                    // get final x,y for translation
+                    // getString final x,y for translation
                     
                     dragDestX = x;
                     dragDestY = y;
@@ -4426,7 +4426,7 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
                     
                     
                 } else if ((e.getModifiersEx()&but2mask)==but2mask){
-                    // get final x,y for translation
+                    // getString final x,y for translation
                     
                    
                     zdragDestY = y;
@@ -4434,7 +4434,7 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
                     middleDragged = true;
                     a3DCanvas.display();
                 } else if ((e.getModifiersEx()&but3mask)==but3mask){
-                    // get final x,y for translation
+                    // getString final x,y for translation
                     
                     rdragDestX = x;
                     rdragDestY = y;
@@ -5644,7 +5644,7 @@ public class PawTrackerStereoBoard3Fast extends EventFilter2D implements FrameAn
         if(!isFilterEnabled()) return;
         
         
-        GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl=drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in PawTrackerStereoBoard3Fast.annotate");
             return;

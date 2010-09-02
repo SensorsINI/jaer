@@ -163,7 +163,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         redLineBorder = BorderFactory.createLineBorder(Color.red);
         enabledCheckBox.setSelected(getFilter().isFilterEnabled());
         addIntrospectedControls();
-        // when filter fires a property change event, we get called here and we update all our controls
+        // when filter fires a property change event, we getString called here and we update all our controls
         getFilter().getPropertyChangeSupport().addPropertyChangeListener(this);
         ToolTipManager.sharedInstance().setDismissDelay(10000); // to show tips
         setToolTipText(f.getDescription());
@@ -270,7 +270,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     // if type of property is an EventFilter, check if it has either an enclosed filter
                     // or an enclosed filter chain. If so, construct FilterPanels for each of them.
                     try {
-                        Method r = p.getReadMethod(); // get the getter for the enclosed filter
+                        Method r = p.getReadMethod(); // getString the getter for the enclosed filter
                         EventFilter2D enclFilter = (EventFilter2D) (r.invoke(getFilter()));
                         if (enclFilter != null) {
 //                            log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses EventFilter2D "+enclFilter.getClass().getSimpleName());
@@ -296,7 +296,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     // if type of property is a FilterChain, check if it has either an enclosed filter
                     // or an enclosed filter chain. If so, construct FilterPanels for each of them.
                     try {
-                        Method r = p.getReadMethod(); // get the getter for the enclosed filter chain
+                        Method r = p.getReadMethod(); // getString the getter for the enclosed filter chain
                         FilterChain chain = (FilterChain) (r.invoke(getFilter()));
                         if (chain != null) {
 //                            log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses filterChain "+chain);
@@ -1043,7 +1043,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     try {
                         float y = Float.parseFloat(tf.getText());
                         w.invoke(filter, new Float(y));
-                        Float x = (Float) r.invoke(filter); // get the value from the getter method to constrain it
+                        Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
                         nval = x.floatValue();
                         tf.setText(String.format("%.4f", nval));
                     } catch (NumberFormatException fe) {
@@ -1062,7 +1062,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
                 public void keyPressed(java.awt.event.KeyEvent evt) {
                     try {
-                        Float x = (Float) r.invoke(filter); // get the value from the getter method
+                        Float x = (Float) r.invoke(filter); // getString the value from the getter method
                         initValue = x.floatValue();
 //                        System.out.println("x="+x);
                     } catch (InvocationTargetException e) {
@@ -1086,7 +1086,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 nval = (initValue * floatFactor);
                             }
                             w.invoke(filter, new Float(nval)); // setter the value
-                            Float x = (Float) r.invoke(filter); // get the value from the getter method to constrain it
+                            Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
                             nval = x.floatValue();
                             tf.setText(String.format("%.4f", nval));
                         } catch (InvocationTargetException ite) {
@@ -1103,7 +1103,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 nval = (initValue / floatFactor);
                             }
                             w.invoke(filter, new Float(initValue / floatFactor));
-                            Float x = (Float) r.invoke(filter); // get the value from the getter method to constrain it
+                            Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
                             nval = x.floatValue();
                             tf.setText(String.format("%.4f", nval));
                         } catch (InvocationTargetException ite) {
@@ -1118,7 +1118,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
                 public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
                     try {
-                        Float x = (Float) r.invoke(filter); // get the value from the getter method
+                        Float x = (Float) r.invoke(filter); // getString the value from the getter method
                         initValue = x.floatValue();
 //                        System.out.println("x="+x);
                     } catch (InvocationTargetException e) {
@@ -1139,7 +1139,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                     nval = (initValue * wheelFactor);
                                 }
                                 w.invoke(filter, new Float(nval)); // setter the value
-                                Float x = (Float) r.invoke(filter); // get the value from the getter method to constrain it
+                                Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
                                 nval = x.floatValue();
                                 tf.setText(String.format("%.4f", nval));
                             } catch (InvocationTargetException ite) {
@@ -1156,7 +1156,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                     nval = (initValue / wheelFactor);
                                 }
                                 w.invoke(filter, new Float(initValue / wheelFactor));
-                                Float x = (Float) r.invoke(filter); // get the value from the getter method to constrain it
+                                Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
                                 nval = x.floatValue();
                                 tf.setText(String.format("%.4f", nval));
                             } catch (InvocationTargetException ite) {

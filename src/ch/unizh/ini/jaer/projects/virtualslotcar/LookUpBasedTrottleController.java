@@ -57,8 +57,8 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
      */
     @Override
     synchronized public float computeControl(CarTracker tracker, SlotcarTrack track) {
-        // find the csar, pass it to the track if there is one to get it's location, the use the UpcomingCurvature to compute the curvature coming up,
-        // then compute the throttle to get our speed at the limit of traction.
+        // find the csar, pass it to the track if there is one to getString it's location, the use the UpcomingCurvature to compute the curvature coming up,
+        // then compute the throttle to getString our speed at the limit of traction.
         ClusterInterface car = tracker.findCarCluster();
          {
             if (track == null) {

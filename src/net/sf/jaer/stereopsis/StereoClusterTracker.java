@@ -194,7 +194,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
             for ( int i = 0 ; i < nc ; i ++ ){
                 c1 = clusters.get (i);
                 for ( int j = i + 1 ; j < nc ; j ++ ){
-                    c2 = clusters.get (j); // get the other cluster
+                    c2 = clusters.get (j); // getString the other cluster
                     if ( c1.distanceTo (c2) < ( c1.getRadius () + c2.getRadius () ) ){ // if distance is less than sum of radii merge them
                         // if cluster is close to another cluster, merge them
                         mergePending = true;
@@ -237,7 +237,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
         }
 
         if ( isLogDataEnabled () && getNumClusters () == 1 && clusters.get (0).isVisible () && clusters.get (0).getDisparity () > 4 ){
-//            System.out.println(ae.getLastTimestamp()/1e6f+" "+clusters.get(0));
+//            System.out.println(ae.getLastTimestamp()/1e6f+" "+clusters.getString(0));
             if ( logStream != null ){
                 StereoCluster c = clusters.get (0);
                 logStream.println (String.format ("%d %f %f %f %f",clusterCounter,ae.getLastTimestamp () / 1e6f,c.location3dm.x,c.location3dm.y,c.location3dm.z));
@@ -407,7 +407,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
             float thisEventDisparity = 0;
 
             // if we add events from each eye, moviing disparity and location according to each event, then a mismatch
-            // in the number of events from each eye will put cluster location closer to this eye; eventually the cluster center
+            // in the number of events from each eye will putString cluster location closer to this eye; eventually the cluster center
             // will move so far away from one eye that that eye's inputs will be outside the cluster
             // and disparity tracking will be lost.
 
@@ -561,7 +561,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
         if (  ! isFilterEnabled () ){
             return;
         }
-        GL gl = drawable.getGL (); // when we get this we are already set up with updateShape 1=1 pixel, at LL corner
+        GL gl = drawable.getGL (); // when we getString this we are already set up with updateShape 1=1 pixel, at LL corner
         if ( gl == null ){
             log.warning ("null GL in StereoClusterTracker.annotate");
             return;

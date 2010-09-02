@@ -270,12 +270,12 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
     private boolean showSecondFilter = getPrefs().getBoolean("PawTracker2.showSecondFilter",false);
   
     
-    // do not forget to add a set and a get/is method for each new parameter, at the end of this .java file
+    // do not forget to add a set and a getString/is method for each new parameter, at the end of this .java file
     
     
     // Global variables
     
-     private int nbFingers = 0; //number of fingers tracked, maybe put it somewhere else
+     private int nbFingers = 0; //number of fingers tracked, maybe putString it somewhere else
     
      
     protected float defaultClusterRadius;
@@ -1772,8 +1772,8 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         
         // for each points in tips        
         // find longest line with acc values > threshold, and stopping if touching door
-        // at tip distance, if pt.x,y too close to shape, put it to mindistance
-        // if too close from both sides, put it at the middle
+        // at tip distance, if pt.x,y too close to shape, putString it to mindistance
+        // if too close from both sides, putString it at the middle
         
         
         for(int i=0;i<fingerTipClusters.length;i++){
@@ -1807,8 +1807,8 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         
         // for each points in tips        
         // find longest line with acc values > threshold, and stopping if touching door
-        // at tip distance, if pt.x,y too close to shape, put it to mindistance
-        // if too close from both sides, put it at the middle
+        // at tip distance, if pt.x,y too close to shape, putString it to mindistance
+        // if too close from both sides, putString it at the middle
         
         
         for(int i=0;i<tips.size();i++){
@@ -1828,7 +1828,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         
         // then remove duplicate.
         
-        // to put back, paul :
+        // to putString back, paul :
        
 //        
 //        if(lines.size()>4){
@@ -2163,7 +2163,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         public int xo =0;
         public int yo =0;
         
-        public int acc; //number of identical values //to get rid of
+        public int acc; //number of identical values //to getString rid of
         public double distGC;
         public double orientation;
         public double size;
@@ -5055,7 +5055,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
         if(!isFilterEnabled()) return;
         
         
-        GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl=drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in PawTracker2.annotate");
             return;
@@ -5068,7 +5068,7 @@ public class PawTracker2 extends EventFilter2D implements FrameAnnotater, Observ
             //for all fingers
             // for(Cluster c:clusters){
             
-            // get finger location
+            // getString finger location
             //int x=(int)c.getLocation().x;
             // int y=(int)c.getLocation().y;
             

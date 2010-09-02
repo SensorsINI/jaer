@@ -41,7 +41,7 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
 
     public OpticalGyro(AEChip chip) {
         super(chip);
-        addObserver(this); // to get updates during packet
+        addObserver(this); // to getString updates during packet
         final String optgy = "Optical Gryo";
         setPropertyTooltip(optgy, "opticalGyroTauLowpassMs", "lowpass filter time constant in ms for optical gyro position, increase to smooth values");
         setPropertyTooltip(optgy, "opticalGyroEnabled", "enables global cluster movement reporting");
@@ -137,7 +137,7 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
      * that the clusters have moved
      * to the right, for instance, and then moved back
      * again to where they started. What do we use as our reference then?  We choose to try to
-     * transform all spikes or use the pantilt to get events to
+     * transform all spikes or use the pantilt to getString events to
      * come out as close as possible to where all the clusters started.
 
      * @param t the time of the upate in timestamp ticks (us).

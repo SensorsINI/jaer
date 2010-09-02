@@ -58,7 +58,7 @@ public final class ClusterBasedPipCounter extends EventFilter2D implements Frame
         filterChain.add(pipCounter);
         setEnclosedFilterChain(filterChain);
         msgSender = new CardStatsMessageSender();
-        pipCounter.addObserver(this);   //  we get called back from pipCounter to upate()
+        pipCounter.addObserver(this);   //  we getString called back from pipCounter to upate()
         // during tracking
         for (int i = 0; i < 13; i++) {
             try {
@@ -125,7 +125,7 @@ public final class ClusterBasedPipCounter extends EventFilter2D implements Frame
             if(cluster.isOverlappingBorder()) return;
         }
         if ((npips = pipCounter.getNumVisibleClusters()) == 0) {
-            // card has gone past, get peak value of hist
+            // card has gone past, getString peak value of hist
             if (sayCard && cardHist.getMaxValueBin() != 0 && System.currentTimeMillis() - lastTimeSaidCar > minSayCardIntervalMs) {
                 int val = cardHist.getMaxValueBin();
                 if (val > 0 && val <= 13 && namePlayers[val] != null) {

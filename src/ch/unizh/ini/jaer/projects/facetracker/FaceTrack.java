@@ -258,7 +258,7 @@ public class FaceTrack extends EventFilter2D implements FrameAnnotater, Observer
     synchronized public void annotate(GLAutoDrawable drawable) {
         final float LINE_WIDTH=6f; // in pixels
         if(!isFilterEnabled()) return;
-        GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl=drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in Face_Track.annotate");
             return;

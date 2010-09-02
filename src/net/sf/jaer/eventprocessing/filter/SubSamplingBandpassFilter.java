@@ -143,7 +143,7 @@ public class SubSamplingBandpassFilter extends EventFilter2D implements Observer
 // these arrays hold relative offsets to write to for center and surround timestamp splatts
     Offset[] centerOffsets, surroundOffsets;
 
-    /** computes an array of offsets that we write to when we get an event. */
+    /** computes an array of offsets that we write to when we getString an event. */
     private synchronized void computeOffsets (){
         ArrayList<Offset> surList = new ArrayList<Offset>();
 //        ArrayList<Offset> cenList=new ArrayList<Offset>();
@@ -308,7 +308,7 @@ public class SubSamplingBandpassFilter extends EventFilter2D implements Observer
      */
     private boolean filterEvent (BasicEvent i){
         boolean ret = true;
-        int sx = i.x >> surroundScale; // get subsampled x addr
+        int sx = i.x >> surroundScale; // getString subsampled x addr
         int sy = i.y >> surroundScale; // subsampled y addr
         int x = 0, y = 0, dt, st;
         float sumRate = 0f;

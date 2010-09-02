@@ -146,7 +146,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         carTracker.setTrack(trackDefineFilter.getTrack());
         carTracker.setEnclosed(true, this);
 
-        carTracker.addObserver(trackDefineFilter); // so that track define filter can get the tracker output
+        carTracker.addObserver(trackDefineFilter); // so that track define filter can getString the tracker output
 
         filterChain.add(trackDefineFilter);
         filterChain.add(carTracker);
@@ -461,9 +461,9 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     @Override
     public void annotate(GLAutoDrawable drawable) {
         String s = String.format("EvolutionaryThrottleController\nState: %s\ncurrentTrackPos: %d\nThrottle: %8.3f\n%s", state.toString(), currentTrackPos, throttle, lapTimer.toString());
-//       if(state.get()==State.CRASHED){
+//       if(state.getString()==State.CRASHED){
 //
-//       }else if(state.get()==State.RUNNING){
+//       }else if(state.getString()==State.RUNNING){
 //
 //       }else{
 //       }
@@ -854,7 +854,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         // chooses next spot to add throttle, based on previous throttle profile.
         // The higher the previous throttle, the less likely to choose it.
         private int getNextThrottleBumpPoint() {
-            // do accept/reject sampling to get next throttle bump center point, such that
+            // do accept/reject sampling to getString next throttle bump center point, such that
             // the higher the throttle is now, the smaller the chance we increase the throttle there.
             // So, we treat (1-profile[i]) as a likehood of choosing a new throttle.
             // We uniformly pick a bin from B in 1:numPoints and a value V in 0:1 and see if that particular

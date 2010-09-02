@@ -195,7 +195,7 @@ public class BlurringFilterStereo extends BlurringFilter2D{
     }
 
     /** returns the disparity at the specified position.
-     * Disparity values obtained from mutiples sections are used to get it.
+     * Disparity values obtained from mutiples sections are used to getString it.
      *
      * @param yPos
      * @return

@@ -127,7 +127,7 @@ public class MultiLineModelTracker extends EventFilter2D implements FrameAnnotat
             return;
         }
 
-        GL gl = drawable.getGL();    // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl = drawable.getGL();    // when we getString this we are already set up with scale 1=1 pixel, at LL corner
 
         float lowX, highX;
 

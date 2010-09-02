@@ -63,7 +63,7 @@ public class SingleLineTracker extends EventFilter2D implements FrameAnnotater,O
             }
             if ( o instanceof BinocularEvent ){
                 BinocularEvent e = (BinocularEvent)o;
-                // branch here on whoever should get updated
+                // branch here on whoever should getString updated
                 nright++;
                 polyAddEventV(e.x,e.y,e.timestamp);
                 nleft++;
@@ -84,7 +84,7 @@ public class SingleLineTracker extends EventFilter2D implements FrameAnnotater,O
     public void annotate (GLAutoDrawable drawable){
         updateCurrentEstimateH();
         updateCurrentEstimateV();
-        GL gl = drawable.getGL();    // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl = drawable.getGL();    // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         float loX, hiX, loY, hiY;
 
         if ( true ){ // draw vertical line model

@@ -583,7 +583,7 @@ public class PawTrackerStereoBoard4Camera extends EventFilter2D implements Frame
         try {
             
             
-            // get filename from current dat
+            // getString filename from current dat
        
     //   System.out.println("trying initlog: ");
        
@@ -1961,7 +1961,7 @@ public class PawTrackerStereoBoard4Camera extends EventFilter2D implements Frame
     // end class PlaneTracker
     
     
-    // do not forget to add a set and a get/is method for each new parameter, at the end of this .java file
+    // do not forget to add a set and a getString/is method for each new parameter, at the end of this .java file
     
     
     // Global variables
@@ -2022,7 +2022,7 @@ public class PawTrackerStereoBoard4Camera extends EventFilter2D implements Frame
   
     
     
-    private int nbFingers = 0; //number of fingers tracked, maybe put it somewhere else
+    private int nbFingers = 0; //number of fingers tracked, maybe putString it somewhere else
     private int nbFingerClusters = 1;//number of created trackers
     private int idFingerClusters = 1;//id of created trackers
     
@@ -2310,7 +2310,7 @@ public class PawTrackerStereoBoard4Camera extends EventFilter2D implements Frame
         initFilter();
     }
 
-      // load pixel -> voxels correpondances from file and put them all into VoxelTable
+      // load pixel -> voxels correpondances from file and putString them all into VoxelTable
     private void loadCalibrationFromFile(String filename ) {
         try {
             //use buffering, reading one line at a time
@@ -3353,7 +3353,7 @@ public class PawTrackerStereoBoard4Camera extends EventFilter2D implements Frame
                             leadPoints[x][y].changed = true;
                             
                             // commented out to check speed of matching
-                            // to put back!
+                            // to putString back!
                             new3DEvent(leadPoints[x][y],method,lead_side);
                           //  addToFingerTracker(leadPoints[x][y],method);
                             
@@ -3464,7 +3464,7 @@ public class PawTrackerStereoBoard4Camera extends EventFilter2D implements Frame
                            // addToGCAround(leadPoints,x,yl,dispAvgRange);
                             
                              // commented out to check speed of matching
-                            // to put back!
+                            // to putString back!
                          //   addToFingerTracker(leadPoints[x][y],method);
                             
                             
@@ -3907,7 +3907,7 @@ public class PawTrackerStereoBoard4Camera extends EventFilter2D implements Frame
         }
      
         
-        // get rid of nose // hack, to parametrize
+        // getString rid of nose // hack, to parametrize
           // if(y_rx>(grasp_max_elevation-(retina_height-cage_door_height))*scaleFactor){
         if(y_rx>zone.p3.y){
             res = false;
@@ -4076,7 +4076,7 @@ public class PawTrackerStereoBoard4Camera extends EventFilter2D implements Frame
                             //influencedPoint.previousUpdate = influencedPoint.updateTime;
                             
                             influencedPoint.shortFilteredValue += (ep.lastValue * f)/shortRangeTotal;
-                            // use get..Value(time) to decay value
+                            // use getString..Value(time) to decay value
                             influencedPoint.decayedFilteredValue = influencedPoint.getDecayedFilteredValue(ep.updateTime) + (ep.lastValue * f)/shortRangeTotal;
                             influencedPoint.updateTime = ep.updateTime;
                             //influencedPoint.updateTime = ep.updateTime;
@@ -4486,8 +4486,8 @@ public class PawTrackerStereoBoard4Camera extends EventFilter2D implements Frame
                     for (int j = 0; j<intMatrix[i].length; j++){
                         float f = 0;
                         if(showCorrectionGradient){
-                            // to get it in gradient
-                            f = (float)intMatrix[i][j]/(float)retinaSize; // to get it in gradient
+                            // to getString it in gradient
+                            f = (float)intMatrix[i][j]/(float)retinaSize; // to getString it in gradient
                             gl.glColor3f(f,f,f);
                         } else {
                             
@@ -4945,7 +4945,7 @@ public class PawTrackerStereoBoard4Camera extends EventFilter2D implements Frame
                         zOrigY=0;
                         camera.setAt(0,-25,-25000);
                     } else {
-                        // get final x,y for translation
+                        // getString final x,y for translation
                         dragOrigX = x;
                         dragOrigY = y;
                         
@@ -4954,14 +4954,14 @@ public class PawTrackerStereoBoard4Camera extends EventFilter2D implements Frame
                     // System.out.println("Left mousePressed tx:"+tx+" ty:"+ty+" origX:"+origX+" origY:"+origY);
                     
                 }  else if ((e.getModifiersEx()&but2mask)==but2mask){
-                    // get final x,y for depth translation
+                    // getString final x,y for depth translation
                     showRotationCube = false;
                     zdragOrigY = y;
                        System.out.println(" x:"+x+" y:"+y);
                   //   System.out.println("Middle mousePressed y:"+y+" zty:"+zty+" zOrigY:"+zOrigY);
                     
                 }else if ((e.getModifiersEx()&but3mask)==but3mask){
-                    // get final x,y for rotation
+                    // getString final x,y for rotation
                     camera.setRotationCenter(y_rotation_dist);
                     showRotationCube = true;
                     rdragOrigX = x;
@@ -5019,7 +5019,7 @@ public class PawTrackerStereoBoard4Camera extends EventFilter2D implements Frame
                 int but2mask = InputEvent.BUTTON2_DOWN_MASK;
                 int but3mask = InputEvent.BUTTON3_DOWN_MASK;
                 if ((e.getModifiersEx()&but1mask)==but1mask){
-                    // get final x,y for translation
+                    // getString final x,y for translation
                     
                     dragDestX = x;
                     dragDestY = y;
@@ -5029,7 +5029,7 @@ public class PawTrackerStereoBoard4Camera extends EventFilter2D implements Frame
                     
                     
                 } else if ((e.getModifiersEx()&but2mask)==but2mask){
-                    // get final x,y for translation
+                    // getString final x,y for translation
                     
                    
                     zdragDestY = y;
@@ -5037,7 +5037,7 @@ public class PawTrackerStereoBoard4Camera extends EventFilter2D implements Frame
                     middleDragged = true;
                     a3DCanvas.display();
                 } else if ((e.getModifiersEx()&but3mask)==but3mask){
-                    // get final x,y for translation
+                    // getString final x,y for translation
                     
                     rdragDestX = x;
                     rdragDestY = y;
@@ -6469,7 +6469,7 @@ public class PawTrackerStereoBoard4Camera extends EventFilter2D implements Frame
         if(!isFilterEnabled()) return;
         
         
-        GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl=drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in PawTrackerStereoBoard4Camera.annotate");
             return;

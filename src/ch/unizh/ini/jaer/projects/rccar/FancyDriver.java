@@ -141,7 +141,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private class DrivingController{
         
         void control(EventPacket in){
-            // get values from radio receiver (user sets speed or steers)
+            // getString values from radio receiver (user sets speed or steers)
             if(servo!=null){
                 radioSteer=servo.getRadioSteer();
                 radioSpeed=servo.getRadioSpeed();

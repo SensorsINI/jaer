@@ -523,7 +523,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
             }
         }
         clusterScanner = clusters.listIterator();
-        while ( clusterScanner.hasNext() ){ // get all old clusters, assign new ids and split if necessary
+        while ( clusterScanner.hasNext() ){ // getString all old clusters, assign new ids and split if necessary
             c = (Cluster)clusterScanner.next();
             if ( ( c.last < time_limit ) || ( c.last > now ) ){ //check if cluster is dead or if time has moved backwards
                 clusterScanner.remove();
@@ -779,7 +779,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
         if ( !isFilterEnabled() ){
             return;
         }
-        GL gl = drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl = drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if ( gl == null ){
             log.warning("null GL in ClassTracker.annotate");
             return;

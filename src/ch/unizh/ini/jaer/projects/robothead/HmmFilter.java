@@ -86,7 +86,7 @@ public class HmmFilter extends EventFilter2D implements Observer {
         if(in.getSize()==0) return in;       // do nothing if no spikes came in...., this means empty EventPacket
         
         checkOutputPacketEventType(in);
-        OutputEventIterator outItr=out.outputIterator();        // Output-Iterator always get cleared when eventPacket comes in
+        OutputEventIterator outItr=out.outputIterator();        // Output-Iterator always getString cleared when eventPacket comes in
         
         for(Object e:in){
             

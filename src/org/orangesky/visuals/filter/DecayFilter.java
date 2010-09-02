@@ -79,7 +79,7 @@ public class DecayFilter extends EventFilter2D{
         log.info("java.lang.ArrayIndexOutOfBoundsException: "+j+","+e.getMessage());}
         j=cAdd(j,1);firstindex=j;length=cAdd(index,-firstindex);
 //        log.info("t2="+(System.nanoTime()-t0));
-        OutputEventIterator outItr=out.outputIterator(); // get the built in iterator for output events
+        OutputEventIterator outItr=out.outputIterator(); // getString the built in iterator for output events
         PolarityEvent e = new PolarityEvent();
         while(j!=index){ // iterate over input events
         {  

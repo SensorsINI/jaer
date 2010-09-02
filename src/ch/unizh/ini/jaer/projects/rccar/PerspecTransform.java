@@ -145,7 +145,7 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
                     //-->lens distorion
                     //the radius gets transformed
                     r = lenseTransform(ro);
-                    //the transformation matrices get set up
+                    //the transformation matrices getString set up
                     dx[x][y] = (int)((r/ro)*Math.cos(alpha)*Math.signum(mx-x));
                     dy[x][y] = (int)((r/ro)*Math.sin(alpha)*Math.signum(my-y));
                 } else {

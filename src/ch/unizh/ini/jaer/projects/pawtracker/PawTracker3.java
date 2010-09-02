@@ -288,12 +288,12 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
     {setPropertyTooltip("decayOn","switch on/off decaying accumulated image");}       
     
     
-    // do not forget to add a set and a get/is method for each new parameter, at the end of this .java file
+    // do not forget to add a set and a getString/is method for each new parameter, at the end of this .java file
     
     
     // Global variables
     
-    private int nbFingers = 0; //number of fingers tracked, maybe put it somewhere else
+    private int nbFingers = 0; //number of fingers tracked, maybe putString it somewhere else
     
     protected float scoresFrame[][] = new float[retinaSize][retinaSize];
     protected FingerCluster[] fingers = new FingerCluster[MAX_NB_FINGERS];
@@ -2729,7 +2729,7 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
                                 //influencedPoint.previousUpdate = influencedPoint.updateTime;
                                
                                 influencedPoint.shortFilteredValue += (ep.lastValue * f)/shortRangeTotal;  
-                                 // use get..Value(time) to decay value
+                                 // use getString..Value(time) to decay value
                                 influencedPoint.decayedFilteredValue = influencedPoint.getDecayedFilteredValue(ep.updateTime) + (ep.lastValue * f)/shortRangeTotal;
                                 
                                 //influencedPoint.updateTime = ep.updateTime;
@@ -3551,7 +3551,7 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
         if(!isFilterEnabled()) return;
         
         
-        GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl=drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in PawTracker3.annotate");
             return;
@@ -3564,7 +3564,7 @@ public class PawTracker3 extends EventFilter2D implements FrameAnnotater, Observ
             //for all fingers
             // for(Cluster c:clusters){
             
-            // get finger location
+            // getString finger location
             //int x=(int)c.getLocation().x;
             // int y=(int)c.getLocation().y;
             

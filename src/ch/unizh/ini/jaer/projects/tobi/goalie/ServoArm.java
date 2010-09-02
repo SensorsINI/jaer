@@ -162,7 +162,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
     /** Creates a new instance of ServoArm */
     public ServoArm(AEChip chip){
         super(chip);
-        chip.addObserver(this); // to get chip sizes correct in initFilter
+        chip.addObserver(this); // to getString chip sizes correct in initFilter
 
         armTracker=new RectangularClusterTracker(chip);
         setEnclosedFilter(armTracker); // to avoid storing enabled prefs for this filter set it to be the enclosed filter before enabling
@@ -803,7 +803,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
                         synchronized(Thread.currentThread()){
                             Thread.currentThread().wait(LEARN_POSITION_DELAY_MS);
                         }
-                        //get the captured position
+                        //getString the captured position
                         p.x=(float)measureArmPosition((float)p.y);
                         //                        log.info("learning: set servo="+p.y+", read position x="+p.x);
 
@@ -878,7 +878,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
 
             for(n=0;n<POINTS_TO_CHECK;n++){
                 int pointToCheck=(int)(Math.random()*(double)father.chip.getSizeX()); // choose a pixel x position for arm
-                int measuredPoint=measureArmPosition(getOutputFromPosition(pointToCheck)); // put the arm there, wiggle it, and measure the arm cluster location
+                int measuredPoint=measureArmPosition(getOutputFromPosition(pointToCheck)); // putString the arm there, wiggle it, and measure the arm cluster location
                 int thisErr=Math.abs(pointToCheck-measuredPoint);
                 error+=thisErr;
                 sb.append(String.format("%d,%d,%d, ",pointToCheck,measuredPoint,thisErr));
@@ -1027,7 +1027,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
     }
     public float getServoPulseFreqHz(){
         if(servo!=null&&servo instanceof SiLabsC8051F320_USBIO_ServoController){
-            float actualFreq=((SiLabsC8051F320_USBIO_ServoController)servo).setServoPWMFrequencyHz(servoPulseFreqHz); // we need to set to get it
+            float actualFreq=((SiLabsC8051F320_USBIO_ServoController)servo).setServoPWMFrequencyHz(servoPulseFreqHz); // we need to set to getString it
             servoPulseFreqHz=actualFreq;
         }
         return servoPulseFreqHz;

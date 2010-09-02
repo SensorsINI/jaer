@@ -741,7 +741,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 
 	/**
 	 * filters in to out. if filtering is enabled, the number of out may be less
-	 * than the number put in
+	 * than the number putString in
 	 * 
 	 * @param in
 	 *            input events can be null or empty.
@@ -810,7 +810,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 
 			o.copyFrom(i);
 
-			// get times to neighbors in all directions
+			// getString times to neighbors in all directions
 			// check if search distance has been changed before iterating - for
 			// some reason the synchronized doesn't work
 			eventCounter++;
@@ -1325,7 +1325,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 	//	}
 	//
 	//	public void doTrainFinalNetwork() {
-	//		// get the pixel data
+	//		// getString the pixel data
 	//
 	//		// train the final network for classification
 	//
@@ -1334,7 +1334,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 	//	}
 
 	synchronized public void doTrainHopfieldNetwork() {
-		// get the pixel data
+		// getString the pixel data
 		//	doVisualise();
 		this.train(0);
 		finalClassifier.trainForClassification(toBeTrained,"");
@@ -1353,9 +1353,9 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 	}
 
 	synchronized public void doClassifyData() {
-		//		// get the pixel data
+		//		// getString the pixel data
 		//
-		//		// get the final network from hopfield and then from classification
+		//		// getString the final network from hopfield and then from classification
 		//
 		//toBeTrained = new boolean[hopfieldGridX * hopfieldGridY];
 		if(classNames == null){
@@ -1486,7 +1486,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 
 
 
-		//get the array
+		//getString the array
 		//classifyResults = finalClassifier.classify(fromHopfield);
 		classifyResults = finalClassifier.classify(fromHopfield);
 		//visualize it
@@ -1559,7 +1559,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 	protected boolean isLogDataEnabled;
 	//
 	//	public void doClearBuffer() {
-	//		// get the pixel data
+	//		// getString the pixel data
 	//
 	//		// train the final network for classification
 	//

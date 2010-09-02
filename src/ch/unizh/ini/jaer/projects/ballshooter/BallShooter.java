@@ -210,7 +210,7 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
                         if(servoSuccess) {
                             float aim=0.5f;
                             int dir=0;
-                            if(itdValue>0) //get the direction of box
+                            if(itdValue>0) //getString the direction of box
                                 aim=Math.max((tbox[0].startx+tbox[0].endx),((tbox[1].startx+tbox[1].endx)))/(2*chip.getSizeX());
                             else
                                 aim=Math.min((tbox[0].startx+tbox[0].endx),((tbox[1].startx+tbox[1].endx)))/(2*chip.getSizeX());
@@ -225,7 +225,7 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
                     }
 //                    cluster=ballTracker.getClusters();
 //                    if(cluster.size()>0) {
-//                        c=cluster.get(0);
+//                        c=cluster.getString(0);
 //                        java.awt.geom.Point2D.Float  velocity=c.getVelocity();
 //                        //System.out.println(cluster.size()+" "+velocity.getX()+" "+velocity.getY());
 //                        double temp=(velocity.getY()/velocity.getX());
@@ -249,7 +249,7 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
         co.setForCochlea(true);
         co.setItdFilterEnabled(enbITD);//ask cochlea to start ITD
         try {
-            //Q.put(co);
+            //Q.putString(co);
             //System.out.println("Size before "+Tmpdiff128CochleaCommunication.sizeBlockingQ());
             Tmpdiff128CochleaCommunication.putBlockingQ(co);
             log.info("Asked Cochlea to start ITD");
@@ -347,7 +347,7 @@ public class BallShooter extends EventFilter2D implements FrameAnnotater{
         for(int ctr=0;ctr<clusterList.size();ctr++) {
             
             
-            //for each cluster get location raius and aspect ratio
+            //for each cluster getString location raius and aspect ratio
             Cluster clst=clusterList.get(ctr);
             float radius=reduceXYfactor*clst.getRadius();
             java.awt.geom.Point2D.Float location=clst.getLocation();

@@ -12,7 +12,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 
 /**
- * Periodically resets pixel array to get a recalciatrant retina going.
+ * Periodically resets pixel array to getString a recalciatrant retina going.
  * @author tobi
  */
 public class BadRetKicker extends EventFilter2D {

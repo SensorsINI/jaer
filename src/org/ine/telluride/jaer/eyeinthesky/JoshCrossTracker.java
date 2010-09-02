@@ -171,7 +171,7 @@ public class JoshCrossTracker extends EventFilter2D implements FrameAnnotater {
         double dist1 = Math.abs(A1 * var1 + B1 * var2 + C1)/Math.sqrt(A1*A1 + B1*B1);
         double dist2 = Math.abs(A2 * var1 + B2 * var2 + C2)/Math.sqrt(A2*A2 + B2*B2);
 
-        //get the coordinates of the center
+        //getString the coordinates of the center
         double c[] = getCenter();
         double c1 = c[0];
         double c2 = c[1];

@@ -311,7 +311,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean unicastInputEnabled = false, unicastOutputEnabled = false;
     // socket connections
     private volatile AEServerSocket aeServerSocket = null; // this server socket accepts connections from clients who want events from us
-    private volatile AESocket aeSocket = null; // this socket is used to get events from a server to us
+    private volatile AESocket aeSocket = null; // this socket is used to getString events from a server to us
     private boolean socketInputEnabled = false; // flags that we are using socket input stream
     // Spread connections
     private volatile AESpreadInterface spreadInterface = null;
@@ -883,7 +883,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         currentFile = new File(f.getPath());
         lastFile = currentFile;
         prefs.put("AEViewer.lastFile",lastFile.toString());
-//        System.out.println("put AEViewer.lastFile="+lastFile);
+//        System.out.println("putString AEViewer.lastFile="+lastFile);
         setTitleAccordingToState();
     }
 
@@ -998,7 +998,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             boolean wasPaused = isPaused();
             setPaused(true);
             JFileChooser fileChooser = new JFileChooser();
-            String lastFilePath = prefs.get("AEViewer.lastFile",""); // get the last folder
+            String lastFilePath = prefs.get("AEViewer.lastFile",""); // getString the last folder
             lastFile = new File(lastFilePath);
 //            fileChooser.setFileFilter(datFileFilter);
             PNGFileFilter indexFileFilter = new PNGFileFilter();
@@ -1355,15 +1355,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
             while ( stop == false/*&& !isInterrupted()*/ ){ // the only way to break out of the run loop is either setting stop true or by some uncaught exception.
-                // now get the data to be displayed
+                // now getString the data to be displayed
                 if ( !isPaused() || isSingleStep() ){
 //                    if(isSingleStep()){
 //                        log.info("getting data for single step");
 //                    }
-                    // if !paused we always get data. below, if singleStepEnabled, we set paused after getting data.
+                    // if !paused we always getString data. below, if singleStepEnabled, we set paused after getting data.
                     // when the user unpauses via menu, we disable singleStepEnabled
                     // another flag, doSingleStep, tells loop to do a single data acquisition and then pause again
-                    // in this branch, get new data to show
+                    // in this branch, getString new data to show
                     getFrameRater().takeBefore();
                     switch ( getPlayMode() ){
                         case SEQUENCING:
@@ -1399,7 +1399,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }
                             overrunOccurred = aemon.overrunOccurred();
                             try{
-                                // try to get an event to avoid rendering empty (black) frames
+                                // try to getString an event to avoid rendering empty (black) frames
 //                                int triesLeft = 15;
 //                                do {
 //                                    if (!isInterrupted()) {
@@ -1419,7 +1419,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                                    try {
 //                                        Thread.currentThread().sleep(3);
 //                                    } catch (InterruptedException e) {
-//                                        log.warning("LIVE attempt to get data loop interrupted");
+//                                        log.warning("LIVE attempt to getString data loop interrupted");
 //                                    }
 //                                } while (triesLeft-- > 0);
 ////                                if(aeRaw.getNumEvents()==0) {System.out.print("0 events ..."); System.out.flush();}
@@ -1549,7 +1549,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 }
                                 continue;
                             }
-                    } // playMode switch to get data
+                    } // playMode switch to getString data
 
                     if ( aeRaw == null ){
                         fpsDelay();
@@ -3573,7 +3573,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             fileChooser.addPropertyChangeListener(preview);
             fileChooser.setAccessory(preview);
 
-            String lastFilePath = prefs.get("AEViewer.lastFile",""); // get the last folder
+            String lastFilePath = prefs.get("AEViewer.lastFile",""); // getString the last folder
 
             lastFile = new File(lastFilePath);
 
@@ -3917,7 +3917,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     getAePlayer().mark();
 ////                    Dictionary<Integer,JLabel> dict=new Dictionary<Integer,JLabel>();
 //                    Hashtable<Integer,JLabel> markTable = new Hashtable<Integer,JLabel>();
-//                    markTable.put(playerSlider.getValue(),new JLabel("^"));
+//                    markTable.putString(playerSlider.getValue(),new JLabel("^"));
 //                    playerSlider.setLabelTable(markTable);
 //                    playerSlider.setPaintLabels(true); // TODO move all this to AePlayerAdvancedControlsPanel
                 } else{
@@ -4076,7 +4076,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             PropertyChangeSupport readerSupport = readerControl.getReaderSupport();
             // propertyChange method in this file deals with these events
             if ( !readerSupport.hasListeners("readerStarted") ){ // TODO change to public static String for events in AEReader
-                readerSupport.addPropertyChangeListener("readerStarted",this); // when the reader starts running, we get called back to fix device control menu
+                readerSupport.addPropertyChangeListener("readerStarted",this); // when the reader starts running, we getString called back to fix device control menu
             }
 
 

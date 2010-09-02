@@ -259,7 +259,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                         }
                     }
                 }
-                //the attention has to be put on the spot where the next upper hinge might be
+                //the attention has to be putString on the spot where the next upper hinge might be
                 if(i+1<hingeNumber && isPaoli[i+1]){
                     //the center of the attention is determined 
                     virtualX = width*(2*maxIndex[i]-maxIndex[i+1]);
@@ -273,7 +273,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
                         }
                     }
                 }
-                // the attention has to be put on the spot where the next lower hinge might be
+                // the attention has to be putString on the spot where the next lower hinge might be
                 if(i-1>=0 && i<hingeNumber && isPaoli[i-1]){
                      //the center of the attention is determined 
                      virtualX = width*(2*maxIndex[i]-maxIndex[i-1]);

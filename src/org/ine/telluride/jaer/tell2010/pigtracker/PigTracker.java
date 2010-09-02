@@ -37,50 +37,58 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
     public PigTracker(AEChip chip) {
         super(chip);
         chip.addObserver(this);
+        computeTrackingMode();
+        initTemplate();
     }
-    private JFrame frame = new JFrame("PigTracker");
+//    private JFrame frame = new JFrame("PigTracker");
     private boolean perspectiveEnabled = getBoolean("perspectiveEnabled", true);
     private boolean shearEnabled = getBoolean("shearEnabled", true);
-    private GUIShow guiShow = null;
-    private JCheckBox enablePerspective = new JCheckBox();
-    private JCheckBox enableShear = new JCheckBox();
-    private JButton learnButton = new JButton();
-    private JButton resetButton = new JButton();
-    private JSlider distanceSlider = new JSlider(0, 1024, 100);
-    private JCheckBox trackSquare = new JCheckBox();
-    private JCheckBox trackA = new JCheckBox();
-    private JCheckBox trackI = new JCheckBox();
-    private JCheckBox trackP56 = new JCheckBox();
-    private JCheckBox trackP22 = new JCheckBox();
-    private JCheckBox trackCapture = new JCheckBox();
-    final int maxNumberOfLines = 500;
-    int numberOfLinesInUse = 60;
-    double m1, m2, m3, m4, m5, m6, m7, m8, m9;
-    int sx = 0, sy = 0, sx2 = 0, sy2 = 0, sx1 = 0, sy1 = 0;
+    private float distanceThreshold = getFloat("distanceThreshold", 0.04f);
 
+    public enum ObjectToTrack {
+
+        Square, A, I, Pig56, Pig22, Capture
+    };
+    private ObjectToTrack objectToTrack = ObjectToTrack.valueOf(getString("objectToTrack", ObjectToTrack.Pig56.toString()));
+  
+//    private JButton learnButton = new JButton();
+//    private JButton resetButton = new JButton();
+//    private GUIShow guiShow = null;
+//    private JCheckBox enablePerspectiveCB = new JCheckBox();
+//    private JCheckBox enableShearCB = new JCheckBox();
+//    private JSlider distanceSlider = new JSlider(0, 1024, 100);
+//    private JCheckBox trackSquareCB = new JCheckBox();
+//    private JCheckBox trackACB = new JCheckBox();
+//    private JCheckBox trackICB = new JCheckBox();
+//    private JCheckBox trackP56CB = new JCheckBox();
+//    private JCheckBox trackP22CB = new JCheckBox();
+//    private JCheckBox trackCaptureCB = new JCheckBox();
+    final int maxNumberOfLines = 500;
+    private int numberOfLinesInUse = 60;
+    private double m1, m2, m3, m4, m5, m6, m7, m8, m9;
+    private int sx = 0, sy = 0, sx2 = 0, sy2 = 0, sx1 = 0, sy1 = 0;
 
     enum TrackingMode {
 
         AnyMatrix, NoShear, NoPerspective
     }
     TrackingMode trackingMode1 = TrackingMode.AnyMatrix;
-    int trackingMode = 1; // 1 == any matrix, 2 == no shear, 3 == no perspective
-    double la[] = new double[maxNumberOfLines];			// represents lines
-    double lb[] = new double[maxNumberOfLines];
-    double lc[] = new double[maxNumberOfLines];
-    double lcx[] = new double[maxNumberOfLines];		// center of line
-    double lcy[] = new double[maxNumberOfLines];
-    double lch[] = new double[maxNumberOfLines];		// squared half-width of segment
-    double lsx[] = new double[maxNumberOfLines];		// "startpoint" of line
-    double lsy[] = new double[maxNumberOfLines];
-    double lex[] = new double[maxNumberOfLines];		// "endpoint" of line
-    double ley[] = new double[maxNumberOfLines];
-    private double distanceThreshold = getFloat("distanceThreshold", 0.04f);
-    long trackCaptureEventCounter = 0;
-    final long numberOfCaptureEvents = 10000;
-    boolean captureEventMatrix[][] = null;
+    private int trackingMode = 1; // 1 == any matrix, 2 == no shear, 3 == no perspective
+    private double la[] = new double[maxNumberOfLines];			// represents lines
+    private double lb[] = new double[maxNumberOfLines];
+    private double lc[] = new double[maxNumberOfLines];
+    private double lcx[] = new double[maxNumberOfLines];		// center of line
+    private double lcy[] = new double[maxNumberOfLines];
+    private double lch[] = new double[maxNumberOfLines];		// squared half-width of segment
+    private double lsx[] = new double[maxNumberOfLines];		// "startpoint" of line
+    private double lsy[] = new double[maxNumberOfLines];
+    private double lex[] = new double[maxNumberOfLines];		// "endpoint" of line
+    private double ley[] = new double[maxNumberOfLines];
+    private int trackCaptureEventCounter = 0;
+    private int numberOfCaptureEvents = getInt("numberOfCaptureEvents", 10000);
+    private boolean captureEventMatrix[][] = null;
 
-    void resetIdentityMatrix() {
+    private void resetIdentityMatrix() {
         m1 = 1;
         m2 = 0;
         m3 = 0;
@@ -92,7 +100,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         m9 = 1;
     }
 
-    void precomputeUsingEndpoints() {
+    private void precomputeUsingEndpoints() {
         for (int n = 0; n < numberOfLinesInUse; n++) {
             lcx[n] = (lsx[n] + lex[n]) / 2.0;
             lcy[n] = (lsy[n] + ley[n]) / 2.0;
@@ -109,19 +117,22 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         }
     }
 
+  
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-        checkOutputPacketEventType(TypedEvent.class);
+        checkOutputPacketEventType(PolarityEvent.class);
         OutputEventIterator outItr = out.outputIterator();
         for (BasicEvent e : in) {
             PolarityEvent ev = (PolarityEvent) e;
-            TypedEvent oe = (TypedEvent) outItr.nextOutput();
+            PolarityEvent oe = (PolarityEvent) outItr.nextOutput();
             oe.copyFrom(ev);
             if (processNewEvent(ev)) {
-                oe.type=(byte)(ev.type+2);
+                oe.polarity=PolarityEvent.Polarity.On;
+            }else{
+                oe.polarity=PolarityEvent.Polarity.Off;
             }
         }
-        return in;
+        return out;
     }
 
     @Override
@@ -150,156 +161,140 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         }
     }
 
-    /**
-     * @return the distanceThreshold
-     */
-    public float getDistanceThreshold() {
-        return (float)distanceThreshold;
-    }
+//    public class GUIShow extends JPanel {
+//
+//        private static final long serialVersionUID = 1L;
+//
+//        GUIShow() {
+//            frame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+//            frame.getContentPane().add(this, BorderLayout.CENTER);
+//            frame.setSize(400, 500);
+//            frame.setResizable(true);				// allow changes in size
+//            frame.setName("PigTracker");
+//
+//            frame.setLocation(1600, 100);
+//            setLayout(new FlowLayout());
+//
+//
+//            add(enablePerspectiveCB);
+//            enablePerspectiveCB.setText("enablePerspective");
+//            enablePerspectiveCB.setBounds(20, 20, 200, 30);
+//
+//            add(enableShearCB);
+//            enableShearCB.setText("enableShear");
+//            enableShearCB.setBounds(20, 50, 200, 30);
+//
+//            add(learnButton);
+//            learnButton.setText("learn");
+//            learnButton.setBounds(20, 100, 120, 30);
+//
+//            add(resetButton);
+//            resetButton.setText("init");
+//            resetButton.setBounds(160, 100, 120, 30);
+//
+//            add(distanceSlider);
+//            distanceSlider.setBounds(20, 150, 300, 30);
+//
+//            add(trackACB);
+//            trackACB.setText("track A");
+//            trackACB.setBounds(20, 200, 200, 20);
+//
+//            add(trackICB);
+//            trackICB.setText("track I");
+//            trackICB.setBounds(20, 230, 200, 20);
+//
+//            add(trackSquareCB);
+//            trackSquareCB.setText("track Square");
+//            trackSquareCB.setBounds(20, 260, 200, 20);
+//
+//            add(trackP56CB);
+//            trackP56CB.setText("track P56");
+//            trackP56CB.setBounds(20, 290, 200, 20);
+//
+//            add(trackP22CB);
+//            trackP22CB.setText("track P22");
+//            trackP22CB.setBounds(20, 320, 200, 20);
+//
+//            add(trackCaptureCB);
+//            trackCaptureCB.setText("track Capture");
+//            trackCaptureCB.setBounds(20, 350, 200, 20);
+//
+//
+//
+//            ActionListener bl = new ButtonListener();
+//            learnButton.addActionListener(bl);
+//            resetButton.addActionListener(bl);
+//            enablePerspectiveCB.addActionListener(bl);
+//            enableShearCB.addActionListener(bl);
+//
+//            trackACB.addActionListener(bl);
+//            trackICB.addActionListener(bl);
+//            trackSquareCB.addActionListener(bl);
+//            trackP56CB.addActionListener(bl);
+//            trackP22CB.addActionListener(bl);
+//            trackCaptureCB.addActionListener(bl);
+//
+//            ChangeListener cl = new SliderListener();
+//            distanceSlider.addChangeListener(cl);
+//
+////            doLoadConfig();
+//        }
+//    }
 
-    /**
-     * @param distanceThreshold the distanceThreshold to set
-     */
-    public void setDistanceThreshold(double distanceThreshold) {
-        this.distanceThreshold = distanceThreshold;
-        putFloat("distanceThreshold",(float)distanceThreshold);
-    }
+//    public void doSaveConfig() {
+//        Preferences prefs = Preferences.userNodeForPackage(PigTracker.class);
+//        prefs.putInt("PigTrackerFrameLocationX", frame.getLocation().x);
+//        prefs.putInt("PigTrackerFrameLocationY", frame.getLocation().y);
+//
+//        prefs.putInt("distanceSlider", distanceSlider.getValue());
+//
+//        prefs.putBoolean("enableSheare", enableShearCB.isSelected());
+//        prefs.putBoolean("enablePerspective", enablePerspectiveCB.isSelected());
+//
+//        prefs.putBoolean("trackA", trackACB.isSelected());
+//        prefs.putBoolean("trackI", trackICB.isSelected());
+//        prefs.putBoolean("trackSquare", trackSquareCB.isSelected());
+//        prefs.putBoolean("trackP56", trackP56CB.isSelected());
+//        prefs.putBoolean("trackP22", trackP22CB.isSelected());
+//        prefs.putBoolean("trackCapture", trackCaptureCB.isSelected());
+//    }
+//
+//    public void doLoadConfig() {
+//        Preferences prefs = Preferences.userNodeForPackage(PigTracker.class);
+//
+//        frame.setLocation(prefs.getInt("PigTrackerFrameLocationX", 10),
+//                prefs.getInt("PigTrackerFrameLocationY", 10));
+//
+//        distanceSlider.setValue(prefs.getInt("distanceSlider", 100));
+//
+//        enableShearCB.setSelected(prefs.getBoolean("enableSheare", false));
+//        enablePerspectiveCB.setSelected(prefs.getBoolean("enablePerspective", false));
+//
+//        trackACB.setSelected(prefs.getBoolean("trackA", false));
+//        trackICB.setSelected(prefs.getBoolean("trackI", false));
+//        trackSquareCB.setSelected(prefs.getBoolean("trackSquare", false));
+//        trackP56CB.setSelected(prefs.getBoolean("trackP56", false));
+//        trackP22CB.setSelected(prefs.getBoolean("trackP22", false));
+//        trackCaptureCB.setSelected(prefs.getBoolean("trackCapture", false));
+//
+//        computeTrackingMode();
+//        initTemplate();
+//    }
 
-
-    public class GUIShow extends JPanel {
-
-        private static final long serialVersionUID = 1L;
-
-        GUIShow() {
-            frame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-            frame.getContentPane().add(this, BorderLayout.CENTER);
-            frame.setSize(400, 500);
-            frame.setResizable(true);				// allow changes in size
-            frame.setName("PigTracker");
-
-            frame.setLocation(1600, 100);
-            setLayout(new FlowLayout());
-
-
-            add(enablePerspective);
-            enablePerspective.setText("enablePerspective");
-            enablePerspective.setBounds(20, 20, 200, 30);
-
-            add(enableShear);
-            enableShear.setText("enableShear");
-            enableShear.setBounds(20, 50, 200, 30);
-
-            add(learnButton);
-            learnButton.setText("learn");
-            learnButton.setBounds(20, 100, 120, 30);
-
-            add(resetButton);
-            resetButton.setText("init");
-            resetButton.setBounds(160, 100, 120, 30);
-
-            add(distanceSlider);
-            distanceSlider.setBounds(20, 150, 300, 30);
-
-            add(trackA);
-            trackA.setText("track A");
-            trackA.setBounds(20, 200, 200, 20);
-
-            add(trackI);
-            trackI.setText("track I");
-            trackI.setBounds(20, 230, 200, 20);
-
-            add(trackSquare);
-            trackSquare.setText("track Square");
-            trackSquare.setBounds(20, 260, 200, 20);
-
-            add(trackP56);
-            trackP56.setText("track P56");
-            trackP56.setBounds(20, 290, 200, 20);
-
-            add(trackP22);
-            trackP22.setText("track P22");
-            trackP22.setBounds(20, 320, 200, 20);
-
-            add(trackCapture);
-            trackCapture.setText("track Capture");
-            trackCapture.setBounds(20, 350, 200, 20);
-
-
-
-            ActionListener bl = new ButtonListener();
-            learnButton.addActionListener(bl);
-            resetButton.addActionListener(bl);
-            enablePerspective.addActionListener(bl);
-            enableShear.addActionListener(bl);
-
-            trackA.addActionListener(bl);
-            trackI.addActionListener(bl);
-            trackSquare.addActionListener(bl);
-            trackP56.addActionListener(bl);
-            trackP22.addActionListener(bl);
-            trackCapture.addActionListener(bl);
-
-            ChangeListener cl = new SliderListener();
-            distanceSlider.addChangeListener(cl);
-
-            doLoadConfig();
-        }
-    }
-
-    public void doSaveConfig() {
-        Preferences prefs = Preferences.userNodeForPackage(PigTracker.class);
-        prefs.putInt("PigTrackerFrameLocationX", frame.getLocation().x);
-        prefs.putInt("PigTrackerFrameLocationY", frame.getLocation().y);
-
-        prefs.putInt("distanceSlider", distanceSlider.getValue());
-
-        prefs.putBoolean("enableSheare", enableShear.isSelected());
-        prefs.putBoolean("enablePerspective", enablePerspective.isSelected());
-
-        prefs.putBoolean("trackA", trackA.isSelected());
-        prefs.putBoolean("trackI", trackI.isSelected());
-        prefs.putBoolean("trackSquare", trackSquare.isSelected());
-        prefs.putBoolean("trackP56", trackP56.isSelected());
-        prefs.putBoolean("trackP22", trackP22.isSelected());
-        prefs.putBoolean("trackCapture", trackCapture.isSelected());
-    }
-
-    public void doLoadConfig() {
-        Preferences prefs = Preferences.userNodeForPackage(PigTracker.class);
-
-        frame.setLocation(prefs.getInt("PigTrackerFrameLocationX", 10),
-                prefs.getInt("PigTrackerFrameLocationY", 10));
-
-        distanceSlider.setValue(prefs.getInt("distanceSlider", 100));
-
-        enableShear.setSelected(prefs.getBoolean("enableSheare", false));
-        enablePerspective.setSelected(prefs.getBoolean("enablePerspective", false));
-
-        trackA.setSelected(prefs.getBoolean("trackA", false));
-        trackI.setSelected(prefs.getBoolean("trackI", false));
-        trackSquare.setSelected(prefs.getBoolean("trackSquare", false));
-        trackP56.setSelected(prefs.getBoolean("trackP56", false));
-        trackP22.setSelected(prefs.getBoolean("trackP22", false));
-        trackCapture.setSelected(prefs.getBoolean("trackCapture", false));
-
-        computeTrackingMode();
-        initTemplate();
-    }
-
-    public class SliderListener implements ChangeListener {
-
-        public void stateChanged(ChangeEvent e) {
-            setDistanceThreshold(((double) distanceSlider.getValue()) / 5120.0);
-            log.info("new value: " + getDistanceThreshold());
-        }
-    }
+//    public class SliderListener implements ChangeListener {
+//
+//        public void stateChanged(ChangeEvent e) {
+//            setDistanceThreshold(((float) distanceSlider.getValue()) / 5120f);
+//            log.info("new value: " + getDistanceThreshold());
+//        }
+//    }
 
     private void computeTrackingMode() {
 
-        if (enableShear.isSelected()) {
+        if (shearEnabled) {
             trackingMode = 1;
         } else {
-            if (enablePerspective.isSelected()) {
+            if (perspectiveEnabled) {
                 trackingMode = 2;
             } else {
                 trackingMode = 3;
@@ -307,88 +302,88 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         }
     }
 
-    public class ButtonListener implements ActionListener {
-
-        private void disableAllTracker() {
-            trackA.setSelected(false);
-            trackI.setSelected(false);
-            trackSquare.setSelected(false);
-            trackP56.setSelected(false);
-            trackP22.setSelected(false);
-            trackCapture.setSelected(false);
-        }
-
-        public void actionPerformed(ActionEvent e) {
-
-            if (e.getSource() == learnButton) {
-                log.info("Learning Button pressed!");
-            }
-            if (e.getSource() == resetButton) {
-                initTemplate();
-            }
-
-            if (e.getSource() == trackA) {
-                disableAllTracker();
-                trackA.setSelected(true);
-                initTemplate();
-            }
-            if (e.getSource() == trackI) {
-                disableAllTracker();
-                trackI.setSelected(true);
-                initTemplate();
-            }
-            if (e.getSource() == trackSquare) {
-                disableAllTracker();
-                trackSquare.setSelected(true);
-                initTemplate();
-            }
-            if (e.getSource() == trackP56) {
-                disableAllTracker();
-                trackP56.setSelected(true);
-                initTemplate();
-            }
-            if (e.getSource() == trackP22) {
-                disableAllTracker();
-                trackP22.setSelected(true);
-                initTemplate();
-            }
-            if (e.getSource() == trackCapture) {
-                disableAllTracker();
-                trackCapture.setSelected(true);
-                initTemplate();
-            }
-
-
-            if (e.getSource() == enablePerspective) {
-                if (enablePerspective.isSelected()) {
-                    log.info("enablePerspective ON!");
-                } else {
-                    log.info("enablePerspective OFF!");
-                    if (enableShear.isSelected()) {
-                        log.info("Also turning off enableShear!");
-                    }
-                    enableShear.setSelected(false);
-                }
-            }
-
-            if (e.getSource() == enableShear) {
-                if (enableShear.isSelected()) {
-                    log.info("enableShear ON!");
-                    if (!enablePerspective.isSelected()) {
-                        log.info("Also turning on enablePerspective!");
-                    }
-                    enablePerspective.setSelected(true);
-                } else {
-                    log.info("enableShear OFF!");
-                }
-            }
-
-            computeTrackingMode();
-            log.info("Tracking Mode = " + trackingMode);
-
-            doSaveConfig();
-        }
-    }
+//    public class ButtonListener implements ActionListener {
+//
+//        private void disableAllTracker() {
+//            trackACB.setSelected(false);
+//            trackICB.setSelected(false);
+//            trackSquareCB.setSelected(false);
+//            trackP56CB.setSelected(false);
+//            trackP22CB.setSelected(false);
+//            trackCaptureCB.setSelected(false);
+//        }
+//
+//        public void actionPerformed(ActionEvent e) {
+//
+//            if (e.getSource() == learnButton) {
+//                log.info("Learning Button pressed!");
+//            }
+//            if (e.getSource() == resetButton) {
+//                initTemplate();
+//            }
+//
+//            if (e.getSource() == trackACB) {
+//                disableAllTracker();
+//                trackACB.setSelected(true);
+//                initTemplate();
+//            }
+//            if (e.getSource() == trackICB) {
+//                disableAllTracker();
+//                trackICB.setSelected(true);
+//                initTemplate();
+//            }
+//            if (e.getSource() == trackSquareCB) {
+//                disableAllTracker();
+//                trackSquareCB.setSelected(true);
+//                initTemplate();
+//            }
+//            if (e.getSource() == trackP56CB) {
+//                disableAllTracker();
+//                trackP56CB.setSelected(true);
+//                initTemplate();
+//            }
+//            if (e.getSource() == trackP22CB) {
+//                disableAllTracker();
+//                trackP22CB.setSelected(true);
+//                initTemplate();
+//            }
+//            if (e.getSource() == trackCaptureCB) {
+//                disableAllTracker();
+//                trackCaptureCB.setSelected(true);
+//                initTemplate();
+//            }
+//
+//
+//            if (e.getSource() == enablePerspectiveCB) {
+//                if (enablePerspectiveCB.isSelected()) {
+//                    log.info("enablePerspective ON!");
+//                } else {
+//                    log.info("enablePerspective OFF!");
+//                    if (enableShearCB.isSelected()) {
+//                        log.info("Also turning off enableShear!");
+//                    }
+//                    enableShearCB.setSelected(false);
+//                }
+//            }
+//
+//            if (e.getSource() == enableShearCB) {
+//                if (enableShearCB.isSelected()) {
+//                    log.info("enableShear ON!");
+//                    if (!enablePerspectiveCB.isSelected()) {
+//                        log.info("Also turning on enablePerspective!");
+//                    }
+//                    enablePerspectiveCB.setSelected(true);
+//                } else {
+//                    log.info("enableShear OFF!");
+//                }
+//            }
+//
+//            computeTrackingMode();
+//            log.info("Tracking Mode = " + trackingMode);
+//
+////            doSaveConfig();
+//        }
+//    }
 
     private void initCapture() {
         log.info("InitCapture");
@@ -403,9 +398,9 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
     }
     // ******************************************************************************************************************************************************
     // ******************************************************************************************************************************************************
-    final int linelength = 20;
-    final int linewidth = 1;
-    final double fractionOfEventsRequired = 0.8;
+    private final int linelength = 20;
+    private final int linewidth = 1;
+    private final double fractionOfEventsRequired = 0.8;
 
     private void computeCaptureObject() {
 
@@ -548,7 +543,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
 
 
-        // this is what we need to get filled in range -1 .. +1
+        // this is what we need to getString filled in range -1 .. +1
 //		lsx[0..xx] = yy;
 //		lsy[0..xx] = yy;
 //		lex[0..xx] = yy;
@@ -565,45 +560,42 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
     }
 
-    @Override
-    public synchronized void setFilterEnabled(boolean yes) {
-        super.setFilterEnabled(yes);
-        if (yes) {
-            if (guiShow == null) {
-                guiShow = new GUIShow();
-            }
-            frame.setVisible(true);
-        } else {
-            if (guiShow != null) {
-                frame.setVisible(false);
-            }
-        }
-    }
-    // ******************************************************************************************************************************************************
-    // ******************************************************************************************************************************************************
+//    @Override
+//    public synchronized void setFilterEnabled(boolean yes) {
+//        super.setFilterEnabled(yes);
+//        if (yes) {
+//            if (guiShow == null) {
+//                guiShow = new GUIShow();
+//            }
+//            frame.setVisible(true);
+//        } else {
+//            if (guiShow != null) {
+//                frame.setVisible(false);
+//            }
+//        }
+//    }
 
-    public void initTemplate() {
+    private void initTemplate() {
+        switch (objectToTrack) {
+            case A:
+                initA();
+                break;
+            case Square:
+                initSquare();
+                break;
+            case I:
+                initI();
+                break;
+            case Pig22:
+                initPig22();
+                break;
+            case Pig56:
+                initPig56();
+                break;
+            case Capture:
+                initCapture();
+                break;
 
-        if (trackA.isSelected()) {
-            initA();
-        }
-        if (trackI.isSelected()) {
-            initI();
-        }
-
-        if (trackSquare.isSelected()) {
-            initSquare();
-        }
-
-        if (trackP56.isSelected()) {
-            initPig56();
-        }
-        if (trackP22.isSelected()) {
-            initPig20();
-        }
-
-        if (trackCapture.isSelected()) {
-            initCapture();
         }
 
         precomputeUsingEndpoints();
@@ -632,8 +624,8 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         l9 = den * (m1 * m5 - m2 * m4);				// here we have the inverse of m
 
 
-        gl.glColor3f(0,1,1);
-        gl.glLineWidth(1f);
+        gl.glColor3f(0, 1, 1);
+        gl.glLineWidth(3f);
         gl.glBegin(GL.GL_LINES);
         for (int n = 0; n < numberOfLinesInUse; n++) {
 
@@ -715,15 +707,15 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
     }
 
-    public boolean processNewEvent(PolarityEvent ev) {
+    public boolean processNewEvent(TypedEvent ev) {
         int eventX = ev.x, eventY = ev.y;
-        int eventP = ev.type;
+//        int eventP = ev.type;
 
         if (trackCaptureEventCounter != 0) {
             //log.info("Collecting this event " + trackCaptureEventCounter);
             captureEventMatrix[eventX][eventY] = true;
             trackCaptureEventCounter++;
-            if (trackCaptureEventCounter == numberOfCaptureEvents) {
+            if (trackCaptureEventCounter == getNumberOfCaptureEvents()) {
                 computeCaptureObject();
             }
             return true;
@@ -1102,13 +1094,13 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
         numberOfLinesInUse = 56;
 
-        for (int fy=0; fy<=numberOfLinesInUse; fy++) {
+        for (int fy = 0; fy <= numberOfLinesInUse; fy++) {
             lsy[fy] = -lsy[fy];
             ley[fy] = -ley[fy];
         }
     }
 
-    private void initPig20() {
+    private void initPig22() {
         lsx[0] = -0.664021;
         lsy[0] = -0.730159;
         lex[0] = -0.626984;
@@ -1211,7 +1203,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
         numberOfLinesInUse = 20;
 
-        for (int fy=0; fy<=numberOfLinesInUse; fy++) {
+        for (int fy = 0; fy <= numberOfLinesInUse; fy++) {
             lsy[fy] = -lsy[fy];
             ley[fy] = -ley[fy];
         }
@@ -1249,7 +1241,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
             ley[n] = (ley[n] / sy2) - 1.0;
         }
 
-        for (int fy=0; fy<=numberOfLinesInUse; fy++) {
+        for (int fy = 0; fy <= numberOfLinesInUse; fy++) {
             lsy[fy] = -lsy[fy];
             ley[fy] = -ley[fy];
         }
@@ -1281,7 +1273,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
             ley[n] = (ley[n] / 64.0) - 1.0;
         }
 
-        for (int fy=0; fy<=numberOfLinesInUse; fy++) {
+        for (int fy = 0; fy <= numberOfLinesInUse; fy++) {
             lsy[fy] = -lsy[fy];
             ley[fy] = -ley[fy];
         }
@@ -1313,9 +1305,141 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
             ley[n] = (ley[n] / 64.0) - 1.0;
         }
 
-        for (int fy=0; fy<=numberOfLinesInUse; fy++) {
+        for (int fy = 0; fy <= numberOfLinesInUse; fy++) {
             lsy[fy] = -lsy[fy];
             ley[fy] = -ley[fy];
         }
+    }
+
+    /**
+     * @return the perspectiveEnabled
+     */
+    public boolean isPerspectiveEnabled() {
+        return perspectiveEnabled;
+    }
+
+    /*        if (e.getSource() == enablePerspectiveCB) {
+                if (enablePerspectiveCB.isSelected()) {
+                    log.info("enablePerspective ON!");
+                } else {
+                    log.info("enablePerspective OFF!");
+                    if (enableShearCB.isSelected()) {
+                        log.info("Also turning off enableShear!");
+                    }
+                    enableShearCB.setSelected(false);
+                }
+            }
+
+            if (e.getSource() == enableShearCB) {
+                if (enableShearCB.isSelected()) {
+                    log.info("enableShear ON!");
+                    if (!enablePerspectiveCB.isSelected()) {
+                        log.info("Also turning on enablePerspective!");
+                    }
+                    enablePerspectiveCB.setSelected(true);
+                } else {
+                    log.info("enableShear OFF!");
+                }
+            }
+
+     */
+    /**
+     * @param perspectiveEnabled the perspectiveEnabled to set
+     */
+    synchronized public void setPerspectiveEnabled(boolean perspectiveEnabled) {
+        boolean old = this.perspectiveEnabled;
+        this.perspectiveEnabled = perspectiveEnabled;
+        putBoolean("perspectiveEnabled", perspectiveEnabled);
+        getSupport().firePropertyChange("perspectiveEnabled", old, perspectiveEnabled);
+        if(!perspectiveEnabled) setShearEnabled(false); // turn off shear if perspective is off
+        computeTrackingMode();
+    }
+
+    /**
+     * @return the shearEnabled
+     */
+    public boolean isShearEnabled() {
+        return shearEnabled;
+    }
+
+    /**
+     * @param shearEnabled the shearEnabled to set
+     */
+    synchronized public void setShearEnabled(boolean shearEnabled) {
+        boolean old = this.shearEnabled;
+        this.shearEnabled = shearEnabled;
+        putBoolean("shearEnabled", shearEnabled);
+        getSupport().firePropertyChange("shearEnabled", old, shearEnabled);
+        if(shearEnabled) setPerspectiveEnabled(true); // if shear enabled, then perspective must also be enabled
+        computeTrackingMode();
+    }
+
+    /**
+     * @return the objectToTrack
+     */
+    public ObjectToTrack getObjectToTrack() {
+        return objectToTrack;
+    }
+
+    /**
+     * @param objectToTrack the objectToTrack to set
+     */
+    synchronized public void setObjectToTrack(ObjectToTrack objectToTrack) {
+        ObjectToTrack old = this.objectToTrack;
+        this.objectToTrack = objectToTrack;
+        putString("objectToTrack", this.objectToTrack.toString());
+        getSupport().firePropertyChange("objectToTrack", old, this.objectToTrack);
+        if (old != objectToTrack) {
+            initTemplate();
+        }
+    }
+
+    /**
+     * @return the distanceThreshold
+     */
+    public float getDistanceThreshold() {
+        return (float) distanceThreshold;
+    }
+
+    /**
+     * @param distanceThreshold the distanceThreshold to set
+     */
+    synchronized public void setDistanceThreshold(float distanceThreshold) {
+        float old = this.distanceThreshold;
+        this.distanceThreshold = distanceThreshold;
+        putFloat("distanceThreshold", (float) distanceThreshold);
+        getSupport().firePropertyChange("distanceThreshold", old, distanceThreshold);
+    }
+
+    public float getMinDistanceThreshold() {
+        return .01f;
+    }
+
+    public float getMaxDistanceThreshold() {
+        return 1;
+    }
+
+    /**
+     * @return the numberOfCaptureEvents
+     */
+    public int getNumberOfCaptureEvents() {
+        return numberOfCaptureEvents;
+    }
+
+    /**
+     * @param numberOfCaptureEvents the numberOfCaptureEvents to set
+     */
+    synchronized public void setNumberOfCaptureEvents(int numberOfCaptureEvents) {
+        if (numberOfCaptureEvents < 100) {
+            numberOfCaptureEvents = 100;
+        }
+        int old = this.numberOfCaptureEvents;
+        this.numberOfCaptureEvents = numberOfCaptureEvents;
+        putInt("numberOfCaptureEvents", numberOfCaptureEvents);
+        getSupport().firePropertyChange("numberOfCaptureEvents", old, numberOfCaptureEvents);
+    }
+
+    synchronized public void doResetObject() {
+        initTemplate();
     }
 }

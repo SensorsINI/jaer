@@ -176,7 +176,7 @@ import java.util.Observer;
             vectorMap[x][y][1]=0;
             
             
-            //get the polarity of the vector
+            //getString the polarity of the vector
             if(e.polarity == PolarityEvent.Polarity.Off){
                 vectorMap[x][y][3] = 0;
             } else {

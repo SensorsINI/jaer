@@ -332,7 +332,7 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
     
     private float scaleRadius(float eventDistance, float oldRadius){
         // Each scaling is adjusted to account for relative area of model outside and inside the radius;
-        // the area outside is larger and will tend to get more events anyhow, so the scaling is multiplied by the ratio
+        // the area outside is larger and will tend to getString more events anyhow, so the scaling is multiplied by the ratio
         // outsideArea/insideArea for inside events and by the ratio insideArea/outsideArea for outside events
         float r=outerToInnerAreaRatio(oldRadius);
         float newRadius;

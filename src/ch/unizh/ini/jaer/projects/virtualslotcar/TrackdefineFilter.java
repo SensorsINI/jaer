@@ -43,7 +43,7 @@ track. So first you would use the filter as before, move your spline points arou
 and then you click on refineTrack. As a result new spline points will be inserted along the smooth track curve with
 a distance "refineDistance" that you can set in the filter. This allows us to see the track more or less as a
 sequence of linear segments, which facilitates and hopefully speeds up the computation for curvature extraction. I
-have also tried to optimize evaluateSpline a little bit, so that we can get rid of the Math.pow() calls and use
+have also tried to optimize evaluateSpline a little bit, so that we can getString rid of the Math.pow() calls and use
 less multiplications, this should also help us, as this is called very frequently.
 
 With the refined track you can use the function getApproxCurvature() instead of getCurvature(). This function will
@@ -507,7 +507,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
                         trackerPositions.removeFirst();
                     }
                 }
-            }else{ // no car because no track defined yet, get car if there is any cluster
+            }else{ // no car because no track defined yet, getString car if there is any cluster
                List<Cluster> clusters=tracker.getClusters();
                if(clusters.isEmpty())return;
                Cluster c=clusters.get(0);
@@ -1215,7 +1215,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
      * A utility class for points in a priority queue, ordered by their distance to
      * other points in the queue.
      */
-    class TrackPoint implements Comparable<TrackPoint>, Observer { // Observer to handle chip changes - to get chip size after construction
+    class TrackPoint implements Comparable<TrackPoint>, Observer { // Observer to handle chip changes - to getString chip size after construction
 
         public float x;
         public float y;

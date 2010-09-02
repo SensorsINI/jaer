@@ -252,9 +252,9 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
             x=e.x;
             y=e.y;
             type=(byte)e.getType();
-            ts=e.timestamp;  // get event x,y,type,timestamp
+            ts=e.timestamp;  // getString event x,y,type,timestamp
             
-            // get times to neighbors in 'type' at this pixel
+            // getString times to neighbors in 'type' at this pixel
             
             for(int j=0;j<splatts.length;j++){
                 Splatt s=splatts[j];

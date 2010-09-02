@@ -108,7 +108,7 @@ public class OnlineCalibration5 extends EventFilter2D implements FrameAnnotater,
     private boolean showWindow2 = getPrefs().getBoolean("OnlineCalibration5.showWindow2", true);
     private boolean showWindow3 = getPrefs().getBoolean("OnlineCalibration5.showWindow3", true);
 
-    // do not forget to add a set and a get/is method for each new parameter, at the end of this .java file       
+    // do not forget to add a set and a getString/is method for each new parameter, at the end of this .java file
     // global variables
     
     private int retinaSize=128;//getPrefs().getInt("GravityCentersImageDumper.retinaSize",128);
@@ -298,14 +298,14 @@ public class OnlineCalibration5 extends EventFilter2D implements FrameAnnotater,
             Enumeration assocKeys = associations.keys();
             while (assocKeys.hasMoreElements()) {
                 Integer key = (Integer) assocKeys.nextElement();
-                Hashtable row = (Hashtable) associations.get(key);
+                Hashtable row = (Hashtable) associations.getString(key);
                 Enumeration rowKeys = row.keys();
 
                 int maxval = 0;
                 //int minval = 10000000;
                 while (rowKeys.hasMoreElements()) {
                     Integer index = (Integer) rowKeys.nextElement();
-                    Integer value = (Integer) row.get(index);
+                    Integer value = (Integer) row.getString(index);
                     int f = value.intValue();
                     if(f>maxval){
                         maxval = f;
@@ -870,7 +870,7 @@ public class OnlineCalibration5 extends EventFilter2D implements FrameAnnotater,
                     for(int i=0;i<points.length;i++){
 
                          for(int j=0;j<points[i].length;j++){
-                            // get index fomr trackers
+                            // getString index fomr trackers
                              int index = points[i][j];
 
                              if(index!=0){ // all should be initialized to -1 but let's start like this
@@ -1207,7 +1207,7 @@ public class OnlineCalibration5 extends EventFilter2D implements FrameAnnotater,
                         for(int yr=0;yr<points[highlightIndex][j].length;yr++){
 
 
-                           //get x,y
+                           //getString x,y
 
 
                              int v = points[highlightIndex][j][yr];
@@ -1243,7 +1243,7 @@ public class OnlineCalibration5 extends EventFilter2D implements FrameAnnotater,
                        for(int i=0;i<points.length;i++){
 
                            // GET MAX
-                           //get x,y
+                           //getString x,y
                       //     int xL = i%retinaSize;;
                       //     int yL = Math.round(i/retinaSize);
                            // now becaues only one colukmn for left :
@@ -1691,7 +1691,7 @@ public class OnlineCalibration5 extends EventFilter2D implements FrameAnnotater,
                         for(int yr=0;yr<points[highlightIndex][j].length;yr++){
 
 
-                           //get x,y
+                           //getString x,y
                            
                          
                              int v = points[highlightIndex][j][yr];
@@ -1872,7 +1872,7 @@ public class OnlineCalibration5 extends EventFilter2D implements FrameAnnotater,
         if(!isFilterEnabled()) return;
         
         
-        GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl=drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in GravityCentersImageDumper.annotate");
             return;

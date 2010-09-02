@@ -64,7 +64,7 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
     private int dimStateVector; //the dimension of x - the state vector
     private int dimMeasurement; //the dimension of the measurement(here x and y =2)
     
-    //The instance of the cluster tracker to get the data(measurements)
+    //The instance of the cluster tracker to getString the data(measurements)
     private ClusterTracker clusterTracker;
     //private float clusterSize=prefs.getFloat("ClusterTracker.clusterSize",.2f);
     
@@ -93,7 +93,7 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
 //        clusters = clusterTracker.getClusters();
 //        if(clusters != null){
 //        for(Cluster c:clusters){
-//            kalmans.put(c,new ClusterData(c));
+//            kalmans.putString(c,new ClusterData(c));
 //        }}
         beta = (float)Math.atan(bridgeHeight/distTo1Px);//Angle between highway and camera at the first pixel
         cameraAngle = beta - (float)Math.atan(bridgeHeight/distToVanishingPoint);
@@ -138,10 +138,10 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
                 kalmans.get(c).update();
 //                if(doLog){
 //                    try {
-//                        logWriter.write(c.getLastEventTimestamp() + "\t"+ distAtPixel(c.getLocation()).y + "\t" +kalmans.get(c).x[0]+ "\t" +
-//                                kalmans.get(c).x[1]+"\t" + kalmans.get(c).R[0][0] + "\t" + kalmans.get(c).R[1][1]+ "\t" + kalmans.get(c).Q[0][0] +
-//                                "\t"+ kalmans.get(c).Q[1][1] + "\t" +
-//                                kalmans.get(c).P[0][0] + "\t" + kalmans.get(c).P[0][1] + "\t"+ kalmans.get(c).P[1][0] + "\t"+ kalmans.get(c).P[1][1]+ nl);
+//                        logWriter.write(c.getLastEventTimestamp() + "\t"+ distAtPixel(c.getLocation()).y + "\t" +kalmans.getString(c).x[0]+ "\t" +
+//                                kalmans.getString(c).x[1]+"\t" + kalmans.getString(c).R[0][0] + "\t" + kalmans.getString(c).R[1][1]+ "\t" + kalmans.getString(c).Q[0][0] +
+//                                "\t"+ kalmans.getString(c).Q[1][1] + "\t" +
+//                                kalmans.getString(c).P[0][0] + "\t" + kalmans.getString(c).P[0][1] + "\t"+ kalmans.getString(c).P[1][0] + "\t"+ kalmans.getString(c).P[1][1]+ nl);
 //                    } catch (IOException ex) {
 //                        ex.printStackTrace();
 //                    }
@@ -606,7 +606,7 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
     synchronized public void annotate(GLAutoDrawable drawable) {
         if(kalmans==null) return;
         final float LINE_WIDTH=1f; // in pixels
-        GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl=drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if(!isFilterEnabled()) return;
         float[] rgb=new float[4];
         float x,y;
@@ -771,9 +771,9 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
 //        
 //        if(doLog){
 //            try{
-//                logWriter = new BufferedWriter(new FileWriter(new File(".","cluster_Kalman_log"+ cal.get(Calendar.YEAR)+
-//                        (cal.get(Calendar.MONTH)+1)+cal.get(Calendar.DAY_OF_MONTH)+"_"+
-//                        cal.get(Calendar.HOUR_OF_DAY)+cal.get(Calendar.MINUTE)+"_"+cal.get(Calendar.SECOND)+".txt")));
+//                logWriter = new BufferedWriter(new FileWriter(new File(".","cluster_Kalman_log"+ cal.getString(Calendar.YEAR)+
+//                        (cal.getString(Calendar.MONTH)+1)+cal.getString(Calendar.DAY_OF_MONTH)+"_"+
+//                        cal.getString(Calendar.HOUR_OF_DAY)+cal.getString(Calendar.MINUTE)+"_"+cal.getString(Calendar.SECOND)+".txt")));
 //                
 //            }catch(IOException ioe){
 //                System.out.println(ioe.toString());

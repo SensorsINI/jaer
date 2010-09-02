@@ -38,7 +38,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      */
     protected java.util.List<Cluster> clusters = new LinkedList();
     /**
-     * Blurring filter to get clusters
+     * Blurring filter to getString clusters
      */
     protected BlurringFilter2D bfilter;
     /**
@@ -105,7 +105,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      */
     protected void filterChainSetting (){
         bfilter = new BlurringFilter2D(chip);
-        bfilter.addObserver(this); // to get us called during blurring filter iteration at least every updateIntervalUs
+        bfilter.addObserver(this); // to getString us called during blurring filter iteration at least every updateIntervalUs
         setEnclosedFilter(bfilter);
     }
 
@@ -128,7 +128,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                 if(c1.dead)
                     continue;
                 for ( int j = i + 1 ; j < nc ; j++ ){
-                    c2 = clusters.get(j); // get the other cluster
+                    c2 = clusters.get(j); // getString the other cluster
                     if(c2.dead)
                         continue;
                     final boolean overlapping = c1.distanceTo(c2) < ( c1.getMaxRadius() + c2.getMaxRadius() );
@@ -842,7 +842,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             }
         }
 
-        /** get the cluster location
+        /** getString the cluster location
          *
          * @return location
          */
@@ -974,7 +974,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             this.clusterNumber = clusterNumber;
         }
 
-        /** get the age of cluster.
+        /** getString the age of cluster.
          *
          * @return age of cluster in us
          */
@@ -1350,7 +1350,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             return;
 
         }
-        GL gl = drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl = drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if ( gl == null ){
             log.warning("null GL in BluringFilter2DTracker.annotate");
             return;

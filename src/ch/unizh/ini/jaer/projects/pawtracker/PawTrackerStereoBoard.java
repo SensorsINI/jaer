@@ -745,7 +745,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     // end class FingerCluster
     
     
-    // do not forget to add a set and a get/is method for each new parameter, at the end of this .java file
+    // do not forget to add a set and a getString/is method for each new parameter, at the end of this .java file
     
     
     // Global variables
@@ -802,7 +802,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
     boolean windowDeleted = true;
     
     
-    private int nbFingers = 0; //number of fingers tracked, maybe put it somewhere else
+    private int nbFingers = 0; //number of fingers tracked, maybe putString it somewhere else
     private int nbFingerClusters = 1;//number of created tracked
     
 //    protected FingerCluster[] fingers = new FingerCluster[MAX_NB_FINGERS];
@@ -1552,7 +1552,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                             leadPoints[x][y].changed = true;
                             
                             // commented out to check speed of matching
-                            // to put back!
+                            // to putString back!
                             addToFingerTracker(leadPoints[x][y],method);
                             
                             //   if(rightPoints[i][yr].getFreeValue(rightTime)>0){
@@ -1659,7 +1659,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                            // addToGCAround(leadPoints,x,yl,dispAvgRange);
                             
                              // commented out to check speed of matching
-                            // to put back!
+                            // to putString back!
                             addToFingerTracker(leadPoints[x][y],method);
                             
                             
@@ -2186,7 +2186,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                             //influencedPoint.previousUpdate = influencedPoint.updateTime;
                             
                             influencedPoint.shortFilteredValue += (ep.lastValue * f)/shortRangeTotal;
-                            // use get..Value(time) to decay value
+                            // use getString..Value(time) to decay value
                             influencedPoint.decayedFilteredValue = influencedPoint.getDecayedFilteredValue(ep.updateTime) + (ep.lastValue * f)/shortRangeTotal;
                             influencedPoint.updateTime = ep.updateTime;
                             //influencedPoint.updateTime = ep.updateTime;
@@ -2574,8 +2574,8 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                     for (int j = 0; j<intMatrix[i].length; j++){
                         float f = 0;
                         if(showCorrectionGradient){
-                            // to get it in gradient
-                            f = (float)intMatrix[i][j]/(float)retinaSize; // to get it in gradient
+                            // to getString it in gradient
+                            f = (float)intMatrix[i][j]/(float)retinaSize; // to getString it in gradient
                             gl.glColor3f(f,f,f);
                         } else {
                             
@@ -3022,7 +3022,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                         zOrigY=0;
                         
                     } else {
-                        // get final x,y for translation
+                        // getString final x,y for translation
                         dragOrigX = x;
                         dragOrigY = y;
                         
@@ -3031,14 +3031,14 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                     // System.out.println("Left mousePressed tx:"+tx+" ty:"+ty+" origX:"+origX+" origY:"+origY);
                     
                 }  else if ((e.getModifiersEx()&but2mask)==but2mask){
-                    // get final x,y for depth translation
+                    // getString final x,y for depth translation
                 
                     zdragOrigY = y;
                     //   System.out.println(" x:"+x+" y:"+y);
                   //   System.out.println("Middle mousePressed y:"+y+" zty:"+zty+" zOrigY:"+zOrigY);
                     
                 }else if ((e.getModifiersEx()&but3mask)==but3mask){
-                    // get final x,y for rotation
+                    // getString final x,y for rotation
                     rdragOrigX = x;
                     rdragOrigY = y;
                     //   System.out.println(" x:"+x+" y:"+y);
@@ -3094,7 +3094,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                 int but2mask = InputEvent.BUTTON2_DOWN_MASK;
                 int but3mask = InputEvent.BUTTON3_DOWN_MASK;
                 if ((e.getModifiersEx()&but1mask)==but1mask){
-                    // get final x,y for translation
+                    // getString final x,y for translation
                     
                     dragDestX = x;
                     dragDestY = y;
@@ -3104,7 +3104,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                     
                     
                 } else if ((e.getModifiersEx()&but2mask)==but2mask){
-                    // get final x,y for translation
+                    // getString final x,y for translation
                     
                    
                     zdragDestY = y;
@@ -3112,7 +3112,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
                     middleDragged = true;
                     a3DCanvas.display();
                 } else if ((e.getModifiersEx()&but3mask)==but3mask){
-                    // get final x,y for translation
+                    // getString final x,y for translation
                     
                     rdragDestX = x;
                     rdragDestY = y;
@@ -4028,7 +4028,7 @@ public class PawTrackerStereoBoard extends EventFilter2D implements FrameAnnotat
         if(!isFilterEnabled()) return;
         
         
-        GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl=drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in PawTrackerStereoBoard.annotate");
             return;

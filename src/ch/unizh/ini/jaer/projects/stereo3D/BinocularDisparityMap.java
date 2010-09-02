@@ -95,7 +95,7 @@ public class BinocularDisparityMap extends EventFilter2D implements FrameAnnotat
 
        private int forceD = getPrefs().getInt("BinocularDisparityMap.forceD",0);
 
-    // do not forget to add a set and a get/is method for each new parameter, at the end of this .java file
+    // do not forget to add a set and a getString/is method for each new parameter, at the end of this .java file
     
     
     // global variables
@@ -474,7 +474,7 @@ public class BinocularDisparityMap extends EventFilter2D implements FrameAnnotat
                             // d ranges from min -127 to max +127 but unlikely
                             //
                             float f = 0.5f + d/disparityScaling;
-                            // ^ to put zero at 0.5 so both negative and positive disparity appears
+                            // ^ to putString zero at 0.5 so both negative and positive disparity appears
                             // divide by a factor to scale to [0,1]
 
                             if(currentTime-disparityTimes[i][j]>decayTimeLimit){
@@ -728,7 +728,7 @@ public class BinocularDisparityMap extends EventFilter2D implements FrameAnnotat
         if(!isFilterEnabled()) return;
         
         
-        GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl=drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in GravityCentersImageDumper.annotate");
             return;

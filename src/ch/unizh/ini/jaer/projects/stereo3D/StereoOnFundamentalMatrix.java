@@ -111,7 +111,7 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
 
 
 
-    // do not forget to add a set and a get/is method for each new parameter, at the end of this .java file
+    // do not forget to add a set and a getString/is method for each new parameter, at the end of this .java file
     
     
     // global variables
@@ -620,7 +620,7 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
         if(!isFilterEnabled()) return;
         
         
-        GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL gl=drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in GravityCentersImageDumper.annotate");
             return;

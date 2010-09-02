@@ -399,7 +399,7 @@ public class PcaTrackingFilter extends EventFilter2D implements FrameAnnotater {
 
 
 
-        return out; //I just put this there since it seems necessary and Tobi said to do it.
+        return out; //I just putString this there since it seems necessary and Tobi said to do it.
     }
 
     /** JOGL annotation */

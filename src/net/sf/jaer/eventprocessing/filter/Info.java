@@ -197,7 +197,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 rateHistory.clear();
             }
         } else if (evt.getSource() instanceof AEViewer) {
-            if (evt.getPropertyName().equals(AEViewer.EVENT_FILEOPEN)) { // TODO don't get this because AEViewer doesn't refire event from AEPlayer and we don't get this on initial fileopen because this filter has not yet been run so we have not added ourselves to the viewer
+            if (evt.getPropertyName().equals(AEViewer.EVENT_FILEOPEN)) { // TODO don't getString this because AEViewer doesn't refire event from AEPlayer and we don't getString this on initial fileopen because this filter has not yet been run so we have not added ourselves to the viewer
                rateHistory.clear();
             }
         }

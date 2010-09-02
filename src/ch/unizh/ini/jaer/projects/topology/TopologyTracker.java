@@ -547,7 +547,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         getSupport().firePropertyChange("showStatus", showStatus, value);
         showStatus = value;
         if (window != null) {
-            window.setVisible(showStatus); // will get set visible next time around loop
+            window.setVisible(showStatus); // will getString set visible next time around loop
         }
     }
 

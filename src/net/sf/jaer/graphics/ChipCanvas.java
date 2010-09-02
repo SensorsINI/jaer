@@ -142,7 +142,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
         drawable.setLocale(Locale.US); // to avoid problems with other language support in JOGL
 
-        // will always get invalid operation here
+        // will always getString invalid operation here
         // checkGLError(drawable.getGL(),glu,"before add event listener");
         // add us as listeners for the canvas. then when the display wants to redraw display() will be called. or we can call drawable.display();
         drawable.addGLEventListener(this);
@@ -286,7 +286,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /** opengl calls this when it wants to redraw, and we call it when we actively render.
-     * @param drawable the surface from which we can get the context with getGL
+     * @param drawable the surface from which we can getString the context with getGL
     @see net.sf.jaer.graphics.DisplayMethod#setupGL which sets up GL context for display methods
      */
     public synchronized void display(GLAutoDrawable drawable) {
@@ -417,7 +417,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         double projmatrix[] = new double[16];
         int realy = 0;// GL y coord pos
         double wcoord[] = new double[4];// wx, wy, wz;// returned xyz coords
-        //set up a floatbuffer to get the depth buffer value of the mouse position
+        //set up a floatbuffer to getString the depth buffer value of the mouse position
         FloatBuffer fb = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asFloatBuffer();
         GL gl = drawable.getContext().getGL();
         gl.glGetIntegerv(GL.GL_VIEWPORT, viewport, 0);
@@ -427,7 +427,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         realy = viewport[3] - (int) mp.getY() - 1;
         //Get the depth buffer value at the mouse position. have to do height-mouseY, as GL puts 0,0 in the bottom left, not top left.
         gl.glReadPixels(mp.x, realy, 1, 1, GL.GL_DEPTH_COMPONENT, GL.GL_FLOAT, fb);
-        float z = 0; //fb.get(0);
+        float z = 0; //fb.getString(0);
         glu.gluUnProject((double) mp.getX(), (double) realy, z,
                 mvmatrix, 0,
                 projmatrix, 0,
@@ -698,7 +698,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     public void paintFrame (){
         if ( isOpenGLEnabled() ){
             try{
-                drawable.display(); // we call the drawable's display method that ends up calling us back via our local display(GLAutoDrawable)!! very important to get this right
+                drawable.display(); // we call the drawable's display method that ends up calling us back via our local display(GLAutoDrawable)!! very important to getString this right
             } catch ( GLException e ){
                 if ( !( e.getCause() instanceof InterruptedException ) ){
                     log.warning(e.toString());
@@ -814,7 +814,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     /** The actual borders in model space around the chip area. */
     private Borders borders = new Borders();
 
-    /** Sets the projection matrix so that we get an orthographic projection that is the size of the
+    /** Sets the projection matrix so that we getString an orthographic projection that is the size of the
     canvas with z volume -ZCLIP to ZCLIP padded with extra space around the sides.
 
     @param g the GL context

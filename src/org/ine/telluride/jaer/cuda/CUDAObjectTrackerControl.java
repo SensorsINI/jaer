@@ -178,7 +178,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
 //        SingleSpike, MultipleSpike
 //    };
     private KernelShape kernelShape = KernelShape.valueOf(getPrefs().get("CUDAObjectTrackerControl.kernelShape", KernelShape.DoG.toString()));
-//    private SpikePartitioningMethod spikePartitioningMethod=SpikePartitioningMethod.valueOf(getPrefs().get("CUDAObjectTrackerControl.spikePartitioningMethod", SpikePartitioningMethod.MultipleSpike.toString()));
+//    private SpikePartitioningMethod spikePartitioningMethod=SpikePartitioningMethod.valueOf(getPrefs().getString("CUDAObjectTrackerControl.spikePartitioningMethod", SpikePartitioningMethod.MultipleSpike.toString()));
 
     public CUDAObjectTrackerControl(AEChip chip) {
         super(chip);
@@ -799,7 +799,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
 //    public void setSpikePartitioningMethod(SpikePartitioningMethod spikePartitioningMethod) {
 //        support.firePropertyChange("kernelShape", this.spikePartitioningMethod, spikePartitioningMethod);
 //        this.spikePartitioningMethod=spikePartitioningMethod;
-//        getPrefs().put("CUDAObjectTrackerControl.spikePartitioningMethod", spikePartitioningMethod.toString());
+//        getPrefs().putString("CUDAObjectTrackerControl.spikePartitioningMethod", spikePartitioningMethod.toString());
 //        writeCommandToCuda(CMD_SPIKE_PARTITIONING_METHOD+" "+spikePartitioningMethod.toString());
 //    }
     /**
@@ -901,7 +901,7 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         }
     }
 
-    // TODO these classes define properties for communicating with CUDA, but i cannot see how to statically compile in the get/set
+    // TODO these classes define properties for communicating with CUDA, but i cannot see how to statically compile in the getString/set
     // to go with them to allow introspection to find them
     public class CUDACommand {
 

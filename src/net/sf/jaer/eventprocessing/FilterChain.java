@@ -343,7 +343,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     synchronized public void contructPreferredFilters() {
         clear();
         ArrayList<String> classNames;
-        Preferences prefs = chip.getPrefs(); // Preferences.userNodeForPackage(chip.getClass()); // get prefs for the Chip, not for the FilterChain class
+        Preferences prefs = chip.getPrefs(); // Preferences.userNodeForPackage(chip.getClass()); // getString prefs for the Chip, not for the FilterChain class
         try {
             byte[] bytes = prefs.getByteArray(prefsKey(), null);
             if (bytes != null) {
@@ -394,7 +394,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         ClassChooserDialog chooser = new ClassChooserDialog(chip.getFilterFrame(), EventFilter2D.class, currentFilterNames, chip.getDefaultEventFilterClassNames());
         chooser.setVisible(true);
         if (chooser.getReturnStatus() == ClassChooserDialog.RET_OK) {
-            Preferences prefs = chip.getPrefs(); // get prefs for the Chip, not for the FilterChain class
+            Preferences prefs = chip.getPrefs(); // getString prefs for the Chip, not for the FilterChain class
             ArrayList<String> newClassNames = chooser.getList();
             try {
                 storePreferredFilterPreferences(newClassNames);

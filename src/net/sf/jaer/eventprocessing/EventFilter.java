@@ -105,7 +105,7 @@ public abstract class EventFilter extends Observable {
 
 ////    /**
 ////     * filters in to out. if filtering is enabled, the number of out may be less
-////     * than the number put in
+////     * than the number putString in
 ////     *@param in input events can be null or empty.
 ////     *@return the processed events, may be fewer in number. filtering may occur in place in the in packet.
 ////     */
@@ -601,10 +601,10 @@ public abstract class EventFilter extends Observable {
 
     /** Returns if the property preference has previously been stored. Can be used to set a default value for a property if it has not yet been initialized.
      *
-     * @return true is a String "get" on the key returns non-null.
+     * @return true is a String "getString" on the key returns non-null.
      */
     protected boolean isPreferenceStored(String key){
-        if(get(key,null)==null) return false; else return true;
+        if(getString(key,null)==null) return false; else return true;
     }
 
     /** The header part of the Preferences key, e.g. "BackgroundActivityFilter.".
@@ -669,12 +669,12 @@ public abstract class EventFilter extends Observable {
         prefs.putBoolean(prefsKeyHeader() + key, value);
     }
 
-    /** Puts a preference.
+    /** Puts a preference string.
      *
      * @param key the property name, e.g. "tauMs"
      * @param value the value to be stored
      */
-    public void put(String key, String value) {
+    public void putString(String key, String value) {
         prefs.put(prefsKeyHeader() + key, value);
     }
 
@@ -737,13 +737,13 @@ public abstract class EventFilter extends Observable {
         return prefs.getBoolean(prefsKeyHeader() + key, def);
     }
 
-    /** Gets a preference from the built in preferences node.
+    /** Gets a preference string from the built in preferences node.
      *
      * @param key the property name, e.g. "tauMs".
      * @param def the default value if there is no preference already stored.
      * @return
      */
-    public String get(String key, String def) {
+    public String getString(String key, String def) {
         return prefs.get(prefsKeyHeader() + key, def);
     }
 }
