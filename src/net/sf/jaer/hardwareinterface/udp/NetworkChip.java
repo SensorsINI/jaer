@@ -5,11 +5,17 @@
 
 package net.sf.jaer.hardwareinterface.udp;
 
+import java.net.*;
+
 /**
  *This interface builds a collections for all classes that need a network hardware interface.
  *
  * @author braendch
  */
 public interface NetworkChip {
+
+    public void setAddress(InetSocketAddress address);
+
+    public InetSocketAddress getAddress();
 
 }

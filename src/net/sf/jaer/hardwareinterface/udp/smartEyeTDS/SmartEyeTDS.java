@@ -18,10 +18,12 @@ import net.sf.jaer.eventio.*;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.hardwareinterface.udp.*;
+import ch.unizh.ini.jaer.projects.einsteintunnel.multicamera.*;
 
 /**
  * The SmartEyeTDS is a hardware interface class for the AIT SmartEye Traffic Sensor which sends information
  * over UDP. The standard data port used is 22222.
+ * It can also be used for multiple cameras i.e. classes that implement MultiChip.
  *
  * @author braendch
  */
@@ -59,7 +61,7 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
 
     private DatagramChannel controlChannel = null;
     private DatagramSocket socket = null;
-    final int DATA_PORT = 22222;
+    final int DATA_PORT = 20020;
     final int CONTROL_PORT = 20010;
     AEUnicastInput input = null;
     InetSocketAddress client = null;
@@ -82,14 +84,16 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
                 socket = new DatagramSocket(CONTROL_PORT);
                 socket.setSoTimeout(100);
 
-                client = new InetSocketAddress(host,port);
+                NetworkChip nc = (NetworkChip)chip;
+                client = nc.getAddress();
 
                 input = new AEUnicastInput(DATA_PORT);
                 input.setSequenceNumberEnabled(false);
                 input.setAddressFirstEnabled(true);
-                input.setSwapBytesEnabled(false);
+                input.setSwapBytesEnabled(true);
                 input.set4ByteAddrTimestampEnabled(true);
-                input.setTimestampsEnabled(false);
+                input.setTimestampsEnabled(true);
+                input.setLocalTimestampEnabled(false);
                 input.setBufferSize(1200);
                 input.setTimestampMultiplier(1);
                 //input.setPort(DATA_PORT);
@@ -204,7 +208,9 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
             byte[] b = s.getBytes();
             try{
                 DatagramPacket d = new DatagramPacket(b,b.length,client);
-                socket.send(d);
+                if (socket != null){
+                    socket.send(d);
+                }
             } catch ( Exception e ){
                 log.warning(e.toString());
             }
@@ -309,8 +315,8 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
     //Biasgen
 
     @Override
-    public void setPowerDown (boolean powerDown) throws HardwareInterfaceException{
-        throw new UnsupportedOperationException("Not supported yet.");
+    public void setPowerDown (boolean powerDown){
+        log.warning("Power down not supported by UDP devices.");
     }
 
     @Override
@@ -326,14 +332,46 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
                 int n = ip.getShiftRegisterNumber();
                 String s = String.format("d %d %d mv\n",n,v);
                 byte[] b = s.getBytes(); // s.getBytes(Charset.forName("US-ASCII"));
-                socket.send(new DatagramPacket(b,b.length,client));
-                DatagramPacket packet = new DatagramPacket(new byte[ MAX_COMMAND_LENGTH_BYTES ],MAX_COMMAND_LENGTH_BYTES);
-                socket.receive(packet);
-                ByteArrayInputStream bis;
-                BufferedReader reader = new BufferedReader(new InputStreamReader(( bis = new ByteArrayInputStream(packet.getData(),0,packet.getLength()) )));
-                String line = reader.readLine(); // .toLowerCase();
-                log.info("response from " + packet.getAddress() + " : " + line);
-                System.out.println(line); // debug
+                if(MultiUDPNetworkDVS128Camera.class.isInstance(chip)){
+                    MultiUDPNetworkDVS128Camera mc = (MultiUDPNetworkDVS128Camera) chip;
+                    if(mc.getSelectedChip()>= mc.getNumChips()){
+                        for(int i = 0;i<mc.getNumChips();i++){
+                            client = mc.getCameraMap().getPositionMap().get(i);
+                            if(client!=null){
+                                socket.send(new DatagramPacket(b,b.length,client));
+                                DatagramPacket packet = new DatagramPacket(new byte[ MAX_COMMAND_LENGTH_BYTES ],MAX_COMMAND_LENGTH_BYTES);
+                                socket.receive(packet);
+                                ByteArrayInputStream bis;
+                                BufferedReader reader = new BufferedReader(new InputStreamReader(( bis = new ByteArrayInputStream(packet.getData(),0,packet.getLength()) )));
+                                String line = reader.readLine(); // .toLowerCase();
+                                log.info("response from " + packet.getAddress() + " : " + line);
+                                System.out.println(line); // debug
+                            }
+                        }
+                    } else {
+                        if(client!=null){
+                            client = mc.getCameraMap().getPositionMap().get(mc.getSelectedChip());
+                            socket.send(new DatagramPacket(b,b.length,client));
+                            DatagramPacket packet = new DatagramPacket(new byte[ MAX_COMMAND_LENGTH_BYTES ],MAX_COMMAND_LENGTH_BYTES);
+                            socket.receive(packet);
+                            ByteArrayInputStream bis;
+                            BufferedReader reader = new BufferedReader(new InputStreamReader(( bis = new ByteArrayInputStream(packet.getData(),0,packet.getLength()) )));
+                            String line = reader.readLine(); // .toLowerCase();
+                            log.info("response from " + packet.getAddress() + " : " + line);
+                            System.out.println(line); // debug
+                        }
+                    }
+                }else{
+                    socket.send(new DatagramPacket(b,b.length,client));
+                    DatagramPacket packet = new DatagramPacket(new byte[ MAX_COMMAND_LENGTH_BYTES ],MAX_COMMAND_LENGTH_BYTES);
+                    socket.receive(packet);
+                    ByteArrayInputStream bis;
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(( bis = new ByteArrayInputStream(packet.getData(),0,packet.getLength()) )));
+                    String line = reader.readLine(); // .toLowerCase();
+                    log.info("response from " + packet.getAddress() + " : " + line);
+                    System.out.println(line); // debug
+                }
+                
             } catch ( SocketTimeoutException to ){
                 log.warning("timeout on waiting for command response on datagram control socket");
             } catch ( Exception ex ){
@@ -343,8 +381,8 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
     }
 
     @Override
-    public void flashConfiguration (Biasgen biasgen) throws HardwareInterfaceException{
-        throw new UnsupportedOperationException("Not supported yet.");
+    public void flashConfiguration (Biasgen biasgen){
+        log.warning("Flash configuration not supported by UDP devices.");
     }
 
     @Override
