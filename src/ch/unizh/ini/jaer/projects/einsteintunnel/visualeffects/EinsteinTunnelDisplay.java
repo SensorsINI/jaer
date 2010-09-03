@@ -151,7 +151,7 @@ public class EinsteinTunnelDisplay {
                     //histogram
                     drawHistogramFire(gl);
                     //dot
-                    drawDot(gl);
+                    //drawDot(gl);
                 }
                 //if(dropPerls)drawPerls(gl);
                 int error=gl.glGetError();
