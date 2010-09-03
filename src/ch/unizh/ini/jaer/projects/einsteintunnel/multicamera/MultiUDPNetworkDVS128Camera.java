@@ -4,44 +4,28 @@
  */
 package ch.unizh.ini.jaer.projects.einsteintunnel.multicamera;
 
-import at.ait.dss.sni.jaer.chip.atis.ATIS304;
 import ch.unizh.ini.jaer.chip.retina.DVS128;
+import java.net.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetSocketAddress;
-import java.net.SocketTimeoutException;
 import java.util.Iterator;
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
-import net.sf.jaer.aemonitor.AEListener;
-import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AENetworkRawPacket;
 import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.biasgen.BiasgenHardwareInterface;
-import net.sf.jaer.biasgen.Pot;
-import net.sf.jaer.biasgen.VDAC.DAC;
-import net.sf.jaer.biasgen.VDAC.VPot;
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.chip.Chip;
+import net.sf.jaer.chip.*;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.hardwareinterface.udp.NetworkChip;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
  * Encapsulates a whole bunch of networked TDS cameras into this single AEChip object. The size of this virtual chip is set by {@link #MAX_NUM_CAMERAS} times
@@ -49,20 +33,21 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  *
  * @author tobi delbruck, christian braendli
  */
-public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip{
+public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, MultiChip{
 
     /** Maximum number of network cameras in the linear array. */
     public static final int MAX_NUM_CAMERAS = 10;
     /** Width in pixels of each camera - same as DVS128. */
     public static final int CAM_WIDTH = 128;
 
-
-    private int numCameras = 10; // actual number of cameras we've gotten data from
+    private int numChips = 10; // actual number of cameras we've gotten data from
     private static final String CLIENT_MAPPING_LIST_PREFS_KEY = "MultiUDPNetworkDVS128Camera.camHashLlist";  // preferences key for mapping table
     private JMenu chipMenu = null; // menu for specialized control
     private CameraMapperDialog cameraMapperDialog = null;
     private CameraMap cameraMap = new CameraMap(); // the mapping from InetSocketAddress to camera position
     private MultiUDPNetworkDVS128CameraDisplayMethod displayMethod=null;
+
+    public int selChip = -1;
 
     public MultiUDPNetworkDVS128Camera() {
         setName("MultiUDPNetworkDVS128Camera");
@@ -286,10 +271,10 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip{
                 ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
                 cameraMap = (CameraMap) in.readObject();
                 in.close();
-                numCameras = cameraMap.size(); // TODO will grow with old cameras
+                numChips = cameraMap.size(); // TODO will grow with old cameras
             } else {
                 log.info("no previous clients found - will cache them as data come in");
-                numCameras = 1;
+                numChips = 1;
             }
         } catch (Exception e) {
             log.warning("caught " + e + " in constructor");
@@ -346,6 +331,46 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip{
         }
     }
 
+    //MultiChip interface
+
+    @Override
+    public int getNumChips(){
+        return numChips;
+    }
+
+    @Override
+    public void setNumChips(int numChips){
+        this.numChips = numChips;
+    }
+
+    @Override
+    public int getSelectedChip(){
+        return selChip;
+    }
+
+    @Override
+    public void setSelectedChip(int selChip){
+        this.selChip = selChip;
+    }
+
+    //NetworkChip interface
+    /**
+     * Returns the address of the first map entry.
+     *
+     * @return address of first map entry
+     */
+    @Override
+    public InetSocketAddress getAddress(){
+        return cameraMap.getPositionMap().get(0);
+    }
+
+    /**
+     * Sets the address of the first map entry
+     */
+    @Override
+    public void setAddress(InetSocketAddress address){
+        cameraMap.getPositionMap().put(0, address);
+    }
 
 //       // following not used yet
 //    class MultiUDPNetworkCamera_HardwareInterface implements BiasgenHardwareInterface,AEMonitorInterface{
