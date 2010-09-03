@@ -758,21 +758,25 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
                     vmuxes[i].put(1, "Vt");
                     vmuxes[i].put(2, "Vtb");
                     vmuxes[i].put(3, "Vs");
-                    vmuxes[i].put(4, "Vdiff");
+                    
                 }
 
+                vmuxes[0].put(4, "Vdiff");
                 vmuxes[0].put(5, "top");
                 vmuxes[0].put(6, "nResetColor2");
                 vmuxes[0].put(7, "topin");
 
+                vmuxes[1].put(4, "Vdiff");
                 vmuxes[1].put(5, "top");
                 vmuxes[1].put(6, "nResetColor2");
                 vmuxes[1].put(7, "topin");
 
+                vmuxes[2].put(4, "nResetColor1");
                 vmuxes[2].put(5, "Vcoldiff");
                 vmuxes[2].put(6, "sum");
                 vmuxes[2].put(7, "sumin");
 
+                vmuxes[3].put(4, "nResetColor1");
                 vmuxes[3].put(5, "Vcoldiff");
                 vmuxes[3].put(6, "sum");
                 vmuxes[3].put(7, "sumin");
