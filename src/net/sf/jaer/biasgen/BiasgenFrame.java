@@ -7,7 +7,8 @@ package net.sf.jaer.biasgen;
 
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
-import net.sf.jaer.chip.Chip;
+import net.sf.jaer.hardwareinterface.udp.*;
+import net.sf.jaer.chip.*;
 import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.*;
@@ -883,7 +884,7 @@ private void prefsEditorMenuItemActionPerformed(java.awt.event.ActionEvent evt) 
     private javax.swing.JMenuItem undoEditMenuItem;
     private javax.swing.ButtonGroup viewBiasesButtonGroup;
     // End of variables declaration//GEN-END:variables
-    public static void main(String[] a) {
+public static void main(String[] a) {
         HardwareInterface hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
         if (hw == null) {
             throw new RuntimeException("no hardware interface found");
