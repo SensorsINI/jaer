@@ -15,6 +15,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.processortype.Filter;
 import net.sf.jaer.graphics.FrameAnnotater;
 /**
  *  Filters out high-firing input using probabalistic depressing synaptic connection. Works particularly well for high firing rate flickering lighting sources with the DVS.
@@ -25,7 +26,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
-public class DepressingSynapseFilter extends EventFilter2D implements FrameAnnotater{
+public class DepressingSynapseFilter extends EventFilter2D implements FrameAnnotater, net.sf.jaer.eventprocessing.processortype.Filter{
     private static Random random = new Random();
     private Neurons neurons;
     private float tauMs = prefs().getFloat("DepressingSynapseFilter.tauMs",1000); // decay constant us

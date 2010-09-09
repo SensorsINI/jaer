@@ -22,13 +22,14 @@ import javax.swing.JLabel;
  */
 public class DynamicFontSizeJLabel extends JLabel {
     
-    public static final int MIN_FONT_SIZE=11, MAX_FONT_SIZE=36;
+    public static final int MIN_FONT_SIZE=13, MAX_FONT_SIZE=36;
     private Font currentFont=null;
 
     public DynamicFontSizeJLabel() {
         super();
 //        setFont(new java.awt.Font("Bitstream Vera Sans Mono 11 Bold", 0, 11));
-        setFont(new java.awt.Font("Monospaced", 0, 14));
+//        setFont(new java.awt.Font("Monospaced", 0, 24));
+        setFont(new java.awt.Font("Arial Narrow", Font.BOLD, 24));
         addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentResized(java.awt.event.ComponentEvent evt) {
                 formComponentResized(evt);

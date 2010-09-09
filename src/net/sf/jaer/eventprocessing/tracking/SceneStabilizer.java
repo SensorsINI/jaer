@@ -24,6 +24,7 @@ import java.awt.geom.Point2D;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.processortype.Application;
 
 /**
  * This "optical Steadicam" tries to compensate global image motion by using global motion metrics to redirect output events and (optionally) also
@@ -32,7 +33,7 @@ Two methods can be used 1) the global translational flow computed from Direction
  *
  * @author tobi
  */
-public class SceneStabilizer extends EventFilter2D implements FrameAnnotater {
+public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Application {
 
     public static String getDescription() {
         return "Compenstates global scene translation and rotation to stabilize scene.";

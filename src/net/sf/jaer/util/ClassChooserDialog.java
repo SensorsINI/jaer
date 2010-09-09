@@ -63,6 +63,16 @@ public class ClassChooserDialog extends javax.swing.JDialog {
     public int getReturnStatus() {
         return returnStatus;
     }
+
+    /** Returns the panel used to show options for filtering the shown classes. Any components can be added to this panel.
+     *
+     * @return
+     */
+    public JPanel getFilterTypeOptionsPanel() {
+        return chooserPanel.getFilterTypeOptionsPanel();
+    }
+
+
     
     public ArrayList<String> getList(){
         if(returnStatus==RET_CANCEL) return null;

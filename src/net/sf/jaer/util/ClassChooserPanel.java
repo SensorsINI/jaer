@@ -27,6 +27,7 @@ import javax.swing.DefaultListModel;
 import javax.swing.InputMap;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListModel;
@@ -60,7 +61,7 @@ public class ClassChooserPanel extends javax.swing.JPanel{
         availFilterTextField.requestFocusInWindow();
         this.defaultClassNames = defaultClassNames;
         availAllList = SubclassFinder.findSubclassesOf(subclassOf.getName());
-        Collections.sort(availAllList, new FilterComp());
+        Collections.sort(availAllList, new ClassNameSorter());
         availClassesListModel = new FilterableListModel(availAllList);
         availClassJList.setModel(availClassesListModel);
         availClassJList.setCellRenderer(new MyCellRenderer());
@@ -107,7 +108,11 @@ public class ClassChooserPanel extends javax.swing.JPanel{
 //        descPanel.add((myDescLabel=new MyBoundedJLabel()),BorderLayout.CENTER);
     }
 
-    private class FilterComp implements Comparator{
+    public JPanel getFilterTypeOptionsPanel(){
+        return filterTypeOptionsPanel;
+    }
+
+    private class ClassNameSorter implements Comparator{
         public int compare (Object o1,Object o2){
             if ( o1 instanceof String && o2 instanceof String ){
                 return shortName((String)o1).compareTo(shortName((String)o2));
@@ -294,9 +299,11 @@ public class ClassChooserPanel extends javax.swing.JPanel{
         availClassPanel = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         availClassJList = new javax.swing.JList();
+        availClassDescriptionLabel = new javax.swing.JLabel();
+        filterPanel = new javax.swing.JPanel();
         filterLabel = new javax.swing.JLabel();
         availFilterTextField = new javax.swing.JTextField();
-        availClassDescriptionLabel = new javax.swing.JLabel();
+        filterTypeOptionsPanel = new javax.swing.JPanel();
         chosenClassPanel = new javax.swing.JPanel();
         jScrollPane2 = new javax.swing.JScrollPane();
         classJList = new javax.swing.JList();
@@ -322,6 +329,8 @@ public class ClassChooserPanel extends javax.swing.JPanel{
         jScrollPane1.setViewportView(availClassJList);
         availClassJList.getAccessibleContext().setAccessibleDescription("");
 
+        availClassDescriptionLabel.setText("description");
+
         filterLabel.setText("Filter");
 
         availFilterTextField.setToolTipText("type any part of your filter name or description here to filter list");
@@ -336,7 +345,31 @@ public class ClassChooserPanel extends javax.swing.JPanel{
             }
         });
 
-        availClassDescriptionLabel.setText("description");
+        javax.swing.GroupLayout filterPanelLayout = new javax.swing.GroupLayout(filterPanel);
+        filterPanel.setLayout(filterPanelLayout);
+        filterPanelLayout.setHorizontalGroup(
+            filterPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(filterPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(filterPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(filterTypeOptionsPanel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 388, Short.MAX_VALUE)
+                    .addGroup(filterPanelLayout.createSequentialGroup()
+                        .addComponent(filterLabel)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(availFilterTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 107, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap())
+        );
+        filterPanelLayout.setVerticalGroup(
+            filterPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(filterPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(filterPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(filterLabel)
+                    .addComponent(availFilterTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 18, Short.MAX_VALUE)
+                .addComponent(filterTypeOptionsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(42, 42, 42))
+        );
 
         javax.swing.GroupLayout availClassPanelLayout = new javax.swing.GroupLayout(availClassPanel);
         availClassPanel.setLayout(availClassPanelLayout);
@@ -345,26 +378,19 @@ public class ClassChooserPanel extends javax.swing.JPanel{
             .addGroup(availClassPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 408, Short.MAX_VALUE)
+                    .addComponent(filterPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addGroup(availClassPanelLayout.createSequentialGroup()
-                        .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 394, Short.MAX_VALUE)
-                        .addContainerGap())
-                    .addGroup(availClassPanelLayout.createSequentialGroup()
-                        .addGroup(availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(availClassDescriptionLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 404, Short.MAX_VALUE)
-                            .addGroup(availClassPanelLayout.createSequentialGroup()
-                                .addComponent(filterLabel)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(availFilterTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 107, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(availClassDescriptionLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 408, Short.MAX_VALUE)
                         .addGap(0, 0, 0))))
         );
         availClassPanelLayout.setVerticalGroup(
             availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(availClassPanelLayout.createSequentialGroup()
-                .addGroup(availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(filterLabel)
-                    .addComponent(availFilterTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 219, Short.MAX_VALUE)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, availClassPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(filterPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 228, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(availClassDescriptionLabel))
         );
@@ -398,13 +424,13 @@ public class ClassChooserPanel extends javax.swing.JPanel{
             chosenClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(chosenClassPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(classDescriptionLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 405, Short.MAX_VALUE))
-            .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 415, Short.MAX_VALUE)
+                .addComponent(classDescriptionLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 409, Short.MAX_VALUE))
+            .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 419, Short.MAX_VALUE)
         );
         chosenClassPanelLayout.setVerticalGroup(
             chosenClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, chosenClassPanelLayout.createSequentialGroup()
-                .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 249, Short.MAX_VALUE)
+                .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 355, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(classDescriptionLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 15, javax.swing.GroupLayout.PREFERRED_SIZE))
         );
@@ -497,8 +523,8 @@ public class ClassChooserPanel extends javax.swing.JPanel{
                     .addGroup(layout.createSequentialGroup()
                         .addContainerGap()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(availClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(chosenClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                            .addComponent(availClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 403, Short.MAX_VALUE)
+                            .addComponent(chosenClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 403, Short.MAX_VALUE)))
                     .addGroup(layout.createSequentialGroup()
                         .addGap(112, 112, 112)
                         .addComponent(addClassButton))
@@ -625,6 +651,8 @@ private void classJListValueChanged(javax.swing.event.ListSelectionEvent evt) {/
     private javax.swing.JList classJList;
     private javax.swing.JButton defaultsButton;
     private javax.swing.JLabel filterLabel;
+    private javax.swing.JPanel filterPanel;
+    private javax.swing.JPanel filterTypeOptionsPanel;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JButton moveDownButton;
