@@ -399,7 +399,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
 
         Class inputClass = in.getEventClass();
         if ( !( inputClass == PolarityEvent.class || inputClass == BinocularEvent.class ) ){
-            log.warning("wrong input event type " + in.getEventClass() + ", disabling filter");
+            log.warning("wrong input event class "+in.getEventClass()+" in the input packet" + in + ", disabling filter");
             setFilterEnabled(false);
             return in;
         }
