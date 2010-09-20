@@ -119,7 +119,7 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
             UpdateMessage msg = (UpdateMessage) arg;
             updateCells(msg.timestamp); // at least once per packet update list
         } else if (o instanceof AEChip) {
-            initFilter();
+             initFilter();
         }
     }
 

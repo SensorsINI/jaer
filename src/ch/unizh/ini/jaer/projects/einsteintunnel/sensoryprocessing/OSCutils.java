@@ -58,6 +58,16 @@ public class OSCutils {
         }
     }
 
+    public void sendBundle(OSCBundle bundle){
+        byte[] byteArray = bundle.getByteArray();
+        DatagramPacket packet = new DatagramPacket(byteArray, byteArray.length, address, port);
+        try {
+            socket.send(packet);
+        } catch (IOException ex) {
+            Logger.getLogger(OSCutils.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
     /**
      * A bundle represents a collection of osc packets (either messages or other bundles) and
      * has a timetag which can be used by a scheduler to execute a bundle in the future instead

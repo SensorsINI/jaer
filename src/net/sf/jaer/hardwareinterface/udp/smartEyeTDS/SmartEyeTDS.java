@@ -95,7 +95,7 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
                 input.setTimestampsEnabled(true);
                 input.setLocalTimestampEnabled(false);
                 input.setBufferSize(1200);
-                input.setTimestampMultiplier(1);
+                input.setTimestampMultiplier(0.001f);
                 //input.setPort(DATA_PORT);
                 input.open();
                 isOpen = true;
