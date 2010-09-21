@@ -220,8 +220,8 @@ public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterf
             }
         }
 
-        if ( hws.size() != 2 ){
-            log.warning("could not find 2 interfaces which are suitable candidates for a stereo pair");
+        if ( hws.size() < 2 ){ //if ( hws.size() != 2 ){
+            log.warning("could not find 2 interfaces which are suitable candidates for a stereo pair "+hws.size());
             return null;
         }
 
