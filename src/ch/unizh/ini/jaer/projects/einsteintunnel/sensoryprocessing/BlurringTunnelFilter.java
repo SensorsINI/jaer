@@ -964,10 +964,14 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
      */
     @Override
     synchronized public EventPacket<?> filterPacket (EventPacket<?> in){
-        out = in;
-
         if ( in == null ){
-            return out;
+            return null;
+        }
+
+        if ( enclosedFilter != null ){
+            out = enclosedFilter.filterPacket(in);
+        } else{
+            out = in;
         }
 
         if ( getEnclosedFilterChain() != null ){

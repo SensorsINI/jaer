@@ -1138,7 +1138,12 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
          * @param clusterNumber
          */
         public void setClusterNumber (int clusterNumber){
-            this.clusterNumber = clusterNumber;
+            if(clusterNumber == Integer.MAX_VALUE){
+                this.clusterNumber = 0;
+                clusterCounter = 0;
+            } else {
+                this.clusterNumber = clusterNumber;
+            }
         }
 
         /** getString the age of cluster.
