@@ -80,6 +80,7 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
                 int lastt=lastTimestamps[x][y];
                 int deltat=(ts-lastt);
                 if(deltat<dt && lastt!=DEFAULT_TIMESTAMP){
+                    //System.out.println("x: "+i.x+" x: "+i.y+" dt: "+dt);
                     BasicEvent o=(BasicEvent)outItr.nextOutput();
 //                    m.invoke(o,i);
                     o.copyFrom(i);
