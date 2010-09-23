@@ -6,6 +6,9 @@
 
 package ch.unizh.ini.jaer.projects.topology;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 
 /**
  * A large-button control for the TopologyTrackerDemo.
@@ -85,7 +88,17 @@ public class TopologyTrackerControl extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
 private void resetButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetButtonActionPerformed
-    if(filter!=null) filter.resetFilter();
+    if (filter != null) {
+        boolean oldState=filter.isIgnoreReset();
+        filter.setIgnoreReset(false);
+        filter.resetFilter();
+            try {
+                Thread.currentThread().sleep(300);
+            } catch (InterruptedException ex) {
+                
+            }
+        filter.setIgnoreReset(oldState);
+    }
 }//GEN-LAST:event_resetButtonActionPerformed
 
 private void freezeLearningToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_freezeLearningToggleButtonActionPerformed

@@ -528,7 +528,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
         ignoreReset = value;
     }
 
-    public boolean getIgnoreReset() {
+    public boolean isIgnoreReset() {
         return ignoreReset;
     }
 
