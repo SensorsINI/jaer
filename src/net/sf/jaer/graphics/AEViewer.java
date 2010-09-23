@@ -543,8 +543,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void openHardwareIfNonambiguous (){
         // TODO doesn't open an AEMonitor if there is a ServoInterface plugged in.
         // Should check to see if there is only 1 AEMonitorInterface, but this check is not possible currently without opening the interface.
-        if ( jaerViewer != null && jaerViewer.getViewers().size() == 1 && chip.getHardwareInterface() == null && HardwareInterfaceFactory.instance().getNumInterfacesAvailable() == 2 ){
-            // TODO number of interfaces is 2 now because one will be the the UDP interface
+        if ( jaerViewer != null && jaerViewer.getViewers().size() == 1 && chip.getHardwareInterface() == null && HardwareInterfaceFactory.instance().getNumInterfacesAvailable() == 1 ){
             HardwareInterface hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
             //UDP interfaces should only be opened if the chip is a NetworkChip
             if (UDPInterface.class.isInstance(hw)){
@@ -553,8 +552,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     chip.setHardwareInterface(hw);
                 }
             } else {
-                log.info("opening unambiguous device");
-                chip.setHardwareInterface(hw); // if blank cypress, returns bare CypressFX2
+                if(!NetworkChip.class.isInstance(chip)){
+                    log.info("opening unambiguous device");
+                    chip.setHardwareInterface(hw); // if blank cypress, returns bare CypressFX2
+                }
             }
         }
     }
@@ -1059,23 +1060,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if ( hw == null ){
                 continue;
             } // in case it disappeared
-            if(!UDPInterface.class.isInstance(hw) || (UDPInterface.class.isInstance(hw) && NetworkChip.class.isInstance(chip))){
+            if((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip)) || (UDPInterface.class.isInstance(hw) && NetworkChip.class.isInstance(chip))){
                 interfaceButton = new JRadioButtonMenuItem(hw.toString());
                 interfaceButton.putClientProperty("HardwareInterfaceNumber",new Integer(i));
                 interfaceMenu.add(interfaceButton);
                 bg.add(interfaceButton);
                 interfaceButton.addActionListener(new ActionListener(){
                     public void actionPerformed (ActionEvent evt){
-                        // close interface on chip if there is one and it's open
-                        if ( chip.getHardwareInterface() != null && chip.getHardwareInterface().isOpen() ){
-                            chip.getHardwareInterface().close();
-                        }
                         JComponent comp = (JComponent)evt.getSource();
                         int interfaceNumber = (Integer)comp.getClientProperty("HardwareInterfaceNumber");
                         HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(interfaceNumber);
-    //                    HardwareInterface hw=(HardwareInterface)comp.getClientProperty("HardwareInterface");
-                        log.info("selected interface " + evt.getActionCommand() + " with HardwareInterface number" + interfaceNumber + " which is " + hw);
-                        chip.setHardwareInterface(hw);
+                        //only select an interface if it is not the same as already selected
+                        if(chip.getHardwareInterface() == null || hw.getTypeName() != chip.getHardwareInterface().getTypeName()){
+                            // close interface on chip if there is one and it's open
+                            if ( chip.getHardwareInterface() != null && chip.getHardwareInterface().isOpen() ){
+                                log.info("closing "+chip.getHardwareInterface().toString());
+                                chip.getHardwareInterface().close();
+                            }
+                            log.info("selected interface " + evt.getActionCommand() + " with HardwareInterface number" + interfaceNumber + " which is " + hw);
+                            chip.setHardwareInterface(hw);
+                        }
                     }
                 });
                 HardwareInterface chipInterface = chip.getHardwareInterface();

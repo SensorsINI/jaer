@@ -380,6 +380,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
         try{
             channel = DatagramChannel.open();
             datagramSocket = channel.socket();
+            datagramSocket.setReuseAddress(true);
             // disable timeout so that receive just waits for data forever (until interrupted)
 //            datagramSocket.setSoTimeout(TIMEOUT_MS);
 //            if (datagramSocket.getSoTimeout() != TIMEOUT_MS) {

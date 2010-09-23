@@ -61,8 +61,8 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
 
     private DatagramChannel controlChannel = null;
     private DatagramSocket socket = null;
-    final int DATA_PORT = 20020;
-    final int CONTROL_PORT = 20010;
+    public static final int DATA_PORT = 20020;
+    public static final int CONTROL_PORT = 20010;
     AEUnicastInput input = null;
     InetSocketAddress client = null;
     private String host; // "localhost"
@@ -78,6 +78,9 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
             try{
                 if ( socket != null ){
                     socket.close();
+                }
+                if ( input != null ){
+                    input.close();
                 }
                 port = CONTROL_PORT;
                 host = "localhost";
@@ -131,7 +134,7 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
     public void close(){
         isOpen=false;
         socket.close();
-        input.close();
+        if(input != null)input.close();
     }
 
     @Override
