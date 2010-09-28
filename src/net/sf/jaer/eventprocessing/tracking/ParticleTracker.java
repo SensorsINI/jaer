@@ -40,6 +40,9 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
     //------------------------------------------------------------------
     //private final int CLUSTER_UNSUPPORTED_LIFETIME=50000;
     int surround = 2;//neighbourhood that is searched for recent events that are considered to belong to the same cluster
+    protected int maxClusters = (surround+1*2)^2;
+    //private int maxClusters = getPrefs().getInt("Particletracker.maxClusters",25);//a variable just for the merger dependent on 'surround'
+                                                                                  //someone had the very bad idea to display this as parameter once: don't!
     int clusterUnsupportedLifetime = getPrefs().getInt("ParticleTracker.clusterUnsupportedLifetime",50000);
     //private final int CLUSTER_MINLIFEFORCE_4_DISPLAY=10;
     float clusterMinMass4Display = getPrefs().getFloat("ParticleTracker.clusterMinMass4Display",10);
@@ -47,7 +50,6 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
     float displayVelocityScaling = getPrefs().getFloat("ParticleTracker.DisplayVelocityScaling",1000.0f);
     int logFrameIntervalUs = getPrefs().getInt("ParticleTracker.logFrameIntervalUs",0);
     int logFrameNumber = 0;
-    private int maxClusters = getPrefs().getInt("Particletracker.maxClusters",9);
     protected boolean logDataEnabled = false;
 
     /** Creates a new instance of ParticleTracker */
@@ -56,7 +58,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
         this.chip = chip;
         chip.addObserver(this);
         initFilter();
-        setPropertyTooltip("maxClusters","max number of clusters");
+        //setPropertyTooltip("maxClusters","max number of clusters");
         setPropertyTooltip("clusterMinMass4Display","minimum mass of cluster for display or logging");
         setPropertyTooltip("logFrameIntervalUs","Interval in us for logging data to file about clusters");
         setPropertyTooltip("displayVelocityScaling","velocity vector scaling of velocity in pixels/timestamp tick");
@@ -396,17 +398,20 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
     /**
      * @return the maxClusters
      */
+    /*
     public int getMaxClusters (){
         return maxClusters;
     }
-
+    */
     /**
      * @param maxClusters the maxClusters to set
      */
-    public void setMaxClusters (int maxClusters){
+    /*
+     public void setMaxClusters (int maxClusters){
         this.maxClusters = maxClusters;
         getPrefs().putInt("ParticleTracker.maxClusters",maxClusters);
     }
+     */
     /**************************************************************************************************************************************/
     public class DiffusedCluster{
         int t;
@@ -666,10 +671,8 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
             //float new_y=(1-event_weight)*predicted_y + event_weight*ev.y ;
             //float new_y=(1-1/(this.mass))*predicted_y + 1/(this.mass)*ev.y ;
             float new_y = ( 1 - 1 / ( this.mass ) ) * this.location.y + 1 / ( this.mass ) * ev.y;
-            //this.velocity.x= (1-event_weight)*this.velocity.x + event_weight*(new_x - this.location.x)/interval;
             this.velocity.x = ( 1 - 1 / ( this.mass ) ) * this.velocity.x + 1 / ( this.mass ) * ( new_x - this.location.x ) / (float)interval;
             //this.velocity.x= (new_x - this.location.x)/interval;
-            //this.velocity.y= (1-event_weight)*this.velocity.y + event_weight*(new_y - this.location.y)/interval;
             this.velocity.y = ( 1 - 1 / ( this.mass ) ) * this.velocity.y + 1 / ( this.mass ) * ( new_y - this.location.y ) / (float)interval;
             //this.velocity.y= (new_y - this.location.y)/interval;
             this.location.x = new_x;
