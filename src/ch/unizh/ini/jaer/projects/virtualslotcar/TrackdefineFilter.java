@@ -489,6 +489,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     }
     private Point2D.Float lastTrackerPosition = null;
 
+    /** Handles updates from the tracker to save tracked car locations so that the track can be extracted from this list. */
     @Override
     public void update(Observable o, Object arg) {
         if (o instanceof AEChip && (arg == AEChip.EVENT_SIZEX || arg == AEChip.EVENT_SIZEY)) {
@@ -940,7 +941,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     } // doExtractTrack
 
     /**
-     * Extracts the track from the histogram of events.
+     * Extracts the track from the output of the car tracker, rather than the raw event data.
      */
     synchronized public void doExtractTrackFromTrackerPoints() {
         if (trackerPositions == null) {

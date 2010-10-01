@@ -378,7 +378,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         {
             Arrays.fill(segmentHistory, Integer.MIN_VALUE);
         }
-        private float relaxToTrackFactor; // how fast the cluster relaxes onto the track model compared with following along it, when the onlyFollowTrack option is selected
+//        private float relaxToTrackFactor; // how fast the cluster relaxes onto the track model compared with following along it, when the onlyFollowTrack option is selected
         private int lastSegmentChangeTimestamp = 0;
         int segmentHistoryPointer = 0; // ring pointer, points to next location in ring buffer
         LowpassFilter distFilter = new LowpassFilter(distanceFromTrackMetricTauMs);
@@ -426,9 +426,9 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                 float ex = event.x - location.x;
                 float ey = event.y - location.y;
                 float proj = m * (v.x * ex + v.y * ey) / vnorm;
-                relaxToTrackFactor = relaxToTrackFactor * m;
-                location.x += (proj * v.x) + relaxToTrackFactor * ex;
-                location.y += (proj * v.y) + relaxToTrackFactor * ey;
+                float f= relaxToTrackFactor * m;
+                location.x += (proj * v.x) + f * ex;
+                location.y += (proj * v.y) + f * ey;
             }
         }
 
@@ -505,7 +505,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         }
 
         private Point2D.Float findClosestTrackSegmentVector() {
-            if (segmentIdx != -1) {
+            if (segmentIdx != -1  && segmentIdx<track.segmentVectors.size()) {
                 return track.segmentVectors.get(segmentIdx);
             } else {
                 return null;
@@ -724,6 +724,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
      * @param relaxToTrackFactor the relaxToTrackFactor to set
      */
     public void setRelaxToTrackFactor(float relaxToTrackFactor) {
+        float old=this.relaxToTrackFactor;
         if (relaxToTrackFactor > 1) {
             relaxToTrackFactor = 1;
         } else if (relaxToTrackFactor < 0) {
@@ -731,6 +732,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         }
         this.relaxToTrackFactor = relaxToTrackFactor;
         putFloat("relaxToTrackFactor", relaxToTrackFactor);
+        getSupport().firePropertyChange("relaxToTrackFactor", old, this.relaxToTrackFactor);
     }
 
     /**
