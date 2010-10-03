@@ -115,6 +115,8 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     private LinkedList<Point2D.Float> smoothPoints;
     // Display extracted Points
     private boolean displayTrack = prefs().getBoolean("TrackdefineFilter.displayTrack", true);
+
+
     private LinkedList<Point2D.Float> trackerPositions = new LinkedList();
     static final private int MAX_TRACKER_POINTS = 1000;  // max points to accumulate from tracker
     private TwoCarTracker tracker; // obtained from udates from Observable TwoCarTracker
@@ -149,6 +151,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         setPropertyTooltip("extractTrack", "Extracts track model from accumulated histogram data");
         setPropertyTooltip("reverseTrack", "Reverse the path numbering so that car increases point number - required for most algorithms");
         setPropertyTooltip("extractTrackFromTrackerPoints", "extract track model from accumlated CarTracker points");
+        setPropertyTooltip(disp, "displayClosestPointMap","shows a map of the closeset track points, color coded for distance from the track");
 
         // New in TrackdefineFilter
         // Initialize histogram
@@ -1242,4 +1245,16 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
             throw new UnsupportedOperationException("Not supported yet.");
         }
     }
+
+    public void setDisplayClosestPointMap(boolean displayClosestPointMap) {
+        extractedTrack.setDisplayClosestPointMap(displayClosestPointMap);
+    }
+
+    public boolean isDisplayClosestPointMap() {
+        return extractedTrack.isDisplayClosestPointMap();
+    }
+
+
+
+
 }

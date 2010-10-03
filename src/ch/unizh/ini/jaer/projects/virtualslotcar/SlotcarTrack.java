@@ -54,6 +54,16 @@ public class SlotcarTrack implements java.io.Serializable {
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     /** PropertyChangeEvent that is fired when track is changed, e.g. by loading from file. */
     public static final String EVENT_TRACK_CHANGED = "trackChanged";
+
+    /** Set to display the closest point map when rendering track */
+    public void setDisplayClosestPointMap(boolean displayClosestPointMap) {
+        closestPointComputer.setDisplayClosestPointMap(displayClosestPointMap);
+        if(displayClosestPointMap) updateTrack();
+    }
+
+    public boolean isDisplayClosestPointMap() {
+        return closestPointComputer.isDisplayClosestPointMap();
+    }
     
     
     
@@ -353,6 +363,7 @@ public class SlotcarTrack implements java.io.Serializable {
         int sx, sy;
         float xPixPerUnit, yPixPerUnit = 1;
         Rectangle2D.Float bounds = new Rectangle2D.Float();
+        private boolean displayClosestPointMap=false;
 
         public ClosestPointLookupTable() {
             init();
@@ -370,7 +381,7 @@ public class SlotcarTrack implements java.io.Serializable {
                     setMapEntry(idx, x, y);
                 }
             }
-            if (false) {
+            if (displayClosestPointMap) {
                 if (closestPointFrame == null) {
                     closestPointFrame = new JFrame("Closest Point Map");
                     closestPointFrame.setPreferredSize(new Dimension(200, 200));
@@ -484,6 +495,20 @@ public class SlotcarTrack implements java.io.Serializable {
             }
             final float w = maxx - minx, h = maxy - miny;
             bounds.setRect(minx - w * extraFraction, miny - h * extraFraction, w * (1 + 2 * extraFraction), h * (1 + 2 * extraFraction));
+        }
+
+        /**
+         * @return the displayClosestPointMap
+         */
+        public boolean isDisplayClosestPointMap() {
+            return displayClosestPointMap;
+        }
+
+        /**
+         * @param displayClosestPointMap the displayClosestPointMap to set
+         */
+        public void setDisplayClosestPointMap(boolean displayClosestPointMap) {
+            this.displayClosestPointMap = displayClosestPointMap;
         }
     }
 
