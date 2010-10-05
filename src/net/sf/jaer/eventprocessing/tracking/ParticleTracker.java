@@ -49,6 +49,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
     boolean onPolarityOnly = getPrefs().getBoolean("ParticleTracker.onPolarityOnly",false);
     float displayVelocityScaling = getPrefs().getFloat("ParticleTracker.DisplayVelocityScaling",1000.0f);
     int logFrameIntervalUs = getPrefs().getInt("ParticleTracker.logFrameIntervalUs",0);
+    int logFrameOffsetUs = getPrefs().getInt("ParticleTracker.logFrameOffsetUs",0);
     int logFrameNumber = 0;
     protected boolean logDataEnabled = false;
 
@@ -60,7 +61,8 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
         initFilter();
         //setPropertyTooltip("maxClusters","max number of clusters");
         setPropertyTooltip("clusterMinMass4Display","minimum mass of cluster for display or logging");
-        setPropertyTooltip("logFrameIntervalUs","Interval in us for logging data to file about clusters");
+        setPropertyTooltip("logFrameIntervalUs","Interval in us for logging data to file about particles");
+        setPropertyTooltip("logFrameOffsetUs","Offset from frame interval at which to synchronize the log-frames");
         setPropertyTooltip("displayVelocityScaling","velocity vector scaling of velocity in pixels/timestamp tick");
         setPropertyTooltip("onPolarityOnly","use ON polarity events only");
         setPropertyTooltip("clusterUnsupportedLifetime","prune clusters that don't get events for this long in ticks; also time constant of effect of event - decrease to move clusters more rapidly to new events");
@@ -91,6 +93,21 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
 
     public final int getLogFrameIntervalUs (){
         return ( logFrameIntervalUs );
+    }
+
+    public void setLogFrameOffsetUs (int x){
+//        if ( x > 0 ){
+//            //log.warning("I think I am opening a file here *************************");
+//            openLog();
+//        } else{
+//            closeLog();
+//        }
+        this.logFrameOffsetUs = x;
+        getPrefs().putInt("ParticleTracker.logFrameOffsetUs",logFrameOffsetUs);
+    }
+
+    public final int getLogFrameOffsetUs (){
+        return ( logFrameOffsetUs );
     }
 
     public void setClusterUnsupportedLifetime (int x){
@@ -135,7 +152,8 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
         initDefault("ParticleTracker.ParticleTracker.clusterMinMass4Display","10");
         initDefault("ParticleTracker.displayVelocityScaling","1000.0f");
         initDefault("ParticleTracker.OnPolarityOnly","false");
-        initDefault("ParticleTracker.LogFrameRate","0");
+        initDefault("ParticleTracker.LogFrameIntervalUs","0");
+        initDefault("ParticleTracker.LogFrameOffsetUs","0");
     }
 
     private void initDefault (String key,String value){
@@ -171,6 +189,10 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
                 logStream.println("% written " + new Date());
                 logStream.println("% each line is one 'frame' and the case switch number is the frame number.");
                 logStream.println("% loggingIntervalUs = " + logFrameIntervalUs);
+                logStream.println("% loggingOffsetUs = " + logFrameOffsetUs);
+                logStream.println("% clusterMinMass4Display = " + clusterMinMass4Display);
+                logStream.println("% clusterUnsupportedLifetime = " + clusterUnsupportedLifetime);
+                logStream.println("% onPolarityOnly = " + onPolarityOnly);
                 logStream.println("% fields for each cluster are ");
                 logStream.println("% lasttimestamp x y u v");
                 logStream.println("switch (frameN)");
@@ -242,8 +264,8 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
             if ( !( onPolarityOnly && ( ev instanceof TypedEvent ) && ( ( (TypedEvent)ev ).type == 0 ) ) ){
 // *****************
                 if ( logDataEnabled && logFrameIntervalUs > 0 ){
-                    if ( ( ev.timestamp / logFrameIntervalUs ) > logFrameNumber ){
-                        logFrameNumber = ev.timestamp / logFrameIntervalUs;
+                    if ( ( (ev.timestamp - logFrameOffsetUs) / logFrameIntervalUs ) > logFrameNumber){
+                        logFrameNumber = (ev.timestamp - logFrameOffsetUs) / logFrameIntervalUs;
                         printClusterLog(logStream,(LinkedList<Cluster>)clusters,logFrameNumber,ev.timestamp);
                     }
                 }
