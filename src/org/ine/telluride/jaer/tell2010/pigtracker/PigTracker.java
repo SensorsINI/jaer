@@ -24,6 +24,8 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  */
 public class PigTracker extends EventFilter2D implements Observer, FrameAnnotater {
 
+    private double globalUpdateRate = 0.1;
+
     public PigTracker(AEChip chip) {
         super(chip);
         chip.addObserver(this);
@@ -37,6 +39,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         setPropertyTooltip("fractionOfEventsRequired", "a segment is only formed when this faction of bins is filled during capture");
         setPropertyTooltip("numberOfCaptureEvents", "this many events are captured for the capture mode");
         setPropertyTooltip("objectToTrack", "predefined object or captured object choice");
+        addObserver(this);
     }
     private boolean perspectiveEnabled = getBoolean("perspectiveEnabled", true);
     private boolean shearEnabled = getBoolean("shearEnabled", true);
@@ -45,6 +48,16 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
     private int linelength = getInt("linelength", 20);
     private float fractionOfEventsRequired = getFloat("fractionOfEventsRequired", 0.8f);
     private final int linewidth = 1;
+
+    private void computeChipSizeConstants() {
+        if (sx > 0 && sy > 0) {
+            sx2 = sx / 2;
+            sy2 = sy / 2;
+            sx1 = sx - 1;
+            sy1 = sy - 1;
+            initFilter();
+        }
+    }
 
     public enum ObjectToTrack {
 
@@ -118,6 +131,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
             } else {
                 oe.polarity = PolarityEvent.Polarity.Off;
             }
+            maybeCallUpdateObservers(in, ev.timestamp);
         }
         return out;
     }
@@ -134,18 +148,52 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
     @Override
     public void update(Observable o, Object arg) {
-        if (o instanceof AEChip && arg == AEChip.EVENT_SIZEX) {
+        if (o == this && arg instanceof UpdateMessage) {
+            double l1, l2, l3, l4, l5, l6, l7, l8, l9;				// this is the inverse of the m matrix
+
+            double den = 1.0 / (m1 * m5 * m9 + m2 * m6 * m7 + m3 * m4 * m8 - m1 * m6 * m8 - m2 * m4 * m9 - m3 * m5 * m7);
+            l1 = den * (m5 * m9 - m6 * m8);
+            l2 = den * (m3 * m8 - m2 * m9);
+            l3 = den * (m2 * m6 - m3 * m5);
+            l4 = den * (m6 * m7 - m4 * m9);
+            l5 = den * (m1 * m9 - m3 * m7);
+            l6 = den * (m3 * m4 - m1 * m6);
+            l7 = den * (m4 * m8 - m5 * m7);
+            l8 = den * (m2 * m7 - m1 * m8);
+            l9 = den * (m1 * m5 - m2 * m4);				// here we have the inverse of m
+            for (int n = 0; n < numberOfLinesInUse; n++) {
+
+                double tmpX = (l1 * lsx[n] + l2 * lsy[n] + l3);
+                double tmpY = (l4 * lsx[n] + l5 * lsy[n] + l6);
+                double den2 = (l7 * lsx[n] + l8 * lsy[n] + l9);
+
+                double gsx = tmpX / den2;
+                double gsy = tmpY / den2;
+
+                tmpX = (l1 * lex[n] + l2 * ley[n] + l3);
+                tmpY = (l4 * lex[n] + l5 * ley[n] + l6);
+                den2 = (l7 * lex[n] + l8 * ley[n] + l9);
+
+                double gex = tmpX / den2;
+                double gey = tmpY / den2;
+
+
+                // reset template to current state
+                lsx[n] = gsx;
+                lsy[n] = gsy;
+                lex[n] = gex;
+                ley[n] = gey;
+            }
+            precomputeUsingEndpoints();
+            resetIdentityMatrix();
+        } else if (o instanceof AEChip && arg == AEChip.EVENT_SIZEX) {
             sx = chip.getSizeX();
+            computeChipSizeConstants();
         } else if (o instanceof AEChip && arg == AEChip.EVENT_SIZEY) {
             sy = chip.getSizeY();
+            computeChipSizeConstants();
         }
-        if (sx > 0 && sy > 0) {
-            sx2 = sx / 2;
-            sy2 = sy / 2;
-            sx1 = sx - 1;
-            sy1 = sy - 1;
-            initFilter();
-        }
+
     }
 
     private void computeTrackingMode() {
@@ -379,18 +427,6 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
     @Override
     public void annotate(GLAutoDrawable drawable) {
         GL gl = drawable.getGL();
-        double l1, l2, l3, l4, l5, l6, l7, l8, l9;				// this is the inverse of the m matrix
-
-        double den = 1.0 / (m1 * m5 * m9 + m2 * m6 * m7 + m3 * m4 * m8 - m1 * m6 * m8 - m2 * m4 * m9 - m3 * m5 * m7);
-        l1 = den * (m5 * m9 - m6 * m8);
-        l2 = den * (m3 * m8 - m2 * m9);
-        l3 = den * (m2 * m6 - m3 * m5);
-        l4 = den * (m6 * m7 - m4 * m9);
-        l5 = den * (m1 * m9 - m3 * m7);
-        l6 = den * (m3 * m4 - m1 * m6);
-        l7 = den * (m4 * m8 - m5 * m7);
-        l8 = den * (m2 * m7 - m1 * m8);
-        l9 = den * (m1 * m5 - m2 * m4);				// here we have the inverse of m
 
 
         gl.glColor3f(0, 1, 1);
@@ -398,46 +434,21 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         gl.glBegin(GL.GL_LINES);
         for (int n = 0; n < numberOfLinesInUse; n++) {
 
-            double tmpX = (l1 * lsx[n] + l2 * lsy[n] + l3);
-            double tmpY = (l4 * lsx[n] + l5 * lsy[n] + l6);
-            double den2 = (l7 * lsx[n] + l8 * lsy[n] + l9);
-
-            double gsx = tmpX / den2;
-            double gsy = tmpY / den2;
-
-            tmpX = (l1 * lex[n] + l2 * ley[n] + l3);
-            tmpY = (l4 * lex[n] + l5 * ley[n] + l6);
-            den2 = (l7 * lex[n] + l8 * ley[n] + l9);
-
-            double gex = tmpX / den2;
-            double gey = tmpY / den2;
-
-
-            gl.glVertex2d((sx2 * (gsx + 1)), (sy2 * (gsy + 1)));
-            gl.glVertex2d((sx2 * (gex + 1)), (sy2 * (gey + 1)));
+            gl.glVertex2d((sx2 * (lsx[n] + 1)), (sy2 * (lsy[n] + 1)));
+            gl.glVertex2d((sx2 * (lex[n] + 1)), (sy2 * (ley[n] + 1)));
 //            g.drawLine((int) (sx2 * (gsx + 1) * 4), (int) (sy2 * (gsy + 1) * 4), (int) (sx2 * (gex + 1) * 4), (int) (sy2 * (gey + 1) * 4));
 
-            // reset template to current state
-            lsx[n] = gsx;
-            lsy[n] = gsy;
-            lex[n] = gex;
-            ley[n] = gey;
         }
         gl.glEnd();
 
         // show matrix
-         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY());
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY());
         StringBuilder sb = new StringBuilder("PigTracker\n");
         sb.append(String.format("# lines = %d\nm=\n", numberOfLinesInUse));
-        sb.append(String.format("%6.3f %6.3f %6.3f\n", l1, l2, l3));
-        sb.append(String.format("%6.3f %6.3f %6.3f\n", l4, l5, l6));
-        sb.append(String.format("%6.3f %6.3f %6.3f\n", l7, l8, l9));
+        sb.append(String.format("%6.3f %6.3f %6.3f\n", m1, m2, m3));
+        sb.append(String.format("%6.3f %6.3f %6.3f\n", m4, m5, m6));
+        sb.append(String.format("%6.3f %6.3f %6.3f\n", m7, m8, m9));
         MultilineAnnotationTextRenderer.renderMultilineString(sb.toString());
-
-        precomputeUsingEndpoints();
-        resetIdentityMatrix();
-
-
     }
 
     public boolean processNewEvent(TypedEvent ev) {
@@ -493,7 +504,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 //			log.info("Using line " + minDistIndex);
 //			log.info("la: " + la[minDistIndex] + ", lb: " + lb[minDistIndex] + ", lc: " + lc[minDistIndex]);
 
-            bigProduct *= 0.1;
+            bigProduct *= globalUpdateRate;
             m1 -= bigProduct * la[minDistIndex] * eX;
             m2 -= bigProduct * la[minDistIndex] * eY;
             m3 -= bigProduct * la[minDistIndex];
