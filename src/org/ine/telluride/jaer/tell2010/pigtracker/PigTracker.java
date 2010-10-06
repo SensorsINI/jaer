@@ -1,7 +1,7 @@
 package org.ine.telluride.jaer.tell2010.pigtracker;
 
-import java.awt.Color;
-import java.awt.Graphics;
+import com.sun.opengl.util.j2d.TextRenderer;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.util.Observable;
 import java.util.Observer;
@@ -28,21 +28,31 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         chip.addObserver(this);
         computeTrackingMode();
         initTemplate();
+        setPropertyTooltip("perspectiveEnabled", "enables perspective transform changes");
+        setPropertyTooltip("shearEnabled", "enables shear transform changes");
+        setPropertyTooltip("scalingEnabled", "enables scaling transform changes");
+        setPropertyTooltip("distanceThreshold", "each line segment captures events within this range as fraction of sensor dimension");
+        setPropertyTooltip("linelength", "line segments are this long in pixels for captured objects");
+        setPropertyTooltip("fractionOfEventsRequired", "a segment is only formed when this faction of bins is filled during capture");
+        setPropertyTooltip("numberOfCaptureEvents", "this many events are captured for the capture mode");
+        setPropertyTooltip("objectToTrack", "predefined object or captured object choice");
     }
-
     private boolean perspectiveEnabled = getBoolean("perspectiveEnabled", true);
     private boolean shearEnabled = getBoolean("shearEnabled", true);
+    private boolean scalingEnabled = getBoolean("scalingEnabled", true);
     private float distanceThreshold = getFloat("distanceThreshold", 0.04f);
+    private int linelength = getInt("linelength", 20);
+    private float fractionOfEventsRequired = getFloat("fractionOfEventsRequired", 0.8f);
+    private final int linewidth = 1;
 
     public enum ObjectToTrack {
 
         Square, A, I, Pig56, Pig22, Capture
     };
     private ObjectToTrack objectToTrack = ObjectToTrack.valueOf(getString("objectToTrack", ObjectToTrack.Pig56.toString()));
-  
     final int maxNumberOfLines = 500;
     private int numberOfLinesInUse = 60;
-    private double m1, m2, m3, m4, m5, m6, m7, m8, m9;
+    private double m1, m2, m3, m4, m5, m6, m7, m8, m9;  // global transform matrix coefficients
     private int sx = 0, sy = 0, sx2 = 0, sy2 = 0, sx1 = 0, sy1 = 0;
 
     enum TrackingMode {
@@ -50,7 +60,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         AnyMatrix, NoShear, NoPerspective
     }
     TrackingMode trackingMode1 = TrackingMode.AnyMatrix;
-    private int trackingMode = 1; // 1 == any matrix, 2 == no shear, 3 == no perspective
+    private int trackingMode = 1; // 1 == any matrix, 2 == no shear, 3 == no perspective, 4== no scaling
     private double la[] = new double[maxNumberOfLines];			// represents lines
     private double lb[] = new double[maxNumberOfLines];
     private double lc[] = new double[maxNumberOfLines];
@@ -94,7 +104,6 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         }
     }
 
-  
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         checkOutputPacketEventType(PolarityEvent.class);
@@ -104,9 +113,9 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
             PolarityEvent oe = (PolarityEvent) outItr.nextOutput();
             oe.copyFrom(ev);
             if (processNewEvent(ev)) {
-                oe.polarity=PolarityEvent.Polarity.On;
-            }else{
-                oe.polarity=PolarityEvent.Polarity.Off;
+                oe.polarity = PolarityEvent.Polarity.On;
+            } else {
+                oe.polarity = PolarityEvent.Polarity.Off;
             }
         }
         return out;
@@ -138,8 +147,6 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         }
     }
 
-
-
     private void computeTrackingMode() {
 
         if (shearEnabled) {
@@ -148,11 +155,14 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
             if (perspectiveEnabled) {
                 trackingMode = 2;
             } else {
-                trackingMode = 3;
+                if (scalingEnabled) {
+                    trackingMode = 3;
+                } else {
+                    trackingMode = 4;
+                }
             }
         }
     }
-
 
     private void initCapture() {
         log.info("InitCapture");
@@ -165,10 +175,6 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
             }
         }
     }
-
-    private final int linelength = 20;
-    private final int linewidth = 1;
-    private final double fractionOfEventsRequired = 0.8;
 
     private void computeCaptureObject() {
 
@@ -337,7 +343,6 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 //        } else {
 //        }
 //    }
-
     private void initTemplate() {
         switch (objectToTrack) {
             case A:
@@ -369,6 +374,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         resetIdentityMatrix();
         initTemplate();
     }
+    TextRenderer renderer = null;
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
@@ -421,9 +427,13 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         precomputeUsingEndpoints();
         resetIdentityMatrix();
 
-
+        if (renderer == null) {
+            renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
+        }
+        renderer.beginRendering(drawable.getWidth(), drawable.getHeight());
+        renderer.draw(String.format("# lines = %d", numberOfLinesInUse), 10, 10);
+        renderer.endRendering();
     }
-
 
     public boolean processNewEvent(TypedEvent ev) {
         int eventX = ev.x, eventY = ev.y;
@@ -506,6 +516,12 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
                 m9 += err * (m1 - m5);
             } else if (trackingMode == 3) {
                 // allow only rotation and scaling
+                m7 = m8 = 0.0;
+                m1 = m5 = (m1 + m5) / 2.0;
+                m2 = (m2 - m4) / 2.0;
+                m4 = -m2;
+            } else if (trackingMode == 4) {
+                // allow only rotation  TODO not done yet
                 m7 = m8 = 0.0;
                 m1 = m5 = (m1 + m5) / 2.0;
                 m2 = (m2 - m4) / 2.0;
@@ -1044,7 +1060,9 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         this.perspectiveEnabled = perspectiveEnabled;
         putBoolean("perspectiveEnabled", perspectiveEnabled);
         getSupport().firePropertyChange("perspectiveEnabled", old, perspectiveEnabled);
-        if(!perspectiveEnabled) setShearEnabled(false); // turn off shear if perspective is off
+        if (!perspectiveEnabled) {
+            setShearEnabled(false); // turn off shear if perspective is off
+        }
         computeTrackingMode();
     }
 
@@ -1056,6 +1074,29 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
     }
 
     /**
+     * @return the scalingEnabled
+     */
+    public boolean isScalingEnabled() {
+        return scalingEnabled;
+    }
+
+    /**
+     * @param scalingEnabled the scalingEnabled to set
+     */
+    public void setScalingEnabled(boolean scalingEnabled) {
+        this.scalingEnabled = scalingEnabled;
+        boolean old = this.scalingEnabled;
+        this.scalingEnabled = scalingEnabled;
+        putBoolean("scalingEnabled", scalingEnabled);
+        getSupport().firePropertyChange("scalingEnabled", old, scalingEnabled);
+        if (!scalingEnabled) {
+            setPerspectiveEnabled(false);
+            setShearEnabled(false); // turn off shear if perspective is off
+        }
+        computeTrackingMode();
+    }
+
+    /**
      * @param shearEnabled the shearEnabled to set
      */
     synchronized public void setShearEnabled(boolean shearEnabled) {
@@ -1063,7 +1104,9 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         this.shearEnabled = shearEnabled;
         putBoolean("shearEnabled", shearEnabled);
         getSupport().firePropertyChange("shearEnabled", old, shearEnabled);
-        if(shearEnabled) setPerspectiveEnabled(true); // if shear enabled, then perspective must also be enabled
+        if (shearEnabled) {
+            setPerspectiveEnabled(true); // if shear enabled, then perspective must also be enabled
+        }
         computeTrackingMode();
     }
 
@@ -1091,7 +1134,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
      * @return the distanceThreshold
      */
     public float getDistanceThreshold() {
-        return  distanceThreshold;
+        return distanceThreshold;
     }
 
     /**
@@ -1134,5 +1177,47 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
     synchronized public void doResetObject() {
         initTemplate();
+    }
+
+    /**
+     * @return the linelength
+     */
+    public int getLinelength() {
+        return linelength;
+    }
+
+    /**
+     * @param linelength the linelength to set
+     */
+    public void setLinelength(int linelength) {
+        int old = this.linelength;
+        if (linelength > chip.getMaxSize()) {
+            linelength = chip.getMaxSize();
+        }
+        this.linelength = linelength;
+        putInt("linelength", linelength);
+        getSupport().firePropertyChange("linelength", old, linelength);
+    }
+
+    /**
+     * @return the fractionOfEventsRequired
+     */
+    public float getFractionOfEventsRequired() {
+        return fractionOfEventsRequired;
+    }
+
+    /**
+     * @param fractionOfEventsRequired the fractionOfEventsRequired to set
+     */
+    public void setFractionOfEventsRequired(float fractionOfEventsRequired) {
+        float old = this.fractionOfEventsRequired;
+        if (fractionOfEventsRequired < 0) {
+            fractionOfEventsRequired = 0;
+        } else if (fractionOfEventsRequired > 1) {
+            fractionOfEventsRequired = 1;
+        }
+        this.fractionOfEventsRequired = fractionOfEventsRequired;
+        putFloat("fractionOfEventsRequired", fractionOfEventsRequired);
+        getSupport().firePropertyChange("fractionOfEventsRequired", old, fractionOfEventsRequired);
     }
 }
