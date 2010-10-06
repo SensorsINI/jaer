@@ -15,6 +15,8 @@ public class ClusterPathPoint extends Point2D.Float {
     /** Velocity of cluster (filtered) at this point in pixels per timestamp tick (e.g. us).
      * This field is initially null and is initialized by the velocityPPT estimation, if used. */
     public Point2D.Float velocityPPT=null;
+    /** disparity of stereo vision. Valid for stereo vision only */
+    public float stereoDisparity;
 
     public ClusterPathPoint(float x, float y, int t, int numEvents) {
         super();
@@ -32,6 +34,15 @@ public class ClusterPathPoint extends Point2D.Float {
         return nEvents;
     }
 
+    public void setStereoDisparity(float stereoDisparity){
+        this.stereoDisparity = stereoDisparity;
+    }
+
+    public float getStereoDisparity(){
+        return stereoDisparity;
+    }
+
+    @Override
     public String toString() {
         return String.format("%d, %f, %f, %d", t, x, y, nEvents);
     }
