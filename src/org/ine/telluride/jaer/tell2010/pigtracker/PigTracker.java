@@ -16,6 +16,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /** Tracks generalized objects made of line segments.
  *
@@ -374,7 +375,6 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         resetIdentityMatrix();
         initTemplate();
     }
-    TextRenderer renderer = null;
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
@@ -424,15 +424,20 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
             ley[n] = gey;
         }
         gl.glEnd();
+
+        // show matrix
+         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY());
+        StringBuilder sb = new StringBuilder("PigTracker\n");
+        sb.append(String.format("# lines = %d\nm=\n", numberOfLinesInUse));
+        sb.append(String.format("%6.3f %6.3f %6.3f\n", l1, l2, l3));
+        sb.append(String.format("%6.3f %6.3f %6.3f\n", l4, l5, l6));
+        sb.append(String.format("%6.3f %6.3f %6.3f\n", l7, l8, l9));
+        MultilineAnnotationTextRenderer.renderMultilineString(sb.toString());
+
         precomputeUsingEndpoints();
         resetIdentityMatrix();
 
-        if (renderer == null) {
-            renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
-        }
-        renderer.beginRendering(drawable.getWidth(), drawable.getHeight());
-        renderer.draw(String.format("# lines = %d", numberOfLinesInUse), 10, 10);
-        renderer.endRendering();
+
     }
 
     public boolean processNewEvent(TypedEvent ev) {
@@ -521,11 +526,12 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
                 m2 = (m2 - m4) / 2.0;
                 m4 = -m2;
             } else if (trackingMode == 4) {
-                // allow only rotation  TODO not done yet
+                // allow only rotation 
                 m7 = m8 = 0.0;
                 m1 = m5 = (m1 + m5) / 2.0;
                 m2 = (m2 - m4) / 2.0;
                 m4 = -m2;
+                m9 = 1;
             } else {
                 log.info("Bad trackingMode: " + trackingMode);
             }
