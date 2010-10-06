@@ -272,18 +272,15 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      *
      * @param t the update timestamp
      */
-    private void updateClusterPaths (int t){
+    protected void updateClusterPaths (int t){
         // update paths of clusters
         for ( Cluster c:clusters ){
             if(c.dead)
                 continue;
-            c.updatePath(t);
+            c.updatePath(t, 0);
             c.setUpdated(false);
         }
     }
-
-
-
 
     /**
      * Cluster class
@@ -867,11 +864,13 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * including cluster velocityPPT.
          * @param t current timestamp.
          */
-        final public void updatePath (int t){
+        final public void updatePath (int t, int disparity){
             if ( !pathsEnabled ){
                 return;
             }
-            path.add(new ClusterPathPoint(location.x, location.y, t, 1));
+            ClusterPathPoint newPath = new ClusterPathPoint(location.x, location.y, t, 1);
+            newPath.setStereoDisparity((float) disparity);
+            path.add(newPath);
 //            System.out.println("Added Path ("+location.x + ", "+location.y+") @"+t);
             if ( path.size() > getPathLength() ){
                 path.remove(path.get(0));

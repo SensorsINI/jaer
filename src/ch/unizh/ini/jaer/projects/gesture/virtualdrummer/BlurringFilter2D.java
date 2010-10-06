@@ -6,6 +6,7 @@
  */
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
 
+import com.sun.opengl.util.GLUT;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.geom.Point2D.Float;
@@ -77,6 +78,11 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      * shows neurons with firing type of FIRING_INSIDE only.
      */
     private boolean showInsideNeuronsOnly = getPrefs().getBoolean("BlurringFilter2D.showInsideNeuronsOnly", true);
+
+    /**
+     * shows MPThreshold.
+     */
+    private boolean showMPThreshold = getPrefs().getBoolean("BlurringFilter2D.showMPThreshold", false);
 
     /**
      * color to draw the receptive field of firing neurons
@@ -224,6 +230,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         setPropertyTooltip(disp, "showBorderNeuronsOnly", "shows neurons with firing type of FIRING_ON_BORDER only.");
         setPropertyTooltip(disp, "showInsideNeuronsOnly", "shows neurons with firing type of FIRING_INSIDE only.");
         setPropertyTooltip(disp, "colorToDrawRF", "color to draw the receptive field of firing neurons");
+        setPropertyTooltip(disp, "showMPThreshold", "shows membrane potential threshold to fire a spike");
     }
 
     @Override
@@ -1679,6 +1686,16 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return;
         }
         gl.glPushMatrix();
+
+        if(showMPThreshold){
+            int font = GLUT.BITMAP_HELVETICA_18;
+            GLUT glut = chip.getCanvas ().getGlut ();
+            gl.glColor3f (1,1,1);
+
+            gl.glRasterPos3f (50,5,0);
+            glut.glutBitmapString (font,String.format ("MPThreshold = %d", MPThreshold));
+        }
+
         try {
             if (showFiringNeurons) {
                 LIFNeuron tmpNeuron;
@@ -2019,5 +2036,22 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         getPrefs().put("BlurringFilter2D.colorToDrawRF",colorToDrawRF.toString());
         colors.get(colorToDrawRF).getRGBComponents(rgb);
+    }
+
+    /**
+     * returns showMPThreshold
+     *
+     * @return
+     */
+    public boolean isShowMPThreshold() {
+        return showMPThreshold;
+    }
+
+    /**
+     * sets showMPThreshold
+     */
+    public void setShowMPThreshold(boolean showMPThreshold) {
+        this.showMPThreshold = showMPThreshold;
+        getPrefs().putBoolean("BlurringFilter2D.showMPThreshold", showMPThreshold);
     }
 }
