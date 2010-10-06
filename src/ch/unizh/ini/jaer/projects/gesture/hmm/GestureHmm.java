@@ -467,6 +467,7 @@ public class GestureHmm implements Serializable{
             for(String state:viterbiPath)
                 visitedStates.add(state);
             if(visitedStates.size() != getGestureHmm(name).getStates().size()){
+//                System.out.println("Not full state transition on HMM");
                 return null;
             }
         }
@@ -474,9 +475,12 @@ public class GestureHmm implements Serializable{
         // checks with Gaussian threshold
         if((thresholdOption&GAUSSIAN_THRESHOLD)>0){
             GaussianThreshold gth = gthModels.get(name);
-            if(gth.numSamples > 0)
-                if(!gth.isAboveThreshold(rawAngles))
+            if(gth.numSamples > 0){
+                if(!gth.isAboveThreshold(rawAngles)){
+//                    System.out.println("Blocked by GTM");
                     return null;
+                }
+            }
         }
 
         // checks with dynamic threshold.

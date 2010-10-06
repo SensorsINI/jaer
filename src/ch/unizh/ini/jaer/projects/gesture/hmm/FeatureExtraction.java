@@ -167,7 +167,7 @@ public class FeatureExtraction{
      * @param trajectory
      * @return
      */
-    private double calTrajectoryLength(ArrayList<? extends Point2D.Float> trajectory){
+    public static double calTrajectoryLength(ArrayList<? extends Point2D.Float> trajectory){
         double length = 0;
 
         Point2D.Float prevPosition = null;
@@ -179,6 +179,67 @@ public class FeatureExtraction{
         }
 
         return length;
+    }
+
+    /**
+     * returns the index of targer position from the head of trajectory
+     *
+     * @param trajectory
+     * @param targetLength
+     * @return
+     */
+    public static int getTrajectoryPositionForward(ArrayList<? extends Point2D.Float> trajectory, double targetLength){
+        int pos = 0;
+        double length = 0;
+
+        Point2D.Float prevPosition = null;
+        for(Point2D.Float currPosition:trajectory){
+            if(prevPosition != null){
+                length += distance(prevPosition, currPosition);
+                pos++;
+            }
+
+            if(length >= targetLength)
+                break;
+            
+            prevPosition = currPosition;
+        }
+
+        if(pos > trajectory.size()-1)
+            pos = trajectory.size()-1;
+
+        return pos;
+    }
+
+    /**
+     * returns the index of targer position from the tail of trajectory
+     *
+     * @param trajectory
+     * @param targetLength
+     * @return
+     */
+    public static int getTrajectoryPositionBackward(ArrayList<? extends Point2D.Float> trajectory, double targetLength){
+        int pos = trajectory.size()-1;
+        double length = 0;
+
+        Point2D.Float prevPosition = null;
+        for(int i=trajectory.size()-1; i>=0; i--){
+            Point2D.Float currPosition = trajectory.get(i);
+            if(prevPosition != null){
+                length += distance(prevPosition, currPosition);
+                pos--;
+            }
+
+            if(length >= targetLength)
+                break;
+
+            prevPosition = currPosition;
+        }
+
+        if(pos < 0)
+            pos = 0;
+
+        return pos;
     }
 
     /** returns the distance between two points
