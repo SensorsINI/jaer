@@ -25,7 +25,7 @@ public class BlurringFilterStereo extends BlurringFilter2D{
     /**
      * Stereo vergence filter
      */
-    StereoVergenceFilter svf;
+    protected StereoVergenceFilter svf;
 
     /**
      * mass of left cells
@@ -236,6 +236,7 @@ public class BlurringFilterStereo extends BlurringFilter2D{
      */
     public void setActivateNonoverlapingArea(boolean activateNonoverlapingArea) {
         this.activateNonoverlapingArea = activateNonoverlapingArea;
+        getPrefs().putBoolean("BlurringFilterStereo.activateNonoverlapingArea", activateNonoverlapingArea);
     }
 
 
@@ -255,5 +256,13 @@ public class BlurringFilterStereo extends BlurringFilter2D{
     public void setBinocluarAssociationMassThreshold(float binocluarAssociationMassThreshold) {
         this.binocluarAssociationMassThreshold = binocluarAssociationMassThreshold;
         getPrefs().putFloat("BlurringFilterStereo.binocluarAssociationMassThreshold", binocluarAssociationMassThreshold);
+    }
+
+    public void setLowerDisparityLimit(int lowerDisparityLimit){
+        svf.setLowerDisparityLimit(lowerDisparityLimit);
+    }
+
+    public void setEnableLowerDisparityLimit(boolean enableLowerDisparityLimit){
+        svf.setEnableLowerDisparityLimit(enableLowerDisparityLimit);
     }
 }
