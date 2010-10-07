@@ -1,8 +1,7 @@
 package org.ine.telluride.jaer.tell2010.pigtracker;
 
-import com.sun.opengl.util.j2d.TextRenderer;
-import java.awt.Font;
 import java.awt.event.ActionEvent;
+import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
 import javax.media.opengl.GL;
@@ -67,6 +66,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
     final int maxNumberOfLines = 500;
     private int numberOfLinesInUse = 60;
     private double m1, m2, m3, m4, m5, m6, m7, m8, m9;  // global transform matrix coefficients
+    private double[] cm=new double[9]; // cummulative transform matrix
     private int sx = 0, sy = 0, sx2 = 0, sy2 = 0, sx1 = 0, sy1 = 0;
 
     enum TrackingMode {
@@ -184,6 +184,16 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
                 lex[n] = gex;
                 ley[n] = gey;
             }
+            // accumulate transform
+            cm[0]*=m1;
+            cm[1]*=m2;
+            cm[2]*=m3;
+            cm[3]*=m4;
+            cm[4]*=m5;
+            cm[5]*=m6;
+            cm[6]*=m7;
+            cm[7]*=m8;
+            cm[8]*=m9;
             precomputeUsingEndpoints();
             resetIdentityMatrix();
         } else if (o instanceof AEChip && arg == AEChip.EVENT_SIZEX) {
@@ -415,13 +425,16 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
         }
 
-        precomputeUsingEndpoints();
+        Arrays.fill(cm,0);
+        cm[0]=cm[4]=cm[8]=1;        precomputeUsingEndpoints();
     }
 
     public void init() {
         captureEventMatrix = new boolean[sx][sy];
         resetIdentityMatrix();
         initTemplate();
+
+
     }
 
     @Override
@@ -445,9 +458,9 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY());
         StringBuilder sb = new StringBuilder("PigTracker\n");
         sb.append(String.format("# lines = %d\nm=\n", numberOfLinesInUse));
-        sb.append(String.format("%6.3f %6.3f %6.3f\n", m1, m2, m3));
-        sb.append(String.format("%6.3f %6.3f %6.3f\n", m4, m5, m6));
-        sb.append(String.format("%6.3f %6.3f %6.3f\n", m7, m8, m9));
+        sb.append(String.format("%6.3f %6.3f %6.3f\n", cm[0], cm[1], cm[2]));
+        sb.append(String.format("%6.3f %6.3f %6.3f\n", cm[3], cm[4], cm[5]));
+        sb.append(String.format("%6.3f %6.3f %6.3f\n", cm[6], cm[7], cm[8]));
         MultilineAnnotationTextRenderer.renderMultilineString(sb.toString());
     }
 
