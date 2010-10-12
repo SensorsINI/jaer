@@ -216,7 +216,7 @@ public class ShiftedSourceBias extends IPot {
                 | (VoltageLevel.mask & (getVoltageLevel().bits())) // 0x0300
                 | (bitValueMask& (bitValue << Integer.numberOfTrailingZeros(bitValueMask)))
                 &0xffff); // 0x00fc
-        System.out.println("bit value = "+Integer.toBinaryString(bitValue << Integer.numberOfTrailingZeros(bitValueMask))+" for "+this);
+     //   System.out.println("bit value = "+Integer.toBinaryString(bitValue << Integer.numberOfTrailingZeros(bitValueMask))+" for "+this);
 //        log.info("binary value="+Integer.toBinaryString(ret)+" for "+this);
         return ret;
     }
