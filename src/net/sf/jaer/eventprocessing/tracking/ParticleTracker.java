@@ -202,11 +202,12 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
         }
     }
 
-    private void printClusterLog(PrintStream log, LinkedList<Cluster> cl, int frameNumber, int now) {
+    private void printClusterLog(PrintStream ParticleLog/* not used->global variable used instead*/, LinkedList<Cluster> cl, int frameNumber, int now) {
 
         ListIterator listScanner = cl.listIterator();
         Cluster c = null;
         int time_limit;
+        int l,min_id=Integer.MAX_VALUE;
 
         if ( logStream == null ){
             openLog();
@@ -220,7 +221,19 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
                 listScanner.remove();
             } else{
                 if ( ( c.mass * weighEvent((float)c.last,(float)now) ) > clusterMinMass4Display ){
-                    logStream.println(String.format("%d %e %e %e %e",c.last,c.location.x,c.location.y,c.velocity.x,c.velocity.y));
+                    if (0>=c.id.length){
+                        log.warning("Logger writes particle with no ID");
+                        min_id=-1;
+                    }
+                    else {
+                        min_id=Integer.MAX_VALUE;
+                        for (l=0;l<c.id.length;l++){
+                            if(c.id[l]<min_id){
+                                min_id=c.id[l];
+                            }
+                        }
+                    }
+                    logStream.println(String.format("%d %e %e %e %e %d",c.last,c.location.x,c.location.y,c.velocity.x,c.velocity.y,min_id));
                 }
             }
         }
@@ -493,7 +506,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
         int now = -1;
         int new_clusters_from;
         DiffusedCluster dc = null;
-        int x, y, time_limit, i/*,new_id*/, old_id;
+        int x, y, time_limit, i/*,new_id*/, old_id,l,min_old_id;
         float first_x = 0;
         float first_y = 0;
         //int[] old_cluster_id = new int[1];
@@ -590,6 +603,15 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
                                 c.last = old_new_id.c.t;
                                 new_c = c;
                             }
+                            if ( logStream != null ){
+                                min_old_id=Integer.MAX_VALUE;
+                                for (l=0;l<old_ids.length;l++){
+                                    if (old_ids[l]<min_old_id){
+                                        min_old_id=old_ids[l];
+                                    }
+                                }
+                                logStream.println(String.format("%% %d <- %d",old_new_id.n,min_old_id)); //trying to make particles trackable from the log, logging their ID and logging changes of ID tags
+                            }
                             //if (position_correction_necessary){
                             // //System.out.println("correcting position"
                             // //        +" "+(old_new_id.c.location.x-new_c.location.x)
@@ -621,8 +643,8 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
         /** velocity of cluster in pixels/tick, where tick is timestamp tick (usually microseconds) */
         public Point2D.Float velocity = new Point2D.Float(); // velocity in chip pixels/sec
         //protected float distanceToLastEvent=Float.POSITIVE_INFINITY;
-        public int[] id = null;
-        int last = -1;
+        public int[] id = null; // list of IDs: all IDs are kept in case of merging particles, new ID is issued when splitting
+        int last = -1; //last event timestamp
         public float mass = (float)0;
         public float lifeForce = 0f;
         public Color color = null;
