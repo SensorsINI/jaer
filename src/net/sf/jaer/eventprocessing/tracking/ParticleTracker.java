@@ -194,7 +194,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
                 logStream.println("% clusterUnsupportedLifetime = " + clusterUnsupportedLifetime);
                 logStream.println("% onPolarityOnly = " + onPolarityOnly);
                 logStream.println("% fields for each cluster are ");
-                logStream.println("% lasttimestamp x y u v");
+                logStream.println("% lasttimestamp x y u v id");
                 logStream.println("switch (frameN)");
             } catch (Exception e) {
                 e.printStackTrace();
