@@ -575,6 +575,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                         set3dOrigin(Math.round(getChip().getMaxSize() * ((float) x - drawable.getWidth() / 2) / drawable.getWidth()), Math.round(getChip().getMaxSize() * (drawable.getHeight() / 2 - (float) y) / drawable.getHeight()));
                     }
                 }
+                repaint(15);
             }
 
             public void mouseMoved(MouseEvent e) {
