@@ -12,8 +12,8 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.io;
 
+import ch.unizh.ini.jaer.projects.opticalflow.*;
 import net.sf.jaer.eventio.InputDataFileInterface;
-import ch.unizh.ini.jaer.projects.opticalflow.chip.*;
 import java.beans.*;
 import java.io.*;
 import java.nio.channels.*;
@@ -32,7 +32,7 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
     private FileChannel fileChannel;
     private long fileSize=0; // in bytes
     private long size=0; // size in MotionData units
-    private MotionData motionData=new MotionData();
+    private MotionData motionData=new MotionData(null);
     DataInputStream dataInputStream=null;
     
     /** Creates a new instance of MotionInputStream

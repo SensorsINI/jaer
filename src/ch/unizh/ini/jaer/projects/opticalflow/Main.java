@@ -12,21 +12,23 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow;
 
-import ch.unizh.ini.jaer.projects.opticalflow.chip.*;
+import ch.unizh.ini.jaer.projects.opticalflow.MDC2D.*;
+import ch.unizh.ini.jaer.projects.opticalflow.Motion18.*;
 import ch.unizh.ini.jaer.projects.opticalflow.graphics.*;
 import java.util.logging.Logger;
 
 /**
- * The starter for the optical flow chip demo.
+ * The starter for the optical flow chip demo.q
  
  * @author  tobi
  */
 public class Main{
     
-    static Logger log=Logger.getLogger("Main");
+    static final Logger log=Logger.getLogger("Main");
     public static void main(String[] args){
         
-        Motion18 chip=new Motion18();
+         //Motion18 chip=new Motion18();
+        MDC2D chip=new MDC2D();
         MotionViewer viewer=new MotionViewer(chip);
         viewer.setVisible(true);
 //        if(OpticalFlowHardwareInterfaceFactory.instance().getNumInterfacesAvailable()==0){

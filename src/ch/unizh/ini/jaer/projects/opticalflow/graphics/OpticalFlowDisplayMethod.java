@@ -8,8 +8,8 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.graphics;
 
+import ch.unizh.ini.jaer.projects.opticalflow.*;
 import net.sf.jaer.graphics.*;
-import ch.unizh.ini.jaer.projects.opticalflow.chip.*;
 import java.util.prefs.*;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;

@@ -12,7 +12,7 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.io;
 
-import ch.unizh.ini.jaer.projects.opticalflow.chip.MotionData;
+import ch.unizh.ini.jaer.projects.opticalflow.*;
 import java.io.*;
 import java.util.logging.*;
 

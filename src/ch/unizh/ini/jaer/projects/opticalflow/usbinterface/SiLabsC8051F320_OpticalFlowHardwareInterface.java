@@ -17,7 +17,10 @@ import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.VDAC.*;
 import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.util.*;
-import ch.unizh.ini.jaer.projects.opticalflow.chip.*;
+import ch.unizh.ini.jaer.projects.opticalflow.*;
+import ch.unizh.ini.jaer.projects.opticalflow.MDC2D.MotionDataMDC2D;
+import ch.unizh.ini.jaer.projects.opticalflow.Motion18.Motion18;
+import ch.unizh.ini.jaer.projects.opticalflow.graphics.MotionViewer;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.PnPNotifyInterface;
 import de.thesycon.usbio.UsbIoErrorCodes;
@@ -79,7 +82,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     private static final long DATA_TIMEOUT_MS=50000; // timeout for getting data from device
     private static final int MOTION_BUFFER_LENGTH=1<<14; // Size of UsbioBuf buffers. Make bigger to optimize?
     
-    private int captureMode=MotionData.GLOBAL_X|MotionData.GLOBAL_Y|MotionData.PHOTO|MotionData.UX|MotionData.UY;
+    private int captureMode=MotionViewer.chip.getCaptureMode();
     
     /**
      * Creates a new instance of SiLabsC8051F320_USBIO_ServoController
@@ -457,8 +460,8 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     
     /** the concurrent object to exchange data between rendering and the MotionReader capture thread */
     Exchanger<MotionData> exchanger = new Exchanger();
-    MotionData initialEmptyBuffer = new MotionData(); // the buffer to start capturing into
-    MotionData initialFullBuffer = new MotionData();    // the buffer to render/process first
+    MotionData initialEmptyBuffer = new MotionData(MotionViewer.chip); // the buffer to start capturing into
+    MotionData initialFullBuffer = new MotionData(MotionViewer.chip);    // the buffer to render/process first
     MotionData currentBuffer=initialFullBuffer;
     
     /**
@@ -547,7 +550,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
             byte packetDescriptor = usbBuf.BufferMem[1];
             
             try{
-                if( usbBuf.BufferMem[0] != Motion18.FRAME_START_MARKER) {
+                if( usbBuf.BufferMem[0] != Chip2DMotion.FRAME_START_MARKER) {
                     log.warning("Frame start marker does not match, unpacking failed");
                     return;
                 }
@@ -592,11 +595,11 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
                 // OpticalFlowDisplayMethod
                 i=0;
                 if(hasGlobalX) {
-                    motionBuf.setGlobalX(Motion18.convert10bitToFloat(buf[i]));
+                    motionBuf.setGlobalX(Chip2DMotion.convert10bitToFloat(buf[i]));
                     i++;
                 }
                 if(hasGlobalY) {
-                    motionBuf.setGlobalY(Motion18.convert10bitToFloat(buf[i]));
+                    motionBuf.setGlobalY(Chip2DMotion.convert10bitToFloat(buf[i]));
                     i++;
                 }
                 
@@ -605,26 +608,26 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
                     posY=0;
                     while(i < count) {
                         if(hasLocalPh) {
-                            Ph[posY][posX] =Motion18.convert10bitToFloat(buf[i]);
+                            Ph[posY][posX] =Chip2DMotion.convert10bitToFloat(buf[i]);
                             i++;
                         }
                         //if(! Motion18.isBorder(posX, posY)) {
                         if(hasLocalX) {
-                            Ux[posY][posX] = (Motion18.convert10bitToFloat(buf[i]));
+                            Ux[posY][posX] = (Chip2DMotion.convert10bitToFloat(buf[i]));
                             i++;
                         }
                         if(hasLocalY) {
-                            Uy[posY][posX] = (Motion18.convert10bitToFloat(buf[i]));
+                            Uy[posY][posX] = (Chip2DMotion.convert10bitToFloat(buf[i]));
                             i++;
                         }
                         //}
 
                         
                         posX++;
-                        if(posX==Motion18.NUM_COLUMNS) {
+                        if(posX==Chip2DMotion.NUM_COLUMNS) {
                             posX=0;
                             posY++;
-                            if(posY==Motion18.NUM_ROWS && i < count )
+                            if(posY==Chip2DMotion.NUM_ROWS && i < count )
                                 log.warning("position y too big while unpacking");
                         }
                     }

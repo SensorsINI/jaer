@@ -10,7 +10,7 @@
 package ch.unizh.ini.jaer.projects.opticalflow.usbinterface;
 
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
-import ch.unizh.ini.jaer.projects.opticalflow.chip.*;
+import ch.unizh.ini.jaer.projects.opticalflow.*;
 
 /**
  * The hardware interface to the motion chip.
