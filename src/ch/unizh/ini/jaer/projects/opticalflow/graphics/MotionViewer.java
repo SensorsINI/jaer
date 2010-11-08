@@ -58,7 +58,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
     Biasgen biasgen=null;
     Chip2DRenderer renderer=null;
     public static SiLabsC8051F320_OpticalFlowHardwareInterface hardware=null;
-    public ViewLoop viewLoop2=null;
+    public ViewLoop viewLoop=null;
     RecentFiles recentFiles=null;
     File lastFile=null;
     File lastImageFile=null;
@@ -153,8 +153,8 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         
         setFocusable(true);
         requestFocus();
-        viewLoop2=new ViewLoop();
-        viewLoop2.start();
+        viewLoop=new ViewLoop();
+        viewLoop.start();
         dropTarget=new DropTarget(imagePanel,this);
         
         fixLoggingControls();
@@ -916,7 +916,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
             remove(chipCanvas.getCanvas());
             dispose();
             System.exit(0);
-        } // viewLoop2.run()
+        } // viewLoop.run()
         
         void fpsDelay(){
             if(!isPaused()){
@@ -1053,7 +1053,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
                 break;
             case LIVE:
             case WAITING:
-                viewLoop2.stop=true;
+                viewLoop.stop=true;
                 showBiasgen(false);
                 break;
         }
@@ -1742,7 +1742,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
     private void pauseRenderingCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pauseRenderingCheckBoxMenuItemActionPerformed
         setPaused(!isPaused());
         if(!isPaused()) {
-//            viewLoop2.singleStepEnabled=false;
+//            viewLoop.singleStepEnabled=false;
 //            System.out.println("pauseRenderingCheckBoxMenuItemActionPerformed: set singleStepEnabled=false");
         }
     }//GEN-LAST:event_pauseRenderingCheckBoxMenuItemActionPerformed

@@ -71,7 +71,7 @@ public class MDC2D extends Chip2DMotion {
      * @return the float value, ranges from 0 to 1023/1024 inclusive.
      */
     public float convert10bitToFloat(int value) {
-        return (float)value/1023;
+        return (float)value/10230;
     }
     
 
