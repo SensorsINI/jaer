@@ -476,7 +476,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
              * the new Buffer is filled with the one which contains all data.
              */
             //MotionData lastbuffer = new MotionDataMDC2D(currentBuffer);
-            MotionData lastbuffer = currentBuffer.getCopy(currentBuffer); // copy current buffer
+            MotionData lastbuffer = currentBuffer.clone(); // copy current buffer
             try {
                 currentBuffer = exchanger.exchange(currentBuffer); // on the first call, the main rendering loop should probably already have called exchange via the getData() method
                 requestData();

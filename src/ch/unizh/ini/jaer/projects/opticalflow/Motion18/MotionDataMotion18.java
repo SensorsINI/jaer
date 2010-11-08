@@ -39,15 +39,6 @@ public class MotionDataMotion18 extends MotionData {
         super();
     }
 
-    // returns a copy of the Input
-    public MotionData getCopy(MotionData data){
-        MotionData out=new MotionDataMotion18(new Motion18());
-        out.setPastMotionData(data.getPastMotionData());
-        out.setRawDataGlobal(data.getRawDataGlobal());
-        out.setRawDataPixel(data.getRawDataPixel());
-        out.collectMotionInfo();
-        return out;
-    }
 
 
     /* Method override */

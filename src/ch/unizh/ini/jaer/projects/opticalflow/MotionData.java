@@ -95,8 +95,15 @@ public abstract class MotionData implements Cloneable{
     }
 
     
-    // returns a copy of the Input
-    public abstract MotionData getCopy(MotionData data);
+
+
+    public MotionData clone() {
+	try {
+	    return (MotionData) super.clone();
+	} catch (CloneNotSupportedException cnse) {
+	    return null;
+	}
+    }
 
 
 
@@ -326,7 +333,7 @@ public abstract class MotionData implements Cloneable{
             pastMotionData[i-1]=pastMotionData[i-2]; //shift oldest Data
         }
         pastMotionData[0]=lastData; //write newest
-        pastMotionData[0].pastMotionData=null; // set the pastMotionData of the element 0 (the newest) in the array to null. --> No past MotionData in the pastMotionData objects to avoid useless usage of memory
+        pastMotionData[0].setPastMotionData(null); // set the pastMotionData of the element 0 (the newest) in the array to null. --> No past MotionData in the pastMotionData objects to avoid useless usage of memory
     }
 
     public void setPastMotionData(MotionData[] pastData){
@@ -427,4 +434,7 @@ public abstract class MotionData implements Cloneable{
             }
         }
     }
+
 }
+
+

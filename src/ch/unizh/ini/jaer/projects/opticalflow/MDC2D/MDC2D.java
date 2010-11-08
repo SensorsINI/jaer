@@ -105,6 +105,35 @@ public class MDC2D extends Chip2DMotion {
 
 
 
+    /** describes the biases on the chip */
+    public class MDC2DinternalBiasgen extends Biasgen{
+
+        public MDC2DinternalBiasgen(Chip chip){
+            super(chip);
+
+            potArray = new IPotArray(this); //construct IPotArray whit shift register stuff
+
+            // create the appropriate PotArray
+            getPotArray().addPot(new IPot(this, "VRegRefBiasAmp", 0, IPot.Type.NORMAL, Pot.Sex.P, 1, 1, "sets bias of feedback follower in srcbias"));
+            getPotArray().addPot(new IPot(this,"VRegRefBiasMain",      1,Pot.Type.NORMAL,Pot.Sex.P,1,      2,"sets bias of pfet which sets ref to srcbias"));
+            getPotArray().addPot(new IPot(this,"VprBias",              2,Pot.Type.NORMAL,Pot.Sex.P,1,      3,"bias current for pr"));
+            getPotArray().addPot(new IPot(this,"Vlmcfb",               3,Pot.Type.NORMAL,Pot.Sex.N,1,      4,"bias current for diffosor"));
+            getPotArray().addPot(new IPot(this,"Vprbuff",              4,Pot.Type.NORMAL,Pot.Sex.P,1,      5,"bias current for pr scr foll to lmc1"));
+            getPotArray().addPot(new IPot(this,"Vprlmcbias",           5,Pot.Type.NORMAL,Pot.Sex.P,1,      6,"bias current for lmc1"));
+            getPotArray().addPot(new IPot(this,"Vlmcbuff",             6,Pot.Type.NORMAL,Pot.Sex.P,1,      7,"bias current for lmc2"));
+            getPotArray().addPot(new IPot(this,"Screfpix",            7,Pot.Type.NORMAL,Pot.Sex.N,1,       8,"sets scr bias for lmc2"));
+            getPotArray().addPot(new IPot(this,"FollBias",            8,Pot.Type.NORMAL,Pot.Sex.N,1,      9,"sets bias for follower in pads"));
+            getPotArray().addPot(new IPot(this,"Vpscrcfbias",          9,Pot.Type.NORMAL,Pot.Sex.P,1,      10,"sets bias for ptype src foll in scanner readout"));
+            getPotArray().addPot(new IPot(this,"VADCbias",             0xa,Pot.Type.NORMAL,Pot.Sex.P,1,    11,"sets bias current for comperator in ADC"));
+            getPotArray().addPot(new IPot(this,"Vrefminbias",          0xb,Pot.Type.NORMAL,Pot.Sex.N,1,    12,"sets bias for Srcrefmin follower from resis divider"));
+            getPotArray().addPot(new IPot(this,"Srcrefmin",           0xc,Pot.Type.NORMAL,Pot.Sex.P,1,    13,"sets half Vdd for ADC"));
+            getPotArray().addPot(new IPot(this,"refnegDAC",           0xd,Pot.Type.NORMAL,Pot.Sex.na,1,    14,"description"));
+            getPotArray().addPot(new IPot(this,"refposDAC",           0xe,Pot.Type.NORMAL,Pot.Sex.na,1,    15,"description"));
+
+            loadPreferences();
+        }
+    }
+
 
     
 }

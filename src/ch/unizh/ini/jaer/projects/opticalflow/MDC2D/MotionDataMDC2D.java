@@ -35,6 +35,7 @@ public class MotionDataMDC2D extends MotionData {
 
     private float[][] lmc1;
     private float[][] lmc2;
+    private MotionData out=new MotionDataMDC2D(chip);
 
     /** Creates a new instance of MotionData */
     public MotionDataMDC2D(Chip2DMotion setchip) {
@@ -42,18 +43,6 @@ public class MotionDataMDC2D extends MotionData {
         lmc1=new float[chip.getSizeX()][chip.getSizeY()];
         lmc2=new float[chip.getSizeX()][chip.getSizeY()];
         NUM_PASTMOTIONDATA=2;
-    }
-
-
-
-       // returns a copy of the Input
-    public MotionData getCopy(MotionData data){
-        MotionData out=new MotionDataMDC2D(new MDC2D());
-        out.setPastMotionData(data.getPastMotionData());
-        out.setRawDataGlobal(data.getRawDataGlobal());
-        out.setRawDataPixel(data.getRawDataPixel());
-        out.collectMotionInfo();
-        return out;
     }
 
 
