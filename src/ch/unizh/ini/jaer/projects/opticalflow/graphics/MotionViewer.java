@@ -57,8 +57,8 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
     BiasgenFrame biasgenFrame=null;
     Biasgen biasgen=null;
     Chip2DRenderer renderer=null;
-    SiLabsC8051F320_OpticalFlowHardwareInterface hardware=null;
-    public ViewLoop viewLoop=null;
+    public static SiLabsC8051F320_OpticalFlowHardwareInterface hardware=null;
+    public ViewLoop viewLoop2=null;
     RecentFiles recentFiles=null;
     File lastFile=null;
     File lastImageFile=null;
@@ -80,6 +80,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
     WindowSaver windowSaver;
     MotionData motionData=null;
     ToggleLoggingAction toggleLoggingAction=new ToggleLoggingAction();
+    
     
     /**
      * construct new instance and then set classname of device to show in it
@@ -152,8 +153,8 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         
         setFocusable(true);
         requestFocus();
-        viewLoop=new ViewLoop();
-        viewLoop.start();
+        viewLoop2=new ViewLoop();
+        viewLoop2.start();
         dropTarget=new DropTarget(imagePanel,this);
         
         fixLoggingControls();
@@ -164,7 +165,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         
     }
     
-    private boolean isWindows(){
+    protected boolean isWindows(){
         String osName=System.getProperty("os.name");
         if(osName.startsWith("Windows")){
             return true;
@@ -173,13 +174,6 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         }
     }
     
-//    void openHardwareIfNonambiguous(){
-//        // if we are are the only viewer, automatically set interface to the hardware interface if there is only 1 of them and there is not already
-//        // a hardware inteface (e.g. StereoHardwareInterface which consists of two interfaces). otherwise force user choice
-//        if(isWindows() && chip.getHardwareInterface()==null && OpticalFlowHardwareInterfaceFactory.instance().getNumInterfacesAvailable()==1 ){
-//            log.info("opening unambiguous device");
-//        }
-//    }
     
     /** this sets window title according to actual state */
     public void setTitleAccordingToState(){
@@ -237,7 +231,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
     
     
     /** writes frames and frame sequences for video making using, e.g. adobe premiere */
-    class CanvasFileWriter{
+    protected class CanvasFileWriter{
 /*
  
  Part for OpenGL capture from http://www.cs.plu.edu/~dwolff/talks/jogl-ccsc/src/j_ScreenCapture/ScreenCaptureExample.java
@@ -922,7 +916,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
             remove(chipCanvas.getCanvas());
             dispose();
             System.exit(0);
-        } // viewLoop.run()
+        } // viewLoop2.run()
         
         void fpsDelay(){
             if(!isPaused()){
@@ -1059,7 +1053,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
                 break;
             case LIVE:
             case WAITING:
-                viewLoop.stop=true;
+                viewLoop2.stop=true;
                 showBiasgen(false);
                 break;
         }
@@ -1121,6 +1115,8 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         rewindPlaybackMenuItem = new javax.swing.JMenuItem();
         togglePlaybackDirectionMenuItem = new javax.swing.JMenuItem();
         measureTimeMenuItem = new javax.swing.JMenuItem();
+        jMenu1 = new javax.swing.JMenu();
+        jRadioButtonMenuItem1 = new javax.swing.JRadioButtonMenuItem();
         helpMenu = new javax.swing.JMenu();
         contentMenuItem = new javax.swing.JMenuItem();
         helpUserGuideMenuItem = new javax.swing.JMenuItem();
@@ -1129,14 +1125,14 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         chipMenu = new javax.swing.JMenu();
 
         setTitle("Retina");
-        addComponentListener(new java.awt.event.ComponentAdapter() {
-            public void componentResized(java.awt.event.ComponentEvent evt) {
-                formComponentResized(evt);
-            }
-        });
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosing(java.awt.event.WindowEvent evt) {
                 formWindowClosing(evt);
+            }
+        });
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            public void componentResized(java.awt.event.ComponentEvent evt) {
+                formComponentResized(evt);
             }
         });
 
@@ -1463,6 +1459,14 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
 
         menuBar.add(viewMenu);
 
+        jMenu1.setText("MotionAlgorithm");
+
+        jRadioButtonMenuItem1.setSelected(true);
+        jRadioButtonMenuItem1.setText("jRadioButtonMenuItem1");
+        jMenu1.add(jRadioButtonMenuItem1);
+
+        menuBar.add(jMenu1);
+
         helpMenu.setMnemonic('h');
         helpMenu.setText("Help");
 
@@ -1738,7 +1742,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
     private void pauseRenderingCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pauseRenderingCheckBoxMenuItemActionPerformed
         setPaused(!isPaused());
         if(!isPaused()) {
-//            viewLoop.singleStepEnabled=false;
+//            viewLoop2.singleStepEnabled=false;
 //            System.out.println("pauseRenderingCheckBoxMenuItemActionPerformed: set singleStepEnabled=false");
         }
     }//GEN-LAST:event_pauseRenderingCheckBoxMenuItemActionPerformed
@@ -2143,10 +2147,12 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
     private javax.swing.JMenuItem increaseContrastMenuItem;
     private javax.swing.JMenuItem increaseFrameRateMenuItem;
     private javax.swing.JMenuItem increasePlaybackSpeedMenuItem;
+    private javax.swing.JMenu jMenu1;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JProgressBar jProgressBar1;
+    private javax.swing.JRadioButtonMenuItem jRadioButtonMenuItem1;
     private javax.swing.JSeparator jSeparator12;
     private javax.swing.JSeparator jSeparator2;
     private javax.swing.JSeparator jSeparator3;

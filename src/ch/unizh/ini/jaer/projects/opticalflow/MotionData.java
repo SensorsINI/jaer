@@ -23,7 +23,7 @@ import java.util.Random;
  
  * @author tobi
  */
-public class MotionData {
+public abstract class MotionData implements Cloneable{
     
     private static final long serialVersionUID = 0L;
     
@@ -31,25 +31,48 @@ public class MotionData {
     /** Bit definitions for what this structure holds.
      User sets these bits to tell the hardware interface what data should be acquired for this buffer
      */
-    public static final int GLOBAL_X=0x01, GLOBAL_Y=0x02, PHOTO=0x04, UX=0x08, UY=0x10;
+    public static final int GLOBAL_X=0x01,
+                            GLOBAL_Y=0x02,
+                            PHOTO=0x04,
+                            UX=0x08,
+                            UY=0x10,
+                            BIT5=0x20,
+                            BIT6=0x40,
+                            BIT7=0x80;  // not defined in the moment
+
+
     
     /** the resolution of the SiLabs_8051F320 ADC */
     public static final int ADC_RESOLUTION_BITS=10;
+
+    // how many past MotionData are stored
+    protected static int NUM_PASTMOTIONDATA=0;
     
     private int sequenceNumber;
-    private float globalX;
-    private float globalY;
+
 
     public static Chip2DMotion chip;
+
+    // contains the last few MotionData acquired
+    protected MotionData[] pastMotionData;
     
     /** The time in System.currentTimeMillis() that this data was captured */
     private long timeCapturedMs=0;
-    
-    private float[][] ph; // photoreceptor value, range 0-inf
-    private float[][] ux; // velocity x, centered on 0
-    private float[][] uy; // velocity y, centered on 0
-    
-    private float minph, maxph, minux, maxus, minuy, maxuy;
+
+    protected float [][][] rawDataPixel; //Array containing the raw data [channel][posX][posY]
+    protected float [] rawDataGlobal;
+
+
+    /* Motion data is basically represented as receptor outputs, local and global
+     * motion in x and y direction. Those are used by the standard display methods.
+     * If needed subclasses of MotionData can provide more variables.
+     */
+    protected float[][] ph; // photoreceptor value, range 0-inf
+    protected float[][] ux; // velocity x, centered on 0
+    protected float[][] uy; // velocity y, centered on 0
+    protected float globalX; // global velocity x, centered on 0
+    protected float globalY; // global velocity x, centered on 0
+    protected float minph, maxph, minux, maxux, minuy, maxuy;
     
     /** Bits set in contents show what data has actually be acquired in this buffer.
      @see #GLOBAL_Y
@@ -62,171 +85,268 @@ public class MotionData {
     public MotionData(Chip2DMotion chip) {
         globalX=0; globalY=0;
         this.chip = chip;
+        rawDataPixel = new float[chip.getNumberChannels()][chip.getSizeX()][chip.getSizeY()];
+        rawDataGlobal = new float[chip.getNumberGlobals()];
         ph=new float[chip.getSizeX()][chip.getSizeY()];
         ux=new float[chip.getSizeX()][chip.getSizeY()];
         uy=new float[chip.getSizeX()][chip.getSizeY()];
-        // debug
-//        randomizeArray(ph,0,1);
-//        randomizeArray(ux,-1,1);
-//        randomizeArray(uy,-1,1);
-//        globalX=-1+2*r.nextFloat();
-//        globalY=-1+2*r.nextFloat();
     }
     public MotionData(){
     }
+
     
-    private void randomizeArray(float[][] f, float min, float max){
+    // returns a copy of the Input
+    public abstract MotionData getCopy(MotionData data);
+
+
+
+    /* fills the compulsory motion data for display (ph, ux, uy, globalX, globalY
+     * minph, maxph, minux, maxux, minuy, maxuy.
+     */
+    public final void collectMotionInfo(){
+        fillPh();
+        fillLocalUxUy();
+        fillGlobalUxUy();
+        fillMinMax();
+        fillAdditional();
+        updateContents();
+    }
+    
+    public float[][] randomizeArray(float[][] f, float min, float max){
         for(int i=0;i<f.length;i++){
             float[] g=f[i];
             for(int j=0;j<g.length;j++){
                 g[j]=min+r.nextFloat()*(max-min);
             }
+            f[i]=g;
         }
+        return f;
     }
+
+    /* methods tofills the compulsory motion data for display (ph, ux, uy, globalX,
+     * globalY minph, maxph, minux, maxux, minuy, maxuy.
+     *
+     * The methods are abstract and has to be implemented by subclasses depending on
+     * what data is collected from the chip and what has to be calculated from
+     * the host.
+     */
+        abstract protected void fillPh(); //fill photoreceptor data to ph
+        abstract protected void fillLocalUxUy(); //fill localMotion data
+        abstract protected void fillGlobalUxUy(); //fill gobalMotion data
+        abstract protected void fillMinMax(); // fill min,max fields
+        abstract protected void fillAdditional(); // computes any additional info
+        abstract protected void updateContents(); //updates the contents of MotionData
+
+
+    /**
+     * get methods: These are public and return the content of private objects
+     */
+
     /** @return total number of independent data */
     final  static public int getLength(){
         return 3*(1+chip.getSizeX()*chip.getSizeY());
     }
-    
+
     /** returns the sequence number of this data
      @return the sequence number, starting at 0 with the first data captured by the reader
      */
     final  public int getSequenceNumber() {
         return sequenceNumber;
     }
-    
-    final   public void setSequenceNumber(int sequenceNumber) {
-        this.sequenceNumber = sequenceNumber;
+
+     /** returns the contents field, whose bits show what data is valid in this buffer */
+    final public int getContents() {
+        return contents;
     }
-    
+
+     /** gets the system time that the data was captured
+     @return the time in ms as returned by System.currentTimeMillis()
+     */
+    public long getTimeCapturedMs() {
+        return timeCapturedMs;
+    }
+
+
+    final public float[][][] getRawDataPixel(){
+        return this.rawDataPixel;
+    }
+
+    final public float[] getRawDataGlobal(){
+        return this.rawDataGlobal;
+    }
+
+
     final  public float getGlobalX() {
         return globalX;
-    }
-    
-    final   public void setGlobalX(float globalX) {
-        this.globalX = globalX;
     }
     
     final  public float getGlobalY() {
         return globalY;
     }
     
-    final   public void setGlobalY(float globalY) {
-        this.globalY = globalY;
-    }
-    
     final public float[][] getPh() {
         return ph;
-    }
-    
-    final public void setPh(float[][] ph) {
-        this.ph = ph;
-    }
-    
-    final public float[][] getUx() {
-        return ux;
-    }
-    
-    final public void setUx(float[][] ux) {
-        this.ux = ux;
     }
     
     final public float[][] getUy() {
         return uy;
     }
     
-    final public void setUy(float[][] uy) {
-        this.uy = uy;
-    }
-    
-    /** returns the contents field, whose bits show what data is valid in this buffer */
-    final public int getContents() {
-        return contents;
-    }
-    
-    final public void setContents(int contents) {
-        this.contents = contents;
-    }
-    
-    public float getMinph() {
-        return minph;
-    }
-    
-    public void setMinph(float minph) {
-        this.minph = minph;
-    }
-    
-    public float getMaxph() {
-        return maxph;
-    }
-    
-    public void setMaxph(float maxph) {
-        this.maxph = maxph;
-    }
-    
-    public float getMinux() {
-        return minux;
-    }
-    
-    public void setMinux(float minux) {
-        this.minux = minux;
-    }
-    
-    public float getMaxus() {
-        return maxus;
-    }
-    
-    public void setMaxus(float maxus) {
-        this.maxus = maxus;
-    }
-    
-    public float getMinuy() {
-        return minuy;
-    }
-    
-    public void setMinuy(float minuy) {
-        this.minuy = minuy;
+    final public float[][] getUx() {
+        return ux;
     }
     
     public float getMaxuy() {
         return maxuy;
     }
     
-    public void setMaxuy(float maxuy) {
-        this.maxuy = maxuy;
+    public float getMinuy() {
+        return minuy;
     }
     
+    public float getMaxux() {
+        return maxux;
+    }
+    
+    public float getMinux() {
+        return minux;
+    }
+    
+    public float getMaxph() {
+        return maxph;
+    }
+    
+    public float getMinph() {
+        return minph;
+    }
+
+    public MotionData getLastMotionData() {
+        return this.pastMotionData[0];
+    }
+
+    public MotionData[] getPastMotionData(){
+        return this.pastMotionData;
+    }
+
+
+
     public boolean hasGlobalX(){
         return (contents&GLOBAL_X)!=0;
     }
-    
+
     public boolean hasGlobalY(){
         return (contents&GLOBAL_Y)!=0;
     }
-    
+
     public boolean hasPhoto(){
         return (contents&PHOTO)!=0;
     }
-    
+
     public boolean hasLocalX(){
         return (contents&UX)!=0;
     }
-    
+
     public boolean hasLocalY(){
         return (contents&UY)!=0;
     }
+
+
+
+   /** set Methods*/
+
+    final public void setRawDataGlobal(float[] data){
+        this.rawDataGlobal = data;
+    }
+
+    final public void setRawDataPixel(float[][][] data){
+        this.rawDataPixel = data;
+    }
+
+   final   public void setSequenceNumber(int sequenceNumber) {
+        this.sequenceNumber = sequenceNumber;
+    }
+
+   final   public void setGlobalX(float globalX) {
+        this.globalX = globalX;
+    }
+
+   final public  void setGlobalY(float globalY) {
+        this.globalY = globalY;
+    }
+
+    final public void setPh(float[][] ph) {
+        this.ph = ph;
+    }
+     
+    final public void setUx(float[][] ux) {
+        this.ux = ux;
+    }
+
+    final public void setUy(float[][] uy) {
+        this.uy = uy;
+    }
+ 
+    final public void setContents(int contents) {
+        this.contents = contents;
+    }
     
-    /** gets the system time that the data was captured
-     @return the time in ms as returned by System.currentTimeMillis()
-     */
-    public long getTimeCapturedMs() {
-        return timeCapturedMs;
+    public void setMinph(float minph) {
+        this.minph = minph;
+    }
+
+    public void setMaxph(float maxph) {
+        this.maxph = maxph;
+    }
+    
+    public void setMinux(float minux) {
+        this.minux = minux;
+    }
+    
+    public void setMaxus(float maxux) {
+        this.maxux = maxux;
+    }
+    
+    public void setMinuy(float minuy) {
+        this.minuy = minuy;
+    }
+    
+    public void setMaxuy(float maxuy) {
+        this.maxuy = maxuy;
     }
     
     public void setTimeCapturedMs(long timeCapturedMs) {
         this.timeCapturedMs = timeCapturedMs;
     }
-    
+
+    public void setLastMotionData(MotionData lastData){
+        if (pastMotionData==null) {
+            pastMotionData= new MotionData[NUM_PASTMOTIONDATA];
+        }
+        for(int i=NUM_PASTMOTIONDATA;i>1;i--){
+            pastMotionData[i-1]=pastMotionData[i-2]; //shift oldest Data
+        }
+        pastMotionData[0]=lastData; //write newest
+    }
+
+    public void setPastMotionData(MotionData[] pastData){
+        this.pastMotionData=pastData;
+    }
+
+
+
+    public float[][] extractRawChannel(int channelNumber){
+        int maxX=this.chip.NUM_COLUMNS;
+        int maxY=this.chip.NUM_ROWS;
+        float[][] channelData =new float[maxX][maxY] ;
+        for(int x=0;x<maxX;x++){
+            System.arraycopy(this.rawDataPixel[channelNumber][x], 0, channelData[x], 0, maxY);
+        }
+        return channelData;
+    }
+
+
+
+
     /** The serialized size in bytes of a MotionData instance */
     public static int OBJECT_SIZE=4+4+8+3*4*(MotionViewer.chip.getSizeX()*MotionViewer.chip.getSizeY());
 //    static {

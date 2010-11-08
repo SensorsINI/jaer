@@ -20,27 +20,33 @@ import ch.unizh.ini.jaer.projects.opticalflow.graphics.OpticalFlowDisplayMethod;
  * @author tobi
  */
 public class Motion18 extends Chip2DMotion {
-    
-    /** power supply for motion chip, volts */
 
-   
+     
     
     /** Creates a new instance of Motion18 */
     public Motion18() {
-        setBiasgen(new Motion18Biasgen(this));
+
         VDD=5;
         NUM_ROWS=32;
         NUM_COLUMNS=32;
         NUM_MOTION_PIXELS=NUM_COLUMNS*NUM_ROWS;
-        NUM_CHANNELS=3;
+        NUM_PIXELCHANNELS=3;
+        NUM_GLOBALCHANNELS = 2;
         acquisitionMode=MotionData.GLOBAL_X|MotionData.GLOBAL_Y|MotionData.PHOTO|MotionData.UX|MotionData.UY;
         dac=new DAC(16,12,0,VDD,VDD);
+        setBiasgen(new Motion18Biasgen(this, dac));
         setSizeX(NUM_COLUMNS);
         setSizeY(NUM_ROWS);
         getCanvas().addDisplayMethod(new OpticalFlowDisplayMethod(this.getCanvas()));
         getCanvas().setOpenGLEnabled(true);
         getCanvas().setScale(22f);
     }
+
+
+   public MotionData getEmptyMotionData(){
+        return new MotionDataMotion18(this);
+    }
+
     
     // public DAC(int numChannels, int resolutionBits, float refMinVolts, float refMaxVolts){
     /** The DAC on the board */
@@ -49,7 +55,7 @@ public class Motion18 extends Chip2DMotion {
     /** describes the biases on the chip */
     public class Motion18Biasgen extends Biasgen{
         
-        public Motion18Biasgen(Chip chip){
+        public Motion18Biasgen(Chip chip, DAC dac){
             super(chip);
         /* from firmware
                  DAC channel addresses

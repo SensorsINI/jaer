@@ -25,35 +25,144 @@ import java.util.Random;
  */
 public class MotionDataMDC2D extends MotionData {
 
-  
-
-    public static final int PHOTO=0x01, LMC1=0x02, LMC2=0x04;
 
 
     /** Bits set in contents show what data has actually be acquired in this buffer.
-     @see #GLOBAL_Y
-     @see #GLOBAL_X etc
      */
+
     private int contents=0;
     private static Random r=new Random();
 
+    private float[][] lmc1;
+    private float[][] lmc2;
+
     /** Creates a new instance of MotionData */
     public MotionDataMDC2D(Chip2DMotion setchip) {
-        chip=setchip;
-        setGlobalX(0); setGlobalY(0);
-        setPh(new float[chip.getSizeX()][chip.getSizeY()]);
-        setUx(new float[chip.getSizeX()][chip.getSizeY()]);
-        setUy(new float[chip.getSizeX()][chip.getSizeY()]);
-        // debug
-//        randomizeArray(ph,0,1);
-//        randomizeArray(ux,-1,1);
-//        randomizeArray(uy,-1,1);
-//        globalX=-1+2*r.nextFloat();
-//        globalY=-1+2*r.nextFloat();
+        super(setchip);
+        lmc1=new float[chip.getSizeX()][chip.getSizeY()];
+        lmc2=new float[chip.getSizeX()][chip.getSizeY()];
+        NUM_PASTMOTIONDATA=2;
     }
 
 
+
+       // returns a copy of the Input
+    public MotionData getCopy(MotionData data){
+        MotionData out=new MotionDataMDC2D(new MDC2D());
+        out.setPastMotionData(data.getPastMotionData());
+        out.setRawDataGlobal(data.getRawDataGlobal());
+        out.setRawDataPixel(data.getRawDataPixel());
+        out.collectMotionInfo();
+        return out;
+    }
+
+
+    /* Method override */
+    protected void fillPh(){
+        this.setPh( extractRawChannel(0)); //0 is the index of the first row
+    }
+
+    protected void fillLocalUxUy(){
+        MotionMethod motionMethod=null;
+        int algorithm=1;
+        switch(algorithm){
+            case 1:   motionMethod = new RandomMotion(this);
+            break;
+        }
+
+        this.setUx(motionMethod.calculateMotion().getUx());
+        this.setUy(motionMethod.calculateMotion().getUy());
+
+    }
+
+
+    protected void fillGlobalUxUy(){
+        float globalUx=0;
+        float globalUy=0;
+        for(int i=0;i<chip.NUM_COLUMNS;i++){
+            for(int j=0;j<chip.NUM_ROWS;j++){
+                globalUx += getUx()[i][j];
+                globalUy += getUy()[i][j];
+            }
+        }
+        globalUx /= chip.NUM_MOTION_PIXELS;
+        this.setGlobalX(globalUx);
+        globalUy /= chip.NUM_MOTION_PIXELS;
+        this.setGlobalY(globalUy);
+    }
+
+
+
+    protected void fillMinMax(){
+        minph = maxph = minux = maxux = minuy = maxuy =0;
+        for(int i=0;i<chip.NUM_COLUMNS;i++){
+            for(int j=0;j<chip.NUM_ROWS;j++){
+                float a= ux[i][j];
+                if (ux[i][j]<minux)  minux=ux[i][j];
+                if (ux[i][j]>maxux)  maxux=ux[i][j];
+                if (uy[i][j]<minuy)  minuy=uy[i][j];
+                if (uy[i][j]>maxuy)  maxux=uy[i][j];
+                if (ph[i][j]<minph)  minph=ph[i][j];
+                if (ph[i][j]>maxph)  maxph=ph[i][j];
+            }
+        }
+
+    }
+
+    protected void fillAdditional(){
+        this.lmc1 = extractRawChannel(1); //1 is the index of the 2nd row
+        this.lmc2 = extractRawChannel(2); //3 is the index of the 3th row
+    }
+
+    protected void updateContents(){
+        setContents(0x7F); //everything except bit7
+    }
+
+    //Overwrite extractRawCHannel method. This subclass needs the y values to be 
+    // mirrored.
+    public float[][] extractRawChannel(int channelNumber){
+        int maxX=this.chip.NUM_COLUMNS;
+        int maxY=this.chip.NUM_ROWS;
+        float[][] channelData =new float[maxX][maxY] ;
+        for(int x=0;x<maxX;x++){
+            for(int y=0;y<maxY;y++){
+                channelData[x][maxY-1-y]=this.rawDataPixel[channelNumber][x][y];
+            }
+        }
+        return channelData;
+    }
+
+
+
+    abstract class MotionMethod{
+        protected MotionData motionData;
+
+        MotionMethod(MotionData motionData){
+            this.motionData = motionData;
+        }
+        abstract MotionData calculateMotion();
+    }
+
+    class RandomMotion extends MotionMethod{
+
+        RandomMotion(MotionData motionData){
+            super(motionData);
+        }
+
+        MotionData calculateMotion(){
+            //first fill Ux
+            motionData.setUx(randomizeArray(motionData.getUx(),-1,1));
+            //now fill Uy
+            motionData.setUy(randomizeArray(motionData.getUy(),-1,1));
+            return motionData;
+        }
+
+    }
 }
+
+
+
+
 
 
 

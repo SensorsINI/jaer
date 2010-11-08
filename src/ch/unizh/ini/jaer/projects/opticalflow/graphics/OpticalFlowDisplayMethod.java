@@ -44,6 +44,8 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
             localDisplayEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.localDisplayEnabled",true),
             globalDisplayEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.globalDisplayEnabled",true),
             localMotionColorsEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.localMotionColorsEnabled",true);
+
+    private int rawChannelToDisplay=0;
     
     /** Creates a new instance of OpticalFlowDisplayMethod
      @param canvas the canvas this display method will render on
@@ -91,9 +93,10 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
         
         float scale=10f/chip.getRenderer().getColorScale(); // values are scaled down when color scale increased
         // local motion vectors
-        float[][] ph=motionData.getPh();//uy
-        float[][] ux=motionData.getUx();//ph
+        float[][] rawChannel=motionData.extractRawChannel(this.getRawChannelDisplayed());
+        float[][] ux=motionData.getUx();//rawChannel
         float[][] uy=motionData.getUy();//ux
+
         
         if(xvec==null){
             xvec=new float[(nRows-2)*(nCols-2)]; // cache motion vector components
@@ -111,12 +114,10 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
                     y=scale*localMotionGain*GAIN_FACTOR*(uy[row][col]-localMotionOffset);
                     xvec[index]=x;
                     yvec[index]=y;
-                    gx+=x; // add to global sum
-                    gy+=y;
                     index++;
                 }
                 if(hasPhoto){
-                    p=scale*GAIN_FACTOR*photoGain*(ph[row][col]-photoOffset);
+                    p=scale*GAIN_FACTOR*photoGain*(rawChannel[row][col]-photoOffset);
                 }else{
                     p=0;
                 }
@@ -136,11 +137,10 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
                 gl.glRectf(col, row, col+1, (row+1));
             }
         }
-        gx/=index;
-        gy/=index; // compute global
-        
-        gx*=globalMotionGain*GAIN_FACTOR*MOTION_VECTOR_FACTOR;
-        gy*=globalMotionGain*GAIN_FACTOR*MOTION_VECTOR_FACTOR;
+
+        // get the global X and Y from motionData and rescale
+        gx=motionData.getGlobalX()*globalMotionGain*GAIN_FACTOR*MOTION_VECTOR_FACTOR;
+        gy=motionData.getGlobalY()*globalMotionGain*GAIN_FACTOR*MOTION_VECTOR_FACTOR;
         
         // now draw motion vector arrows on top of pixel colors
         if(hasLocal && isLocalDisplayEnabled()){
@@ -157,8 +157,6 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
         }
         // global vector
         if(hasGlobal){
-            // gx and gy are computed from avg of local vectors now
-//            float gx=globalMotionGain*GAIN_FACTOR*(motionData.getGlobalX()-globalMotionOffset), gy=globalMotionGain*(motionData.getGlobalY()-globalMotionOffset);
             gl.glColor3f(1,1,1);
             gl.glLineWidth(4f);
             gl.glBegin(GL.GL_LINES);
@@ -284,5 +282,12 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
         this.localMotionColorsEnabled = localMotionColorsEnabled;
         prefs.putBoolean("OpticalFlowDisplayMethod.localMotionColorsEnabled",localMotionColorsEnabled);
     }
-    
+
+    public int getRawChannelDisplayed(){
+        return this.rawChannelToDisplay;
+    }
+
+    public void setRawChannelDisplayed(int channelNumber){
+        this.rawChannelToDisplay=channelNumber;
+    }
 }

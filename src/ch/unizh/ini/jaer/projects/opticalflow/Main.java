@@ -30,6 +30,7 @@ public class Main{
          //Motion18 chip=new Motion18();
         MDC2D chip=new MDC2D();
         MotionViewer viewer=new MotionViewer(chip);
+        //ChannelViewer viewer=new ChannelViewer(chip);
         viewer.setVisible(true);
 //        if(OpticalFlowHardwareInterfaceFactory.instance().getNumInterfacesAvailable()==0){
 //            log.warning("no interfaces available, quitting");

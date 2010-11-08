@@ -8,18 +8,20 @@ package ch.unizh.ini.jaer.projects.opticalflow;
 import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.MotionChipInterface;
 import net.sf.jaer.biasgen.VDAC.DAC;
 import net.sf.jaer.chip.Chip2D;
+import net.sf.jaer.graphics.ChipCanvas;
 
 /**
  *
- * @author reto
+ * @author 
  */
-public  class Chip2DMotion extends Chip2D {
+public  abstract class Chip2DMotion extends Chip2D {
 
     public static float VDD;
     public static int NUM_ROWS;
     public static int NUM_COLUMNS;
     public static int NUM_MOTION_PIXELS;
-    public static int NUM_CHANNELS;
+    public static int NUM_PIXELCHANNELS; // number of channels read for each pixel
+    public static int NUM_GLOBALCHANNELS; // number of global values read
     public static DAC dac;
     /** A "magic byte" marking the start of each frame */
     public static final byte FRAME_START_MARKER = (byte)0xac;
@@ -31,23 +33,11 @@ public  class Chip2DMotion extends Chip2D {
     /** can be used to hold reference to last motion data */
     public MotionData lastMotionData=null;
 
+    public ChipCanvas[]canvasArray;
+
+
     public  Chip2DMotion() {
-
-    }
-
-    /** Converts 10 bits signed ADC output value to a float ranged 0-1.
-     * 0 represents most negative value, .5 is zero value, 1 is most positive value.
-     *@param value the 10 bit value.
-     *@return the float value, ranges from 0 to 1023/1024 inclusive.
-     */
-    public static float convert10bitToFloat(int value) {
-        //     See http://en.wikipedia.org/wiki/Twos_complement
-        if ((value & 512) != 0) {
-            value |= -1024; // Add the upper sign bits
-        }
-        float r = (value + 512) / 1023.0F; // value will range from -512 to 511 - add 512 to it to get 0-1023 and divide by 1023
-        return r;
-        //        return ((value & 0x03FF)/1023f);
+        super();
     }
 
     public  boolean isBorder(int x, int y) {
@@ -61,6 +51,16 @@ public  class Chip2DMotion extends Chip2D {
         return acquisitionMode;
     }
 
+    public int getNumberChannels(){
+        return this.NUM_PIXELCHANNELS;
+    }
+
+    public int getNumberGlobals(){
+        return this.NUM_GLOBALCHANNELS;
+    }
+
+    public abstract MotionData getEmptyMotionData();
+
     public void setCaptureMode(int acquisitionMode) {
         this.acquisitionMode = acquisitionMode;
         if (hardwareInterface != null && hardwareInterface.isOpen()) {
@@ -73,4 +73,27 @@ public  class Chip2DMotion extends Chip2D {
         return bitvalue;
     }
 
+
+
+    /*public ChipCanvas getCanvas(int number){
+        //return canvas[number];
+        return canvas[0];
+    }*/
+
+
+    /**
+     * Converts 10 bits signed ADC output value to a float ranged 0-1.
+     * 0 represents most negative value, .5 is zero value, 1 is most positive value.
+     * @param value the 10 bit value.
+     * @return the float value, ranges from 0 to 1023/1024 inclusive.
+     */
+    public float convert10bitToFloat(int value) {
+        //     See http://en.wikipedia.org/wiki/Twos_complement
+        if ((value & 512) != 0) {
+            value |= -1024; // Add the upper sign bits
+        }
+        float r = value / 1023.0F; // value will range from -512 to 511 - add 512 to it to get 0-1023 and divide by 1023
+        return r;
+        //        return ((value & 0x03FF)/1023f);
+    }
 }

@@ -13,6 +13,7 @@ import ch.unizh.ini.jaer.projects.opticalflow.graphics.OpticalFlowDisplayMethod;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.VDAC.*;
 import net.sf.jaer.chip.*;
+import net.sf.jaer.graphics.ChipCanvas;
 
 /**
  * Describes the MDC2D chip from Shih-Chii Liu with Pit Gebbers board wrapped around it.
@@ -20,73 +21,67 @@ import net.sf.jaer.chip.*;
  * @author reto
  */
 public class MDC2D extends Chip2DMotion {
-    
+
     
     /** Creates a new instance of Motion18 */
     public MDC2D() {
-        setBiasgen(new MDC2DBiasgen(this));
+        //Biasgen internalBiasGen = new MDC2DintBiasgen(this);
         VDD=(float)3.3;
         NUM_ROWS=20;
         NUM_COLUMNS=20;
         NUM_MOTION_PIXELS=NUM_COLUMNS*NUM_ROWS;
-        NUM_CHANNELS=3;
-        acquisitionMode=MotionDataMDC2D.PHOTO|MotionDataMDC2D.LMC1|MotionDataMDC2D.LMC2;
+        NUM_PIXELCHANNELS = 3; // number of channels read for each pixel
+        NUM_GLOBALCHANNELS = 0;
+        acquisitionMode=MotionDataMDC2D.PHOTO|MotionDataMDC2D.BIT5|MotionDataMDC2D.BIT6;
         dac=new DAC(16,12,0,5,VDD);
+        setBiasgen(new MDC2DBiasgen(this, dac));
         setSizeX(NUM_COLUMNS);
         setSizeY(NUM_ROWS);
+
+        /*canvas = new ChipCanvas[NUM_PIXELCHANNELS];
+        for(int i=0; i<canvas.length;i++){
+            canvas[i]=new ChipCanvas(this);
+            canvas[i].addDisplayMethod(new OpticalFlowDisplayMethod(this.canvas[i]));
+            canvas[i].setOpenGLEnabled(true);
+            canvas[i].setScale(22f);
+        }*/
+
         getCanvas().addDisplayMethod(new OpticalFlowDisplayMethod(this.getCanvas()));
         getCanvas().setOpenGLEnabled(true);
         getCanvas().setScale(22f);
 
+
+
+        
+
     }
 
-    DAC dac=new DAC(16,12,0,VDD,VDD);
+
+    // Returns a empty MotionData MDC2D Object
+    public MotionData getEmptyMotionData(){
+        return new MotionDataMDC2D(this);
+    }
+
+
+
+        /**
+     * Converts 10 bits single ended ADC output value to a float ranged 0-1.
+     * 0 represents GND, 1 is most positive value (VDD).
+     * @param value the 10 bit value.
+     * @return the float value, ranges from 0 to 1023/1024 inclusive.
+     */
+    public float convert10bitToFloat(int value) {
+        return (float)value/1023;
+    }
     
 
     
     /** describes the biases on the chip */
     public class MDC2DBiasgen extends Biasgen{
         
-        public MDC2DBiasgen(Chip chip){
+        public MDC2DBiasgen(Chip chip, DAC dac){
             super(chip);
-        /* from firmware
-                 DAC channel addresses
-            #define DAC_ADDR_VREGREFBIASAMP     	0x00
-            #define DAC_ADDR_VREGREFBIASMAIN      	0x01
-            #define DAC_ADDR_PRBIAS      		0x02
-            #define DAC_ADDR_VLMCFB   			0x03
-            #define DAC_ADDR_VPRBUFF    		0x04
-            #define DAC_ADDR_VPRLMCBIAS   		0x05
-            #define DAC_ADDR_VLMCBUFF    		0x06
-            #define DAC_ADDR_SRCREFPIX      		0x07
-            #define DAC_ADDR_FOLLBIAS      		0x08
-            #define DAC_ADDR_VPSRCFBIAS                 0x09
-            #define DAC_ADDR_VADCBIAS    		0x0A
-            #define DAC_ADDR_VREFMINBIAS      		0x0B
-            #define DAC_ADDR_SCREFMIN  			0x0D
-            #define DAC_ADDR_VREFNEGDAC  		0x0E
-            #define DAC_ADDR_VREFPOSDAC    		0x0F
-         */
-            /* from biasgen prefs after prelim setup
-             <entry key="ipot FollBias" value="881"/>
-             <entry key="ipot HD+tweak" value="22"/>
-             <entry key="ipot HD-tweak" value="132"/>
-             <entry key="ipot Ph Adaptation" value="220"/>
-             <entry key="ipot Photoreceptor" value="3457"/>
-             <entry key="ipot Ph Foll" value="3258"/>
-             <entry key="ipot HD" value="572"/>
-             <entry key="ipot VM" value="1596"/>
-             <entry key="ipot HRES" value="873"/>
-             <entry key="ipot VVI2" value="286"/
-             ><entry key="ipot OP" value="286"/>
-             <entry key="ipot VVI1" value="705"/>
-             <entry key="ipot NSCF" value="638"/>
-             <entry key="ipot PSCF" value="3060"/>
-             <entry key="ipot PD" value="1255"/>
-             */
-//    public VPot(String name, DAC dac, int channel, final Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
-//    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
-            
+
             potArray = new PotArray(this);  // create the appropriate PotArray
 
             // create the appropriate PotArray

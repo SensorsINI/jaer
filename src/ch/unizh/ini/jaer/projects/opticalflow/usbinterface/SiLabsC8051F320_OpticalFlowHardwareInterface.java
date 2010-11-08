@@ -361,51 +361,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
         return isOpened;
     }
     
-    /* *********************************************************************************************** /
-     
-     /*
-        // define command codes
-        #define CMD_SET_SERVO 7
-        #define CMD_DISABLE_SERVO 8
-        #define CMD_SET_ALL_SERVOS 9
-        #define CMD_DISABLE_ALL_SERVOS 10
-     */
-    
-    
-    public String getTypeName() {
-        return "MotionUsbController";
-    }
-    
-    synchronized private void setStreamingEnabled(boolean yes) throws HardwareInterfaceException {
-        // make vendor request structure and populate it
-        if(gUsbIo==null){
-            log.warning(" null USBIO device");
-            return;
-        }
-        int status=0; // don't use global status in this function
-        USBIO_CLASS_OR_VENDOR_REQUEST VendorRequest=new USBIO_CLASS_OR_VENDOR_REQUEST();
-        
-        VendorRequest.Flags=UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
-        VendorRequest.Type=UsbIoInterface.RequestTypeVendor;
-        VendorRequest.Recipient=UsbIoInterface.RecipientDevice;
-        VendorRequest.RequestTypeReservedBits=0;
-        if(yes){
-            VendorRequest.Request=(byte)VENDOR_REQUEST_START_STREAMING;
-        }else{
-            VendorRequest.Request=(byte)VENDOR_REQUEST_STOP_STREAMING;
-        }
-        VendorRequest.Index=0;
-        
-        VendorRequest.Value=0;
-        USBIO_DATA_BUFFER dataBuffer=new USBIO_DATA_BUFFER(0);
-        dataBuffer.setNumberOfBytesToTransfer(0);
-        status=gUsbIo.classOrVendorOutRequest(dataBuffer,VendorRequest);
-        if(status!=USBIO_ERR_SUCCESS){
-            close();
-            throw new HardwareInterfaceException("Unable to send vendor request to start data acquisition: "+UsbIo.errorText(status));
-        }
-        HardwareInterfaceException.clearException();
-    }
+
     
     /** sends a vender request without any data. Thread safe.
      *@param request the vendor request byte, identifies the request on the device
@@ -460,8 +416,8 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     
     /** the concurrent object to exchange data between rendering and the MotionReader capture thread */
     Exchanger<MotionData> exchanger = new Exchanger();
-    MotionData initialEmptyBuffer = new MotionData(MotionViewer.chip); // the buffer to start capturing into
-    MotionData initialFullBuffer = new MotionData(MotionViewer.chip);    // the buffer to render/process first
+    MotionData initialEmptyBuffer = MotionViewer.chip.getEmptyMotionData(); // the buffer to start capturing into
+    MotionData initialFullBuffer = MotionViewer.chip.getEmptyMotionData();    // the buffer to render/process first
     MotionData currentBuffer=initialFullBuffer;
     
     /**
@@ -511,9 +467,21 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
             usbIoBuf.BytesTransferred = 0;
             usbIoBuf.OperationFinished = false;
 //            log.info("processed buffer "+usbIoBuf);
+
+
+            /* the current buffer will be exchanged. Before it is copied and the
+             * MotionData is put into the Array which keeps track of the past
+             * MotionData. The oldest one is disposed. The Array now contains all
+             * older Data. After getting new Data from the exchanger the Array of
+             * the new Buffer is filled with the one which contains all data.
+             */
+            //MotionData lastbuffer = new MotionDataMDC2D(currentBuffer);
+            MotionData lastbuffer = currentBuffer.getCopy(currentBuffer); // copy current buffer
             try {
                 currentBuffer = exchanger.exchange(currentBuffer); // on the first call, the main rendering loop should probably already have called exchange via the getData() method
                 requestData();
+                lastbuffer.setLastMotionData(lastbuffer); // put the lastBuffer itself to the newest Position of the PastMotionData Array
+                currentBuffer.setPastMotionData(lastbuffer.getPastMotionData()); //set the updated Array in the current buffer.
             } catch (InterruptedException ex) {
             }
         }
@@ -522,6 +490,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
         public void processData(UsbIoBuf usbIoBuf) {
 //            log.info("received UsbIoBuf from device");
             unpackData(usbIoBuf, currentBuffer);
+
             // TODO: interpret data from usbiobuf and put it into currentBuffer)
 //            try {
 //                currentBuffer = exchanger.exchange(currentBuffer);
@@ -537,16 +506,15 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
             if(buf==null || buf.length!=usbBuf.BytesTransferred*2){
                 buf= new int[usbBuf.BytesTransferred * 2];
             }
-            float[][] Ux = motionBuf.getUx(); //new float[Motion18.NUM_ROWS][Motion18.NUM_COLUMNS];
-            float[][] Uy = motionBuf.getUy(); //new float[Motion18.NUM_ROWS][Motion18.NUM_COLUMNS];
-            float[][] Ph = motionBuf.getPh(); //new float[Motion18.NUM_ROWS][Motion18.NUM_COLUMNS];//X-direction is horizontal, y is vertical (?)
+            float[][][] rawData = motionBuf.getRawDataPixel();
             int count = 0;
             int i=0;
             byte bitBuf=0; //for byte unpacking
             byte bitOffset=0; //for byte unpacking
             int a, b=0; //for byte unpacking
-            int posX, posY=0;
-            boolean hasGlobalX, hasGlobalY, hasLocalX, hasLocalY, hasLocalPh;
+            int posX=0, posY=0;
+            boolean hasGlobalX, hasGlobalY, hasLocalX, hasLocalY, hasLocalPh, hasLmc1, hasLmc2, hasBit7;
+            int[] globalChannels;
             byte packetDescriptor = usbBuf.BufferMem[1];
             
             try{
@@ -558,12 +526,6 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
                 motionBuf.setContents(packetDescriptor);
                 motionBuf.setSequenceNumber(sequenceNumber++);
                 motionBuf.setTimeCapturedMs(System.currentTimeMillis());
-                
-                hasGlobalX = (packetDescriptor & motionBuf.GLOBAL_X) != 0;
-                hasGlobalY = (packetDescriptor & motionBuf.GLOBAL_Y) != 0;
-                hasLocalX  = (packetDescriptor & motionBuf.UX) != 0;
-                hasLocalY  = (packetDescriptor & motionBuf.UY) != 0;
-                hasLocalPh = (packetDescriptor & motionBuf.PHOTO) != 0;
                 
                 // unpack contents into tmp buf shifting 10 bit adc results into int format
                 for(i = 2; i < usbBuf.BytesTransferred;i++) {
@@ -594,48 +556,42 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
                 // all computations related to display of raw ADC values (here scaled to float 0-1 range) are done in
                 // OpticalFlowDisplayMethod
                 i=0;
-                if(hasGlobalX) {
-                    motionBuf.setGlobalX(Chip2DMotion.convert10bitToFloat(buf[i]));
+                /* first write all global data (needs to be sent first) to the
+                 * globalRaw array of MotionData
+                 */
+                float[]globalRaw = motionBuf.getRawDataGlobal();
+                for(int j=0; j<motionBuf.chip.NUM_GLOBALCHANNELS;j++){
+                    globalRaw[i]=MotionViewer.chip.convert10bitToFloat(buf[i]);
                     i++;
                 }
-                if(hasGlobalY) {
-                    motionBuf.setGlobalY(Chip2DMotion.convert10bitToFloat(buf[i]));
-                    i++;
-                }
-                
-                if(hasLocalX || hasLocalY || hasLocalPh) {
-                    posX=0;
-                    posY=0;
-                    while(i < count) {
-                        if(hasLocalPh) {
-                            Ph[posY][posX] =Chip2DMotion.convert10bitToFloat(buf[i]);
-                            i++;
-                        }
-                        //if(! Motion18.isBorder(posX, posY)) {
-                        if(hasLocalX) {
-                            Ux[posY][posX] = (Chip2DMotion.convert10bitToFloat(buf[i]));
-                            i++;
-                        }
-                        if(hasLocalY) {
-                            Uy[posY][posX] = (Chip2DMotion.convert10bitToFloat(buf[i]));
-                            i++;
-                        }
-                        //}
+                motionBuf.setRawDataGlobal(globalRaw);
 
-                        
-                        posX++;
-                        if(posX==Chip2DMotion.NUM_COLUMNS) {
-                            posX=0;
-                            posY++;
-                            if(posY==Chip2DMotion.NUM_ROWS && i < count )
-                                log.warning("position y too big while unpacking");
-                        }
+                /* Now write all channels read for each pixel to a 3D array of type
+                 *  [channel][posX][posY]
+                 */
+
+                posX=0;
+                posY=0;
+                float[][][] pixelRaw= motionBuf.getRawDataPixel();
+                while(i < count) {
+                    for(int j=0; j<motionBuf.chip.NUM_PIXELCHANNELS;j++){
+                        pixelRaw[j][posY][posX] = MotionViewer.chip.convert10bitToFloat(buf[i]);
+                        i++;
+                    }
+                    posX++;
+                    if(posX==Chip2DMotion.NUM_COLUMNS) {
+                        posX=0;
+                        posY++;
+                        if(posY==Chip2DMotion.NUM_ROWS && i < count )
+                            log.warning("position y too big while unpacking");
                     }
                 }
+                motionBuf.setRawDataPixel(pixelRaw);
+
             }catch(ArrayIndexOutOfBoundsException e){
                 log.warning(e.getMessage());
             }
-            //      log.info("Frame unpacking complete");
+            motionBuf.collectMotionInfo(); //this computes the motionData for display depending on the MotionData subclass
         }
         
         
@@ -725,7 +681,11 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     public byte[] formatConfigurationBytes(Biasgen biasgen) {
         return null; // each bias is handled independently for this kind of off-chip, channel-addressable DAC
     }
-    
+
+     /** get text name of interface, e.g. "CypressFX2" or "SiLabsC8051F320" */
+    public String getTypeName(){
+        return "SiLabsC8051F320";
+    }
     
     
 }
