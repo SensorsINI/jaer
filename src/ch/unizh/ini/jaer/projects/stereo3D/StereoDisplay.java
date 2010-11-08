@@ -111,6 +111,10 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
    boolean logRightAccPNG=false;
    boolean accRightLogged=false;
     
+   int leftFileCounter = 1;
+   int rightFileCounter = 1;
+   
+   
 //    private boolean condition = getPrefs().getBoolean("GravityCentersImageDumper.condition",false);
  //   {setPropertyTooltip("condition","true or not?");}
     
@@ -189,7 +193,7 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
 
     synchronized public void resetFilter() {
         if(!firstRun){
-        System.out.println ("StereoDisplay resetFilter ");
+       // System.out.println ("StereoDisplay resetFilter ");
         logLeftAccPNG = false;
         logRightAccPNG = false;
         
@@ -216,7 +220,10 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
             logLeftAccPNG=false;
             accLeftLogged=false;
            
-            writePNG(leftImage3DOpenGL,"AccLeft");
+          //  writePNG(leftImage3DOpenGL,"AccLeft");
+            writePNG2(leftImage3DOpenGL,"Left",leftFileCounter);
+          //   writeBMP(leftImage3DOpenGL,"Left",leftFileCounter);
+            leftFileCounter++;
             
         }
         
@@ -224,8 +231,10 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
             logRightAccPNG=false;
             accRightLogged=false;
            
-            writePNG(rightImage3DOpenGL,"AccRight");
-            
+          //  writePNG(rightImage3DOpenGL,"AccRight");
+            writePNG2(rightImage3DOpenGL,"Right",rightFileCounter);
+         //   writeBMP(rightImage3DOpenGL,"Right",rightFileCounter);
+            rightFileCounter++;
         }
         
         checkLeftDisplayFrame();
@@ -263,8 +272,46 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
         }
     }
      
+       protected void writePNG2( BufferedImage Image3D, String dir, int c){
+        try {
+            // if error  java.io.FileNotFoundException please manually create folders "Left" and "Right"
+            // in running folder (usually  ../jaer/host/java )
+            String filename = "image" + c + ".jpg";
+
+            String homeDir = System.getProperty("user.dir")+System.getProperty("file.separator")+dir;
+            if (Image3D != null) {
+                ImageIO.write(Image3D, "jpg", new File(homeDir, filename));
+                System.out.println("logged: " + homeDir + " " + filename);
+            } else {
+                System.out.println("null: not logged: " + homeDir + " " + filename);
+            }
+
+
+
+        } catch (IOException ioe) {
+            ioe.printStackTrace();
+        }
+    }
    
-     
+   protected void writeBMP( BufferedImage Image3D, String dir, int c){
+        try {
+
+            String filename = "image" + c + ".bmp";
+
+            String homeDir = System.getProperty("user.dir")+System.getProperty("file.separator")+dir;
+            if (Image3D != null) {
+                ImageIO.write(Image3D, "bmp", new File(homeDir, filename));
+                System.out.println("logged: " + homeDir + " " + filename);
+            } else {
+                System.out.println("null: not logged: " + homeDir + " " + filename);
+            }
+
+
+
+        } catch (IOException ioe) {
+            ioe.printStackTrace();
+        }
+    }
      
      
      
@@ -277,6 +324,7 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
     
     // processing one event
     protected void processEvent(BinocularEvent e){
+
               
         if(firstRun){
             firstRun = false;
@@ -418,8 +466,8 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
                             
 
                             gl.glColor3f(points[i][j], points[i][j], points[i][j]);
-                            gl.glRectf(i , j , (i + 1) , (j + 1) );
-                            //gl.glRectf(i * intensityZoom, j * intensityZoom, (i + 1) * intensityZoom, (j + 1) * intensityZoom);
+                            //gl.glRectf(i , j , (i + 1) , (j + 1) );
+                            gl.glRectf(i * intensityZoom, j * intensityZoom, (i + 1) * intensityZoom, (j + 1) * intensityZoom);
 
 
                         }
@@ -441,8 +489,8 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
           System.out.println("grab left image :  logLeftAccPNG: "+logLeftAccPNG);
           
         GL gl = d.getGL();
-        int width = d.getWidth();
-        int height = d.getHeight();
+        int width = 128; //d.getWidth();
+        int height = 128; //d.getHeight();
         
         // Allocate a buffer for the pixels
         ByteBuffer rgbData = BufferUtil.newByteBuffer(width * height * 3);
@@ -489,7 +537,9 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
         
         // Set the data for the BufferedImage
         if(leftImage3DOpenGL==null || leftImage3DOpenGL.getWidth()!=width || leftImage3DOpenGL.getHeight()!=height) {
-            leftImage3DOpenGL = new BufferedImage(width,height, BufferedImage.TYPE_INT_ARGB);
+           // leftImage3DOpenGL = new BufferedImage(width,height, BufferedImage.TYPE_INT_ARGB);
+            leftImage3DOpenGL = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+            
         }
         leftImage3DOpenGL.setRGB(0, 0, width, height, pixelInts, 0, width);
     }
@@ -660,8 +710,8 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
            
            
         GL gl = d.getGL();
-        int width = d.getWidth();
-        int height = d.getHeight();
+        int width = 128; //d.getWidth();
+        int height = 128; //d.getHeight();
         
         // Allocate a buffer for the pixels
         ByteBuffer rgbData = BufferUtil.newByteBuffer(width * height * 3);
@@ -708,7 +758,9 @@ public class StereoDisplay extends EventFilter2D implements FrameAnnotater, Obse
         
         // Set the data for the BufferedImage
         if(rightImage3DOpenGL==null || rightImage3DOpenGL.getWidth()!=width || rightImage3DOpenGL.getHeight()!=height) {
-            rightImage3DOpenGL = new BufferedImage(width,height, BufferedImage.TYPE_INT_ARGB);
+           // rightImage3DOpenGL = new BufferedImage(width,height, BufferedImage.TYPE_INT_ARGB);
+           rightImage3DOpenGL = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+
         }
         rightImage3DOpenGL.setRGB(0, 0, width, height, pixelInts, 0, width);
     }

@@ -84,6 +84,8 @@ public class BinocularDisparityMap extends EventFilter2D implements FrameAnnotat
      private int midpoint=getPrefs().getInt("BinocularDisparityMap.midpoint",40);
     {setPropertyTooltip("midpoint","color scale midpoint");}
 
+     private int maxD = getPrefs().getInt("BinocularDisparityMap.maxD",0);
+    {setPropertyTooltip("maxD","color scale max point");}
 
     private boolean showMatch = getPrefs().getBoolean("BinocularDisparityMap.showMatch",false);
     private boolean showColor = getPrefs().getBoolean("BinocularDisparityMap.showColor",false);
@@ -93,7 +95,6 @@ public class BinocularDisparityMap extends EventFilter2D implements FrameAnnotat
 
    private boolean showAxes = getPrefs().getBoolean("BinocularDisparityMap.showAxes",true);
 
-       private int forceD = getPrefs().getInt("BinocularDisparityMap.forceD",0);
 
     // do not forget to add a set and a getString/is method for each new parameter, at the end of this .java file
     
@@ -157,9 +158,11 @@ public class BinocularDisparityMap extends EventFilter2D implements FrameAnnotat
         for(BinocularDisparityEvent e:ae){
           int eye = e.eye == BinocularEvent.Eye.LEFT ? 0 : 1;
           if(eye==LEFT){
+              if(e.disparity!=0){
             disparityPoints[e.x][e.y] = e.disparity;
          //   disparityPoints[e.x][e.y] = Math.round((float)disparityPoints[e.x][e.y]*0.9 + (float)e.d*0.1);
             disparityTimes[e.x][e.y] = e.timestamp;
+              }
           }
         }
               
@@ -173,8 +176,8 @@ public class BinocularDisparityMap extends EventFilter2D implements FrameAnnotat
                 colorScale[i][1] = (float)(i)/(float)midpoint;
                 colorScale[i][2] = (float)(midpoint-i)/(float)midpoint;
             } else {
-                colorScale[i][0] = (float)(i-midpoint)/(float)(retinaSize-midpoint);
-                colorScale[i][1] = (float)(retinaSize-(i-midpoint))/(float)(retinaSize-midpoint);
+                colorScale[i][0] = (float)(i-midpoint)/(float)(maxD-midpoint);
+                colorScale[i][1] = (float)(maxD-(i-midpoint))/(float)(maxD-midpoint);
                 colorScale[i][2] = 0.0f;
 
             }
@@ -430,11 +433,11 @@ public class BinocularDisparityMap extends EventFilter2D implements FrameAnnotat
                     highlightX = x;
                     highlightY = y;
                     float d = -1;
-                      if(currentTime-disparityTimes[x][y]<=decayTimeLimit){
-                               d = disparityPoints[x][y];
-
-                        System.out.println("disparity["+x+"]["+y+"] ="+d);
-                    }
+//                      if(currentTime-disparityTimes[x][y]<=decayTimeLimit){
+//                               d = disparityPoints[x][y];
+//
+//                        System.out.println("disparity["+x+"]["+y+"] ="+d);
+//                    }
 
                 } else {
                       highlightX = -1;
@@ -465,12 +468,7 @@ public class BinocularDisparityMap extends EventFilter2D implements FrameAnnotat
                   for (int i = 0; i < retinaSize; i++) {
                     for (int j = 0; j < retinaSize; j++) {
                             float d = points[i][j];
-                            if(d!=0){
-                               if(forceD!=0){
-                                   d = forceD;
-                               }
-
-                            }
+                            
                             // d ranges from min -127 to max +127 but unlikely
                             //
                             float f = 0.5f + d/disparityScaling;
@@ -542,6 +540,24 @@ public class BinocularDisparityMap extends EventFilter2D implements FrameAnnotat
 
 
             }
+
+            private void drawColorScale(GL gl) {
+
+                    //    System.out.println("1. display drawEventPoints  time: "+currentTime+" length: "+eventPoints.length);
+
+                    gl.glClearColor(0, 0, 0, 0);
+                  //  System.out.println("drawAllPoints: maxDepth: "+maxDepth+" ,minDepth : "+minDepth);
+
+                  for (int i = 0; i < retinaSize; i++) {
+
+
+                            gl.glColor3f(colorScale[i][0], colorScale[i][1], colorScale[i][2]);
+
+                            gl.glRectf(129 * intensityZoom, i * intensityZoom, (139) * intensityZoom, (i+1) * intensityZoom);
+
+                  }
+            }
+
 
             private void drawMatchedPoints(float[][] points, GL gl) {
 
@@ -653,6 +669,7 @@ public class BinocularDisparityMap extends EventFilter2D implements FrameAnnotat
                           drawAllPoints(disparityPoints,gl);
 
                     }
+                    drawColorScale(gl);
                 }
                 
 
@@ -841,14 +858,7 @@ public class BinocularDisparityMap extends EventFilter2D implements FrameAnnotat
         return decayTimeLimit;
     }
 
-       public void setForceD(int forceD) {
-        this.forceD = forceD;
-
-        getPrefs().putInt("BinocularDisparityMap.forceD",forceD);
-    }
-    public int getForceD() {
-        return forceD;
-    }
+      
 
     public void setMidpoint(int midpoint) {
         this.midpoint = midpoint;
@@ -857,6 +867,15 @@ public class BinocularDisparityMap extends EventFilter2D implements FrameAnnotat
     }
     public int getMidpoint() {
         return midpoint;
+    }
+
+   public void setMaxD(int maxD) {
+        this.maxD = maxD;
+
+        getPrefs().putInt("BinocularDisparityMap.maxD",maxD);
+    }
+    public int getMaxD() {
+        return maxD;
     }
 
 }
