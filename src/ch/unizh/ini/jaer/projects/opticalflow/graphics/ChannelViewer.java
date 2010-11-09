@@ -101,7 +101,7 @@ public class ChannelViewer extends MotionViewer implements PropertyChangeListene
     
     
     synchronized void makeCanvas(){
-        chipCanvas_chan=chip.getCanvas();
+        chipCanvas_chan=new ChipCanvas(chip);//chip.getCanvas();
         imagePanel.add(chipCanvas_chan.getCanvas());
 
         chipCanvas_chan.getCanvas().invalidate();
@@ -289,12 +289,13 @@ public class ChannelViewer extends MotionViewer implements PropertyChangeListene
                                 }
                                 continue;
                             }
-                            motionData=MotionViewer.chip.lastMotionData; // exchanges data with hardware interface, returns the new data buffer
+                            try{
+                                motionData=MotionViewer.hardware.getData(); // exchanges data with hardware interface, returns the new data buffer
+                            }catch(java.util.concurrent.TimeoutException to){}
+                            
                             
                             chip.setLastData(motionData); // for use by rendering methods
                             
-                            break;
-                        case PLAYBACK:
                             break;
                         case WAITING:
 //                            chip.setLastData(new MotionData());

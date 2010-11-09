@@ -35,14 +35,13 @@ public class MotionDataMDC2D extends MotionData {
 
     private float[][] lmc1;
     private float[][] lmc2;
-    private MotionData out=new MotionDataMDC2D(chip);
 
     /** Creates a new instance of MotionData */
     public MotionDataMDC2D(Chip2DMotion setchip) {
         super(setchip);
         lmc1=new float[chip.getSizeX()][chip.getSizeY()];
         lmc2=new float[chip.getSizeX()][chip.getSizeY()];
-        NUM_PASTMOTIONDATA=2;
+        NUM_PASTMOTIONDATA=5;
     }
 
 

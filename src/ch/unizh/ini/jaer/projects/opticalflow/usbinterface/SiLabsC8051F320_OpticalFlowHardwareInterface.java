@@ -83,7 +83,9 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     private static final int MOTION_BUFFER_LENGTH=1<<14; // Size of UsbioBuf buffers. Make bigger to optimize?
     
     private int captureMode=MotionViewer.chip.getCaptureMode();
-    
+
+
+    private MotionData lastbuffer;
     /**
      * Creates a new instance of SiLabsC8051F320_USBIO_ServoController
      * @param n the number of the interface, in range returned by OpticalFlowHardwareInterfaceFactory.getNumInterfacesAvailable().
@@ -475,8 +477,9 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
              * older Data. After getting new Data from the exchanger the Array of
              * the new Buffer is filled with the one which contains all data.
              */
-            //MotionData lastbuffer = new MotionDataMDC2D(currentBuffer);
-            MotionData lastbuffer = currentBuffer.clone(); // copy current buffer
+
+            lastbuffer = currentBuffer.clone(); // copy current buffer
+
             try {
                 currentBuffer = exchanger.exchange(currentBuffer); // on the first call, the main rendering loop should probably already have called exchange via the getData() method
                 requestData();

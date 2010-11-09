@@ -478,6 +478,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         photoPanel.setVisible(yes);
         displayPanel.setVisible(yes);
         rawChannelControlPanel.setVisible(yes);
+        jButton1.setVisible(false);
         invalidate();
     }
     

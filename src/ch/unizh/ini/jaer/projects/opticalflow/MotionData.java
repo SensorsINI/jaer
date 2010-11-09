@@ -326,14 +326,16 @@ public abstract class MotionData implements Cloneable{
     }
 
     public void setLastMotionData(MotionData lastData){
-        if (pastMotionData==null) {
-            pastMotionData= new MotionData[NUM_PASTMOTIONDATA];
+        if (this.pastMotionData==null) {
+            this.pastMotionData= new MotionData[NUM_PASTMOTIONDATA];
         }
         for(int i=NUM_PASTMOTIONDATA;i>1;i--){
-            pastMotionData[i-1]=pastMotionData[i-2]; //shift oldest Data
+            this.pastMotionData[i-1]=this.pastMotionData[i-2]; //shift oldest Data
         }
-        pastMotionData[0]=lastData; //write newest
-        pastMotionData[0].setPastMotionData(null); // set the pastMotionData of the element 0 (the newest) in the array to null. --> No past MotionData in the pastMotionData objects to avoid useless usage of memory
+        //lastData.pastMotionData[0]=null;
+        //lastData.pastMotionData[1]=null;
+        this.pastMotionData[0]=lastData; //write newest
+        //pastMotionData[0].setPastMotionData(null); // set the pastMotionData of the element 0 (the newest) in the array to null. --> No past MotionData in the pastMotionData objects to avoid useless usage of memory
     }
 
     public void setPastMotionData(MotionData[] pastData){
