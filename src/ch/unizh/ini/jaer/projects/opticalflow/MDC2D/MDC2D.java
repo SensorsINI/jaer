@@ -103,8 +103,8 @@ public class MDC2D extends Chip2DMotion {
             getPotArray().addPot(new VPot(MDC2D.this,"refnegDAC",dac,           0xd,Pot.Type.NORMAL,Pot.Sex.na,1,    14,"description"));
             getPotArray().addPot(new VPot(MDC2D.this,"refposDAC",dac,           0xe,Pot.Type.NORMAL,Pot.Sex.na,1,    15,"description"));
 
-
-            ipotArray = new IPotArray(this); //construct IPotArray whit shift register stuff
+/*
+            //ipotArray = new IPotArray(this); //construct IPotArray whit shift register stuff
             getPotArray().addPot(new IPot(this, "VRegRefBiasAmp", 0, IPot.Type.NORMAL, Pot.Sex.P, 1, 21, "sets bias of feedback follower in srcbias"));
             getPotArray().addPot(new IPot(this,"VRegRefBiasMain",      1,Pot.Type.NORMAL,Pot.Sex.P,1,      22,"sets bias of pfet which sets ref to srcbias"));
             getPotArray().addPot(new IPot(this,"VprBias",              2,Pot.Type.NORMAL,Pot.Sex.P,1,      23,"bias current for pr"));
@@ -120,7 +120,7 @@ public class MDC2D extends Chip2DMotion {
             getPotArray().addPot(new IPot(this,"Srcrefmin",           0xc,Pot.Type.NORMAL,Pot.Sex.P,1,    33,"sets half Vdd for ADC"));
             getPotArray().addPot(new IPot(this,"refnegDAC",           0xd,Pot.Type.NORMAL,Pot.Sex.na,1,    34,"description"));
             getPotArray().addPot(new IPot(this,"refposDAC",           0xe,Pot.Type.NORMAL,Pot.Sex.na,1,    35,"description"));
-        }
+       */ }
 
         public IPotArray getIpotArray(){
             return ipotArray;
