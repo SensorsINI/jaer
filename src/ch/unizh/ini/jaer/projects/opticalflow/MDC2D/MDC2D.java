@@ -22,6 +22,8 @@ import net.sf.jaer.graphics.ChipCanvas;
  */
 public class MDC2D extends Chip2DMotion {
 
+    IPotArray ipotArray;
+
     
     /** Creates a new instance of Motion18 */
     public MDC2D() {
@@ -100,6 +102,28 @@ public class MDC2D extends Chip2DMotion {
             getPotArray().addPot(new VPot(MDC2D.this,"Srcrefmin",dac,           0xc,Pot.Type.NORMAL,Pot.Sex.P,1,    13,"sets half Vdd for ADC"));
             getPotArray().addPot(new VPot(MDC2D.this,"refnegDAC",dac,           0xd,Pot.Type.NORMAL,Pot.Sex.na,1,    14,"description"));
             getPotArray().addPot(new VPot(MDC2D.this,"refposDAC",dac,           0xe,Pot.Type.NORMAL,Pot.Sex.na,1,    15,"description"));
+
+
+            ipotArray = new IPotArray(this); //construct IPotArray whit shift register stuff
+            getPotArray().addPot(new IPot(this, "VRegRefBiasAmp", 0, IPot.Type.NORMAL, Pot.Sex.P, 1, 21, "sets bias of feedback follower in srcbias"));
+            getPotArray().addPot(new IPot(this,"VRegRefBiasMain",      1,Pot.Type.NORMAL,Pot.Sex.P,1,      22,"sets bias of pfet which sets ref to srcbias"));
+            getPotArray().addPot(new IPot(this,"VprBias",              2,Pot.Type.NORMAL,Pot.Sex.P,1,      23,"bias current for pr"));
+            getPotArray().addPot(new IPot(this,"Vlmcfb",               3,Pot.Type.NORMAL,Pot.Sex.N,1,      24,"bias current for diffosor"));
+            getPotArray().addPot(new IPot(this,"Vprbuff",              4,Pot.Type.NORMAL,Pot.Sex.P,1,      25,"bias current for pr scr foll to lmc1"));
+            getPotArray().addPot(new IPot(this,"Vprlmcbias",           5,Pot.Type.NORMAL,Pot.Sex.P,1,      26,"bias current for lmc1"));
+            getPotArray().addPot(new IPot(this,"Vlmcbuff",             6,Pot.Type.NORMAL,Pot.Sex.P,1,      27,"bias current for lmc2"));
+            getPotArray().addPot(new IPot(this,"Screfpix",            7,Pot.Type.NORMAL,Pot.Sex.N,1,       28,"sets scr bias for lmc2"));
+            getPotArray().addPot(new IPot(this,"FollBias",            8,Pot.Type.NORMAL,Pot.Sex.N,1,      29,"sets bias for follower in pads"));
+            getPotArray().addPot(new IPot(this,"Vpscrcfbias",          9,Pot.Type.NORMAL,Pot.Sex.P,1,      30,"sets bias for ptype src foll in scanner readout"));
+            getPotArray().addPot(new IPot(this,"VADCbias",             0xa,Pot.Type.NORMAL,Pot.Sex.P,1,    31,"sets bias current for comperator in ADC"));
+            getPotArray().addPot(new IPot(this,"Vrefminbias",          0xb,Pot.Type.NORMAL,Pot.Sex.N,1,    32,"sets bias for Srcrefmin follower from resis divider"));
+            getPotArray().addPot(new IPot(this,"Srcrefmin",           0xc,Pot.Type.NORMAL,Pot.Sex.P,1,    33,"sets half Vdd for ADC"));
+            getPotArray().addPot(new IPot(this,"refnegDAC",           0xd,Pot.Type.NORMAL,Pot.Sex.na,1,    34,"description"));
+            getPotArray().addPot(new IPot(this,"refposDAC",           0xe,Pot.Type.NORMAL,Pot.Sex.na,1,    35,"description"));
+        }
+
+        public IPotArray getIpotArray(){
+            return ipotArray;
         }
     }
 

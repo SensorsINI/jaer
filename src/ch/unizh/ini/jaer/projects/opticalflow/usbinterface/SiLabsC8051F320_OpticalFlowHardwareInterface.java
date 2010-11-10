@@ -18,6 +18,7 @@ import net.sf.jaer.biasgen.VDAC.*;
 import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.util.*;
 import ch.unizh.ini.jaer.projects.opticalflow.*;
+import ch.unizh.ini.jaer.projects.opticalflow.MDC2D.MDC2D.MDC2DBiasgen;
 import ch.unizh.ini.jaer.projects.opticalflow.MDC2D.MotionDataMDC2D;
 import ch.unizh.ini.jaer.projects.opticalflow.Motion18.Motion18;
 import ch.unizh.ini.jaer.projects.opticalflow.graphics.MotionViewer;
@@ -25,6 +26,7 @@ import de.thesycon.usbio.*;
 import de.thesycon.usbio.PnPNotifyInterface;
 import de.thesycon.usbio.UsbIoErrorCodes;
 import de.thesycon.usbio.structs.*;
+import java.util.Iterator;
 import java.util.concurrent.*;
 import java.util.logging.Logger;
 
@@ -66,6 +68,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     final static byte VENDOR_REQUEST_SEND_BIAS=0x1f;
     final static byte VENDOR_REQUEST_SET_DATA_TO_SEND=0x1d;
     final static byte VENDOR_REQUEST_REQUEST_FRAME=0x1e;
+    final static byte VENDOR_REQUEST_SEND_ONCHIP_BIAS=0x20;
     
     PnPNotify pnp=null;
     
@@ -657,6 +660,29 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
                 log.info("sent pot value "+vpot.getBitValue()+" for channel "+chan);
             }
         }
+               //if (observable instanceof IPot || observable instanceof BufferIPot) { // must send all IPot values and set the select to the ipot shift register, this is done by the cypress
+                    try{
+                        IPotArray iPotArray=((MDC2DBiasgen)biasgen).getIpotArray();
+                        byte[] bytes = new byte[1 + iPotArray.getNumPots() * iPotArray.getPots().get(0).getNumBytes()];
+
+                        int ind = 0;
+                        Iterator itr = ((IPotArray) biasgen.getPotArray()).getShiftRegisterIterator();
+                        while (itr.hasNext()) {
+                            IPot p = (IPot) itr.next(); // iterates in order of shiftregister index, from Vbpf to VAGC
+                            byte[] b = p.getBinaryRepresentation();
+                            System.arraycopy(b, 0, bytes, ind, b.length);
+                            ind += b.length;
+                    }
+                    USBIO_DATA_BUFFER dataBuffer;
+                    dataBuffer=new USBIO_DATA_BUFFER(0);
+                    dataBuffer.setNumberOfBytesToTransfer(ind);
+
+                                    
+                    //bytes[ind] = (byte) bufferIPot.getValue(); // get 8 bitmask buffer bias value, this is *last* byte sent because it is at start of biasgen shift register
+                    sendVendorRequest(VENDOR_REQUEST_SEND_ONCHIP_BIAS, (short)ind, (short)0,dataBuffer ); // the usual packing of ipots
+                    } catch(Exception e) {}
+
+                    
     }
     
     public void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
