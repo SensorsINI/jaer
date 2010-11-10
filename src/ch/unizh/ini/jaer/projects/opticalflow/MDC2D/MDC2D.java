@@ -84,7 +84,7 @@ public class MDC2D extends Chip2DMotion {
         public MDC2DBiasgen(Chip chip, DAC dac){
             super(chip);
 
-            potArray = new PotArray(this);  // create the appropriate PotArray
+            potArray = new IPotArray(this);  // create the appropriate PotArray
 
             // create the appropriate PotArray
             getPotArray().addPot(new VPot(MDC2D.this, "VRegRefBiasAmp", dac, 0, Pot.Type.NORMAL, Pot.Sex.P, 1, 1, "sets bias of feedback follower in srcbias"));
@@ -103,7 +103,7 @@ public class MDC2D extends Chip2DMotion {
             getPotArray().addPot(new VPot(MDC2D.this,"refnegDAC",dac,           0xd,Pot.Type.NORMAL,Pot.Sex.na,1,    14,"description"));
             getPotArray().addPot(new VPot(MDC2D.this,"refposDAC",dac,           0xe,Pot.Type.NORMAL,Pot.Sex.na,1,    15,"description"));
 
-/*
+
             //ipotArray = new IPotArray(this); //construct IPotArray whit shift register stuff
             getPotArray().addPot(new IPot(this, "VRegRefBiasAmp", 0, IPot.Type.NORMAL, Pot.Sex.P, 1, 21, "sets bias of feedback follower in srcbias"));
             getPotArray().addPot(new IPot(this,"VRegRefBiasMain",      1,Pot.Type.NORMAL,Pot.Sex.P,1,      22,"sets bias of pfet which sets ref to srcbias"));
@@ -120,11 +120,21 @@ public class MDC2D extends Chip2DMotion {
             getPotArray().addPot(new IPot(this,"Srcrefmin",           0xc,Pot.Type.NORMAL,Pot.Sex.P,1,    33,"sets half Vdd for ADC"));
             getPotArray().addPot(new IPot(this,"refnegDAC",           0xd,Pot.Type.NORMAL,Pot.Sex.na,1,    34,"description"));
             getPotArray().addPot(new IPot(this,"refposDAC",           0xe,Pot.Type.NORMAL,Pot.Sex.na,1,    35,"description"));
-       */ }
-
-        public IPotArray getIpotArray(){
-            return ipotArray;
         }
+
+        public IPotArray getIPotArray(){
+//            IPotArray arr= new IPotArray(this);
+//            for(int i=0; i<getNumPots();i++){
+//                arr.addPot(potArray.getPotByNumber(i));
+//            }
+//            return ipotArray;
+            return (IPotArray)this.potArray;
+        }
+
+        public int getNumPots(){
+            return potArray.getNumPots()/2;
+        }
+
     }
 
 

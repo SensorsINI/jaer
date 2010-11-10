@@ -48,18 +48,20 @@ public class MotionDataMDC2D extends MotionData {
     /* Method override */
     protected void fillPh(){
         this.setPh( extractRawChannel(0)); //0 is the index of the first row
+        this.fillAdditional(); //called here so that lmc is available in Motion algorithms
     }
 
     protected void fillLocalUxUy(){
-        MotionMethod motionMethod=null;
-        int algorithm=1;
+        int algorithm=2;
         switch(algorithm){
-            case 1:   motionMethod = new RandomMotion(this);
-            break;
+            case 1: 
+                this.calculateMotion_random();
+                break;
+            case 2:
+                this.calculateMotion_gradientBased();
+                break;
         }
 
-        this.setUx(motionMethod.calculateMotion().getUx());
-        this.setUy(motionMethod.calculateMotion().getUy());
 
     }
 
@@ -122,31 +124,48 @@ public class MotionDataMDC2D extends MotionData {
 
 
 
-    abstract class MotionMethod{
-        protected MotionData motionData;
+    /**
+     * Motion methods
+     */
 
-        MotionMethod(MotionData motionData){
-            this.motionData = motionData;
-        }
-        abstract MotionData calculateMotion();
-    }
-
-    class RandomMotion extends MotionMethod{
-
-        RandomMotion(MotionData motionData){
-            super(motionData);
-        }
-
-        MotionData calculateMotion(){
+        private void calculateMotion_random(){
             //first fill Ux
-            motionData.setUx(randomizeArray(motionData.getUx(),-1,1));
+            setUx(randomizeArray(getUx(),-1,1));
             //now fill Uy
-            motionData.setUy(randomizeArray(motionData.getUy(),-1,1));
-            return motionData;
+            setUy(randomizeArray(getUy(),-1,1));
+
         }
 
-    }
+
+        private void calculateMotion_gradientBased(){
+            int chan=1;
+            float dIdx;
+            float dIdy;
+            float dIdt;
+            //go through the whole image
+            for(int i=0; i< chip.NUM_COLUMNS;i++){
+                for(int j=0; j< chip.NUM_ROWS; j++){
+                    //if at the border of the picture the local motion vectiors are 0
+                    if(i==0 || j==0 || i==chip.NUM_COLUMNS-1 || j==chip.NUM_ROWS-1){
+                        ux[i][j]=(float)0;
+                        uy[i][j]=(float)0;
+                    }else{
+                        dIdx = (rawDataPixel[chan][i+1][j]-rawDataPixel[chan][i][j])/1;
+                        dIdy = (rawDataPixel[chan][i][j+1]-rawDataPixel[chan][i][j])/1;
+                        float t1=getTimeCapturedMs();
+                        float t0=(float)10E13;//pastMotionData[1].getTimeCapturedMs();
+                        dIdt = (rawDataPixel[chan][i][j]-pastMotionData[1].getPh()[i][j])/(t1-t0);//(getTimeCapturedMs()-pastMotionData[1].getTimeCapturedMs());
+                        ux[i][j] = dIdx;
+                        uy[i][j] =dIdy;
+                    }
+                }
+            }
+        }
+
 }
+
+
+
 
 
 

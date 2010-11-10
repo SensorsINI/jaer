@@ -650,7 +650,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
                 potValues[i]=-1; // init values to value that will generate a vendor request for it automatically.
             }
         }
-        for(short i=0;i<potArray.getNumPots();i++){
+        for(short i=0;i<biasgen.getNumPots();i++){
             VPot vpot=(VPot)potArray.getPotByNumber(i);
             int chan=vpot.getChannel(); // DAC channel for pot
             if(potValues[chan]!=vpot.getBitValue()){
@@ -660,27 +660,29 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
                 log.info("sent pot value "+vpot.getBitValue()+" for channel "+chan);
             }
         }
-               //if (observable instanceof IPot || observable instanceof BufferIPot) { // must send all IPot values and set the select to the ipot shift register, this is done by the cypress
-                    try{
-                        IPotArray iPotArray=((MDC2DBiasgen)biasgen).getIpotArray();
-                        byte[] bytes = new byte[1 + iPotArray.getNumPots() * iPotArray.getPots().get(0).getNumBytes()];
-
-                        int ind = 0;
-                        Iterator itr = ((IPotArray) biasgen.getPotArray()).getShiftRegisterIterator();
-                        while (itr.hasNext()) {
-                            IPot p = (IPot) itr.next(); // iterates in order of shiftregister index, from Vbpf to VAGC
-                            byte[] b = p.getBinaryRepresentation();
-                            System.arraycopy(b, 0, bytes, ind, b.length);
-                            ind += b.length;
-                    }
-                    USBIO_DATA_BUFFER dataBuffer;
-                    dataBuffer=new USBIO_DATA_BUFFER(0);
-                    dataBuffer.setNumberOfBytesToTransfer(ind);
-
-                                    
-                    //bytes[ind] = (byte) bufferIPot.getValue(); // get 8 bitmask buffer bias value, this is *last* byte sent because it is at start of biasgen shift register
-                    sendVendorRequest(VENDOR_REQUEST_SEND_ONCHIP_BIAS, (short)ind, (short)0,dataBuffer ); // the usual packing of ipots
-                    } catch(Exception e) {}
+        
+        // now send biases to the onChip biasgenerator
+        //try{
+           /* byte[] bytes = new byte[1 + biasgen.getNumPots() *
+                                    potArray.getPots().get(potArray.getNumPots()).getNumBytes()];
+            */
+            byte[] bytes = new byte[15*3];
+            for(int i=0;i<15*3;i++){bytes[i]=(byte)0xFF;}// get the number of bytes. getNumBytes must be called for one of the Ipots!
+       //     int ind = 0;
+        //IPotArray a =((MDC2DBiasgen)biasgen).getIPotArray();
+        //Iterator itr=a.getShiftRegisterIterator();
+              //Iterator itr = (((MDC2DBiasgen)biasgen).getIPotArray()).getShiftRegisterIterator();
+////            while (itr.hasNext()) {
+////                IPot p = (IPot) itr.next(); // iterates in order of shiftregister index
+////                byte[] b = p.getBinaryRepresentation();
+////                System.arraycopy(b, 0, bytes, ind, b.length);
+////                ind += b.length;
+////            }
+            USBIO_DATA_BUFFER dataBuffer=new USBIO_DATA_BUFFER(bytes.length);
+            System.arraycopy(bytes, 0, dataBuffer.Buffer(), 0, bytes.length);
+            int ind=3*15;
+            //sendVendorRequest(VENDOR_REQUEST_SEND_ONCHIP_BIAS, (short)ind, (short)0,dataBuffer ); // the usual packing of ipots
+        //} catch(Exception e) {}
 
                     
     }
