@@ -748,17 +748,17 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * @param ng
          * @return
          */
-        private boolean doesCover (NeuronGroup ng){
+        private boolean doesCover (NeuronGroup ng, float marginPixel){
             int dt = ng.getLastEventTimestamp() - lastUpdateTimestamp;
-            float minX = clusterArea.x;
-            float minY = clusterArea.y;
+            float minX = clusterArea.x - marginPixel;
+            float minY = clusterArea.y - marginPixel;
             if ( useVelocity ){
                 minX += velocityPPT.x * dt;
                 minY += velocityPPT.y * dt;
             }
             
-            float maxX = minX+clusterArea.width;
-            float maxY = minY+clusterArea.height;
+            float maxX = minX+clusterArea.width + 2*marginPixel;
+            float maxY = minY+clusterArea.height + 2*marginPixel;
             
             if(((minX <= ng.minX && ng.minX <= maxX) || (ng.minX <= minX && minX <= ng.maxX)) &&
                 ((minY <= ng.minY && ng.minY <= maxY) || (ng.minY <= minY && minY <= ng.maxY))){
@@ -1261,7 +1261,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                     while ( itr.hasNext() ){
                         NeuronGroup ng = (NeuronGroup)itr.next();
 
-                        if ( c.doesCover(ng) && !ng.isMatched() ){ // If there are multiple neuron groups under coverage of this cluster, merge all groups into one
+                        if ( c.doesCover(ng, 5) && !ng.isMatched() ){ // If there are multiple neuron groups under coverage of this cluster, merge all groups into one
                             if ( tmpNeuronGroup == null ){
                                 tmpNeuronGroup = ng;
                                 ng.setMatched(true);

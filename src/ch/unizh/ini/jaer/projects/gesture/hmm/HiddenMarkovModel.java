@@ -16,6 +16,8 @@ import java.util.Random;
  * @author Jun Haeng Lee
  */
 public class HiddenMarkovModel implements Serializable{
+    private static final long serialVersionUID = -717623833232998188L;
+    
     /** HMM model type will be used to initialize the probabilities.
      * Ergodic HMM has full mesh transition between states.
      */

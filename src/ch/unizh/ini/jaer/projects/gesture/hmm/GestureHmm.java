@@ -30,6 +30,8 @@ public class GestureHmm implements Serializable{
     public static final int FIXED_THRESHOLD    = 0x02;
     public static final int DYNAMIC_THRESHOLD  = 0x04;
 
+    private static final long serialVersionUID = -2561957221321392504L;
+
     /**
      * number of defined gestures in a set
      */
@@ -503,7 +505,7 @@ public class GestureHmm implements Serializable{
      * @param gestureName
      * @param obs
      * @param rawAngles
-     * @return true if the observation satisfies all the criterions
+     * @return true if the observation satisfies all the criterion
      */
     public boolean tryGesture(String gestureName, String[] obs, double[] rawAngles){
         boolean ret = true;

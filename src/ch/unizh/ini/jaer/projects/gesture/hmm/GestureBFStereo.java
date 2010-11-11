@@ -63,6 +63,7 @@ public class GestureBFStereo extends GestureBF2D{
      * action listener for timer events
      */
     ActionListener autoLogoutAction = new ActionListener() {
+        @Override
         public void actionPerformed(ActionEvent evt) {
             doLogout();            
         }

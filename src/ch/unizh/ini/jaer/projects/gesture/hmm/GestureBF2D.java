@@ -12,6 +12,7 @@ import java.awt.geom.Point2D;
 import java.io.*;
 import java.util.*;
 import java.util.List;
+import java.util.logging.Level;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.*;
 import javax.swing.Timer;
@@ -75,9 +76,9 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
     private boolean login = false;
 
     /**
-     * path of geture picture files
+     * path of gesture picture files
      */
-    public static String pathGesturePictures = "D:/user/gesture pictures/";
+    public static String pathGesturePictures = "C:/Users/jun/Documents/gesture pictures/";
 
     /**
      * images for gestures
@@ -135,6 +136,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
      * 
      * @param chip
      */
+    @SuppressWarnings({"LeakingThisInConstructor", "OverridableMethodCallInConstructor"})
     public GestureBF2D(AEChip chip) {
         super(chip);
         this.chip = chip;
@@ -167,7 +169,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
     /**
      * sets the BlurringFilter2DTracker as a enclosed filter to find cluster
      */
-    protected void filterChainSetting (){
+   protected void filterChainSetting (){
         tracker = new BlurringFilter2DTracker(chip);
         ( (EventFilter2D)tracker ).addObserver(this);
         setEnclosedFilterChain(new FilterChain(chip));
@@ -210,6 +212,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         }
     }
 
+    @Override
     public void annotate(GLAutoDrawable drawable) {
         // do nothing
     }
@@ -217,7 +220,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
     /**
      * load gesture Images
      */
-    protected void loadGestureImages(){
+    protected final void loadGestureImages(){
         Toolkit myToolkit = Toolkit.getDefaultToolkit();
         
         imgHi = myToolkit.getImage(pathGesturePictures + "hi.jpg");
@@ -242,6 +245,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
 //        hmmDP.putImage(imgPush);
     }
 
+    @Override
     public void update(Observable o, Object arg) {
         if ( o instanceof BlurringFilter2DTracker ){
             List<BlurringFilter2DTracker.Cluster> cl = tracker.getClusters();
@@ -431,15 +435,15 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                     // doesn't have to consider refractory time if checkActivated is true (i.e. SlashDown is detected) becase SlashDown is a partial gesture
                     if(checkActivated || startTimeGesture >= endTimePrevGesture + refractoryTimeMs*1000){
                         if(bmg.startsWith("Left")){
-                            hmmDP.putImage(imgLeft);
+                            doLeft();
                         }else if(bmg.startsWith("Right")){
-                            hmmDP.putImage(imgRight);
+                            doRight();
                         }else if(bmg.startsWith("Up")){
-                            hmmDP.putImage(imgUp);
+                            doUp();
                         }else if(bmg.startsWith("Down")){
-                            hmmDP.putImage(imgDown);
+                            doDown();
                         }else if(bmg.startsWith("Check")){
-                            hmmDP.putImage(imgCheck);
+                            doCheck();
                         }
                     } else {
                         endTimePrevGesture -= (refractoryTimeMs*1000);
@@ -904,6 +908,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
             loadAction.addActionListener(menuActionListener);
             saveAction.addActionListener(menuActionListener);
             checkGestureAction.addActionListener(new ActionListener() {
+                @Override
                 public void actionPerformed(ActionEvent e) {
                     AbstractButton aButton = (AbstractButton) e.getSource();
                     if(aButton.getModel().isSelected()){
@@ -939,6 +944,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         }
 
         @Override
+        @SuppressWarnings("CallToThreadDumpStack")
         public void menuAction(String menuName) {
             if(menuName.equals("New")){
                 doNew();
@@ -1160,6 +1166,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         /**
          * excutes Save menu
          */
+        @SuppressWarnings("CallToThreadDumpStack")
         public void doSave(){
             int returnVal = fileChooser.showSaveDialog(HmmDrawingPanel.this);
             if (returnVal == JFileChooser.APPROVE_OPTION) {
@@ -1173,7 +1180,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
 
                     oos.writeObject(ghmm);
                     oos.close();
-                    log.warning("Gesture HMM has been saved in " + file.getAbsoluteFile());
+                    log.log(Level.WARNING, "Gesture HMM has been saved in {0}", file.getAbsoluteFile());
                 } catch (IOException e){
                     e.printStackTrace();
                 }
@@ -1187,6 +1194,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
          *
          * @throws ClassNotFoundException
          */
+        @SuppressWarnings("CallToThreadDumpStack")
         public void doLoad() throws ClassNotFoundException{
             int returnVal = fileChooser.showOpenDialog(HmmDrawingPanel.this);
 
@@ -1208,7 +1216,15 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                         gestureChoice.addItem(gname);
                     
                     ois.close();
-                    log.warning("Gesture HMM has been loaded in " + file.getAbsoluteFile());
+                    log.log(Level.WARNING, "Gesture HMM has been loaded in {0}", file.getAbsoluteFile());
+
+
+//                    String[] bestSeq = new String[] {"6", "15", "10", "3", "13", "6", "15", "10", "3", "13", "6", "15", "10", "3", "13", "6"};
+//                    String[] idealSeq = new String[] {"12", "13", "14", "15", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"};
+//                    String[] localSeq = new String[] {"12", "13", "14", "15", "0", "1", "2", "3", "13", "14", "15", "0", "1", "2", "3", "4"};
+//                    System.out.println("bestSeq = " + ghmm.getGestureHmm("CW_LRBC").forward(bestSeq));
+//                    System.out.println("idealSeq = " + ghmm.getGestureHmm("CW_LRBC").forward(idealSeq));
+//                    System.out.println("localSeq = " + ghmm.getGestureHmm("CW_LRBC").forward(localSeq));
                 } catch (IOException e){
                     e.printStackTrace();
                 }
@@ -1237,6 +1253,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
          * action listener for timer events
          */
         ActionListener clearImageAction = new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent evt) {
                clearImage();
                timer.stop();
@@ -1258,6 +1275,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
             }
             gImg.setColor(tmpColor);
             gImg.setFont(tmpFont);
+
         }
 
 
@@ -1265,6 +1283,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
          * processes Choice events
          * @param e
          */
+        @Override
         public void itemStateChanged(ItemEvent e) {
             if(String.valueOf(e.getSource()).contains("gestureChoice")){
                 if(e.getStateChange() == ItemEvent.SELECTED && !String.valueOf(e.getItem()).equals("Select a gesture")){
@@ -1365,7 +1384,10 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
     }
 
     protected void doUp(){
-        hmmDP.putImage(imgUp);
+        if(checkActivated && startTimeGesture <= endTimePrevGesture + checkActivationTimeUs)
+            hmmDP.putImage(imgCheck);
+        else
+            hmmDP.putImage(imgUp);
     }
 
     protected void doDown(){

@@ -14,6 +14,7 @@ import java.util.ArrayList;
  * @author Jun Haeng Lee
  */
 public class GaussianThreshold implements Serializable {
+    private static final long serialVersionUID = 8799361242365817210L;
     /**
      * type of feature values
      */
@@ -189,6 +190,80 @@ public class GaussianThreshold implements Serializable {
      * @param sample
      * @return
      */
+    public boolean isAboveThreshold(double[] sample, double criterion){
+        boolean ret = true;
+
+        if(sample.length != numElements){
+            System.err.println("Sample length is not identical to the number of elements of Gaussian threshold.");
+            return false;
+        }
+
+        if(!doBestMatching){
+            for(int i=0; i<numElements; i++){
+                if(!checkCriterion(gParam.get(i).mu, criterion*gParam.get(i).sigma, sample[i]))
+                {
+                    ret = false;
+                    break;
+                }
+            }
+        } else {
+            ret = checkBestMatchingOrder(sample, criterion);
+        }
+
+        return ret;
+    }
+
+    /**
+     * checks the criterion for the best matching order
+     * @param sample
+     * @return
+     */
+    private boolean checkBestMatchingOrder(double[] sample, double criterion){
+        boolean ret = true;
+        int delay = calBestMatchingDelay(sample);
+
+//        System.out.println("delay = " + delay);
+
+        for(int i=delay; i<numElements; i++){//
+//            System.out.println(sample[i]+ ", "+gParam.get(i-delay).mu+", "+gParam.get(i-delay).sigma);
+            if(!checkCriterion(gParam.get(i-delay).mu, criterion*gParam.get(i-delay).sigma, sample[i]))
+            {
+//                System.out.println(" --> out");
+                ret = false;
+                break;
+            }
+        }
+        if(!ret)
+            return ret;
+
+        for(int i=0; i<delay; i++){
+            if(!checkCriterion(gParam.get(i+numElements-delay).mu, criterion*gParam.get(i+numElements-delay).sigma, sample[i]))
+            {
+                ret = false;
+                break;
+            }
+        }
+
+        return ret;
+    }
+
+    boolean checkCriterion(double mu, double boundary, double sample){
+        boolean ret = true;
+        double distance = Math.abs(refactorValue(Math.abs(mu - sample), -Math.PI, Math.PI));
+
+//        System.out.println("checkCriterion: "+sample+ ", "+distance+","+mu+", "+boundary);
+
+        if(distance > boundary)
+            ret = false;
+
+        return ret;
+    }
+
+    /**
+     * returns true of the sample sequence satisfies the threshold requirement.
+     * @param sample
+     * @return
+     */
     public boolean isAboveThreshold(double[] sample){
         boolean ret = false;
 
@@ -333,6 +408,17 @@ public class GaussianThreshold implements Serializable {
 
         while(val >= maxValue)
             val-=range;
+
+        return val;
+    }
+
+    private double refactorValue(double val, double min, double max){
+        double diff = Math.abs(max-min);
+        while(val < min)
+            val+=diff;
+
+        while(val >= max)
+            val-=diff;
 
         return val;
     }
