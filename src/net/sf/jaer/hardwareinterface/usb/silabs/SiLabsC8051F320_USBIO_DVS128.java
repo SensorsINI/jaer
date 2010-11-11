@@ -577,7 +577,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
         toSend[0] = BIAS_FLASH;
         toSend[1] = (byte) (0xff & dataBytes.length);  // avoid signed byte by masking
         System.arraycopy(dataBytes, 0, toSend, 2, dataBytes.length);
-        sendBytes(dataBytes);
+        sendBytes(toSend);
     }
 
     /** This implementation treats the biasgen as a simple array of IPots each of which provides bytes to send.
