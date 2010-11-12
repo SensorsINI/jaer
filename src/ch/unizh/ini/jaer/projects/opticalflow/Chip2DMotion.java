@@ -11,12 +11,14 @@ import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.graphics.ChipCanvas;
 
 /**
+ * Abstract class for motion chips. Provides some static variables methods for 
+ * motion chips. The class mainly serves to allow late binding.
  *
- * @author 
+ * @author reto
  */
 
 public  abstract class Chip2DMotion extends Chip2D {
-    public static String CHIPNAME =null;
+    public static String CHIPNAME =null; // the name of the chip. set in subclasses
     public static float VDD;
     public static int NUM_ROWS;
     public static int NUM_COLUMNS;
@@ -36,6 +38,7 @@ public  abstract class Chip2DMotion extends Chip2D {
     public  Chip2DMotion() {
         super();
     }
+
 
     public  boolean isBorder(int x, int y) {
         return (x == 0) || (y == 0) || (x == (this.NUM_COLUMNS - 1)) || (y == (this.NUM_ROWS - 1));
@@ -57,7 +60,7 @@ public  abstract class Chip2DMotion extends Chip2D {
     }
 
     
-
+    //Method to get a empty motionData object
     public abstract MotionData getEmptyMotionData();
 
     public void setCaptureMode(int acquisitionMode) {
@@ -68,18 +71,6 @@ public  abstract class Chip2DMotion extends Chip2D {
     }
 
     
-
-    public int convertVtoBitValue (int set_mV){
-        int bitvalue= (int)((4095*set_mV)/5000)&0xFF;
-        return bitvalue;
-    }
-
-
-
-    /*public ChipCanvas getCanvas(int number){
-        //return canvas[number];
-        return canvas[0];
-    }*/
 
 
     /**

@@ -369,9 +369,6 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
             }
             setPaused(wasPaused);
         }
-        
-        
-        
     }
     
     

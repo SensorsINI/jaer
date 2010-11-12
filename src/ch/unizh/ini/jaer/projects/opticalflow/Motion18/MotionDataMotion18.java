@@ -13,7 +13,6 @@ package ch.unizh.ini.jaer.projects.opticalflow.Motion18;
  */
 
 import ch.unizh.ini.jaer.projects.opticalflow.*;
-import net.sf.jaer.chip.*;
 import java.util.Random;
 
 /**
@@ -32,18 +31,17 @@ public class MotionDataMotion18 extends MotionData {
      @see #GLOBAL_X etc
      */
     private int contents=0;
-    private static Random r=new Random();
 
     /** Creates a new instance of MotionData */
     public MotionDataMotion18(Chip2DMotion setchip) {
-        super();
+        super(setchip);
     }
 
 
 
     /* Method override */
     protected void fillPh(){
-        this.setPh( extractRawChannel(1));
+        this.setPh( extractRawChannel(1)); //ph is the first channel from the chip
     }
 
     protected void fillUxUy(){
@@ -71,11 +69,6 @@ public class MotionDataMotion18 extends MotionData {
     }
 
 
-
-
-
-
-
     protected void fillMinMax(){
         float minPh=0, maxPh=0, minUx=0, maxUx=0, minUy=0, maxUy =0;
         float[][] ux = getUx();
@@ -95,7 +88,7 @@ public class MotionDataMotion18 extends MotionData {
     }
 
     protected void fillAdditional(){
-        ;
+        ; //nothing to do in this class
     }
         protected void updateContents(){
         setContents(0x1F); //global X,Y ; localX,Y ; photoreceptor

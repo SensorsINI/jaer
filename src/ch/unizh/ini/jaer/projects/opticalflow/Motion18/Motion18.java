@@ -48,10 +48,6 @@ public class Motion18 extends Chip2DMotion {
     }
 
     
-    // public DAC(int numChannels, int resolutionBits, float refMinVolts, float refMaxVolts){
-    /** The DAC on the board */
-
-    
     /** describes the biases on the chip */
     public class Motion18Biasgen extends Biasgen{
         

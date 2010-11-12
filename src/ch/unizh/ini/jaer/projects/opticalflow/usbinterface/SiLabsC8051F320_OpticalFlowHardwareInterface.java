@@ -19,8 +19,6 @@ import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.util.*;
 import ch.unizh.ini.jaer.projects.opticalflow.*;
 import ch.unizh.ini.jaer.projects.opticalflow.MDC2D.MDC2D.MDC2DBiasgen;
-import ch.unizh.ini.jaer.projects.opticalflow.MDC2D.MotionDataMDC2D;
-import ch.unizh.ini.jaer.projects.opticalflow.Motion18.Motion18;
 import ch.unizh.ini.jaer.projects.opticalflow.graphics.MotionViewer;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.PnPNotifyInterface;
@@ -480,9 +478,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
              * older Data. After getting new Data from the exchanger the Array of
              * the new Buffer is filled with the one which contains all data.
              */
-
             lastbuffer = currentBuffer.clone(); // copy current buffer
-
             try {
                 currentBuffer = exchanger.exchange(currentBuffer); // on the first call, the main rendering loop should probably already have called exchange via the getData() method
                 requestData();
@@ -496,12 +492,6 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
         public void processData(UsbIoBuf usbIoBuf) {
 //            log.info("received UsbIoBuf from device");
             unpackData(usbIoBuf, currentBuffer);
-
-            // TODO: interpret data from usbiobuf and put it into currentBuffer)
-//            try {
-//                currentBuffer = exchanger.exchange(currentBuffer);
-//            } catch (InterruptedException ex) {
-//            }
             
         }
         
@@ -528,7 +518,6 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
                     log.warning("Frame start marker does not match, unpacking failed");
                     return;
                 }
-                
                 motionBuf.setContents(packetDescriptor);
                 motionBuf.setSequenceNumber(sequenceNumber++);
                 motionBuf.setTimeCapturedMs(System.currentTimeMillis());
@@ -625,7 +614,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
      @throws TimeOutException when request for exchange with Reader thread times out. Timeout duration is set by DATA_TIMEOUT_MS.
      */
     public MotionData getData() throws java.util.concurrent.TimeoutException {
-        try{
+        try{ 
             currentBuffer=exchanger.exchange(currentBuffer,DATA_TIMEOUT_MS,TimeUnit.MILLISECONDS);
             return currentBuffer;
         }catch(InterruptedException e){
@@ -660,7 +649,8 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
                 log.info("sent pot value "+vpot.getBitValue()+" for channel "+chan);
             }
         }
-        
+
+        //RetoTODO: clean up here
         // now send biases to the onChip biasgenerator
         //try{
            /* byte[] bytes = new byte[1 + biasgen.getNumPots() *
@@ -669,7 +659,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
             byte[] bytes = new byte[15*3];
             for(int i=0;i<15*3;i++){bytes[i]=(byte)0xFF;}// get the number of bytes. getNumBytes must be called for one of the Ipots!
        //     int ind = 0;
-        //IPotArray a =((MDC2DBiasgen)biasgen).getIPotArray();
+        IPotArray a =((MDC2DBiasgen)biasgen).getPotArray();
         //Iterator itr=a.getShiftRegisterIterator();
               //Iterator itr = (((MDC2DBiasgen)biasgen).getIPotArray()).getShiftRegisterIterator();
 ////            while (itr.hasNext()) {

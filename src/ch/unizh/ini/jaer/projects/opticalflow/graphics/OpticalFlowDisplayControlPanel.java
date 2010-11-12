@@ -2,6 +2,7 @@
  * OpticalFlowDisplayControlPanel.java
  *
  * Created on December 17, 2006, 8:30 AM
+ * Modified on November 12, 2010, 10:10 AM: additional controls for MDC2D chip
  */
 
 package ch.unizh.ini.jaer.projects.opticalflow.graphics;

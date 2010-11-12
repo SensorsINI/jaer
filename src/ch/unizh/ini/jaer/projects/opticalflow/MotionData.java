@@ -18,8 +18,6 @@ import java.util.Random;
 
 /**
  * Packs data returned from optical flow sensor.
- Values are floats that which are normalized as follows: all values are returned in range 0-1 float. Motion signals are centered around 0.5f.
- Global outputs are not - they are just from corner of chip.
  
  * @author tobi
  */
@@ -40,8 +38,6 @@ public abstract class MotionData implements Cloneable{
                             BIT6=0x40,
                             BIT7=0x80;  // not defined in the moment
 
-
-    
     /** the resolution of the SiLabs_8051F320 ADC */
     public static final int ADC_RESOLUTION_BITS=10;
 
@@ -49,12 +45,6 @@ public abstract class MotionData implements Cloneable{
     protected static int NUM_PASTMOTIONDATA=0;
     
     private int sequenceNumber;
-
-
-    public static Chip2DMotion chip;
-
-    // contains the last few MotionData acquired
-    protected MotionData[] pastMotionData;
     
     /** The time in System.currentTimeMillis() that this data was captured */
     private long timeCapturedMs=0;
@@ -73,15 +63,23 @@ public abstract class MotionData implements Cloneable{
     protected float globalX; // global velocity x, centered on 0
     protected float globalY; // global velocity x, centered on 0
     protected float minph, maxph, minux, maxux, minuy, maxuy;
+
+    // a Chip2DMotion object of the current chip type
+    public static Chip2DMotion chip;
+
+    // contains the last few MotionData acquired
+    protected MotionData[] pastMotionData;
     
     /** Bits set in contents show what data has actually be acquired in this buffer.
      @see #GLOBAL_Y
      @see #GLOBAL_X etc
      */
     private int contents=0;
-    private static Random r=new Random();
+    protected static Random r=new Random();
+
+
     
-    /** Creates a new instance of MotionData */
+    /** Constructor to be called by nonabstract subclasses */
     public MotionData(Chip2DMotion chip) {
         globalX=0; globalY=0;
         this.chip = chip;
@@ -91,43 +89,8 @@ public abstract class MotionData implements Cloneable{
         ux=new float[chip.getSizeX()][chip.getSizeY()];
         uy=new float[chip.getSizeX()][chip.getSizeY()];
     }
-    public MotionData(){
-    }
-
     
 
-
-    public MotionData clone() {
-	try {
-	    return (MotionData) super.clone();
-	} catch (CloneNotSupportedException cnse) {
-	    return null;
-	}
-    }
-
-
-
-    /* fills the compulsory motion data for display (ph, ux, uy, globalX, globalY
-     * minph, maxph, minux, maxux, minuy, maxuy.
-     */
-    public final void collectMotionInfo(){
-        fillPh();
-        fillUxUy();
-        fillMinMax();
-        fillAdditional();
-        updateContents();
-    }
-    
-    public float[][] randomizeArray(float[][] f, float min, float max){
-        for(int i=0;i<f.length;i++){
-            float[] g=f[i];
-            for(int j=0;j<g.length;j++){
-                g[j]=min+r.nextFloat()*(max-min);
-            }
-            f[i]=g;
-        }
-        return f;
-    }
 
     /* methods tofills the compulsory motion data for display (ph, ux, uy, globalX,
      * globalY minph, maxph, minux, maxux, minuy, maxuy.
@@ -142,6 +105,19 @@ public abstract class MotionData implements Cloneable{
         abstract protected void fillAdditional(); // computes any additional info
         abstract protected void updateContents(); //updates the contents of MotionData
 
+
+    /* fills the compulsory motion data for display (ph, ux, uy, globalX, globalY
+     * minph, maxph, minux, maxux, minuy, maxuy. This method takes care that all
+     * computations on the raw data are done.
+     */
+    public final void collectMotionInfo(){
+        fillPh(); //write the photoreceptor data
+        fillUxUy(); //write the local and global motion data
+        fillMinMax(); //calculate min and max of data
+        fillAdditional(); //do additional computations
+        updateContents();
+    }
+    
 
     /**
      * get methods: These are public and return the content of private objects
@@ -225,10 +201,12 @@ public abstract class MotionData implements Cloneable{
         return minph;
     }
 
+    // get the very last MotionData
     public MotionData getLastMotionData() {
         return this.pastMotionData[0];
     }
 
+    //get the array of pastMotionData.
     public MotionData[] getPastMotionData(){
         return this.pastMotionData;
     }
@@ -323,6 +301,9 @@ public abstract class MotionData implements Cloneable{
         this.timeCapturedMs = timeCapturedMs;
     }
 
+    /* shifts pastMotionData array by one position. The oldest data fall out. At
+     * position 0 the most recent data is inserted
+     */
     public void setLastMotionData(MotionData lastData){
         if (this.pastMotionData==null) {
             this.pastMotionData= new MotionData[NUM_PASTMOTIONDATA];
@@ -341,18 +322,41 @@ public abstract class MotionData implements Cloneable{
     }
 
 
-
-    public float[][] extractRawChannel(int channelNumber){
+    // returns a 2Darray corresponding to one channel of raw data (e.g. photoreceptors)
+        public float[][] extractRawChannel(int channelNumber){
         int maxX=this.chip.NUM_COLUMNS;
         int maxY=this.chip.NUM_ROWS;
         float[][] channelData =new float[maxX][maxY] ;
         for(int x=0;x<maxX;x++){
-            System.arraycopy(this.rawDataPixel[channelNumber][x], 0, channelData[x], 0, maxY);
+            for(int y=0;y<maxY;y++){
+                channelData[y][x]=this.rawDataPixel[channelNumber][y][x]; 
+            }
         }
         return channelData;
     }
 
 
+
+   //returns an array with random numbers between -1 and 1
+   public float[][] randomizeArray(float[][] f, float min, float max){
+        for(int i=0;i<f.length;i++){
+            float[] g=f[i];
+            for(int j=0;j<g.length;j++){
+                g[j]=min+r.nextFloat()*(max-min);
+            }
+            f[i]=g;
+        }
+        return f;
+    }
+
+   //clone the MotionData object. (ie make shallow copy)
+    public MotionData clone() {
+	try {
+	    return (MotionData) super.clone();
+	} catch (CloneNotSupportedException cnse) {
+	    return null;
+	}
+    }
 
 
     /** The serialized size in bytes of a MotionData instance */
@@ -382,6 +386,7 @@ public abstract class MotionData implements Cloneable{
     public String toString(){
         return "MotionData sequenceNumber="+sequenceNumber+" timeCapturedMs="+timeCapturedMs;
     }
+
     
     /** Implements the Externalizable writer in conjuction with the reader. 
      Each MotionData object is written as follows:
