@@ -27,7 +27,7 @@ public class Main{
     static final Logger log=Logger.getLogger("Main");
     public static void main(String[] args){
         
-         //Motion18 chip=new Motion18();
+//         Motion18 chip=new Motion18();
         MDC2D chip=new MDC2D();
         MotionViewer viewer=new MotionViewer(chip);
         //ChannelViewer viewer=new ChannelViewer(chip);

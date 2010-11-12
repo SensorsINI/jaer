@@ -14,8 +14,9 @@ import net.sf.jaer.graphics.ChipCanvas;
  *
  * @author 
  */
-public  abstract class Chip2DMotion extends Chip2D {
 
+public  abstract class Chip2DMotion extends Chip2D {
+    public static String CHIPNAME =null;
     public static float VDD;
     public static int NUM_ROWS;
     public static int NUM_COLUMNS;
@@ -25,14 +26,10 @@ public  abstract class Chip2DMotion extends Chip2D {
     public static DAC dac;
     /** A "magic byte" marking the start of each frame */
     public static final byte FRAME_START_MARKER = (byte)0xac;
-    
-
     /** the data to get for the chip */
     public int acquisitionMode;
-
     /** can be used to hold reference to last motion data */
     public MotionData lastMotionData=null;
-
     public ChipCanvas[]canvasArray;
 
 
@@ -52,12 +49,14 @@ public  abstract class Chip2DMotion extends Chip2D {
     }
 
     public int getNumberChannels(){
-        return this.NUM_PIXELCHANNELS;
+        return NUM_PIXELCHANNELS;
     }
 
     public int getNumberGlobals(){
-        return this.NUM_GLOBALCHANNELS;
+        return NUM_GLOBALCHANNELS;
     }
+
+    
 
     public abstract MotionData getEmptyMotionData();
 
@@ -67,6 +66,8 @@ public  abstract class Chip2DMotion extends Chip2D {
             ((MotionChipInterface) hardwareInterface).setCaptureMode(acquisitionMode);
         }
     }
+
+    
 
     public int convertVtoBitValue (int set_mV){
         int bitvalue= (int)((4095*set_mV)/5000)&0xFF;

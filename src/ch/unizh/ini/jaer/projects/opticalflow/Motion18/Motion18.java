@@ -25,7 +25,7 @@ public class Motion18 extends Chip2DMotion {
     
     /** Creates a new instance of Motion18 */
     public Motion18() {
-
+        CHIPNAME="Motion18";
         VDD=5;
         NUM_ROWS=32;
         NUM_COLUMNS=32;

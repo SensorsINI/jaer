@@ -22,12 +22,18 @@ import net.sf.jaer.graphics.ChipCanvas;
  */
 public class MDC2D extends Chip2DMotion {
 
-    IPotArray ipotArray;
+    // the names of the optic flow methods. The String array must have the same
+    // order as the numbering of the constants below
+    public static final String[] MOTIONMETHODLIST ={"Random","Normal Optic Flow","Srinivasan"};
+    public static final int RANDOM=0;
+    public static final int NORMAL_OPTICFLOW=1;
+    public static final int SRINIVASAN=2;
+    private static int selectedMotionMethodIndex; // only provides a number. To set and interpret the number has to be done in the MotionData class
 
     
     /** Creates a new instance of Motion18 */
     public MDC2D() {
-        //Biasgen internalBiasGen = new MDC2DintBiasgen(this);
+        CHIPNAME="MDC2D";
         VDD=(float)3.3;
         NUM_ROWS=20;
         NUM_COLUMNS=20;
@@ -64,6 +70,12 @@ public class MDC2D extends Chip2DMotion {
         return new MotionDataMDC2D(this);
     }
 
+    public static void setMotionMethod(int m){
+        selectedMotionMethodIndex=m;
+    }
+    public static int getMotionMethod(){
+        return selectedMotionMethodIndex;
+    }
 
 
         /**

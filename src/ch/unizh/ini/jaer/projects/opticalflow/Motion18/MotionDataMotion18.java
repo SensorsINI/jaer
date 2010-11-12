@@ -46,14 +46,11 @@ public class MotionDataMotion18 extends MotionData {
         this.setPh( extractRawChannel(1));
     }
 
-    protected void fillLocalUxUy(){
+    protected void fillUxUy(){
+        //first local channels: just copy from raw data
         this.setUx( extractRawChannel(2));
         this.setUy( extractRawChannel(3));
-    }
-
-
-
-    protected void fillGlobalUxUy(){
+        // global is the average of the local motion vectors
         float globalUx=0;
         float globalUy=0;
         for(int i=0;i<chip.NUM_COLUMNS;i++){
@@ -66,15 +63,18 @@ public class MotionDataMotion18 extends MotionData {
         this.setGlobalX(globalUx);
         globalUy /= chip.NUM_MOTION_PIXELS;
         this.setGlobalY(globalUy);
+
+        /*global could also be from chip output
+            this.setGlobalX(this.getRawDataGlobal()[1]);
+            this.setGlobalX(this.getRawDataGlobal()[2]);
+         */
     }
 
-    /*protected void fillGlobalUx(){
-        this.setGlobalX(this.getRawDataGlobal()[1]);
-    }
-     *
-    protected void fillGlobalUy(){
-        this.setGlobalX(this.getRawDataGlobal()[2]);
-    }*/
+
+
+
+
+
 
     protected void fillMinMax(){
         float minPh=0, maxPh=0, minUx=0, maxUx=0, minUy=0, maxUy =0;

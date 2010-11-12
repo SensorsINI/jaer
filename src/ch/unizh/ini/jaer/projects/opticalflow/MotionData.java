@@ -112,8 +112,7 @@ public abstract class MotionData implements Cloneable{
      */
     public final void collectMotionInfo(){
         fillPh();
-        fillLocalUxUy();
-        fillGlobalUxUy();
+        fillUxUy();
         fillMinMax();
         fillAdditional();
         updateContents();
@@ -138,8 +137,7 @@ public abstract class MotionData implements Cloneable{
      * the host.
      */
         abstract protected void fillPh(); //fill photoreceptor data to ph
-        abstract protected void fillLocalUxUy(); //fill localMotion data
-        abstract protected void fillGlobalUxUy(); //fill gobalMotion data
+        abstract protected void fillUxUy(); //fill localMotion data
         abstract protected void fillMinMax(); // fill min,max fields
         abstract protected void fillAdditional(); // computes any additional info
         abstract protected void updateContents(); //updates the contents of MotionData
@@ -392,19 +390,30 @@ public abstract class MotionData implements Cloneable{
         out.writeInt(contents);<br>
         out.writeInt(sequenceNumber);<br>
         out.writeLong(timeCapturedMs);<br>
+        out.writeFloat(globalX);<br>
+        out.writeFloat(globalY);<br>
         write2DArray(out,ph);<br>
         write2DArray(out,ux);<br>
         write2DArray(out,uy);<br>
-      
+        write2DArray(out,rawDataPixel[chan0]<br>
+        .
+        .
+        .
+        write2DArray(out,rawDataPixel[chanN]<br>
      @param out the output
      */
     public void write(DataOutput out) throws IOException {
         out.writeInt(contents);
         out.writeInt(sequenceNumber);
         out.writeLong(timeCapturedMs);
+        out.writeFloat(globalX);
+        out.writeFloat(globalY);
         write2DArray(out,ph);
         write2DArray(out,ux);
         write2DArray(out,uy);
+        for(int i=0;i<chip.NUM_PIXELCHANNELS;i++){          //RetoCHANGED
+            write2DArray(out,rawDataPixel[i]);
+        }
     }
 
     /** Implements the reader half of the Externalizable interface
@@ -414,9 +423,14 @@ public abstract class MotionData implements Cloneable{
         contents=in.readInt();
         sequenceNumber=in.readInt();
         timeCapturedMs=in.readLong();
+        globalX=in.readFloat();
+        globalY=in.readFloat();
         read2DArray(in,ph);
         read2DArray(in,ux);
         read2DArray(in,uy);
+        for(int i=0;i<chip.NUM_PIXELCHANNELS;i++){          //RetoCHANGED
+            read2DArray(in,rawDataPixel[i]);
+        }
     }
     
     private void write2DArray(DataOutput out, float[][] f) throws IOException {
