@@ -546,7 +546,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
                                 .add(displayPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
                         .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                         .add(photoPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
-                .add(82, 82, 82))
+                .addContainerGap())
         );
 
         getAccessibleContext().setAccessibleName("");
@@ -630,11 +630,11 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
     }//GEN-LAST:event_jRadioButton7ActionPerformed
 
     private void jRadioButton8ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton8ActionPerformed
-        MDC2D.setChannelForMotionAlgorithm(0);
+        MDC2D.setChannelForMotionAlgorithm(1);
     }//GEN-LAST:event_jRadioButton8ActionPerformed
 
     private void jRadioButton9ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton9ActionPerformed
-        MDC2D.setChannelForMotionAlgorithm(0);
+        MDC2D.setChannelForMotionAlgorithm(2);
     }//GEN-LAST:event_jRadioButton9ActionPerformed
     
     

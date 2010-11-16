@@ -43,6 +43,8 @@ import javax.swing.*;
 public class MotionViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener {
     public static String HELP_URL_USER_GUIDE="http://www.ini.unizh.ch/~tobi/caviar/INI-AE-Biasgen/";
     public static String HELP_URL_JAVADOC;
+
+    public static DynamicFontSizeJLabel numericPanel;
     
     private MotionOutputStream loggingOutputStream;
     static{
@@ -101,9 +103,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         statisticsLabel=new DynamicFontSizeJLabel();
         statisticsLabel.setToolTipText("Time slice/Absolute time, NumEvents/NumFiltered, events/sec, Frame rate acheived/desired, Time expansion X contraction /, delay after frame, color scale");
         statisticsPanel.add(statisticsLabel);
-        
-        
-        
+
         loggingButton.setAction(toggleLoggingAction);
         loggingMenuItem.setAction(toggleLoggingAction);
         
@@ -200,7 +200,12 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         imagePanel.setLayout(new BorderLayout());
         chipCanvas=chip.getCanvas();
         imagePanel.add(chipCanvas.getCanvas(), BorderLayout.CENTER);
-        
+        //RetoTODO: delete if not finished
+//        numericPanel= new DynamicFontSizeJLabel();
+//        imagePanel.add(numericPanel, BorderLayout.EAST);
+//        numericPanel.setForeground(Color.red);
+//        numericPanel.setBackground(Color.red);
+//        numericPanel.setText("a");
         chipCanvas.getCanvas().invalidate();
         // find display menu reference and fill it with display menu for this canvas
         viewMenu.remove(displayMethodMenu);
@@ -1837,6 +1842,11 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
                 
             }
         });
+//        if("MDC2D".equals(this.chip.CHIPNAME)){  //RetoTODO delete if not used
+//            JFrame biasWindow=new MDC2DBiasgenWindow();
+//            biasWindow.setVisible(yes);
+//
+//        }
     }
     
     synchronized public void toggleLogging(){

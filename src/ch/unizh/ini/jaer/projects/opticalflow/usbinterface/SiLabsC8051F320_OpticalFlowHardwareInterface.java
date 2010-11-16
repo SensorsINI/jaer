@@ -67,7 +67,9 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     final static byte VENDOR_REQUEST_SET_DATA_TO_SEND=0x1d;
     final static byte VENDOR_REQUEST_REQUEST_FRAME=0x1e;
     final static byte VENDOR_REQUEST_SEND_ONCHIP_BIAS=0x20;
-    
+    final static byte VENDOR_REQUEST_SET_POWERDOWN_STATE = 0x21;
+
+
     PnPNotify pnp=null;
     
     private boolean isOpened;
@@ -626,6 +628,13 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     
     public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
         log.warning("not implemented yet");
+        int pd;
+        if(powerDown){
+            pd=1;
+        }else{
+            pd=0;
+        }
+        this.sendVendorRequest(VENDOR_REQUEST_SET_POWERDOWN_STATE, (short)pd, (short)0);
     }
     
     /** sends the pot values, but uses a local cache to only send those values that have changed
@@ -671,7 +680,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
             USBIO_DATA_BUFFER dataBuffer=new USBIO_DATA_BUFFER(bytes.length);
             System.arraycopy(bytes, 0, dataBuffer.Buffer(), 0, bytes.length);
             int ind=3*15;
-         //   sendVendorRequest(VENDOR_REQUEST_SEND_ONCHIP_BIAS, (short)ind, (short)0,dataBuffer ); // the usual packing of ipots
+           //sendVendorRequest(VENDOR_REQUEST_SEND_ONCHIP_BIAS, (short)ind, (short)0, dataBuffer ); // the usual packing of ipots
         //} catch(Exception e) {}
 
                     
