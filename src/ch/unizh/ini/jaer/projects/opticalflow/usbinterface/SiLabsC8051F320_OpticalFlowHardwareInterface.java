@@ -671,7 +671,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
             USBIO_DATA_BUFFER dataBuffer=new USBIO_DATA_BUFFER(bytes.length);
             System.arraycopy(bytes, 0, dataBuffer.Buffer(), 0, bytes.length);
             int ind=3*15;
-            //sendVendorRequest(VENDOR_REQUEST_SEND_ONCHIP_BIAS, (short)ind, (short)0,dataBuffer ); // the usual packing of ipots
+         //   sendVendorRequest(VENDOR_REQUEST_SEND_ONCHIP_BIAS, (short)ind, (short)0,dataBuffer ); // the usual packing of ipots
         //} catch(Exception e) {}
 
                     

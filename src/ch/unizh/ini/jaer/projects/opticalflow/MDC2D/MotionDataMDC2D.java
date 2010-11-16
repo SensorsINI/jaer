@@ -14,7 +14,6 @@ package ch.unizh.ini.jaer.projects.opticalflow.MDC2D;
 
 import Jama.Matrix;
 import ch.unizh.ini.jaer.projects.opticalflow.*;
-import java.util.Random;
 
 /**
  * Packs data returned from optical flow sensor.
@@ -33,6 +32,10 @@ public class MotionDataMDC2D extends MotionData {
     private float[][] lmc1;
     private float[][] lmc2;
 
+    private int channel; //the channel used for calculations in the MotionAlgorithms
+
+    private int globalScaleFactor =10; //this is an arbituary scale factor that compensates for historical differences in the display method for global vector
+
     /** Creates a new instance of MotionData */
     public MotionDataMDC2D(Chip2DMotion setchip) {
         super(setchip);
@@ -50,6 +53,7 @@ public class MotionDataMDC2D extends MotionData {
 
     protected void fillUxUy(){
         int algorithm= MDC2D.getMotionMethod(); //gets the MotionMethod set from the GUI
+        channel = MDC2D.getChannelForMotionAlgorithm();
         switch(algorithm){
             case MDC2D.RANDOM://random
                 this.calculateMotion_random(); //sets the localU randomly
@@ -116,13 +120,12 @@ public class MotionDataMDC2D extends MotionData {
      * with Ix=dI/dt, Iy=dI/dy, It=dI/dt
      */
     private void calculateMotion_gradientBased(){
-        int chan=0;
         boolean filter=false;
         float dIdx;
         float dIdy;
         float dIdt;
-        float[][] raw=this.extractRawChannel(chan);
-        float[][] past=this.getPastMotionData()[0].extractRawChannel(chan);
+        float[][] raw=this.extractRawChannel(channel);
+        float[][] past=this.getPastMotionData()[0].extractRawChannel(channel);
         if(filter){ //RetoTODO see if it makes sense
             raw=this.filter_DOG(raw);
             past=this.filter_DOG(past);
@@ -142,7 +145,7 @@ public class MotionDataMDC2D extends MotionData {
                     dIdy = (raw[j+1][i]-raw[j-1][i])/2; // average slope to pixel before and after.
                     long dt=getTimeCapturedMs()-getPastMotionData()[0].getTimeCapturedMs();
                     dIdt = (raw[j][i]-past[j][i])/2/dt; //unit dI/ms
-                    if(dIdx*dIdx + dIdy*dIdy!=0){ // check for division by 0
+                    if(dIdx*dIdx + dIdy*dIdy!=0 && dt!=0){ // check for division by 0
                         ux[j][i]=-dIdx*dIdt/(dIdx*dIdx + dIdy*dIdy); // unit pixel/ms
                         uy[j][i]=-dIdy*dIdt/(dIdx*dIdx + dIdy*dIdy);
                     }else{
@@ -162,9 +165,13 @@ public class MotionDataMDC2D extends MotionData {
      * The algorithm computes a global motion.
      */
     private void calculateMotion_srinivasan(){
-        int chan=0;
-        float[][] raw=this.extractRawChannel(chan);
-        float[][] past=this.getPastMotionData()[0].extractRawChannel(chan);
+        float[][] raw=this.extractRawChannel(channel);
+        float[][] past=this.getPastMotionData()[0].extractRawChannel(channel);
+//          for(int x=1; x< chip.NUM_COLUMNS-1;x++){ //leave out border pixel
+//            for(int y=1; y< chip.NUM_ROWS-1; y++){
+//                past[y][x]=raw[y+1][x-1];
+//            }
+//        }
         Matrix A = new Matrix(new double[2][2]);
         Matrix b = new Matrix(new double[2][1]);
         float a11=0, a12=0;
@@ -191,8 +198,14 @@ public class MotionDataMDC2D extends MotionData {
 
         try{
             Matrix x = A.solve(b);
-            this.setGlobalX((float)x.get(0, 0)/1);
-            this.setGlobalY((float)x.get(1, 0)/1);
+            if(dt!=0){
+                this.setGlobalX((float)x.get(0, 0)/dt*globalScaleFactor);
+                this.setGlobalY((float)x.get(1, 0)/dt*globalScaleFactor);
+            }else{
+                this.setGlobalX((0));
+                this.setGlobalY((0));
+
+            }
         } catch (Exception e) {
             this.setGlobalX(0);
             this.setGlobalY(0);
@@ -250,9 +263,9 @@ public class MotionDataMDC2D extends MotionData {
             }
         }
         globalUx /= chip.NUM_MOTION_PIXELS;
-        this.setGlobalX(globalUx);
+        this.setGlobalX(globalUx*globalScaleFactor);
         globalUy /= chip.NUM_MOTION_PIXELS;
-        this.setGlobalY(globalUy);
+        this.setGlobalY(globalUy*globalScaleFactor);
     }
 
     //temporally average the global motion vector over some frames

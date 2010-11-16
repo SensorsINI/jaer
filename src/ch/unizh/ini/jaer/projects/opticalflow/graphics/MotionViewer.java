@@ -1112,8 +1112,6 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         rewindPlaybackMenuItem = new javax.swing.JMenuItem();
         togglePlaybackDirectionMenuItem = new javax.swing.JMenuItem();
         measureTimeMenuItem = new javax.swing.JMenuItem();
-        jMenu1 = new javax.swing.JMenu();
-        jRadioButtonMenuItem1 = new javax.swing.JRadioButtonMenuItem();
         helpMenu = new javax.swing.JMenu();
         contentMenuItem = new javax.swing.JMenuItem();
         helpUserGuideMenuItem = new javax.swing.JMenuItem();
@@ -1455,14 +1453,6 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         viewMenu.add(measureTimeMenuItem);
 
         menuBar.add(viewMenu);
-
-        jMenu1.setText("MotionAlgorithm");
-
-        jRadioButtonMenuItem1.setSelected(true);
-        jRadioButtonMenuItem1.setText("jRadioButtonMenuItem1");
-        jMenu1.add(jRadioButtonMenuItem1);
-
-        menuBar.add(jMenu1);
 
         helpMenu.setMnemonic('h');
         helpMenu.setText("Help");
@@ -2144,12 +2134,10 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
     private javax.swing.JMenuItem increaseContrastMenuItem;
     private javax.swing.JMenuItem increaseFrameRateMenuItem;
     private javax.swing.JMenuItem increasePlaybackSpeedMenuItem;
-    private javax.swing.JMenu jMenu1;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JProgressBar jProgressBar1;
-    private javax.swing.JRadioButtonMenuItem jRadioButtonMenuItem1;
     private javax.swing.JSeparator jSeparator12;
     private javax.swing.JSeparator jSeparator2;
     private javax.swing.JSeparator jSeparator3;

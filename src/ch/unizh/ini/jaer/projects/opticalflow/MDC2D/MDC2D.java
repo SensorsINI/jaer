@@ -10,6 +10,7 @@ package ch.unizh.ini.jaer.projects.opticalflow.MDC2D;
 
 import ch.unizh.ini.jaer.projects.opticalflow.*;
 import ch.unizh.ini.jaer.projects.opticalflow.graphics.OpticalFlowDisplayMethod;
+import java.util.Iterator;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.VDAC.*;
 import net.sf.jaer.chip.*;
@@ -28,7 +29,7 @@ public class MDC2D extends Chip2DMotion {
     public static final int NORMAL_OPTICFLOW=1;
     public static final int SRINIVASAN=2;
     private static int selectedMotionMethodIndex; // only provides a number. To set and interpret the number has to be done in the MotionData class
-
+    private static int rawChannelUsedByMotionMethod;
     
     /** Creates a new instance of MDC2D */
     public MDC2D() {
@@ -59,10 +60,18 @@ public class MDC2D extends Chip2DMotion {
     public static void setMotionMethod(int m){
         selectedMotionMethodIndex=m;
     }
+
+    public static void setChannelForMotionAlgorithm(int chan){
+        rawChannelUsedByMotionMethod=chan;
+    }
+
     public static int getMotionMethod(){
         return selectedMotionMethodIndex;
     }
 
+    public static int getChannelForMotionAlgorithm(){
+        return rawChannelUsedByMotionMethod;
+    }
 
         /**
      * Converts 10 bits single ended ADC output value to a float ranged 0-1.
@@ -80,7 +89,6 @@ public class MDC2D extends Chip2DMotion {
         
         public MDC2DBiasgen(Chip chip, DAC dac){
             super(chip);
-
             potArray = new IPotArray(this);  // create the appropriate PotArray
 
             // create the appropriate PotArray
@@ -120,14 +128,12 @@ public class MDC2D extends Chip2DMotion {
         }
 
         public IPotArray getPotArray(){
-//            IPotArray arr= new IPotArray(this);
-//            for(int i=0; i<getNumPots();i++){
-//                arr.addPot(potArray.getPotByNumber(i));
-//            }
-//            return ipotArray;
             return (IPotArray)this.potArray;
         }
 
+        public Iterator getShiftRegisterIterator(){
+            return ((IPotArray)potArray).getShiftRegisterIterator();
+        }
         //returns the number of different biases. Note in this class it is only half
         // the number of pots since two of them code for the same bias. One controls
         // the onchip, the other the offchip biasgenerator.

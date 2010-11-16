@@ -33,6 +33,11 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         this.buttonGroup1.add(jRadioButton4);
         this.buttonGroup1.add(jRadioButton5);
         this.buttonGroup1.add(jRadioButton6);
+        this.jRadioButton4.setSelected(true);
+        this.buttonGroup2.add(jRadioButton7);
+        this.buttonGroup2.add(jRadioButton8);
+        this.buttonGroup2.add(jRadioButton9);
+        this.jRadioButton7.setSelected(true);
         if("MDC2D".equals(MotionViewer.chip.CHIPNAME)){
             this.jComboBox1.setModel(new javax.swing.DefaultComboBoxModel(MDC2D.MOTIONMETHODLIST ));
         }
@@ -61,6 +66,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
     private void initComponents() {
 
         buttonGroup1 = new javax.swing.ButtonGroup();
+        buttonGroup2 = new javax.swing.ButtonGroup();
         localPanel = new javax.swing.JPanel();
         jPanel4 = new javax.swing.JPanel();
         localOffsetSlider = new javax.swing.JSlider();
@@ -88,6 +94,10 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         jRadioButton6 = new javax.swing.JRadioButton();
         jPanel6 = new javax.swing.JPanel();
         jComboBox1 = new javax.swing.JComboBox();
+        rawChannelControlPanel2 = new javax.swing.JPanel();
+        jRadioButton7 = new javax.swing.JRadioButton();
+        jRadioButton8 = new javax.swing.JRadioButton();
+        jRadioButton9 = new javax.swing.JRadioButton();
 
         localPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Local motion"));
 
@@ -361,7 +371,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
 
         jPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder("MDC2D Control"));
 
-        rawChannelControlPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Raw Channel"));
+        rawChannelControlPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Raw Channel on Display"));
 
         jRadioButton4.setText("ph");
         jRadioButton4.addActionListener(new java.awt.event.ActionListener() {
@@ -416,19 +426,69 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
             }
         });
 
+        rawChannelControlPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("Raw Channel for Algorithm"));
+
+        jRadioButton7.setText("ph");
+        jRadioButton7.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jRadioButton7ActionPerformed(evt);
+            }
+        });
+
+        jRadioButton8.setText("lmc1");
+        jRadioButton8.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jRadioButton8ActionPerformed(evt);
+            }
+        });
+
+        jRadioButton9.setText("lmc2");
+        jRadioButton9.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jRadioButton9ActionPerformed(evt);
+            }
+        });
+
+        org.jdesktop.layout.GroupLayout rawChannelControlPanel2Layout = new org.jdesktop.layout.GroupLayout(rawChannelControlPanel2);
+        rawChannelControlPanel2.setLayout(rawChannelControlPanel2Layout);
+        rawChannelControlPanel2Layout.setHorizontalGroup(
+            rawChannelControlPanel2Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(rawChannelControlPanel2Layout.createSequentialGroup()
+                .addContainerGap()
+                .add(jRadioButton7)
+                .add(18, 18, 18)
+                .add(jRadioButton8)
+                .add(18, 18, 18)
+                .add(jRadioButton9)
+                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        rawChannelControlPanel2Layout.setVerticalGroup(
+            rawChannelControlPanel2Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(rawChannelControlPanel2Layout.createSequentialGroup()
+                .add(rawChannelControlPanel2Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                    .add(jRadioButton7)
+                    .add(jRadioButton8)
+                    .add(jRadioButton9))
+                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
         org.jdesktop.layout.GroupLayout jPanel6Layout = new org.jdesktop.layout.GroupLayout(jPanel6);
         jPanel6.setLayout(jPanel6Layout);
         jPanel6Layout.setHorizontalGroup(
             jPanel6Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(jPanel6Layout.createSequentialGroup()
                 .addContainerGap()
-                .add(jComboBox1, 0, 159, Short.MAX_VALUE)
+                .add(jPanel6Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(jComboBox1, 0, 191, Short.MAX_VALUE)
+                    .add(rawChannelControlPanel2, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap())
         );
         jPanel6Layout.setVerticalGroup(
             jPanel6Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(jPanel6Layout.createSequentialGroup()
                 .add(jComboBox1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(rawChannelControlPanel2, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -438,9 +498,9 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
             jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(jPanel3Layout.createSequentialGroup()
                 .addContainerGap()
-                .add(jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
-                    .add(org.jdesktop.layout.GroupLayout.LEADING, jPanel6, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .add(org.jdesktop.layout.GroupLayout.LEADING, rawChannelControlPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                .add(jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(jPanel6, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .add(rawChannelControlPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap())
         );
         jPanel3Layout.setVerticalGroup(
@@ -450,7 +510,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
                 .add(rawChannelControlPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .add(18, 18, 18)
                 .add(jPanel6, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(5, Short.MAX_VALUE))
         );
 
         org.jdesktop.layout.GroupLayout layout = new org.jdesktop.layout.GroupLayout(this);
@@ -469,15 +529,15 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
                     .add(org.jdesktop.layout.GroupLayout.LEADING, photoPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
                 .add(jPanel3, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(29, Short.MAX_VALUE))
+                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(layout.createSequentialGroup()
-                .addContainerGap()
-                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
-                    .add(jPanel3, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                    .add(layout.createSequentialGroup()
+                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING, false)
+                    .add(org.jdesktop.layout.GroupLayout.LEADING, jPanel3, 0, 237, Short.MAX_VALUE)
+                    .add(org.jdesktop.layout.GroupLayout.LEADING, layout.createSequentialGroup()
+                        .addContainerGap()
                         .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                             .add(org.jdesktop.layout.GroupLayout.TRAILING, localPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                             .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
@@ -486,7 +546,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
                                 .add(displayPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
                         .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                         .add(photoPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
-                .add(31, 31, 31))
+                .add(82, 82, 82))
         );
 
         getAccessibleContext().setAccessibleName("");
@@ -564,10 +624,23 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
     private void jComboBox1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jComboBox1ActionPerformed
         MDC2D.setMotionMethod(jComboBox1.getSelectedIndex());// TODO add your handling code here:
     }//GEN-LAST:event_jComboBox1ActionPerformed
+
+    private void jRadioButton7ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton7ActionPerformed
+        MDC2D.setChannelForMotionAlgorithm(0);        // TODO add your handling code here:
+    }//GEN-LAST:event_jRadioButton7ActionPerformed
+
+    private void jRadioButton8ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton8ActionPerformed
+        MDC2D.setChannelForMotionAlgorithm(0);
+    }//GEN-LAST:event_jRadioButton8ActionPerformed
+
+    private void jRadioButton9ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton9ActionPerformed
+        MDC2D.setChannelForMotionAlgorithm(0);
+    }//GEN-LAST:event_jRadioButton9ActionPerformed
     
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.ButtonGroup buttonGroup1;
+    private javax.swing.ButtonGroup buttonGroup2;
     private javax.swing.JPanel displayPanel;
     private javax.swing.JCheckBox enableGlobalMotionCheckBox;
     private javax.swing.JCheckBox enableLocalMotionCheckBox;
@@ -586,6 +659,9 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
     private javax.swing.JRadioButton jRadioButton4;
     private javax.swing.JRadioButton jRadioButton5;
     private javax.swing.JRadioButton jRadioButton6;
+    private javax.swing.JRadioButton jRadioButton7;
+    private javax.swing.JRadioButton jRadioButton8;
+    private javax.swing.JRadioButton jRadioButton9;
     private javax.swing.JSlider localGainSlider;
     private javax.swing.JSlider localOffsetSlider;
     private javax.swing.JPanel localPanel;
@@ -593,6 +669,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
     private javax.swing.JSlider photoOffsetSlider;
     private javax.swing.JPanel photoPanel;
     private javax.swing.JPanel rawChannelControlPanel1;
+    private javax.swing.JPanel rawChannelControlPanel2;
     private javax.swing.JToggleButton showHideToggleButton;
     private javax.swing.JSlider vectorScaleSliider;
     // End of variables declaration//GEN-END:variables
