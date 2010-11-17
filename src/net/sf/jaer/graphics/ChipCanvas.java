@@ -248,7 +248,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             if (m.getMenuItem() == null) {
                 // TODO comes here when preferred display method is constructed, which is not yet assigned a menu item like the others
                 // which are constructed by default
-                log.warning("no menu item for display method " + m + " cannot set it as the display method");
+                log.info("no menu item for display method " + m + " cannot set it as the selected display method in the menu");
             } else {
 //            log.info("setting display method to " + m.getDescription());
                 m.getMenuItem().setSelected(true);
