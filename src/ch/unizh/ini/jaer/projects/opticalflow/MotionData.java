@@ -12,7 +12,6 @@ package ch.unizh.ini.jaer.projects.opticalflow;
  *Copyright November 24, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 
-import ch.unizh.ini.jaer.projects.opticalflow.graphics.MotionViewer;
 import java.io.*;
 import java.util.Random;
 
@@ -22,9 +21,7 @@ import java.util.Random;
  * @author tobi
  */
 public abstract class MotionData implements Cloneable{
-    
-    private static final long serialVersionUID = 0L;
-    
+      
     /** Bit definitions for what this structure holds.
      User sets these bits to tell the hardware interface what data should be acquired for this buffer
      */
@@ -78,7 +75,7 @@ public abstract class MotionData implements Cloneable{
 
 
     
-    /** Constructor to be called by nonabstract subclasses */
+    /** Constructor to be called by non abstract subclasses */
     public MotionData(Chip2DMotion chip) {
         globalX=0; globalY=0;
         this.chip = chip;
@@ -94,7 +91,7 @@ public abstract class MotionData implements Cloneable{
     /* methods tofills the compulsory motion data for display (ph, ux, uy, globalX,
      * globalY minph, maxph, minux, maxux, minuy, maxuy.
      *
-     * The methods are abstract and has to be implemented by subclasses depending on
+     * The methods are abstract and have to be implemented by subclasses depending on
      * what data is collected from the chip and what has to be calculated from
      * the host.
      */
@@ -358,30 +355,7 @@ public abstract class MotionData implements Cloneable{
     }
 
 
-    /** The serialized size in bytes of a MotionData instance */
-    public static int OBJECT_SIZE=4+4+8+3*4*(MotionViewer.chip.getSizeX()*MotionViewer.chip.getSizeY());
-//    static {
-//        MotionData obj=new MotionData();
-//        byte[] ba = null;
-//        
-//        try {
-//            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-//            ObjectOutputStream    oos  = new ObjectOutputStream( baos );
-//            oos.writeObject( obj );
-//            oos.close();
-//            ba = baos.toByteArray();
-//            baos.close();
-//            baos=null;
-//            oos=null;
-//        } catch ( IOException ioe ) {
-//            ioe.printStackTrace();
-//            OBJECT_SIZE=0;
-//        }
-//        OBJECT_SIZE= ba.length;
-//        obj=null;
-//        ba=null;
-//    }
-//    
+
     public String toString(){
         return "MotionData sequenceNumber="+sequenceNumber+" timeCapturedMs="+timeCapturedMs;
     }

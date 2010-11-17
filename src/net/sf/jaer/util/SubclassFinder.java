@@ -12,6 +12,7 @@
 
 package net.sf.jaer.util;
 
+import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
 import java.util.*;
 import java.lang.reflect.Modifier;
 import java.util.logging.Logger;
@@ -31,18 +32,24 @@ public class SubclassFinder {
     }
     
     private static class FastClassFinder {
-        static HashMap<String,Class> map=new HashMap<String,Class>();
-        synchronized private static Class forName(String name)throws ClassNotFoundException{
-            Class c=null;
-            if((c=map.get(name))==null){
-                c=Class.forName(name);
-                map.put(name,c);
+        static HashMap<String, Class> map = new HashMap<String, Class>();
+
+        synchronized private static Class forName(String name) throws ClassNotFoundException, ExceptionInInitializerError {
+            Class c = null;
+            if ((c = map.get(name)) == null) {
+                try {
+                    c = Class.forName(name);
+                    map.put(name, c);
+                } catch (Exception e) {
+                    log.warning("caught " + e + " when trying to get class named " + name);
+                }
                 return c;
-            }else{
+            } else {
                 return c;
             }
         }
-        static private synchronized void clear(){ 
+
+        static private synchronized void clear(){
             map.clear();
         }
     }
@@ -71,10 +78,14 @@ public class SubclassFinder {
                     s=s.replace('/','.').replace('\\','.'); // TODO check this replacement of file separators on win/unix
                     if(s.indexOf("$")!=-1) continue; // inner class
                     c=FastClassFinder.forName(s);
-                    if(c==superClass) continue; // don't add the superclass
-                    if(superClass.isAssignableFrom(c)){
-                        if(!Modifier.isAbstract(c.getModifiers()))//if class is abstract, dont add to list.
-                            classes.add(s);
+                    if (c == superClass || c == null) {
+                        continue; // don't add the superclass
+                    }
+                    if (Modifier.isAbstract(c.getModifiers())) {
+                        continue;//if class is abstract, dont add to list.
+                    }
+                    if (superClass.isAssignableFrom(c)) { //sees if e.g. superclass AEChip can be cast from e.g. c=DVS128, i.e. can we do (AEChip)DVS128?
+                           classes.add(s);
                     }
                 } catch (Throwable t) { // must catch Error, not just Exception here, because UnsatisfiedLinkError is Error
                     log.warning("ERROR: " + t+" while seeing if "+superClass+" isAssignableFrom "+c);
