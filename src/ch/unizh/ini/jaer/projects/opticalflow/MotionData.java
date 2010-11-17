@@ -25,7 +25,6 @@ public abstract class MotionData implements Cloneable{
     
     private static final long serialVersionUID = 0L;
     
-    private int tobi=0;
     /** Bit definitions for what this structure holds.
      User sets these bits to tell the hardware interface what data should be acquired for this buffer
      */
