@@ -33,7 +33,7 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
     private FileChannel fileChannel;
     private long fileSize=0; // in bytes
     private long size=0; // size in MotionData units
-    private MotionData motionData= MotionViewer.chip.getEmptyMotionData();
+    private MotionData motionData;
     DataInputStream dataInputStream=null;
     
     /** Creates a new instance of MotionInputStream
@@ -47,7 +47,7 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
     /** Reads and deserializes a MotionData object from the input stream
      @return the data frame
      */
-    synchronized public MotionData readData() throws IOException{
+    synchronized public MotionData readData(MotionData motionData) throws IOException{
         int oldPosition=position();
         motionData.read(dataInputStream);
         getSupport().firePropertyChange("position",oldPosition,position());
@@ -72,7 +72,7 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
 //        }catch(IOException e){
 //            log.warning("couldn't read header");
 //        }
-        size=fileSize/MotionData.OBJECT_SIZE;
+        size=fileSize/motionData.OBJECT_SIZE;
         dataInputStream=new DataInputStream(Channels.newInputStream(fileChannel));
         getSupport().firePropertyChange("position",0,position());
         position(1);
@@ -88,7 +88,7 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
     
     public int position() {
         try{
-            int p= (int)fileChannel.position()/MotionData.OBJECT_SIZE;
+            int p= (int)fileChannel.position()/motionData.OBJECT_SIZE;
             return p;
         }catch(IOException e){
             e.printStackTrace();
@@ -98,7 +98,7 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
     
    public void position(int n) {
         try{
-            fileChannel.position(n*MotionData.OBJECT_SIZE);
+            fileChannel.position(n*motionData.OBJECT_SIZE);
         }catch(IOException e){
             e.printStackTrace();
         }

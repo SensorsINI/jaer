@@ -20,6 +20,7 @@ import net.sf.jaer.util.*;
 import ch.unizh.ini.jaer.projects.opticalflow.*;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D.MDC2DBiasgen;
 import ch.unizh.ini.jaer.projects.opticalflow.graphics.MotionViewer;
+import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.PnPNotifyInterface;
 import de.thesycon.usbio.UsbIoErrorCodes;
@@ -85,10 +86,14 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     private static final long DATA_TIMEOUT_MS=50000; // timeout for getting data from device
     private static final int MOTION_BUFFER_LENGTH=1<<14; // Size of UsbioBuf buffers. Make bigger to optimize?
     
-    private int captureMode=MotionViewer.chip.getCaptureMode();
+    private int captureMode;
 
+    private Chip2DMotion chip = new MDC2D();//RetoTODO REPLACE!!!!!
 
     private MotionData lastbuffer;
+
+
+
     /**
      * Creates a new instance of SiLabsC8051F320_USBIO_ServoController
      * @param n the number of the interface, in range returned by OpticalFlowHardwareInterfaceFactory.getNumInterfacesAvailable().
@@ -96,6 +101,8 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
      */
     public SiLabsC8051F320_OpticalFlowHardwareInterface(int n) {
         interfaceNumber=n;
+        this.chip=chip;
+        captureMode=chip.getCaptureMode();
     }
     
 //    public void startMotionUsbThread() {
@@ -421,8 +428,8 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     
     /** the concurrent object to exchange data between rendering and the MotionReader capture thread */
     Exchanger<MotionData> exchanger = new Exchanger();
-    MotionData initialEmptyBuffer = MotionViewer.chip.getEmptyMotionData(); // the buffer to start capturing into
-    MotionData initialFullBuffer = MotionViewer.chip.getEmptyMotionData();    // the buffer to render/process first
+    MotionData initialEmptyBuffer = chip.getEmptyMotionData(); // the buffer to start capturing into
+    MotionData initialFullBuffer = chip.getEmptyMotionData();    // the buffer to render/process first
     MotionData currentBuffer=initialFullBuffer;
     
     /**
@@ -558,7 +565,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
                  */
                 float[]globalRaw = motionBuf.getRawDataGlobal();
                 for(int j=0; j<motionBuf.chip.NUM_GLOBALCHANNELS;j++){
-                    globalRaw[i]=MotionViewer.chip.convert10bitToFloat(buf[i]);
+                    globalRaw[i]=chip.convert10bitToFloat(buf[i]);
                     i++;
                 }
                 motionBuf.setRawDataGlobal(globalRaw);
@@ -572,7 +579,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
                 float[][][] pixelRaw= motionBuf.getRawDataPixel();
                 while(i < count) {
                     for(int j=0; j<motionBuf.chip.NUM_PIXELCHANNELS;j++){
-                        pixelRaw[j][posY][posX] = MotionViewer.chip.convert10bitToFloat(buf[i]);
+                        pixelRaw[j][posY][posX] = chip.convert10bitToFloat(buf[i]);
                         i++;
                     }
                     posX++;
@@ -627,7 +634,6 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     }
     
     public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
-        log.warning("not implemented yet");
         int pd;
         if(powerDown){
             pd=1;

@@ -76,11 +76,11 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
     private long loggingTimeLimit=0, loggingStartTime=System.currentTimeMillis();
     private boolean logFilteredEventsEnabled=prefs.getBoolean("MotionViewer.logFilteredEventsEnabled",false);
     DynamicFontSizeJLabel statisticsLabel=new DynamicFontSizeJLabel();
-    public static Chip2DMotion chip;
+    public Chip2DMotion chip;
     private String aeChipClassName=prefs.get("MotionViewer.aeChipClassName",Tmpdiff128.class.getName());
     Class aeChipClass;
     WindowSaver windowSaver;
-    MotionData motionData=null;
+    MotionData motionData;
     ToggleLoggingAction toggleLoggingAction=new ToggleLoggingAction();
     
     
@@ -89,6 +89,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
      *
      */
     public MotionViewer(Chip2DMotion chip){
+        motionData=chip.getEmptyMotionData();
         try {
             UIManager.setLookAndFeel(new WindowsLookAndFeel());
         } catch (Exception e) {
@@ -213,7 +214,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         displayMethodMenu=chipCanvas.getDisplayMethodMenu();
         
         // add the panel below the chip for controlling display of the chip (gain and offset values for rendered photoreceptor and motion vectors)
-        JPanel cp=new OpticalFlowDisplayControlPanel((OpticalFlowDisplayMethod)chip.getCanvas().getDisplayMethod());
+        JPanel cp=new OpticalFlowDisplayControlPanel((OpticalFlowDisplayMethod)chip.getCanvas().getDisplayMethod(), chip);
         imagePanel.add(cp,BorderLayout.SOUTH);
         viewMenu.invalidate();
         
@@ -595,7 +596,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
             setCurrentFile(file);
             try{
                 motionInputStream=new MotionInputStream(fileInputStream);
-                MotionData d=motionInputStream.readData();
+                MotionData d=motionInputStream.readData(motionData);
                 firstTimeMs=d.getTimeCapturedMs();
                 motionInputStream.rewind();
                 motionInputStream.getSupport().addPropertyChangeListener(MotionViewer.this);
@@ -684,7 +685,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         public MotionData getNextData(){
             MotionData data=null;
             try{
-                data=motionInputStream.readData();
+                data=motionInputStream.readData(motionData);
                 return data;
             }catch(EOFException e){
                 try{

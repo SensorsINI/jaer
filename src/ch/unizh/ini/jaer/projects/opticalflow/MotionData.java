@@ -355,7 +355,13 @@ public abstract class MotionData implements Cloneable{
     }
 
 
+/** The serialized size in bytes of a MotionData instance */
+    public int getLoggedObjectSize(){
+        int size =4+4+8+3+chip.NUM_PIXELCHANNELS*4*(chip.getSizeX()*chip.getSizeY());
+        return size;
+    }
 
+    
     public String toString(){
         return "MotionData sequenceNumber="+sequenceNumber+" timeCapturedMs="+timeCapturedMs;
     }

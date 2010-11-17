@@ -12,6 +12,8 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.usbinterface;
 
+import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
+import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D;
 import net.sf.jaer.hardwareinterface.*;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
@@ -34,6 +36,8 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
     
     ArrayList<UsbIo> usbioList=null;
 
+
+
     /** private constructor for this singleton class.*/
     private OpticalFlowHardwareInterfaceFactory() {
         pnp=new PnPNotify(this);
@@ -46,6 +50,7 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
         return instance;
     }
 
+
     public int getNumInterfacesAvailable() {
         if(usbioList==null) return 0;
         else return usbioList.size();
@@ -55,6 +60,7 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
         if(getNumInterfacesAvailable()==0) throw new HardwareInterfaceException("no interfaces available");
         return new SiLabsC8051F320_OpticalFlowHardwareInterface(0);
     }
+
 
     public HardwareInterface getInterface(int n) throws HardwareInterfaceException {
         if(getNumInterfacesAvailable()<n+1) throw new HardwareInterfaceException("asked for interface "+n+" but only "+getNumInterfacesAvailable()+" interfaces are available");

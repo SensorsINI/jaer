@@ -17,14 +17,16 @@ import javax.swing.*;
  */
 public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
     OpticalFlowDisplayMethod displayMethod=null;
+    Chip2DMotion chip=null;
     
 
     
     /** Creates new form OpticalFlowDisplayControlPanel
      @param displayMethod the OpticalFlowDisplayMethod to control
      */
-    public OpticalFlowDisplayControlPanel(OpticalFlowDisplayMethod displayMethod) {
+    public OpticalFlowDisplayControlPanel(OpticalFlowDisplayMethod displayMethod, Chip2DMotion chip) {
         this.displayMethod=displayMethod;
+        this.chip=chip;
         initComponents();
         enableGlobalMotionCheckBox.setSelected(displayMethod.isGlobalDisplayEnabled());
         enableLocalMotionCheckBox.setSelected(displayMethod.isLocalDisplayEnabled());
@@ -38,7 +40,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         this.buttonGroup2.add(jRadioButton8);
         this.buttonGroup2.add(jRadioButton9);
         this.jRadioButton7.setSelected(true);
-        if("MDC2D".equals(MotionViewer.chip.CHIPNAME)){
+        if("MDC2D".equals(chip.CHIPNAME)){
             this.jComboBox1.setModel(new javax.swing.DefaultComboBoxModel(MDC2D.MOTIONMETHODLIST ));
         }
         setControlsVisible(false);
@@ -581,7 +583,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         localPanel.setVisible(yes);
         photoPanel.setVisible(yes);
         displayPanel.setVisible(yes);
-        if("MDC2D".equals(MotionViewer.chip.CHIPNAME)){
+        if("MDC2D".equals(chip.CHIPNAME)){
             this.jPanel3.setVisible(yes);//set MDC2D controls visible
         }
         invalidate();
