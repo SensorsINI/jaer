@@ -13,7 +13,7 @@
 package ch.unizh.ini.jaer.projects.opticalflow;
 
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.*;
-import ch.unizh.ini.jaer.projects.opticalflow.motion18b.*;
+import ch.unizh.ini.jaer.projects.opticalflow.motion18.*;
 import ch.unizh.ini.jaer.projects.opticalflow.graphics.*;
 import java.util.logging.Logger;
 
@@ -23,7 +23,7 @@ import java.util.logging.Logger;
  
  * @author  tobi
  */
-public class Main{
+public class MotionViewerMain{
     
     static final Logger log=Logger.getLogger("Main");
     public static void main(String[] args){
