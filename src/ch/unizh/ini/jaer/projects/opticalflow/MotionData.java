@@ -355,12 +355,6 @@ public abstract class MotionData implements Cloneable{
     }
 
 
-/** The serialized size in bytes of a MotionData instance */
-    public int getLoggedObjectSize(){
-        int size =4+4+8+3+chip.NUM_PIXELCHANNELS*4*(chip.getSizeX()*chip.getSizeY());
-        return size;
-    }
-
     
     public String toString(){
         return "MotionData sequenceNumber="+sequenceNumber+" timeCapturedMs="+timeCapturedMs;
@@ -395,7 +389,7 @@ public abstract class MotionData implements Cloneable{
         write2DArray(out,ph);
         write2DArray(out,ux);
         write2DArray(out,uy);
-        for(int i=0;i<chip.NUM_PIXELCHANNELS;i++){          //RetoCHANGED
+        for(int i=0;i<chip.MAX_NUM_PIXELCHANNELS;i++){          //RetoCHANGED
             write2DArray(out,rawDataPixel[i]);
         }
     }
@@ -412,7 +406,7 @@ public abstract class MotionData implements Cloneable{
         read2DArray(in,ph);
         read2DArray(in,ux);
         read2DArray(in,uy);
-        for(int i=0;i<chip.NUM_PIXELCHANNELS;i++){          //RetoCHANGED
+        for(int i=0;i<chip.MAX_NUM_PIXELCHANNELS;i++){          //RetoCHANGED
             read2DArray(in,rawDataPixel[i]);
         }
     }
@@ -434,6 +428,25 @@ public abstract class MotionData implements Cloneable{
             }
         }
     }
+
+    /** The serialized size in bytes of a MotionData instance */
+    public int getLoggedObjectSize(){
+        int size =4+4+8+3+chip.MAX_NUM_PIXELCHANNELS*4*(chip.getSizeX()*chip.getSizeY());
+        return size;
+    }
+//    out.writeInt(contents);<br>
+//        out.writeInt(sequenceNumber);<br>
+//        out.writeLong(timeCapturedMs);<br>
+//        out.writeFloat(globalX);<br>
+//        out.writeFloat(globalY);<br>
+//        write2DArray(out,ph);<br>
+//        write2DArray(out,ux);<br>
+//        write2DArray(out,uy);<br>
+//        write2DArray(out,rawDataPixel[chan0]<br>
+//        .
+//        .
+//        .
+//        write2DArray(out,rawDataPixel[chanN]<br>
 
 }
 

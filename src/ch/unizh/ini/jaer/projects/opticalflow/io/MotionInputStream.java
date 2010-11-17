@@ -72,7 +72,7 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
 //        }catch(IOException e){
 //            log.warning("couldn't read header");
 //        }
-        size=fileSize/motionData.OBJECT_SIZE;
+        size=fileSize/motionData.getLoggedObjectSize();
         dataInputStream=new DataInputStream(Channels.newInputStream(fileChannel));
         getSupport().firePropertyChange("position",0,position());
         position(1);
@@ -88,7 +88,7 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
     
     public int position() {
         try{
-            int p= (int)fileChannel.position()/motionData.OBJECT_SIZE;
+            int p= (int)fileChannel.position()/motionData.getLoggedObjectSize();
             return p;
         }catch(IOException e){
             e.printStackTrace();
@@ -98,7 +98,7 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
     
    public void position(int n) {
         try{
-            fileChannel.position(n*motionData.OBJECT_SIZE);
+            fileChannel.position(n*motionData.getLoggedObjectSize());
         }catch(IOException e){
             e.printStackTrace();
         }

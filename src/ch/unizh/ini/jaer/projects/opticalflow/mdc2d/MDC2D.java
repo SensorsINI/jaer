@@ -41,7 +41,7 @@ public class MDC2D extends Chip2DMotion {
         NUM_ROWS=20;
         NUM_COLUMNS=20;
         NUM_MOTION_PIXELS=NUM_COLUMNS*NUM_ROWS;
-        NUM_PIXELCHANNELS = 3; // number of channels read for each pixel
+        MAX_NUM_PIXELCHANNELS = 3; // number of channels read for each pixel
         NUM_GLOBALCHANNELS = 0;
         acquisitionMode=MotionDataMDC2D.PHOTO|MotionDataMDC2D.BIT5|MotionDataMDC2D.BIT6;
         dac=new DAC(16,12,0,5,VDD);

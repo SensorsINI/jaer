@@ -578,7 +578,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
                 posY=0;
                 float[][][] pixelRaw= motionBuf.getRawDataPixel();
                 while(i < count) {
-                    for(int j=0; j<motionBuf.chip.NUM_PIXELCHANNELS;j++){
+                    for(int j=0; j<motionBuf.chip.MAX_NUM_PIXELCHANNELS;j++){
                         pixelRaw[j][posY][posX] = chip.convert10bitToFloat(buf[i]);
                         i++;
                     }

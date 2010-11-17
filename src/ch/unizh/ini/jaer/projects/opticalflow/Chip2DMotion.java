@@ -23,7 +23,7 @@ public  abstract class Chip2DMotion extends Chip2D {
     public static int NUM_ROWS;
     public static int NUM_COLUMNS;
     public static int NUM_MOTION_PIXELS;
-    public static int NUM_PIXELCHANNELS; // number of channels read for each pixel
+    public static int MAX_NUM_PIXELCHANNELS; // number of channels read for each pixel
     public static int NUM_GLOBALCHANNELS; // number of global values read
     public static DAC dac;
     /** A "magic byte" marking the start of each frame */
@@ -52,7 +52,7 @@ public  abstract class Chip2DMotion extends Chip2D {
     }
 
     public int getNumberChannels(){
-        return NUM_PIXELCHANNELS;
+        return MAX_NUM_PIXELCHANNELS;
     }
 
     public int getNumberGlobals(){
