@@ -1288,6 +1288,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        volatile boolean renderImageEnabled=true;
         volatile boolean singleStepEnabled = false, doSingleStep = false;
         int numRawEvents, numFilteredEvents;
+//                volatile boolean rerenderFlagDone=false; // used by view loop to signal to other methods that it has finished a rendering. view loop sets this true after each loop.
 
         public ViewLoop (){
             super();
@@ -1302,7 +1303,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if ( isPaused() ){
                 renderer.setSubsamplingEnabled(false);
             }
-            renderer.render(packet);
+            if(!(renderer.isAccumulateEnabled() && isPaused())){
+                renderer.render(packet);
+            }
             if ( isPaused() ){
                 renderer.setSubsamplingEnabled(subsamplingEnabled);
             }
@@ -1726,6 +1729,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 renderCount++;
 
                 fpsDelay();
+//                rerenderFlagDone=true;
             } // end of run() loop - main loop of AEViewer.ViewLoop
 
             log.info("AEViewer.run(): stop=" + stop + " isInterrupted=" + isInterrupted());
@@ -1764,10 +1768,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         void fpsDelay (){
             if ( !isPaused() ){
                 getFrameRater().delayForDesiredFPS();
-            } else{
+            } else if(!interrupted()){
                 synchronized ( this ){ // reason for grabbing monitor is because if we are sliding the slider, we need to make sure we have control of the view loop
                     try{
-                        wait(100);
+                        wait(1000);
                     } catch ( java.lang.InterruptedException e ){
 //                        log.info("viewLoop idle wait() was interrupted: " + e.toString());
                     }
@@ -2113,6 +2117,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         // call this to delayForDesiredFPS enough to make the total time including last sample period equal to desiredPeriodMs
         final void delayForDesiredFPS (){
+            if(viewLoop.isInterrupted())return;
             delayMs = (int)Math.round(desiredPeriodMs - (float)lastdt / 1000000);
             if ( delayMs < 0 ){
                 delayMs = 1;
@@ -3786,6 +3791,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void viewSingleStepMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewSingleStepMenuItemActionPerformed
         jaerViewer.getSyncPlayer().doSingleStep();
+        viewLoop.interrupt();
     }//GEN-LAST:event_viewSingleStepMenuItemActionPerformed
 
     private void buildMonSeqMenu (){
@@ -4036,12 +4042,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     }//GEN-LAST:event_increaseFrameRateMenuItemActionPerformed
 
+
+
     private void decreaseContrastMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_decreaseContrastMenuItemActionPerformed
+//        if(viewLoop.rerenderFlagDone==false) return;
+//        viewLoop.rerenderFlagDone=false;
         renderer.setColorScale(renderer.getColorScale() + 1);
+//        System.out.println("interrupting viewloop");
+//        repaint();
+        viewLoop.interrupt();
     }//GEN-LAST:event_decreaseContrastMenuItemActionPerformed
 
     private void increaseContrastMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_increaseContrastMenuItemActionPerformed
+//        if(viewLoop.rerenderFlagDone==false) return;
+//        viewLoop.rerenderFlagDone=false;
         renderer.setColorScale(renderer.getColorScale() - 1);
+//        System.out.println("interrupting viewloop");
+        viewLoop.interrupt();
+//        repaint();
     }//GEN-LAST:event_increaseContrastMenuItemActionPerformed
 
     private void cycleColorRenderingMethodMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cycleColorRenderingMethodMenuItemActionPerformed

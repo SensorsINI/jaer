@@ -1,5 +1,6 @@
-package Jama;
-import Jama.util.*;
+package net.sf.jaer.util.jama;
+
+import net.sf.jaer.util.jama.util.Maths;
 
 /** QR Decomposition.
 <P>

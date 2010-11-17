@@ -12,7 +12,7 @@ package ch.unizh.ini.jaer.projects.opticalflow.MDC2D;
  *Copyright November 12, 2010 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 
-import Jama.Matrix;
+import net.sf.jaer.util.jama.Matrix;
 import ch.unizh.ini.jaer.projects.opticalflow.*;
 
 /**

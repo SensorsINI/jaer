@@ -1,4 +1,4 @@
-package Jama;
+package net.sf.jaer.util.jama;
 
    /** LU Decomposition.
    <P>

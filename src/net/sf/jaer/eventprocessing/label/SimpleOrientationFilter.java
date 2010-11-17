@@ -391,11 +391,11 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
         if ( enclosedFilter != null ){
             in = enclosedFilter.filterPacket(in);
         }
-
-        int n = in.getSize();
-        if ( n == 0 ){
-            return in;
-        }
+//
+//        int n = in.getSize();
+//        if ( n == 0 ){
+//            return in;
+//        }
 
         Class inputClass = in.getEventClass();
         if ( !( inputClass == PolarityEvent.class || inputClass == BinocularEvent.class ) ){
