@@ -8,7 +8,7 @@
 package ch.unizh.ini.jaer.projects.opticalflow.graphics;
 
 import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
-import ch.unizh.ini.jaer.projects.opticalflow.MDC2D.MDC2D;
+import ch.unizh.ini.jaer.projects.opticalflow.mdc2d2.MDC2D;
 import javax.swing.*;
 
 /**
