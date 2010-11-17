@@ -1,4 +1,4 @@
-package ch.unizh.ini.jaer.projects.opticalflow.motion18b;
+package ch.unizh.ini.jaer.projects.opticalflow.motion18;
 
 /*
  * MotionData.java

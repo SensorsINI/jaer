@@ -6,7 +6,7 @@
  *  Copyright T. Delbruck, Inst. of Neuroinformatics, 2010
  */
 
-package ch.unizh.ini.jaer.projects.opticalflow.mdc2d2;
+package ch.unizh.ini.jaer.projects.opticalflow.mdc2d;
 
 import ch.unizh.ini.jaer.projects.opticalflow.*;
 import ch.unizh.ini.jaer.projects.opticalflow.graphics.OpticalFlowDisplayMethod;

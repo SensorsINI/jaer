@@ -1,4 +1,4 @@
-package ch.unizh.ini.jaer.projects.opticalflow.mdc2d2;
+package ch.unizh.ini.jaer.projects.opticalflow.mdc2d;
 
 /*
  * MotionDataMDC2D.java

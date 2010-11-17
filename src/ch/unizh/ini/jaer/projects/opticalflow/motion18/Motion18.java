@@ -6,7 +6,7 @@
  *  Copyright T. Delbruck, Inst. of Neuroinformatics, 2006
  */
 
-package ch.unizh.ini.jaer.projects.opticalflow.motion18b;
+package ch.unizh.ini.jaer.projects.opticalflow.motion18;
 
 import ch.unizh.ini.jaer.projects.opticalflow.*;
 import net.sf.jaer.biasgen.*;

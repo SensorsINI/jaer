@@ -18,7 +18,7 @@ import net.sf.jaer.biasgen.VDAC.*;
 import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.util.*;
 import ch.unizh.ini.jaer.projects.opticalflow.*;
-import ch.unizh.ini.jaer.projects.opticalflow.mdc2d2.MDC2D.MDC2DBiasgen;
+import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D.MDC2DBiasgen;
 import ch.unizh.ini.jaer.projects.opticalflow.graphics.MotionViewer;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.PnPNotifyInterface;
