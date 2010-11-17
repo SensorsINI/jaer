@@ -24,7 +24,7 @@ import javax.swing.border.TitledBorder;
  */
 public class cDVSTest20ControlPanel extends javax.swing.JPanel {
 
-    static Logger log = Logger.getLogger("cDVSTest10ControlPanel");
+    static Logger log = Logger.getLogger("cDVSTest20ControlPanel");
     class OutputSelectionAction extends AbstractAction implements Observer {
 
         cDVSTest20.cDVSTestBiasgen.OutputMux mux;

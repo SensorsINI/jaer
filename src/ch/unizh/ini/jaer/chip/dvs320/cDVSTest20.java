@@ -53,8 +53,8 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
 
     /** Creates a new instance of cDVSTest10.  */
     public cDVSTest20() {
-        setName("cDVSTest10");
-        setSizeX(128);
+        setName("cDVSTest20");
+        setSizeX(140);
         setSizeY(64);
         setNumCellTypes(3); // two are polarity and last is intensity
         setPixelHeightUm(14.5f);
@@ -101,7 +101,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     public class cDVSTestExtractor extends RetinaExtractor {
 
 //        public static final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0x000,  YSHIFT = 12,  INTENSITYMASK = 0x40000;
-        public static final int XMASK = 0x0fe, XSHIFT = 1, YMASK = 0x3f000, YSHIFT = 12, INTENSITYMASK = 0x40000;
+        public static final int XMASK = 0x1fe, XSHIFT = 1, YMASK = 0x3f000, YSHIFT = 12, INTENSITYMASK = 0x40000;
         private int lastIntenTs = 0;
 
         public cDVSTestExtractor(cDVSTest20 chip) {
@@ -136,35 +136,37 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             OutputEventIterator outItr = out.outputIterator();
             for (int i = 0; i < n; i += skipBy) { // bug here
                 int addr = a[i];
-                if ((addr & INTENSITYMASK) != 0) {// intensity spike, along with regular spike, just add in intensity spike
+                if ((addr & INTENSITYMASK) != 0) {// intensity spike
                     int dt = timestamps[i] - lastIntenTs;
                     if (dt > 50) {
                         avdt = 0.2f * dt + 0.8f * avdt;
-                        setIntensity(50f / avdt); // ISI of this much gives intensity 1
+                        setIntensity(2000f / avdt); // ISI of this much gives intensity 1
                     }
                     lastIntenTs = timestamps[i];
+                    
 //                    PolarityEvent e = (PolarityEvent) outItr.nextOutput();
 //                    e.timestamp = (timestamps[i]);
 //                    e.type = 2;
-                }
-                PolarityEvent e = (PolarityEvent) outItr.nextOutput();
-                e.address = addr;
-                e.timestamp = (timestamps[i]);
-                e.x = (short) (((addr & XMASK) >>> XSHIFT));
-                if (e.x < 0) {
-                    e.x = 0;
-                } else if (e.x > 319) {
-                    //   e.x = 319; // TODO fix this artificial clamping of x address within space, masks symptoms
-                }
-                e.y = (short) ((addr & YMASK) >>> YSHIFT);
-                if (e.y > 239) {
+                } else {
+                    PolarityEvent e = (PolarityEvent) outItr.nextOutput();
+                    e.address = addr;
+                    e.timestamp = (timestamps[i]);
+                    e.x = (short) (((addr & XMASK) >>> XSHIFT));
+                    if (e.x < 0) {
+                        e.x = 0;
+                    } else if (e.x > 319) {
+                        //   e.x = 319; // TODO fix this artificial clamping of x address within space, masks symptoms
+                    }
+                    e.y = (short) ((addr & YMASK) >>> YSHIFT);
+                    if (e.y > 239) {
 //                    log.warning("e.y="+e.y);
-                    e.y = 239; // TODO fix this
-                } else if (e.y < 0) {
-                    e.y = 0; // TODO
+                        e.y = 239; // TODO fix this
+                    } else if (e.y < 0) {
+                        e.y = 0; // TODO
+                    }
+                    e.type = (byte) (addr & 1);
+                    e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
                 }
-                e.type = (byte) (addr & 1);
-                e.polarity = e.type == 1 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
             }
             return out;
         }
@@ -690,8 +692,12 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                 // we need to pad out to nbits worth of bytes 
                 int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 8->1, 9->2
                 byte[] bytes = new byte[nbytes];
-                System.arraycopy(byteArray, 0, bytes, 0, byteArray.length);
-//                System.out.println(String.format("%d bytes holding %d actual bits", bytes.length, nBits));
+                System.arraycopy(byteArray, 0, bytes, nbytes - byteArray.length, byteArray.length);
+                //System.out.println(String.format("%d bytes holding %d actual bits", bytes.length, nBits));
+//                for (int i=0;i<nbytes;i++)
+//                {
+//                  System.out.println("byte " + i + " : " + Integer.toHexString(bytes[i]));
+//                }
                 return bytes;
             }
 
@@ -707,22 +713,22 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                 dmuxes[4].setName("DigMux0");
 
                 for (int i = 0; i < 5; i++) {
-                    dmuxes[i].put(0, "RCarb");
-                    dmuxes[i].put(1, "FF2");
-                    dmuxes[i].put(2, "nArow");
-                    dmuxes[i].put(3, "RxcolG");
-                    dmuxes[i].put(4, "Rrow");
-                    dmuxes[i].put(5, "Rcol");
-                    dmuxes[i].put(6, "Acol");
-                    dmuxes[i].put(7, "FF1");
-                    dmuxes[i].put(8, "arbtopA");
-                    dmuxes[i].put(9, "arbtopR");
-                    dmuxes[i].put(10, "nRXon");
-                    dmuxes[i].put(11, "nAX0");
-                    dmuxes[i].put(12, "AY0");
-                    dmuxes[i].put(13, "nRY0");
-                    dmuxes[i].put(14, "nAxcolE");
-                    dmuxes[i].put(15, "nRxcolE");
+                    dmuxes[i].put(0, "nRxcolE");
+                    dmuxes[i].put(1, "nAxcolE");
+                    dmuxes[i].put(2, "nRY0");
+                    dmuxes[i].put(3, "AY0");
+                    dmuxes[i].put(4, "nAX0");
+                    dmuxes[i].put(5, "nRXon");
+                    dmuxes[i].put(6, "arbtopR");
+                    dmuxes[i].put(7, "arbtopA");
+                    dmuxes[i].put(8, "FF1");
+                    dmuxes[i].put(9, "Acol");
+                    dmuxes[i].put(10, "Rcol");
+                    dmuxes[i].put(11, "Rrow");
+                    dmuxes[i].put(12, "RxcolG");
+                    dmuxes[i].put(13, "nArow");
+                    dmuxes[i].put(14, "FF2");
+                    dmuxes[i].put(15, "RCarb");
                 }
 
 

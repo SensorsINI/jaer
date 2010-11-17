@@ -47,6 +47,39 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         super.sendBiasBytes(bytes);
     }
 
+        synchronized public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
+        //        System.out.println("BiasgenUSBInterface.setPowerDown("+powerDown+")");
+        //        if(!powerDown)
+        //            setPowerDownSingle(true);
+        setPowerDownSingle(powerDown);
+    }
+
+        synchronized private void setPowerDownSingle(final boolean powerDown) throws HardwareInterfaceException {
+
+        if(gUsbIo==null){
+            throw new RuntimeException("device must be opened before sending this vendor request");
+        }
+        USBIO_CLASS_OR_VENDOR_REQUEST vendorRequest=new USBIO_CLASS_OR_VENDOR_REQUEST();
+        int result;
+        //        System.out.println("sending bias bytes");
+        USBIO_DATA_BUFFER dataBuffer=new USBIO_DATA_BUFFER(0); // no data, control is in setupdat
+        vendorRequest.Request=VENDOR_REQUEST_SET_ARRAY_RESET;
+        vendorRequest.Type=UsbIoInterface.RequestTypeVendor;
+        vendorRequest.Recipient=UsbIoInterface.RecipientDevice;
+        vendorRequest.RequestTypeReservedBits=0;
+        vendorRequest.Index=0;  // meaningless for this request
+
+        vendorRequest.Value=(short)(powerDown?1:0);  // this is the request bit, if powerDown true, send value 1, false send value 0
+
+        dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
+        result=gUsbIo.classOrVendorOutRequest(dataBuffer,vendorRequest);
+        if(result!= de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_SUCCESS ){
+            throw new HardwareInterfaceException("setPowerDown: unable to send: "+gUsbIo.errorText(result));
+        }
+        HardwareInterfaceException.clearException();
+
+    }
+
     synchronized public void resetTimestamps() {
         log.info(this + ".resetTimestamps(): zeroing timestamps");
         int status = 0; // don't use global status in this function
@@ -269,8 +302,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         public RetinaAEReader(CypressFX2 cypress) throws HardwareInterfaceException {
             super(cypress);
         }
-        private int lasty = 0;
-        private int lastts = 0;
+
 
         /** Method to translate the UsbIoBuffer for the DVS320 sensor which uses the 32 bit address space.
          *<p>
@@ -323,7 +355,12 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
          *@see #translateEvents
          */
         static private final byte Xmask = (byte) 0x01;
-        static private final byte IntensityMask = (byte) 0x80;
+        static private final byte IntensityMask = (byte) 0x40;
+
+        private int lasty = 0;
+        private int currentts = 0;
+        private int lastts=0;
+        private int currentWrapAdd=0;
 
         protected void translateEvents(UsbIoBuf b) {
             try {
@@ -345,6 +382,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
                     int[] addresses = buffer.getAddresses();
                     int[] timestamps = buffer.getTimestamps();
+                    int xadd;
 //log.info("received " + bytesSent + " bytes");
                     // write the start of the packet
                     buffer.lastCaptureIndex = eventCounter;
@@ -362,10 +400,10 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
                                 } else {
                                     if ((buf[i + 1] & Xmask) == Xmask) ////  received an X address, write out event to addresses/timestamps output arrays
                                     { // x adddress
-                                        int xadd =  (buf[i] & 0xff);  //
+                                        xadd =  (buf[i] & 0xff);  //
                                         addresses[eventCounter] = (lasty << 12) | xadd;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
 
-                                        timestamps[eventCounter] = (TICK_US * (lastts + wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                                        timestamps[eventCounter] = (TICK_US * (currentts + currentWrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
 
                                         eventCounter++;
                                         //    log.info("received x address");
@@ -374,40 +412,36 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
                                     } else // y address
                                     {
                                        // lasty = (0xFF & buf[i]); //
-                                        if (gotY) {// TODO creates bogus event to see y without x. This should not normally occur.
-                                            addresses[eventCounter] = (lasty << 12) + (118 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
-                                            timestamps[eventCounter] = (TICK_US * (lastts + wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                                       if (gotY) {// TODO creates bogus event to see y without x. This should not normally occur.
+                                            addresses[eventCounter] = (lasty << 12) + (139 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
+                                            timestamps[eventCounter] = (TICK_US * (lastts + currentWrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
                                             eventCounter++;
-//                                            buffer.setNumEvents(eventCounter);
 //                                        //log.warning("received at least two Y addresses consecutively");
-                                        } //else
-//                                        { // this wold create events even for every y
-//                                            addresses[eventCounter] = (lasty << 12) + (329 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
-//                                            timestamps[eventCounter] = (TICK_US * (lastts + wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
-//                                            eventCounter++;
-//                                        }
+                                        } 
+
 
                                         if ((buf[i] & IntensityMask) != 0) // intensity spike
                                         {
                                             // log.info("received intensity bit");
                                             addresses[eventCounter] = 0x40000;
-                                            timestamps[eventCounter++] = (TICK_US * (lastts + wrapAdd));
+                                            timestamps[eventCounter++] = (TICK_US * (currentts + currentWrapAdd));
                                         }
 
                                         lasty = (0xFF & buf[i]); //
                                         gotY = true;
-//                                if (lasty>239) ///////debug
-//                                    lasty=239;
-//                                else if(lasty<0)
-//                                    lasty=0;
-//                                numberOfY++;
 
-                                    //  log.info("received y");
+                                        // creates bogus events for all row addreses at column 139 (outside array)
+//                                        addresses[eventCounter] = (lasty << 12) + (139 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
+//                                        timestamps[eventCounter] = (TICK_US * (currentts + wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+//                                        eventCounter++;
+
                                     }
                                 }
                                 break;
                             case 1: // timestamp
-                                lastts = ((0x3f & buf[i + 1]) << 8) | (buf[i] & 0xff);
+                                lastts=currentts;
+                                currentts = ((0x3f & buf[i + 1]) << 8) | (buf[i] & 0xff);
+                                currentWrapAdd= wrapAdd;
                        //           log.info("received timestamp");
                                 break;
                             case 2: // wrap

@@ -54,7 +54,7 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
     /** Creates a new instance of cDVSTest10.  */
     public cDVSTest10() {
         setName("cDVSTest10");
-        setSizeX(128);
+        setSizeX(140);
         setSizeY(64);
         setNumCellTypes(3); // two are polarity and last is intensity
         setPixelHeightUm(14.5f);
@@ -164,7 +164,7 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
                     e.y = 0; // TODO
                 }
                 e.type = (byte) (addr & 1);
-                e.polarity = e.type == 1 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
+                e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
             }
             return out;
         }
@@ -692,8 +692,12 @@ public class cDVSTest10 extends AERetina implements HasIntensity {
                 byte[] byteArray = bi.toByteArray(); // finds minimal set of bytes in big endian format, with MSB as first element
                 // we need to pad out to nbits worth of bytes 
                 int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 8->1, 9->2
+                if (nbytes < byteArray.length)
+                {
+                    nbytes=byteArray.length;
+                }
                 byte[] bytes = new byte[nbytes];
-                System.arraycopy(byteArray, 0, bytes, 0, byteArray.length);
+                System.arraycopy(byteArray, 0, bytes, nbytes - byteArray.length, byteArray.length);
 //                System.out.println(String.format("%d bytes holding %d actual bits", bytes.length, nBits));
                 return bytes;
             }
