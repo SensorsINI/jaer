@@ -50,7 +50,7 @@ public class GestureBFStereo extends GestureBF2D{
         autoLogoutTimer = new Timer(autoLogoutTimeMs, autoLogoutAction);
         
         // deactivates lower disparity limit
-        ((BlurringFilterStereoTracker) super.tracker).setEnableLowerDisparityLimit(false);
+        ((BlurringFilterStereoTracker) super.tracker).setEnableDisparityLimit(false);
         
         // releases maximum disparity change limit
 //        ((BlurringFilterStereoTracker) super.tracker).setMaxDisparityChangePixels(100);
@@ -95,7 +95,7 @@ public class GestureBFStereo extends GestureBF2D{
                     bmg = estimateGesture(path);
                     System.out.println("Best matching gesture is " + bmg);
 
-                    if(afterRecognitionProcess(bmg)){
+                    if(afterRecognitionProcess(bmg, path)){
                         endTimePrevGesture = endTimeGesture;
 
                         // starts or restarts the auto logout timer
@@ -113,21 +113,27 @@ public class GestureBFStereo extends GestureBF2D{
                 } else { // if the gesture recognition system is inactive, checks the start gesture only
                     if(detectStartingGesture(path)){
                         System.out.println("Gesture recognition system is enabled.");
-                        afterRecognitionProcess("Infinite");
+                        afterRecognitionProcess("Infinite", path);
                         endTimePrevGesture = endTimeGesture;
 
                         meanDisparityOfStartGesture = findMeanDisparity(path);
 
                         // set maximum disparity of the vergence filter based on mean disparity of the start gesture
-                        ((BlurringFilterStereoTracker) super.tracker).setLowerDisparityLimit(meanDisparityOfStartGesture-3);
-                        ((BlurringFilterStereoTracker) super.tracker).setEnableLowerDisparityLimit(true);
+                        BlurringFilterStereoTracker tmpTracker = (BlurringFilterStereoTracker) super.tracker;
+                        if(tmpTracker.getAutoThresholdSlope() >= 0){
+                            tmpTracker.setDisparityLimit(meanDisparityOfStartGesture-3, true);
+                        }else{
+                            tmpTracker.setDisparityLimit(meanDisparityOfStartGesture+3, false);
+                        }
+                        tmpTracker.setEnableDisparityLimit(true);
     //                    ((BlurringFilterStereoTracker) super.tracker).setMaxDisparityChangePixels(20);
 
                         // starts the auto logout timer
                         autoLogoutTimer.start();
 
                         pushDetected = false;
-                    }
+                    } else
+                        storePath(path);
                 }
             }
 
@@ -215,7 +221,7 @@ public class GestureBFStereo extends GestureBF2D{
         meanDisparityOfStartGesture = IDLE_STATE_DISPARITY;
 
         // deactivates lower disparity limit
-        ((BlurringFilterStereoTracker) super.tracker).setEnableLowerDisparityLimit(false);
+        ((BlurringFilterStereoTracker) super.tracker).setEnableDisparityLimit(false);
 
         // releases maximum disparity change limit
 //        ((BlurringFilterStereoTracker) super.tracker).setMaxDisparityChangePixels(100);
