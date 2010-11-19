@@ -154,6 +154,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
     }
 
+    @Override
     public void initFilter (){
         clusters.clear();
         clusterCounter = 0;
@@ -187,6 +188,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      * @param in
      * @return packet of BluringFilter2DTrackerEvent.
      */
+    @Override
     public EventPacket<?> filterPacket (EventPacket<?> in){
         if ( in == null ){
             return null;
@@ -583,6 +585,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * @return the velocityPPT in pixels per timestamp tick.
          * @see #getVelocityPPS()
          */
+        @Override
         public Point2D.Float getVelocityPPT (){
             return velocityPPT;
         }
@@ -607,6 +610,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          *
          * @return numEvents
          */
+        @Override
         public int getNumEvents (){
             return 1;
         }
@@ -615,6 +619,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * The "totalMP" of the cluster is the totalMP of the NeuronGroup of the BlurringFilter2D.
          * @return the totalMP
          */
+        @Override
         public float getMass (){
             return mass;
         }
@@ -623,6 +628,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          *
          * @return lastUpdateTimestamp
          */
+        @Override
         public int getLastEventTimestamp (){
             return lastUpdateTimestamp;
         }
@@ -771,6 +777,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          *
          * @return the maxRadius radius.
          */
+        @Override
         public float getRadius (){
             return maxRadius;
         }
@@ -843,6 +850,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          *
          * @return location
          */
+        @Override
         final public Point2D.Float getLocation (){
             return location;
         }
@@ -903,6 +911,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                     mass, ageUs, getLifetime());
         }
 
+        @Override
         public ArrayList<ClusterPathPoint> getPath (){
             return path;
         }
@@ -931,6 +940,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * @see #getVelocityPPT()
          *
          */
+        @Override
         public Point2D.Float getVelocityPPS (){
             return velocityPPS;
             /* old method for velocities estimation is as follows
@@ -945,6 +955,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          *
          * @return speed in pixels per second.
          */
+        @Override
         public float getSpeedPPS (){
             return (float)Math.sqrt(velocityPPS.x * velocityPPS.x + velocityPPS.y * velocityPPS.y);
         }
@@ -1004,6 +1015,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * So, the cluster is visible after it has been updated at least once after created.
          * @return true if the cluster age is greater than 1
          */
+        @Override
         public boolean isVisible (){
             if ( getAgeUs() > 0 ){
                 return true;
@@ -1191,6 +1203,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     /** returns clusters
      *
      */
+    @Override
     public java.util.List<Cluster> getClusters (){
         return clusters;
     }
@@ -1201,17 +1214,16 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      *@param channel the RGB channel number 0-2
      *@param brightness the brightness 0-1
      */
-    private final void colorPixel (final int x,final int y,final float[][][] fr,int channel,Color color){
+    private void colorPixel (final int x,final int y,final float[][][] fr,int channel,Color color){
         if ( y < 0 || y > fr.length - 1 || x < 0 || x > fr[0].length - 1 ){
             return;
         }
         float[] rgb = color.getRGBColorComponents(null);
         float[] f = fr[y][x];
-        for ( int i = 0 ; i < 3 ; i++ ){
-            f[i] = rgb[i];
-        }
+        System.arraycopy(rgb, 0, f, 0, 3);
     }
 
+    @Override
     public void resetFilter (){
         getEnclosedFilter().resetFilter();
         clusters.clear();
@@ -1243,6 +1255,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      * @param o
      * @param arg an UpdateMessage if caller is notify from EventFilter2D.
      */
+    @Override
     public void update (Observable o,Object arg){
         if ( o instanceof BlurringFilter2D ){
             NeuronGroup tmpNeuronGroup = null;
@@ -1294,9 +1307,9 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             }
 
             // Create cluster for the rest neuron groups
-            if ( ngCollection.size() != 0 ){
+            if ( !ngCollection.isEmpty() ){
                 if ( trackSingleCluster ){ // if we track only one cluster
-                    if(clusters.size() == 0){ // if tere is no cluster found, find the largest group for a new cluster
+                    if(clusters.isEmpty()){ // if tere is no cluster found, find the largest group for a new cluster
                         int maxSize = 0;
                         NeuronGroup maxGroup = null;
                         for ( NeuronGroup ng:ngCollection ){
@@ -1344,6 +1357,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         gl.glPopMatrix();
     }
 
+    @Override
     synchronized public void annotate (GLAutoDrawable drawable){
         if ( !isFilterEnabled() ){
             return;
