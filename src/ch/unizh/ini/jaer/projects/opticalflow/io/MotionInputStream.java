@@ -28,7 +28,7 @@ import java.util.logging.*;
 public class MotionInputStream extends DataInputStream implements InputDataFileInterface {
     
     private PropertyChangeSupport support=new PropertyChangeSupport(this);
-    static Logger log=Logger.getLogger("MotionInputStream");
+    static final Logger log=Logger.getLogger("MotionInputStream");
     private FileInputStream fileInputStream;
     private FileChannel fileChannel;
     private long fileSize=0; // in bytes
@@ -79,13 +79,16 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
     }
     
     
+    @Override
     public float getFractionalPosition() {
         return (float)position()/size;
     }
     
+    @Override
     public void mark() throws IOException {
     }
     
+    @Override
     public int position() {
         try{
             int p= (int)fileChannel.position()/motionData.getLoggedObjectSize();
@@ -96,6 +99,7 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
         }
     }
     
+    @Override
    public void position(int n) {
         try{
             fileChannel.position(n*motionData.getLoggedObjectSize());
@@ -116,10 +120,12 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
     }
     
     /** @return size of data file in MotionData units */
+    @Override
     public long size() {
         return size;
     }
     
+    @Override
     public void unmark() {
     }
     
