@@ -154,12 +154,12 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
     }
 
     /**
-     * sets the lower limit of disparity value
+     * sets the limit of disparity value
      *
-     * @param lowerDisparityLimit
+     * @param disparityLimit
      */
-    public void setLowerDisparityLimit(int lowerDisparityLimit){
-        ((BlurringFilterStereo) super.bfilter).setLowerDisparityLimit(lowerDisparityLimit);
+    public void setDisparityLimit(int disparityLimit, boolean useLowLimit){
+        ((BlurringFilterStereo) super.bfilter).setDisparityLimit(disparityLimit, useLowLimit);
     }
 
     /**
@@ -172,12 +172,12 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
     }
 
     /**
-     * activates or deactivates the lower disparity limit
+     * activates or deactivates the disparity limit
      *
-     * @param enableLowerDisparityLimit
+     * @param enableDisparityLimit
      */
-    public void setEnableLowerDisparityLimit(boolean enableLowerDisparityLimit){
-        ((BlurringFilterStereo) super.bfilter).setEnableLowerDisparityLimit(enableLowerDisparityLimit);
+    public void setEnableDisparityLimit(boolean enableDisparityLimit){
+        ((BlurringFilterStereo) super.bfilter).setEnableDisparityLimit(enableDisparityLimit);
     }
 
     /**

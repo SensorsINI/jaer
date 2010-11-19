@@ -258,11 +258,11 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         getPrefs().putFloat("BlurringFilterStereo.binocluarAssociationMassThreshold", binocluarAssociationMassThreshold);
     }
 
-    public void setLowerDisparityLimit(int lowerDisparityLimit){
-        svf.setLowerDisparityLimit(lowerDisparityLimit);
+    public void setDisparityLimit(int disparityLimit, boolean useLowLimit){
+        svf.setDisparityLimit(disparityLimit, useLowLimit);
     }
 
-    public void setEnableLowerDisparityLimit(boolean enableLowerDisparityLimit){
-        svf.setEnableLowerDisparityLimit(enableLowerDisparityLimit);
+    public void setEnableDisparityLimit(boolean enableDisparityLimit){
+        svf.setEnableDisparityLimit(enableDisparityLimit);
     }
 }

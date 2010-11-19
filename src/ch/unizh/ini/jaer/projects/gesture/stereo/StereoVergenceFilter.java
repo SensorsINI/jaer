@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.logging.Level;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
@@ -76,14 +77,15 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
     protected int deltaY;
 
     /**
-     * lower disparity limit
+     * disparity limit
      */
-    protected int lowerDisparityLimit = 0;
+    protected int disparityLimit = 0;
+    protected boolean useLowLimit = true; // low limit if true, high limit if false
 
     /**
      * if true, considers lowerDisparityLimit as the lower limit of the disparity
      */
-    protected boolean enableLowerDisparityLimit = false;
+    protected boolean enableDisparityLimit = false;
 
     /**
      *
@@ -114,7 +116,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
         if ( chip != null && chip instanceof StereoChipInterface ){
             this.stereoChip = (StereoChipInterface)chip;
         } else{
-            log.warning ("AEChip " + chip + " is not StereoChipInterface");
+            log.log (Level.WARNING, "AEChip {0} is not StereoChipInterface", chip);
         }
 
         // encloses a StereoTranslateRotate filter to adjust the offset of x-axis
@@ -283,6 +285,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
         return out;
     }
 
+    @Override
     public void update (Observable o,Object arg){
 /* // don't do this because it makes the stream consist of alternating eye buffers that can come out of temporal order for the events
  if ( o == getChip() && arg != null && arg instanceof HardwareInterface ){
@@ -322,10 +325,18 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
                 if(prevDisparity.get(i).getDisparity() == 0)
                     prevDisparity.get(i).setDisparity(disparityValues.get(i).getDisparity());
                 else{
+                    int tmpDisparity = disparityValues.get(i).getDisparity();
                     // checks lowerDisparityLimit
-                    int newDisparity = (int) ((prevDisparity.get(i).getDisparity()*decayRatio + disparityValues.get(i).getDisparity())/(1+decayRatio));
-                    if(enableLowerDisparityLimit && disparityValues.get(i).getDisparity() < lowerDisparityLimit)
-                        newDisparity = lowerDisparityLimit;
+                    if(enableDisparityLimit){
+                        if(useLowLimit){
+                            if(tmpDisparity < disparityLimit)
+                                tmpDisparity = disparityLimit;
+                        }else{
+                            if(tmpDisparity > disparityLimit)
+                                tmpDisparity = disparityLimit;
+                        }
+                    }
+                    int newDisparity = (int) ((prevDisparity.get(i).getDisparity()*decayRatio + tmpDisparity)/(1+decayRatio));
 
                     prevDisparity.get(i).setDisparity(newDisparity);
                 }
@@ -442,7 +453,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
             int maxPos = 0;
             int preDis = prevDisparity.get(numSectionsY).getDisparity();
 
-            if(leftGlobal.size() != 0 && rightGlobal.size() != 0){
+            if(!leftGlobal.isEmpty() && !rightGlobal.isEmpty()){
                 startDelay = findStartDelay(numSectionsY, negativeLimit);
                 endDelay = findEndDelay(numSectionsY, positiveLimit);
                 maxPos = findMaxXcorrDelay(startDelay, endDelay, leftGlobal, rightGlobal, XC_Threshold);
@@ -695,8 +706,8 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
             }
         }
 
-        enableLowerDisparityLimit = false;
-        lowerDisparityLimit = - (int) (size*maxDisparityFractionChipsizeX);
+        enableDisparityLimit = false;
+        disparityLimit = - (int) (size*maxDisparityFractionChipsizeX);
         prevTimestamp = -1;
         lastTimestamp = -1;
     }
@@ -755,6 +766,7 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
      * Renders the histograms and disparity values
      * @param drawable
      */
+    @Override
     public void annotate(GLAutoDrawable drawable) {
         if (  ! isFilterEnabled () || !showHistogram){
             return;
@@ -1066,32 +1078,41 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
      * @return
      */
     public boolean isEnableLowerDisparityLimit() {
-        return enableLowerDisparityLimit;
+        return enableDisparityLimit;
     }
 
     /**
-     * sets enableLowerDisparityLimit
-     * @param enableLowerDisparityLimit
+     * sets enableDisparityLimit
+     * @param enableDisparityLimit
      */
-    public void setEnableLowerDisparityLimit(boolean enableLowerDisparityLimit) {
-        this.enableLowerDisparityLimit = enableLowerDisparityLimit;
+    public void setEnableDisparityLimit(boolean enableDisparityLimit) {
+        this.enableDisparityLimit = enableDisparityLimit;
     }
 
     /**
-     * returns lowerDisparityLimit
+     * returns disparityLimit
      * @return
      */
-    public int getLowerDisparityLimit() {
-        return lowerDisparityLimit;
+    public int getDisparityLimit() {
+        return disparityLimit;
+    }
+
+    /**
+     * returns lowLimit
+     * @return
+     */
+    public boolean isLowLimit(){
+        return useLowLimit;
     }
 
     /**
      * sets lowerDisparityLimit
      *
-     * @param lowerDisparityLimit
+     * @param disparityLimit
      */
-    public void setLowerDisparityLimit(int lowerDisparityLimit) {
-        this.lowerDisparityLimit = lowerDisparityLimit;
+    public void setDisparityLimit(int disparityLimit, boolean useLowLimit) {
+        this.disparityLimit = disparityLimit;
+        this.useLowLimit = useLowLimit;
     }
 
 }
