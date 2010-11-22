@@ -30,8 +30,6 @@ public class Motion18 extends Chip2DMotion {
         NUM_ROWS=32;
         NUM_COLUMNS=32;
         NUM_MOTION_PIXELS=NUM_COLUMNS*NUM_ROWS;
-        MAX_NUM_PIXELCHANNELS=3;
-        NUM_GLOBALCHANNELS = 2;
         acquisitionMode=MotionData.GLOBAL_X|MotionData.GLOBAL_Y|MotionData.PHOTO|MotionData.UX|MotionData.UY;
         dac=new DAC(16,12,0,VDD,VDD);
         setBiasgen(new Motion18Biasgen(this, dac));

@@ -12,8 +12,6 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.usbinterface;
 
-import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
-import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D;
 import net.sf.jaer.hardwareinterface.*;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;

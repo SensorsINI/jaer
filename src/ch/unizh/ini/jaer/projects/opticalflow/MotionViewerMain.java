@@ -28,8 +28,8 @@ public class MotionViewerMain{
     static final Logger log=Logger.getLogger("Main");
     public static void main(String[] args){
         
-//      Motion18 chip=new Motion18();
-        MDC2D chip=new MDC2D();
+        Chip2DMotion chip=new Motion18();
+        chip=new MDC2D();
         MotionViewer viewer=new MotionViewer(chip);
         viewer.setVisible(true);
 

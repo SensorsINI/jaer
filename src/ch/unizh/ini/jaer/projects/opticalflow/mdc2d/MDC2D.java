@@ -9,12 +9,15 @@
 package ch.unizh.ini.jaer.projects.opticalflow.mdc2d;
 
 import ch.unizh.ini.jaer.projects.opticalflow.*;
+import ch.unizh.ini.jaer.projects.opticalflow.graphics.BiasgenPanelMDC2D;
 import ch.unizh.ini.jaer.projects.opticalflow.graphics.OpticalFlowDisplayMethod;
-import java.util.ArrayList;
 import java.util.Iterator;
+import javax.swing.JPanel;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.VDAC.*;
 import net.sf.jaer.chip.*;
+import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
  * Describes the MDC2D chip from Shih-Chii Liu and Alan Stocker
@@ -25,10 +28,13 @@ public class MDC2D extends Chip2DMotion {
 
     // the names of the optic flow methods. The String array must have the same
     // order as the numbering of the constants below
-    public static final String[] MOTIONMETHODLIST ={"Random","Normal Optic Flow","Srinivasan"};
-    public static final int RANDOM=0;
-    public static final int NORMAL_OPTICFLOW=1;
-    public static final int SRINIVASAN=2;
+    public static final String[] MOTIONMETHODLIST ={"Random","Normal Optic Flow","Srinivasan","Local Srinivasan","Time of Travel"};
+    public static final int     RANDOM=0;
+    public static final int     NORMAL_OPTICFLOW=1;
+    public static final int     SRINIVASAN=2;
+    public static final int     LOCAL_SRINIVASAN=3;
+    public static final int     TIME_OF_TRAVEL=4;
+ 
     private static int selectedMotionMethodIndex; // only provides a number. To set and interpret the number has to be done in the MotionData class
     private static int rawChannelUsedByMotionMethod;
 
@@ -41,9 +47,7 @@ public class MDC2D extends Chip2DMotion {
         NUM_ROWS=20;
         NUM_COLUMNS=20;
         NUM_MOTION_PIXELS=NUM_COLUMNS*NUM_ROWS;
-        MAX_NUM_PIXELCHANNELS = 3; // number of channels read for each pixel
-        NUM_GLOBALCHANNELS = 0;
-        acquisitionMode=MotionDataMDC2D.PHOTO|MotionDataMDC2D.BIT5|MotionDataMDC2D.BIT6;
+        acquisitionMode=MotionData.PHOTO|MotionData.BIT5|MotionData.BIT6;
         dac=new DAC(16,12,0,5,VDD);
         setBiasgen(new MDC2DBiasgen(this, dac));
         setSizeX(NUM_COLUMNS);
@@ -90,23 +94,26 @@ public class MDC2D extends Chip2DMotion {
     /** describes the biases on the chip */
     public class MDC2DBiasgen extends Biasgen{
 
-        public IPotArray ipots = new IPotArray(this);
+        public PotArray ipots = new IPotArray(this);
         public PotArray vpots = new PotArray(this);
 
+        Chip chipp;
 
-
-         private ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
-        /** The DAC on the board. Specified with 5V reference even though Vdd=3.3 because the internal 2.5V reference is used and so that the VPot controls display correct voltage. */
-// the DAC object here is actually 2 16-bit DACs daisy-chained on the Cochlea board; both corresponding values need to be sent to change one value
-
+         //private ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
+       
 
 
         
         public MDC2DBiasgen(Chip chip, DAC dac){
             super(chip);
+            chipp=chip;
             potArray = new IPotArray(this);  // create the appropriate PotArray
-            ipots=(IPotArray)potArray; // temporary.   //RetoTODO: remove if t works otherwise
-            vpots=potArray;
+//            ipots=(IPotArray)potArray; // temporary.   //RetoTODO: remove if t works otherwise
+//            vpots=potArray;
+
+            ipots=new IPotArray(this);
+            vpots=new PotArray(this);
+            potArray=vpots;
 
 
             // create the appropriate PotArray
@@ -145,22 +152,48 @@ public class MDC2D extends Chip2DMotion {
             ipots.addPot(new IPot(this,"refposDAC",           0xe,Pot.Type.NORMAL,Pot.Sex.na,1,    15,"description"));
         }
 
-        public IPotArray getPotArray(){
-            return (IPotArray)this.potArray;
+        @Override
+        public PotArray getPotArray(){
+            return this.potArray;
         }
+
+
+
 
         public Iterator getShiftRegisterIterator(){
             return ((IPotArray)potArray).getShiftRegisterIterator();
         }
-        //returns the number of different biases. Note in this class it is only half
-        // the number of pots since two of them code for the same bias. One controls
-        // the onchip, the other the offchip biasgenerator.
+
         public int getNumPots(){
-            return potArray.getNumPots()/2;
+            return potArray.getNumPots();
         }
 
         public void setPotArray(PotArray set){
-            potArray= set;}
+            potArray= set;
+        }
+
+
+        @Override
+        public JPanel buildControlPanel (){
+        startBatchEdit();
+        BiasgenFrame frame = null;
+        if ( chipp instanceof AEChip ){
+            AEViewer viewer = ( (AEChip)chipp ).getAeViewer();
+            if ( viewer != null ){
+                frame = viewer.getBiasgenFrame();
+            } else{
+                log.warning("no BiasgenFrame to build biasgen control panel for");
+                return null;
+            }
+        }
+        JPanel panel = new BiasgenPanelMDC2D(this,frame);    /// makes a panel for the pots and populates it, the frame handles undo support
+        try{
+            endBatchEdit();
+        } catch ( HardwareInterfaceException e ){
+            log.warning(e.toString());
+        }
+        return panel;
+    }
     }
  
 }

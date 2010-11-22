@@ -101,8 +101,11 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
      */
     public SiLabsC8051F320_OpticalFlowHardwareInterface(int n) {
         interfaceNumber=n;
-        this.chip=chip;
         captureMode=chip.getCaptureMode();
+    }
+
+    public void setChip(Chip2DMotion chip){
+                this.chip=chip;
     }
     
 //    public void startMotionUsbThread() {
@@ -511,15 +514,11 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
             if(buf==null || buf.length!=usbBuf.BytesTransferred*2){
                 buf= new int[usbBuf.BytesTransferred * 2];
             }
-            float[][][] rawData = motionBuf.getRawDataPixel();
             int count = 0;
             int i=0;
-            byte bitBuf=0; //for byte unpacking
             byte bitOffset=0; //for byte unpacking
             int a, b=0; //for byte unpacking
             int posX=0, posY=0;
-            boolean hasGlobalX, hasGlobalY, hasLocalX, hasLocalY, hasLocalPh, hasLmc1, hasLmc2, hasBit7;
-            int[] globalChannels;
             byte packetDescriptor = usbBuf.BufferMem[1];
             
             try{
@@ -564,7 +563,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
                  * globalRaw array of MotionData
                  */
                 float[]globalRaw = motionBuf.getRawDataGlobal();
-                for(int j=0; j<motionBuf.chip.NUM_GLOBALCHANNELS;j++){
+                for(int j=0; j<motionBuf.getNumGlobalChannels();j++){
                     globalRaw[i]=chip.convert10bitToFloat(buf[i]);
                     i++;
                 }
@@ -578,15 +577,15 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
                 posY=0;
                 float[][][] pixelRaw= motionBuf.getRawDataPixel();
                 while(i < count) {
-                    for(int j=0; j<motionBuf.chip.MAX_NUM_PIXELCHANNELS;j++){
+                    for(int j=0; j<motionBuf.getNumLocalChannels();j++){
                         pixelRaw[j][posY][posX] = chip.convert10bitToFloat(buf[i]);
                         i++;
                     }
                     posX++;
-                    if(posX==Chip2DMotion.NUM_COLUMNS) {
+                    if(posX==chip.NUM_COLUMNS) {
                         posX=0;
                         posY++;
-                        if(posY==Chip2DMotion.NUM_ROWS && i < count )
+                        if(posY==chip.NUM_ROWS && i < count )
                             log.warning("position y too big while unpacking");
                     }
                 }
@@ -646,6 +645,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     /** sends the pot values, but uses a local cache to only send those values that have changed
      * @param biasgen the biasgen we are sending for
      */
+    @Override
     public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         PotArray potArray=biasgen.getPotArray();
         if(potValues==null){
@@ -665,29 +665,29 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
             }
         }
 
-        //RetoTODO: clean up here
-        // now send biases to the onChip biasgenerator
-        //try{
-           /* byte[] bytes = new byte[1 + biasgen.getNumPots() *
-                                    potArray.getPots().get(potArray.getNumPots()).getNumBytes()];
-            */
-            byte[] bytes = new byte[15*3];
-            for(int i=0;i<15*3;i++){bytes[i]=(byte)0xFF;}// get the number of bytes. getNumBytes must be called for one of the Ipots!
-       //     int ind = 0;
-        IPotArray a =((MDC2DBiasgen)biasgen).getPotArray();
-        //Iterator itr=a.getShiftRegisterIterator();
-              //Iterator itr = (((MDC2DBiasgen)biasgen).getIPotArray()).getShiftRegisterIterator();
-////            while (itr.hasNext()) {
-////                IPot p = (IPot) itr.next(); // iterates in order of shiftregister index
-////                byte[] b = p.getBinaryRepresentation();
-////                System.arraycopy(b, 0, bytes, ind, b.length);
-////                ind += b.length;
-////            }
-            USBIO_DATA_BUFFER dataBuffer=new USBIO_DATA_BUFFER(bytes.length);
-            System.arraycopy(bytes, 0, dataBuffer.Buffer(), 0, bytes.length);
-            int ind=3*15;
-           //sendVendorRequest(VENDOR_REQUEST_SEND_ONCHIP_BIAS, (short)ind, (short)0, dataBuffer ); // the usual packing of ipots
-        //} catch(Exception e) {}
+//        //RetoTODO: clean up here
+//        // now send biases to the onChip biasgenerator
+//        //try{
+//           /* byte[] bytes = new byte[1 + biasgen.getNumPots() *
+//                                    potArray.getPots().get(potArray.getNumPots()).getNumBytes()];
+//            */
+//            byte[] bytes = new byte[15*3];
+//            for(int i=0;i<15*3;i++){bytes[i]=(byte)0xFF;}// get the number of bytes. getNumBytes must be called for one of the Ipots!
+//       //     int ind = 0;
+//        IPotArray a =((MDC2DBiasgen)biasgen).getPotArray();
+//        //Iterator itr=a.getShiftRegisterIterator();
+//              //Iterator itr = (((MDC2DBiasgen)biasgen).getIPotArray()).getShiftRegisterIterator();
+//////            while (itr.hasNext()) {
+//////                IPot p = (IPot) itr.next(); // iterates in order of shiftregister index
+//////                byte[] b = p.getBinaryRepresentation();
+//////                System.arraycopy(b, 0, bytes, ind, b.length);
+//////                ind += b.length;
+//////            }
+//            USBIO_DATA_BUFFER dataBuffer=new USBIO_DATA_BUFFER(bytes.length);
+//            System.arraycopy(bytes, 0, dataBuffer.Buffer(), 0, bytes.length);
+//            int ind=3*15;
+//           //sendVendorRequest(VENDOR_REQUEST_SEND_ONCHIP_BIAS, (short)ind, (short)0, dataBuffer ); // the usual packing of ipots
+//        //} catch(Exception e) {}
 
                     
     }

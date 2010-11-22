@@ -32,7 +32,7 @@ public abstract class MotionData implements Cloneable{
                             UY=0x10,
                             BIT5=0x20,
                             BIT6=0x40,
-                            BIT7=0x80;  // not defined in the moment
+                            BIT7=0x80;  
 
     /** the resolution of the SiLabs_8051F320 ADC */
     public static final int ADC_RESOLUTION_BITS=10;
@@ -61,7 +61,7 @@ public abstract class MotionData implements Cloneable{
     protected float minph, maxph, minux, maxux, minuy, maxuy;
 
     // a Chip2DMotion object of the current chip type
-    public static Chip2DMotion chip;
+    public Chip2DMotion chip;
 
     // contains the last few MotionData acquired
     protected MotionData[] pastMotionData;
@@ -79,8 +79,9 @@ public abstract class MotionData implements Cloneable{
     public MotionData(Chip2DMotion chip) {
         globalX=0; globalY=0;
         this.chip = chip;
-        rawDataPixel = new float[chip.getNumberChannels()][chip.getSizeX()][chip.getSizeY()];
-        rawDataGlobal = new float[chip.getNumberGlobals()];
+        contents=chip.getCaptureMode();
+        rawDataPixel = new float[this.getNumLocalChannels()][chip.getSizeX()][chip.getSizeY()];
+        rawDataGlobal = new float[getNumGlobalChannels()];
         ph=new float[chip.getSizeX()][chip.getSizeY()];
         ux=new float[chip.getSizeX()][chip.getSizeY()];
         uy=new float[chip.getSizeX()][chip.getSizeY()];
@@ -120,7 +121,7 @@ public abstract class MotionData implements Cloneable{
      */
 
     /** @return total number of independent data */
-    final  static public int getLength(){
+    final  public int getLength(){
         return 3*(1+chip.getSizeX()*chip.getSizeY());
     }
 
@@ -205,6 +206,23 @@ public abstract class MotionData implements Cloneable{
     //get the array of pastMotionData.
     public MotionData[] getPastMotionData(){
         return this.pastMotionData;
+    }
+
+    //get the number of global channels. This is computed by analizing the frame
+    //descriptor
+    public int getNumGlobalChannels(){
+        int numGlob = contents & GLOBAL_X + (contents & GLOBAL_Y)>>1; // first two bits(from LSB) are
+        return numGlob;
+    }
+
+    //get the number of local channels. Analize framedescriptor
+    public int getNumLocalChannels(){
+        int numLoc = 0;
+        int f = contents&0xFC;
+        for(int i=0;i<8;i++){
+            numLoc += (f>>i)&0x01;
+        }
+        return numLoc;
     }
 
 
@@ -389,7 +407,9 @@ public abstract class MotionData implements Cloneable{
         write2DArray(out,ph);
         write2DArray(out,ux);
         write2DArray(out,uy);
-        for(int i=0;i<chip.MAX_NUM_PIXELCHANNELS;i++){          //RetoCHANGED
+        int a=getNumLocalChannels();
+        for(int i=0;i<getNumLocalChannels();i++){  //RetoTODO fix
+
             write2DArray(out,rawDataPixel[i]);
         }
     }
@@ -406,7 +426,7 @@ public abstract class MotionData implements Cloneable{
         read2DArray(in,ph);
         read2DArray(in,ux);
         read2DArray(in,uy);
-        for(int i=0;i<chip.MAX_NUM_PIXELCHANNELS;i++){          //RetoCHANGED
+        for(int i=0;i<getNumLocalChannels();i++){
             read2DArray(in,rawDataPixel[i]);
         }
     }
@@ -431,22 +451,16 @@ public abstract class MotionData implements Cloneable{
 
     /** The serialized size in bytes of a MotionData instance */
     public int getLoggedObjectSize(){
-        int size =4+4+8+3+chip.MAX_NUM_PIXELCHANNELS*4*(chip.getSizeX()*chip.getSizeY());
+        int size =      4  //contents
+                      + 4   //float sequenceNumber
+                      + 8  //long timecaptured
+                      + 4 * getNumGlobalChannels()     // float is 32bit (4byte)
+                      + 4 * 3 // ph,ux,uy
+                      + 4 * getNumLocalChannels()* (chip.getSizeX()*chip.getSizeY()) ; // 2D float arrays for each channel
+
+                    //4+8+3+chip.MAX_NUM_PIXELCHANNELS*4*(chip.getSizeX()*chip.getSizeY());
         return size;
     }
-//    out.writeInt(contents);<br>
-//        out.writeInt(sequenceNumber);<br>
-//        out.writeLong(timeCapturedMs);<br>
-//        out.writeFloat(globalX);<br>
-//        out.writeFloat(globalY);<br>
-//        write2DArray(out,ph);<br>
-//        write2DArray(out,ux);<br>
-//        write2DArray(out,uy);<br>
-//        write2DArray(out,rawDataPixel[chan0]<br>
-//        .
-//        .
-//        .
-//        write2DArray(out,rawDataPixel[chanN]<br>
 
 }
 

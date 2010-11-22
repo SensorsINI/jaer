@@ -23,8 +23,6 @@ public  abstract class Chip2DMotion extends Chip2D {
     public static int NUM_ROWS;
     public static int NUM_COLUMNS;
     public static int NUM_MOTION_PIXELS;
-    public static int MAX_NUM_PIXELCHANNELS; // number of channels read for each pixel
-    public static int NUM_GLOBALCHANNELS; // number of global values read
     public static DAC dac;
     /** A "magic byte" marking the start of each frame */
     public static final byte FRAME_START_MARKER = (byte)0xac;
@@ -33,6 +31,7 @@ public  abstract class Chip2DMotion extends Chip2D {
     /** can be used to hold reference to last motion data */
     public MotionData lastMotionData=null;
     public ChipCanvas[]canvasArray;
+
 
 
     public  Chip2DMotion() {
@@ -51,13 +50,6 @@ public  abstract class Chip2DMotion extends Chip2D {
         return acquisitionMode;
     }
 
-    public int getNumberChannels(){
-        return MAX_NUM_PIXELCHANNELS;
-    }
-
-    public int getNumberGlobals(){
-        return NUM_GLOBALCHANNELS;
-    }
 
     
     //Method to get a empty motionData object

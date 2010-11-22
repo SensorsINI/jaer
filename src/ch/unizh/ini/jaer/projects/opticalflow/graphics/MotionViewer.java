@@ -7,6 +7,7 @@
 package ch.unizh.ini.jaer.projects.opticalflow.graphics;
 
 import ch.unizh.ini.jaer.projects.opticalflow.*;
+import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.chip.*;
@@ -216,6 +217,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         // add the panel below the chip for controlling display of the chip (gain and offset values for rendered photoreceptor and motion vectors)
         JPanel cp=new OpticalFlowDisplayControlPanel((OpticalFlowDisplayMethod)chip.getCanvas().getDisplayMethod(), chip);
         imagePanel.add(cp,BorderLayout.SOUTH);
+        
         viewMenu.invalidate();
         
         validate();
@@ -409,14 +411,16 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         try{
             hardware=(SiLabsC8051F320_OpticalFlowHardwareInterface)OpticalFlowHardwareInterfaceFactory.instance().getFirstAvailableInterface();
             hardware.open();
+            hardware.setChip(chip);
             chip.setHardwareInterface(hardware);
+
             
             if(hardware==null) {
                 fixLoggingControls();
                 fixBiasgenControls();
                 return;
             }
-//            hardware.setChip(chip);
+
             fixLoggingControls();
             fixBiasgenControls();
             // note it is important that this openHardware succeeed BEFORE hardware is assigned to biasgen, which immeiately tries to openHardware and download biases, creating a storm of complaints if not sucessful!
@@ -1843,11 +1847,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
                 
             }
         });
-//        if("MDC2D".equals(this.chip.CHIPNAME)){  //RetoTODO delete if not used
-//            JFrame biasWindow=new MDC2DBiasgenWindow();
-//            biasWindow.setVisible(yes);
-//
-//        }
+        
     }
     
     synchronized public void toggleLogging(){
