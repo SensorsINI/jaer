@@ -99,7 +99,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
     /**
      * time duration limit between 'SlashDown' and 'SlashUp' to make a valid 'Check' gesture
      */
-    private static int checkActivationTimeUs = 200000;
+    private static int checkActivationTimeUs = 400000;
 
     /**
      * previous path
@@ -298,75 +298,35 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
      * @return
      */
     protected boolean detectStartingGesture(ArrayList<ClusterPathPoint> path){
-        String bmg = getBestmatchingGesture(path, 0);
         boolean ret = false;
+        String bmg = estimateGesture(path);
 
-        if(bmg != null && bmg.startsWith("Infinite")){
-            ret = true;
-        } else {
-            if(bmg != null && (bmg.startsWith("CW") || bmg.startsWith("CCW"))){
-                if(prevPath != null)
-                    ret = tryGestureWithPrevPath(path, "Infinite", checkActivationTimeUs);
+        if(bmg != null){
+            if(bmg.startsWith("Infinite")){
+                ret = true;
+            } else if (bmg.startsWith("CW") || bmg.startsWith("CCW")) {
+              if(prevPath != null)
+                  ret = tryGestureWithPrevPath(path, 0, "Infinite", checkActivationTimeUs);
             } else {
-                double pathLength = FeatureExtraction.calTrajectoryLength(path);
-                if(!ret){
-                    for(int i = 1; i <= 2 ; i++){
-                        for(int j = 0; j<=1; j++){
-                            // retries with the head trimming if failed
-                            ArrayList<ClusterPathPoint> trimmedPath = trajectoryTrimming(path, j*headTrimmingPercents/2, j*tailTrimmingPercents, pathLength);
-                            if(trimmedPath.size() >= numPointsThreshold && checkSpeedCriterion(trimmedPath)){
-                                bmg = getBestmatchingGesture(trimmedPath, -200 + ((i-1)*2+j+1)*100);
-                            } else
-                                break;
 
-                            if(bmg != null){
-                                if(bmg.startsWith("Infinite")){
-                                    ret = true;
-                                    break;
-                                } else if (bmg.startsWith("CW") || bmg.startsWith("CCW")){
-                                    break;
-                                }  else {
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
 
-        // to detect broken infinite shaped gestures
-        if(!ret && prevPath != null && bmg != null && (bmg.startsWith("CW") || bmg.startsWith("CCW"))){
-            ret = tryGestureWithPrevPath(path, "Infinite", checkActivationTimeUs);
-        }
-
         return ret;
     }
 
-    /**
-     * returns true if the given trajectory matches to the starting gesture (ie. 'Infinite' shape)
-     *
-     * @param path
-     * @return
-     */
-    private Boolean tryStartingGesture(ArrayList<ClusterPathPoint> path){
-        Boolean ret = false;
 
-        String bmg = getBestmatchingGesture(path, 0);
-        if(bmg != null && bmg.startsWith("Infinite"))
-            ret = true;
-
-        return ret;
-    }
-
-    public boolean tryGestureWithPrevPath(ArrayList<ClusterPathPoint> path, String gestureName, int timeDiffTolerenceUs){
+    public boolean tryGestureWithPrevPath(ArrayList<ClusterPathPoint> path, int prevPathTrimmingPercent, String gestureName, int timeDiffTolerenceUs){
         boolean ret = false;
         if(prevPath != null){
 
             if((startTimeGesture - ((ClusterPathPoint)prevPath.get(prevPath.size()-1)).t) > timeDiffTolerenceUs)
                 return false;
 
-            prevPath.addAll(path);
-            String bmg = getBestmatchingGesture(prevPath, 0);
+            ArrayList<ClusterPathPoint> trimmedPath = trajectoryTrimming(prevPath, prevPathTrimmingPercent, 0, FeatureExtraction.calTrajectoryLength(prevPath));
+
+            trimmedPath.addAll(path);
+            String bmg = getBestmatchingGesture(trimmedPath, 0);
             if(bmg != null && bmg.startsWith(gestureName))
                 ret = true;
         }
@@ -383,9 +343,10 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
      */
     protected String estimateGesture(ArrayList<ClusterPathPoint> path){
         String bmg = getBestmatchingGesture(path, -200);
-        double pathLength = FeatureExtraction.calTrajectoryLength(path);
 
         if(bmg == null){
+            double pathLength = FeatureExtraction.calTrajectoryLength(path);
+            
             for(int i = 1; i <= 2 ; i++){
                 for(int j = 0; j<=1; j++){
                     // retries with the head trimming if failed
@@ -455,7 +416,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
             } else if(bmg.startsWith("Push")){
                 doPush();
             } else if(bmg.startsWith("SlashUp")){
-                ret = doSlashUp();
+                ret = doSlashUp(path);
             } else {
                 if(bmg.startsWith("SlashDown")){
                     doSlashDown();
@@ -1372,29 +1333,25 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
 //        hmmDP.putImage(imgPush);
     }
 
-    protected boolean doSlashUp(){
+    protected boolean doSlashUp(ArrayList<ClusterPathPoint> path){
         boolean ret = true;
 
+        // checks over-segmentation
         if(!checkActivated && prevPath != null){
-            System.out.print("Check the previous trajectory ---> ");
-            ArrayList<ClusterPathPoint> trimmedPath = trajectoryTrimming(prevPath, 60, 10, FeatureExtraction.calTrajectoryLength(prevPath));
-            String bmg = getBestmatchingGesture(trimmedPath, 0);
-            if(bmg != null){
-                if(bmg.startsWith("SlashDown")){
-                    System.out.println("SlashDown");
-                    checkActivated = true;
-                    endTimePrevGesture = prevPath.get(prevPath.size()-1).t;
-                }
+            System.out.print("Check the previous segment ---> ");
+
+            if(tryGestureWithPrevPath(path, 60, "Check", checkActivationTimeUs))
+            {
+                System.out.println("Check");
+                checkActivated = true;
             } else {
                 System.out.println("null");
                 ret = false;
             }
         }
-        
-        if(checkActivated && startTimeGesture <= endTimePrevGesture + checkActivationTimeUs)
+
+        if(ret && checkActivated)
             hmmDP.putImage(imgCheck);
-        else
-            ret = false;
 
         checkActivated = false;
 
@@ -1407,7 +1364,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
 
     protected void doCW(ArrayList<ClusterPathPoint> path){
         // to detect broken infinite shaped gestures
-        if(tryGestureWithPrevPath(path, "Infinite", checkActivationTimeUs)){
+        if(tryGestureWithPrevPath(path, 0, "Infinite", checkActivationTimeUs)){
             System.out.println("----> might be an infinite-shaped gesture");
             doLogout();
         } else
@@ -1416,7 +1373,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
 
     protected void doCCW(ArrayList<ClusterPathPoint> path){
         // to detect broken infinite shaped gestures
-        if(tryGestureWithPrevPath(path, "Infinite", checkActivationTimeUs)){
+        if(tryGestureWithPrevPath(path, 0, "Infinite", checkActivationTimeUs)){
             System.out.println("----> might be an infinite-shaped gesture");
             doLogout();
         } else
