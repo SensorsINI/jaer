@@ -68,6 +68,7 @@ public class BadRetKicker extends EventFilter2D {
      * @param noActivityKickDelayMs the noActivityKickDelayMs to set
      */
     public void setNoActivityKickDelayMs(int noActivityKickDelayMs) {
+        if(noActivityKickDelayMs<1)noActivityKickDelayMs=1;  // bound at 1 since Timer throws Exception otherwise
         this.noActivityKickDelayMs = noActivityKickDelayMs;
     }
 
