@@ -479,7 +479,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
     private void biasTextFieldKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_biasTextFieldKeyPressed
         int code = evt.getKeyCode();
         boolean shifted = evt.isShiftDown();
-        final float byRatio = 1.1f;
+        final float byRatio = 1.02f;
         if (code == KeyEvent.VK_UP) {
             startEdit();
             if (shifted) {
@@ -566,7 +566,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
         //        System.out.println("value field key pressed");
         int code = evt.getKeyCode();
         boolean shifted = evt.isShiftDown();
-        float byRatio = 1.1f;
+        float byRatio = 1.02f;
         if (code == KeyEvent.VK_UP) {
             startEdit();
             if (shifted) {

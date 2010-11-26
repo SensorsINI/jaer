@@ -352,6 +352,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         Object oldData[]=elementData;
         elementData=(E[]) new BasicEvent[ncapacity];
         System.arraycopy(oldData, 0, elementData, 0, size);
+        oldData=null;
         // capacity still is old capacity and we have already filled it to there with new events, now fill
         // in up to new capacity with new events
         fillWithDefaultEvents(capacity, ncapacity);

@@ -219,7 +219,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
         private ConfigurableIPotRev0 pcas, diffOn, diffOff, diff, red, blue, amp;
         private ConfigurableIPotRev0 refr, pr, foll;
-        cDVSTest10ControlPanel controlPanel;
+        cDVSTest20ControlPanel controlPanel;
         AllMuxes allMuxes = new AllMuxes(); // the output muxes
         private ShiftedSourceBias ssn, ssp, ssnMid, sspMid;
         private ShiftedSourceBias[] ssBiases = new ShiftedSourceBias[4];
