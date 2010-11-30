@@ -76,6 +76,7 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
         dataInputStream=new DataInputStream(Channels.newInputStream(fileChannel));
         getSupport().firePropertyChange("position",0,position());
         position(1);
+
     }
     
     

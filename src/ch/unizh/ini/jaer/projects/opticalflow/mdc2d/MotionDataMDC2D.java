@@ -65,7 +65,8 @@ public class MotionDataMDC2D extends MotionData {
         switch(algorithm){
             case MDC2D.NORMAL_OPTICFLOW: //gradientBasedMethod
                 this.calculateMotion_gradientBased(); // calculates the localU using a gradient based method
-                this.localUxUy_filterByCorrelation(0); // filter local motion. average correlation of the pixel and its neighbors must be >(limit). (limit)=0.5 means that the pixel output has in average a 60deg angle to its neighbors
+//                this.localUxUy_filterByCorrelation(0); // filter local motion. average correlation of the pixel and its neighbors must be >(limit). (limit)=0.5 means that the pixel output has in average a 60deg angle to its neighbors
+//                this.localUxUy_spatialAverage();
                 this.localUxUy_temporalAverage(3); //temporal average over (num)) frames for local Motion
                 this.globalUxUy_averageLocal(); // average the local motion to get the global one
                 this.globalUxUy_temporalAverage(2); //averages global motion over (num) frames
@@ -87,7 +88,7 @@ public class MotionDataMDC2D extends MotionData {
             case MDC2D.TIME_OF_TRAVEL:
                 float thresholdContrast=thresh/100; // the miminum contrast between two pixels to be recognized by the algorithm
                 float matchContrast=match/100; //the maximum allowed difference in contrast between two frames to recognize it as the same feature
-                this.calculateMotion_timeOfTravel(thresholdContrast,matchContrast); //calculate the local motion with a time to travel algorithm
+                this.calculateMotion_timeOfTravel_absValue(thresholdContrast,matchContrast); //calculate the local motion with a time to travel algorithm
                 this.globalUxUy_averageLocal(); //get global motion
                 this.globalUxUy_temporalAverage(5); //averages global motion over (num) frames
                 break;
@@ -179,29 +180,60 @@ public class MotionDataMDC2D extends MotionData {
      * The algorithm computes a global motion.
      */
     protected void calculateMotion_srinivasan(){
+        float phi =45;
+        phi=(float) Math.toRadians(phi);
         float[][] raw=this.extractRawChannel(channel);
         float[][] past=this.getPastMotionData()[0].extractRawChannel(channel);
-        Matrix A = new Matrix(new double[2][2]);
-        Matrix b = new Matrix(new double[2][1]);
-        float a11=0, a12=0;
-        float a21=0, a22=0;
-        float b1=0,  b2=0;
-        for(int x=1; x< chip.NUM_COLUMNS-1;x++){ //leave out border pixel
-            for(int y=1; y< chip.NUM_ROWS-1; y++){ //leave out border pixel
-                a11 += (past[y][x-1] - past[y][x+1])* (past[y][x-1] - past[y][x+1]);
-                a12 += (past[y-1][x]- past[y+1][x]) * (past[y][x-1] - past[y][x+1]);
-                a21 += (past[y-1][x]- past[y+1][x]) * (past[y][x-1] - past[y][x+1]);
-                a22 += (past[y-1][x]- past[y+1][x]) * (past[y-1][x]- past[y+1][x]);
-                b1  += 2 * (raw[y][x]- past[y][x])  * (past[y][x-1] - past[y][x+1]);
-                b2  += 2 * (raw[y][x]- past[y][x])  * (past[y-1][x] - past[y+1][x]);
+        Matrix A = new Matrix(new double[3][3]);
+        Matrix b = new Matrix(new double[3][1]);
+        float a11=0, a12=0, a13=0;
+        float a21=0, a22=0, a23=0;
+        float a31=0, a32=0, a33=0;
+        float b1=0,  b2=0, b3=0;
+        float f1, f2, f3, f4, f5, f6;
+        double xprime,yprime;
+        try{
+            for(int x=1; x< chip.NUM_COLUMNS-1;x++){ //leave out border pixel
+                for(int y=1; y< chip.NUM_ROWS-1; y++){ //leave out border pixel
+                    f1=past[y][x+1];
+                    f2=past[y][x-1];
+                    f3=past[y+1][x];
+                    f4=past[y-1][x];
+                    xprime=x*Math.cos(phi)+y*Math.sin(phi);
+                    yprime=x*Math.sin(phi)+y*Math.cos(phi);
+//                    f5=past[(int)(yprime)][xprime];
+                    xprime=x*Math.cos(-phi)+y*Math.sin(-phi);
+                    yprime=x*Math.sin(-phi)+y*Math.cos(-phi);
+//                    f6=past[yprime][xprime];
+                    a11 += (f2 - f1) * (f2 - f1);
+                    a12 += (f4 - f3) * (f2 - f1);
+//                    a13 += (f6 - f5) * (f2 - f1);
+
+                    a21 += (f4 - f3) * (f2 - f1);
+                    a22 += (f4 - f3) * (f4 - f3);
+//                    a23 += (f6 - f5) * (f4 - f3);
+
+//                    a31 += (f2 - f1) * (f6 - f5);
+//                    a32 += (f4 - f3) * (f6 - f5);
+//                    a33 += (f6 - f5) * (f6 - f5);
+
+//                    b1  += 2 * (raw[y][x]- past[y][x])  * (f2 - f1);
+//                    b2  += 2 * (raw[y][x]- past[y][x])  * (f4 - f3);
+//                    b3  += 2 * (raw[y][x]- past[y][x])  * (f6 - f5);
+                }
             }
+        } catch(ArrayIndexOutOfBoundsException e){
+            System.out.println(e);//dont do anything for the moment
         }
-        A.set(0, 0, a11);
-        A.set(0, 1, a12);
-        A.set(1, 0, a21);
-        A.set(1, 1, a22);
-        b.set(0, 0, b1);
-        b.set(1, 0, b2);
+//        A.set(0, 0, a11);   A.set(0, 1, a12);    A.set(0, 2, a13);
+//        A.set(1, 0, a21);   A.set(1, 1, a22);    A.set(1, 2, a23);
+//        A.set(2, 0, a31);   A.set(2, 1, a32);    A.set(2, 2, a33);
+//        b.set(0, 0, b1);
+//        b.set(1, 0, b2);
+//        b.set(2, 0, b3);
+
+
+
         
         long dt=getTimeCapturedMs()-getPastMotionData()[0].getTimeCapturedMs();
 
@@ -284,7 +316,7 @@ public class MotionDataMDC2D extends MotionData {
                     }
                 } catch (Exception e) {
                     ; //if matrix equation doesnt have solution. set the local motion to 0: This is already done and thus not neccessary
-                    System.out.println("Matrix decomposition failed. No global motion vector computed");
+                    System.out.println("Matrix decomposition failed. ");
                 }
             }
         }
@@ -296,7 +328,7 @@ public class MotionDataMDC2D extends MotionData {
      * motion. Channel is only lmc1 since this is a amplified and differentiated version
      * of the photoreceptor stage. Its feature is a high reaction to spatial contrasts.
      */
-    protected void calculateMotion_timeOfTravel(float thresholdPercentage, float contrastMatch){
+    protected void calculateMotion_timeOfTravel_absValue(float thresholdPercentage, float contrastMatch){
         numLocalToAverageForGlobal=chip.NUM_MOTION_PIXELS;
         int ttChannel=1;//use the lmc1 channel for this method.
         int numPastFrame=5;
@@ -711,6 +743,44 @@ public class MotionDataMDC2D extends MotionData {
         }
     }
 
+
+    /**
+     * Goes through the ux and uy arrays simultaniously. At each pixel it computes
+     * average of the pixel itself and its 8 neighbors. The average is the value
+     * assigned for the pixel in the center.
+     */
+    protected void localUxUy_spatialAverage(){
+        numLocalToAverageForGlobal=chip.NUM_MOTION_PIXELS; //when averaging the default number of valid pixels is all of them
+        
+        //copy the array. Necessary because the original one is altered and later computations mustnt be influenced by earlier ones
+        //but must be done with the original data
+        float[][]copyux=new float[chip.NUM_COLUMNS][chip.NUM_ROWS],copyuy = new float[chip.NUM_COLUMNS][chip.NUM_ROWS];
+        for(int i=0;i<chip.NUM_COLUMNS;i++){
+            for(int j=0;j<chip.NUM_ROWS;j++){
+                copyux[j][i]=ux[j][i];
+                copyuy[j][i]=uy[j][i];
+            }
+        }
+        //go through the picture. Compute the average of 3x3 region
+        for(int i=0; i< chip.NUM_COLUMNS;i++){
+            for(int j=0; j< chip.NUM_ROWS; j++){
+                //at the borders comparing 8neigbors is not possible. set invalid
+                if(i==0||j==0||i==chip.NUM_COLUMNS-1||j==chip.NUM_ROWS-1){
+                    pixel_setInvalid(j,i);
+                } else{
+                    ux[j][i]=0;
+                    for(int v=-1;v<=1;v++){
+                        for(int w=-1;w<=1;w++){
+                            ux[j][i]+=copyux[j+v][i+w];
+                            uy[j][i]+=copyuy[j+v][i+w];
+                        }
+                    }
+                    ux[j][i]/=9;
+                    uy[j][i]/=9;
+                }
+            }
+        }
+    }
 
 
 

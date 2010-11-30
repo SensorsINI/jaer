@@ -51,24 +51,27 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     /**OpticalFlowBoard Product ID */
     static public final short PID=(short)0x8760; ///
     
-    final static short CONFIG_INDEX                       = 0;
-    final static short CONFIG_NB_OF_INTERFACES            = 1;
-    final static short CONFIG_INTERFACE                   = 0;
-    final static short CONFIG_ALT_SETTING                 = 0;
-    final static int CONFIG_TRAN_SIZE                     = 64;
+    public final static short CONFIG_INDEX                       = 0;
+    public final static short CONFIG_NB_OF_INTERFACES            = 1;
+    public final static short CONFIG_INTERFACE                   = 0;
+    public final static short CONFIG_ALT_SETTING                 = 0;
+    public final static int CONFIG_TRAN_SIZE                     = 64;
     
-    final static byte ENDPOINT_OUT=(byte)0x02;
-    final static byte ENDPOINT_IN =(byte)0x81; /// code taken from firmware
+    public final static byte ENDPOINT_OUT=(byte)0x02;
+    public final static byte ENDPOINT_IN =(byte)0x81; /// code taken from firmware
     
     // the vender request cmd bytes that specify the type of command
-    final static byte VENDOR_REQUEST_START_STREAMING=0x1a;
-    final static byte VENDOR_REQUEST_STOP_STREAMING=0x1b;
-    final static byte VENDOR_REQUEST_SEND_BIASES=0x1c;
-    final static byte VENDOR_REQUEST_SEND_BIAS=0x1f;
-    final static byte VENDOR_REQUEST_SET_DATA_TO_SEND=0x1d;
-    final static byte VENDOR_REQUEST_REQUEST_FRAME=0x1e;
-    final static byte VENDOR_REQUEST_SEND_ONCHIP_BIAS=0x20;
-    final static byte VENDOR_REQUEST_SET_POWERDOWN_STATE = 0x21;
+    public final static byte VENDOR_REQUEST_START_STREAMING=0x1a;
+    public final static byte VENDOR_REQUEST_STOP_STREAMING=0x1b;
+    public final static byte VENDOR_REQUEST_SEND_BIASES=0x1c;
+    public final static byte VENDOR_REQUEST_SEND_BIAS=0x1f;
+    public final static byte VENDOR_REQUEST_SET_DATA_TO_SEND=0x1d;
+    public final static byte VENDOR_REQUEST_REQUEST_FRAME=0x1e;
+    public final static byte VENDOR_REQUEST_SEND_ONCHIP_BIAS=0x20;
+    public final static byte VENDOR_REQUEST_SET_POWERDOWN_STATE = 0x21;
+    public final static byte VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D=0x22;
+
+
 
 
     PnPNotify pnp=null;
@@ -259,46 +262,6 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
         
         // get device descriptor
         status = gUsbIo.getDeviceDescriptor(deviceDescriptor);
-//        if (status != USBIO_ERR_SUCCESS) {
-//            UsbIo.destroyDeviceList(gDevList);
-//            throw new HardwareInterfaceException("getDeviceDescriptor: "+UsbIo.errorText(status));
-//        } else {
-//            log.info("getDeviceDescriptor: Vendor ID (VID) "
-//                    + HexString.toString((short)deviceDescriptor.idVendor)
-//                    + " Product ID (PID) " + HexString.toString((short)deviceDescriptor.idProduct));
-//        }
-        
-//        if (deviceDescriptor.iSerialNumber!=0)
-//            this.numberOfStringDescriptors=3;
-//
-//        // get string descriptor
-//        status = gUsbIo.getStringDescriptor(stringDescriptor1,(byte)1,0);
-//        if (status != USBIO_ERR_SUCCESS) {
-//            UsbIo.destroyDeviceList(gDevList);
-//            throw new HardwareInterfaceException("getStringDescriptor: "+UsbIo.errorText(status));
-//        } else {
-//            log.info("getStringDescriptor 1: " + stringDescriptor1.Str);
-//        }
-        
-//        // get string descriptor
-//        status = gUsbIo.getStringDescriptor(stringDescriptor2,(byte)2,0);
-//        if (status != USBIO_ERR_SUCCESS) {
-//            UsbIo.destroyDeviceList(gDevList);
-//            throw new HardwareInterfaceException("getStringDescriptor: "+UsbIo.errorText(status));
-//        } else {
-//            log.info("getStringDescriptor 2: " + stringDescriptor2.Str);
-//        }
-        
-//        if (this.numberOfStringDescriptors==3) {
-//            // get serial number string descriptor
-//            status = gUsbIo.getStringDescriptor(stringDescriptor3,(byte)3,0);
-//            if (status != USBIO_ERR_SUCCESS) {
-//                UsbIo.destroyDeviceList(gDevList);
-//                throw new HardwareInterfaceException("getStringDescriptor: "+UsbIo.errorText(status));
-//            } else {
-//                log.info("getStringDescriptor 3: " + stringDescriptor3.Str);
-//            }
-//        }
         
        isOpened=true;
 
@@ -598,11 +561,13 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
         }
         
         
+        @Override
         public void bufErrorHandler(UsbIoBuf usbIoBuf) {
             log.warning("bufferError: "+UsbIo.errorText(usbIoBuf.Status));
             SiLabsC8051F320_OpticalFlowHardwareInterface.this.close();
         }
         
+        @Override
         public void onThreadExit() {
             try{
                 sendVendorRequest(VENDOR_REQUEST_STOP_STREAMING, (short)0, (short)0);
@@ -621,6 +586,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
      * @return MotionData for one frame
      @throws TimeOutException when request for exchange with Reader thread times out. Timeout duration is set by DATA_TIMEOUT_MS.
      */
+    @Override
     public MotionData getData() throws java.util.concurrent.TimeoutException {
         try{ 
             currentBuffer=exchanger.exchange(currentBuffer,DATA_TIMEOUT_MS,TimeUnit.MILLISECONDS);
@@ -632,6 +598,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
         }
     }
     
+    @Override
     public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
         int pd;
         if(powerDown){
@@ -663,33 +630,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
                 potValues[chan]=vpot.getBitValue();
                 log.info("sent pot value "+vpot.getBitValue()+" for channel "+chan);
             }
-        }
-
-//        //RetoTODO: clean up here
-//        // now send biases to the onChip biasgenerator
-//        //try{
-//           /* byte[] bytes = new byte[1 + biasgen.getNumPots() *
-//                                    potArray.getPots().get(potArray.getNumPots()).getNumBytes()];
-//            */
-//            byte[] bytes = new byte[15*3];
-//            for(int i=0;i<15*3;i++){bytes[i]=(byte)0xFF;}// get the number of bytes. getNumBytes must be called for one of the Ipots!
-//       //     int ind = 0;
-//        IPotArray a =((MDC2DBiasgen)biasgen).getPotArray();
-//        //Iterator itr=a.getShiftRegisterIterator();
-//              //Iterator itr = (((MDC2DBiasgen)biasgen).getIPotArray()).getShiftRegisterIterator();
-//////            while (itr.hasNext()) {
-//////                IPot p = (IPot) itr.next(); // iterates in order of shiftregister index
-//////                byte[] b = p.getBinaryRepresentation();
-//////                System.arraycopy(b, 0, bytes, ind, b.length);
-//////                ind += b.length;
-//////            }
-//            USBIO_DATA_BUFFER dataBuffer=new USBIO_DATA_BUFFER(bytes.length);
-//            System.arraycopy(bytes, 0, dataBuffer.Buffer(), 0, bytes.length);
-//            int ind=3*15;
-//           //sendVendorRequest(VENDOR_REQUEST_SEND_ONCHIP_BIAS, (short)ind, (short)0, dataBuffer ); // the usual packing of ipots
-//        //} catch(Exception e) {}
-
-                    
+        }           
     }
     
     public void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {

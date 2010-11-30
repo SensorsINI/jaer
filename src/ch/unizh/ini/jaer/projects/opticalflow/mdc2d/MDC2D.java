@@ -11,13 +11,20 @@ package ch.unizh.ini.jaer.projects.opticalflow.mdc2d;
 import ch.unizh.ini.jaer.projects.opticalflow.*;
 import ch.unizh.ini.jaer.projects.opticalflow.graphics.BiasgenPanelMDC2D;
 import ch.unizh.ini.jaer.projects.opticalflow.graphics.OpticalFlowDisplayMethod;
+import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.SiLabsC8051F320_OpticalFlowHardwareInterface;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Observable;
+import java.util.prefs.PreferenceChangeEvent;
+import java.util.prefs.PreferenceChangeListener;
 import javax.swing.JPanel;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.VDAC.*;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.util.RemoteControlCommand;
+import net.sf.jaer.util.RemoteControlled;
 
 /**
  * Describes the MDC2D chip from Shih-Chii Liu and Alan Stocker
@@ -37,6 +44,7 @@ public class MDC2D extends Chip2DMotion {
  
     private static int selectedMotionMethodIndex; // only provides a number. To set and interpret the number has to be done in the MotionData class
     private static int rawChannelUsedByMotionMethod;
+    private byte controlRegisterOnChipBiasGen=0x1;
 
 
     
@@ -47,7 +55,7 @@ public class MDC2D extends Chip2DMotion {
         NUM_ROWS=20;
         NUM_COLUMNS=20;
         NUM_MOTION_PIXELS=NUM_COLUMNS*NUM_ROWS;
-        acquisitionMode=MotionData.PHOTO|MotionData.BIT5|MotionData.BIT6;
+        acquisitionMode=MotionData.PHOTO|MotionData.BIT5|MotionData.BIT6|MotionData.BIT7;
         dac=new DAC(16,12,0,5,VDD);
         setBiasgen(new MDC2DBiasgen(this, dac));
         setSizeX(NUM_COLUMNS);
@@ -86,35 +94,33 @@ public class MDC2D extends Chip2DMotion {
      * @param value the 10 bit value.
      * @return the float value, ranges from 0 to 1023/1024 inclusive.
      */
+    @Override
     public float convert10bitToFloat(int value) {
         return (float)value/1023;
     }
     
  
     /** describes the biases on the chip */
-    public class MDC2DBiasgen extends Biasgen{
+    public class MDC2DBiasgen extends Biasgen implements ChipControlPanel{
 
         public PotArray ipots = new IPotArray(this);
         public PotArray vpots = new PotArray(this);
+        public int[] potValues;
 
         Chip chipp;
 
-         //private ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
-       
-
-
-        
         public MDC2DBiasgen(Chip chip, DAC dac){
             super(chip);
             chipp=chip;
-            potArray = new IPotArray(this);  // create the appropriate PotArray
-//            ipots=(IPotArray)potArray; // temporary.   //RetoTODO: remove if t works otherwise
-//            vpots=potArray;
 
+            //RetoTODO clean up here
+            bufferIPot.addObserver(this);
+
+            potArray = new IPotArray(this);  // create the appropriate PotArray
             ipots=new IPotArray(this);
             vpots=new PotArray(this);
-            potArray=vpots;
 
+            potArray=vpots;
 
             // create the appropriate PotArray
             vpots.addPot(new VPot(MDC2D.this, "VRegRefBiasAmp", dac, 0, Pot.Type.NORMAL, Pot.Sex.P, 1,       16, "sets bias of feedback follower in srcbias"));
@@ -135,65 +141,272 @@ public class MDC2D extends Chip2DMotion {
 
 
             //ipotArray = new IPotArray(this); //construct IPotArray whit shift register stuff
-            ipots.addPot(new IPot(this, "VRegRefBiasAmp", 0, IPot.Type.NORMAL, Pot.Sex.P, 1,       1, "sets bias of feedback follower in srcbias"));
-            ipots.addPot(new IPot(this,"VRegRefBiasMain",      1,Pot.Type.NORMAL,Pot.Sex.P,1,      2,"sets bias of pfet which sets ref to srcbias"));
-            ipots.addPot(new IPot(this,"VprBias",              2,Pot.Type.NORMAL,Pot.Sex.P,1,      3,"bias current for pr"));
-            ipots.addPot(new IPot(this,"Vlmcfb",               3,Pot.Type.NORMAL,Pot.Sex.N,1,      4,"bias current for diffosor"));
-            ipots.addPot(new IPot(this,"Vprbuff",              4,Pot.Type.NORMAL,Pot.Sex.P,1,      5,"bias current for pr scr foll to lmc1"));
-            ipots.addPot(new IPot(this,"Vprlmcbias",           5,Pot.Type.NORMAL,Pot.Sex.P,1,      6,"bias current for lmc1"));
-            ipots.addPot(new IPot(this,"Vlmcbuff",             6,Pot.Type.NORMAL,Pot.Sex.P,1,      7,"bias current for lmc2"));
-            ipots.addPot(new IPot(this,"Screfpix",            7,Pot.Type.NORMAL,Pot.Sex.N,1,       8,"sets scr bias for lmc2"));
-            ipots.addPot(new IPot(this,"FollBias",            8,Pot.Type.NORMAL,Pot.Sex.N,1,       9,"sets bias for follower in pads"));
-            ipots.addPot(new IPot(this,"Vpscrcfbias",          9,Pot.Type.NORMAL,Pot.Sex.P,1,      10,"sets bias for ptype src foll in scanner readout"));
-            ipots.addPot(new IPot(this,"VADCbias",             0xa,Pot.Type.NORMAL,Pot.Sex.P,1,    11,"sets bias current for comperator in ADC"));
-            ipots.addPot(new IPot(this,"Vrefminbias",          0xb,Pot.Type.NORMAL,Pot.Sex.N,1,    12,"sets bias for Srcrefmin follower from resis divider"));
-            ipots.addPot(new IPot(this,"Srcrefmin",           0xc,Pot.Type.NORMAL,Pot.Sex.P,1,     13,"sets half Vdd for ADC"));
-            ipots.addPot(new IPot(this,"refnegDAC",           0xd,Pot.Type.NORMAL,Pot.Sex.na,1,    14,"description"));
-            ipots.addPot(new IPot(this,"refposDAC",           0xe,Pot.Type.NORMAL,Pot.Sex.na,1,    15,"description"));
-        }
-
-        @Override
-        public PotArray getPotArray(){
-            return this.potArray;
-        }
+            ipots.addPot(new IPot(this, "VRegRefBiasAmp", 0, IPot.Type.NORMAL, Pot.Sex.P, 1,       0, "sets bias of feedback follower in srcbias"));
+            ipots.addPot(new IPot(this,"Vrefminbias",          1,Pot.Type.NORMAL,Pot.Sex.N,1,    1,"sets bias for Srcrefmin follower from resis divider"));
+            ipots.addPot(new IPot(this,"VprBias",              2,Pot.Type.NORMAL,Pot.Sex.P,1,      2,"bias current for pr"));
+            ipots.addPot(new IPot(this,"VRegRefBiasMain",      3,Pot.Type.NORMAL,Pot.Sex.P,1,      3,"sets bias of pfet which sets ref to srcbias"));
+            ipots.addPot(new IPot(this,"Vlmcfb",               4,Pot.Type.NORMAL,Pot.Sex.N,1,      4,"bias current for diffosor"));
+            ipots.addPot(new IPot(this,"Vlmcbuff",             5,Pot.Type.NORMAL,Pot.Sex.P,1,      5,"bias current for lmc2"));
+            ipots.addPot(new IPot(this,"VADCbias",             6,Pot.Type.NORMAL,Pot.Sex.P,1,    6,"sets bias current for comperator in ADC"));
+            ipots.addPot(new IPot(this,"FollBias",            7,Pot.Type.NORMAL,Pot.Sex.N,1,       7,"sets bias for follower in pads"));
+            ipots.addPot(new IPot(this,"Vpscrcfbias",          8,Pot.Type.NORMAL,Pot.Sex.P,1,      8,"sets bias for ptype src foll in scanner readout"));
+            ipots.addPot(new IPot(this,"NOT USED",           9,Pot.Type.NORMAL,Pot.Sex.P,1,     9,"not used. Any value will do"));
+            ipots.addPot(new IPot(this,"Vprlmcbias",           0xa,Pot.Type.NORMAL,Pot.Sex.P,1,      0xa,"bias current for lmc1"));
+            ipots.addPot(new IPot(this,"Vprbuff",              0xb,Pot.Type.NORMAL,Pot.Sex.P,1,      0xb,"bias current for pr scr foll to lmc1"));
+   }
 
 
 
 
         public Iterator getShiftRegisterIterator(){
-            return ((IPotArray)potArray).getShiftRegisterIterator();
-        }
-
-        public int getNumPots(){
-            return potArray.getNumPots();
-        }
-
-        public void setPotArray(PotArray set){
-            potArray= set;
+            return ((IPotArray)ipots).getShiftRegisterIterator();
         }
 
 
         @Override
         public JPanel buildControlPanel (){
-        startBatchEdit();
-        BiasgenFrame frame = null;
-        if ( chipp instanceof AEChip ){
-            AEViewer viewer = ( (AEChip)chipp ).getAeViewer();
-            if ( viewer != null ){
-                frame = viewer.getBiasgenFrame();
-            } else{
-                log.warning("no BiasgenFrame to build biasgen control panel for");
-                return null;
+            startBatchEdit();
+            BiasgenFrame frame = null;
+            if ( chipp instanceof AEChip ){
+                AEViewer viewer = ( (AEChip)chipp ).getAeViewer();
+                if ( viewer != null ){
+                    frame = viewer.getBiasgenFrame();
+                } else{
+                    log.warning("no BiasgenFrame to build biasgen control panel for");
+                    return null;
+                }
+            }
+            JPanel panel = new BiasgenPanelMDC2D(this,frame);    /// makes a panel for the pots and populates it, the frame handles undo support
+            try{
+                endBatchEdit();
+            } catch ( HardwareInterfaceException e ){
+                log.warning(e.toString());
+            }
+            return panel;
+        }
+        
+
+        @Override
+        public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
+            int pd;
+            if(powerDown){
+                pd=1;
+            }else{
+                pd=0;
+            }
+            ((SiLabsC8051F320_OpticalFlowHardwareInterface)hardwareInterface).sendVendorRequest(((SiLabsC8051F320_OpticalFlowHardwareInterface)hardwareInterface).VENDOR_REQUEST_SET_POWERDOWN_STATE, (short)pd, (short)0);
+        }
+
+
+        private ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
+        BufferIPot bufferIPot = new BufferIPot();
+
+        /** The central point for communication with HW from biasgen. All objects in Biasgen are Observables
+        and add Biasgen.this as Observer. They then call notifyObservers when their state changes.
+         * @param observable IPot, Scanner, etc
+         * @param object not used at present
+         */
+        @Override
+        synchronized public void update(Observable observable, Object object) {  // thread safe to ensure gui cannot retrigger this while it is sending something
+//            log.info(observable + " sent " + object);
+            if (this.hardwareInterface == null) {
+                return;
+            }
+            try {
+                if (observable instanceof IPot || observable instanceof BufferIPot) { // must send all IPot values and set the select to the ipot shift register, this is done by the cypress
+
+                    if(potValues==null){
+                        potValues=new int[38];
+                        for(int i=0;i<potValues.length;i++){
+                            potValues[i]=-1; // init values to value that will generate a vendor request for it automatically.
+                        }
+                    }
+                    for(short i=0;i<ipots.getNumPots();i++){
+                        IPot ipot=(IPot)ipots.getPotByNumber(i);
+                        int chan=ipot.getShiftRegisterNumber();
+                        if(potValues[chan]!=ipot.getBitValue()){
+                            // new value or not sent yet, send it
+                            potValues[chan]=ipot.getBitValue();
+                            byte[] bin =ipot.getBinaryRepresentation();
+
+                            byte request=((SiLabsC8051F320_OpticalFlowHardwareInterface)hardwareInterface).VENDOR_REQUEST_SEND_ONCHIP_BIAS;
+                            short value = (short)(((chan<<8)&0xFF00)| ((bin[0])&0x00FF));
+                            short index = (short)(((bin[1]<<8)&0xFF00) | (bin[2]&0x00FF));
+                            try{
+                                ((SiLabsC8051F320_OpticalFlowHardwareInterface)hardwareInterface).sendVendorRequest(request, value,index);//value, index);
+                            }catch(HardwareInterfaceException e){
+                                 System.out.println(e);
+                            }
+                            log.info("sent pot value "+ipot.getBitValue()+" for channel "+chan);
+                        }
+                    }
+                } else if (observable instanceof VPot) {
+                    // There are 2 16-bit AD5391 DACs daisy chained; we need to send data for both
+                    // to change one of them. We can send all zero bytes to the one we're not changing and it will not affect any channel
+                    // on that DAC. We also take responsibility to formatting all the bytes here so that they can just be piped out
+                    // surrounded by nSync low during the 48 bit write on the controller.
+                    this.hardwareInterface.sendConfiguration(this);
+                }
+                else {
+                    super.update(observable, object);  // super (Biasgen) handles others, e.g. maasterbias
+                }
+            } catch (HardwareInterfaceException e) {
+                log.warning(e.toString());
             }
         }
-        JPanel panel = new BiasgenPanelMDC2D(this,frame);    /// makes a panel for the pots and populates it, the frame handles undo support
-        try{
-            endBatchEdit();
-        } catch ( HardwareInterfaceException e ){
-            log.warning(e.toString());
+
+
+
+
+
+
+//        public PropertyChangeSupport getSupport() {
+//            return support;
+//        }
+        class BufferIPot extends Observable implements RemoteControlled, PreferenceChangeListener, HasPreference {
+
+            final int max = 63; // 8 bits
+            private volatile int value;
+            private final String key = "CochleaAMS1b.Biasgen.BufferIPot.value";
+
+            BufferIPot() {
+                if (getRemoteControl() != null) {
+                    getRemoteControl().addCommandListener(this, "setbufferbias bitvalue", "Sets the buffer bias value");
+                }
+                loadPreference();
+                getPrefs().addPreferenceChangeListener(this);
+                hasPreferencesList.add(this);
+            }
+
+            public int getValue() {
+                return value;
+            }
+
+            public void setValue(int value) {
+                if (value > max) {
+                    value = max;
+                } else if (value < 0) {
+                    value = 0;
+                }
+                this.value = value;
+
+                setChanged();
+                notifyObservers();
+            }
+
+            @Override
+            public String toString() {
+                return String.format("BufferIPot with max=%d, value=%d", max, value);
+            }
+
+            public String processRemoteControlCommand(RemoteControlCommand command, String input) {
+                String[] tok = input.split("\\s");
+                if (tok.length < 2) {
+                    return "bufferbias " + getValue() + "\n";
+                } else {
+                    try {
+                        int val = Integer.parseInt(tok[1]);
+                        setValue(val);
+                    } catch (NumberFormatException e) {
+                        return "?\n";
+                    }
+
+                }
+                return "bufferbias " + getValue() + "\n";
+            }
+
+            public void preferenceChange(PreferenceChangeEvent e) {
+                if (e.getKey().equals(key)) {
+                    setValue(Integer.parseInt(e.getNewValue()));
+                }
+            }
+
+            public void loadPreference() {
+                setValue(getPrefs().getInt(key, max / 2));
+            }
+
+            public void storePreference() {
+                putPref(key, value);
+            }
         }
-        return panel;
+
+
+
+        class Scanner extends Observable implements PreferenceChangeListener, HasPreference {
+
+            Scanner() {
+                loadPreference();
+                getPrefs().addPreferenceChangeListener(this);
+                hasPreferencesList.add(this);
+            }
+            int nstages = 64;
+            private volatile int currentStage;
+            private volatile boolean continuousScanningEnabled;
+            private volatile int period;
+            int minPeriod = 10; // to avoid FX2 getting swamped by interrupts for scanclk
+            int maxPeriod = 255;
+
+            public int getCurrentStage() {
+                return currentStage;
+            }
+
+            public void setCurrentStage(int currentStage) {
+                this.currentStage = currentStage;
+                continuousScanningEnabled = false;
+                setChanged();
+                notifyObservers();
+            }
+
+            public boolean isContinuousScanningEnabled() {
+                return continuousScanningEnabled;
+            }
+
+            public void setContinuousScanningEnabled(boolean continuousScanningEnabled) {
+                this.continuousScanningEnabled = continuousScanningEnabled;
+                setChanged();
+                notifyObservers();
+            }
+
+            public int getPeriod() {
+                return period;
+            }
+
+            public void setPeriod(int period) {
+                if (period < minPeriod) {
+                    period = 10; // too small and interrupts swamp the FX2
+                }
+                if (period > maxPeriod) {
+                    period = (byte) (maxPeriod); // unsigned char
+                }
+                this.period = period;
+
+                setChanged();
+                notifyObservers();
+            }
+
+            public void preferenceChange(PreferenceChangeEvent e) {
+                if (e.getKey().equals("CochleaAMS1b.Biasgen.Scanner.currentStage")) {
+                    setCurrentStage(Integer.parseInt(e.getNewValue()));
+                } else if (e.getKey().equals("CochleaAMS1b.Biasgen.Scanner.currentStage")) {
+                    setContinuousScanningEnabled(Boolean.parseBoolean(e.getNewValue()));
+                }
+            }
+
+            public void loadPreference() {
+                setCurrentStage(getPrefs().getInt("CochleaAMS1b.Biasgen.Scanner.currentStage", 0));
+                setContinuousScanningEnabled(getPrefs().getBoolean("CochleaAMS1b.Biasgen.Scanner.continuousScanningEnabled", false));
+                setPeriod(getPrefs().getInt("CochleaAMS1b.Biasgen.Scanner.period", 50)); // 50 gives about 80kHz
+            }
+
+            public void storePreference() {
+                putPref("CochleaAMS1b.Biasgen.Scanner.period", period);
+                putPref("CochleaAMS1b.Biasgen.Scanner.continuousScanningEnabled", continuousScanningEnabled);
+                putPref("CochleaAMS1b.Biasgen.Scanner.currentStage", currentStage);
+            }
+        }
+
+
     }
-    }
+
  
 }

@@ -10,7 +10,9 @@ package ch.unizh.ini.jaer.projects.opticalflow.graphics;
 import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MotionDataMDC2D;
+import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.SiLabsC8051F320_OpticalFlowHardwareInterface;
 import javax.swing.*;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
  *
@@ -19,15 +21,17 @@ import javax.swing.*;
 public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
     OpticalFlowDisplayMethod displayMethod=null;
     Chip2DMotion chip=null;
+    MotionViewer viewer;
     
 
     
     /** Creates new form OpticalFlowDisplayControlPanel
      @param displayMethod the OpticalFlowDisplayMethod to control
      */
-    public OpticalFlowDisplayControlPanel(OpticalFlowDisplayMethod displayMethod, Chip2DMotion chip) {
+    public OpticalFlowDisplayControlPanel(OpticalFlowDisplayMethod displayMethod, Chip2DMotion chip,MotionViewer viewer) {
         this.displayMethod=displayMethod;
         this.chip=chip;
+        this.viewer=viewer;
         initComponents();
         enableGlobalMotionCheckBox.setSelected(displayMethod.isGlobalDisplayEnabled());
         enableLocalMotionCheckBox.setSelected(displayMethod.isLocalDisplayEnabled());
@@ -97,6 +101,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         jRadioButton4 = new javax.swing.JRadioButton();
         jRadioButton5 = new javax.swing.JRadioButton();
         jRadioButton6 = new javax.swing.JRadioButton();
+        onChipADCSelector = new javax.swing.JCheckBox();
         jPanel6 = new javax.swing.JPanel();
         jComboBox1 = new javax.swing.JComboBox();
         rawChannelControlPanel2 = new javax.swing.JPanel();
@@ -406,18 +411,28 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
             }
         });
 
+        onChipADCSelector.setText("use on-chip ADC");
+        onChipADCSelector.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                onChipADCSelectorActionPerformed(evt);
+            }
+        });
+
         org.jdesktop.layout.GroupLayout rawChannelControlPanel1Layout = new org.jdesktop.layout.GroupLayout(rawChannelControlPanel1);
         rawChannelControlPanel1.setLayout(rawChannelControlPanel1Layout);
         rawChannelControlPanel1Layout.setHorizontalGroup(
             rawChannelControlPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(org.jdesktop.layout.GroupLayout.TRAILING, rawChannelControlPanel1Layout.createSequentialGroup()
-                .addContainerGap(19, Short.MAX_VALUE)
-                .add(jRadioButton4)
-                .add(10, 10, 10)
-                .add(jRadioButton5)
-                .add(18, 18, 18)
-                .add(jRadioButton6)
-                .add(22, 22, 22))
+            .add(rawChannelControlPanel1Layout.createSequentialGroup()
+                .add(19, 19, 19)
+                .add(rawChannelControlPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(rawChannelControlPanel1Layout.createSequentialGroup()
+                        .add(jRadioButton4)
+                        .add(10, 10, 10)
+                        .add(jRadioButton5)
+                        .add(18, 18, 18)
+                        .add(jRadioButton6))
+                    .add(onChipADCSelector))
+                .addContainerGap(22, Short.MAX_VALUE))
         );
 
         rawChannelControlPanel1Layout.linkSize(new java.awt.Component[] {jRadioButton4, jRadioButton5, jRadioButton6}, org.jdesktop.layout.GroupLayout.HORIZONTAL);
@@ -425,11 +440,12 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         rawChannelControlPanel1Layout.setVerticalGroup(
             rawChannelControlPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(rawChannelControlPanel1Layout.createSequentialGroup()
+                .add(onChipADCSelector)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
                 .add(rawChannelControlPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(jRadioButton4)
                     .add(jRadioButton5)
-                    .add(jRadioButton6))
-                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .add(jRadioButton6)))
         );
 
         jPanel6.setBorder(javax.swing.BorderFactory.createTitledBorder("Motion Algorithm"));
@@ -569,23 +585,23 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         jPanel3.setLayout(jPanel3Layout);
         jPanel3Layout.setHorizontalGroup(
             jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(jPanel3Layout.createSequentialGroup()
-                .addContainerGap()
-                .add(jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING, false)
-                    .add(org.jdesktop.layout.GroupLayout.LEADING, jPanel6, 0, 222, Short.MAX_VALUE)
-                    .add(org.jdesktop.layout.GroupLayout.LEADING, rawChannelControlPanel1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap())
             .add(org.jdesktop.layout.GroupLayout.TRAILING, jPanel3Layout.createSequentialGroup()
                 .addContainerGap(28, Short.MAX_VALUE)
                 .add(jPanel7, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .add(22, 22, 22))
+            .add(jPanel3Layout.createSequentialGroup()
+                .addContainerGap()
+                .add(jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
+                    .add(org.jdesktop.layout.GroupLayout.LEADING, rawChannelControlPanel1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .add(org.jdesktop.layout.GroupLayout.LEADING, jPanel6, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 222, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap())
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(jPanel3Layout.createSequentialGroup()
                 .addContainerGap()
                 .add(rawChannelControlPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .add(18, 18, 18)
+                .add(13, 13, 13)
                 .add(jPanel6, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(jPanel7, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
@@ -689,15 +705,39 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
     }//GEN-LAST:event_localOffsetSliderStateChanged
 
     private void jRadioButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton4ActionPerformed
-        displayMethod.setRawChannelDisplayed(0);        // TODO add your handling code here:
+        if(this.onChipADCSelector.isSelected()){ // set on-chip ADC channel
+            try{
+                viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x01, (short)0);
+            }catch(HardwareInterfaceException e){
+                System.out.println(e);
+            }
+        } else {
+            displayMethod.setRawChannelDisplayed(0);
+        }        // TODO add your handling code here:
 }//GEN-LAST:event_jRadioButton4ActionPerformed
 
     private void jRadioButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton5ActionPerformed
-        displayMethod.setRawChannelDisplayed(1); // TODO add your handling code here:
+        if(this.onChipADCSelector.isSelected()){ // set on-chip ADC channel
+            try{
+                viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x02, (short)0);
+            }catch(HardwareInterfaceException e){
+                System.out.println(e);
+            }
+        } else {
+            displayMethod.setRawChannelDisplayed(1);
+        } // TODO add your handling code here:
 }//GEN-LAST:event_jRadioButton5ActionPerformed
 
     private void jRadioButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton6ActionPerformed
-        displayMethod.setRawChannelDisplayed(2); // TODO add your handling code here:
+        if(this.onChipADCSelector.isSelected()){ // set on-chip ADC channel
+            try{
+                viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x04, (short)0);
+            }catch(HardwareInterfaceException e){
+                System.out.println(e);
+            }
+        } else {
+            displayMethod.setRawChannelDisplayed(2);
+        } // TODO add your handling code here:
 }//GEN-LAST:event_jRadioButton6ActionPerformed
 
     private void jComboBox1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jComboBox1ActionPerformed
@@ -738,6 +778,23 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         String val=java.lang.String.valueOf(this.jSlider1.getValue());
         this.jLabel2.setText(val);// TODO add your handling code here:// TODO add your handling code here:
     }//GEN-LAST:event_jSlider1StateChanged
+
+    private void onChipADCSelectorActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_onChipADCSelectorActionPerformed
+        if(this.onChipADCSelector.isSelected()){ // set on-chip ADC channel
+            displayMethod.setRawChannelDisplayed(3);
+            try{
+                if(this.jRadioButton4.isSelected()) viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x01, (short)0);
+                if(this.jRadioButton5.isSelected()) viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x02, (short)0);
+                if(this.jRadioButton6.isSelected()) viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x04, (short)0);
+            }catch(HardwareInterfaceException e){
+                System.out.println(e);
+            }
+        }else{
+            if(this.jRadioButton4.isSelected()) this.displayMethod.setRawChannelDisplayed(0);
+            if(this.jRadioButton5.isSelected()) this.displayMethod.setRawChannelDisplayed(1);
+            if(this.jRadioButton6.isSelected()) this.displayMethod.setRawChannelDisplayed(2);
+        }
+    }//GEN-LAST:event_onChipADCSelectorActionPerformed
     
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -774,6 +831,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
     private javax.swing.JSlider localGainSlider;
     private javax.swing.JSlider localOffsetSlider;
     private javax.swing.JPanel localPanel;
+    private javax.swing.JCheckBox onChipADCSelector;
     private javax.swing.JSlider photoGainSlider;
     private javax.swing.JSlider photoOffsetSlider;
     private javax.swing.JPanel photoPanel;

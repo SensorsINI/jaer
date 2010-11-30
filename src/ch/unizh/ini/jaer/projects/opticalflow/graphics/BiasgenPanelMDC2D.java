@@ -39,16 +39,12 @@ public class BiasgenPanelMDC2D extends javax.swing.JPanel {
 
         initComponents();
         add(jTabbedPane1);
-//        biasgen.setPotArray(((MDC2DBiasgen)biasgen).vpots);
+        jTabbedPane1.addTab("On Chip Biasgenerator", iPotPanel);
+        jTabbedPane1.addTab("Master Bias",masterbiasPanel);
         jTabbedPane1.addTab("external DAC",vPotPanel);
 
-//        biasgen.setPotArray(((MDC2DBiasgen)biasgen).ipots);
 
-        jTabbedPane1.addTab("On Chip Biasgenerator", iPotPanel);
-
-        jTabbedPane1.addTab("Master Bias",masterbiasPanel);
-
-        masterbiasPanel.masterbias.setPowerDownEnabled(true);
+        masterbiasPanel.masterbias.setPowerDownEnabled(false);
 
     }
 
@@ -82,9 +78,7 @@ public class BiasgenPanelMDC2D extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void jTabbedPane1StateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_jTabbedPane1StateChanged
-        int state =this.jTabbedPane1.getSelectedIndex();
-        if(state==0) biasgen.setPotArray(((MDC2DBiasgen)biasgen).vpots);
-        else         biasgen.setPotArray(((MDC2DBiasgen)biasgen).ipots);// TODO add your handling code here:
+       
     }//GEN-LAST:event_jTabbedPane1StateChanged
 
     private void formMouseMoved(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_formMouseMoved

@@ -407,9 +407,8 @@ public abstract class MotionData implements Cloneable{
         write2DArray(out,ph);
         write2DArray(out,ux);
         write2DArray(out,uy);
-        int a=getNumLocalChannels();
+        contents=chip.getCaptureMode();
         for(int i=0;i<getNumLocalChannels();i++){  //RetoTODO fix
-
             write2DArray(out,rawDataPixel[i]);
         }
     }
@@ -426,6 +425,7 @@ public abstract class MotionData implements Cloneable{
         read2DArray(in,ph);
         read2DArray(in,ux);
         read2DArray(in,uy);
+        rawDataPixel=new float[getNumLocalChannels()][chip.NUM_ROWS][chip.NUM_COLUMNS];
         for(int i=0;i<getNumLocalChannels();i++){
             read2DArray(in,rawDataPixel[i]);
         }
