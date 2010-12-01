@@ -52,6 +52,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      * size of the receptive field of an LIF neuron.
      */
     protected int receptiveFieldSizePixels = getPrefs().getInt("BlurringFilter2D.receptiveFieldSizePixels", 8);
+    protected int halfReceptiveFieldSizePixels; // We are going to use this parameter mostly.
 
     /**
      * Membrane potential of a neuron jumps down by this amount after firing.
@@ -170,11 +171,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      * array of neurons (numOfNeuronsX x numOfNeuronsY)
      */
     protected ArrayList<LIFNeuron> lifNeurons = new ArrayList<LIFNeuron>();
-
-    /**
-     * index of firing neurons
-     */
-    private HashSet<Integer> firingNeurons = new HashSet();
 
     /**
      * neuron groups found
@@ -841,6 +837,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @param newNeuron
          */
         public void add(LIFNeuron newNeuron) {
+            // if this neuron is added already
+            if(memberNeurons.contains(newNeuron))
+                return;
+
             // if this is the first one
             if (tag < 0) {
                 tag = newNeuron.getGroupTag();
@@ -1086,37 +1086,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return ret;
         }
 
-        /**
-         * checks if the group contains the given event.
-         * It checks the location of the events
-         * @param ev
-         * @return
-         */
-        public boolean contains(BasicEvent ev) {
-            boolean ret = false;
-
-            int subIndexX = (int) 2 * ev.getX() / receptiveFieldSizePixels;
-            int subIndexY = (int) 2 * ev.getY() / receptiveFieldSizePixels;
-
-            if (subIndexX >= numOfNeuronsX && subIndexY >= numOfNeuronsY) {
-                ret = false;
-            }
-
-            if (!ret && subIndexX != numOfNeuronsX && subIndexY != numOfNeuronsY) {
-                ret = firingNeurons.contains(subIndexX + subIndexY * numOfNeuronsX);
-            }
-            if (!ret && subIndexX != numOfNeuronsX && subIndexY != 0) {
-                ret = firingNeurons.contains(subIndexX + (subIndexY - 1) * numOfNeuronsX);
-            }
-            if (!ret && subIndexX != 0 && subIndexY != numOfNeuronsY) {
-                ret = firingNeurons.contains(subIndexX - 1 + subIndexY * numOfNeuronsX);
-            }
-            if (!ret && subIndexY != 0 && subIndexX != 0) {
-                ret = firingNeurons.contains(subIndexX - 1 + (subIndexY - 1) * numOfNeuronsX);
-            }
-
-            return ret;
-        }
 
         /**
          * returns true if the group contains neurons which locate on edges or corners.
@@ -1249,7 +1218,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      */
     synchronized protected void updateNeurons(int t) {
         // makes the list of firing neurons and neuron groups empty before update
-        firingNeurons.clear();
         neuronGroups.clear();
         // resets number of group before starting update
         numOfGroup = 0;
@@ -1625,9 +1593,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                         default:
                             break;
                     } // End of switch
-                    if (tmpNeuron.getFiringType() == FiringType.FIRING_INSIDE || tmpNeuron.getFiringType() == FiringType.FIRING_ON_BORDER) {
-                        firingNeurons.add(tmpNeuron.cellNumber);
-                    }
                 } catch (java.util.ConcurrentModificationException e) {
                     // this is in case neuron list is modified by real time filter during updating neurons
                     initFilter();
@@ -1728,6 +1693,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
         if(receptiveFieldSizePixels < 2)
             receptiveFieldSizePixels = 2;
+        halfReceptiveFieldSizePixels = receptiveFieldSizePixels/2;
 
         // calculate the required number of neurons
         if (2 * mychip.getSizeX() % receptiveFieldSizePixels == 0) {
@@ -1743,7 +1709,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         }
 
         lastTime = 0;
-        firingNeurons.clear();
         neuronGroups.clear();
         numOfGroup = 0;
 
@@ -1803,7 +1768,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         }
 
         lastTime = 0;
-        firingNeurons.clear();
         neuronGroups.clear();
         numOfGroup = 0;
     }

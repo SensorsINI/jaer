@@ -70,8 +70,8 @@ public class BlurringFilterStereo extends BlurringFilter2D{
             for(int i=0; i<in.getSize(); i++){
                 BinocularEvent ev = (BinocularEvent)in.getEvent(i);
 
-                int subIndexX = (int) (2.0f * ev.getX() / receptiveFieldSizePixels);
-                int subIndexY = (int) (2.0f * ev.getY() / receptiveFieldSizePixels);
+                int subIndexX = (int) (ev.getX() / halfReceptiveFieldSizePixels);
+                int subIndexY = (int) (ev.getY() / halfReceptiveFieldSizePixels);
 
                 if (subIndexX >= numOfNeuronsX && subIndexY >= numOfNeuronsY) {
                     initFilter();
