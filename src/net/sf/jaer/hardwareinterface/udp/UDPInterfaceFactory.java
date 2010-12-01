@@ -70,7 +70,7 @@ public class UDPInterfaceFactory implements HardwareInterfaceFactoryInterface {
 
     void buildUdpIoList(){
         try {
-            DatagramSocket socket = new DatagramSocket(SmartEyeTDS.DATA_PORT);
+            DatagramSocket socket = new DatagramSocket(SmartEyeTDS.STREAM_PORT);
             socket.setReuseAddress(true);
             byte[] buf = new byte[AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES];
             DatagramPacket packet = new DatagramPacket(buf, buf.length);

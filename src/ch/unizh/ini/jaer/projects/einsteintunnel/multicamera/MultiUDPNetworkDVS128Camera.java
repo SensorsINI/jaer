@@ -4,20 +4,17 @@
  */
 package ch.unizh.ini.jaer.projects.einsteintunnel.multicamera;
 
-import ch.unizh.ini.jaer.chip.retina.DVS128;
-import java.net.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.util.Iterator;
+import java.io.*;
+import java.net.*;
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
+import java.util.Iterator;
+
 import net.sf.jaer.aemonitor.AENetworkRawPacket;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.*;
@@ -26,6 +23,9 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.hardwareinterface.udp.NetworkChip;
+
+import ch.unizh.ini.jaer.chip.retina.DVS128;
+
 
 /**
  * Encapsulates a whole bunch of networked TDS cameras into this single AEChip object. The size of this virtual chip is set by {@link #MAX_NUM_CAMERAS} times
@@ -36,16 +36,27 @@ import net.sf.jaer.hardwareinterface.udp.NetworkChip;
 public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, MultiChip{
 
     /** Maximum number of network cameras in the linear array. */
-    public static final int MAX_NUM_CAMERAS = 10;
+    public static final int MAX_NUM_CAMERAS = 6;
     /** Width in pixels of each camera - same as DVS128. */
     public static final int CAM_WIDTH = 128;
 
-    private int numChips = 10; // actual number of cameras we've gotten data from
+    private String cameraDomain = "169.254.0.";
+    private boolean useTunnelRotaion = true;
+    private int numChips = 1; // actual number of cameras we've gotten data from
     private static final String CLIENT_MAPPING_LIST_PREFS_KEY = "MultiUDPNetworkDVS128Camera.camHashLlist";  // preferences key for mapping table
     private JMenu chipMenu = null; // menu for specialized control
     private CameraMapperDialog cameraMapperDialog = null;
     private CameraMap cameraMap = new CameraMap(); // the mapping from InetSocketAddress to camera position
     private MultiUDPNetworkDVS128CameraDisplayMethod displayMethod=null;
+
+    private String localhost; // "localhost"
+    private int controlPort;
+    private DatagramSocket outputSocket = null;
+    private InetSocketAddress cameraSocketAddress = null;
+
+    public static final int STREAM_PORT = 20020;
+    public static final int CONNECT_PORT = 20019;
+    public static final int CONTROL_PORT = 20010;
 
     public int selChip = -1;
 
@@ -58,12 +69,41 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
         chipMenu = new JMenu("MultiCamera");
         chipMenu.getPopupMenu().setLightWeightPopupEnabled(false);
         chipMenu.add(new JMenuItem(new ShowClientMapperAction()));
-         loadClientMappingPrefs();
-         displayMethod=new MultiUDPNetworkDVS128CameraDisplayMethod(getCanvas());
-       getCanvas().addDisplayMethod(displayMethod);
-       getCanvas().setDisplayMethod(displayMethod);
+        loadClientMappingPrefs();
+        displayMethod=new MultiUDPNetworkDVS128CameraDisplayMethod(getCanvas());
+        getCanvas().addDisplayMethod(displayMethod);
+        getCanvas().setDisplayMethod(displayMethod);
         chipMenu.add(new JCheckBoxMenuItem(new DisplayCameraInfoAction(displayMethod)));
+        activateCameras();
   }
+
+    private void activateCameras() {
+        try{
+            controlPort = CONTROL_PORT;
+            localhost = "localhost";
+            outputSocket = new DatagramSocket(CONNECT_PORT);
+            outputSocket.setSoTimeout(100);
+        } catch ( IOException ex ){
+            log.warning(ex.toString());
+        }
+        log.info("sending activation commands to cameras");
+        for(int i=1; i<=MAX_NUM_CAMERAS; i++){
+            String s = "t+\n";
+            byte[] b = s.getBytes();
+            try{
+                InetAddress IPAddress =  InetAddress.getByName(cameraDomain+i);
+                cameraSocketAddress = new InetSocketAddress(IPAddress,controlPort);
+                log.info("send "+b+" to "+IPAddress.getHostAddress()+":"+controlPort);
+                DatagramPacket d = new DatagramPacket(b,b.length,cameraSocketAddress);
+                if (outputSocket != null){
+                    outputSocket.send(d);
+                    outputSocket.close();
+                }
+            } catch ( Exception e ){
+                log.warning(e.toString());
+            }
+        }
+    }
 
     private void showCameraMapperDialog() {
         if (cameraMapperDialog == null) {
@@ -248,8 +288,13 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
                 e.timestamp = (timestamps[i]);
                 e.type = (byte) (1 - addr & 1);
                 e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
-                e.x = (short) (sxm - ((short) (cameraShift + ((addr & XMASK_SRC) >>> XSHIFT_SRC))));
-                e.y = (short) ((addr & YMASK_SRC) >>> YSHIFT_SRC);
+                if(useTunnelRotaion){
+                    e.x = (short) (sxm - ((short) (cameraShift + ((addr & YMASK_SRC) >>> YSHIFT_SRC))));
+                    e.y = (short) ((addr & XMASK_SRC) >>> XSHIFT_SRC);
+                } else {
+                    e.x = (short) (sxm - ((short) (cameraShift + ((addr & XMASK_SRC) >>> XSHIFT_SRC))));
+                    e.y = (short) ((addr & YMASK_SRC) >>> YSHIFT_SRC);
+                }
                 e.address = (addr&1) | (e.x << XSHIFT_DEST) | (e.y << YSHIFT_DEST); // new raw address is now suitable for logging and later playback
                 a[i] = e.address;  // replace raw address in raw packet as well
 

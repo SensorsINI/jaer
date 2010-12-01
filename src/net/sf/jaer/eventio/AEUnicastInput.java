@@ -246,9 +246,12 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
         // extract the ae data and add events to the packet we are presently filling
         int seqNumLength = sequenceNumberEnabled ? Integer.SIZE / 8 : 0;
         int eventSize = eventSize();
+        //log.info("event size " + eventSize);
         int nEventsInPacket = ( buffer.limit() - seqNumLength ) / eventSize;
-        int ts = !timestampsEnabled || localTimestampsEnabled ? (int)( System.nanoTime() / 1000 ) : 0; // if no timestamps coming, add system clock for all.
-
+        //log.info("nr of events " + nEventsInPacket);
+        //deprecated ... int ts = !timestampsEnabled || localTimestampsEnabled ? (int)( System.nanoTime() / 1000 ) : 0; // if no timestamps coming, add system clock for all.
+        int ts = !timestampsEnabled || localTimestampsEnabled ? (int)(((System.nanoTime()/1000) <<32)>>32) : 0; // if no timestamps coming, add system clock for all.
+        //log.info("nanoTime shift " +(int)( ((System.nanoTime()/1000) <<32)>>32));
         final int startingIndex = packet.getNumEvents();
         final int newPacketLength = startingIndex + nEventsInPacket;
         packet.ensureCapacity(newPacketLength);
@@ -259,15 +262,17 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
             if ( addressFirstEnabled ){
                 if ( use4ByteAddrTs ){
                     eventRaw.address = buffer.getInt(); // swab(buffer.getInt()); // swapInt is switched to handle big endian event sources (like ARC camera)
-//                    int v=buffer.getInt();
-                    if ( !localTimestampsEnabled && timestampsEnabled ){
+                    //log.info("address " + eventRaw.address);
+                    //int v=buffer.getInt();
+                    // if timestamps are enabled, they have to be read out even if they are not used because of local timestamps
+                    if ( timestampsEnabled && !localTimestampsEnabled ){
                         int rawTime = buffer.getInt(); //swab(v);
-//            if(rawTime<lastts) {
-//                System.out.println("backwards timestamp at event "+i+"of "+nEventsInPacket);
-//            }else if(rawTime!=lastts){
-//                System.out.println("time jump at event "+i+"of "+nEventsInPacket);
-//            }
-//            lastts=rawTime;
+    //                  if(rawTime<lastts) {
+    //                      System.out.println("backwards timestamp at event "+i+"of "+nEventsInPacket);
+    //                  }else if(rawTime!=lastts){
+    //                      System.out.println("time jump at event "+i+"of "+nEventsInPacket);
+    //                  }
+    //                  lastts=rawTime;
                         int zeroedRawTime;
                         if ( readTimeZeroAlready ){
                             // TODO TDS sends 32 bit timestamp which overflows after multiplication
@@ -289,7 +294,11 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
                         }
                         eventRaw.timestamp = finalTime;
                     } else{
+                        //SmartEyeTDS
                         eventRaw.timestamp = ts;
+                        //read out buffer with timestamp
+                        buffer.getInt();
+                       //log.info("local timestamp " + ts);
                     }
                 } else{
                     eventRaw.address = buffer.getShort()&0xffff; // swab(buffer.getShort()); // swapInt is switched to handle big endian event sources (like ARC camera)
