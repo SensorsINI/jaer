@@ -155,7 +155,7 @@ public class GaussianThreshold implements Serializable {
 
         thresholdProb = 1.0;
         for(int i=0; i<numElements; i++){
-            thresholdProb *= getGaussianPDF(gParam.get(i).mu, gParam.get(i).sigma, gParam.get(i).mu+3.0*gParam.get(i).sigma);
+            thresholdProb *= getGaussianPDF(0, 1, 3.0);
         }
 
         System.out.println("Gth threshold = " + Math.log10(thresholdProb));
@@ -200,7 +200,7 @@ public class GaussianThreshold implements Serializable {
 
         if(!doBestMatching){
             for(int i=0; i<numElements; i++){
-                if(!checkCriterion(gParam.get(i).mu, criterion*gParam.get(i).sigma, sample[i]))
+                if(!checkCriterion1(gParam.get(i).mu, criterion*gParam.get(i).sigma, sample[i]))
                 {
                     ret = false;
                     break;
@@ -226,7 +226,7 @@ public class GaussianThreshold implements Serializable {
 
         for(int i=delay; i<numElements; i++){//
 //            System.out.println(sample[i]+ ", "+gParam.get(i-delay).mu+", "+gParam.get(i-delay).sigma);
-            if(!checkCriterion(gParam.get(i-delay).mu, criterion*gParam.get(i-delay).sigma, sample[i]))
+            if(!checkCriterion1(gParam.get(i-delay).mu, criterion*gParam.get(i-delay).sigma, sample[i]))
             {
 //                System.out.println(" --> out");
                 ret = false;
@@ -237,7 +237,7 @@ public class GaussianThreshold implements Serializable {
             return ret;
 
         for(int i=0; i<delay; i++){
-            if(!checkCriterion(gParam.get(i+numElements-delay).mu, criterion*gParam.get(i+numElements-delay).sigma, sample[i]))
+            if(!checkCriterion1(gParam.get(i+numElements-delay).mu, criterion*gParam.get(i+numElements-delay).sigma, sample[i]))
             {
                 ret = false;
                 break;
@@ -247,7 +247,7 @@ public class GaussianThreshold implements Serializable {
         return ret;
     }
 
-    boolean checkCriterion(double mu, double boundary, double sample){
+    boolean checkCriterion1(double mu, double boundary, double sample){
         boolean ret = true;
         double distance = Math.abs(refactorValue(Math.abs(mu - sample), -Math.PI, Math.PI));
 
@@ -264,7 +264,7 @@ public class GaussianThreshold implements Serializable {
      * @param sample
      * @return
      */
-    public boolean isAboveThreshold(double[] sample){
+    public boolean isAboveThreshold2(double[] sample, double criterion ){
         boolean ret = false;
 
         if(sample.length != numElements){
@@ -282,7 +282,7 @@ public class GaussianThreshold implements Serializable {
             prob = calBestMatchingProb(sample);
         }
 
-        if(prob >= thresholdProb)
+        if(prob >= Math.pow(getGaussianPDF(0, 1, criterion), numElements))
             ret = true;
 
         return ret;

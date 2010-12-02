@@ -77,6 +77,11 @@ public class GestureHmm implements Serializable{
     private int thresholdOption;
 
     /**
+     * Gaussian threshold criterion
+     */
+    private float GTCriterion = 3.0f;
+
+    /**
      * Constructor with feature vector space
      * @param featureVectorSpace : feature vector space
      * @param thresholdOption : one of NO_THRESHOLD, GAUSSIAN_THRESHOLD, FIXED_THRESHOLD, DYNAMIC_THRESHOLD, GAUSSIAN_THRESHOLD | DYNAMIC_THRESHOLD
@@ -478,7 +483,7 @@ public class GestureHmm implements Serializable{
         if((thresholdOption&GAUSSIAN_THRESHOLD)>0){
             GaussianThreshold gth = gthModels.get(name);
             if(gth.numSamples > 0){
-                if(!gth.isAboveThreshold(rawAngles)){
+                if(!gth.isAboveThreshold2(rawAngles, GTCriterion)){
 //                    System.out.println("Blocked by GTM");
                     return null;
                 }
@@ -528,7 +533,7 @@ public class GestureHmm implements Serializable{
         if((thresholdOption&GAUSSIAN_THRESHOLD)>0){
             GaussianThreshold gth = gthModels.get(gestureName);
             if(gth.numSamples > 0)
-                if(!gth.isAboveThreshold(rawAngles))
+                if(!gth.isAboveThreshold2(rawAngles, GTCriterion))
                     ret = false;
         }
 
@@ -589,6 +594,16 @@ public class GestureHmm implements Serializable{
 
         return gth.getMuToArray();
     }
+
+    public float getGTCriterion() {
+        return GTCriterion;
+    }
+
+    public void setGTCriterion(float GTcriterion) {
+        this.GTCriterion = GTcriterion;
+    }
+
+
 
     /**
      * updates threshold model with the specified gesture

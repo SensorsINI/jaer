@@ -121,9 +121,9 @@ public class GestureBFStereo extends GestureBF2D{
                         // set maximum disparity of the vergence filter based on mean disparity of the start gesture
                         BlurringFilterStereoTracker tmpTracker = (BlurringFilterStereoTracker) super.tracker;
                         if(tmpTracker.getAutoThresholdSlope() >= 0){
-                            tmpTracker.setDisparityLimit(meanDisparityOfStartGesture-3, true);
+                            tmpTracker.setDisparityLimit(meanDisparityOfStartGesture-1, true);
                         }else{
-                            tmpTracker.setDisparityLimit(meanDisparityOfStartGesture+3, false);
+                            tmpTracker.setDisparityLimit(meanDisparityOfStartGesture+1, false);
                         }
                         tmpTracker.setEnableDisparityLimit(true);
     //                    ((BlurringFilterStereoTracker) super.tracker).setMaxDisparityChangePixels(20);
