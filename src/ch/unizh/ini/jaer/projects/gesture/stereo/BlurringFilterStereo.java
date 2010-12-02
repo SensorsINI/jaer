@@ -20,7 +20,8 @@ public class BlurringFilterStereo extends BlurringFilter2D{
 
     private boolean enableBinocluarAssociation = getPrefs().getBoolean("BlurringFilterStereo.enableBinocluarAssociation", false);
     private boolean activateNonoverlapingArea = getPrefs().getBoolean("BlurringFilterStereo.activateNonoverlapingArea", false);
-    private float binocluarAssociationMassThreshold = getPrefs().getFloat("BlurringFilterStereo.binocluarAssociationMassThreshold", 20.0f);
+    private float binocluarAssMassThresholdPercentTh = getPrefs().getFloat("BlurringFilterStereo.binocluarAssMassThresholdPercentTh", 20.0f);
+    private float binocluarAssociationMassThreshold = 0;
 
     /**
      * Stereo vergence filter
@@ -50,13 +51,13 @@ public class BlurringFilterStereo extends BlurringFilter2D{
 
         setPropertyTooltip("Association", "enableBinocluarAssociation", "enables left-right association");
         setPropertyTooltip("Association", "activateNonoverlapingArea", "activate non-overlaping area");
-        setPropertyTooltip("Association", "binocluarAssociationMassThreshold", "mass threshold for left-right association");
+        setPropertyTooltip("Association", "binocluarAssMassThresholdPercentTh", "mass threshold for left-right association in percents of MPThreshold");
     }
 
 
     @Override
     protected synchronized EventPacket<?> blurring(EventPacket<?> in) {
-        boolean updatedCells = false;
+//        boolean updatedCells = false;
 
         if(in == null)
             return in;
@@ -97,7 +98,8 @@ public class BlurringFilterStereo extends BlurringFilter2D{
 
 
                 lastTime = ev.getTimestamp();
-                updatedCells = maybeCallUpdateObservers(in, lastTime);
+                //updatedCells = maybeCallUpdateObservers(in, lastTime);
+                maybeCallUpdateObservers(in, lastTime);
 
             }
         } catch (IndexOutOfBoundsException e) {
@@ -106,9 +108,9 @@ public class BlurringFilterStereo extends BlurringFilter2D{
             log.warning(e.getMessage());
         }
 
-        if (!updatedCells) {
-            updateNeurons(lastTime); // at laest once per packet update list
-        }
+//        if (!updatedCells) {
+//            updateNeurons(lastTime); // at laest once per packet update list
+//        }
 
         return out;
     }
@@ -139,6 +141,7 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         // increases mass
         mainEye.set(index, mainEye.get(index)*(float) Math.exp(((float) lifNeurons.get(index).getLastEventTimestamp() - ev.timestamp) / MPTimeConstantUs) + 1.0f);
 
+        binocluarAssociationMassThreshold = getMPThreshold() * binocluarAssMassThresholdPercentTh / 100.0f;
         if(!activateNonoverlapingArea)
             retVal -= (float) Math.exp(-secondaryEye.get(index)/binocluarAssociationMassThreshold);
         else{
@@ -244,8 +247,8 @@ public class BlurringFilterStereo extends BlurringFilter2D{
      * returns binocluarAssociationMassThreshold
      * @return
      */
-    public float getBinocluarAssociationMassThreshold() {
-        return binocluarAssociationMassThreshold;
+    public float getBinocluarAssMassThresholdPercentTh() {
+        return binocluarAssMassThresholdPercentTh;
     }
 
     /**
@@ -253,9 +256,9 @@ public class BlurringFilterStereo extends BlurringFilter2D{
      * 
      * @param binocluarAssociationMassThreshold
      */
-    public void setBinocluarAssociationMassThreshold(float binocluarAssociationMassThreshold) {
-        this.binocluarAssociationMassThreshold = binocluarAssociationMassThreshold;
-        getPrefs().putFloat("BlurringFilterStereo.binocluarAssociationMassThreshold", binocluarAssociationMassThreshold);
+    public void setBinocluarAssMassThresholdPercentTh(float binocluarAssMassThresholdPercentTh) {
+        this.binocluarAssMassThresholdPercentTh = binocluarAssMassThresholdPercentTh;
+        getPrefs().putFloat("BlurringFilterStereo.binocluarAssMassThresholdPercentTh", binocluarAssMassThresholdPercentTh);
     }
 
     public void setDisparityLimit(int disparityLimit, boolean useLowLimit){

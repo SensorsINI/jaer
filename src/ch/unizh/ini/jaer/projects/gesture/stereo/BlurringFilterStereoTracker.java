@@ -27,6 +27,8 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
     protected int autoThresholdReferenceThreshold = getPrefs().getInt("BlurringFilterStereoTracker.autoThresholdReferenceThreshold", 35);
     protected float autoThresholdSlope = getPrefs().getFloat("BlurringFilterStereoTracker.autoThresholdSlope", 0.3f);
 
+    protected float thresholdAdptive = 0;
+
     public BlurringFilterStereoTracker(AEChip chip) {
         super(chip);
 
@@ -63,11 +65,11 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
 
         // adaptive threshold
         if(enableAutoThreshold){
-            float threshold = autoThresholdReferenceThreshold + ((globalDisparity - autoThresholdReferenceDisparity)*autoThresholdSlope);
-            if(threshold < super.bfilter.getMPJumpAfterFiring())
-                threshold = super.bfilter.getMPJumpAfterFiring();
+            thresholdAdptive = autoThresholdReferenceThreshold + ((globalDisparity - autoThresholdReferenceDisparity)*autoThresholdSlope);
+            if(thresholdAdptive < 1.0f)
+                thresholdAdptive = 1.0f;
 
-            super.bfilter.setMPThreshold((int) threshold);
+            super.bfilter.setMPThreshold((int) thresholdAdptive);
         }
     }
 
