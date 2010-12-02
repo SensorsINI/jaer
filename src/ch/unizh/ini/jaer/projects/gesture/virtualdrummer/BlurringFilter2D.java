@@ -57,7 +57,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     /**
      * Membrane potential of a neuron jumps down by this amount after firing.
      */
-    protected float MPJumpAfterFiring = getPrefs().getFloat("BlurringFilter2D.MPJumpAfterFiring", 10.0f);
+    protected float MPJumpAfterFiringPercentTh = getPrefs().getFloat("BlurringFilter2D.MPJumpAfterFiringPercentTh", 10.0f);
 
     /**
      * if true, the receptive field of firing neurons are displayed on the screen.
@@ -173,6 +173,11 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     protected ArrayList<LIFNeuron> lifNeurons = new ArrayList<LIFNeuron>();
 
     /**
+     * index of firing neurons
+     */
+//    private HashSet<Integer> firingNeurons = new HashSet();
+
+    /**
      * neuron groups found
      */
     private HashMap<Integer, NeuronGroup> neuronGroups = new HashMap<Integer, NeuronGroup>();
@@ -218,7 +223,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         setPropertyTooltip(lif_neuron, "MPTimeConstantUs", "Time constant of LIF neurons membrane potential. It decays exponetially unless a new event is added.");
         setPropertyTooltip(lif_neuron, "neuronLifeTimeUs", "A neuron will be reset if there is no additional event within this value of micro seconds since the last update.");
         setPropertyTooltip(lif_neuron, "MPThreshold", "threshold of membrane potetial required for firing.");
-        setPropertyTooltip(lif_neuron, "MPJumpAfterFiring", "Membrane potential of a neuron jumps down by this amount after firing.");
+        setPropertyTooltip(lif_neuron, "MPJumpAfterFiringPercentTh", "Membrane potential decrease of a neuron in percents of its threshold after firing.");
         setPropertyTooltip(lif_neuron, "receptiveFieldSizePixels", "size of the receptive field of an LIF neuron.");
 
         setPropertyTooltip(disp, "showFiringNeurons", "if true, the receptive field of firing neurons are displayed on the screen.");
@@ -236,6 +241,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         return s2;
     }
 
+    @Override
     public void update(Observable o, Object arg) {
         if (o == this) {
             UpdateMessage msg = (UpdateMessage) arg;
@@ -372,8 +378,16 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          */
         protected float thresholdMP;
 
-        protected float MPDecreaseArterFiring;
 
+        /**
+         * amount of membrane potential that decreases after firing
+         */
+        protected float MPDecreaseArterFiringPercentTh;
+
+        /**
+         * number of spikes fired since
+         */
+        protected int numSpikes;
 
 
         /**
@@ -382,7 +396,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @param indexX
          * @param indexY
          */
-        public LIFNeuron(int cellNumber, Point2D.Float index, Point2D.Float location, int receptiveFieldSize, float tauMP, float thresholdMP, float MPDecreaseArterFiring) {
+        public LIFNeuron(int cellNumber, Point2D.Float index, Point2D.Float location, int receptiveFieldSize, float tauMP, float thresholdMP, float MPDecreaseArterFiringPercentTh) {
             // sets invariable parameters
             this.cellNumber = cellNumber;
             this.index.x = index.x;
@@ -392,7 +406,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             this.receptiveFieldSize = receptiveFieldSize;
             this.tauMP = tauMP;
             this.thresholdMP = thresholdMP;
-            this.MPDecreaseArterFiring = MPDecreaseArterFiring;
+            this.MPDecreaseArterFiringPercentTh = MPDecreaseArterFiringPercentTh;
 
             // resets initially variable parameters
             reset();
@@ -401,13 +415,21 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         /**
         * Resets a neuron with initial values
         */
-        public void reset() {
+        public final void reset() {
             setFiringType(FiringType.SILENT);
             resetGroupTag();
             fired = false;
             membranePotential = 0;
             numFiringNeighbors = 0;
             lastEventTimestamp = 0;
+            numSpikes = 0;
+        }
+
+        /**
+        * set numSpikes
+        */
+        public final void setNumSpikes(int n) {
+            numSpikes = n;
         }
 
         @Override
@@ -505,6 +527,13 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         public void addEvent(BasicEvent event,float weight) {
             incrementMP(event.getTimestamp(), weight);
             lastEventTimestamp = event.getTimestamp();
+
+            if(MPDecreaseArterFiringPercentTh > 0 && membranePotential >= thresholdMP){
+                // fires a spike
+                numSpikes++;
+                // decreases MP by MPJumpAfterFiring after firing
+                reduceMPafterFiring();
+            }
         }
 
         /**
@@ -544,9 +573,14 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @param weight
          */
         public void incrementMP(int timeStamp, float weight) {
-            membranePotential = weight + membranePotential * (float) Math.exp(((float) lastEventTimestamp - timeStamp) / tauMP);
-            if(membranePotential < -1.0f)
-                membranePotential = -1.0f;
+            float timeDiff = (float) lastEventTimestamp - timeStamp;
+            if(timeDiff > 0)
+                membranePotential = 0;
+            else{
+                membranePotential = weight + membranePotential * (float) Math.exp(timeDiff / tauMP);
+                if(membranePotential < -1.0f)
+                    membranePotential = -1.0f;
+            }
         }
 
         /**
@@ -574,16 +608,13 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @return
          */
         public boolean isAboveThreshold() {
-            if (getMPNow(lastTime) < thresholdMP){
+            if (numSpikes == 0){
                 fired = false;
                 firingType = FiringType.SILENT;
             }else{
                 // fires a spike
                 fired = true;
                 firingType = FiringType.FIRING_ISOLATED;
-
-                // decreases MP by MPJumpAfterFiring after firing
-                reduceMPafterFiring();
             }
 
             resetGroupTag();
@@ -595,7 +626,11 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * decreases MP by MPJumpAfterFiring after firing
          */
         public void reduceMPafterFiring(){
-            membranePotential -= MPDecreaseArterFiring;
+            float MPjump = MPThreshold*MPDecreaseArterFiringPercentTh/100.0f;
+            if(MPjump < 1.0f)
+                MPjump = 1.0f;
+
+            membranePotential -= MPjump;
         }
 
         @Override
@@ -658,7 +693,13 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          *
          */
         public void increaseNumFiringNeighbors() {
+            if(!fired)
+                return;
+
             numFiringNeighbors++;
+            if (firingType != FiringType.FIRING_ON_BORDER) {
+                firingType = FiringType.FIRING_WITH_NEIGHBOR;
+            }
         }
 
         /**
@@ -820,7 +861,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * resets the neuron group
          *
          */
-        public void reset() {
+        public final void reset() {
             location.setLocation(-1f, -1f);
             totalMP = 0;
             tag = -1;
@@ -836,50 +877,55 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          *  adds a neuron into the group
          * @param newNeuron
          */
-        public void add(LIFNeuron newNeuron) {
-            // if this neuron is added already
-            if(memberNeurons.contains(newNeuron))
-                return;
-
+        public final void add(LIFNeuron newNeuron) {
             // if this is the first one
+            float effectiveMP;
+            if(newNeuron.MPDecreaseArterFiringPercentTh == 0)
+                effectiveMP = newNeuron.getMP();
+            else
+                effectiveMP = newNeuron.numSpikes;
+            
             if (tag < 0) {
                 tag = newNeuron.getGroupTag();
                 lastEventTimestamp = newNeuron.getLastEventTimestamp();
                 location.x = newNeuron.getLocation().x;
                 location.y = newNeuron.getLocation().y;
-                totalMP = newNeuron.getMP();
+                totalMP = effectiveMP;
             } else { // if this is not the first one
+                // if this neuron has been added before, it doesn't have to be added again.
+                if(memberNeurons.contains(newNeuron))
+                    return;
+
                 float prevMP = totalMP;
                 float leakyFactor;
 
                 if (lastEventTimestamp < newNeuron.getLastEventTimestamp()) {
                     leakyFactor = (float) Math.exp(((float) lastEventTimestamp - newNeuron.getLastEventTimestamp()) / MPTimeConstantUs);
-                    totalMP = newNeuron.getMP() + totalMP * leakyFactor;
-                    location.x = (newNeuron.location.x * newNeuron.getMP() + location.x * prevMP * leakyFactor) / (totalMP);
-                    location.y = (newNeuron.location.y * newNeuron.getMP() + location.y * prevMP * leakyFactor) / (totalMP);
+                    totalMP = effectiveMP + prevMP * leakyFactor;
+                    location.x = (newNeuron.location.x * effectiveMP + location.x * prevMP * leakyFactor) / (totalMP);
+                    location.y = (newNeuron.location.y * effectiveMP + location.y * prevMP * leakyFactor) / (totalMP);
 
                     lastEventTimestamp = newNeuron.getLastEventTimestamp();
                 } else {
                     leakyFactor = (float) Math.exp(((float) newNeuron.getLastEventTimestamp() - lastEventTimestamp) / MPTimeConstantUs);
-                    totalMP += newNeuron.getMP() * leakyFactor;
-                    location.x = (newNeuron.location.x * newNeuron.getMP() * leakyFactor + location.x * prevMP) / (totalMP);
-                    location.y = (newNeuron.location.y * newNeuron.getMP() * leakyFactor + location.y * prevMP) / (totalMP);
+                    totalMP = prevMP + effectiveMP * leakyFactor;
+                    location.x = (newNeuron.location.x * effectiveMP * leakyFactor + location.x * prevMP) / (totalMP);
+                    location.y = (newNeuron.location.y * effectiveMP * leakyFactor + location.y * prevMP) / (totalMP);
                 }
             }
 
             // updates boundary of the group
             if (newNeuron.getLocation().x < minX) {
                 minX = newNeuron.getLocation().x;
-            }
-            if (newNeuron.getLocation().x > maxX) {
+            } else if(newNeuron.getLocation().x > maxX) {
                 maxX = newNeuron.getLocation().x;
-            }
+            } else {}
+
             if (newNeuron.getLocation().y < minY) {
                 minY = newNeuron.getLocation().y;
-            }
-            if (newNeuron.getLocation().y > maxY) {
+            } else if (newNeuron.getLocation().y > maxY) {
                 maxY = newNeuron.getLocation().y;
-            }
+            } else {}
 
             // check if this group is hitting edges
             if (!hitEdge && ((int) newNeuron.getIndex().x == 0 || (int) newNeuron.getIndex().y == 0 || (int) newNeuron.getIndex().x == numOfNeuronsX - 1 || (int) newNeuron.getIndex().y == numOfNeuronsY - 1)) {
@@ -1032,7 +1078,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @return
          */
         public float getAreaRadiusPixels() {
-            return (float) Math.sqrt((float) getNumMemberNeurons()) * receptiveFieldSizePixels / 4;
+            return (float) Math.sqrt((float) getNumMemberNeurons()) * halfReceptiveFieldSizePixels / 2;
         }
 
         /**
@@ -1086,7 +1132,38 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return ret;
         }
 
+        /**
+         * checks if the group contains the given event.
+         * It checks the location of the events
+         * @param ev
+         * @return
+         */
+/*        public boolean contains(BasicEvent ev) {
+            boolean ret = false;
 
+            int subIndexX = (int) ev.getX() / halfReceptiveFieldSizePixels;
+            int subIndexY = (int) ev.getY() / halfReceptiveFieldSizePixels;
+
+            if (subIndexX >= numOfNeuronsX && subIndexY >= numOfNeuronsY) {
+                ret = false;
+            }
+
+            if (!ret && subIndexX != numOfNeuronsX && subIndexY != numOfNeuronsY) {
+                ret = firingNeurons.contains(subIndexX + subIndexY * numOfNeuronsX);
+            }
+            if (!ret && subIndexX != numOfNeuronsX && subIndexY != 0) {
+                ret = firingNeurons.contains(subIndexX + (subIndexY - 1) * numOfNeuronsX);
+            }
+            if (!ret && subIndexX != 0 && subIndexY != numOfNeuronsY) {
+                ret = firingNeurons.contains(subIndexX - 1 + subIndexY * numOfNeuronsX);
+            }
+            if (!ret && subIndexY != 0 && subIndexX != 0) {
+                ret = firingNeurons.contains(subIndexX - 1 + (subIndexY - 1) * numOfNeuronsX);
+            }
+
+            return ret;
+        }
+*/
         /**
          * returns true if the group contains neurons which locate on edges or corners.
          *
@@ -1147,8 +1224,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      * @return the original input packet
      */
     synchronized protected EventPacket<?> blurring(EventPacket<?> in) {
-        boolean updatedNeurons = false;
-
         if(in == null)
             return in;
 
@@ -1166,10 +1241,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 //                if(ev.timestamp < lastTime){
 //                    resetFilter();
 //                }
-                int subIndexX = (int) (2.0f * ev.getX() / receptiveFieldSizePixels);
+                int subIndexX = (int) (ev.getX() / halfReceptiveFieldSizePixels);
                 if (subIndexX == numOfNeuronsX)
                     subIndexX--;
-                int subIndexY = (int) (2.0f * ev.getY() / receptiveFieldSizePixels);
+                int subIndexY = (int) (ev.getY() / halfReceptiveFieldSizePixels);
                 if (subIndexY == numOfNeuronsY)
                     subIndexY--;
 
@@ -1191,7 +1266,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                     lifNeurons.get(subIndexX - 1 + (subIndexY - 1) * numOfNeuronsX).addEvent(ev, 1.0f);
                 }
                 
-                updatedNeurons = maybeCallUpdateObservers(in, lastTime);
+                maybeCallUpdateObservers(in, lastTime);
 
             }
         } catch (IndexOutOfBoundsException e) {
@@ -1199,8 +1274,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             // this is in case neuron list is modified by real time filter during updating neurons
             log.warning(e.getMessage());
         }
-
-        callUpdateObservers(in, lastTime);
+// we don't have to update at the end of EventPacket.
+//        callUpdateObservers(in, lastTime);
 
         return in;
     }
@@ -1239,27 +1314,26 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                     int indexY = (int) tmpNeuron.getIndex().y;
 
                     tmpNeuron.setNumFiringNeighbors(0);
+
                     switch (tmpNeuron.getLocationType()) {
                         case CORNER_00:
+                            // gets neighbor neurons
                             upNeuron = lifNeurons.get( indexX + (indexY + 1) * numOfNeuronsX);
                             rightNeuron = lifNeurons.get(indexX + 1 + indexY * numOfNeuronsX);
 
-                            // check threshold of the first neuron
+                            // checks the threshold of the first neuron
                             tmpNeuron.isAboveThreshold();
 
+                            // checks upNeuron
                             if (upNeuron.isAboveThreshold()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
+                            // checks rightNeuron
                             if (rightNeuron.isAboveThreshold()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpNeuron.getNumFiringNeighbors() > 0) {
-                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
-                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
-                                }
-                            }
-
+                            // Updates neuron groups
                             if (tmpNeuron.getNumFiringNeighbors() == 2) {
                                 tmpNeuron.setGroupTag(-1);
                                 tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
@@ -1270,6 +1344,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             }
                             break;
                         case CORNER_01:
+                            if(!tmpNeuron.isFired())
+                                break;
+
                             downNeuron = lifNeurons.get(indexX + (indexY - 1) * numOfNeuronsX);
                             rightNeuron = lifNeurons.get(indexX + 1 + indexY * numOfNeuronsX);
 
@@ -1278,12 +1355,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             }
                             if (rightNeuron.isFired()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
-                            }
-
-                            if (tmpNeuron.getNumFiringNeighbors() > 0) {
-                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
-                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
-                                }
                             }
 
                             if (tmpNeuron.getNumFiringNeighbors() == 2) {
@@ -1311,12 +1382,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpNeuron.getNumFiringNeighbors() > 0) {
-                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
-                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
-                                }
-                            }
-
                             if (tmpNeuron.getNumFiringNeighbors() == 2) {
                                 tmpNeuron.setGroupTag(-1);
                                 tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
@@ -1327,6 +1392,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             }
                             break;
                         case CORNER_11:
+                            if(!tmpNeuron.isFired())
+                                break;
+
                             downNeuron = lifNeurons.get(indexX + (indexY - 1) * numOfNeuronsX);
                             leftNeuron = lifNeurons.get(indexX - 1 + indexY * numOfNeuronsX);
 
@@ -1335,12 +1403,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             }
                             if (leftNeuron.isFired()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
-                            }
-
-                            if (tmpNeuron.getNumFiringNeighbors() > 0) {
-                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
-                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
-                                }
                             }
 
                             if (tmpNeuron.getNumFiringNeighbors() == 2) {
@@ -1383,12 +1445,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpNeuron.getNumFiringNeighbors() > 0) {
-                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
-                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
-                                }
-                            }
-
                             if (tmpNeuron.getNumFiringNeighbors() == 3) {
                                 if (rightNeuron.getGroupTag() == downNeuron.getGroupTag()) {
                                     tmpNeuron.setGroupTag(downNeuron.getGroupTag());
@@ -1417,12 +1473,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             }
                             if (leftNeuron.isFired()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
-                            }
-
-                            if (tmpNeuron.getNumFiringNeighbors() > 0) {
-                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
-                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
-                                }
                             }
 
                             if (tmpNeuron.getNumFiringNeighbors() == 3) {
@@ -1466,12 +1516,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpNeuron.getNumFiringNeighbors() > 0) {
-                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
-                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
-                                }
-                            }
-
                             if (tmpNeuron.getNumFiringNeighbors() == 3) {
                                 tmpNeuron.setGroupTag(-1);
                                 tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
@@ -1483,6 +1527,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             }
                             break;
                         case EDGE_X1:
+                            if(!tmpNeuron.isFired())
+                                break;
+
                             downNeuron = lifNeurons.get(indexX + (indexY - 1) * numOfNeuronsX);
                             rightNeuron = lifNeurons.get(indexX + 1 + indexY * numOfNeuronsX);
                             leftNeuron = lifNeurons.get(indexX - 1 + indexY * numOfNeuronsX);
@@ -1495,12 +1542,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             }
                             if (leftNeuron.isFired()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
-                            }
-
-                            if (tmpNeuron.getNumFiringNeighbors() > 0) {
-                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
-                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
-                                }
                             }
 
                             if (tmpNeuron.getNumFiringNeighbors() == 3) {
@@ -1542,6 +1583,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             if (upNeuron.isAboveThreshold()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
+
+                            if(!tmpNeuron.isFired())
+                                break;
+
                             if (downNeuron.isFired()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
@@ -1552,13 +1597,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpNeuron.getNumFiringNeighbors() > 0 && tmpNeuron.isFired()) {
-                                if (tmpNeuron.getFiringType() != FiringType.FIRING_ON_BORDER) {
-                                    tmpNeuron.setFiringType(FiringType.FIRING_WITH_NEIGHBOR);
-                                }
-                            }
-
-                            if (tmpNeuron.getNumFiringNeighbors() == 4 && tmpNeuron.isFired()) {
+                            if (tmpNeuron.getNumFiringNeighbors() == 4) {
                                 if (rightNeuron.getGroupTag() == downNeuron.getGroupTag()) {
                                     tmpNeuron.setGroupTag(downNeuron.getGroupTag());
                                 }
@@ -1598,8 +1637,12 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                     initFilter();
                     log.warning(e.getMessage());
                 }
+            } // End of for
 
-            } // End of while
+            for(int i=0; i<lifNeurons.size(); i++){
+                LIFNeuron tmpNeuron = lifNeurons.get(i);
+                 tmpNeuron.setNumSpikes(0);
+            }
         } // End of if
     }
 
@@ -1610,7 +1653,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      * @param updateOption : option for updating neighbor neurons. Selected neighbors are updated together.
      * All neighbor neurons are updated together with option 'UPDATE_UP | UPDATE_DOWN | UPDATE_RIGHT | UPDATE_LEFT'.
      */
-    private final void updateGroup(LIFNeuron newMemberNeuron, int updateOption) {
+    private void updateGroup(LIFNeuron newMemberNeuron, int updateOption) {
         NeuronGroup tmpGroup = null;
         if (neuronGroups.containsKey(newMemberNeuron.getGroupTag())) {
             tmpGroup = neuronGroups.get(newMemberNeuron.getGroupTag());
@@ -1641,6 +1684,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         }
     }
 
+    @Override
     public void annotate(GLAutoDrawable drawable) {
         if (!isFilterEnabled()) {
             return;
@@ -1696,19 +1740,20 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         halfReceptiveFieldSizePixels = receptiveFieldSizePixels/2;
 
         // calculate the required number of neurons
-        if (2 * mychip.getSizeX() % receptiveFieldSizePixels == 0) {
-            numOfNeuronsX = (int) (2 * mychip.getSizeX() / receptiveFieldSizePixels) - 1;
+        if (mychip.getSizeX() % halfReceptiveFieldSizePixels == 0) {
+            numOfNeuronsX = (int) (mychip.getSizeX() / halfReceptiveFieldSizePixels) - 1;
         } else {
-            numOfNeuronsX = (int) (2 * mychip.getSizeX() / receptiveFieldSizePixels);
+            numOfNeuronsX = (int) (mychip.getSizeX() / halfReceptiveFieldSizePixels);
         }
 
-        if (2 * mychip.getSizeY() % receptiveFieldSizePixels == 0) {
-            numOfNeuronsY = (int) (2 * mychip.getSizeY() / receptiveFieldSizePixels) - 1;
+        if (mychip.getSizeY() % halfReceptiveFieldSizePixels == 0) {
+            numOfNeuronsY = (int) (mychip.getSizeY() / halfReceptiveFieldSizePixels) - 1;
         } else {
-            numOfNeuronsY = (int) (2 * mychip.getSizeY() / receptiveFieldSizePixels);
+            numOfNeuronsY = (int) (mychip.getSizeY() / halfReceptiveFieldSizePixels);
         }
 
         lastTime = 0;
+//        firingNeurons.clear();
         neuronGroups.clear();
         numOfGroup = 0;
 
@@ -1726,8 +1771,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                     // creates a new neuron
                     int neuronNumber = i+j*numOfNeuronsX;
                     Point2D.Float neuronIndex = new Point2D.Float(i, j);
-                    Point2D.Float neuronLocationPixels = new Point2D.Float((i+1)*receptiveFieldSizePixels/2, (j+1)*receptiveFieldSizePixels/2);
-                    LIFNeuron newNeuron = new LIFNeuron(neuronNumber, neuronIndex, neuronLocationPixels, receptiveFieldSizePixels, MPTimeConstantUs, MPThreshold, MPJumpAfterFiring);
+                    Point2D.Float neuronLocationPixels = new Point2D.Float((i+1)*halfReceptiveFieldSizePixels, (j+1)*halfReceptiveFieldSizePixels);
+                    LIFNeuron newNeuron = new LIFNeuron(neuronNumber, neuronIndex, neuronLocationPixels,
+                                                        receptiveFieldSizePixels, MPTimeConstantUs, MPThreshold,
+                                                        MPJumpAfterFiringPercentTh);
 
                     if (i == 0) {
                         if (j == 0) {
@@ -1768,6 +1815,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         }
 
         lastTime = 0;
+//        firingNeurons.clear();
         neuronGroups.clear();
         numOfGroup = 0;
     }
@@ -1963,8 +2011,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      *
      * @return
      */
-    public float getMPJumpAfterFiring() {
-        return MPJumpAfterFiring;
+    public float getMPJumpAfterFiringPercentTh() {
+        return MPJumpAfterFiringPercentTh;
     }
 
     /**
@@ -1972,12 +2020,12 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      *
      * @param MPJumpAfterFiring
      */
-    public void setMPJumpAfterFiring(float MPJumpAfterFiring) {
-        this.MPJumpAfterFiring = MPJumpAfterFiring;
-        getPrefs().putFloat("BlurringFilter2D.MPJumpAfterFiring", MPJumpAfterFiring);
+    public void setMPJumpAfterFiringPercentTh(float MPJumpAfterFiringPercentTh) {
+        this.MPJumpAfterFiringPercentTh = MPJumpAfterFiringPercentTh;
+        getPrefs().putFloat("BlurringFilter2D.MPJumpAfterFiringPercentTh", MPJumpAfterFiringPercentTh);
 
         for(LIFNeuron neuron:lifNeurons)
-            neuron.MPDecreaseArterFiring = MPJumpAfterFiring;
+            neuron.MPDecreaseArterFiringPercentTh = MPJumpAfterFiringPercentTh;
     }
 
     /**
