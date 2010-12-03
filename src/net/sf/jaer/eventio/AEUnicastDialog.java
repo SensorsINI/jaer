@@ -68,6 +68,7 @@ public class AEUnicastDialog extends javax.swing.JDialog{
 //        unicastInterface.close();
         int port = unicastInterface.getPort();
         if ( hostnameTextField.getText() == null ){
+            log.warning("hostname can not be blank");
             hostnameTextField.selectAll();
             return false;
         }
@@ -75,7 +76,8 @@ public class AEUnicastDialog extends javax.swing.JDialog{
         try{
             port = Integer.parseInt(portTextField.getText());
         } catch ( NumberFormatException e ){
-            portTextField.selectAll();
+             log.warning(e.toString());
+           portTextField.selectAll();
             return false;
         }
         unicastInterface.setHost(hostname);
@@ -90,6 +92,7 @@ public class AEUnicastDialog extends javax.swing.JDialog{
             int size = Integer.parseInt(bufferSizeTextBox.getText());
             unicastInterface.setBufferSize(size);
         } catch ( NumberFormatException e ){
+            log.warning("bad buffer size:" +e.toString());
             bufferSizeTextBox.selectAll();
             return false;
         }
@@ -97,6 +100,7 @@ public class AEUnicastDialog extends javax.swing.JDialog{
             float tsm = Float.parseFloat(timestampMultiplierTextBox.getText());
             unicastInterface.setTimestampMultiplier(tsm);
         } catch ( NumberFormatException e ){
+            log.warning("bad timestamp multiplier (Are you using \",\" as the decimal point? Use \".\" instead.): "+e.toString());
             timestampMultiplierTextBox.selectAll();
             return false;
         }
