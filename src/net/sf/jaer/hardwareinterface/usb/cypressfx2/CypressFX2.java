@@ -122,6 +122,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     public final byte VENDOR_REQUEST_SET_LED = (byte) 0xbf; // vendor command to set the board's LED
     public static final byte VR_DOWNLOAD_FIRMWARE = (byte) 0xC5;  // vendor request to program CPLD or FPGA
     public static final byte VR_SET_DEVICE_NAME = (byte) 0xC2;  // set serial number string
+
+    public static final byte VENDOR_REQUEST_WRITE_CPLD_SR = (byte) 0xCF;  // write CPLD shift register (configuration data)
+    public static final byte VENDOR_REQUEST_RUN_ADC = (byte) 0xCE;  // start and stop aquisition of ADC data
     //final byte VENDOR_REQUEST_READ_EEPROM=(byte)0xca; // vendor command to write EEPROM
     // #define VR_EEPROM		0xa2 // loads (uploads) EEPROM
     public final byte VR_EEPROM = (byte) 0xa2;
