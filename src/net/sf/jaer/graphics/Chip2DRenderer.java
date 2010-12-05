@@ -21,31 +21,31 @@ public class Chip2DRenderer implements Observer {
     protected Preferences prefs = Preferences.userNodeForPackage(Chip2DRenderer.class);
     /** the chip rendered for */
     protected Chip2D chip;
-    /** determines whether frame is reset to starting value on each rendering cycle. True to accumlate. */
+    /** determines whether frame is reset to starting value on each rendering cycle. True to accumulate. */
     protected boolean accumulateEnabled = false;
     protected ArrayList<FrameAnnotater> annotators = new ArrayList<FrameAnnotater>();
     protected int autoScaleValue = 1;
-    /** false for manual scaling, true for autoscaling of contrast */
+    /** false for manual scaling, true for auto-scaling of contrast */
     protected boolean autoscaleEnabled = prefs.getBoolean("Chip2DRenderer.autoscaleEnabled", false);
     /** the number of events for full scale saturated color */
     protected int colorScale; // set in constructor to preference value so that eventContrast also gets set
-    /** the constrast attributed to an event, 
+    /** the contrast attributed to an event, 
      * either level is multiplied or divided by this value depending on polarity of event. 
      * Gets set by setColorScale */
     protected float eventContrast = 1.1f;
     /** the rendered frame, RGB matrix of pixel values in 0-1 range.
-    In matlab convention, the first dimesion is y, the second dimension is x, the third dimension is a 3 vector of RGB values.
+    In Matlab convention, the first dimension is y, the second dimension is x, the third dimension is a 3 vector of RGB values.
      * @deprecated replaced by pixmap direct float buffer.
      */
     protected float[][][] fr;
-    /** The rendered pixel map, ordered by rgb/row/col. The first 3 elements are the RBB float values of the LL pixel (x=0,y=0). The next 3 are
+    /** The rendered pixel map, ordered by RGB/row/col. The first 3 elements are the RBB float values of the LL pixel (x=0,y=0). The next 3 are
      * the RGB of the second pixel from the left in the bottom row (x=1,y=0). Pixel (0,1) is at position starting at 3*(chip.getSizeX()).
      */
     protected FloatBuffer pixmap;
 
     /**
-     * The rendered pixel map, ordered by rgb/row/col. The first 3 elements are the RBB float values of the LL pixel (x=0,y=0). The next 3 are
-     * the RGB of the second pixel from the left in the bottom row (x=1,y=0). Pixel (0,1) is at position starting at 3*(chip.getSizeX()).
+     * The rendered pixel map, ordered by RGB/row/col. The first 3 elements are the RBB float values of the LL pixel (x=0,y=0). The next 3 are
+     * the RGB of the second pixel from the left in the bottom row (x=1,y=0). Pixel (0,1) is at position starting at 3*(chip.getSizeX()) in the FloatBuffer.
      *
      * @return the pixmap
      * @see #getPixmapArray()  to return a float[] array
