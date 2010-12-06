@@ -67,11 +67,21 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
      */
     private int refractoryTimeMs = getPrefs().getInt("GestureBF2D.refractoryTimeMs", 700);
 
+
     /**
      * lowpass filter time constant for gesture trajectory in ms
      */
     private float GTCriterion = getPrefs().getFloat("GestureBF2D.GTCriterion",3.0f);
+    /**
+     * enables using prevPath to find gesture pattern
+     */
+    private boolean usePrevPath = getPrefs().getBoolean("GestureBF2D.usePrevPath", true);
 
+    /**
+     * time to wait for auto logout
+     */
+    private int autoLogoutTimeMs = getPrefs().getInt("GestureBFStereo.autoLogoutTimeMs", 10000);
+    private boolean enableAutoLogout = getPrefs().getBoolean("GestureBFStereo.enableAutoLogout", true);
 
 
     
@@ -83,7 +93,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
     /**
      * path of gesture picture files
      */
-    public static String pathGesturePictures = "C:/Users/jun/Documents/gesture pictures/";
+    public static String pathGesturePictures = "D:/gesture pictures/";
 
     /**
      * images for gestures
@@ -133,6 +143,11 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
      */
     LowpassFilter2d lpf;
 
+    /**
+     * timer for auto logout
+     */
+    protected Timer autoLogoutTimer;
+
 
 
 
@@ -147,7 +162,9 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         this.chip = chip;
         chip.addObserver(this);
 
-        String trimming = "Trimming", selection  = "Selection", lpfilter = "Low pass filter", gesture = "Gesture";
+        autoLogoutTimer = new Timer(autoLogoutTimeMs, autoLogoutAction);
+
+        String trimming = "Trimming", selection  = "Selection", lpfilter = "Low pass filter", gesture = "Gesture", autoLogout = "Auto logout";
         setPropertyTooltip(selection,"numPointsThreshold","a cluster with points more than this amount will be checked for gesture recognition.");
         setPropertyTooltip(selection,"maxSpeedThreshold_kPPT","speed threshold of the cluster to be a gesture candidate (in kPPT).");
         setPropertyTooltip(trimming,"headTrimmingPercents","retries HMM after this percents of head points is removed from the trajectory when the first tiral is failed.");
@@ -156,6 +173,9 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         setPropertyTooltip(lpfilter,"tauPathMs","lowpass filter time constant for gesture trajectory in ms");
         setPropertyTooltip(gesture,"refractoryTimeMs","refractory time in ms between gestures");
         setPropertyTooltip(gesture,"GTCriterion","criterion of Gaussian threshold");
+        setPropertyTooltip(gesture,"usePrevPath","enables using prevPath to find gesture pattern");
+        setPropertyTooltip(autoLogout,"autoLogoutTimeMs","time in ms to wait before auto logout");
+        setPropertyTooltip(autoLogout,"enableAutoLogout","if true, auto logout is done if it's been more than autoLogoutTimeMs since the last gesture");
 
         // low pass filter
         this.lpf = new LowpassFilter2d();
@@ -171,6 +191,16 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         // encloses tracker
         filterChainSetting ();
     }
+
+    /**
+     * action listener for timer events
+     */
+    ActionListener autoLogoutAction = new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent evt) {
+            doLogout();
+        }
+    };
 
     /**
      * sets the BlurringFilter2DTracker as a enclosed filter to find cluster
@@ -261,23 +291,46 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                 return;
 
              // default trimming
-            ArrayList<ClusterPathPoint> trimmedPath = trajectoryTrimmingPointBase(path, 2, 2);
+            ArrayList<ClusterPathPoint> trimmedPath = trajectoryTrimmingPointBase(path, 1, 1);
+
+            // doesn't have to classify short trajectroies
+            if(trimmedPath.size() < numPointsThreshold)
+            {
+                if(prevPath == null || doesAccumulate(trimmedPath, checkActivationTimeUs)){
+                    prevPath.addAll(trimmedPath);
+                }
+                return;
+            }
 
             if(login){
                 // estimates the best matching gesture
                 String bmg = estimateGesture(trimmedPath);
+
+                if(usePrevPath && bmg == null)
+                    bmg = estimateGestureWithPrevPath(trimmedPath, checkActivationTimeUs);
+
                 System.out.println("Best matching gesture is " + bmg);
 
                 if(afterRecognitionProcess(bmg, trimmedPath)){
                     endTimePrevGesture = endTimeGesture;
+
+                    // starts or restarts the auto logout timer
+                    if(isLogin()){ // has to check if the gesture recognition system is still active (to consider logout)
+                        if(autoLogoutTimer.isRunning())
+                            autoLogoutTimer.restart();
+                        else
+                            autoLogoutTimer.start();
+                    }
+
                 }  else {
-                    storePath(path);
+                    storePath(trimmedPath);
                 }
 
             } else {
                 if(detectStartingGesture(trimmedPath)){
                     System.out.println("Gesture recognition system is enabled.");
                     afterRecognitionProcess("Infinite", trimmedPath);
+                    endTimePrevGesture = endTimeGesture;
                 } else {
                     storePath(trimmedPath);
                 }
@@ -311,14 +364,14 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         boolean ret = false;
         String bmg = estimateGesture(path);
 
-        if(bmg != null){
-            if(bmg.startsWith("Infinite")){
-                ret = true;
-            } else if (bmg.startsWith("CW") || bmg.startsWith("CCW")) {
-              if(prevPath != null)
-                  ret = tryGestureWithPrevPath(path, 0, "Infinite", checkActivationTimeUs);
-            } else {
-
+        if(bmg != null && bmg.startsWith("Infinite"))
+            ret = true;
+        else {
+            if(usePrevPath){
+                bmg = estimateGestureWithPrevPath(path, checkActivationTimeUs);
+                if(bmg != null && bmg.startsWith("Infinite")){
+                    ret = true;
+                }
             }
         }
 
@@ -328,11 +381,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
 
     public boolean tryGestureWithPrevPath(ArrayList<ClusterPathPoint> path, int prevPathTrimmingPercent, String gestureName, int timeDiffTolerenceUs){
         boolean ret = false;
-        if(prevPath != null){
-
-            if((startTimeGesture - ((ClusterPathPoint)prevPath.get(prevPath.size()-1)).t) > timeDiffTolerenceUs)
-                return false;
-
+        if(doesAccumulate(path, timeDiffTolerenceUs)){
             ArrayList<ClusterPathPoint> trimmedPath = trajectoryTrimming(prevPath, prevPathTrimmingPercent, 0, FeatureExtraction.calTrajectoryLength(prevPath));
 
             trimmedPath.addAll(path);
@@ -352,6 +401,9 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
      * @return
      */
     protected String estimateGesture(ArrayList<ClusterPathPoint> path){
+        if(path.size() < numPointsThreshold)
+            return null;
+
         String bmg = getBestmatchingGesture(path, -200);
 
         if(bmg == null){
@@ -361,14 +413,11 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                 for(int j = 0; j<=1; j++){
                     // retries with the head trimming if failed
                     ArrayList<ClusterPathPoint> trimmedPath = trajectoryTrimming(path, i*headTrimmingPercents/2, j*tailTrimmingPercents, pathLength);
-                    if(trimmedPath.size() >= numPointsThreshold && checkSpeedCriterion(trimmedPath)){
+                    if(checkSpeedCriterion(trimmedPath)){
                         bmg = getBestmatchingGesture(trimmedPath, -200 + ((i-1)*2+j+1)*100);
                     } else {
-                        if(trimmedPath.size() < numPointsThreshold)
-//                            System.out.println("Lack of data points");
-                        if(!checkSpeedCriterion(trimmedPath))
-//                            System.out.println("Under speed limit");
-                        break;
+//                        System.out.println("Under speed limit");
+//                        break;
                     }
 
                     if(bmg != null)
@@ -378,6 +427,41 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         }
 
         return bmg;
+    }
+
+    protected String estimateGestureWithPrevPath(ArrayList<ClusterPathPoint> path, int timeDiffTolerenceUs){
+        String bmg = null;
+
+        if(doesAccumulate(path, timeDiffTolerenceUs)){
+            // saws two segments
+            ArrayList<ClusterPathPoint> path2 = new ArrayList<ClusterPathPoint>();
+            path2.addAll(prevPath);
+            path2.addAll(path);
+            bmg = estimateGesture(path2);
+            prevPath = null; // makes it null since it's used
+        }
+
+        return bmg;
+    }
+
+    public boolean doesAccumulate(ArrayList<ClusterPathPoint> path, int timeDiffTolerenceUs){
+        boolean ret = false;
+
+        if(prevPath != null){
+            ClusterPathPoint lastPointPrevPath = prevPath.get(prevPath.size()-1);
+            ClusterPathPoint firstPointPath = path.get(0);
+
+            // checks time diffence
+            if((firstPointPath.t - lastPointPrevPath.t) <= timeDiffTolerenceUs){
+                // checks distance
+                float distance = (float) FeatureExtraction.distance(new Point2D.Float(lastPointPrevPath.x, lastPointPrevPath.y),
+                                                                    new Point2D.Float(firstPointPath.x, firstPointPath.y));
+                if(distance <= chip.getSizeX()*0.3f)
+                    ret = true;
+            }
+        }
+
+        return ret;
     }
 
     /**
@@ -778,6 +862,77 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
 
 
 
+    public boolean isUsePrevPath() {
+        return usePrevPath;
+    }
+
+    public void setUsePrevPath(boolean usePrevPath) {
+        boolean old = this.usePrevPath;
+        this.usePrevPath = usePrevPath;
+        getPrefs().putBoolean("GestureBF2D.usePrevPath", usePrevPath);
+        support.firePropertyChange("usePrevPath",old,this.usePrevPath);
+    }
+
+    /**
+     * returns enableAutoLogout
+     *
+     * @return
+     */
+    public boolean isEnableAutoLogout() {
+        return enableAutoLogout;
+    }
+
+    /**
+     * sets enableAutoLogout
+     *
+     * @param enableAutoLogout
+     */
+    public void setEnableAutoLogout(boolean enableAutoLogout) {
+        boolean old = this.enableAutoLogout;
+        this.enableAutoLogout = enableAutoLogout;
+        getPrefs().putBoolean("GestureBF2D.enableAutoLogout",enableAutoLogout);
+        support.firePropertyChange("enableAutoLogout",old,this.enableAutoLogout);
+    }
+
+
+    /**
+     * returns autoLogoutTimeMs
+     *
+     * @return
+     */
+    public int getAutoLogoutTimeMs() {
+        return autoLogoutTimeMs;
+    }
+
+    /**
+     * sets autoLogoutTimeMs
+     *
+     * @param autoLogoutTimeMs
+     */
+    public void setAutoLogoutTimeMs(int autoLogoutTimeMs) {
+        int old = this.autoLogoutTimeMs;
+        this.autoLogoutTimeMs = autoLogoutTimeMs;
+        getPrefs().putInt("GestureBF2D.autoLogoutTimeMs",autoLogoutTimeMs);
+        support.firePropertyChange("autoLogoutTimeMs",old,this.autoLogoutTimeMs);
+
+        if(autoLogoutTimer.isRunning()){
+            autoLogoutTimer.stop();
+            autoLogoutTimer = new Timer(autoLogoutTimeMs, autoLogoutAction);
+            autoLogoutTimer.start();
+        } else {
+            autoLogoutTimer = new Timer(autoLogoutTimeMs, autoLogoutAction);
+        }
+    }
+
+    public ArrayList<ClusterPathPoint> getPrevPath() {
+        return prevPath;
+    }
+
+    public static int getCheckActivationTimeUs() {
+        return checkActivationTimeUs;
+    }
+
+
     /**
      * Class for HMM and GUI
      */
@@ -864,6 +1019,11 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
          * timer for image load
          */
         protected Timer timer;
+
+        /**
+         * folder 
+         */
+        private String defaultFolder = "";
 
         /**
          * constructor
@@ -956,7 +1116,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                         login = true;
                         System.out.println("Gesture recognition is mannually activated.");
                     }else{
-                        login = false;
+                        doLogout();
                         System.out.println("Gesture recognition is mannually Inactivated.");
                     }
 
@@ -1366,12 +1526,18 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         hmmDP.putImage(imgHi);
         login = true;
         hmmDP.checkGestureAction.setState(login);
+
+        // starts the auto logout timer
+        autoLogoutTimer.start();
     }
 
     protected void doLogout(){
         hmmDP.putImage(imgBye);
         login = false;
         hmmDP.checkGestureAction.setState(login);
+
+        // stop auto-logout timer
+        autoLogoutTimer.stop();
     }
 
     protected void doPush(){

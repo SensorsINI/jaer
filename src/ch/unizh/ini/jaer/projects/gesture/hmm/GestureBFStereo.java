@@ -24,12 +24,6 @@ import net.sf.jaer.eventprocessing.tracking.ClusterPathPoint;
  * @author Jun Haeng Lee
  */
 public class GestureBFStereo extends GestureBF2D{
-    /**
-     * time to wait for auto logout
-     */
-    private int autoLogoutTimeMs = getPrefs().getInt("GestureBFStereo.autoLogoutTimeMs", 10000);
-    private boolean enableAutoLogout = getPrefs().getBoolean("GestureBFStereo.enableAutoLogout", true);
-
     protected BlurringFilterStereoTracker stereoTracker = null;
 
     protected LinkedList<Integer> disparityQueue = new LinkedList<Integer>();
@@ -38,36 +32,16 @@ public class GestureBFStereo extends GestureBF2D{
     public final static int IDLE_STATE_DISPARITY = -1000;
     protected int meanDisparityOfStartGesture = IDLE_STATE_DISPARITY;
     protected int disparityThresholdPushGesture = 10;
-    private boolean pushDetected = false;
-
-    /**
-     * timer for auto logout
-     */
-    protected Timer autoLogoutTimer;
+    private boolean pushDetected = false; 
 
     public GestureBFStereo(AEChip chip) {
         super(chip);
-        autoLogoutTimer = new Timer(autoLogoutTimeMs, autoLogoutAction);
         
         // deactivates lower disparity limit
         ((BlurringFilterStereoTracker) super.tracker).setEnableDisparityLimit(false);
-        
-        // releases maximum disparity change limit
-//        ((BlurringFilterStereoTracker) super.tracker).setMaxDisparityChangePixels(100);
-
-        setPropertyTooltip("Auto logout","autoLogoutTimeMs","time in ms to wait before auto logout");
-        setPropertyTooltip("Auto logout","enableAutoLogout","if true, auto logout is done if it's been more than autoLogoutTimeMs since the last gesture");
     }
 
-    /**
-     * action listener for timer events
-     */
-    ActionListener autoLogoutAction = new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent evt) {
-            doLogout();            
-        }
-    };
+    
 
     @Override
     protected void filterChainSetting() {
@@ -87,56 +61,67 @@ public class GestureBFStereo extends GestureBF2D{
             List<BlurringFilter2DTracker.Cluster> cl = tracker.getClusters();
             ArrayList<ClusterPathPoint> path = selectClusterTrajectory(cl);
 
-            // checks 2D gestures
-            String bmg = null;
-            if(path != null){
-                if(isLogin()){
-                    // estimates the best matching gesture
-                    bmg = estimateGesture(path);
-                    System.out.println("Best matching gesture is " + bmg);
+            if(path == null)
+                return;
 
-                    if(afterRecognitionProcess(bmg, path)){
-                        endTimePrevGesture = endTimeGesture;
+            // default trimming
+            ArrayList<ClusterPathPoint> trimmedPath = trajectoryTrimmingPointBase(path, 1, 1);
 
-                        // starts or restarts the auto logout timer
-                        if(isLogin()){ // has to check if the gesture recognition system is still active (to consider logout)
-                            if(autoLogoutTimer.isRunning())
-                                autoLogoutTimer.restart();
-                            else
-                                autoLogoutTimer.start();
-                        }
-
-                        pushDetected = false;
-                    }else
-                        storePath(path);
-
-                } else { // if the gesture recognition system is inactive, checks the start gesture only
-                    if(detectStartingGesture(path)){
-                        System.out.println("Gesture recognition system is enabled.");
-                        afterRecognitionProcess("Infinite", path);
-                        endTimePrevGesture = endTimeGesture;
-
-                        meanDisparityOfStartGesture = findMeanDisparity(path);
-
-                        // set maximum disparity of the vergence filter based on mean disparity of the start gesture
-                        BlurringFilterStereoTracker tmpTracker = (BlurringFilterStereoTracker) super.tracker;
-                        if(tmpTracker.getAutoThresholdSlope() >= 0){
-                            tmpTracker.setDisparityLimit(meanDisparityOfStartGesture-1, true);
-                        }else{
-                            tmpTracker.setDisparityLimit(meanDisparityOfStartGesture+1, false);
-                        }
-                        tmpTracker.setEnableDisparityLimit(true);
-    //                    ((BlurringFilterStereoTracker) super.tracker).setMaxDisparityChangePixels(20);
-
-                        // starts the auto logout timer
-                        autoLogoutTimer.start();
-
-                        pushDetected = false;
-                    } else
-                        storePath(path);
+            // doesn't have to classify short trajectroies
+            if(trimmedPath.size() < getNumPointsThreshold())
+            {
+                if(getPrevPath() == null || doesAccumulate(trimmedPath, getCheckActivationTimeUs())){
+                    getPrevPath().addAll(trimmedPath);
                 }
+                return;
             }
 
+            // checks 2D gestures
+            String bmg = null;
+            if(isLogin()){
+                // estimates the best matching gesture
+                bmg = estimateGesture(trimmedPath);
+
+                // tries again with prevPath if bmg is null
+                if(isUsePrevPath() && bmg == null)
+                    bmg = estimateGestureWithPrevPath(trimmedPath, getCheckActivationTimeUs());
+                    
+                System.out.println("Best matching gesture is " + bmg);
+
+                if(afterRecognitionProcess(bmg, trimmedPath)){
+                    endTimePrevGesture = endTimeGesture;
+
+                    // starts or restarts the auto logout timer
+                    if(isLogin()){ // has to check if the gesture recognition system is still active (to consider logout)
+                        if(autoLogoutTimer.isRunning())
+                            autoLogoutTimer.restart();
+                        else
+                            autoLogoutTimer.start();
+                    }
+
+                    pushDetected = false;
+                }else
+                    storePath(trimmedPath);
+
+            } else { // if the gesture recognition system is inactive, checks the start gesture only
+                if(detectStartingGesture(trimmedPath)){
+                    System.out.println("Gesture recognition system is enabled.");
+                    afterRecognitionProcess("Infinite", trimmedPath);
+                    endTimePrevGesture = endTimeGesture;
+
+                    // set maximum disparity of the vergence filter based on mean disparity of the start gesture
+                    meanDisparityOfStartGesture = findMeanDisparity(trimmedPath);
+                    BlurringFilterStereoTracker tmpTracker = (BlurringFilterStereoTracker) super.tracker;
+                    if(tmpTracker.getAutoThresholdSlope() >= 0){
+                        tmpTracker.setDisparityLimit(meanDisparityOfStartGesture-2, true);
+                    }else{
+                        tmpTracker.setDisparityLimit(meanDisparityOfStartGesture+2, false);
+                    }
+                    tmpTracker.setEnableDisparityLimit(true);
+                     pushDetected = false;
+                } else
+                    storePath(trimmedPath);
+            }
         } 
     }
 
@@ -158,56 +143,9 @@ public class GestureBFStereo extends GestureBF2D{
         return meanDisparity/trimmedPath.size();
     }
 
-    /**
-     * returns enableAutoLogout
-     *
-     * @return
-     */
-    public boolean isEnableAutoLogout() {
-        return enableAutoLogout;
-    }
-
-    /**
-     * sets enableAutoLogout
-     *
-     * @param enableAutoLogout
-     */
-    public void setEnableAutoLogout(boolean enableAutoLogout) {
-        boolean old = this.enableAutoLogout;
-        this.enableAutoLogout = enableAutoLogout;
-        getPrefs().putBoolean("GestureBFStereo.enableAutoLogout",enableAutoLogout);
-        support.firePropertyChange("enableAutoLogout",old,this.enableAutoLogout);
-    }
 
 
-    /**
-     * returns autoLogoutTimeMs
-     * 
-     * @return
-     */
-    public int getAutoLogoutTimeMs() {
-        return autoLogoutTimeMs;
-    }
-
-    /**
-     * sets autoLogoutTimeMs
-     *
-     * @param autoLogoutTimeMs
-     */
-    public void setAutoLogoutTimeMs(int autoLogoutTimeMs) {
-        int old = this.autoLogoutTimeMs;
-        this.autoLogoutTimeMs = autoLogoutTimeMs;
-        getPrefs().putInt("GestureBFStereo.autoLogoutTimeMs",autoLogoutTimeMs);
-        support.firePropertyChange("autoLogoutTimeMs",old,this.autoLogoutTimeMs);
-
-        if(autoLogoutTimer.isRunning()){
-            autoLogoutTimer.stop();
-            autoLogoutTimer = new Timer(autoLogoutTimeMs, autoLogoutAction);
-            autoLogoutTimer.start();
-        } else {
-            autoLogoutTimer = new Timer(autoLogoutTimeMs, autoLogoutAction);
-        }
-    }
+    
 
     @Override
     protected void doLogin() {
@@ -225,9 +163,6 @@ public class GestureBFStereo extends GestureBF2D{
 
         // releases maximum disparity change limit
 //        ((BlurringFilterStereoTracker) super.tracker).setMaxDisparityChangePixels(100);
-
-        // stop auto-logout timer
-        autoLogoutTimer.stop();
     }
 
     @Override
