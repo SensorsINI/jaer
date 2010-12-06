@@ -246,6 +246,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         unicastInputEnabled = false;
     }
+
+    /**
+     * Returns the main viewer image display panel where the ChipCanvas is shown. DisplayMethod's can use this getter to add their own display controls.
+     * 
+     * @return the imagePanel
+     */
+    public javax.swing.JPanel getImagePanel() {
+        return imagePanel;
+    }
     /** Modes of viewing: WAITING means waiting for device or for playback or remote, LIVE means showing a hardware interface, PLAYBACK means playing
      * back a recorded file, SEQUENCING means sequencing a file out on a sequencer device, REMOTE means playing a remote stream of AEs
      */
@@ -443,7 +452,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setFocusable(true);
         requestFocus();
 //        viewLoop = new ViewLoop(); // declared final for synchronization
-        dropTarget = new DropTarget(imagePanel,this);
+        dropTarget = new DropTarget(getImagePanel(),this);
 
         fixLoggingControls();
 
@@ -855,7 +864,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     synchronized void makeCanvas (){
         if ( chipCanvas != null ){
-            imagePanel.remove(chipCanvas.getCanvas());
+            getImagePanel().remove(chipCanvas.getCanvas());
         }
         if ( chip == null ){
             log.warning("null chip, not making canvas");
@@ -863,7 +872,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         chipCanvas = chip.getCanvas();
         chipCanvas.setOpenGLEnabled(isOpenGLRenderingEnabled());
-        imagePanel.add(chipCanvas.getCanvas());
+        getImagePanel().add(chipCanvas.getCanvas());
 
 //        chipCanvas.getCanvas().invalidate();
         // find display menu reference and fill it with display menu for this canvas
@@ -2396,7 +2405,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jPanel1.setLayout(new java.awt.BorderLayout());
 
         statusTextField.setEditable(false);
-        statusTextField.setFont(new java.awt.Font("Tahoma", 0, 10));
+        statusTextField.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
         statusTextField.setToolTipText("Status messages show here");
         statusTextField.setFocusable(false);
         jPanel1.add(statusTextField, java.awt.BorderLayout.CENTER);

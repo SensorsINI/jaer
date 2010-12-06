@@ -46,6 +46,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
 
     /** The computed intensity value. */
     private float intensity = 0;
+    private cDVSLogIntensityFrameData frameData = new cDVSLogIntensityFrameData();
 
     public static String getDescription() {
         return "cDVSTest color Dynamic Vision Test chip";
@@ -54,6 +55,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     /** Creates a new instance of cDVSTest10.  */
     public cDVSTest20() {
         setName("cDVSTest20");
+        setEventClass(CDVSEvent.class);
         setSizeX(140);
         setSizeY(64);
         setNumCellTypes(3); // two are polarity and last is intensity
@@ -63,10 +65,14 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         setBiasgen(new cDVSTest20.cDVSTestBiasgen(this));
         DisplayMethod m = getCanvas().getDisplayMethod(); // get default method
         DVSWithIntensityDisplayMethod intenDisplayMethod = new DVSWithIntensityDisplayMethod(getCanvas());
+
         intenDisplayMethod.setIntensitySource(this);
         getCanvas().removeDisplayMethod(m);
         getCanvas().addDisplayMethod(intenDisplayMethod);
         getCanvas().setDisplayMethod(intenDisplayMethod);
+
+        CDVSDisplayMethod cDVSDisplayMethod = new CDVSDisplayMethod(getCanvas());
+        getCanvas().addDisplayMethod(cDVSDisplayMethod);
     }
 
     /** Creates a new instance of cDVSTest10
@@ -100,8 +106,12 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
      */
     public class cDVSTestExtractor extends RetinaExtractor {
 
+        // according to  D:\Users\tobi\Documents\avlsi-svn\db\Firmware\cDVSTest20\cDVSTest_dataword_spec.pdf
 //        public static final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0x000,  YSHIFT = 12,  INTENSITYMASK = 0x40000;
         public static final int XMASK = 0x1fe, XSHIFT = 1, YMASK = 0x3f000, YSHIFT = 12, INTENSITYMASK = 0x40000;
+        public static final int DATA_TYPE_MASK = 0xc000, DATA_TYPE_ADDRESS = 0x0000, DATA_TYPE_TIMESTAMP = 0x4000, DATA_TYPE_WRAP = 0x8000, DATA_TYPE_TIMESTAMP_RESET = 0xd000;
+        public static final int ADDRESS_TYPE_MASK = 0x2000, EVENT_ADDRESS_MASK=0x1fff, ADDRESS_TYPE_EVENT = 0x0000, ADDRESS_TYPE_ADC = 0x2000;
+        public static final int ADC_TYPE_MASK = 0x1e00, ADC_DATA_MASK = 0x3ff, ADC_CHANNEL_MASK = 0x1800, ADC_START_BIT = 0x0200;
         private int lastIntenTs = 0;
 
         public cDVSTestExtractor(cDVSTest20 chip) {
@@ -116,7 +126,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         @Override
         synchronized public EventPacket extractPacket(AEPacketRaw in) {
             if (out == null) {
-                out = new EventPacket<PolarityEvent>(chip.getEventClass());
+                out = new EventPacket(chip.getEventClass());
             } else {
                 out.clear();
             }
@@ -131,42 +141,54 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                     skipBy++;
                 }
             }
-            int[] a = in.getAddresses();
+            int[] datas = in.getAddresses();
             int[] timestamps = in.getTimestamps();
             OutputEventIterator outItr = out.outputIterator();
-            for (int i = 0; i < n; i += skipBy) { // bug here
-                int addr = a[i];
-                if ((addr & INTENSITYMASK) != 0) {// intensity spike
-                    int dt = timestamps[i] - lastIntenTs;
-                    if (dt > 50) {
-                        avdt = 0.2f * dt + 0.8f * avdt;
-                        setIntensity(2000f / avdt); // ISI of this much gives intensity 1
-                    }
-                    lastIntenTs = timestamps[i];
-                    
-//                    PolarityEvent e = (PolarityEvent) outItr.nextOutput();
-//                    e.timestamp = (timestamps[i]);
-//                    e.type = 2;
-                } else {
-                    PolarityEvent e = (PolarityEvent) outItr.nextOutput();
-                    e.address = addr;
-                    e.timestamp = (timestamps[i]);
-                    e.x = (short) (((addr & XMASK) >>> XSHIFT));
-                    if (e.x < 0) {
-                        e.x = 0;
-                    } else if (e.x > 319) {
-                        //   e.x = 319; // TODO fix this artificial clamping of x address within space, masks symptoms
-                    }
-                    e.y = (short) ((addr & YMASK) >>> YSHIFT);
-                    if (e.y > 239) {
+
+            // at this point the raw data from the USB IN packet has already been digested to extract timestamps, including timestamp wrap events and timestamp resets.
+            // The datas array holds the data, which consists of a mixture of AEs and ADC values.
+            // Here we extract the datas and leave the timestamps alone.
+
+            for (int i = 0; i < n; i++) {  // TODO implement skipBy
+                int data = datas[i];
+                if ((data & DATA_TYPE_MASK) == DATA_TYPE_ADDRESS) { // should always be true now that translateEvents has extracted timestamp info
+                    if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_EVENT) {
+                        if ((data & INTENSITYMASK) != 0) {// intensity spike
+                            int dt = timestamps[i] - lastIntenTs;
+                            if (dt > 50) {
+                                avdt = 0.2f * dt + 0.8f * avdt;
+                                setIntensity(2000f / avdt); // ISI of this much gives intensity 1
+                            }
+                            lastIntenTs = timestamps[i];
+
+                        } else {
+                            CDVSEvent e = (CDVSEvent) outItr.nextOutput();
+                            e.address = data&EVENT_ADDRESS_MASK;
+                            e.timestamp = (timestamps[i]);
+                            e.x = (short) (((data & XMASK) >>> XSHIFT));
+                            if (e.x < 0) {
+                                e.x = 0;
+                            } else if (e.x > 319) {
+                                //   e.x = 319; // TODO fix this artificial clamping of x address within space, masks symptoms
+                            }
+                            e.y = (short) ((data & YMASK) >>> YSHIFT);
+                            if (e.y > 239) {
 //                    log.warning("e.y="+e.y);
-                        e.y = 239; // TODO fix this
-                    } else if (e.y < 0) {
-                        e.y = 0; // TODO
+                                e.y = 239; // TODO fix this
+                            } else if (e.y < 0) {
+                                e.y = 0; // TODO
+                            }
+                            e.type = (byte) (data & 1);
+                            e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
+                        }
+                    } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
+                        if ((data & ADC_START_BIT) == ADC_START_BIT) {
+                            frameData.resetCounter();
+                        }
+                        frameData.setValueAndIncrementCounter(data & ADC_DATA_MASK);
                     }
-                    e.type = (byte) (addr & 1);
-                    e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
                 }
+
             }
             return out;
         }
@@ -219,7 +241,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
         private ConfigurableIPotRev0 pcas, diffOn, diffOff, diff, red, blue, amp;
         private ConfigurableIPotRev0 refr, pr, foll;
-        cDVSTest20ControlPanel controlPanel;
+        cDVSTest20ChipControlPanel controlPanel;
         AllMuxes allMuxes = new AllMuxes(); // the output muxes
         private ShiftedSourceBias ssn, ssp, ssnMid, sspMid;
         private ShiftedSourceBias[] ssBiases = new ShiftedSourceBias[4];
@@ -374,7 +396,11 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                     hp.loadPreference();
                 }
             }
-            if(ssBiases!=null) for(ShiftedSourceBias ss:ssBiases) ss.loadPreferences();
+            if (ssBiases != null) {
+                for (ShiftedSourceBias ss : ssBiases) {
+                    ss.loadPreferences();
+                }
+            }
         }
 
         @Override
@@ -383,7 +409,11 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             for (HasPreference hp : hasPreferencesList) {
                 hp.storePreference();
             }
-            if(ssBiases!=null) for(ShiftedSourceBias ss:ssBiases) ss.storePreferences();
+            if (ssBiases != null) {
+                for (ShiftedSourceBias ss : ssBiases) {
+                    ss.storePreferences();
+                }
+            }
         }
 
         /**
@@ -407,7 +437,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(ssnMid));
             combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(sspMid));
             pane.addTab("Biases", combinedBiasShiftedSourcePanel);
-            pane.addTab("Output control", new cDVSTest20ControlPanel(cDVSTest20.this));
+            pane.addTab("Output control", new cDVSTest20ChipControlPanel(cDVSTest20.this));
             panel.add(pane, BorderLayout.CENTER);
             return panel;
         }
@@ -419,7 +449,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             byte[] biasBytes = super.formatConfigurationBytes(biasgen);
             byte[] configBytes = allMuxes.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
             bb.put(configBytes);
-            byte VDAC=Byte.valueOf("127");
+            byte VDAC = Byte.valueOf("127");
             bb.put(VDAC);   // VDAC needs 8 bits
             bb.put(biasBytes);
 
@@ -671,14 +701,11 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             }
         }
 
-
-
         // the output muxes
         class AllMuxes extends ArrayList<OutputMux> {
 
             OutputMux[] vmuxes = {new VoltageOutputMux(1), new VoltageOutputMux(2), new VoltageOutputMux(3), new VoltageOutputMux(4)};
             OutputMux[] dmuxes = {new LogicMux(1), new LogicMux(2), new LogicMux(3), new LogicMux(4), new LogicMux(5)};
-            
 
             byte[] formatConfigurationBytes() {
                 int nBits = 0;
@@ -705,7 +732,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
 
                 addAll(Arrays.asList(dmuxes)); // 5 logic muxes, first in list since at end of chain - bits must be sent first, before any biasgen bits
                 addAll(Arrays.asList(vmuxes)); // finally send the 3 voltage muxes
- 
+
                 dmuxes[0].setName("DigMux4");
                 dmuxes[1].setName("DigMux3");
                 dmuxes[2].setName("DigMux2");
@@ -740,7 +767,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                 for (int i = 0; i < 4; i++) {
                     vmuxes[i].put(0, "readout");
                     vmuxes[i].put(1, "DiffAmpOut");
-                    vmuxes[i].put(2, "InPh");   
+                    vmuxes[i].put(2, "InPh");
                 }
 
                 vmuxes[0].put(3, "refcurrent");
