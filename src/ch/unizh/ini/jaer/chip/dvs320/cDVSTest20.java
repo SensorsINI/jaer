@@ -23,6 +23,7 @@ import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import net.sf.jaer.biasgen.Pot.Sex;
 import net.sf.jaer.biasgen.Pot.Type;
+import net.sf.jaer.graphics.Chip2DRenderer;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.RemoteControlCommand;
@@ -44,9 +45,33 @@ import net.sf.jaer.util.RemoteControlled;
  */
 public class cDVSTest20 extends AERetina implements HasIntensity {
 
+    public static final int SIZEX_TOTAL = 140;
+    public static final int SIZE_Y = 64;
+    public static final int SIZE_X_CDVS = 64;
+    public static final int SIZE_X_DVS = 64;
+    // following define bit masks for various hardware data types. 
+    // The hardware interface translateEvents method packs the raw device data into 32 bit 'addresses' and timestamps.
+    // timestamps are unwrapped and timestamp resets are handled in translateEvents. Addresses are filled with either AE or ADC data.
+    // AEs are filled in according the XMASK, YMASK, XSHIFT, YSHIFT below.
+     /**
+     * bit masks/shifts for cDVS  AE data
+     */
+    public static final int POLMASK = 1,
+            XSHIFT = Integer.bitCount(POLMASK),
+            XMASK = 127 << XSHIFT, // 7 bits
+            YSHIFT = Integer.bitCount(POLMASK | XMASK),
+            YMASK = 63 << YSHIFT, // 6 bits
+            INTENSITYMASK = 0x40000;
+    /**
+     * data type fields
+     */
+    public static final int DATA_TYPE_MASK = 0xc000, DATA_TYPE_ADDRESS = 0x0000, DATA_TYPE_TIMESTAMP = 0x4000, DATA_TYPE_WRAP = 0x8000, DATA_TYPE_TIMESTAMP_RESET = 0xd000;
+    public static final int ADDRESS_TYPE_MASK = 0x4000, EVENT_ADDRESS_MASK = POLMASK|XMASK|YMASK, ADDRESS_TYPE_EVENT = 0x0000, ADDRESS_TYPE_ADC = 0x4000;
+    public static final int ADC_TYPE_MASK = 0x1e00, ADC_DATA_MASK = 0x3ff, ADC_CHANNEL_MASK = 0x1800, ADC_START_BIT = 0x0200;
+
     /** The computed intensity value. */
-    private float intensity = 0;
-    private cDVSLogIntensityFrameData frameData = new cDVSLogIntensityFrameData();
+    private float globalIntensity = 0;
+    private logIntensityFrameData frameData = new logIntensityFrameData();
 
     public static String getDescription() {
         return "cDVSTest color Dynamic Vision Test chip";
@@ -56,27 +81,31 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     public cDVSTest20() {
         setName("cDVSTest20");
         setEventClass(CDVSEvent.class);
-        setSizeX(140);
-        setSizeY(64);
+        setSizeX(SIZEX_TOTAL);
+        setSizeY(SIZE_Y);
         setNumCellTypes(3); // two are polarity and last is intensity
         setPixelHeightUm(14.5f);
         setPixelWidthUm(14.5f);
         setEventExtractor(new cDVSTestExtractor(this));
         setBiasgen(new cDVSTest20.cDVSTestBiasgen(this));
         DisplayMethod m = getCanvas().getDisplayMethod(); // get default method
-        DVSWithIntensityDisplayMethod intenDisplayMethod = new DVSWithIntensityDisplayMethod(getCanvas());
-
-        intenDisplayMethod.setIntensitySource(this);
         getCanvas().removeDisplayMethod(m);
-        getCanvas().addDisplayMethod(intenDisplayMethod);
-        getCanvas().setDisplayMethod(intenDisplayMethod);
+
+//        DVSWithIntensityDisplayMethod intenDisplayMethod = new DVSWithIntensityDisplayMethod(getCanvas());
+//
+//        intenDisplayMethod.setIntensitySource(this);
+//        getCanvas().addDisplayMethod(intenDisplayMethod);
+//        getCanvas().setDisplayMethod(intenDisplayMethod);
 
         CDVSDisplayMethod cDVSDisplayMethod = new CDVSDisplayMethod(getCanvas());
         getCanvas().addDisplayMethod(cDVSDisplayMethod);
+        getCanvas().setDisplayMethod(cDVSDisplayMethod);
+
+        Chip2DRenderer renderer = getRenderer();
     }
 
     /** Creates a new instance of cDVSTest10
-     * @param hardwareInterface an existing hardware interface. This constructer is preferred. It makes a new cDVSTest10Biasgen object to talk to the on-chip biasgen.
+     * @param hardwareInterface an existing hardware interface. This constructor is preferred. It makes a new cDVSTest10Biasgen object to talk to the on-chip biasgen.
      */
     public cDVSTest20(HardwareInterface hardwareInterface) {
         this();
@@ -84,11 +113,11 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     }
 
     public float getIntensity() {
-        return intensity;
+        return globalIntensity;
     }
 
     public void setIntensity(float f) {
-        intensity = f;
+        globalIntensity = f;
     }
 
     /** The event extractor. Each pixel has two polarities 0 and 1.
@@ -108,10 +137,6 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
 
         // according to  D:\Users\tobi\Documents\avlsi-svn\db\Firmware\cDVSTest20\cDVSTest_dataword_spec.pdf
 //        public static final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0x000,  YSHIFT = 12,  INTENSITYMASK = 0x40000;
-        public static final int XMASK = 0x1fe, XSHIFT = 1, YMASK = 0x3f000, YSHIFT = 12, INTENSITYMASK = 0x40000;
-        public static final int DATA_TYPE_MASK = 0xc000, DATA_TYPE_ADDRESS = 0x0000, DATA_TYPE_TIMESTAMP = 0x4000, DATA_TYPE_WRAP = 0x8000, DATA_TYPE_TIMESTAMP_RESET = 0xd000;
-        public static final int ADDRESS_TYPE_MASK = 0x2000, EVENT_ADDRESS_MASK=0x1fff, ADDRESS_TYPE_EVENT = 0x0000, ADDRESS_TYPE_ADC = 0x2000;
-        public static final int ADC_TYPE_MASK = 0x1e00, ADC_DATA_MASK = 0x3ff, ADC_CHANNEL_MASK = 0x1800, ADC_START_BIT = 0x0200;
         private int lastIntenTs = 0;
 
         public cDVSTestExtractor(cDVSTest20 chip) {
@@ -153,7 +178,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                 int data = datas[i];
                 if ((data & DATA_TYPE_MASK) == DATA_TYPE_ADDRESS) { // should always be true now that translateEvents has extracted timestamp info
                     if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_EVENT) {
-                        if ((data & INTENSITYMASK) != 0) {// intensity spike
+                        if ((data & INTENSITYMASK) ==INTENSITYMASK) {// intensity spike
                             int dt = timestamps[i] - lastIntenTs;
                             if (dt > 50) {
                                 avdt = 0.2f * dt + 0.8f * avdt;
@@ -163,7 +188,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
 
                         } else {
                             CDVSEvent e = (CDVSEvent) outItr.nextOutput();
-                            e.address = data&EVENT_ADDRESS_MASK;
+                            e.address = data & EVENT_ADDRESS_MASK;
                             e.timestamp = (timestamps[i]);
                             e.x = (short) (((data & XMASK) >>> XSHIFT));
                             if (e.x < 0) {

@@ -17,6 +17,7 @@ import de.thesycon.usbio.structs.*;
 import javax.swing.ProgressMonitor;
 import java.io.*;
 import java.util.StringTokenizer;
+
 /**
  * Adds functionality of cDVSTest10 retina test chip to base classes for Cypress FX2 interface.
  *
@@ -47,34 +48,34 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         super.sendBiasBytes(bytes);
     }
 
-        synchronized public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
+    synchronized public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
         //        System.out.println("BiasgenUSBInterface.setPowerDown("+powerDown+")");
         //        if(!powerDown)
         //            setPowerDownSingle(true);
         setPowerDownSingle(powerDown);
     }
 
-        synchronized private void setPowerDownSingle(final boolean powerDown) throws HardwareInterfaceException {
+    synchronized private void setPowerDownSingle(final boolean powerDown) throws HardwareInterfaceException {
 
-        if(gUsbIo==null){
+        if (gUsbIo == null) {
             throw new RuntimeException("device must be opened before sending this vendor request");
         }
-        USBIO_CLASS_OR_VENDOR_REQUEST vendorRequest=new USBIO_CLASS_OR_VENDOR_REQUEST();
+        USBIO_CLASS_OR_VENDOR_REQUEST vendorRequest = new USBIO_CLASS_OR_VENDOR_REQUEST();
         int result;
         //        System.out.println("sending bias bytes");
-        USBIO_DATA_BUFFER dataBuffer=new USBIO_DATA_BUFFER(0); // no data, control is in setupdat
-        vendorRequest.Request=VENDOR_REQUEST_SET_ARRAY_RESET;
-        vendorRequest.Type=UsbIoInterface.RequestTypeVendor;
-        vendorRequest.Recipient=UsbIoInterface.RecipientDevice;
-        vendorRequest.RequestTypeReservedBits=0;
-        vendorRequest.Index=0;  // meaningless for this request
+        USBIO_DATA_BUFFER dataBuffer = new USBIO_DATA_BUFFER(0); // no data, control is in setupdat
+        vendorRequest.Request = VENDOR_REQUEST_SET_ARRAY_RESET;
+        vendorRequest.Type = UsbIoInterface.RequestTypeVendor;
+        vendorRequest.Recipient = UsbIoInterface.RecipientDevice;
+        vendorRequest.RequestTypeReservedBits = 0;
+        vendorRequest.Index = 0;  // meaningless for this request
 
-        vendorRequest.Value=(short)(powerDown?1:0);  // this is the request bit, if powerDown true, send value 1, false send value 0
+        vendorRequest.Value = (short) (powerDown ? 1 : 0);  // this is the request bit, if powerDown true, send value 1, false send value 0
 
         dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
-        result=gUsbIo.classOrVendorOutRequest(dataBuffer,vendorRequest);
-        if(result!= de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_SUCCESS ){
-            throw new HardwareInterfaceException("setPowerDown: unable to send: "+gUsbIo.errorText(result));
+        result = gUsbIo.classOrVendorOutRequest(dataBuffer, vendorRequest);
+        if (result != de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_SUCCESS) {
+            throw new HardwareInterfaceException("setPowerDown: unable to send: " + gUsbIo.errorText(result));
         }
         HardwareInterfaceException.clearException();
 
@@ -95,8 +96,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         }
     }
 
-    private byte[] parseHexData(String firmwareFile) throws IOException
-    {
+    private byte[] parseHexData(String firmwareFile) throws IOException {
 
         byte[] fwBuffer;
         // load firmware file (this is binary file of 8051 firmware)
@@ -113,31 +113,28 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
             lineReader = new LineNumberReader(reader);
 
             line = lineReader.readLine();
-            while (!line.startsWith("xdata"))
-            {
+            while (!line.startsWith("xdata")) {
                 line = lineReader.readLine();
             }
-            int scIndex=line.indexOf(";");
-            int eqIndex= line.indexOf("=");
-            int index=0;
-            length=Integer.parseInt(line.substring(eqIndex+2, scIndex));
-           // log.info("File length: " + length);
+            int scIndex = line.indexOf(";");
+            int eqIndex = line.indexOf("=");
+            int index = 0;
+            length = Integer.parseInt(line.substring(eqIndex + 2, scIndex));
+            // log.info("File length: " + length);
             String[] tokens;
             fwBuffer = new byte[length];
             Short value;
-            while (!line.endsWith("};"))
-            {
+            while (!line.endsWith("};")) {
                 line = lineReader.readLine();
                 tokens = line.split("0x");
-            //    System.out.println(line);
-                for (int i=1; i< tokens.length; i++)
-                {
-                    value = Short.valueOf(tokens[i].substring(0, 2),16);
-                    fwBuffer[index++]= value.byteValue();
-                 //   System.out.println(fwBuffer[index-1]);
+                //    System.out.println(line);
+                for (int i = 1; i < tokens.length; i++) {
+                    value = Short.valueOf(tokens[i].substring(0, 2), 16);
+                    fwBuffer[index++] = value.byteValue();
+                    //   System.out.println(fwBuffer[index-1]);
                 }
             }
-           // log.info("index" + index);
+            // log.info("index" + index);
 
             lineReader.close();
         } catch (IOException e) {
@@ -212,7 +209,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         if (numBytesLeft > 0) {
             dataBuffer = new USBIO_DATA_BUFFER(numBytesLeft);
             dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
-        //    vendorRequest.Index = 1; // indicate that this is the last chuck, now program CPLD
+            //    vendorRequest.Index = 1; // indicate that this is the last chuck, now program CPLD
             System.arraycopy(bytearray, numChunks * MAX_CONTROL_XFER_SIZE, dataBuffer.Buffer(), 0, numBytesLeft);
 
             // send remaining part of firmware
@@ -239,14 +236,13 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
         if (status != USBIO_ERR_SUCCESS) {
             log.info(UsbIo.errorText(status));
-            try{
-            Thread.sleep(2000);
-            this.open();
+            try {
+                Thread.sleep(2000);
+                this.open();
+            } catch (Exception e) {
             }
-            catch (Exception e)
-            {}
         }
-        
+
         vendorRequest = new USBIO_CLASS_OR_VENDOR_REQUEST();
         dataBuffer = new USBIO_DATA_BUFFER(10);
 
@@ -276,10 +272,10 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
         if (dataBuffer.Buffer()[1] != 0) {
             //this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
-            int dataindex = (dataBuffer.Buffer()[6] << 24 ) |  (dataBuffer.Buffer()[7] << 16 ) | (dataBuffer.Buffer()[8] << 8 ) | (dataBuffer.Buffer()[9]);
-            int algoindex = (dataBuffer.Buffer()[2] << 24 ) |  (dataBuffer.Buffer()[3] << 16 ) | (dataBuffer.Buffer()[4] << 8 ) | (dataBuffer.Buffer()[5]);
+            int dataindex = (dataBuffer.Buffer()[6] << 24) | (dataBuffer.Buffer()[7] << 16) | (dataBuffer.Buffer()[8] << 8) | (dataBuffer.Buffer()[9]);
+            int algoindex = (dataBuffer.Buffer()[2] << 24) | (dataBuffer.Buffer()[3] << 16) | (dataBuffer.Buffer()[4] << 8) | (dataBuffer.Buffer()[5]);
             throw new HardwareInterfaceException("Unable to program CPLD, error code: " + dataBuffer.Buffer()[1] + " algo index: " + algoindex + " data index " + dataindex);
-        // System.out.println("Unable to program CPLD, unable to program CPLD, error code: " + dataBuffer.Buffer()[1] + ", at command: " + command + " index: " + index + " commandlength " + commandlength);
+            // System.out.println("Unable to program CPLD, unable to program CPLD, error code: " + dataBuffer.Buffer()[1] + ", at command: " + command + " index: " + index + " commandlength " + commandlength);
         }
     }
 
@@ -302,8 +298,6 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         public RetinaAEReader(CypressFX2 cypress) throws HardwareInterfaceException {
             super(cypress);
         }
-
-
         /** Method to translate the UsbIoBuffer for the DVS320 sensor which uses the 32 bit address space.
          *<p>
          * It has a CPLD to timestamp events and uses the CypressFX2 in slave
@@ -356,15 +350,15 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
          */
         static private final byte Xmask = (byte) 0x01;
         static private final byte IntensityMask = (byte) 0x40;
-
         private int lasty = 0;
         private int currentts = 0;
-        private int lastts=0;
-        private int currentWrapAdd=0;
+        private int lastts = 0;
+        private int currentWrapAdd = 0;
 
         protected void translateEvents(UsbIoBuf b) {
             try {
-                //          final int STATE_IDLE=0,STATE_GOTY=1,STATE_GOTTS=2;
+                // data from cDVS is stateful. 2 bytes sent for each word of data can consist of either timestamp, y address, x address, or ADC value.
+                // The type of data is determined from bits in these two bytes.
 
 //            if(tobiLogger.isEnabled()==false) tobiLogger.setEnabled(true); //debug
                 synchronized (aePacketRawPool) {
@@ -382,67 +376,67 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
                     int[] addresses = buffer.getAddresses();
                     int[] timestamps = buffer.getTimestamps();
-                    int xadd;
-//log.info("received " + bytesSent + " bytes");
+                    //log.info("received " + bytesSent + " bytes");
                     // write the start of the packet
                     buffer.lastCaptureIndex = eventCounter;
-//                tobiLogger.log("#packet");
+//                     tobiLogger.log("#packet");
                     for (int i = 0; i < bytesSent; i += 2) {
-//                    tobiLogger.log(String.format("%d %x %x",eventCounter,buf[i],buf[i+1])); // DEBUG
+                        //   tobiLogger.log(String.format("%d %x %x",eventCounter,buf[i],buf[i+1])); // DEBUG
                         //   int val=(buf[i+1] << 8) + buf[i]; // 16 bit value of data
-                        int code = (buf[i + 1] & 0xC0) >> 6; // gets two bits at XX00 0000 0000 0000. (val&0xC000)>>>14;
+                        int dataword = (0xff&buf[i]) | (0xff&(buf[i + 1] << 8));  // data sent little endian
+
+                        final int code = (buf[i + 1] & 0xC0) >> 6; // gets two bits at XX00 0000 0000 0000. (val&0xC000)>>>14;
                         //  log.info("code " + code);
                         switch (code) {
                             case 0: // address
-                                if ((eventCounter > aeBufferSize - 1) || (buffer.overrunOccuredFlag)) {
-                                    buffer.overrunOccuredFlag = true;
-                                // throw away events
+                                // If the data is an address, we write out an address value if we either get an ADC reading or an x address.
+                                // We also write a (fake) address if
+                                // we get two y addresses in a row, which occurs when the on-chip AE state machine doesn't properly function.
+                                //  Here we also read y addresses but do not write out any output address until we get either 1) an x-address, or 2)
+                                // another y address without intervening x-address.
+                                // NOTE that because ADC events do not have a timestamp, the size of the addresses and timestamps data are not the same.
+                                // To simplify data structure handling in AEPacketRaw and AEPacketRawPool,
+                                // ADC events are timestamped just like address-events. ADC events get the timestamp of the most recently preceeding address-event.
+                                // NOTE2: unmasked bits are read as 1's from the hardware. Therefore it is crucial to properly mask bits.
+                                if ((eventCounter >= aeBufferSize) || (buffer.overrunOccuredFlag)) {
+                                    buffer.overrunOccuredFlag = true; // throw away events if we have overrun the output arrays
                                 } else {
-                                    if ((buf[i + 1] & Xmask) == Xmask) ////  received an X address, write out event to addresses/timestamps output arrays
-                                    { // x adddress
-                                        xadd =  (buf[i] & 0xff);  //
-                                        addresses[eventCounter] = (lasty << 12) | xadd;                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
-
-                                        timestamps[eventCounter] = (TICK_US * (currentts + currentWrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
-
+                                    if((dataword&cDVSTest20.ADDRESS_TYPE_MASK)==cDVSTest20.ADDRESS_TYPE_ADC){
+                                        addresses[eventCounter]=dataword;
+                                        timestamps[eventCounter]=lastts;  // ADC event gets last timestamp
+                                        eventCounter++;
+                                    }else if ((buf[i + 1] & Xmask) == Xmask) {////  received an X address, write out event to addresses/timestamps output arrays
+                                        // x adddress
+                                        //xadd = (buf[i] & 0xff);  //
+                                        addresses[eventCounter] = (lasty << cDVSTest20.YSHIFT) | (dataword&(cDVSTest20.XMASK|cDVSTest20.POLMASK));  // combine current bits with last y address bits and send
+                                        timestamps[eventCounter] = (TICK_US * (currentts + currentWrapAdd)); // add in the wrap offset and convert to 1us tick
                                         eventCounter++;
                                         //    log.info("received x address");
-//                                        buffer.setNumEvents(eventCounter);
                                         gotY = false;
-                                    } else // y address
-                                    {
-                                       // lasty = (0xFF & buf[i]); //
-                                       if (gotY) {// TODO creates bogus event to see y without x. This should not normally occur.
-                                            addresses[eventCounter] = (lasty << 12) + (139 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
+                                    } else {// y address
+                                        // lasty = (0xFF & buf[i]); //
+                                        if (gotY) {// TODO creates bogus event to see y without x. This should not normally occur.
+                                            addresses[eventCounter] = (lasty << cDVSTest20.YSHIFT) + (cDVSTest20.SIZEX_TOTAL-1 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
                                             timestamps[eventCounter] = (TICK_US * (lastts + currentWrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
                                             eventCounter++;
 //                                        //log.warning("received at least two Y addresses consecutively");
-                                        } 
-
-
-                                        if ((buf[i] & IntensityMask) != 0) // intensity spike
-                                        {
+                                        }
+                                        if ((buf[i] & IntensityMask) != 0){ // intensity spike
                                             // log.info("received intensity bit");
                                             addresses[eventCounter] = 0x40000;
-                                            timestamps[eventCounter++] = (TICK_US * (currentts + currentWrapAdd));
+                                            timestamps[eventCounter] = (TICK_US * (currentts + currentWrapAdd));
+                                            eventCounter++;
                                         }
-
-                                        lasty = (0xFF & buf[i]); //
+                                        lasty = (cDVSTest20.YMASK>>>cDVSTest20.YSHIFT)&dataword; //(0xFF & buf[i]); //
                                         gotY = true;
-
-                                        // creates bogus events for all row addreses at column 139 (outside array)
-//                                        addresses[eventCounter] = (lasty << 12) + (139 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
-//                                        timestamps[eventCounter] = (TICK_US * (currentts + wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
-//                                        eventCounter++;
-
                                     }
                                 }
                                 break;
                             case 1: // timestamp
-                                lastts=currentts;
+                                lastts = currentts;
                                 currentts = ((0x3f & buf[i + 1]) << 8) | (buf[i] & 0xff);
-                                currentWrapAdd= wrapAdd;
-                       //           log.info("received timestamp");
+                                currentWrapAdd = wrapAdd;
+                                //           log.info("received timestamp");
                                 break;
                             case 2: // wrap
                                 wrapAdd += 0x4000L;
@@ -451,7 +445,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
                                 break;
                             case 3: // ts reset event
                                 this.resetTimestamps();
-                                //   log.info("reset");
+                                //   log.info("timestamp reset");
                                 break;
                         }
                     } // end for
@@ -460,11 +454,11 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
                     // write capture size
                     buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
 
-                //     log.info("packet size " + buffer.lastCaptureLength + " number of Y addresses " + numberOfY);
-                // if (NumberOfWrapEvents!=0) {
-                //System.out.println("Number of wrap events received: "+ NumberOfWrapEvents);
-                //}
-                //System.out.println("wrapAdd : "+ wrapAdd);
+                    //     log.info("packet size " + buffer.lastCaptureLength + " number of Y addresses " + numberOfY);
+                    // if (NumberOfWrapEvents!=0) {
+                    //System.out.println("Number of wrap events received: "+ NumberOfWrapEvents);
+                    //}
+                    //System.out.println("wrapAdd : "+ wrapAdd);
                 } // sync on aePacketRawPool
             } catch (java.lang.IndexOutOfBoundsException e) {
                 log.warning(e.toString());

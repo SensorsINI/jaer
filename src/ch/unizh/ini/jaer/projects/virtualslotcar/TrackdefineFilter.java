@@ -1247,10 +1247,12 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
     }
 
     public void setDisplayClosestPointMap(boolean displayClosestPointMap) {
+        if(extractedTrack==null) return;
         extractedTrack.setDisplayClosestPointMap(displayClosestPointMap);
     }
 
     public boolean isDisplayClosestPointMap() {
+        if(extractedTrack==null) return false;
         return extractedTrack.isDisplayClosestPointMap();
     }
 

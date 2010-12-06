@@ -334,6 +334,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         
         servoCommandWriter.startThread(3);
         isOpened=true;
+        submittedCmdAfterOpen=false;
     }
     
     /** return the string USB descriptors for the device
@@ -432,7 +433,9 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     public String getTypeName() {
         return "ServoController";
     }
-    
+
+    private boolean submittedCmdAfterOpen=false; // flag that is set once a command has been sent after open.
+    private ServoCommand lastCmd=null;
     
     /** Submits the command to the writer thread queue that sends them to the device
      @param cmd the command, which consists of bytes sent to the device.
@@ -442,11 +445,16 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             log.warning("null cmd submitted to servo command queue");
             return;
         }
+        if(submittedCmdAfterOpen && cmd.equals(lastCmd)){
+            return; // don't just duplicate command already sent since open
+        }
         if(!servoQueue.offer(cmd)){ // if queue is full, just clear it and replace with latest command
             servoQueue.clear();
             servoQueue.offer(cmd);
+            submittedCmdAfterOpen=true;
             log.warning("cleared queue to submit latest command");
         }
+        lastCmd=cmd;
         Thread.yield(); // let writer thread get it and submit a write
     }
 
@@ -747,6 +755,17 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      */
     public class ServoCommand{
         public byte[] bytes;
+
+        @Override
+        public boolean equals(Object obj) {
+            if(obj==null || !(obj instanceof ServoCommand)) return false;
+            byte[] otherBytes=((ServoCommand) obj).bytes;
+            if(otherBytes.length!=bytes.length) return false;
+            for(int i=0;i<bytes.length;i++){
+                if(bytes[i]!=otherBytes[i]) return false;
+            }
+            return true;
+        }
     }
     
     
