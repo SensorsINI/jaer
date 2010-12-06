@@ -38,6 +38,11 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     protected int MPTimeConstantUs = getPrefs().getInt("BlurringFilter2D.MPTimeConstantUs", 30000);
 
     /**
+     * initial value of the membrane potential in percents of the MPThreshold
+     */
+    protected float MPInitialPercnetTh = getPrefs().getFloat("BlurringFilter2D.MPInitialPercnetTh", 50.0f);
+
+    /**
      * Life time of LIF neuron.
      * A neuron will be reset if there is no additional event within this value of micro seconds since the last update.
      */
@@ -223,6 +228,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         setPropertyTooltip(lif_neuron, "MPTimeConstantUs", "Time constant of LIF neurons membrane potential. It decays exponetially unless a new event is added.");
         setPropertyTooltip(lif_neuron, "neuronLifeTimeUs", "A neuron will be reset if there is no additional event within this value of micro seconds since the last update.");
         setPropertyTooltip(lif_neuron, "MPThreshold", "threshold of membrane potetial required for firing.");
+        setPropertyTooltip(lif_neuron, "MPInitialPercnetTh", "initial value of the membrane potential in percents of the MPThreshold.");
         setPropertyTooltip(lif_neuron, "MPJumpAfterFiringPercentTh", "Membrane potential decrease of a neuron in percents of its threshold after firing.");
         setPropertyTooltip(lif_neuron, "receptiveFieldSizePixels", "size of the receptive field of an LIF neuron.");
 
@@ -419,7 +425,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             setFiringType(FiringType.SILENT);
             resetGroupTag();
             fired = false;
-            membranePotential = 0;
+            membranePotential = MPInitialPercnetTh*MPThreshold;
             numFiringNeighbors = 0;
             lastEventTimestamp = 0;
             numSpikes = 0;
@@ -1776,6 +1782,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                                                         receptiveFieldSizePixels, MPTimeConstantUs, MPThreshold,
                                                         MPJumpAfterFiringPercentTh);
 
+                    newNeuron.setMP(MPInitialPercnetTh*MPThreshold);
                     if (i == 0) {
                         if (j == 0) {
                             newNeuron.setLocationType(LocationType.CORNER_00);
@@ -2066,4 +2073,15 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         this.showMPThreshold = showMPThreshold;
         getPrefs().putBoolean("BlurringFilter2D.showMPThreshold", showMPThreshold);
     }
+
+    public float getMPInitialPercnetTh() {
+        return MPInitialPercnetTh;
+    }
+
+    public void setMPInitialPercnetTh(float MPInitialPercnetTh) {
+        this.MPInitialPercnetTh = MPInitialPercnetTh;
+        getPrefs().putFloat("BlurringFilter2D.MPInitialPercnetTh", MPInitialPercnetTh);
+    }
+
+
 }

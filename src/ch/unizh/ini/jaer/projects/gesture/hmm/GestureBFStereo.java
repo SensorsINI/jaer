@@ -7,13 +7,10 @@ package ch.unizh.ini.jaer.projects.gesture.hmm;
 
 import ch.unizh.ini.jaer.projects.gesture.stereo.BlurringFilterStereoTracker;
 import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2DTracker;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Observable;
-import javax.swing.Timer;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -65,13 +62,14 @@ public class GestureBFStereo extends GestureBF2D{
                 return;
 
             // default trimming
-            ArrayList<ClusterPathPoint> trimmedPath = trajectoryTrimmingPointBase(path, 1, 1);
+            ArrayList<ClusterPathPoint> trimmedPath = trajectoryTrimmingPointBase(path, 2, 2);
+//            ArrayList<ClusterPathPoint> trimmedPath = path;
 
             // doesn't have to classify short trajectroies
             if(trimmedPath.size() < getNumPointsThreshold())
             {
                 if(getPrevPath() == null || doesAccumulate(trimmedPath, getCheckActivationTimeUs())){
-                    getPrevPath().addAll(trimmedPath);
+                    storePath(trimmedPath, true);
                 }
                 return;
             }
@@ -100,8 +98,9 @@ public class GestureBFStereo extends GestureBF2D{
                     }
 
                     pushDetected = false;
-                }else
-                    storePath(trimmedPath);
+                }
+//                else
+//                    storePath(trimmedPath, false);
 
             } else { // if the gesture recognition system is inactive, checks the start gesture only
                 if(detectStartingGesture(trimmedPath)){
@@ -119,9 +118,12 @@ public class GestureBFStereo extends GestureBF2D{
                     }
                     tmpTracker.setEnableDisparityLimit(true);
                      pushDetected = false;
-                } else
-                    storePath(trimmedPath);
+                }
+//                else
+//                    storePath(trimmedPath, false);
             }
+            if(bmg == null || (bmg == null && !bmg.startsWith("Infinite")))
+                storePath(trimmedPath, false);
         } 
     }
 

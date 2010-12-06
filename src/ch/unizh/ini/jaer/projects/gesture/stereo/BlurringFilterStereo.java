@@ -139,7 +139,10 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         }
 
         // increases mass
-        mainEye.set(index, mainEye.get(index)*(float) Math.exp(((float) lifNeurons.get(index).getLastEventTimestamp() - ev.timestamp) / MPTimeConstantUs) + 1.0f);
+        float nextMass = 0.0f;
+        if(lifNeurons.get(index).getLastEventTimestamp() - ev.timestamp <= 0)
+            nextMass = mainEye.get(index)*(float) Math.exp(((float) lifNeurons.get(index).getLastEventTimestamp() - ev.timestamp) / MPTimeConstantUs) + 1.0f;
+        mainEye.set(index, nextMass);
 
         binocluarAssociationMassThreshold = getMPThreshold() * binocluarAssMassThresholdPercentTh / 100.0f;
         if(!activateNonoverlapingArea)

@@ -164,7 +164,11 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
          * @return : mass
          */
         final public double getMassNow(int t) {
-            return mass*Math.exp(((float) lastUpdateTime - t) / massTimeConstantUs);
+            double ret = 0;
+            if(lastUpdateTime - t <= 0)
+                ret = mass*Math.exp(((float) lastUpdateTime - t) / massTimeConstantUs);
+
+            return ret;
         }
 
         /** returns the timestamp of the last event
