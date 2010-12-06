@@ -39,9 +39,11 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
     /** Creates a new instance of MotionInputStream
      @param is the input stream
      */
-    public MotionInputStream(FileInputStream is) throws IOException {
+    public MotionInputStream(FileInputStream is, Chip2DMotion chip) throws IOException {
         super(is);
+        this.motionData=chip.getEmptyMotionData();
         init(is);
+
     }
     
     /** Reads and deserializes a MotionData object from the input stream

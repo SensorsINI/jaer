@@ -392,13 +392,14 @@ public abstract class MotionData implements Cloneable{
         write2DArray(out,ux);<br>
         write2DArray(out,uy);<br>
         write2DArray(out,rawDataPixel[chan0]<br>
-        .
+//        .
         .
         .
         write2DArray(out,rawDataPixel[chanN]<br>
      @param out the output
      */
     public void write(DataOutput out) throws IOException {
+        contents=chip.getCaptureMode();
         out.writeInt(contents);
         out.writeInt(sequenceNumber);
         out.writeLong(timeCapturedMs);
@@ -407,7 +408,6 @@ public abstract class MotionData implements Cloneable{
         write2DArray(out,ph);
         write2DArray(out,ux);
         write2DArray(out,uy);
-        contents=chip.getCaptureMode();
         for(int i=0;i<getNumLocalChannels();i++){  //RetoTODO fix
             write2DArray(out,rawDataPixel[i]);
         }
@@ -455,7 +455,7 @@ public abstract class MotionData implements Cloneable{
                       + 4   //float sequenceNumber
                       + 8  //long timecaptured
                       + 4 * getNumGlobalChannels()     // float is 32bit (4byte)
-                      + 4 * 3 // ph,ux,uy
+                      + 4 * 3 * (chip.getSizeX()*chip.getSizeY())// ph,ux,uy
                       + 4 * getNumLocalChannels()* (chip.getSizeX()*chip.getSizeY()) ; // 2D float arrays for each channel
 
                     //4+8+3+chip.MAX_NUM_PIXELCHANNELS*4*(chip.getSizeX()*chip.getSizeY());

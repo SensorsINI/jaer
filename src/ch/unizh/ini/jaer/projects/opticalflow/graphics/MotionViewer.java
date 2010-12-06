@@ -599,7 +599,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
             fileInputStream=new FileInputStream(file);
             setCurrentFile(file);
             try{
-                motionInputStream=new MotionInputStream(fileInputStream);
+                motionInputStream=new MotionInputStream(fileInputStream,chip);
                 MotionData d=motionInputStream.readData(motionData);
                 firstTimeMs=d.getTimeCapturedMs();
                 motionInputStream.rewind();

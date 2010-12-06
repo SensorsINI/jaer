@@ -159,7 +159,7 @@ public class MotionDataMDC2D extends MotionData {
                     dIdx = (raw[j][i+1]-raw[j][i-1])/2; // average slope to pixel before and after. unit dI/pixel
                     dIdy = (raw[j+1][i]-raw[j-1][i])/2; // average slope to pixel before and after.
                     long dt=getTimeCapturedMs()-getPastMotionData()[0].getTimeCapturedMs();
-                    dIdt = (raw[j][i]-past[j][i])/2/(float)dt; //unit dI/ms
+                    dIdt = (raw[j][i]-past[j][i])/(float)dt; //unit dI/ms
                     if(dIdx*dIdx + dIdy*dIdy!=0 && dt!=0){ // check for division by 0
                         ux[j][i]=-dIdx*dIdt/(dIdx*dIdx + dIdy*dIdy); // unit pixel/ms
                         uy[j][i]=-dIdy*dIdt/(dIdx*dIdx + dIdy*dIdy);
@@ -172,14 +172,76 @@ public class MotionDataMDC2D extends MotionData {
         }       
     }
 
-    /**
-     * OPTIC FLOW ALGORITHM BY SRINIVASAN
+
+/**
+     * OPTIC FLOW ALGORITHM BY SRINIVASAN 
      * This assumes that the brightness I(t,x,y) is a approximately a linear
      * combination of x=-n...n I(t-1,x+-x, y+-x).
      * Rotation is not calculated and should not appear in the image.
      * The algorithm computes a global motion.
      */
     protected void calculateMotion_srinivasan(){
+        float[][] raw=this.extractRawChannel(channel);
+        float[][] past=this.getPastMotionData()[0].extractRawChannel(channel);
+        Matrix A = new Matrix(new double[2][2]);
+        Matrix b = new Matrix(new double[2][1]);
+        float a11=0, a12=0;
+        float a21=0, a22=0;
+        float b1=0,  b2=0;
+        float f1, f2, f3, f4;
+        try{
+            for(int x=1; x< chip.NUM_COLUMNS-1;x++){ //leave out border pixel
+                for(int y=1; y< chip.NUM_ROWS-1; y++){ //leave out border pixel
+                    f1=past[y][x+1];
+                    f2=past[y][x-1];
+                    f3=past[y+1][x];
+                    f4=past[y-1][x];
+                    a11 += (f2 - f1) * (f2 - f1);
+                    a12 += (f4 - f3) * (f2 - f1);
+                    a21 += (f4 - f3) * (f2 - f1);
+                    a22 += (f4 - f3) * (f4 - f3);
+
+                    b1  += 2 * (raw[y][x]- past[y][x])  * (f2 - f1);
+                    b2  += 2 * (raw[y][x]- past[y][x])  * (f4 - f3);
+                }
+            }
+        } catch(ArrayIndexOutOfBoundsException e){
+            System.out.println(e);//dont do anything for the moment
+        }
+        A.set(0, 0, a11);   A.set(0, 1, a12);    
+        A.set(1, 0, a21);   A.set(1, 1, a22);   
+
+        b.set(0, 0, b1);
+        b.set(1, 0, b2);
+        
+        long dt=getTimeCapturedMs()-getPastMotionData()[0].getTimeCapturedMs();
+
+        try{
+            Matrix x = A.solve(b);
+            if(dt!=0){
+                this.setGlobalX((float)x.get(0, 0)/(float)dt*globalScaleFactor);
+                this.setGlobalY((float)x.get(1, 0)/(float)dt*globalScaleFactor);
+            }else{
+                this.setGlobalX((0));
+                this.setGlobalY((0));
+
+            }
+        } catch (Exception e) {
+            this.setGlobalX(0);
+            this.setGlobalY(0);
+            System.out.println("Matrix decomposition failed. No global motion vector computed");
+
+        }
+    }
+
+    /**
+     * OPTIC FLOW ALGORITHM BY SRINIVASAN INCLUDING ROTATION
+     * This assumes that the brightness I(t,x,y) is a approximately a linear
+     * combination of x=-n...n I(t-1,x+-x, y+-x).
+     *
+     * The algorithm computes a global motion.
+     */
+    protected void calculateMotion_srinivasan_inclRot(){
         float phi =45;
         phi=(float) Math.toRadians(phi);
         float[][] raw=this.extractRawChannel(channel);
@@ -802,7 +864,11 @@ public class MotionDataMDC2D extends MotionData {
         return channelData;
     }
 
+
+
 }
+
+
 
 
 
