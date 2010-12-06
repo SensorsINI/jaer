@@ -48,6 +48,47 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         super.sendBiasBytes(bytes);
     }
 
+    private short TrackTime=50*15, RefOnTime=20*15, RefOffTime=20*15, IdleTime=10*15;
+    private boolean Select5Tbuffer=false;
+    private boolean UseCalibration=true;
+
+    public void setTrackTime(short trackTimeUs) {
+        TrackTime = (short)(15 * trackTimeUs);
+    }
+
+    public void setIdleTime(short trackTimeUs) {
+        IdleTime = (short)(15 * trackTimeUs);
+    }
+
+    public void setRefOnTime(short trackTimeUs) {
+        RefOnTime = (short)(15 * trackTimeUs);
+    }
+
+    public void setRefOffTime(short trackTimeUs) {
+        RefOffTime = (short)(15 * trackTimeUs);
+    }
+
+    public void setSelect5Tbuffer(boolean se) {
+        Select5Tbuffer = se;
+    }
+
+    public void setUseCalibration(boolean se) {
+        UseCalibration = se;
+    }
+
+    private byte ADCchannel = 3;
+
+    public void setADCchannel(byte chan) {
+        ADCchannel = chan;
+    }
+
+    private final static short ADCconfig = (short) 0x908;
+    private final static short ADCconifgLength = (short) 12;
+
+    synchronized public void sendCPLDconfiguration() throws HardwareInterfaceException {
+
+    }
+
     synchronized public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
         //        System.out.println("BiasgenUSBInterface.setPowerDown("+powerDown+")");
         //        if(!powerDown)
@@ -81,9 +122,33 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
     }
 
+    synchronized private void setChipReset(final boolean reset) throws HardwareInterfaceException {
+
+        if (gUsbIo == null) {
+            throw new RuntimeException("device must be opened before sending this vendor request");
+        }
+        USBIO_CLASS_OR_VENDOR_REQUEST vendorRequest = new USBIO_CLASS_OR_VENDOR_REQUEST();
+        int result;
+        //        System.out.println("sending bias bytes");
+        USBIO_DATA_BUFFER dataBuffer = new USBIO_DATA_BUFFER(0); // no data, control is in setupdat
+        vendorRequest.Request = VENDOR_REQUEST_SET_ARRAY_RESET;
+        vendorRequest.Type = UsbIoInterface.RequestTypeVendor;
+        vendorRequest.Recipient = UsbIoInterface.RecipientDevice;
+        vendorRequest.RequestTypeReservedBits = 0;
+        vendorRequest.Index = 0;  // meaningless for this request
+
+        vendorRequest.Value = (short) (reset ? 1 : 0);  // this is the request bit, if powerDown true, send value 1, false send value 0
+
+        dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
+        result = gUsbIo.classOrVendorOutRequest(dataBuffer, vendorRequest);
+        if (result != de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_SUCCESS) {
+            throw new HardwareInterfaceException("setChipReset: unable to send: " + gUsbIo.errorText(result));
+        }
+        HardwareInterfaceException.clearException();
+    }
+
     synchronized public void resetTimestamps() {
         log.info(this + ".resetTimestamps(): zeroing timestamps");
-        int status = 0; // don't use global status in this function
 
         // send vendor request for device to reset timestamps
         if (gUsbIo == null) {
