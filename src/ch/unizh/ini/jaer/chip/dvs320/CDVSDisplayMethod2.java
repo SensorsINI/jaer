@@ -16,7 +16,7 @@ import net.sf.jaer.graphics.ChipCanvas;
  * Displays data from CDVS chips.
  * @author Tobi
  */
-public class CDVSDisplayMethod extends DVSWithIntensityDisplayMethod {
+public class CDVSDisplayMethod2 extends DVSWithIntensityDisplayMethod {
     private boolean displayLogIntensity;
     private boolean displayColorChangeEvents;
     private boolean displayLogIntensityChangeEvents;
@@ -24,7 +24,7 @@ public class CDVSDisplayMethod extends DVSWithIntensityDisplayMethod {
 
     boolean registeredControlPanel=false;
 
-    public CDVSDisplayMethod(ChipCanvas parent) {
+    public CDVSDisplayMethod2(ChipCanvas parent) {
         super(parent);
         prefs=parent.getChip().getPrefs();
         displayLogIntensity=prefs.getBoolean("displayLogIntensity", true);

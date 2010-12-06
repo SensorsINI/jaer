@@ -18,10 +18,10 @@ package ch.unizh.ini.jaer.chip.dvs320;
  */
 public class cDVSDisplayControlPanel extends javax.swing.JPanel {
 
-    private CDVSDisplayMethod displayMethod=null;
+    private CDVSDisplayMethod2 displayMethod=null;
 
     /** Creates new form cDVSDisplayControlPanel */
-    public cDVSDisplayControlPanel(CDVSDisplayMethod dm) {
+    public cDVSDisplayControlPanel(CDVSDisplayMethod2 dm) {
         this.displayMethod=dm;
         initComponents();
 
@@ -114,14 +114,14 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel {
     /**
      * @return the displayMethod
      */
-    public CDVSDisplayMethod getDisplayMethod() {
+    public CDVSDisplayMethod2 getDisplayMethod() {
         return displayMethod;
     }
 
     /**
      * @param displayMethod the displayMethod to set
      */
-    public void setDisplayMethod(CDVSDisplayMethod displayMethod) {
+    public void setDisplayMethod(CDVSDisplayMethod2 displayMethod) {
         this.displayMethod = displayMethod;
     }
 

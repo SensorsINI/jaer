@@ -12,7 +12,7 @@ import net.sf.jaer.event.PolarityEvent;
  *
  * @author Tobi
  */
-public class CDVSEvent extends PolarityEvent {
+public class CDVSEvent2 extends PolarityEvent {
 
     int logIntensity=0;
 

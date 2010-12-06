@@ -80,7 +80,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     /** Creates a new instance of cDVSTest10.  */
     public cDVSTest20() {
         setName("cDVSTest20");
-        setEventClass(CDVSEvent.class);
+        setEventClass(CDVSEvent2.class);
         setSizeX(SIZEX_TOTAL);
         setSizeY(SIZE_Y);
         setNumCellTypes(3); // two are polarity and last is intensity
@@ -97,7 +97,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
 //        getCanvas().addDisplayMethod(intenDisplayMethod);
 //        getCanvas().setDisplayMethod(intenDisplayMethod);
 
-        CDVSDisplayMethod cDVSDisplayMethod = new CDVSDisplayMethod(getCanvas());
+        CDVSDisplayMethod2 cDVSDisplayMethod = new CDVSDisplayMethod2(getCanvas());
         getCanvas().addDisplayMethod(cDVSDisplayMethod);
         getCanvas().setDisplayMethod(cDVSDisplayMethod);
 
@@ -187,7 +187,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                             lastIntenTs = timestamps[i];
 
                         } else {
-                            CDVSEvent e = (CDVSEvent) outItr.nextOutput();
+                            CDVSEvent2 e = (CDVSEvent2) outItr.nextOutput();
                             e.address = data & EVENT_ADDRESS_MASK;
                             e.timestamp = (timestamps[i]);
                             e.x = (short) (((data & XMASK) >>> XSHIFT));
