@@ -17,32 +17,51 @@ import net.sf.jaer.graphics.ChipCanvas;
  * @author Tobi
  */
 public class cDVSDisplayMethod extends DVSWithIntensityDisplayMethod {
-    private cDVSTest20 cDVSChip=null;
 
-    boolean registeredControlPanel=false;
+    private cDVSTest20 cDVSChip = null;
+    boolean registeredControlPanel = false;
+    private cDVSDisplayControlPanel controlPanel = null;
 
     public cDVSDisplayMethod(cDVSTest20 chip) {
         super(chip.getCanvas());
-        this.cDVSChip=chip;
+        this.cDVSChip = chip;
     }
 
     @Override
     public void display(GLAutoDrawable drawable) {
         checkControlPanel();
-         super.display(drawable);
-       
+        super.display(drawable);
+
     }
 
     private void checkControlPanel() {
-        if(registeredControlPanel) return;
+        if (registeredControlPanel) {
+            return;
+        }
+        registerControlPanel();
+    }
+
+    public void registerControlPanel() {
         try {
             AEChip chip = (AEChip) getChipCanvas().getChip();
             AEViewer viewer = chip.getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
             JPanel imagePanel = viewer.getImagePanel();
-            imagePanel.add(new cDVSDisplayControlPanel(cDVSChip), BorderLayout.SOUTH);
-            registeredControlPanel=true;
+            imagePanel.add((controlPanel = new cDVSDisplayControlPanel(cDVSChip)), BorderLayout.SOUTH);
+            registeredControlPanel = true;
         } catch (Exception e) {
-            log.warning("could not register control panel");
+            log.warning("could not register control panel: " + e);
+        }
+    }
+
+    void unregisterControlPanel() {
+        try {
+            AEChip chip = (AEChip) getChipCanvas().getChip();
+            AEViewer viewer = chip.getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
+            JPanel imagePanel = viewer.getImagePanel();
+            imagePanel.remove(controlPanel);
+            registeredControlPanel = false;
+        } catch (Exception e) {
+            log.warning("could not unregister control panel: " + e);
         }
     }
 
@@ -69,5 +88,4 @@ public class cDVSDisplayMethod extends DVSWithIntensityDisplayMethod {
     public boolean isDisplayColorChangeEvents() {
         return cDVSChip.isDisplayColorChangeEvents();
     }
-
 }

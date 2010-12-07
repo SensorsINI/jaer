@@ -767,9 +767,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 synchronized ( chip ){ // TODO handle live case -- this is not ideal thread programming - better to sync on a lock object in the run loop
                     synchronized ( extractor ){
                         synchronized ( renderer ){
-                            if ( getChip().getRemoteControl() != null ){
-                                getChip().getRemoteControl().close();
-                            } // TODO this cleanup should happen automatically via a mechanism to close the chip somehow
+                            getChip().cleanup();
                             constructChip(constructor);
                         }
                     }

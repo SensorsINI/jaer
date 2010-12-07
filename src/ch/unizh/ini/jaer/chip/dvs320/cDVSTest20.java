@@ -124,6 +124,15 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
 
     }
 
+    /** Cleans up on renewal of chip. */
+    @Override
+    public void cleanup() {
+        super.cleanup();
+        cDVSDisplayMethod.unregisterControlPanel();
+    }
+
+
+
     /** Creates a new instance of cDVSTest10
      * @param hardwareInterface an existing hardware interface. This constructor is preferred. It makes a new cDVSTest10Biasgen object to talk to the on-chip biasgen.
      */

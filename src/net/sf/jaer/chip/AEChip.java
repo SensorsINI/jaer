@@ -91,7 +91,7 @@ public class AEChip extends Chip2D {
 //        getCanvas().addDisplayMethod(new Histogram3dDisplayMethod(getCanvas())); // preesntly broken - tobi
 
         //set default display method
-        DisplayMethod m=getPreferredDisplayMethod();
+        DisplayMethod m = getPreferredDisplayMethod();
         m.setChipCanvas(getCanvas());
         getCanvas().setDisplayMethod(m);
 
@@ -106,7 +106,15 @@ public class AEChip extends Chip2D {
         filterChain.contructPreferredFilters();
     }
 
- 
+    /** Closes the RemoteControl if there is one. */
+    @Override
+    public void cleanup() {
+        super.cleanup();
+        if (getRemoteControl() != null) {
+            getRemoteControl().close();
+        }
+    }
+
     public EventExtractor2D getEventExtractor() {
         return eventExtractor;
     }

@@ -38,7 +38,8 @@ public class cDVSRenderer extends RetinaRenderer {
         }
         this.packet = packet;
         if (packet.getEventClass() != cDVSEvent.class) {
-            throw new RuntimeException("wrong type of event " + packet.getEventClass() + "; should be " + cDVSEvent.class);
+            log.warning("wrong input event class, got "+packet.getEventClass()+" but we need to have "+cDVSEvent.class);
+            return;
         }
         checkPixmapAllocation();
         float[] f = getPixmapArray();

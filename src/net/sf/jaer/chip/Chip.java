@@ -114,6 +114,12 @@ public class Chip extends Observable {
         this.biasgen=biasgen;
         setHardwareInterface(hardwareInterface);
     }
+
+
+    /** This empty method can be called to clean up if the Chip is no longer used or need to uninstall some registered GUI elements or clean up memory. */
+    public void cleanup(){
+
+    }
     
     public Biasgen getBiasgen() {
         return biasgen;
