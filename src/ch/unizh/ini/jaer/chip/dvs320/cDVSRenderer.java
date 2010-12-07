@@ -4,9 +4,9 @@
  */
 package ch.unizh.ini.jaer.chip.dvs320;
 
-import net.sf.jaer.event.BasicEvent;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OrientationEvent;
 import net.sf.jaer.graphics.RetinaRenderer;
 
 /**
@@ -26,6 +26,8 @@ public class cDVSRenderer extends RetinaRenderer {
 
     @Override
     public synchronized void render(EventPacket packet) {
+
+        final float MAX_ADC=1024f;
 
         // rendering is a hack to use the standard pixmap to duplicate pixels on left side (where 32x32 cDVS array lives) with superimposed Brighter, Darker, Redder, Bluer, and log intensity values,
         // and to show DVS test pixel events on right side (where the 64x64 total consisting of 4x 32x32 types of pixels live)
@@ -93,8 +95,21 @@ public class cDVSRenderer extends RetinaRenderer {
                     }
                 }
             }
+            if(isDisplayLogIntensity()){
+                CDVSLogIntensityFrameData b=cDVSChip.getFrameData();
+                float[] pm=getPixmapArray();
+                for(int y=0;y<cDVSTest20.SIZE_Y_CDVS;y++){
+                    for(int x=0;x<cDVSTest20.SIZE_X_CDVS;x++){
+                        float v=b.get(x, y)/MAX_ADC;
+                        int ind=getPixMapIndex(x, y);
+                        pm[ind]+=v;
+                        pm[ind+1]+=v;
+                        pm[ind+2]+=v;
+                    }
+                }
+            }
             autoScaleFrame(f);
-        } catch (ArrayIndexOutOfBoundsException e) {
+        } catch (IndexOutOfBoundsException e) {
             e.printStackTrace();
             log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type?");
         }

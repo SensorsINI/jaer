@@ -17,15 +17,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Observable;
+import java.util.Random;
 import java.util.StringTokenizer;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import net.sf.jaer.biasgen.Pot.Sex;
 import net.sf.jaer.biasgen.Pot.Type;
-import net.sf.jaer.graphics.Chip2DRenderer;
-import net.sf.jaer.graphics.DisplayMethod;
-import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 
@@ -50,7 +48,8 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     }
     public static final int SIZEX_TOTAL = 140;
     public static final int SIZE_Y = 64;
-    public static final int SIZE_X_CDVS = 64;
+    public static final int SIZE_Y_CDVS = 32;
+    public static final int SIZE_X_CDVS = 32;
     public static final int SIZE_X_DVS = 64;
     public static final int COLOR_CHANGE_BIT = 1; // color change events are even pixels in x and y
     // following define bit masks for various hardware data types. 
@@ -133,6 +132,14 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         globalIntensity = f;
     }
 
+    /**
+     * @return the frameData
+     */
+    public CDVSLogIntensityFrameData getFrameData() {
+        return frameData;
+    }
+    Random random = new Random();  // TODO debug remove
+
     /** The event extractor. Each pixel has two polarities 0 and 1.
      * There is one extra neuron which signals absolute intensity.
      * <p>
@@ -189,71 +196,77 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
 
             for (int i = 0; i < n; i++) {  // TODO implement skipBy
                 int data = datas[i];
-                if ((data & DATA_TYPE_MASK) == DATA_TYPE_ADDRESS) { // should always be true now that translateEvents has extracted timestamp info
-                    if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_EVENT) {
-                        if ((data & INTENSITYMASK) == INTENSITYMASK) {// intensity spike
-                            int dt = timestamps[i] - lastIntenTs;
-                            if (dt > 50) {
-                                avdt = 0.2f * dt + 0.8f * avdt;
-                                setIntensity(2000f / avdt); // ISI of this much gives intensity 1
-                            }
-                            lastIntenTs = timestamps[i];
 
-                        } else {
-                            cDVSEvent e = (cDVSEvent) outItr.nextOutput();
-                            e.address = data & EVENT_ADDRESS_MASK;
-                            e.timestamp = (timestamps[i]);
-                            e.x = (short) (((data & XMASK) >>> XSHIFT));
-                            if (e.x < 0) {
-                                e.x = 0;
-                            } else if (e.x > 319) {
-                                //   e.x = 319; // TODO fix this artificial clamping of x address within space, masks symptoms
-                            }
-                            e.y = (short) ((data & YMASK) >>> YSHIFT);
-                            if (e.y > 239) {
+//                // TODO debug ADC events by making random ones
+//                if (random.nextFloat() > .95f) {
+//                    data ^= ADDRESS_TYPE_ADC; // make it be a random ADC event
+//                }
+
+                ///////////////////////
+                if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_EVENT) {
+                    if ((data & INTENSITYMASK) == INTENSITYMASK) {// intensity spike
+                        int dt = timestamps[i] - lastIntenTs;
+                        if (dt > 50) {
+                            avdt = 0.2f * dt + 0.8f * avdt;
+                            setIntensity(2000f / avdt); // ISI of this much gives intensity 1
+                        }
+                        lastIntenTs = timestamps[i];
+
+                    } else {
+                        cDVSEvent e = (cDVSEvent) outItr.nextOutput();
+                        e.address = data & EVENT_ADDRESS_MASK;
+                        e.timestamp = (timestamps[i]);
+                        e.polarity = (byte) (data & POLMASK);
+                        e.x = (short) (((data & XMASK) >>> XSHIFT));
+                        if (e.x < 0) {
+                            e.x = 0;
+                        } else if (e.x > 319) {
+                            //   e.x = 319; // TODO fix this artificial clamping of x address within space, masks symptoms
+                        }
+                        e.y = (short) ((data & YMASK) >>> YSHIFT);
+                        if (e.y > 239) {
 //                    log.warning("e.y="+e.y);
-                                e.y = 239; // TODO fix this
-                            } else if (e.y < 0) {
-                                e.y = 0; // TODO
-                            }
+                            e.y = 239; // TODO fix this
+                        } else if (e.y < 0) {
+                            e.y = 0; // TODO
+                        }
 
-                            if (e.x < SIZE_X_CDVS) {
-                                if ((e.y & 1) == 0) { // odd rows: log intensity change events
-                                    if ((e.x & 1) != 0) { // off is 0, on is 1
-                                        e.eventType = cDVSEvent.EventType.Brighter;
-                                    } else {
-                                        e.eventType = cDVSEvent.EventType.Darker;
-                                    }
-                                } else {  // even rows: color events
-                                    if ((e.x & 1) != 0) { // blue is on is 1
-                                        e.eventType = cDVSEvent.EventType.Bluer;
-                                    } else {
-                                        e.eventType = cDVSEvent.EventType.Redder;
-                                    }
-                                }
-                                e.x = (short) (e.x >>> 1);
-                                e.y = (short) (e.y >>> 1); // cDVS array is clumped into 32x32
-                            } else {
-                                if ((e.x & 1) != 0) {
+                        if (e.x < SIZE_X_CDVS * 2) { // cDVS pixel array // *2 because size is defined to be 32 and event types are still different x's
+                            if ((e.y & 1) == 0) { // odd rows: log intensity change events
+                                if (e.polarity == 1) { // off is 0, on is 1
                                     e.eventType = cDVSEvent.EventType.Brighter;
                                 } else {
                                     e.eventType = cDVSEvent.EventType.Darker;
                                 }
-                                e.x = (short) (e.x >>> 1);
+                            } else {  // even rows: color events
+                                if (e.polarity == 1) { // blue is on is 1
+                                    e.eventType = cDVSEvent.EventType.Bluer;
+                                } else {
+                                    e.eventType = cDVSEvent.EventType.Redder;
+                                }
+                            }
+                            e.x = (short) (e.x >>> 1);
+                            e.y = (short) (e.y >>> 1); // cDVS array is clumped into 32x32
+                        } else { // DVS test pixel arrays
+//                               e.x = (short) (e.x >>> 1);
+                            if (e.polarity == 1) {
+                                e.eventType = cDVSEvent.EventType.Brighter;
+                            } else {
+                                e.eventType = cDVSEvent.EventType.Darker;
                             }
                         }
-                    } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
-                        if ((data & ADC_START_BIT) == ADC_START_BIT) {
-                            frameData.resetCounter();
-                        }
-                        frameData.setValueAndIncrementCounter(data & ADC_DATA_MASK);
                     }
+                } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
+                    if ((data & ADC_START_BIT) == ADC_START_BIT) {
+                        getFrameData().swapBuffers();
+                    }
+                    getFrameData().put(data & ADC_DATA_MASK);
                 }
 
             }
             return out;
-        }
-    }
+        } // extractPacket
+    } // extractor
 
     /** overrides the Chip setHardware interface to construct a biasgen if one doesn't exist already.
      * Sets the hardware interface and the bias generators hardware interface
@@ -283,7 +296,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
      *
      * <p>
      * TODO check following javadoc
-     * 
+     *
      * The pr, foll, and refr biases use the lowpower bias for their p src bias and the pr, foll and refr pfets
      * all have their psrcs wired to this shifted p src bias. Also, the pr, foll and refr biases also drive the same
      * shifted psrc bias with their own shifted psrc bias. Therefore all 4 of these biases (pr, foll, refr, and lowpower) should
@@ -293,8 +306,8 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
      * <nl>
      * <li> Bits 0-3 select the current output.
      * <li> 5 copies of digital Bits 4-8 select the digital output.
-     * <li> Bits 
-     * 
+     * <li> Bits
+     *
      * @author tobi
      */
     public class cDVSTestBiasgen extends net.sf.jaer.biasgen.Biasgen {
@@ -318,7 +331,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
 
             getMasterbias().setKPrimeNFet(55e-3f); // estimated from tox=42A, mu_n=670 cm^2/Vs // TODO fix for UMC18 process
             getMasterbias().setMultiplier(9 * (24f / 2.4f) / (4.8f / 2.4f));  // =45  correct for dvs320
-            getMasterbias().setWOverL(4.8f / 2.4f); // masterbias has nfet with w/l=2 at output 
+            getMasterbias().setWOverL(4.8f / 2.4f); // masterbias has nfet with w/l=2 at output
 
             ssn = new ShiftedSourceBias(this);
             ssn.setSex(Pot.Sex.N);
@@ -478,9 +491,9 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         }
 
         /**
-         * 
+         *
          * Overrides the default method to add the custom control panel for configuring the cDVSTest output muxes.
-         * 
+         *
          * @return a new panel for controlling this bias generator functionally
          */
         @Override
@@ -777,7 +790,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                 }
                 BigInteger bi = new BigInteger(s.toString(), 2);
                 byte[] byteArray = bi.toByteArray(); // finds minimal set of bytes in big endian format, with MSB as first element
-                // we need to pad out to nbits worth of bytes 
+                // we need to pad out to nbits worth of bytes
                 int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 8->1, 9->2
                 byte[] bytes = new byte[nbytes];
                 System.arraycopy(byteArray, 0, bytes, nbytes - byteArray.length, byteArray.length);

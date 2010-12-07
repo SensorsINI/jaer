@@ -14,52 +14,37 @@ import javax.media.opengl.GLDrawable;
  */
 public class CDVSLogIntensityFrameData {
 
-    public static final int WIDTH=64, HEIGHT=64;
-
-    
-    public int[] data1=new int[WIDTH*HEIGHT], data2=new int[WIDTH*HEIGHT];;
-    public int[] currentWritingBuffer=data2, currentReadingBuffer=data1;
-    private int count=0;
+    public static final int WIDTH=cDVSTest20.SIZE_X_CDVS, HEIGHT=cDVSTest20.SIZE_Y_CDVS;
     private static final int NUMSAMPLES=WIDTH*HEIGHT;
 
+//    IntBuffer buf1=IntBuffer.allocate(NUMSAMPLES), buf2=IntBuffer.allocate(NUMSAMPLES);
+//    public IntBuffer currentWritingBuffer=buf2, currentReadingBuffer=buf1;
 
-    public void resetCounter(){
-        count=0;
-    }
+    int[] data1=new int[NUMSAMPLES], data2=new int[NUMSAMPLES];
+    public int[] currentWritingBuffer=data2, currentReadingBuffer=data1;
+    int writeCounter=0, readCounter=0;
 
-    public int getCount(){
-        return count;
-    }
+//    public int get(){
+//        return currentReadingBuffer.get();
+//    }
 
-    public int getCurrentValue(){
-        return currentReadingBuffer[count];
-    }
-
-    public int getValueAndIncrementCounter(){
-        int v= currentReadingBuffer[count++];
-        checkWrap();
-        return v;
-    }
-
-    public int getValueAt(int x, int y){
+    public int get(int x, int y){
+//        return currentReadingBuffer.get(x+WIDTH*y);
         return currentReadingBuffer[x+WIDTH*y];
     }
 
-    public void setValueAndIncrementCounter(int val){
-        currentWritingBuffer[count++]=val;
-        if(checkWrap()) swapBuffers();
+    public void put(int val){
+//        currentWritingBuffer.put(val);
+//        if(!currentWritingBuffer.hasRemaining()) swapBuffers();
+
     }
 
-    /** Resets counter and returns true if counter was reset to zero.*/
-    private boolean checkWrap(){
-        if(count==NUMSAMPLES) {count=0; return true;}
-        return false;
-    }
-
-    private void swapBuffers() {
-        int[] tmp=currentWritingBuffer;
-        currentWritingBuffer=currentReadingBuffer;
-        currentReadingBuffer=tmp;
+    public void swapBuffers() {
+//        currentWritingBuffer.flip();
+//        IntBuffer tmp=currentWritingBuffer;
+//        currentWritingBuffer=currentReadingBuffer;
+//        currentReadingBuffer=tmp;
+//        currentWritingBuffer.clear();
     }
 
 }

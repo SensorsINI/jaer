@@ -13,8 +13,9 @@ import net.sf.jaer.event.TypedEvent;
  */
 public class cDVSEvent extends TypedEvent {
 
-    public float logIntensity = 0;
 
+    public byte polarity=0;
+    
     public enum EventType {
 
         None(-1), Brighter(0), Darker(1), Redder(2), Bluer(3);
