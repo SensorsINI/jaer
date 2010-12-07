@@ -212,7 +212,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public void removeDisplayMethod(DisplayMethod m) {
         if (m == null || !getDisplayMethods().contains(m)) {
-            log.warning("Cannot remove displayMethod: no such DisplayMethod " + m + " in the getDisplayMethods() list");
+            log.warning("Cannot remove DisplayMethod "+m+": no such DisplayMethod " + m + " in the getDisplayMethods() list");
             return;
         }
         displayMethods.remove(m);

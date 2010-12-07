@@ -30,8 +30,8 @@ public class AEChipRenderer extends Chip2DRenderer {
     public enum ColorMode {
         GrayLevel, Contrast, RedGreen, ColorTime
     };
-    private ColorMode[] colorModes = ColorMode.values(); // array of mode enums
-    ColorMode colorMode;
+    protected ColorMode[] colorModes = ColorMode.values(); // array of mode enums
+    protected ColorMode colorMode;
     {
         ColorMode oldMode = ColorMode.valueOf(prefs.get("ChipRenderer.colorMode", ColorMode.GrayLevel.toString()));
         for (ColorMode c : colorModes) {

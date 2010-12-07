@@ -45,10 +45,15 @@ import net.sf.jaer.util.RemoteControlled;
  */
 public class cDVSTest20 extends AERetina implements HasIntensity {
 
-    public static final int SIZEX_TOTAL = 140;
+   public static String getDescription() {
+        return "cDVSTest color Dynamic Vision Test chip";
+    }
+
+   public static final int SIZEX_TOTAL = 140;
     public static final int SIZE_Y = 64;
     public static final int SIZE_X_CDVS = 64;
     public static final int SIZE_X_DVS = 64;
+    public static final int COLOR_CHANGE_BIT=1; // color change events are even pixels in x and y
     // following define bit masks for various hardware data types. 
     // The hardware interface translateEvents method packs the raw device data into 32 bit 'addresses' and timestamps.
     // timestamps are unwrapped and timestamp resets are handled in translateEvents. Addresses are filled with either AE or ADC data.
@@ -69,27 +74,41 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     public static final int ADDRESS_TYPE_MASK = 0x4000, EVENT_ADDRESS_MASK = POLMASK|XMASK|YMASK, ADDRESS_TYPE_EVENT = 0x0000, ADDRESS_TYPE_ADC = 0x4000;
     public static final int ADC_TYPE_MASK = 0x1e00, ADC_DATA_MASK = 0x3ff, ADC_CHANNEL_MASK = 0x1800, ADC_START_BIT = 0x0200;
 
+    /** Event type bits */
+
     /** The computed intensity value. */
     private float globalIntensity = 0;
-    private logIntensityFrameData frameData = new logIntensityFrameData();
+    private CDVSLogIntensityFrameData frameData = new CDVSLogIntensityFrameData();
+    private cDVSRenderer cDVSRenderer=null;
+    private cDVSDisplayMethod cDVSDisplayMethod=null;
 
-    public static String getDescription() {
-        return "cDVSTest color Dynamic Vision Test chip";
-    }
+    private boolean displayLogIntensity;
+    private boolean displayColorChangeEvents;
+    private boolean displayLogIntensityChangeEvents;
+
 
     /** Creates a new instance of cDVSTest10.  */
     public cDVSTest20() {
         setName("cDVSTest20");
-        setEventClass(CDVSEvent2.class);
+        setEventClass(cDVSEvent.class);
         setSizeX(SIZEX_TOTAL);
         setSizeY(SIZE_Y);
         setNumCellTypes(3); // two are polarity and last is intensity
         setPixelHeightUm(14.5f);
         setPixelWidthUm(14.5f);
+
         setEventExtractor(new cDVSTestExtractor(this));
+        
         setBiasgen(new cDVSTest20.cDVSTestBiasgen(this));
-        DisplayMethod m = getCanvas().getDisplayMethod(); // get default method
-        getCanvas().removeDisplayMethod(m);
+
+           displayLogIntensity=getPrefs().getBoolean("displayLogIntensity", true);
+        displayColorChangeEvents=getPrefs().getBoolean("displayColorChangeEvents", true);
+        displayLogIntensityChangeEvents=getPrefs().getBoolean("displayLogIntensityChangeEvents", true);
+
+        setRenderer((cDVSRenderer=new cDVSRenderer(this)));
+
+//        DisplayMethod m = getCanvas().getDisplayMethod(); // get default method
+//        getCanvas().removeDisplayMethod(m);
 
 //        DVSWithIntensityDisplayMethod intenDisplayMethod = new DVSWithIntensityDisplayMethod(getCanvas());
 //
@@ -97,11 +116,10 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
 //        getCanvas().addDisplayMethod(intenDisplayMethod);
 //        getCanvas().setDisplayMethod(intenDisplayMethod);
 
-        CDVSDisplayMethod2 cDVSDisplayMethod = new CDVSDisplayMethod2(getCanvas());
+        cDVSDisplayMethod = new cDVSDisplayMethod(this);
         getCanvas().addDisplayMethod(cDVSDisplayMethod);
         getCanvas().setDisplayMethod(cDVSDisplayMethod);
 
-        Chip2DRenderer renderer = getRenderer();
     }
 
     /** Creates a new instance of cDVSTest10
@@ -187,7 +205,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                             lastIntenTs = timestamps[i];
 
                         } else {
-                            CDVSEvent2 e = (CDVSEvent2) outItr.nextOutput();
+                            cDVSEvent e = (cDVSEvent) outItr.nextOutput();
                             e.address = data & EVENT_ADDRESS_MASK;
                             e.timestamp = (timestamps[i]);
                             e.x = (short) (((data & XMASK) >>> XSHIFT));
@@ -203,8 +221,30 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                             } else if (e.y < 0) {
                                 e.y = 0; // TODO
                             }
-                            e.type = (byte) (data & 1);
-                            e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
+
+                            if (e.x < SIZE_X_CDVS) {
+                                if ((e.y & 1) == 0) {
+                                    if ((e.x & 1) != 0) {
+                                        e.eventType = cDVSEvent.EventType.Brighter;
+                                    } else {
+                                        e.eventType = cDVSEvent.EventType.Darker;
+                                    }
+                                }else{
+                                if ((e.x & 1) != 0) {
+                                        e.eventType = cDVSEvent.EventType.Redder;
+                                    } else {
+                                        e.eventType = cDVSEvent.EventType.Bluer;
+                                    }
+                                }
+                                e.x=(short)(e.x>>>1);
+                                e.y=(short)(e.y>>>1); // cDVS array is clumped into 32x32
+                            } else {
+                                if ((e.x & 1) != 0) {
+                                    e.eventType = cDVSEvent.EventType.Brighter;
+                                } else {
+                                    e.eventType = cDVSEvent.EventType.Darker;
+                                }
+                            }
                         }
                     } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
                         if ((data & ADC_START_BIT) == ADC_START_BIT) {
@@ -821,4 +861,51 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             }
         }
     }
+
+    /**
+     * @return the displayLogIntensity
+     */
+    public boolean isDisplayLogIntensity() {
+        return displayLogIntensity;
+    }
+
+    /**
+     * @param displayLogIntensity the displayLogIntensity to set
+     */
+    public void setDisplayLogIntensity(boolean displayLogIntensity) {
+        this.displayLogIntensity = displayLogIntensity;
+        getPrefs().putBoolean("displayLogIntensity", displayLogIntensity);
+    }
+
+    /**
+     * @return the displayColorChangeEvents
+     */
+    public boolean isDisplayColorChangeEvents() {
+        return displayColorChangeEvents;
+    }
+
+    /**
+     * @param displayColorChangeEvents the displayColorChangeEvents to set
+     */
+    public void setDisplayColorChangeEvents(boolean displayColorChangeEvents) {
+        this.displayColorChangeEvents = displayColorChangeEvents;
+        getPrefs().putBoolean("displayColorChangeEvents", displayColorChangeEvents);
+    }
+
+    /**
+     * @return the displayLogIntensityChangeEvents
+     */
+    public boolean isDisplayLogIntensityChangeEvents() {
+        return displayLogIntensityChangeEvents;
+    }
+
+    /**
+     * @param displayLogIntensityChangeEvents the displayLogIntensityChangeEvents to set
+     */
+    public void setDisplayLogIntensityChangeEvents(boolean displayLogIntensityChangeEvents) {
+        this.displayLogIntensityChangeEvents = displayLogIntensityChangeEvents;
+        getPrefs().putBoolean("displayLogIntensityChangeEvents", displayLogIntensityChangeEvents);
+    }
+
+
 }

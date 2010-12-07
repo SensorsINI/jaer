@@ -91,6 +91,8 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
                         FloatBuffer pixmap = renderer.getPixmap();
                         if (pixmap != null) {
                             pixmap.position(0);
+//                            gl.glPixelTransferf(GL.GL_RED_SCALE, 2); // TODO to try out
+//                            gl.glPixelTransferf(GL.GL_RED_BIAS, .3f); // TODO to try out
                             gl.glDrawPixels(ncol, nrow, GL.GL_RGB, GL.GL_FLOAT, pixmap);
                         }
                     }

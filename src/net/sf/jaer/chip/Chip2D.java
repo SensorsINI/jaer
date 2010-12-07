@@ -195,8 +195,8 @@ public class Chip2D extends Chip {
             Object[] args = {getCanvas()};
             DisplayMethod method = (DisplayMethod) constructor.newInstance(args);
             return method;
-        } catch (Exception e) {
-            log.warning(e.toString()+": couldn't construct preferred display method " + className + ", returning ChipRendererDisplayMethod");
+        } catch (Throwable e) {
+            log.warning(e.toString()+": couldn't construct preferred display method \"" + className + "\", returning ChipRendererDisplayMethod");
             return new ChipRendererDisplayMethod(getCanvas());
         }
 

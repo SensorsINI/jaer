@@ -12,7 +12,7 @@ import javax.media.opengl.GLDrawable;
  * Holds the frame of log intensity values to be display for a cDVS chip with log intensity readout.
  * @author Tobi
  */
-public class logIntensityFrameData {
+public class CDVSLogIntensityFrameData {
 
     public static final int WIDTH=64, HEIGHT=64;
     public int[] data1=new int[WIDTH*HEIGHT], data2=new int[WIDTH*HEIGHT];;
