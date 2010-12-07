@@ -585,6 +585,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         } catch ( Exception e ){
             makeDefaultChipClassNames();
+            putChipClassPrefs(); // added this to cache chip classes to speed startup for subsequent launches
         }
     }
 
