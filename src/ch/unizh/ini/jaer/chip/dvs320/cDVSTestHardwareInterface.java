@@ -374,7 +374,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
          * meaningful at the row addresses level. Therefore
          *the board timestamps on row address, and then 
          * sends the data in the following sequence:
-         * row, timestamp, col, col, col,...., row,timestamp,col,col...
+         * timestamp, row, col, col, col,....,timestamp,row,col,col...
          * <p>
          * Intensity information is transmitted by bit 8, which is set by the chip
          *The bit encoding of the data is as follows
@@ -418,7 +418,6 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         private int lasty = 0;
         private int currentts = 0;
         private int lastts = 0;
-        private int currentWrapAdd = 0;
 
         protected void translateEvents(UsbIoBuf b) {
             try {
@@ -468,13 +467,13 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
                                 } else {
                                     if((dataword&cDVSTest20.ADDRESS_TYPE_MASK)==cDVSTest20.ADDRESS_TYPE_ADC){
                                         addresses[eventCounter]=dataword;
-                                        timestamps[eventCounter]=lastts;  // ADC event gets last timestamp
+                                        timestamps[eventCounter]=currentts;  // ADC event gets last timestamp
                                         eventCounter++;
                                     }else if ((buf[i + 1] & Xmask) == Xmask) {////  received an X address, write out event to addresses/timestamps output arrays
                                         // x adddress
                                         //xadd = (buf[i] & 0xff);  //
                                         addresses[eventCounter] = (lasty << cDVSTest20.YSHIFT) | (dataword&(cDVSTest20.XMASK|cDVSTest20.POLMASK));  // combine current bits with last y address bits and send
-                                        timestamps[eventCounter] = (TICK_US * (currentts + currentWrapAdd)); // add in the wrap offset and convert to 1us tick
+                                        timestamps[eventCounter] = currentts; // add in the wrap offset and convert to 1us tick
                                         eventCounter++;
                                         //    log.info("received x address");
                                         gotY = false;
@@ -482,14 +481,14 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
                                         // lasty = (0xFF & buf[i]); //
                                         if (gotY) {// TODO creates bogus event to see y without x. This should not normally occur.
                                             addresses[eventCounter] = (lasty << cDVSTest20.YSHIFT) + (cDVSTest20.SIZEX_TOTAL-1 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
-                                            timestamps[eventCounter] = (TICK_US * (lastts + currentWrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                                            timestamps[eventCounter] = lastts; //*TICK_US; //add in the wrap offset and convert to 1us tick
                                             eventCounter++;
 //                                        //log.warning("received at least two Y addresses consecutively");
                                         }
                                         if ((buf[i] & IntensityMask) != 0){ // intensity spike
                                             // log.info("received intensity bit");
                                             addresses[eventCounter] = 0x40000;
-                                            timestamps[eventCounter] = (TICK_US * (currentts + currentWrapAdd));
+                                            timestamps[eventCounter] = currentts;
                                             eventCounter++;
                                         }
                                         lasty = (cDVSTest20.YMASK>>>cDVSTest20.YSHIFT)&dataword; //(0xFF & buf[i]); //
@@ -500,7 +499,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
                             case 1: // timestamp
                                 lastts = currentts;
                                 currentts = ((0x3f & buf[i + 1]) << 8) | (buf[i] & 0xff);
-                                currentWrapAdd = wrapAdd;
+                                currentts = (TICK_US * (currentts + wrapAdd));
                                 //           log.info("received timestamp");
                                 break;
                             case 2: // wrap
