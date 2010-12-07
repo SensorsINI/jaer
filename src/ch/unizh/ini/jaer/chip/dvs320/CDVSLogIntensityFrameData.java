@@ -5,8 +5,7 @@
 
 package ch.unizh.ini.jaer.chip.dvs320;
 
-import java.nio.IntBuffer;
-import javax.media.opengl.GLDrawable;
+import java.util.concurrent.Semaphore;
 
 /**
  * Holds the frame of log intensity values to be display for a cDVS chip with log intensity readout.
@@ -23,6 +22,14 @@ public class CDVSLogIntensityFrameData {
     int[] data1=new int[NUMSAMPLES], data2=new int[NUMSAMPLES];
     public int[] currentWritingBuffer=data2, currentReadingBuffer=data1;
     int writeCounter=0, readCounter=0;
+    Semaphore semaphore=new Semaphore(1);
+
+    public void acquire(){
+        semaphore.acquireUninterruptibly();
+    }
+    public void release(){
+        semaphore.release();
+    }
 
 //    public int get(){
 //        return currentReadingBuffer.get();
@@ -36,10 +43,17 @@ public class CDVSLogIntensityFrameData {
     public void put(int val){
 //        currentWritingBuffer.put(val);
 //        if(!currentWritingBuffer.hasRemaining()) swapBuffers();
-
+        currentWritingBuffer[writeCounter++]=val;
+        if(writeCounter==NUMSAMPLES) swapBuffers();
     }
 
     public void swapBuffers() {
+        acquire();
+        int[] tmp=currentReadingBuffer;
+        currentReadingBuffer=currentWritingBuffer;
+        writeCounter=0;
+        currentWritingBuffer=tmp;
+        release();
 //        currentWritingBuffer.flip();
 //        IntBuffer tmp=currentWritingBuffer;
 //        currentWritingBuffer=currentReadingBuffer;

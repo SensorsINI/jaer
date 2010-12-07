@@ -62,15 +62,15 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     public static final int POLMASK = 1,
             XSHIFT = Integer.bitCount(POLMASK),
             XMASK = 127 << XSHIFT, // 7 bits
-            YSHIFT = Integer.bitCount(POLMASK | XMASK),
+            YSHIFT = 16, // so that y addresses don't overlap ADC bits and cause fake ADC events Integer.bitCount(POLMASK | XMASK),
             YMASK = 63 << YSHIFT, // 6 bits
             INTENSITYMASK = 0x40000;
     /**
      * data type fields
      */
     public static final int DATA_TYPE_MASK = 0xc000, DATA_TYPE_ADDRESS = 0x0000, DATA_TYPE_TIMESTAMP = 0x4000, DATA_TYPE_WRAP = 0x8000, DATA_TYPE_TIMESTAMP_RESET = 0xd000;
-    public static final int ADDRESS_TYPE_MASK = 0x4000, EVENT_ADDRESS_MASK = POLMASK | XMASK | YMASK, ADDRESS_TYPE_EVENT = 0x0000, ADDRESS_TYPE_ADC = 0x4000;
-    public static final int ADC_TYPE_MASK = 0x1e00, ADC_DATA_MASK = 0x3ff, ADC_CHANNEL_MASK = 0x1800, ADC_START_BIT = 0x0200;
+    public static final int ADDRESS_TYPE_MASK = 0x2000, EVENT_ADDRESS_MASK = POLMASK | XMASK | YMASK, ADDRESS_TYPE_EVENT = 0x0000, ADDRESS_TYPE_ADC = 0x2000;
+    public static final int ADC_TYPE_MASK = 0x1c00, ADC_DATA_MASK = 0x3ff, ADC_CHANNEL_MASK = 0x1800, ADC_START_BIT = 0x0400;
     /** Event type bits */
     /** The computed intensity value. */
     private float globalIntensity = 0;
@@ -197,8 +197,8 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             for (int i = 0; i < n; i++) {  // TODO implement skipBy
                 int data = datas[i];
 
-//                // TODO debug ADC events by making random ones
-//                if (random.nextFloat() > .95f) {
+                // TODO debug ADC events by making random ones
+//                if (random.nextFloat() > .999f) {
 //                    data ^= ADDRESS_TYPE_ADC; // make it be a random ADC event
 //                }
 
@@ -258,7 +258,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                     }
                 } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
                     if ((data & ADC_START_BIT) == ADC_START_BIT) {
-                        getFrameData().swapBuffers();
+//                        getFrameData().swapBuffers();
                     }
                     getFrameData().put(data & ADC_DATA_MASK);
                 }
