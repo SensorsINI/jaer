@@ -25,7 +25,7 @@
     <DimensionLayout dim="1">
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="0" attributes="0">
-              <Component id="displayControlPanel" pref="95" max="32767" attributes="0"/>
+              <Component id="displayControlPanel" pref="170" max="32767" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
           </Group>
       </Group>
@@ -44,14 +44,14 @@
       <Layout>
         <DimensionLayout dim="0">
           <Group type="103" groupAlignment="0" attributes="0">
-              <Group type="102" attributes="0">
+              <Group type="102" alignment="0" attributes="0">
                   <EmptySpace max="-2" attributes="0"/>
                   <Group type="103" groupAlignment="0" attributes="0">
                       <Component id="logIntensityChangeCB" alignment="0" min="-2" max="-2" attributes="0"/>
                       <Component id="colorChangeCB" alignment="0" min="-2" max="-2" attributes="0"/>
-                      <Component id="logIntensityCB" alignment="0" min="-2" max="-2" attributes="0"/>
+                      <Component id="jPanel1" alignment="0" min="-2" max="-2" attributes="0"/>
                   </Group>
-                  <EmptySpace pref="140" max="32767" attributes="0"/>
+                  <EmptySpace pref="254" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -62,8 +62,8 @@
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="colorChangeCB" linkSize="1" min="-2" pref="23" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
-                  <Component id="logIntensityCB" linkSize="1" min="-2" pref="23" max="-2" attributes="0"/>
-                  <EmptySpace max="32767" attributes="0"/>
+                  <Component id="jPanel1" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace max="-2" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -85,14 +85,96 @@
             <BindingProperty name="selected" source="Form" sourcePath="${displayMethod.displayColorChangeEvents}" target="colorChangeCB" targetPath="selected" updateStrategy="0" immediately="false"/>
           </BindingProperties>
         </Component>
-        <Component class="javax.swing.JCheckBox" name="logIntensityCB">
+        <Container class="javax.swing.JPanel" name="jPanel1">
           <Properties>
-            <Property name="text" type="java.lang.String" value="Show log intensity data"/>
+            <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+              <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
+                <TitledBorder title="Log intensity"/>
+              </Border>
+            </Property>
           </Properties>
-          <BindingProperties>
-            <BindingProperty name="selected" source="Form" sourcePath="${displayMethod.displayLogIntensity}" target="logIntensityCB" targetPath="selected" updateStrategy="0" immediately="false"/>
-          </BindingProperties>
-        </Component>
+
+          <Layout>
+            <DimensionLayout dim="0">
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <Group type="102" attributes="0">
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" attributes="0">
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Group type="102" attributes="0">
+                                      <Component id="jLabel2" linkSize="2" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace max="-2" attributes="0"/>
+                                      <Component id="jSlider2" min="-2" max="-2" attributes="0"/>
+                                  </Group>
+                                  <Group type="102" alignment="0" attributes="0">
+                                      <Component id="jLabel1" linkSize="2" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace max="-2" attributes="0"/>
+                                      <Component id="jSlider1" min="-2" max="-2" attributes="0"/>
+                                  </Group>
+                              </Group>
+                          </Group>
+                          <Component id="logIntensityCB" alignment="0" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace pref="84" max="32767" attributes="0"/>
+                  </Group>
+              </Group>
+            </DimensionLayout>
+            <DimensionLayout dim="1">
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <Group type="102" alignment="0" attributes="0">
+                      <Component id="logIntensityCB" min="-2" pref="23" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Component id="jSlider1" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Group type="102" alignment="0" attributes="0">
+                              <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Component id="jSlider2" alignment="0" min="-2" max="-2" attributes="0"/>
+                                  <Component id="jLabel2" alignment="0" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                          </Group>
+                      </Group>
+                  </Group>
+              </Group>
+            </DimensionLayout>
+          </Layout>
+          <SubComponents>
+            <Component class="javax.swing.JCheckBox" name="logIntensityCB">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Show log intensity data"/>
+              </Properties>
+              <BindingProperties>
+                <BindingProperty name="selected" source="Form" sourcePath="${displayMethod.displayLogIntensity}" target="logIntensityCB" targetPath="selected" updateStrategy="0" immediately="false"/>
+              </BindingProperties>
+            </Component>
+            <Component class="javax.swing.JSlider" name="jSlider1">
+              <BindingProperties>
+                <BindingProperty name="value" source="Form" sourcePath="${logIntensityGain}" target="jSlider1" targetPath="value" updateStrategy="0" immediately="false">
+                  <BindingParameter name="IGNORE_ADJUSTING" value="N"/>
+                </BindingProperty>
+              </BindingProperties>
+            </Component>
+            <Component class="javax.swing.JLabel" name="jLabel1">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="gain"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JLabel" name="jLabel2">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="offset"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JSlider" name="jSlider2">
+              <BindingProperties>
+                <BindingProperty name="value" source="Form" sourcePath="${logIntensityOffset}" target="jSlider2" targetPath="value" updateStrategy="0" immediately="false">
+                  <BindingParameter name="IGNORE_ADJUSTING" value="N"/>
+                </BindingProperty>
+              </BindingProperties>
+            </Component>
+          </SubComponents>
+        </Container>
       </SubComponents>
     </Container>
   </SubComponents>

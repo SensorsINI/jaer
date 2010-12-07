@@ -56,6 +56,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     // The hardware interface translateEvents method packs the raw device data into 32 bit 'addresses' and timestamps.
     // timestamps are unwrapped and timestamp resets are handled in translateEvents. Addresses are filled with either AE or ADC data.
     // AEs are filled in according the XMASK, YMASK, XSHIFT, YSHIFT below.
+
     /**
      * bit masks/shifts for cDVS  AE data
      */
@@ -64,14 +65,19 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             XMASK = 127 << XSHIFT, // 7 bits
             YSHIFT = 16, // so that y addresses don't overlap ADC bits and cause fake ADC events Integer.bitCount(POLMASK | XMASK),
             YMASK = 63 << YSHIFT, // 6 bits
-            INTENSITYMASK = 0x40000;
-    /**
+            INTENSITYMASK = 0x40000000;
+
+    /*
      * data type fields
      */
+
+    /** data type is either timestamp or data (AE address or ADC reading) */
     public static final int DATA_TYPE_MASK = 0xc000, DATA_TYPE_ADDRESS = 0x0000, DATA_TYPE_TIMESTAMP = 0x4000, DATA_TYPE_WRAP = 0x8000, DATA_TYPE_TIMESTAMP_RESET = 0xd000;
+    /** Address-type refers to data if is it an "address". This data is either an AE address or ADC reading.*/
     public static final int ADDRESS_TYPE_MASK = 0x2000, EVENT_ADDRESS_MASK = POLMASK | XMASK | YMASK, ADDRESS_TYPE_EVENT = 0x0000, ADDRESS_TYPE_ADC = 0x2000;
+    /** For ADC data, the data is defined by the ADC channel and whether it is the first ADC value from the scanner. */
     public static final int ADC_TYPE_MASK = 0x1c00, ADC_DATA_MASK = 0x3ff, ADC_CHANNEL_MASK = 0x1800, ADC_START_BIT = 0x0400;
-    /** Event type bits */
+
     /** The computed intensity value. */
     private float globalIntensity = 0;
     private CDVSLogIntensityFrameData frameData = new CDVSLogIntensityFrameData();
@@ -80,6 +86,8 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     private boolean displayLogIntensity;
     private boolean displayColorChangeEvents;
     private boolean displayLogIntensityChangeEvents;
+
+    private float logIntensityGain=getPrefs().getFloat("logIntensityGain",1f), logIntensityOffset=getPrefs().getFloat("logIntensityOffset",0f);
 
     /** Creates a new instance of cDVSTest10.  */
     public cDVSTest20() {
@@ -138,7 +146,40 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     public CDVSLogIntensityFrameData getFrameData() {
         return frameData;
     }
+
+    // TODO debug remove
     Random random = new Random();  // TODO debug remove
+    int debugSampleCounter=0;
+
+    /**
+     * @return the logIntensityGain
+     */
+    public float getLogIntensityGain() {
+        return logIntensityGain;
+    }
+
+    /**
+     * @param logIntensityGain the logIntensityGain to set
+     */
+    public void setLogIntensityGain(float logIntensityGain) {
+        this.logIntensityGain = logIntensityGain;
+        getPrefs().putFloat("logIntensityGain",logIntensityGain);
+    }
+
+    /**
+     * @return the logIntensityOffset
+     */
+    public float getLogIntensityOffset() {
+        return logIntensityOffset;
+    }
+
+    /**
+     * @param logIntensityOffset the logIntensityOffset to set
+     */
+    public void setLogIntensityOffset(float logIntensityOffset) {
+        this.logIntensityOffset = logIntensityOffset;
+        getPrefs().putFloat("logIntensityOffset", logIntensityOffset);
+    }
 
     /** The event extractor. Each pixel has two polarities 0 and 1.
      * There is one extra neuron which signals absolute intensity.
@@ -198,7 +239,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                 int data = datas[i];
 
                 // TODO debug ADC events by making random ones
-//                if (random.nextFloat() > .999f) {
+//                if (random.nextFloat() > .98f) {
 //                    data ^= ADDRESS_TYPE_ADC; // make it be a random ADC event
 //                }
 
@@ -257,10 +298,18 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                         }
                     }
                 } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
+                    // TODO comment back in
                     if ((data & ADC_START_BIT) == ADC_START_BIT) {
-//                        getFrameData().swapBuffers();
+                        getFrameData().swapBuffers();
                     }
                     getFrameData().put(data & ADC_DATA_MASK);
+                    
+                    ////////////// TODO debug remove
+//                    if(++debugSampleCounter==SIZE_X_CDVS*SIZE_Y_CDVS) {
+//                        debugSampleCounter=0;
+//                        getFrameData().swapBuffers();
+//                    }
+                    ///////////////////////
                 }
 
             }

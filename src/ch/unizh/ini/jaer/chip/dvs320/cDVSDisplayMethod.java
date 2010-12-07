@@ -39,7 +39,7 @@ public class cDVSDisplayMethod extends DVSWithIntensityDisplayMethod {
             AEChip chip = (AEChip) getChipCanvas().getChip();
             AEViewer viewer = chip.getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
             JPanel imagePanel = viewer.getImagePanel();
-            imagePanel.add(new cDVSDisplayControlPanel(this), BorderLayout.SOUTH);
+            imagePanel.add(new cDVSDisplayControlPanel(cDVSChip), BorderLayout.SOUTH);
             registeredControlPanel=true;
         } catch (Exception e) {
             log.warning("could not register control panel");

@@ -487,7 +487,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
                                         }
                                         if ((buf[i] & IntensityMask) != 0){ // intensity spike
                                             // log.info("received intensity bit");
-                                            addresses[eventCounter] = 0x40000;
+                                            addresses[eventCounter] = cDVSTest20.INTENSITYMASK;
                                             timestamps[eventCounter] = currentts;
                                             eventCounter++;
                                         }

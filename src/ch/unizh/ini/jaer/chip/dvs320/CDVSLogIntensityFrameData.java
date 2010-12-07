@@ -44,7 +44,7 @@ public class CDVSLogIntensityFrameData {
 //        currentWritingBuffer.put(val);
 //        if(!currentWritingBuffer.hasRemaining()) swapBuffers();
         currentWritingBuffer[writeCounter++]=val;
-        if(writeCounter==NUMSAMPLES) swapBuffers();
+        if(writeCounter==NUMSAMPLES) writeCounter=0;
     }
 
     public void swapBuffers() {

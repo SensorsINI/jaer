@@ -19,10 +19,12 @@ package ch.unizh.ini.jaer.chip.dvs320;
 public class cDVSDisplayControlPanel extends javax.swing.JPanel {
 
     private cDVSDisplayMethod displayMethod=null;
+    private cDVSTest20 chip;
 
     /** Creates new form cDVSDisplayControlPanel */
-    public cDVSDisplayControlPanel(cDVSDisplayMethod dm) {
-        this.displayMethod=dm;
+    public cDVSDisplayControlPanel(cDVSTest20 chip) {
+        this.chip=chip;
+        this.displayMethod=(cDVSDisplayMethod)chip.getCanvas().getDisplayMethod();
         initComponents();
     }
 
@@ -39,7 +41,12 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel {
         displayControlPanel = new javax.swing.JPanel();
         logIntensityChangeCB = new javax.swing.JCheckBox();
         colorChangeCB = new javax.swing.JCheckBox();
+        jPanel1 = new javax.swing.JPanel();
         logIntensityCB = new javax.swing.JCheckBox();
+        jSlider1 = new javax.swing.JSlider();
+        jLabel1 = new javax.swing.JLabel();
+        jLabel2 = new javax.swing.JLabel();
+        jSlider2 = new javax.swing.JSlider();
 
         displayControlPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("cDVS Display"));
 
@@ -53,10 +60,60 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel {
         binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${displayMethod.displayColorChangeEvents}"), colorChangeCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
+        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Log intensity"));
+
         logIntensityCB.setText("Show log intensity data");
 
         binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${displayMethod.displayLogIntensity}"), logIntensityCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
+
+        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${logIntensityGain}"), jSlider1, org.jdesktop.beansbinding.BeanProperty.create("value"));
+        bindingGroup.addBinding(binding);
+
+        jLabel1.setText("gain");
+
+        jLabel2.setText("offset");
+
+        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${logIntensityOffset}"), jSlider2, org.jdesktop.beansbinding.BeanProperty.create("value"));
+        bindingGroup.addBinding(binding);
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addComponent(jLabel2)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jSlider2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addComponent(jLabel1)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jSlider1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                    .addComponent(logIntensityCB))
+                .addContainerGap(84, Short.MAX_VALUE))
+        );
+
+        jPanel1Layout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {jLabel1, jLabel2});
+
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addComponent(logIntensityCB, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jSlider1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(jLabel1)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jSlider2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jLabel2)))))
+        );
 
         javax.swing.GroupLayout displayControlPanelLayout = new javax.swing.GroupLayout(displayControlPanel);
         displayControlPanel.setLayout(displayControlPanelLayout);
@@ -67,8 +124,8 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel {
                 .addGroup(displayControlPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(logIntensityChangeCB)
                     .addComponent(colorChangeCB)
-                    .addComponent(logIntensityCB))
-                .addContainerGap(140, Short.MAX_VALUE))
+                    .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(254, Short.MAX_VALUE))
         );
         displayControlPanelLayout.setVerticalGroup(
             displayControlPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -77,11 +134,11 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(colorChangeCB, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(logIntensityCB, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
         );
 
-        displayControlPanelLayout.linkSize(javax.swing.SwingConstants.VERTICAL, new java.awt.Component[] {colorChangeCB, logIntensityCB, logIntensityChangeCB});
+        displayControlPanelLayout.linkSize(javax.swing.SwingConstants.VERTICAL, new java.awt.Component[] {colorChangeCB, logIntensityChangeCB});
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
@@ -94,7 +151,7 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel {
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addComponent(displayControlPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 95, Short.MAX_VALUE)
+                .addComponent(displayControlPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 170, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
@@ -105,6 +162,11 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JCheckBox colorChangeCB;
     private javax.swing.JPanel displayControlPanel;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JSlider jSlider1;
+    private javax.swing.JSlider jSlider2;
     private javax.swing.JCheckBox logIntensityCB;
     private javax.swing.JCheckBox logIntensityChangeCB;
     private org.jdesktop.beansbinding.BindingGroup bindingGroup;
@@ -123,5 +185,39 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel {
     public void setDisplayMethod(cDVSDisplayMethod displayMethod) {
         this.displayMethod = displayMethod;
     }
+
+    /**
+     * @return the chip
+     */
+    public cDVSTest20 getChip() {
+        return chip;
+    }
+
+    /**
+     * @param chip the chip to set
+     */
+    public void setChip(cDVSTest20 chip) {
+        this.chip = chip;
+    }
+
+    public void setLogIntensityOffset(int logIntensityOffset) {
+        chip.setLogIntensityOffset(logIntensityOffset/100f);
+    }
+
+    public void setLogIntensityGain(int logIntensityGain) {
+        chip.setLogIntensityGain(logIntensityGain/100f);
+    }
+
+    public int getLogIntensityOffset() {
+        return (int)(100*chip.getLogIntensityOffset());
+    }
+
+    public int getLogIntensityGain() {
+        return (int)(100*chip.getLogIntensityGain());
+    }
+
+
+
+
 
 }

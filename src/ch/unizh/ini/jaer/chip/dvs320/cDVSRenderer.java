@@ -28,7 +28,7 @@ public class cDVSRenderer extends RetinaRenderer {
     @Override
     public synchronized void render(EventPacket packet) {
 
-        final float MAX_ADC = 1024f;
+        final float MAX_ADC = (float)((1<<11)-1);
 
         // rendering is a hack to use the standard pixmap to duplicate pixels on left side (where 32x32 cDVS array lives) with superimposed Brighter, Darker, Redder, Bluer, and log intensity values,
         // and to show DVS test pixel events on right side (where the 64x64 total consisting of 4x 32x32 types of pixels live)
@@ -57,7 +57,7 @@ public class cDVSRenderer extends RetinaRenderer {
                     playSpike(type);
                 }
                 if (isCDVSArray(e)) { // address is in cDVS array
-                    int x = e.x >> 1, y = e.y >> 1;
+                    int x = e.x, y = e.y;
                     switch (e.eventType) {
                         case Brighter:
                             if (showLogIntensityChange) {
@@ -103,10 +103,12 @@ public class cDVSRenderer extends RetinaRenderer {
                 CDVSLogIntensityFrameData b = cDVSChip.getFrameData();
                 try {
                     b.acquire();
+                    float gain=cDVSChip.getLogIntensityGain(), offset=cDVSChip.getLogIntensityOffset();
                     float[] pm = getPixmapArray();
-                    for (int y = 10; y < cDVSTest20.SIZE_Y_CDVS; y++) {
+                    for (int y = 0; y < cDVSTest20.SIZE_Y_CDVS; y++) {
                         for (int x = 0; x < cDVSTest20.SIZE_X_CDVS; x++) {
-                            float v = b.get(x, y) / MAX_ADC;
+                            float v = gain*(b.get(x, y) / MAX_ADC+offset);
+                            if(v>1)v=1;
                             float[] vv = {v, v, v};
                             changeCDVSPixel(x, y, pm, vv, 1);
                         }
@@ -129,9 +131,10 @@ public class cDVSRenderer extends RetinaRenderer {
         return e.x < cDVSTest20.SIZE_X_CDVS;
     }
 
+    /** x,y refer to 32x32 space of cDVS pixels but rendering space for cDVS is 64x64 */
     private void changeCDVSPixel(int x, int y, float[] f, float[] c, float step) {
         int ind;
-        ind = 3 * (x + y * sizeX);
+        ind = 3 * (2*x + 2*y * sizeX);
         float r = c[0] * step, g = c[1] * step, b = c[2] * step;
         f[ind] += r;
         f[ind + 1] += g;
