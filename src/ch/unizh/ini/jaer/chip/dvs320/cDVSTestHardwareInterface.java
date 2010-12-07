@@ -9,14 +9,13 @@ package ch.unizh.ini.jaer.chip.dvs320;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import de.thesycon.usbio.UsbIoBuf;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Biasgen;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
 import javax.swing.ProgressMonitor;
 import java.io.*;
-import java.util.StringTokenizer;
+import java.math.BigInteger;
 
 /**
  * Adds functionality of cDVSTest10 retina test chip to base classes for Cypress FX2 interface.
@@ -77,16 +76,79 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
     }
 
     private byte ADCchannel = 3;
+    private static final int ADCchannelshift=5;
 
     public void setADCchannel(byte chan) {
         ADCchannel = chan;
     }
 
-    private final static short ADCconfig = (short) 0x908;
-    private final static short ADCconifgLength = (short) 12;
+    private static short ADCconfig = (short) 0x908;
+    private final static short ADCconfigLength = (short) 12;
+
+    private String getBitString(short value, short nSrBits) {
+                StringBuilder s = new StringBuilder();
+
+                int k = nSrBits - 1;
+                while (k >= 0) {
+                    int x = value & (1 << k); // start with msb
+                    boolean b = (x == 0); // get bit
+                    s.append(b ? '0' : '1'); // append to string 0 or 1, string grows with msb on left
+                    k--;
+                } // construct big endian string e.g. code=14, s='1011'
+                String bitString = s.toString();
+                return bitString;
+            }
 
     synchronized public void sendCPLDconfiguration() throws HardwareInterfaceException {
+        short ADCword=(short) (ADCconfig | (ADCchannel << ADCchannelshift));
 
+        int nBits = 0;
+
+        StringBuilder s = new StringBuilder();
+
+        s.append(getBitString(IdleTime, (short) 16));
+        nBits += 16;
+        s.append(getBitString(RefOffTime, (short) 16));
+        nBits += 16;
+        s.append(getBitString(RefOnTime, (short) 16));
+        nBits += 16;
+        s.append(getBitString(TrackTime, (short) 16));
+        nBits += 16;
+        s.append(getBitString(ADCword, ADCconfigLength));
+        nBits += ADCconfigLength;
+
+        if (UseCalibration)
+            s.append(getBitString((short)1,(short)1));
+        else
+            s.append(getBitString((short)0,(short)1));
+        nBits += 1;
+
+        if (Select5Tbuffer)
+            s.append(getBitString((short)1,(short)1));
+        else
+            s.append(getBitString((short)0,(short)1));
+        nBits += 1;
+
+        s.reverse();
+        System.out.println(s);
+
+        BigInteger bi = new BigInteger(s.toString(), 2);
+        byte[] byteArray = bi.toByteArray(); // finds minimal set of bytes in big endian format, with MSB as first element
+        // we need to pad out to nbits worth of bytes
+        int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 8->1, 9->2
+        byte[] bytes = new byte[nbytes];
+        System.arraycopy(byteArray, 0, bytes, nbytes - byteArray.length, byteArray.length);
+
+        this.sendVendorRequest(this.VENDOR_REQUEST_WRITE_CPLD_SR,(short) 0,(short) 0, bytes);
+    }
+
+    synchronized public void startADC() throws HardwareInterfaceException {
+        sendCPLDconfiguration();
+        this.sendVendorRequest(this.VENDOR_REQUEST_RUN_ADC,(short)1,(short)0);
+    }
+
+    synchronized public void stopADC() throws HardwareInterfaceException {
+        this.sendVendorRequest(this.VENDOR_REQUEST_RUN_ADC,(short)0,(short)0);
     }
 
     synchronized public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
@@ -352,7 +414,9 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
     public void startAEReader() throws HardwareInterfaceException {  // raphael: changed from private to protected, because i need to access this method
         setAeReader(new RetinaAEReader(this));
         allocateAEBuffers();
+
         getAeReader().startThread(3); // arg is number of errors before giving up
+        startADC();
         HardwareInterfaceException.clearException();
     }
     boolean gotY = false; // TODO  hack for debugging state machine
@@ -469,6 +533,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
                                         addresses[eventCounter]=dataword;
                                         timestamps[eventCounter]=currentts;  // ADC event gets last timestamp
                                         eventCounter++;
+                                        System.out.println("ADC word" + (dataword&cDVSTest20.ADC_DATA_MASK));
                                     }else if ((buf[i + 1] & Xmask) == Xmask) {////  received an X address, write out event to addresses/timestamps output arrays
                                         // x adddress
                                         //xadd = (buf[i] & 0xff);  //
