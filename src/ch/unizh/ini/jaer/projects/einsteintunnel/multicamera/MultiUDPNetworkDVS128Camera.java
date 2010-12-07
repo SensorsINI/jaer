@@ -251,6 +251,11 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
             // When the index gets >= to next client's starting index, we set this client to next client and get next client.
             Iterator<AENetworkRawPacket.EventSourceInfo> eventSourceItr = eventSourceList.iterator();
 
+            if(!eventSourceItr.hasNext()){
+                log.warning("no event source found in the iterator because there are no elements, aborting packet extraction");
+                out.clear();
+                return;
+            }
             thisSourceInfo = eventSourceItr.next();  // get the first client in the packet
             if (eventSourceItr.hasNext()) {
                 nextSourceInfo = eventSourceItr.next();
