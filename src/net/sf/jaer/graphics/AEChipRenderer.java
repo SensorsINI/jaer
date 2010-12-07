@@ -11,6 +11,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.*;
 import net.sf.jaer.util.SpikeSound;
 import java.awt.Color;
+import java.beans.PropertyChangeSupport;
 import java.util.logging.Logger;
 import javax.swing.JButton;
 /**
@@ -27,6 +28,13 @@ import javax.swing.JButton;
  * @see ChipRendererDisplayMethod
  */
 public class AEChipRenderer extends Chip2DRenderer {
+
+    PropertyChangeSupport support=new PropertyChangeSupport(this);
+    public PropertyChangeSupport getSupport(){ return support;}
+
+    /** PropertyChange events */
+    public static final String COLOR_SCALE="colorScale", COLOR_MODE="colorMode";
+
     public enum ColorMode {
         GrayLevel, Contrast, RedGreen, ColorTime
     };
@@ -140,6 +148,7 @@ public class AEChipRenderer extends Chip2DRenderer {
                 log.warning("colorMode " + colorMode + " unknown, reset to default value 0");
                 setColorMode(ColorMode.GrayLevel);
         }
+        getSupport().firePropertyChange(COLOR_SCALE, old, colorScale);
     }
     /**
      * does the rendering using selected method.
@@ -541,9 +550,11 @@ public class AEChipRenderer extends Chip2DRenderer {
     /**@param colorMode the rendering method, e.g. gray, red/green opponency, time encoded.
      */
     public synchronized void setColorMode(ColorMode colorMode) {
+        ColorMode old=colorMode;
         this.colorMode = colorMode;
         prefs.put("ChipRenderer.colorMode", colorMode.toString());
         log.info("set colorMode=" + colorMode);
+        getSupport().firePropertyChange(COLOR_MODE, old, colorMode);
 //        if (method<0 || method >NUM_METHODS-1)            throw new RuntimeException("no such rendering method "+method);
 //        this.method = method;
 //        prefs.putInt("ChipRenderer.method",method);
