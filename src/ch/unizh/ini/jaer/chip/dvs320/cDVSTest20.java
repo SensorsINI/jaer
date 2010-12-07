@@ -218,17 +218,17 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                             }
 
                             if (e.x < SIZE_X_CDVS) {
-                                if ((e.y & 1) == 0) { // odd rows
-                                    if ((e.x & 1) != 0) {
+                                if ((e.y & 1) == 0) { // odd rows: log intensity change events
+                                    if ((e.x & 1) != 0) { // off is 0, on is 1
                                         e.eventType = cDVSEvent.EventType.Brighter;
                                     } else {
                                         e.eventType = cDVSEvent.EventType.Darker;
                                     }
-                                } else {  // even rows
-                                    if ((e.x & 1) != 0) {
-                                        e.eventType = cDVSEvent.EventType.Redder;
-                                    } else {
+                                } else {  // even rows: color events
+                                    if ((e.x & 1) != 0) { // blue is on is 1
                                         e.eventType = cDVSEvent.EventType.Bluer;
+                                    } else {
+                                        e.eventType = cDVSEvent.EventType.Redder;
                                     }
                                 }
                                 e.x = (short) (e.x >>> 1);
@@ -239,6 +239,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                                 } else {
                                     e.eventType = cDVSEvent.EventType.Darker;
                                 }
+                                e.x = (short) (e.x >>> 1);
                             }
                         }
                     } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
