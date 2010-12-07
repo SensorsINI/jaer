@@ -45,20 +45,19 @@ import net.sf.jaer.util.RemoteControlled;
  */
 public class cDVSTest20 extends AERetina implements HasIntensity {
 
-   public static String getDescription() {
+    public static String getDescription() {
         return "cDVSTest color Dynamic Vision Test chip";
     }
-
-   public static final int SIZEX_TOTAL = 140;
+    public static final int SIZEX_TOTAL = 140;
     public static final int SIZE_Y = 64;
     public static final int SIZE_X_CDVS = 64;
     public static final int SIZE_X_DVS = 64;
-    public static final int COLOR_CHANGE_BIT=1; // color change events are even pixels in x and y
+    public static final int COLOR_CHANGE_BIT = 1; // color change events are even pixels in x and y
     // following define bit masks for various hardware data types. 
     // The hardware interface translateEvents method packs the raw device data into 32 bit 'addresses' and timestamps.
     // timestamps are unwrapped and timestamp resets are handled in translateEvents. Addresses are filled with either AE or ADC data.
     // AEs are filled in according the XMASK, YMASK, XSHIFT, YSHIFT below.
-     /**
+    /**
      * bit masks/shifts for cDVS  AE data
      */
     public static final int POLMASK = 1,
@@ -71,21 +70,17 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
      * data type fields
      */
     public static final int DATA_TYPE_MASK = 0xc000, DATA_TYPE_ADDRESS = 0x0000, DATA_TYPE_TIMESTAMP = 0x4000, DATA_TYPE_WRAP = 0x8000, DATA_TYPE_TIMESTAMP_RESET = 0xd000;
-    public static final int ADDRESS_TYPE_MASK = 0x4000, EVENT_ADDRESS_MASK = POLMASK|XMASK|YMASK, ADDRESS_TYPE_EVENT = 0x0000, ADDRESS_TYPE_ADC = 0x4000;
+    public static final int ADDRESS_TYPE_MASK = 0x4000, EVENT_ADDRESS_MASK = POLMASK | XMASK | YMASK, ADDRESS_TYPE_EVENT = 0x0000, ADDRESS_TYPE_ADC = 0x4000;
     public static final int ADC_TYPE_MASK = 0x1e00, ADC_DATA_MASK = 0x3ff, ADC_CHANNEL_MASK = 0x1800, ADC_START_BIT = 0x0200;
-
     /** Event type bits */
-
     /** The computed intensity value. */
     private float globalIntensity = 0;
     private CDVSLogIntensityFrameData frameData = new CDVSLogIntensityFrameData();
-    private cDVSRenderer cDVSRenderer=null;
-    private cDVSDisplayMethod cDVSDisplayMethod=null;
-
+    private cDVSRenderer cDVSRenderer = null;
+    private cDVSDisplayMethod cDVSDisplayMethod = null;
     private boolean displayLogIntensity;
     private boolean displayColorChangeEvents;
     private boolean displayLogIntensityChangeEvents;
-
 
     /** Creates a new instance of cDVSTest10.  */
     public cDVSTest20() {
@@ -98,14 +93,14 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         setPixelWidthUm(14.5f);
 
         setEventExtractor(new cDVSTestExtractor(this));
-        
+
         setBiasgen(new cDVSTest20.cDVSTestBiasgen(this));
 
-           displayLogIntensity=getPrefs().getBoolean("displayLogIntensity", true);
-        displayColorChangeEvents=getPrefs().getBoolean("displayColorChangeEvents", true);
-        displayLogIntensityChangeEvents=getPrefs().getBoolean("displayLogIntensityChangeEvents", true);
+        displayLogIntensity = getPrefs().getBoolean("displayLogIntensity", true);
+        displayColorChangeEvents = getPrefs().getBoolean("displayColorChangeEvents", true);
+        displayLogIntensityChangeEvents = getPrefs().getBoolean("displayLogIntensityChangeEvents", true);
 
-        setRenderer((cDVSRenderer=new cDVSRenderer(this)));
+        setRenderer((cDVSRenderer = new cDVSRenderer(this)));
 
 //        DisplayMethod m = getCanvas().getDisplayMethod(); // get default method
 //        getCanvas().removeDisplayMethod(m);
@@ -196,7 +191,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                 int data = datas[i];
                 if ((data & DATA_TYPE_MASK) == DATA_TYPE_ADDRESS) { // should always be true now that translateEvents has extracted timestamp info
                     if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_EVENT) {
-                        if ((data & INTENSITYMASK) ==INTENSITYMASK) {// intensity spike
+                        if ((data & INTENSITYMASK) == INTENSITYMASK) {// intensity spike
                             int dt = timestamps[i] - lastIntenTs;
                             if (dt > 50) {
                                 avdt = 0.2f * dt + 0.8f * avdt;
@@ -223,21 +218,21 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                             }
 
                             if (e.x < SIZE_X_CDVS) {
-                                if ((e.y & 1) == 0) {
+                                if ((e.y & 1) == 0) { // odd rows
                                     if ((e.x & 1) != 0) {
                                         e.eventType = cDVSEvent.EventType.Brighter;
                                     } else {
                                         e.eventType = cDVSEvent.EventType.Darker;
                                     }
-                                }else{
-                                if ((e.x & 1) != 0) {
+                                } else {  // even rows
+                                    if ((e.x & 1) != 0) {
                                         e.eventType = cDVSEvent.EventType.Redder;
                                     } else {
                                         e.eventType = cDVSEvent.EventType.Bluer;
                                     }
                                 }
-                                e.x=(short)(e.x>>>1);
-                                e.y=(short)(e.y>>>1); // cDVS array is clumped into 32x32
+                                e.x = (short) (e.x >>> 1);
+                                e.y = (short) (e.y >>> 1); // cDVS array is clumped into 32x32
                             } else {
                                 if ((e.x & 1) != 0) {
                                     e.eventType = cDVSEvent.EventType.Brighter;
@@ -906,6 +901,4 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         this.displayLogIntensityChangeEvents = displayLogIntensityChangeEvents;
         getPrefs().putBoolean("displayLogIntensityChangeEvents", displayLogIntensityChangeEvents);
     }
-
-
 }

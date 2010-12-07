@@ -15,6 +15,8 @@ import javax.media.opengl.GLDrawable;
 public class CDVSLogIntensityFrameData {
 
     public static final int WIDTH=64, HEIGHT=64;
+
+    
     public int[] data1=new int[WIDTH*HEIGHT], data2=new int[WIDTH*HEIGHT];;
     public int[] currentWritingBuffer=data2, currentReadingBuffer=data1;
     private int count=0;

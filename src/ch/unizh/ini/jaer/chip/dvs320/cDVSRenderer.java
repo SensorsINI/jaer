@@ -18,7 +18,7 @@ public class cDVSRenderer extends RetinaRenderer {
 
     private cDVSTest20 cDVSChip = null;
     private final float[] redder = {1, 0, 0}, bluer = {0, 0, 1}, brighter = {1, 1, 1}, darker = {-1, -1, -1};
-
+    private int sizeX=1;
     public cDVSRenderer(cDVSTest20 chip) {
         super(chip);
         cDVSChip = chip;
@@ -39,7 +39,9 @@ public class cDVSRenderer extends RetinaRenderer {
         }
         checkPixmapAllocation();
         float[] f = getPixmapArray();
-
+        sizeX=chip.getSizeX();
+        final boolean showColorChange=isDisplayColorChangeEvents();
+        final boolean showLogIntensityChange=isDisplayLogIntensityChangeEvents();
         try {
             if (!accumulateEnabled) {
                 resetFrame(.5f);
@@ -55,39 +57,39 @@ public class cDVSRenderer extends RetinaRenderer {
                 if (isCDVSArray(e)) {
                     switch (e.eventType) {
                         case Brighter:
-                            if (isDisplayLogIntensityChangeEvents()) {
-                                changeBlock(e, brighter, step);
+                            if (showLogIntensityChange) {
+                                changeBlock(e, f, brighter, step);
                             }
                             break;
                         case Darker:
-                            if (isDisplayLogIntensityChangeEvents()) {
-                                changeBlock(e, darker, step);
+                            if (showLogIntensityChange) {
+                                changeBlock(e, f, darker, step);
                             }
 
                             break;
                         case Redder:
-                            if (isDisplayColorChangeEvents()) {
-                                changeBlock(e, redder, step);
+                            if (showColorChange) {
+                                changeBlock(e, f, redder, step);
                             }
                             break;
                         case Bluer:
-                            if (isDisplayColorChangeEvents()) {
-                                changeBlock(e, bluer, step);
+                            if (showColorChange) {
+                                changeBlock(e, f, bluer, step);
                             }
                             break;
                     }
                 } else {
-                    if(!isDisplayLogIntensityChangeEvents()) continue;
+                    if(!showLogIntensityChange) continue;
                     switch (e.eventType) {
                         case Brighter:
-                            f[ind] += step; //if(f[0]>1f) f[0]=1f;
-                            f[ind + 1] += step; //if(f[1]>1f) f[1]=1f;
-                            f[ind + 2] += step; //if(f[2]>1f) f[2]=1f;
+                            f[ind] += step;
+                            f[ind + 1] += step;
+                            f[ind + 2] += step;
                             break;
                         case Darker:
-                            f[ind] -= step; //if(f[0]>1f) f[0]=1f;
-                            f[ind + 1] -= step; //if(f[1]>1f) f[1]=1f;
-                            f[ind + 2] -= step; //if(f[2]>1f) f[2]=1f;
+                            f[ind] -= step;
+                            f[ind + 1] -= step;
+                            f[ind + 2] -= step;
                     }
                 }
             }
@@ -103,29 +105,29 @@ public class cDVSRenderer extends RetinaRenderer {
         return e.x < cDVSTest20.SIZE_X_CDVS;
     }
 
-    private void changeBlock(cDVSEvent e, float[] c, float step) {
-        float[] f = getPixmapArray();
+    private void changeBlock(cDVSEvent e, float[] f, float[] c, float step) {
         int ind;
         int x=e.x<<1, y=e.y<<1;
-        ind = getPixMapIndex(x, y);
-        f[ind] += c[0] * step;
-        f[ind + 1] += c[1] * step;
-        f[ind + 2] += c[2] * step;
+        ind = 3 * (x + y * sizeX);
+        float r=c[0]*step, g=c[1]*step, b=c[2]*step;
+        f[ind] += r;
+        f[ind + 1] += g;
+        f[ind + 2] += b;
 
-        ind = getPixMapIndex(x+1, y);
-        f[ind] += c[0] * step;
-        f[ind + 1] += c[1] * step;
-        f[ind + 2] += c[2] * step;
+        ind+=3;
+        f[ind] += r;
+        f[ind + 1] += g;
+        f[ind + 2] += b;
 
-        ind = getPixMapIndex(x, y+1);
-        f[ind] += c[0] * step;
-        f[ind + 1] += c[1] * step;
-        f[ind + 2] += c[2] * step;
+        ind+=sizeX*3;
+        f[ind] += r;
+        f[ind + 1] += g;
+        f[ind + 2] += b;
 
-        ind = getPixMapIndex(x + 1, y + 1);
-        f[ind] += c[0] * step;
-        f[ind + 1] += c[1] * step;
-        f[ind + 2] += c[2] * step;
+        ind-=3;
+        f[ind] += r;
+        f[ind + 1] += g;
+        f[ind + 2] += b;
     }
 
     public void setDisplayLogIntensityChangeEvents(boolean displayLogIntensityChangeEvents) {
