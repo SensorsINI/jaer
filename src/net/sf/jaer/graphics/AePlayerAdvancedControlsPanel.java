@@ -62,34 +62,38 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
      * a user mouse action
      */
     public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getSource() instanceof AEFileInputStream) {
-            if (evt.getPropertyName().equals(AEInputStream.EVENT_POSITION)) { // comes from AEFileInputStream
-                sliderDontProcess = true;
-                // note this cool semaphore/flag trick to avoid processing the
-                // event generated when we programmatically set the slider position here
-                playerSlider.setValue(Math.round(getFractionalPosition() * playerSlider.getMaximum()));
-                if (moreControlsPanel.isVisible() || aeViewer.aePlayer.getAEInputStream() != null) {
-                    eventField.setText(Integer.toString(aeViewer.aePlayer.position()));
-                    timeField.setText(Integer.toString(aeViewer.aePlayer.getTime()));
+        try {
+            if (evt.getSource() instanceof AEFileInputStream) {
+                if (evt.getPropertyName().equals(AEInputStream.EVENT_POSITION)) { // comes from AEFileInputStream
+                    sliderDontProcess = true;
+                    // note this cool semaphore/flag trick to avoid processing the
+                    // event generated when we programmatically set the slider position here
+                    playerSlider.setValue(Math.round(getFractionalPosition() * playerSlider.getMaximum()));
+                    if (moreControlsPanel.isVisible() || aeViewer.aePlayer.getAEInputStream() != null) {
+                        eventField.setText(Integer.toString(aeViewer.aePlayer.position()));
+                        timeField.setText(Integer.toString(aeViewer.aePlayer.getTime()));
+                    }
+                } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARKSET)) {
+                    synchronized (aePlayer) {
+                        Hashtable<Integer, JLabel> markTable = new Hashtable<Integer, JLabel>();
+                        markTable.put(playerSlider.getValue(), new JLabel("^"));
+                        playerSlider.setLabelTable(markTable);
+                        playerSlider.setPaintLabels(true);
+                    }
+                } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARKCLEARED)) {
+                    playerSlider.setPaintLabels(false);
                 }
-            } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARKSET)) {
-                synchronized (aePlayer) {
-                    Hashtable<Integer, JLabel> markTable = new Hashtable<Integer, JLabel>();
-                    markTable.put(playerSlider.getValue(), new JLabel("^"));
-                    playerSlider.setLabelTable(markTable);
-                    playerSlider.setPaintLabels(true);
-                }
-            } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARKCLEARED)) {
-                playerSlider.setPaintLabels(false);
+            } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_TIMESLICE_US)) { // TODO replace with public static Sttring
+                timesliceSpinner.setValue(aePlayer.getTimesliceUs());
+            } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_PACKETSIZEEVENTS)) {
+                packetSizeSpinner.setValue(aePlayer.getPacketSizeEvents());
+            } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_PAUSED)) {
+                aePlayer.pausePlayAction.setPlayAction();
+            } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_RESUMED)) {
+                aePlayer.pausePlayAction.setPauseAction();
             }
-        } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_TIMESLICE_US)) { // TODO replace with public static Sttring
-            timesliceSpinner.setValue(aePlayer.getTimesliceUs());
-        } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_PACKETSIZEEVENTS)) {
-            packetSizeSpinner.setValue(aePlayer.getPacketSizeEvents());
-        } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_PAUSED)) {
-            aePlayer.pausePlayAction.setPlayAction();
-        } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_RESUMED)) {
-            aePlayer.pausePlayAction.setPauseAction();
+        } catch (Throwable t) {
+            log.warning("caught error in player control panel - probably another thread is modifying the text field at the same time: " + t.toString());
         }
     }
 
