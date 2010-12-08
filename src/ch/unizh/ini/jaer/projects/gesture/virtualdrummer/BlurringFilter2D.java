@@ -531,8 +531,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @param weight
          */
         public void addEvent(BasicEvent event,float weight) {
-            incrementMP(event.getTimestamp(), weight);
-            lastEventTimestamp = event.getTimestamp();
+            incrementMP(event.timestamp, weight);
+            lastEventTimestamp = event.timestamp;
 
             if(MPDecreaseArterFiringPercentTh > 0 && membranePotential >= thresholdMP){
                 // fires a spike
@@ -614,7 +614,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @return
          */
         public boolean isAboveThreshold() {
-            if (numSpikes == 0){
+            if(numSpikes == 0){
                 fired = false;
                 firingType = FiringType.SILENT;
             }else{
@@ -623,7 +623,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                 firingType = FiringType.FIRING_ISOLATED;
             }
 
-            resetGroupTag();
+            // reset groupTag
+            groupTag = -1;
 
             return fired;
         }
@@ -1304,28 +1305,27 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         numOfGroup = 0;
 
        if (!lifNeurons.isEmpty()) {
-            int timeSinceSupport;
+//            int timeSinceSupport;
 
             LIFNeuron upNeuron, downNeuron, leftNeuron, rightNeuron;
             for(int i=0; i<lifNeurons.size(); i++){
                 LIFNeuron tmpNeuron = lifNeurons.get(i);
-                try {
+//                try {
                     // reset stale neurons
-                    timeSinceSupport = t - tmpNeuron.lastEventTimestamp;
-                    if (timeSinceSupport > neuronLifeTimeUs) {
-                        tmpNeuron.reset();
-                    }
+//                    timeSinceSupport = t - tmpNeuron.lastEventTimestamp;
+//                    if (timeSinceSupport > neuronLifeTimeUs) {
+//                        tmpNeuron.reset();
+//                    }
 
-                    int indexX = (int) tmpNeuron.getIndex().x;
-                    int indexY = (int) tmpNeuron.getIndex().y;
+                    int cellNum = tmpNeuron.cellNumber;
 
-                    tmpNeuron.setNumFiringNeighbors(0);
+                    tmpNeuron.numFiringNeighbors = 0;
 
-                    switch (tmpNeuron.getLocationType()) {
+                    switch (tmpNeuron.locationType) {
                         case CORNER_00:
                             // gets neighbor neurons
-                            upNeuron = lifNeurons.get( indexX + (indexY + 1) * numOfNeuronsX);
-                            rightNeuron = lifNeurons.get(indexX + 1 + indexY * numOfNeuronsX);
+                            upNeuron = lifNeurons.get(cellNum + numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(cellNum + 1);
 
                             // checks the threshold of the first neuron
                             tmpNeuron.isAboveThreshold();
@@ -1340,177 +1340,190 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             }
 
                             // Updates neuron groups
-                            if (tmpNeuron.getNumFiringNeighbors() == 2) {
+                            if (tmpNeuron.numFiringNeighbors == 2) {
                                 tmpNeuron.setGroupTag(-1);
-                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
+                                tmpNeuron.firingType = FiringType.FIRING_INSIDE;
 
-                                upNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
-                                rightNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
+                                upNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.FORCED);
+                                rightNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.FORCED);
                                 updateGroup(tmpNeuron, UPDATE_UP | UPDATE_RIGHT);
                             }
                             break;
                         case CORNER_01:
-                            if(!tmpNeuron.isFired())
+                            if(!tmpNeuron.fired)
                                 break;
 
-                            downNeuron = lifNeurons.get(indexX + (indexY - 1) * numOfNeuronsX);
-                            rightNeuron = lifNeurons.get(indexX + 1 + indexY * numOfNeuronsX);
+                            downNeuron = lifNeurons.get(cellNum - numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(cellNum + 1);
 
-                            if (downNeuron.isFired()) {
+                            if (downNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (rightNeuron.isFired()) {
+                            if (rightNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpNeuron.getNumFiringNeighbors() == 2) {
-                                if (rightNeuron.getGroupTag() == downNeuron.getGroupTag()) {
-                                    tmpNeuron.setGroupTag(downNeuron.getGroupTag());
+                            if (tmpNeuron.numFiringNeighbors == 2) {
+                                if (rightNeuron.groupTag == downNeuron.groupTag) {
+                                    tmpNeuron.setGroupTag(downNeuron.groupTag);
                                 } else {
                                     tmpNeuron.setGroupTag(-1);
                                 }
 
-                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
+                                tmpNeuron.firingType = FiringType.FIRING_INSIDE;
 
-                                rightNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
-                                downNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                rightNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.CHECK);
+                                downNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.CHECK);
                                 updateGroup(tmpNeuron, UPDATE_DOWN | UPDATE_RIGHT);
                             }
                             break;
                         case CORNER_10:
-                            upNeuron = lifNeurons.get( indexX + (indexY + 1) * numOfNeuronsX);
-                            leftNeuron = lifNeurons.get(indexX - 1 + indexY * numOfNeuronsX);
+                            upNeuron = lifNeurons.get(cellNum + numOfNeuronsX);
+                            leftNeuron = lifNeurons.get(cellNum - 1);
 
                             if (upNeuron.isAboveThreshold()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (leftNeuron.isFired()) {
+
+                            if(!tmpNeuron.fired)
+                                break;
+
+
+                            if (leftNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpNeuron.getNumFiringNeighbors() == 2) {
+                            if (tmpNeuron.numFiringNeighbors == 2) {
                                 tmpNeuron.setGroupTag(-1);
-                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
+                                tmpNeuron.firingType = FiringType.FIRING_INSIDE;
 
-                                upNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
-                                leftNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                upNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.FORCED);
+                                leftNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.CHECK);
                                 updateGroup(tmpNeuron, UPDATE_UP | UPDATE_LEFT);
                             }
                             break;
                         case CORNER_11:
-                            if(!tmpNeuron.isFired())
+                            if(!tmpNeuron.fired)
                                 break;
 
-                            downNeuron = lifNeurons.get(indexX + (indexY - 1) * numOfNeuronsX);
-                            leftNeuron = lifNeurons.get(indexX - 1 + indexY * numOfNeuronsX);
+                            downNeuron = lifNeurons.get(cellNum - numOfNeuronsX);
+                            leftNeuron = lifNeurons.get(cellNum - 1);
 
-                            if (downNeuron.isFired()) {
+                            if (downNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (leftNeuron.isFired()) {
+                            if (leftNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpNeuron.getNumFiringNeighbors() == 2) {
-                                if (leftNeuron.getGroupTag() == downNeuron.getGroupTag()) {
-                                    tmpNeuron.setGroupTag(downNeuron.getGroupTag());
+                            if (tmpNeuron.numFiringNeighbors == 2) {
+                                if (leftNeuron.groupTag == downNeuron.groupTag) {
+                                    tmpNeuron.setGroupTag(downNeuron.groupTag);
                                 } else {
-                                    if (leftNeuron.getGroupTag() > 0 && downNeuron.getGroupTag() > 0) {
-                                        tmpNeuron.setGroupTag(Math.min(downNeuron.getGroupTag(), leftNeuron.getGroupTag()));
+                                    if (leftNeuron.groupTag > 0 && downNeuron.groupTag > 0) {
+                                        tmpNeuron.setGroupTag(Math.min(downNeuron.groupTag, leftNeuron.groupTag));
 
                                         // do merge here
-                                        int targetGroupTag = Math.max(downNeuron.getGroupTag(), leftNeuron.getGroupTag());
-                                        neuronGroups.get(tmpNeuron.getGroupTag()).merge(neuronGroups.get(targetGroupTag));
+                                        int targetGroupTag = Math.max(downNeuron.groupTag, leftNeuron.groupTag);
+                                        neuronGroups.get(tmpNeuron.groupTag).merge(neuronGroups.get(targetGroupTag));
                                         neuronGroups.remove(targetGroupTag);
-                                    } else if (leftNeuron.getGroupTag() < 0 && downNeuron.getGroupTag() < 0) {
+                                    } else if (leftNeuron.groupTag < 0 && downNeuron.groupTag < 0) {
                                         tmpNeuron.setGroupTag(-1);
                                     } else {
-                                        tmpNeuron.setGroupTag(Math.max(downNeuron.getGroupTag(), leftNeuron.getGroupTag()));
+                                        tmpNeuron.setGroupTag(Math.max(downNeuron.groupTag, leftNeuron.groupTag));
                                     }
                                 }
 
-                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
+                                tmpNeuron.firingType = FiringType.FIRING_INSIDE;
 
-                                downNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
-                                leftNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                downNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.CHECK);
+                                leftNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.CHECK);
                                 updateGroup(tmpNeuron, UPDATE_DOWN | UPDATE_LEFT);
                             }
                             break;
                         case EDGE_0Y:
-                            upNeuron = lifNeurons.get( indexX + (indexY + 1) * numOfNeuronsX);
-                            downNeuron = lifNeurons.get(indexX + (indexY - 1) * numOfNeuronsX);
-                            rightNeuron = lifNeurons.get(indexX + 1 + indexY * numOfNeuronsX);
+                            upNeuron = lifNeurons.get(cellNum + numOfNeuronsX);
+                            downNeuron = lifNeurons.get(cellNum - numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(cellNum + 1);
 
                             if (upNeuron.isAboveThreshold()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (downNeuron.isFired()) {
+
+                            if(!tmpNeuron.fired)
+                                break;
+
+                            if (downNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (rightNeuron.isFired()) {
+                            if (rightNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpNeuron.getNumFiringNeighbors() == 3) {
-                                if (rightNeuron.getGroupTag() == downNeuron.getGroupTag()) {
-                                    tmpNeuron.setGroupTag(downNeuron.getGroupTag());
+                            if (tmpNeuron.numFiringNeighbors == 3) {
+                                if (rightNeuron.groupTag == downNeuron.groupTag) {
+                                    tmpNeuron.setGroupTag(downNeuron.groupTag);
                                 } else {
                                     tmpNeuron.setGroupTag(-1);
                                 }
 
-                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
+                                tmpNeuron.firingType = FiringType.FIRING_INSIDE;
 
-                                upNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
-                                downNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
-                                rightNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                upNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.FORCED);
+                                downNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.CHECK);
+                                rightNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.CHECK);
                                 updateGroup(tmpNeuron, UPDATE_UP | UPDATE_DOWN | UPDATE_RIGHT);
                             }
                             break;
                         case EDGE_1Y:
-                            upNeuron = lifNeurons.get( indexX + (indexY + 1) * numOfNeuronsX);
-                            downNeuron = lifNeurons.get(indexX + (indexY - 1) * numOfNeuronsX);
-                            leftNeuron = lifNeurons.get(indexX - 1 + indexY * numOfNeuronsX);
+                            upNeuron = lifNeurons.get(cellNum + numOfNeuronsX);
+                            downNeuron = lifNeurons.get(cellNum - numOfNeuronsX);
+                            leftNeuron = lifNeurons.get(cellNum - 1);
 
                             if (upNeuron.isAboveThreshold()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (downNeuron.isFired()) {
+
+                            if(!tmpNeuron.fired)
+                                break;
+
+                            if (downNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (leftNeuron.isFired()) {
+                            if (leftNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpNeuron.getNumFiringNeighbors() == 3) {
-                                if (leftNeuron.getGroupTag() == downNeuron.getGroupTag()) {
-                                    tmpNeuron.setGroupTag(downNeuron.getGroupTag());
+                            if (tmpNeuron.numFiringNeighbors == 3) {
+                                if (leftNeuron.groupTag == downNeuron.groupTag) {
+                                    tmpNeuron.setGroupTag(downNeuron.groupTag);
                                 } else {
-                                    if (leftNeuron.getGroupTag() > 0 && downNeuron.getGroupTag() > 0) {
-                                        tmpNeuron.setGroupTag(Math.min(downNeuron.getGroupTag(), leftNeuron.getGroupTag()));
+                                    if (leftNeuron.groupTag > 0 && downNeuron.groupTag > 0) {
+                                        tmpNeuron.setGroupTag(Math.min(downNeuron.groupTag, leftNeuron.groupTag));
 
                                         // do merge here
-                                        int targetGroupTag = Math.max(downNeuron.getGroupTag(), leftNeuron.getGroupTag());
-                                        neuronGroups.get(tmpNeuron.getGroupTag()).merge(neuronGroups.get(targetGroupTag));
+                                        int targetGroupTag = Math.max(downNeuron.groupTag, leftNeuron.groupTag);
+                                        neuronGroups.get(tmpNeuron.groupTag).merge(neuronGroups.get(targetGroupTag));
                                         neuronGroups.remove(targetGroupTag);
-                                    } else if (leftNeuron.getGroupTag() < 0 && downNeuron.getGroupTag() < 0) {
+                                    } else if (leftNeuron.groupTag < 0 && downNeuron.groupTag < 0) {
                                         tmpNeuron.setGroupTag(-1);
                                     } else {
-                                        tmpNeuron.setGroupTag(Math.max(downNeuron.getGroupTag(), leftNeuron.getGroupTag()));
+                                        tmpNeuron.setGroupTag(Math.max(downNeuron.groupTag, leftNeuron.groupTag));
                                     }
                                 }
 
-                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
+                                tmpNeuron.firingType = FiringType.FIRING_INSIDE;
 
-                                upNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
-                                downNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
-                                leftNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                upNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.FORCED);
+                                downNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.CHECK);
+                                leftNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.CHECK);
                                 updateGroup(tmpNeuron, UPDATE_UP | UPDATE_DOWN | UPDATE_LEFT);
                             }
                             break;
                         case EDGE_X0:
-                            upNeuron = lifNeurons.get( indexX + (indexY + 1) * numOfNeuronsX);
-                            rightNeuron = lifNeurons.get(indexX + 1 + indexY * numOfNeuronsX);
-                            leftNeuron = lifNeurons.get(indexX - 1 + indexY * numOfNeuronsX);
+                            upNeuron = lifNeurons.get(cellNum + numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(cellNum + 1);
+                            leftNeuron = lifNeurons.get(cellNum - 1);
 
                             if (upNeuron.isAboveThreshold()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
@@ -1518,119 +1531,123 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             if (rightNeuron.isAboveThreshold()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (leftNeuron.isFired()) {
+
+                            if(!tmpNeuron.fired)
+                                break;
+
+                            if (leftNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpNeuron.getNumFiringNeighbors() == 3) {
+                            if (tmpNeuron.numFiringNeighbors == 3) {
                                 tmpNeuron.setGroupTag(-1);
-                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
+                                tmpNeuron.firingType = FiringType.FIRING_INSIDE;
 
-                                upNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
-                                rightNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
-                                leftNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                upNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.FORCED);
+                                rightNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.FORCED);
+                                leftNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.CHECK);
                                 updateGroup(tmpNeuron, UPDATE_UP | UPDATE_RIGHT | UPDATE_LEFT);
                             }
                             break;
                         case EDGE_X1:
-                            if(!tmpNeuron.isFired())
+                            if(!tmpNeuron.fired)
                                 break;
 
-                            downNeuron = lifNeurons.get(indexX + (indexY - 1) * numOfNeuronsX);
-                            rightNeuron = lifNeurons.get(indexX + 1 + indexY * numOfNeuronsX);
-                            leftNeuron = lifNeurons.get(indexX - 1 + indexY * numOfNeuronsX);
+                            downNeuron = lifNeurons.get(cellNum - numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(cellNum + 1);
+                            leftNeuron = lifNeurons.get(cellNum - 1);
 
-                            if (downNeuron.isFired()) {
+                            if (downNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (rightNeuron.isFired()) {
+                            if (rightNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (leftNeuron.isFired()) {
+                            if (leftNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpNeuron.getNumFiringNeighbors() == 3) {
-                                if (rightNeuron.getGroupTag() == downNeuron.getGroupTag()) {
-                                    tmpNeuron.setGroupTag(downNeuron.getGroupTag());
+                            if (tmpNeuron.numFiringNeighbors == 3) {
+                                if (rightNeuron.groupTag == downNeuron.groupTag) {
+                                    tmpNeuron.setGroupTag(downNeuron.groupTag);
                                 }
 
-                                if (leftNeuron.getGroupTag() == downNeuron.getGroupTag()) {
-                                    tmpNeuron.setGroupTag(downNeuron.getGroupTag());
+                                if (leftNeuron.groupTag == downNeuron.groupTag) {
+                                    tmpNeuron.setGroupTag(downNeuron.groupTag);
                                 } else {
-                                    if (leftNeuron.getGroupTag() > 0 && downNeuron.getGroupTag() > 0) {
-                                        tmpNeuron.setGroupTag(Math.min(downNeuron.getGroupTag(), leftNeuron.getGroupTag()));
+                                    if (leftNeuron.groupTag > 0 && downNeuron.groupTag > 0) {
+                                        tmpNeuron.setGroupTag(Math.min(downNeuron.groupTag, leftNeuron.groupTag));
 
                                         // do merge here
-                                        int targetGroupTag = Math.max(downNeuron.getGroupTag(), leftNeuron.getGroupTag());
-                                        neuronGroups.get(tmpNeuron.getGroupTag()).merge(neuronGroups.get(targetGroupTag));
+                                        int targetGroupTag = Math.max(downNeuron.groupTag, leftNeuron.groupTag);
+                                        neuronGroups.get(tmpNeuron.groupTag).merge(neuronGroups.get(targetGroupTag));
                                         neuronGroups.remove(targetGroupTag);
-                                    } else if (leftNeuron.getGroupTag() < 0 && downNeuron.getGroupTag() < 0) {
+                                    } else if (leftNeuron.groupTag < 0 && downNeuron.groupTag < 0) {
                                         tmpNeuron.setGroupTag(-1);
                                     } else {
-                                        tmpNeuron.setGroupTag(Math.max(downNeuron.getGroupTag(), leftNeuron.getGroupTag()));
+                                        tmpNeuron.setGroupTag(Math.max(downNeuron.groupTag, leftNeuron.groupTag));
                                     }
                                 }
 
-                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
+                                tmpNeuron.firingType = FiringType.FIRING_INSIDE;
 
-                                rightNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
-                                downNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
-                                leftNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                rightNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.FORCED);
+                                downNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.CHECK);
+                                leftNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.CHECK);
                                 updateGroup(tmpNeuron, UPDATE_DOWN | UPDATE_RIGHT | UPDATE_LEFT);
                             }
                             break;
                         case INSIDE:
-                            upNeuron = lifNeurons.get( indexX + (indexY + 1) * numOfNeuronsX);
-                            downNeuron = lifNeurons.get(indexX + (indexY - 1) * numOfNeuronsX);
-                            rightNeuron = lifNeurons.get(indexX + 1 + indexY * numOfNeuronsX);
-                            leftNeuron = lifNeurons.get(indexX - 1 + indexY * numOfNeuronsX);
+                            upNeuron = lifNeurons.get(cellNum + numOfNeuronsX);
+                            downNeuron = lifNeurons.get(cellNum - numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(cellNum + 1);
+                            leftNeuron = lifNeurons.get(cellNum - 1);
 
                             if (upNeuron.isAboveThreshold()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if(!tmpNeuron.isFired())
+                            if(!tmpNeuron.fired)
                                 break;
 
-                            if (downNeuron.isFired()) {
+                            if (downNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (rightNeuron.isFired()) {
+                            if (rightNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
-                            if (leftNeuron.isFired()) {
+                            if (leftNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
                             }
 
-                            if (tmpNeuron.getNumFiringNeighbors() == 4) {
-                                if (rightNeuron.getGroupTag() == downNeuron.getGroupTag()) {
-                                    tmpNeuron.setGroupTag(downNeuron.getGroupTag());
+                            if (tmpNeuron.numFiringNeighbors == 4) {
+                                if (rightNeuron.groupTag == downNeuron.groupTag) {
+                                    tmpNeuron.setGroupTag(downNeuron.groupTag);
                                 }
 
-                                if (leftNeuron.getGroupTag() == downNeuron.getGroupTag()) {
-                                    tmpNeuron.setGroupTag(downNeuron.getGroupTag());
+                                if (leftNeuron.groupTag == downNeuron.groupTag) {
+                                    tmpNeuron.setGroupTag(downNeuron.groupTag);
                                 } else {
-                                    if (leftNeuron.getGroupTag() > 0 && downNeuron.getGroupTag() > 0) {
-                                        tmpNeuron.setGroupTag(Math.min(downNeuron.getGroupTag(), leftNeuron.getGroupTag()));
+                                    if (leftNeuron.groupTag > 0 && downNeuron.groupTag > 0) {
+                                        tmpNeuron.setGroupTag(Math.min(downNeuron.groupTag, leftNeuron.groupTag));
 
                                         // do merge here
-                                        int targetGroupTag = Math.max(downNeuron.getGroupTag(), leftNeuron.getGroupTag());
-                                        neuronGroups.get(tmpNeuron.getGroupTag()).merge(neuronGroups.get(targetGroupTag));
+                                        int targetGroupTag = Math.max(downNeuron.groupTag, leftNeuron.groupTag);
+                                        neuronGroups.get(tmpNeuron.groupTag).merge(neuronGroups.get(targetGroupTag));
                                         neuronGroups.remove(targetGroupTag);
-                                    } else if (leftNeuron.getGroupTag() < 0 && downNeuron.getGroupTag() < 0) {
+                                    } else if (leftNeuron.groupTag < 0 && downNeuron.groupTag < 0) {
                                         tmpNeuron.setGroupTag(-1);
                                     } else {
-                                        tmpNeuron.setGroupTag(Math.max(downNeuron.getGroupTag(), leftNeuron.getGroupTag()));
+                                        tmpNeuron.setGroupTag(Math.max(downNeuron.groupTag, leftNeuron.groupTag));
                                     }
                                 }
 
-                                tmpNeuron.setFiringType(FiringType.FIRING_INSIDE);
+                                tmpNeuron.firingType = FiringType.FIRING_INSIDE;
 
-                                upNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.FORCED);
-                                downNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
-                                rightNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
-                                leftNeuron.setFiringTypeToBorder(tmpNeuron.getGroupTag(), FiringTypeUpdate.CHECK);
+                                upNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.FORCED);
+                                downNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.CHECK);
+                                rightNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.CHECK);
+                                leftNeuron.setFiringTypeToBorder(tmpNeuron.groupTag, FiringTypeUpdate.CHECK);
 
                                 updateGroup(tmpNeuron, UPDATE_UP | UPDATE_DOWN | UPDATE_RIGHT | UPDATE_LEFT);
                             }
@@ -1638,17 +1655,17 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                         default:
                             break;
                     } // End of switch
-                } catch (java.util.ConcurrentModificationException e) {
-                    // this is in case neuron list is modified by real time filter during updating neurons
-                    initFilter();
-                    log.warning(e.getMessage());
-                }
-            } // End of for
+                    
+                    // reset numSpikes
+                    tmpNeuron.numSpikes = 0;
 
-            for(int i=0; i<lifNeurons.size(); i++){
-                LIFNeuron tmpNeuron = lifNeurons.get(i);
-                 tmpNeuron.setNumSpikes(0);
-            }
+//                } catch (java.util.ConcurrentModificationException e) {
+//                    // this is in case neuron list is modified by real time filter during updating neurons
+//                    initFilter();
+//                    log.warning(e.getMessage());
+//                }
+                  
+            } // End of for
         } // End of if
     }
 

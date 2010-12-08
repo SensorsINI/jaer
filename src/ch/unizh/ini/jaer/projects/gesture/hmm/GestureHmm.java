@@ -9,7 +9,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Hashtable;
 
 /**
  * HMM based gesture recognition module
@@ -423,8 +422,10 @@ public class GestureHmm implements Serializable{
             getGestureHmm(name).viterbi(obs);
             ArrayList<String> viterbiPath = getGestureHmm(name).getViterbiPath(obs.length);
             HashSet<String> visitedStates = new HashSet<String>();
-            for(String state:viterbiPath)
+            for(int i=0; i<viterbiPath.size(); i++){
+                String state = viterbiPath.get(i);
                 visitedStates.add(state);
+            }
             if(visitedStates.size() != getGestureHmm(name).getStates().size())
                 return null;
         }
@@ -471,8 +472,10 @@ public class GestureHmm implements Serializable{
             getGestureHmm(name).viterbi(obs);
             ArrayList<String> viterbiPath = getGestureHmm(name).getViterbiPath(obs.length);
             HashSet<String> visitedStates = new HashSet<String>();
-            for(String state:viterbiPath)
+            for(int i=0; i<viterbiPath.size(); i++){
+                String state = viterbiPath.get(i);
                 visitedStates.add(state);
+            }
             if(visitedStates.size() != getGestureHmm(name).getStates().size()){
 //                System.out.println("Not full state transition on HMM");
                 return null;
@@ -503,7 +506,6 @@ public class GestureHmm implements Serializable{
         return name;
     }
 
-
     /**
      *  tries an observation to a specific gesture
      *
@@ -522,8 +524,10 @@ public class GestureHmm implements Serializable{
             getGestureHmm(gestureName).viterbi(obs);
             ArrayList<String> viterbiPath = getGestureHmm(gestureName).getViterbiPath(obs.length);
             HashSet<String> visitedStates = new HashSet<String>();
-            for(String state:viterbiPath)
+            for(int i=0; i<viterbiPath.size(); i++){
+                String state = viterbiPath.get(i);
                 visitedStates.add(state);
+            }
             if(visitedStates.size() != getGestureHmm(gestureName).getStates().size()){
                 ret = false;
             }
@@ -617,9 +621,9 @@ public class GestureHmm implements Serializable{
             return;
 
         ArrayList<String> states = thresholdModel.getStates();
-        Hashtable<String, Double> startProb = thresholdModel.getStartProbability();
-        Hashtable<String, Hashtable> transitionProb = thresholdModel.getTransitionProbability();
-        Hashtable<String, Hashtable> emissionProb = thresholdModel.getEmissionProbability();
+        HashMap<String, Double> startProb = thresholdModel.getStartProbability();
+        HashMap<String, HashMap> transitionProb = thresholdModel.getTransitionProbability();
+        HashMap<String, HashMap> emissionProb = thresholdModel.getEmissionProbability();
 
         for(String state : hmm.getStatesToArray()){
             // if not contained
@@ -635,13 +639,13 @@ public class GestureHmm implements Serializable{
             startProb.put(state, 0.0);
 
             // add a new row in the transition probability matirx
-            Hashtable<String, Double> newTransitionProb = new Hashtable<String, Double>();
+            HashMap<String, Double> newTransitionProb = new HashMap<String, Double>();
             for(String nextState:hmm.getStates())  // create zero transition matrix
                 newTransitionProb.put(nextState, 0.0);
             transitionProb.put(state, newTransitionProb);
 
             // add a new row in the emission probability matrix
-            Hashtable<String, Double> newEmissionProb = new Hashtable<String, Double>();
+            HashMap<String, Double> newEmissionProb = new HashMap<String, Double>();
             emissionProb.put(state, newEmissionProb);
 
             // update transition probability
@@ -667,7 +671,7 @@ public class GestureHmm implements Serializable{
      */
     private void recalculateStartStateTransitionProb(){
         ArrayList<String> states = thresholdModel.getStates();
-        Hashtable<String, Hashtable> transitionProb = thresholdModel.getTransitionProbability();
+        HashMap<String, HashMap> transitionProb = thresholdModel.getTransitionProbability();
         for(String state:states)
             if(!state.equals(START_STATE) && !state.equals(FINAL_STATE))
                 transitionProb.get(START_STATE).put(state, 1.0/(thresholdModel.getNumStates()-3.0));
@@ -718,8 +722,8 @@ public class GestureHmm implements Serializable{
         double rEntropy = 0;
         double epi_p, epj_p, tmp1, tmp2;
 
-        Hashtable<String, Double> epi = thresholdModel.getEmissionProbability().get(state_i);
-        Hashtable<String, Double> epj = thresholdModel.getEmissionProbability().get(state_j);
+        HashMap<String, Double> epi = thresholdModel.getEmissionProbability().get(state_i);
+        HashMap<String, Double> epj = thresholdModel.getEmissionProbability().get(state_j);
 
         for(String codeword:featureVectorSpace){
             epi_p = epi.get(codeword);

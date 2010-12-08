@@ -3,7 +3,7 @@ package ch.unizh.ini.jaer.projects.gesture.hmm;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.Random;
 
 /*
@@ -80,19 +80,19 @@ public class HiddenMarkovModel implements Serializable{
     /**
      * start probabilities of states
      */
-    private Hashtable<String, Double> startProbability = new Hashtable<String, Double>();
+    private HashMap<String, Double> startProbability = new HashMap<String, Double>();
     /**
      * transition probabilities between states
      */
-    private Hashtable<String, Hashtable> transitionProbability = new Hashtable<String, Hashtable>();
+    private HashMap<String, HashMap> transitionProbability = new HashMap<String, HashMap>();
     /**
      * probabilities of observations at each state
      */
-    private Hashtable<String, Hashtable> emissionProbability = new Hashtable<String, Hashtable>();
+    private HashMap<String, HashMap> emissionProbability = new HashMap<String, HashMap>();
     /**
      * silent state marker
      */
-    private Hashtable<String, Boolean> silentState = new Hashtable<String, Boolean>();
+    private HashMap<String, Boolean> silentState = new HashMap<String, Boolean>();
     /**
      * maximum length of cascaded silent states
      */
@@ -101,32 +101,32 @@ public class HiddenMarkovModel implements Serializable{
     /**
      * product of Viterbi algorithm
      */
-    private Hashtable<String, Hashtable> delta = new Hashtable<String, Hashtable>();
+    private HashMap<String, HashMap> delta = new HashMap<String, HashMap>();
     /**
      * product of forward algorithm
      */
-    private Hashtable<String, Hashtable> alpha = new Hashtable<String, Hashtable>();
+    private HashMap<String, HashMap> alpha = new HashMap<String, HashMap>();
     /**
      * product of backward algorithm
      */
-    private Hashtable<String, Hashtable> beta = new Hashtable<String, Hashtable>();
+    private HashMap<String, HashMap> beta = new HashMap<String, HashMap>();
     /**
      * used in Baum-Welch algorithm
      */
-    private Hashtable<String, Hashtable> gamma = new Hashtable<String, Hashtable>();
-    private Hashtable<String, Hashtable> zeta = new Hashtable<String, Hashtable>();
+    private HashMap<String, HashMap> gamma = new HashMap<String, HashMap>();
+    private HashMap<String, HashMap> zeta = new HashMap<String, HashMap>();
     /**
      * by-product of scaled forward algorithm
      */
-    private Hashtable<String, Double> scaleFactor = new Hashtable<String, Double>();
+    private HashMap<String, Double> scaleFactor = new HashMap<String, Double>();
 
 
     /**
      * Initial values are saved to be used as the initial condition in each learning
      */
-    private Hashtable<String, Double> initialStartProbability = new Hashtable<String, Double>(); // start probabilities of states
-    private Hashtable<String, Hashtable> initialTransitionProbability = new Hashtable<String, Hashtable>(); // transition probabilities between states
-    private Hashtable<String, Hashtable> initialEmissionProbability = new Hashtable<String, Hashtable>(); // probabilities of observations at each state
+    private HashMap<String, Double> initialStartProbability = new HashMap<String, Double>(); // start probabilities of states
+    private HashMap<String, HashMap> initialTransitionProbability = new HashMap<String, HashMap>(); // transition probabilities between states
+    private HashMap<String, HashMap> initialEmissionProbability = new HashMap<String, HashMap>(); // probabilities of observations at each state
 
     /**
      * Random
@@ -148,6 +148,11 @@ public class HiddenMarkovModel implements Serializable{
      * total probability in log scale after Baum-Welch algorithm
      */
     private double logProbFinal;
+
+    /**
+     * checks if there is a state if true
+     */
+    private boolean doesCheckState = false;
 
 
     /**
@@ -191,13 +196,13 @@ public class HiddenMarkovModel implements Serializable{
             startProbability.put(states[i], 0.0);
 
             // transition probability
-            Hashtable<String, Double> tp = new Hashtable<String, Double>();
+            HashMap<String, Double> tp = new HashMap<String, Double>();
             transitionProbability.put(states[i],tp);
             for(int j = 0; j<states.length;j++)
                 tp.put(states[j],new Double(0.0));
 
             // emission probability
-            Hashtable<String, Double> ep = new Hashtable<String, Double>();
+            HashMap<String, Double> ep = new HashMap<String, Double>();
             emissionProbability.put(states[i],ep);
             for(int j = 0; j<obsSpace.length;j++){
                 ep.put(obsSpace[j],new Double(0.0));
@@ -249,7 +254,7 @@ public class HiddenMarkovModel implements Serializable{
      * @param prob : transition probability from source state to target state
      */
     public void setTransitionProbability(String state, String nextState, double prob){
-        Hashtable<String, Double> tp = transitionProbability.get(state);
+        HashMap<String, Double> tp = transitionProbability.get(state);
         tp.put(nextState ,new Double(prob));
     }
 
@@ -289,7 +294,7 @@ public class HiddenMarkovModel implements Serializable{
      * @param prob : emission probability
      */
     public void setEmissionProbability(String state, String observation, double prob){
-        Hashtable<String, Double> tp = emissionProbability.get(state);
+        HashMap<String, Double> tp = emissionProbability.get(state);
         if(!isSilentState(state)){
             tp.put(observation,new Double(prob));
             setSilentState(state, checkSilentState(state));
@@ -482,12 +487,14 @@ public class HiddenMarkovModel implements Serializable{
          * v_path : the Viterbi path up to the current state
          * v_prob : the probability of the Viterbi path up to the current state
          */
-        Hashtable<String, Object[]> deltaInit = new Hashtable<String, Object[]>();
+        HashMap<String, Object[]> deltaInit = new HashMap<String, Object[]>();
 
         int T =  obs.length;
+        int size = states.size();
 
         // Initial delta
-        for (String state : states){
+        for (int i=0; i<size; i++){
+            String state = states.get(i);
             ArrayList<String> pathList = new ArrayList<String>();
             pathList.add(state);
             double prob = 0;
@@ -501,15 +508,17 @@ public class HiddenMarkovModel implements Serializable{
 
         // consider silent states
         for(int k=0; k<depthSilentStates; k++){
-            for (String nextState : states)
+            for (int i=0; i<size; i++)
             {
+                String nextState = states.get(i);
                 double total = 0;
                 ArrayList<String> argmax = new ArrayList<String>();
                 double valmax = 0;
 
                 boolean update = false;
-                for (String sourceState : states)
+                for (int j=0; j<size; j++)
                 {
+                    String sourceState = states.get(j);
                     if(isSilentState(sourceState) && getTransitionProbability(sourceState, nextState) !=0){
                         Object[] objs = deltaInit.get(sourceState);
                         double prob = (Double) objs[0];
@@ -540,27 +549,31 @@ public class HiddenMarkovModel implements Serializable{
                 }
             }
         }
-        for(String state:states)
+        for(int i=0; i<size; i++){
+            String state = states.get(i);
             if(isSilentState(state))
                 deltaInit.put(state, new Object[]{0.0, new ArrayList<String>(), 0.0});
+        }
         
         delta.put(new String("1"), deltaInit);
 
         // loop for observations
         for (int t=2; t<=T; t++)
         {
-            Hashtable<String, Object[]> deltaNext = new Hashtable<String, Object[]>();
+            HashMap<String, Object[]> deltaNext = new HashMap<String, Object[]>();
             String prevObs = new String(""+(t-1));
             String currObs = new String(""+t);
 
-            for (String nextState : states)
+            for (int i=0; i<size; i++)
             {
+                String nextState = states.get(i);
                 double total = 0;
                 ArrayList<String> argmax = new ArrayList<String>();
                 double valmax = 0;
 
-                for (String sourceState : states)
+                for (int j=0; j<size; j++)
                 {
+                    String sourceState = states.get(j);
                     Object[] objs = getDelta(prevObs, sourceState);
                     double prob = (Double) objs[0];
                     ArrayList<String> v_path = (ArrayList<String>) objs[1];
@@ -588,15 +601,17 @@ public class HiddenMarkovModel implements Serializable{
 
             // consider silent states
             for(int k=0; k<depthSilentStates; k++){
-                for (String nextState : states)
+                for (int i=0; i<size; i++)
                 {
+                    String nextState = states.get(i);
                     double total = 0;
                     ArrayList<String> argmax = new ArrayList<String>();
                     double valmax = 0;
 
                     boolean update = false;
-                    for (String sourceState : states)
+                    for (int j=0; j<size; j++)
                     {
+                        String sourceState = states.get(j);
                         if(isSilentState(sourceState) && getTransitionProbability(sourceState, nextState) !=0){
                             Object[] objs = deltaNext.get(sourceState);
                             double prob = (Double) objs[0];
@@ -627,9 +642,11 @@ public class HiddenMarkovModel implements Serializable{
                     }
                 }
             }
-            for(String state:states)
+            for(int i=0; i<size; i++){
+                String state = states.get(i);
                 if(isSilentState(state))
                     deltaNext.put(state, new Object[]{0.0, new ArrayList<String>(), 0.0});
+            }
 
             delta.put(currObs, deltaNext);
         }
@@ -638,8 +655,9 @@ public class HiddenMarkovModel implements Serializable{
         ArrayList<String> argmax = null;
         double valmax = 0;
 
-        for (String state : states)
+        for (int i=0; i<size; i++)
         {
+            String state = states.get(i);
             if(!isSilentState(state)){
                 Object[] objs = getDelta(new String(""+T), state);
                 double prob = (Double) objs[0];
@@ -663,17 +681,22 @@ public class HiddenMarkovModel implements Serializable{
         ArrayList<String> silentStatesList = new ArrayList<String>();
 
         depthSilentStates = 0;
-        for(String state : states)
+        int size = states.size();
+        for(int i=0; i<size; i++){
+            String state = states.get(i);
             if(isSilentState(state))
                 silentStatesList.add(state);
+        }
 
         while(!silentStatesList.isEmpty()){
             depthSilentStates++;
 
             ArrayList<String> newSilentStatesList = new ArrayList<String>();
 
-            for(String sourceState:silentStatesList){
-                for(String targetState : states){
+            for(int i=0; i<silentStatesList.size(); i++){
+                String sourceState = silentStatesList.get(i);
+                for(int j=0; j<size; j++){
+                    String targetState = states.get(j);
                     // self transition of silent states must be not considered to avoid infinite loop
                     if(!sourceState.equals(targetState) && getTransitionProbability(sourceState, targetState) != 0)
                         if(isSilentState(targetState))
@@ -699,7 +722,7 @@ public class HiddenMarkovModel implements Serializable{
         // initializeHmm
         alpha.clear();
 
-        Hashtable<String, Double> alphaInit = new Hashtable<String, Double>();
+        HashMap<String, Double> alphaInit = new HashMap<String, Double>();
         for(String state : states){
             if(isSilentState(state)){
                 alphaInit.put(state, getStartProbability(state));
@@ -732,7 +755,7 @@ public class HiddenMarkovModel implements Serializable{
         
         for (int t = 2; t <= T; t++)
         {
-            Hashtable<String, Double> alphaNext = new Hashtable<String, Double>();
+            HashMap<String, Double> alphaNext = new HashMap<String, Double>();
             String prevObs = new String(""+(t-1));
             String currObs = new String(""+t);
 
@@ -795,10 +818,10 @@ public class HiddenMarkovModel implements Serializable{
         // initializeHmm
         alpha.clear();
 
-        Hashtable<String, Double> alphaInit = forwardInitialize(obs[0]);
+        HashMap<String, Double> alphaInit = forwardInitialize(obs[0]);
         alpha.put(new String("1"), alphaInit);
 
-        Hashtable<String, Double> alphaNext = alphaInit;
+        HashMap<String, Double> alphaNext = alphaInit;
         for (int t = 2; t <= T; t++)
         {
             String currObs = new String(""+t);
@@ -807,9 +830,11 @@ public class HiddenMarkovModel implements Serializable{
         }
 
         double retSum = 0;
-        for (String state : states)
+        for (int i=0; i<states.size(); i++){
+            String state = states.get(i);
             if(!isSilentState(state))
                 retSum += getAlpha(new String(""+T), state);
+        }
 
         return retSum;
     }
@@ -820,10 +845,12 @@ public class HiddenMarkovModel implements Serializable{
      * @param obs : observation
      * @return
      */
-    public Hashtable<String, Double> forwardInitialize(String obs)
+    public HashMap<String, Double> forwardInitialize(String obs)
     {
-        Hashtable<String, Double> alphaInit = new Hashtable<String, Double>();
-        for(String state : states){
+        HashMap<String, Double> alphaInit = new HashMap<String, Double>();
+        int size = states.size();
+        for(int i=0; i<size; i++){
+            String state = states.get(i);
             if(isSilentState(state)){
                 alphaInit.put(state, getStartProbability(state));
             }
@@ -832,11 +859,13 @@ public class HiddenMarkovModel implements Serializable{
         }
         // Consider silent states
         for(int i=0; i<depthSilentStates; i++){
-            for (String nextState : states)
+            for (int j=0; j<size; j++)
             {
+                String nextState = states.get(j);
                 double sum = getStartProbability(nextState);
                 boolean update = false;
-                for (String sourceState : states){
+                for (int k=0; k<size; k++){
+                    String sourceState = states.get(k);
                     if(isSilentState(sourceState)){
                         double tp = getTransitionProbability(sourceState, nextState);
                         if(tp != 0) // to reduce the computational cost
@@ -862,14 +891,17 @@ public class HiddenMarkovModel implements Serializable{
      * @param obs : observation
      * @return
      */
-    public Hashtable<String, Double> forwardUpdate(Hashtable<String, Double> alphaPrev, String obs)
+    public HashMap<String, Double> forwardUpdate(HashMap<String, Double> alphaPrev, String obs)
     {
-        Hashtable<String, Double> alphaNext = new Hashtable<String, Double>();
+        HashMap<String, Double> alphaNext = new HashMap<String, Double>();
+        int size = states.size();
 
-        for (String nextState : states)
+        for (int i = 0; i < size; i++)
         {
+            String nextState  = states.get(i);
             double sum = 0;
-            for (String sourceState : states){
+            for (int j = 0; j < size; j++){
+                String sourceState = states.get(j);
                 double tp = getTransitionProbability(sourceState, nextState);
                 if(tp != 0) // to reduce the computational cost
                     sum += alphaPrev.get(sourceState)*tp;
@@ -882,11 +914,13 @@ public class HiddenMarkovModel implements Serializable{
         }
         // Consider silent states
         for(int i=0; i<depthSilentStates; i++){
-            for (String nextState2 : states)
+            for (int j = 0; j < size; j++)
             {
+                String nextState2 = states.get(j);
                 double sum2 = 0;
                 boolean update = false;
-                for (String sourceState2 : states){
+                for (int k = 0; k < size; k++){
+                    String sourceState2 = states.get(k);
                     if(isSilentState(sourceState2)){
                         double tp = getTransitionProbability(sourceState2, nextState2);
                         if(tp != 0) // to reduce the computational cost
@@ -928,29 +962,39 @@ public class HiddenMarkovModel implements Serializable{
         double sf = 0.0;
         alpha.clear();
 
-        Hashtable<String, Double> alphaInit = new Hashtable<String, Double>();
-        for(String state : states)
+        int size = states.size();
+        HashMap<String, Double> alphaInit = new HashMap<String, Double>();
+        for(int i=0; i<size; i++){
+            String state = states.get(i);
             alphaInit.put(state, getStartProbability(state)*getEmissionProbability(state, obs[0]));
+        }
         
-        for(String state : states)
+        for(int i=0; i<size; i++){
+            String state = states.get(i);
             sf += alphaInit.get(state);
+        }
+
         scaleFactor.put(new String("1"), sf);
-        for(String state : states)
+        for(int i=0; i<size; i++){
+            String state = states.get(i);
             alphaInit.put(state, alphaInit.get(state)/sf);
+        }
 
         alpha.put(new String("1"), alphaInit);
 
         for (int t = 2; t <= T; t++)
         {
-            Hashtable<String, Double> alphaNext = new Hashtable<String, Double>();
+            HashMap<String, Double> alphaNext = new HashMap<String, Double>();
             String prevObs = new String(""+(t-1));
             String currObs = new String(""+t);
 
             sf = 0;
-            for (String nextState : states)
+            for (int i=0; i<size; i++)
             {
+                String nextState = states.get(i);
                 double sum = 0;
-                for (String sourceState : states){
+                for (int j=0; j<size; j++){
+                    String sourceState = states.get(j);
                     double tp = getTransitionProbability(sourceState, nextState);
                     if(tp != 0) // to reduce the computational cost
                         sum += getAlpha(prevObs, sourceState)*tp;
@@ -960,11 +1004,18 @@ public class HiddenMarkovModel implements Serializable{
                 alphaNext.put(nextState, sum);
             }
 
-            for (String nextState : states)
+            for (int i=0; i<size; i++)
+            {
+                String nextState = states.get(i);
                 sf += alphaNext.get(nextState);
+            }
+
             scaleFactor.put(currObs, sf);
-            for (String state : states)
+            for (int i=0; i<size; i++)
+            {
+                String state = states.get(i);
                 alphaNext.put(state, alphaNext.get(state)/sf);
+            }
 
             alpha.put(currObs, alphaNext);
         }
@@ -987,22 +1038,28 @@ public class HiddenMarkovModel implements Serializable{
         int T = obs.length;
 
         // initializeHmm
+        int size = states.size();
         beta.clear();
-        Hashtable<String, Double> betaFinal = new Hashtable<String, Double>();
-        for(String state : states)
+        HashMap<String, Double> betaFinal = new HashMap<String, Double>();
+        for (int i=0; i<size; i++)
+        {
+            String state = states.get(i);
             betaFinal.put(state, 1.0);
+        }
         beta.put(new String(""+T), betaFinal);
 
         for (int t = T; t >= 1; t--)
         {
-            Hashtable<String, Double> betaBefore = new Hashtable<String, Double>();
+            HashMap<String, Double> betaBefore = new HashMap<String, Double>();
             String prevObs = new String(""+(t-1));
             String currObs = new String(""+t);
 
-            for (String prevState : states)
+            for (int i=0; i<size; i++)
             {
+                String prevState = states.get(i);
                 double sum = 0;
-                for (String currentState : states){
+                for (int j=0; j<size; j++){
+                    String currentState = states.get(j);
                     if(isSilentState(currentState)){
                         double tp = getTransitionProbability(prevState, currentState);
                         if(tp != 0) // to reduce the computational cost
@@ -1019,10 +1076,12 @@ public class HiddenMarkovModel implements Serializable{
 
             // Consider silent states
             for(int i=0; i<depthSilentStates; i++){
-                for (String prevState : states){
+                for (int j=0; j<size; j++){
+                    String prevState = states.get(j);
                     double sum = 0;
                     boolean update = false;
-                    for (String currentState : states){
+                    for (int k=0; k<size; k++){
+                        String currentState = states.get(k);
                         if(isSilentState(currentState)){
                             double tp = getTransitionProbability(prevState, currentState);
                             if(tp != 0) // to reduce the computational cost
@@ -1042,8 +1101,9 @@ public class HiddenMarkovModel implements Serializable{
             beta.put(prevObs, betaBefore);
         }
 
-        Hashtable<String, Double> alphaInit = new Hashtable<String, Double>();
-        for(String state : states){
+        HashMap<String, Double> alphaInit = new HashMap<String, Double>();
+        for(int i=0; i<size; i++){
+            String state = states.get(i);
             if(isSilentState(state)){
                 alphaInit.put(state, getStartProbability(state));
             }
@@ -1052,11 +1112,13 @@ public class HiddenMarkovModel implements Serializable{
         }
         // Consider silent states
         for(int i=0; i<depthSilentStates; i++){
-            for (String nextState : states)
+            for (int j=0; j<size; j++)
             {
+                String nextState = states.get(j);
                 double sum = getStartProbability(nextState);
                 boolean update = false;
-                for (String sourceState : states){
+                for (int k=0; k<size; k++){
+                    String sourceState = states.get(k);
                     if(isSilentState(sourceState)){
                         double tp = getTransitionProbability(sourceState, nextState);
                         if(tp != 0) // to reduce the computational cost
@@ -1074,7 +1136,8 @@ public class HiddenMarkovModel implements Serializable{
 
         // Calculate total probability
         double retSum = 0;
-        for (String state : states){
+        for(int i=0; i<size; i++){
+            String state = states.get(i);
             if(!isSilentState(state)){
                 retSum += alphaInit.get(state)*getBeta("1", state);
             }
@@ -1094,22 +1157,27 @@ public class HiddenMarkovModel implements Serializable{
         int T = obs.length;
 
         // initializeHmm
+        int size = states.size();
         beta.clear();
-        Hashtable<String, Double> betaFinal = new Hashtable<String, Double>();
-        for(String state : states)
+        HashMap<String, Double> betaFinal = new HashMap<String, Double>();
+        for(int i=0; i<size; i++){
+            String state = states.get(i);
             betaFinal.put(state, 1.0/scaleFactor.get(new String(""+T)));
+        }
         beta.put(new String(""+T), betaFinal);
 
         for (int t = T; t > 1; t--)
         {
-            Hashtable<String, Double> betaBefore = new Hashtable<String, Double>();
+            HashMap<String, Double> betaBefore = new HashMap<String, Double>();
             String prevObs = new String(""+(t-1));
             String currObs = new String(""+t);
 
-            for (String prevState : states)
+            for (int i=0; i<size; i++)
             {
+                String prevState = states.get(i);
                 double sum = 0;
-                for (String currentState : states){
+                for (int j=0; j<size; j++){
+                    String currentState = states.get(j);
                     double tp = getTransitionProbability(prevState, currentState);
                     if(tp != 0) // to reduce the computational cost
                         sum += getBeta(currObs, currentState)*tp*getEmissionProbability(currentState, obs[t-1]);
@@ -1118,8 +1186,11 @@ public class HiddenMarkovModel implements Serializable{
                 betaBefore.put(prevState, sum);
             }
 
-            for (String state : states)
+            for (int i=0; i<size; i++)
+            {
+                String state = states.get(i);
                 betaBefore.put(state, betaBefore.get(state)/scaleFactor.get(prevObs));
+            }
 
             beta.put(prevObs, betaBefore);
         }
@@ -1156,24 +1227,30 @@ public class HiddenMarkovModel implements Serializable{
 	logprobprev = logprobf;
 
         int T = obs.length;
+        int size = states.size();
         do  {
             
             // update start probability
             if(updateStartProb){
                 sum = 0;
-                for(String state : states){
+                for(int i=0; i<size; i++){
+                    String state = states.get(i);
                     if(getStartProbability(state) != 0)
                         setStartProbability(state, minProb+(1-minProb)*getGamma("1", state));
                     sum += getStartProbability(state);
                 }
                 // normalize elements to make sum of them equal to 1
-                if(sum != 0)
-                    for(String state : states)
+                if(sum != 0){
+                    for(int i=0; i<size; i++){
+                        String state = states.get(i);
                         setStartProbability(state, getStartProbability(state)/sum);
+                        }
+                }
             }
 
             // reestimate transitionProbability matrix and emissionProbability matrix in each state
-            for (String sourceState : states) {
+            for (int i=0; i<size; i++) {
+                String sourceState = states.get(i);
                 gammaSum = 0.0;
                 if(updateTranstionProb || updateEmissionProb){
                     for (int t = 1; t <= T - 1; t++)
@@ -1182,7 +1259,8 @@ public class HiddenMarkovModel implements Serializable{
 
                 if(updateTranstionProb){
                     sum = 0;
-                    for (String targetState : states) {
+                    for (int j=0; j<size; j++) {
+                        String targetState = states.get(j);
                         zetaSum = 0.0;
                         for (int t = 1; t <= T - 1; t++)
                             zetaSum += getZeta(new String(""+t), sourceState, targetState);
@@ -1197,13 +1275,16 @@ public class HiddenMarkovModel implements Serializable{
                     }
                     // normalize elements to make sum of them equal to 1
                     if(sum != 0)
-                        for (String targetState : states)
+                        for (int j=0; j<size; j++){
+                            String targetState = states.get(j);
                             setTransitionProbability(sourceState, targetState, getTransitionProbability(sourceState, targetState)/sum);
+                        }
                 }
 
                 if(updateEmissionProb){
                     sum = 0;
-                    for (String obsSet : observationSet) {
+                    for (int k=0; k<observationSet.size(); k++) {
+                        String obsSet = observationSet.get(k);
                         gammaSumOt = 0.0;
                         for (int t = 1; t <= T - 1; t++) {
                             if (obs[t-1].equals(obsSet))
@@ -1220,8 +1301,10 @@ public class HiddenMarkovModel implements Serializable{
                     }
                     // normalize elements to make sum of them equal to 1
                     if(sum != 0)
-                        for (String obsSet : observationSet)
+                        for (int k=0; k<observationSet.size(); k++){
+                            String obsSet = observationSet.get(k);
                             setEmissionProbability(sourceState, obsSet, getEmissionProbability(sourceState, obsSet)/sum);
+                        }
                 }
             }
 
@@ -1272,12 +1355,15 @@ public class HiddenMarkovModel implements Serializable{
 	double sum;
 
         zeta.clear();
+        int size = states.size();
 	for (int t = 1; t <= T - 1; t++) {
             sum = 0.0;
-            Hashtable<String, Hashtable> firstLevelElement = new Hashtable<String, Hashtable>();
-            for (String sourceState : states){
-                Hashtable<String, Double> secondLevelElement = new Hashtable<String, Double>();
-                for (String targetState : states) {
+            HashMap<String, HashMap> firstLevelElement = new HashMap<String, HashMap>();
+            for (int i=0; i<size; i++){
+                String sourceState = states.get(i);
+                HashMap<String, Double> secondLevelElement = new HashMap<String, Double>();
+                for (int j=0; j<size; j++) {
+                    String targetState = states.get(j);
                     double value = getAlpha(new String(""+t), sourceState);
                     if(isSilentState(targetState))
                         value *= getBeta(new String(""+t), targetState);
@@ -1294,10 +1380,12 @@ public class HiddenMarkovModel implements Serializable{
                 firstLevelElement.put(sourceState, secondLevelElement);
             }
 
-            for (String sourceState : states){
-                for (String targetState : states){
-                    double value = ((Hashtable<String, Double> )firstLevelElement.get(sourceState)).get(targetState);
-                    ((Hashtable<String, Double> )firstLevelElement.get(sourceState)).put(targetState, value/sum);
+            for (int i=0; i<size; i++){
+                String sourceState = states.get(i);
+                for (int j=0; j<size; j++) {
+                    String targetState = states.get(j);
+                    double value = ((HashMap<String, Double> )firstLevelElement.get(sourceState)).get(targetState);
+                    ((HashMap<String, Double> )firstLevelElement.get(sourceState)).put(targetState, value/sum);
                 }
             }
             zeta.put(new String(""+t), firstLevelElement);
@@ -1312,14 +1400,18 @@ public class HiddenMarkovModel implements Serializable{
     private void computeGamma(String[] obs)
     {
         int T = obs.length;
+        int size = states.size();
 
 	for (int t = 1; t <= T - 1; t++) {
-            Hashtable<String, Double> gammaElement = new Hashtable<String, Double>();
-            for (String sourceState : states) {
+            HashMap<String, Double> gammaElement = new HashMap<String, Double>();
+            for (int i=0; i<size; i++){
+                String sourceState = states.get(i);
                 double gammaValue = 0;
-                Hashtable<String, Double> zetaElement = (Hashtable<String, Double>) ((Hashtable<String, Hashtable>) zeta.get(new String(""+t))).get(sourceState);
-                for (String targetState : states)
+                HashMap<String, Double> zetaElement = (HashMap<String, Double>) ((HashMap<String, HashMap>) zeta.get(new String(""+t))).get(sourceState);
+                for (int j=0; j<size; j++) {
+                    String targetState = states.get(j);
                     gammaValue += zetaElement.get(targetState);
+                }
                 gammaElement.put(sourceState, gammaValue);
             }
             gamma.put(new String(""+t), gammaElement);
@@ -1337,22 +1429,34 @@ public class HiddenMarkovModel implements Serializable{
         double w1 = ((double) numTraining)/((double) numTraining + (double) targetHmm.getNumTraining());
         double w2 = 1-w1;
 
+        int size = states.size();
+
         numTraining += targetHmm.getNumTraining();
 
         // calculate ensenble average of startProbability
-        for(String state : states)
+        for(int i=0; i<size; i++){
+            String state = states.get(i);
             setStartProbability(state, getStartProbability(state)*w1 + targetHmm.getStartProbability(state)*w2);
+        }
 
         // calculate ensenble average of transitionProbability
-        for(String sourceState : states)
-            for(String targetState : states)
+        for (int i=0; i<size; i++){
+            String sourceState = states.get(i);
+            for (int j=0; j<size; j++) {
+                String targetState = states.get(j);
                 setTransitionProbability(sourceState, targetState, getTransitionProbability(sourceState, targetState)*w1 + targetHmm.getTransitionProbability(sourceState, targetState)*w2);
+            }
+        }
 
         // calculate ensenble average of emissionProbability
-        for(String sourceState : states)
-            for(String obs : observationSet)
+        for(int i=0; i<size; i++){
+            String sourceState = states.get(i);
+            for(int j=0; j<observationSet.size(); j++){
+                String obs = observationSet.get(j);
                 if(!isSilentState(sourceState))
                     setEmissionProbability(sourceState, obs, getEmissionProbability(sourceState, obs)*w1 + targetHmm.getEmissionProbability(sourceState, obs)*w2);
+            }
+        }
     }
 
 
@@ -1446,7 +1550,7 @@ public class HiddenMarkovModel implements Serializable{
      * @return delta
      */
     private Object[] getDelta(String seqNum, String state){
-        return ((Hashtable<String, Object[]>) delta.get(seqNum)).get(state);
+        return ((HashMap<String, Object[]>) delta.get(seqNum)).get(state);
     }
 
 
@@ -1457,7 +1561,7 @@ public class HiddenMarkovModel implements Serializable{
      * @return alpha
      */
     private double getAlpha(String seqNum, String state){
-        return ((Hashtable<String, Double>) alpha.get(seqNum)).get(state);
+        return ((HashMap<String, Double>) alpha.get(seqNum)).get(state);
     }
 
     /**
@@ -1467,7 +1571,7 @@ public class HiddenMarkovModel implements Serializable{
      * @return
      */
     private double getBeta(String seqNum, String state){
-        return ((Hashtable<String, Double>) beta.get(seqNum)).get(state);
+        return ((HashMap<String, Double>) beta.get(seqNum)).get(state);
     }
 
     /**
@@ -1478,7 +1582,7 @@ public class HiddenMarkovModel implements Serializable{
      * @return the gamma value
      */
     private double getGamma(String obs, String state){
-        return ((Hashtable<String, Double>) gamma.get(obs)).get(state);
+        return ((HashMap<String, Double>) gamma.get(obs)).get(state);
     }
 
     /**
@@ -1490,7 +1594,7 @@ public class HiddenMarkovModel implements Serializable{
      * @return the zeta value
      */
     private double getZeta(String obs, String sourceState, String targetState){
-        return ((Hashtable<String, Double>) ((Hashtable<String, Hashtable>) zeta.get(obs)).get(sourceState)).get(targetState);
+        return ((HashMap<String, Double>) ((HashMap<String, HashMap>) zeta.get(obs)).get(sourceState)).get(targetState);
     }
 
     /**
@@ -1499,7 +1603,11 @@ public class HiddenMarkovModel implements Serializable{
      * @return probability
      */
     public double getStartProbability(String state){
-        checkState(state);
+        if(doesCheckState){
+            if(!checkState(state))
+                return 0;
+        }
+
         return startProbability.get(state);
     }
 
@@ -1523,10 +1631,14 @@ public class HiddenMarkovModel implements Serializable{
      * @return probability of transition from state to nextState
      */
     public double getTransitionProbability(String state, String nextState){
-        checkState(state);
-        checkState(nextState);
+        if(doesCheckState){
+            if(!checkState(state))
+                return 0;
+            if(!checkState(nextState))
+                return 0;
+        }
 
-        Hashtable<String, Double> tp = transitionProbability.get(state);
+        HashMap<String, Double> tp = transitionProbability.get(state);
 
         return tp.get(nextState);
     }
@@ -1552,9 +1664,12 @@ public class HiddenMarkovModel implements Serializable{
      * @return probabiliy of emisssion from the state to the observation
      */
     public double getEmissionProbability(String state, String observation){
-        checkState(state);
+        if(doesCheckState){
+            if(!checkState(state))
+                return 0;
+        }
 
-        Hashtable<String, Double> tp = emissionProbability.get(state);
+        HashMap<String, Double> tp = emissionProbability.get(state);
 
         return tp.get(observation);
     }
@@ -1575,26 +1690,26 @@ public class HiddenMarkovModel implements Serializable{
 
 
     /**
-     * returns emission probabilities in Hashtable format
+     * returns emission probabilities in HashMap format
      * @return probability map, from codeword to probability
      */
-    public Hashtable<String, Hashtable> getEmissionProbability() {
+    public HashMap<String, HashMap> getEmissionProbability() {
         return emissionProbability;
     }
 
     /**
-     * returns start probabilities in Hashtable format
+     * returns start probabilities in HashMap format
      * @return probability map, from codeword to probability
      */
-    public Hashtable<String, Double> getStartProbability() {
+    public HashMap<String, Double> getStartProbability() {
         return startProbability;
     }
 
     /**
-     * returns transition probabilities in Hashtable format
+     * returns transition probabilities in HashMap format
      * @return
      */
-    public Hashtable<String, Hashtable> getTransitionProbability() {
+    public HashMap<String, HashMap> getTransitionProbability() {
         return transitionProbability;
     }
 
@@ -1619,8 +1734,9 @@ public class HiddenMarkovModel implements Serializable{
         ArrayList<String> argmax = null;
         double valmax = 0;
 
-        for (String state : states)
+        for (int i=0; i<states.size(); i++)
         {
+            String state = states.get(i);
             if(!isSilentState(state)){
                 Object[] objs = getDelta(new String(""+seqNum), state);
                 ArrayList<String> v_path = (ArrayList<String>) objs[1];
@@ -1645,8 +1761,10 @@ public class HiddenMarkovModel implements Serializable{
         ArrayList<String> path = getViterbiPath(seqNum);
         String out = "";
 
-        for(String element : path)
+        for(int i=0; i<path.size(); i++){
+            String element = path.get(i);
             out = out + "," +element;
+        }
 
         return out;
     }
@@ -1689,8 +1807,10 @@ public class HiddenMarkovModel implements Serializable{
         ArrayList<String> path = (ArrayList<String>) objs[1];
         String out = "";
 
-        for(String element : path)
+        for(int i=0; i<path.size(); i++){
+            String element = path.get(i);
             out = out + "," +element;
+        }
 
         return out;
     }
@@ -1731,10 +1851,15 @@ public class HiddenMarkovModel implements Serializable{
      */
     public void printTransitionProbability(){
         System.out.println("transitionProbability = ");
-        for(String sourceState: states){
+        int size = states.size();
+
+        for(int i=0; i<size; i++){
+            String sourceState = states.get(i);
             System.out.print("          ");
-            for(String targetState: states)
-                System.out.print(((Hashtable <String, Double>) transitionProbability.get(sourceState)).get(targetState)+" ");
+            for(int j=0; j<size; j++){
+                String targetState = states.get(j);
+                System.out.print(((HashMap <String, Double>) transitionProbability.get(sourceState)).get(targetState)+" ");
+            }
             System.out.println("");
         }
     }
@@ -1744,10 +1869,13 @@ public class HiddenMarkovModel implements Serializable{
      */
     public void printEmissionProbability(){
         System.out.println("emissionProbability = ");
-        for(String state: states){
+        for(int i=0; i<states.size(); i++){
+            String state = states.get(i);
             System.out.print("          ");
-            for(String obs: observationSet)
-                System.out.print(((Hashtable <String, Double>) emissionProbability.get(state)).get(obs)+" ");
+            for(int j=0; j<observationSet.size(); j++){
+                String obs = observationSet.get(j);
+                System.out.print(((HashMap <String, Double>) emissionProbability.get(state)).get(obs)+" ");
+            }
             System.out.println("");
         }
     }
@@ -1768,7 +1896,8 @@ public class HiddenMarkovModel implements Serializable{
      */
     private boolean checkSilentState(String state){
         boolean out= true;
-        for(String obs:observationSet){
+        for(int i=0; i<observationSet.size(); i++){
+            String obs = observationSet.get(i);
             if(getEmissionProbability(state, obs) != 0){
                 out = false;
                 break;
@@ -1803,8 +1932,10 @@ public class HiddenMarkovModel implements Serializable{
      * @param state
      */
     public void setStateSilent(String state){
-        for(String obs : observationSet)
+        for(int i=0; i<observationSet.size(); i++){
+            String obs = observationSet.get(i);
             setEmissionProbability(state, obs, 0);
+        }
 
         setSilentState(state, true);
     }
@@ -1858,7 +1989,7 @@ public class HiddenMarkovModel implements Serializable{
 
         for(int i=0; i<getNumStates(); i++)
             for(int j=0; j<observationSet.size(); j++)
-                out[i][j] = ((Hashtable<String, Double>) initialEmissionProbability.get(states.get(i))).get(observationSet.get(j));
+                out[i][j] = ((HashMap<String, Double>) initialEmissionProbability.get(states.get(i))).get(observationSet.get(j));
 
         return out;
     }
@@ -1885,7 +2016,7 @@ public class HiddenMarkovModel implements Serializable{
 
         for(int i=0; i<getNumStates(); i++)
             for(int j=0; j<getNumStates(); j++)
-                out[i][j] = ((Hashtable<String, Double>) initialTransitionProbability.get(states.get(i))).get(states.get(j));
+                out[i][j] = ((HashMap<String, Double>) initialTransitionProbability.get(states.get(i))).get(states.get(j));
 
         return out;
     }
@@ -1913,5 +2044,13 @@ public class HiddenMarkovModel implements Serializable{
      */
     public void setModelType(ModelType modelType) {
         this.modelType = modelType;
+    }
+
+    public boolean isDoesCheckState() {
+        return doesCheckState;
+    }
+
+    public void setDoesCheckState(boolean doesCheckState) {
+        this.doesCheckState = doesCheckState;
     }
 }
