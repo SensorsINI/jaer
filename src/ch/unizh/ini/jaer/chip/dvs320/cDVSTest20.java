@@ -258,8 +258,8 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                     if ((data & INTENSITYMASK) == INTENSITYMASK) {// intensity spike
                         int dt = timestamps[i] - lastIntenTs;
                         if (dt > 50) {
-                            avdt = 0.1f * dt + 0.9f * avdt; // avg over time
-                            setIntensity(2000f / avdt); // ISI of this much gives intensity 1
+                            avdt = 0.05f * dt + 0.95f * avdt; // avg over time
+                            setIntensity(1000f / avdt); // ISI of this much, e.g. 1ms, gives intensity 1
                         }
                         lastIntenTs = timestamps[i];
 
