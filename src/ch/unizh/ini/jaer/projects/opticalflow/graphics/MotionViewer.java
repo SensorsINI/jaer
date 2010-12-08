@@ -83,6 +83,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
     WindowSaver windowSaver;
     MotionData motionData;
     ToggleLoggingAction toggleLoggingAction=new ToggleLoggingAction();
+    private TobiLogger tobiLogger=new TobiLogger("MotionViewer", "Motion data from MDC2d");
     
     
     /**
@@ -851,6 +852,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
                                 synchronized(loggingOutputStream){
                                     try{
                                         loggingOutputStream.writeData(motionData);
+                                        tobiLogger.log(String.format("%f %f",motionData.getGlobalX(), motionData.getGlobalY()));
                                     }catch(IOException e){
                                         e.printStackTrace();
                                         loggingEnabled=false;
@@ -1947,6 +1949,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
             if(loggingTimeLimit>0){
                 loggingStartTime=System.currentTimeMillis();
             }
+            tobiLogger.setEnabled(true);
 //            hardware.resetTimestamps();
         }catch(Exception e){
             loggingFile=null;
@@ -1978,6 +1981,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
                     e.printStackTrace();
                 }
             }
+            tobiLogger.setEnabled(false);
             loggingEnabled=false;
         }
         fixLoggingControls();

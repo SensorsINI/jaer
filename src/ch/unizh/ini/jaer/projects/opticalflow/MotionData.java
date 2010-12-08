@@ -408,7 +408,7 @@ public abstract class MotionData implements Cloneable{
         write2DArray(out,ph);
         write2DArray(out,ux);
         write2DArray(out,uy);
-        for(int i=0;i<getNumLocalChannels();i++){  //RetoTODO fix
+        for(int i=0;i<getNumLocalChannels();i++){  //RetoTODO fix 
             write2DArray(out,rawDataPixel[i]);
         }
     }
