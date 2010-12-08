@@ -31,7 +31,28 @@ public class cDVSDisplayMethod extends DVSWithIntensityDisplayMethod {
         checkControlPanel();
         super.display(drawable);
         GL gl=drawable.getGL();
+        gl.glLineWidth(2f);
+        gl.glColor3f(1,1,1);
+        // draw boxes around arrays
 
+       rect(gl,0,0,64,64);
+       rect(gl,64,0,32,32);
+       rect(gl,96,0,32,32);
+       rect(gl,96,32,32,32);
+       rect(gl,64,32,32,32);
+       rect(gl,140,0,2,64);
+
+    }
+
+    private void rect(GL gl, float x, float y, float w, float h){
+        gl.glLineWidth(2f);
+        gl.glColor3f(1,1,1);
+        gl.glBegin(GL.GL_LINE_LOOP);
+        gl.glVertex2f(x,y);
+        gl.glVertex2f(x+w,y);
+        gl.glVertex2f(x+w,y+h);
+        gl.glVertex2f(x,y+h);
+        gl.glEnd();
     }
 
     private void checkControlPanel() {

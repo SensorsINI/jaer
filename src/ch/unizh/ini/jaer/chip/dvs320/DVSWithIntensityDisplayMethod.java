@@ -63,7 +63,7 @@ public class DVSWithIntensityDisplayMethod extends ChipRendererDisplayMethod {
                 renderer.begin3DRendering();
 //            renderer.beginRendering(drawable.getWidth(), drawable.getHeight());
                 // optionally set the color
-                renderer.setColor(0, 0, 1, 0.8f);
+                renderer.setColor(1,1, 1, 1f);
                 renderer.draw3D("Intensity", -10, 0, 0, .2f); // TODO fix string n lines
                 // ... more draw commands, color changes, etc.
                 renderer.end3DRendering();
