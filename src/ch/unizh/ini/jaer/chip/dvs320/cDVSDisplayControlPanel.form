@@ -26,7 +26,7 @@
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="0" attributes="0">
               <Component id="displayControlPanel" min="-2" max="-2" attributes="0"/>
-              <EmptySpace max="32767" attributes="0"/>
+              <EmptySpace pref="66" max="32767" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -44,26 +44,26 @@
       <Layout>
         <DimensionLayout dim="0">
           <Group type="103" groupAlignment="0" attributes="0">
-              <Group type="102" alignment="0" attributes="0">
+              <Group type="102" attributes="0">
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="jPanel2" min="-2" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="jPanel1" min="-2" max="-2" attributes="0"/>
-                  <EmptySpace type="separate" max="-2" attributes="0"/>
-                  <Component id="jPanel3" max="32767" attributes="0"/>
+                  <EmptySpace max="-2" attributes="0"/>
+                  <Component id="jPanel3" pref="221" max="32767" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
         <DimensionLayout dim="1">
           <Group type="103" groupAlignment="0" attributes="0">
+              <Group type="103" alignment="0" groupAlignment="0" max="-2" attributes="0">
+                  <Component id="jPanel3" linkSize="6" alignment="1" max="32767" attributes="1"/>
+                  <Component id="jPanel2" linkSize="6" alignment="1" max="32767" attributes="1"/>
+              </Group>
               <Group type="102" alignment="0" attributes="0">
-                  <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                      <Component id="jPanel3" alignment="1" max="32767" attributes="1"/>
-                      <Component id="jPanel2" linkSize="3" alignment="1" max="32767" attributes="1"/>
-                      <Component id="jPanel1" linkSize="3" alignment="1" min="-2" max="-2" attributes="1"/>
-                  </Group>
-                  <EmptySpace max="32767" attributes="0"/>
+                  <EmptySpace min="3" pref="3" max="3" attributes="0"/>
+                  <Component id="jPanel1" min="-2" max="-2" attributes="1"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -82,21 +82,42 @@
             <DimensionLayout dim="0">
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" attributes="0">
-                      <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Group type="102" attributes="0">
-                              <Component id="jLabel2" linkSize="2" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace max="-2" attributes="0"/>
-                              <Component id="jSlider2" min="-2" max="-2" attributes="0"/>
-                          </Group>
+                          <Component id="logIntensityCB" alignment="0" min="-2" max="-2" attributes="0"/>
                           <Group type="102" alignment="0" attributes="0">
-                              <Component id="jLabel1" linkSize="2" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
-                              <Component id="jSlider1" min="-2" max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Group type="102" alignment="0" attributes="0">
+                                      <Group type="103" groupAlignment="0" attributes="0">
+                                          <Group type="102" alignment="0" attributes="0">
+                                              <Component id="offsetLabel" linkSize="2" min="-2" max="-2" attributes="0"/>
+                                              <EmptySpace max="-2" attributes="0"/>
+                                              <Component id="offsetSlider" min="-2" max="-2" attributes="0"/>
+                                          </Group>
+                                          <Group type="102" alignment="0" attributes="0">
+                                              <Component id="gainLabel" linkSize="2" min="-2" max="-2" attributes="0"/>
+                                              <EmptySpace max="-2" attributes="0"/>
+                                              <Component id="gainSlider" min="-2" max="-2" attributes="0"/>
+                                          </Group>
+                                      </Group>
+                                      <EmptySpace min="-2" pref="26" max="-2" attributes="0"/>
+                                      <Group type="103" groupAlignment="0" attributes="0">
+                                          <Component id="offTF" min="-2" max="-2" attributes="0"/>
+                                          <Component id="gainTF" alignment="0" min="-2" max="-2" attributes="0"/>
+                                      </Group>
+                                  </Group>
+                                  <Group type="102" alignment="0" attributes="0">
+                                      <Component id="agcCB" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace min="-2" pref="40" max="-2" attributes="0"/>
+                                      <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace max="-2" attributes="0"/>
+                                      <Component id="agcSpinner" min="-2" pref="64" max="-2" attributes="0"/>
+                                  </Group>
+                              </Group>
                           </Group>
                       </Group>
+                      <EmptySpace pref="75" max="32767" attributes="0"/>
                   </Group>
-                  <Component id="logIntensityCB" alignment="0" min="-2" max="-2" attributes="0"/>
               </Group>
             </DimensionLayout>
             <DimensionLayout dim="1">
@@ -105,16 +126,29 @@
                       <Component id="logIntensityCB" min="-2" pref="23" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="jSlider1" alignment="0" min="-2" max="-2" attributes="0"/>
                           <Group type="102" alignment="0" attributes="0">
-                              <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
+                              <Component id="gainLabel" linkSize="4" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
                               <Group type="103" groupAlignment="0" attributes="0">
-                                  <Component id="jSlider2" alignment="0" min="-2" max="-2" attributes="0"/>
-                                  <Component id="jLabel2" alignment="0" min="-2" max="-2" attributes="0"/>
+                                  <Component id="offsetLabel" linkSize="5" alignment="0" min="-2" max="-2" attributes="0"/>
+                                  <Group type="103" alignment="0" groupAlignment="1" attributes="0">
+                                      <Component id="offTF" linkSize="5" alignment="1" min="-2" max="-2" attributes="0"/>
+                                      <Component id="offsetSlider" linkSize="5" alignment="1" min="-2" max="-2" attributes="0"/>
+                                  </Group>
                               </Group>
                           </Group>
+                          <Group type="103" alignment="0" groupAlignment="1" attributes="0">
+                              <Component id="gainTF" linkSize="4" alignment="1" min="-2" max="-2" attributes="0"/>
+                              <Component id="gainSlider" linkSize="4" alignment="1" min="-2" max="-2" attributes="0"/>
+                          </Group>
                       </Group>
+                      <EmptySpace pref="6" max="32767" attributes="0"/>
+                      <Group type="103" groupAlignment="3" attributes="0">
+                          <Component id="agcCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="agcSpinner" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="jLabel1" alignment="3" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace max="-2" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
@@ -123,34 +157,90 @@
             <Component class="javax.swing.JCheckBox" name="logIntensityCB">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Show log intensity data"/>
+                <Property name="toolTipText" type="java.lang.String" value="Shows the scanned out static log intensity values."/>
               </Properties>
               <BindingProperties>
                 <BindingProperty name="selected" source="Form" sourcePath="${displayMethod.displayLogIntensity}" target="logIntensityCB" targetPath="selected" updateStrategy="0" immediately="false"/>
               </BindingProperties>
             </Component>
-            <Component class="javax.swing.JSlider" name="jSlider1">
+            <Component class="javax.swing.JSlider" name="gainSlider">
+              <Properties>
+                <Property name="maximum" type="int" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="cDVSTest20.MAX_ADC" type="code"/>
+                </Property>
+                <Property name="toolTipText" type="java.lang.String" value="Sets the gain applied to ADC count. Gain=1 scales full count to white when offset=0."/>
+              </Properties>
               <BindingProperties>
-                <BindingProperty name="value" source="Form" sourcePath="${logIntensityGain}" target="jSlider1" targetPath="value" updateStrategy="0" immediately="false">
+                <BindingProperty name="value" source="Form" sourcePath="${logIntensityGain}" target="gainSlider" targetPath="value" updateStrategy="0" immediately="false">
                   <BindingParameter name="IGNORE_ADJUSTING" value="N"/>
                 </BindingProperty>
               </BindingProperties>
             </Component>
-            <Component class="javax.swing.JLabel" name="jLabel1">
+            <Component class="javax.swing.JLabel" name="gainLabel">
               <Properties>
                 <Property name="text" type="java.lang.String" value="gain"/>
               </Properties>
             </Component>
-            <Component class="javax.swing.JLabel" name="jLabel2">
+            <Component class="javax.swing.JLabel" name="offsetLabel">
               <Properties>
                 <Property name="text" type="java.lang.String" value="offset"/>
               </Properties>
             </Component>
-            <Component class="javax.swing.JSlider" name="jSlider2">
+            <Component class="javax.swing.JSlider" name="offsetSlider">
+              <Properties>
+                <Property name="maximum" type="int" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="cDVSTest20.MAX_ADC" type="code"/>
+                </Property>
+                <Property name="toolTipText" type="java.lang.String" value="Sets the offset subtracted from ADC count. Gain=1 scales full count to white when offset=0. Offset shifts black point to offset count value."/>
+              </Properties>
               <BindingProperties>
-                <BindingProperty name="value" source="Form" sourcePath="${logIntensityOffset}" target="jSlider2" targetPath="value" updateStrategy="0" immediately="false">
+                <BindingProperty name="value" source="Form" sourcePath="${logIntensityOffset}" target="offsetSlider" targetPath="value" updateStrategy="0" immediately="false">
                   <BindingParameter name="IGNORE_ADJUSTING" value="N"/>
                 </BindingProperty>
               </BindingProperties>
+            </Component>
+            <Component class="javax.swing.JTextField" name="gainTF">
+              <Properties>
+                <Property name="columns" type="int" value="6"/>
+                <Property name="horizontalAlignment" type="int" value="11"/>
+              </Properties>
+              <BindingProperties>
+                <BindingProperty name="text" source="gainSlider" sourcePath="${value}" target="gainTF" targetPath="text" updateStrategy="0" immediately="false"/>
+              </BindingProperties>
+            </Component>
+            <Component class="javax.swing.JTextField" name="offTF">
+              <Properties>
+                <Property name="columns" type="int" value="6"/>
+                <Property name="horizontalAlignment" type="int" value="11"/>
+              </Properties>
+              <BindingProperties>
+                <BindingProperty name="text" source="offsetSlider" sourcePath="${value}" target="offTF" targetPath="text" updateStrategy="0" immediately="false"/>
+              </BindingProperties>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="agcCB">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Use AGC"/>
+                <Property name="toolTipText" type="java.lang.String" value="Activates Automagitc Gain Control for log intensity display"/>
+              </Properties>
+              <BindingProperties>
+                <BindingProperty name="selected" source="Form" sourcePath="${renderer.agcEnabled}" target="agcCB" targetPath="selected" updateStrategy="0" immediately="false"/>
+              </BindingProperties>
+            </Component>
+            <Component class="javax.swing.JSpinner" name="agcSpinner">
+              <Properties>
+                <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
+                  <SpinnerModel initial="1000.0" minimum="10.0" numberType="java.lang.Float" stepSize="100.0" type="number"/>
+                </Property>
+                <Property name="toolTipText" type="java.lang.String" value="Set time constant in ms for AGC"/>
+              </Properties>
+              <BindingProperties>
+                <BindingProperty name="value" source="Form" sourcePath="${renderer.AGCTauMs}" target="agcSpinner" targetPath="value" updateStrategy="0" immediately="false"/>
+              </BindingProperties>
+            </Component>
+            <Component class="javax.swing.JLabel" name="jLabel1">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="AGC time constant (ms)"/>
+              </Properties>
             </Component>
           </SubComponents>
         </Container>
@@ -187,7 +277,7 @@
                       <Component id="logIntensityChangeCB" linkSize="1" min="-2" pref="23" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
                       <Component id="colorChangeCB" linkSize="1" min="-2" pref="23" max="-2" attributes="0"/>
-                      <EmptySpace pref="5" max="32767" attributes="0"/>
+                      <EmptySpace pref="16" max="32767" attributes="0"/>
                       <Group type="103" groupAlignment="3" attributes="0">
                           <Component id="colorScaleSpinner" alignment="3" min="-2" max="-2" attributes="0"/>
                           <Component id="jLabel3" alignment="3" min="-2" max="-2" attributes="0"/>
@@ -200,6 +290,7 @@
             <Component class="javax.swing.JCheckBox" name="logIntensityChangeCB">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Show log intensity change events"/>
+                <Property name="toolTipText" type="java.lang.String" value="Show log intensity change (temporal contrast) Brighter and Darker events."/>
               </Properties>
               <BindingProperties>
                 <BindingProperty name="selected" source="Form" sourcePath="${displayMethod.displayLogIntensityChangeEvents}" target="logIntensityChangeCB" targetPath="selected" updateStrategy="0" immediately="false"/>
@@ -208,12 +299,16 @@
             <Component class="javax.swing.JCheckBox" name="colorChangeCB">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Show color change events"/>
+                <Property name="toolTipText" type="java.lang.String" value="Shows color change events, Redder and Bluer"/>
               </Properties>
               <BindingProperties>
                 <BindingProperty name="selected" source="Form" sourcePath="${displayMethod.displayColorChangeEvents}" target="colorChangeCB" targetPath="selected" updateStrategy="0" immediately="false"/>
               </BindingProperties>
             </Component>
             <Component class="javax.swing.JSpinner" name="colorScaleSpinner">
+              <Properties>
+                <Property name="toolTipText" type="java.lang.String" value="Sets the full scale (white or black) event count."/>
+              </Properties>
               <BindingProperties>
                 <BindingProperty name="value" source="Form" sourcePath="${colorScale}" target="colorScaleSpinner" targetPath="value" updateStrategy="0" immediately="false">
                   <Property name="validator" type="org.jdesktop.beansbinding.Validator" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
@@ -242,17 +337,17 @@
           <Layout>
             <DimensionLayout dim="0">
               <Group type="103" groupAlignment="0" attributes="0">
-                  <Group type="102" attributes="0">
+                  <Group type="102" max="-2" attributes="0">
                       <EmptySpace max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="0" attributes="0">
+                      <Group type="103" groupAlignment="0" max="-2" attributes="0">
                           <Component id="jCheckBox1" alignment="0" min="-2" max="-2" attributes="0"/>
                           <Group type="102" alignment="0" attributes="0">
                               <Component id="jLabel4" min="-2" max="-2" attributes="0"/>
                               <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                              <Component id="jSpinner1" pref="56" max="32767" attributes="0"/>
+                              <Component id="jSpinner1" min="-2" pref="62" max="-2" attributes="0"/>
                           </Group>
                       </Group>
-                      <EmptySpace max="-2" attributes="0"/>
+                      <EmptySpace min="-2" pref="27" max="-2" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
@@ -265,7 +360,7 @@
                           <Component id="jLabel4" alignment="3" min="-2" max="-2" attributes="0"/>
                           <Component id="jSpinner1" alignment="3" min="-2" max="-2" attributes="0"/>
                       </Group>
-                      <EmptySpace pref="24" max="32767" attributes="0"/>
+                      <EmptySpace pref="32" max="32767" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
@@ -274,6 +369,7 @@
             <Component class="javax.swing.JCheckBox" name="jCheckBox1">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Show global intensity"/>
+                <Property name="toolTipText" type="java.lang.String" value="Shows the global sum photocurrent value."/>
               </Properties>
               <BindingProperties>
                 <BindingProperty name="selected" source="Form" sourcePath="${displayMethod.intensityDisplayEnabled}" target="jCheckBox1" targetPath="selected" updateStrategy="0" immediately="false"/>
@@ -289,6 +385,7 @@
                 <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
                   <SpinnerModel initial="1.0" maximum="10.0" minimum="0.1" numberType="java.lang.Float" stepSize="0.1" type="number"/>
                 </Property>
+                <Property name="toolTipText" type="java.lang.String" value="Scales ISI so that scale=1 shows 1ms ISI as full scale."/>
               </Properties>
               <BindingProperties>
                 <BindingProperty name="value" source="Form" sourcePath="${displayMethod.intensityScale}" target="jSpinner1" targetPath="value" updateStrategy="0" immediately="false"/>

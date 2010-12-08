@@ -4,10 +4,10 @@
  */
 package ch.unizh.ini.jaer.chip.dvs320;
 
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
+import java.awt.geom.Point2D.Float;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.graphics.RetinaRenderer;
+import net.sf.jaer.util.filter.LowpassFilter2d;
 
 /**
  * Renders complex data from cDVS chips.
@@ -19,16 +19,19 @@ public class cDVSRenderer extends RetinaRenderer {
     private cDVSTest20 cDVSChip = null;
     private final float[] redder = {1, 0, 0}, bluer = {0, 0, 1}, brighter = {1, 1, 1}, darker = {-1, -1, -1};
     private int sizeX = 1;
+    private LowpassFilter2d agcFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
+    private boolean agcEnabled;
 
     public cDVSRenderer(cDVSTest20 chip) {
         super(chip);
         cDVSChip = chip;
+        agcEnabled = chip.getPrefs().getBoolean("agcEnabled", false);
+        setAGCTauMs(chip.getPrefs().getFloat("agcTauMs", 1000));
     }
 
     @Override
     public synchronized void render(EventPacket packet) {
 
-        final float MAX_ADC = (float)((1<<11)-1);
 
         // rendering is a hack to use the standard pixmap to duplicate pixels on left side (where 32x32 cDVS array lives) with superimposed Brighter, Darker, Redder, Bluer, and log intensity values,
         // and to show DVS test pixel events on right side (where the 64x64 total consisting of 4x 32x32 types of pixels live)
@@ -38,7 +41,7 @@ public class cDVSRenderer extends RetinaRenderer {
         }
         this.packet = packet;
         if (packet.getEventClass() != cDVSEvent.class) {
-            log.warning("wrong input event class, got "+packet.getEventClass()+" but we need to have "+cDVSEvent.class);
+            log.warning("wrong input event class, got " + packet.getEventClass() + " but we need to have " + cDVSEvent.class);
             return;
         }
         checkPixmapAllocation();
@@ -104,15 +107,28 @@ public class cDVSRenderer extends RetinaRenderer {
                 CDVSLogIntensityFrameData b = cDVSChip.getFrameData();
                 try {
                     b.acquire();
-                    float gain=cDVSChip.getLogIntensityGain(), offset=cDVSChip.getLogIntensityOffset();
                     float[] pm = getPixmapArray();
+                    int min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
                     for (int y = 0; y < cDVSTest20.SIZE_Y_CDVS; y++) {
                         for (int x = 0; x < cDVSTest20.SIZE_X_CDVS; x++) {
-                            float v = gain*(b.get(x, y) / MAX_ADC+offset);
-                            if(v>1)v=1;
+                            int count = b.get(x, y);
+                            if (agcEnabled) {
+                                if (count < min) {
+                                    min = count;
+                                } else if (count > max) {
+                                    max = count;
+                                }
+                            }
+                            float v = adc01normalized(count);
+                            if (v > 1) {
+                                v = 1;
+                            }
                             float[] vv = {v, v, v};
                             changeCDVSPixel(x, y, pm, vv, 1);
                         }
+                    }
+                    if (agcEnabled) {
+                        Float filter2d = agcFilter.filter2d(min, max, b.getTimestamp());
                     }
                 } catch (IndexOutOfBoundsException ex) {
                     log.warning(ex.toString());
@@ -135,7 +151,7 @@ public class cDVSRenderer extends RetinaRenderer {
     /** x,y refer to 32x32 space of cDVS pixels but rendering space for cDVS is 64x64 */
     private void changeCDVSPixel(int x, int y, float[] f, float[] c, float step) {
         int ind;
-        ind = 3 * (2*x + 2*y * sizeX);
+        ind = 3 * (2 * x + 2 * y * sizeX);
         float r = c[0] * step, g = c[1] * step, b = c[2] * step;
         f[ind] += r;
         f[ind + 1] += g;
@@ -179,5 +195,45 @@ public class cDVSRenderer extends RetinaRenderer {
 
     public boolean isDisplayColorChangeEvents() {
         return cDVSChip.isDisplayColorChangeEvents();
+    }
+
+    private float adc01normalized(int count) {
+        if (!agcEnabled) {
+            float v = (float) (cDVSChip.logIntensityGain * (count - cDVSChip.logIntensityOffset)) / cDVSTest20.MAX_ADC;
+            return v;
+        } else {
+            Float filter2d=agcFilter.getValue2d();
+            float offset=filter2d.x;
+            float range=(filter2d.y-filter2d.x);
+            float v = ((count - offset)) / range ;
+            return v;
+        }
+    }
+
+    public float getAGCTauMs() {
+        return agcFilter.getTauMs();
+    }
+
+    public void setAGCTauMs(float tauMs) {
+        if (tauMs < 10) {
+            tauMs = 10;
+        }
+        agcFilter.setTauMs(tauMs);
+        chip.getPrefs().putFloat("agcTauMs", tauMs);
+    }
+
+    /**
+     * @return the agcEnabled
+     */
+    public boolean isAgcEnabled() {
+        return agcEnabled;
+    }
+
+    /**
+     * @param agcEnabled the agcEnabled to set
+     */
+    public void setAgcEnabled(boolean agcEnabled) {
+        this.agcEnabled = agcEnabled;
+        chip.getPrefs().putBoolean("agcEnabled", agcEnabled);
     }
 }

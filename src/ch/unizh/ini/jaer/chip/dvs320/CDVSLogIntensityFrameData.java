@@ -15,7 +15,8 @@ public class CDVSLogIntensityFrameData {
 
     public static final int WIDTH=cDVSTest20.SIZE_X_CDVS, HEIGHT=cDVSTest20.SIZE_Y_CDVS;
     private static final int NUMSAMPLES=WIDTH*HEIGHT;
-
+    private int timestamp=0; // timestamp of starting sample
+    
 //    IntBuffer buf1=IntBuffer.allocate(NUMSAMPLES), buf2=IntBuffer.allocate(NUMSAMPLES);
 //    public IntBuffer currentWritingBuffer=buf2, currentReadingBuffer=buf1;
 
@@ -60,6 +61,20 @@ public class CDVSLogIntensityFrameData {
 //        currentWritingBuffer=currentReadingBuffer;
 //        currentReadingBuffer=tmp;
 //        currentWritingBuffer.clear();
+    }
+
+    /**
+     * @return the timestamp
+     */
+    public int getTimestamp() {
+        return timestamp;
+    }
+
+    /**
+     * @param timestamp the timestamp to set
+     */
+    public void setTimestamp(int timestamp) {
+        this.timestamp = timestamp;
     }
 
 }

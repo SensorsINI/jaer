@@ -78,6 +78,9 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     /** For ADC data, the data is defined by the ADC channel and whether it is the first ADC value from the scanner. */
     public static final int ADC_TYPE_MASK = 0x1c00, ADC_DATA_MASK = 0x3ff, ADC_CHANNEL_MASK = 0x1800, ADC_START_BIT = 0x0400;
 
+
+   public static final int MAX_ADC = (int)((1<<12)-1);
+
     /** The computed intensity value. */
     private float globalIntensity = 0;
     private CDVSLogIntensityFrameData frameData = new CDVSLogIntensityFrameData();
@@ -87,7 +90,8 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     private boolean displayColorChangeEvents;
     private boolean displayLogIntensityChangeEvents;
 
-    private float logIntensityGain=getPrefs().getFloat("logIntensityGain",1f), logIntensityOffset=getPrefs().getFloat("logIntensityOffset",0f);
+    /** Control scaling and offset of display of log intensity values. */
+    int logIntensityGain=getPrefs().getInt("logIntensityGain",1), logIntensityOffset=getPrefs().getInt("logIntensityOffset",0);
 
     /** Creates a new instance of cDVSTest10.  */
     public cDVSTest20() {
@@ -142,10 +146,12 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         setHardwareInterface(hardwareInterface);
     }
 
+    @Override
     public float getIntensity() {
         return globalIntensity;
     }
 
+    @Override
     public void setIntensity(float f) {
         globalIntensity = f;
     }
@@ -162,6 +168,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     int debugSampleCounter=0;
 
     /**
+     * Value from 1 to MAX_ADC. Gain of 1, offset of 0 turns full scale ADC to 1. Gain of MAX_ADC makes a single count go full scale.
      * @return the logIntensityGain
      */
     public float getLogIntensityGain() {
@@ -169,14 +176,18 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     }
 
     /**
+     * Value from 1 to MAX_ADC. Gain of 1, offset of 0 turns full scale ADC to 1.
+     * Gain of MAX_ADC makes a single count go full scale.
      * @param logIntensityGain the logIntensityGain to set
      */
-    public void setLogIntensityGain(float logIntensityGain) {
+    public void setLogIntensityGain(int logIntensityGain) {
+        if(logIntensityGain<1) logIntensityGain=1; else if(logIntensityGain>MAX_ADC) logIntensityGain=MAX_ADC;
         this.logIntensityGain = logIntensityGain;
-        getPrefs().putFloat("logIntensityGain",logIntensityGain);
+        getPrefs().putInt("logIntensityGain",logIntensityGain);
     }
 
     /**
+     * Value subtracted from ADC count before gain multiplication. Ranges from 0 to MAX_ADC.
      * @return the logIntensityOffset
      */
     public float getLogIntensityOffset() {
@@ -184,11 +195,13 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     }
 
     /**
-     * @param logIntensityOffset the logIntensityOffset to set
+    * Sets value subtracted from ADC count before gain multiplication. Clamped between 0 to MAX_ADC.
+      * @param logIntensityOffset the logIntensityOffset to set
      */
-    public void setLogIntensityOffset(float logIntensityOffset) {
+    public void setLogIntensityOffset(int logIntensityOffset) {
+        if(logIntensityOffset<0) logIntensityOffset=0; else if(logIntensityOffset>MAX_ADC) logIntensityOffset=MAX_ADC;
         this.logIntensityOffset = logIntensityOffset;
-        getPrefs().putFloat("logIntensityOffset", logIntensityOffset);
+        getPrefs().putInt("logIntensityOffset", logIntensityOffset);
     }
 
     /** The event extractor. Each pixel has two polarities 0 and 1.
@@ -311,6 +324,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                     // TODO comment back in
                     if ((data & ADC_START_BIT) == ADC_START_BIT) {
                         getFrameData().swapBuffers();
+                        getFrameData().setTimestamp(timestamps[i]);
                     }
                     getFrameData().put(data & ADC_DATA_MASK);
                     
@@ -331,6 +345,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
      * Sets the hardware interface and the bias generators hardware interface
      *@param hardwareInterface the interface
      */
+    @Override
     public void setHardwareInterface(final HardwareInterface hardwareInterface) {
         this.hardwareInterface = hardwareInterface;
         try {
@@ -672,6 +687,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                 hasPreferencesList.add(this);
             }
 
+            @Override
             public String toString() {
                 return "OutputMux name=" + name + " nSrBits=" + nSrBits + " nInputs=" + nInputs + " selectedChannel=" + selectedChannel + " channelName=" + getChannelName(selectedChannel) + " code=" + getCode(selectedChannel) + " getBitString=" + bitString;
             }
@@ -738,10 +754,12 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                 return "cDVSTest." + getClass().getSimpleName() + "." + name + ".selectedChannel";
             }
 
+            @Override
             public void loadPreference() {
                 select(getPrefs().getInt(key(), -1));
             }
 
+            @Override
             public void storePreference() {
                 getPrefs().putInt(key(), selectedChannel);
             }
@@ -752,6 +770,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
              * @param input the command string.
              * @return some informative string for debugging bad commands.
              */
+            @Override
             public String processRemoteControlCommand(RemoteControlCommand command, String input) {
                 String[] t = input.split("\\s");
                 if (t.length < 2) {
@@ -793,7 +812,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
 
         class VoltageOutputMap extends OutputMap {
 
-            void put(int k, int v) {
+            final void put(int k, int v) {
                 put(k, v, "Voltage " + k);
             }
 
