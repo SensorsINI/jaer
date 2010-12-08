@@ -37,7 +37,7 @@ public class CDVSLogIntensityFrameData {
 
     public int get(int x, int y){
 //        return currentReadingBuffer.get(x+WIDTH*y);
-        return currentReadingBuffer[x+WIDTH*y];
+        return currentReadingBuffer[y+WIDTH*x];
     }
 
     public void put(int val){
@@ -51,6 +51,7 @@ public class CDVSLogIntensityFrameData {
         acquire();
         int[] tmp=currentReadingBuffer;
         currentReadingBuffer=currentWritingBuffer;
+        //System.out.println(writeCounter);
         writeCounter=0;
         currentWritingBuffer=tmp;
         release();

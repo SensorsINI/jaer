@@ -294,11 +294,11 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
     }
 
     public void setLogIntensityOffset(int logIntensityOffset) {
-        chip.setLogIntensityOffset(logIntensityOffset/100f);
+        chip.setLogIntensityOffset((logIntensityOffset-50)/100f);
     }
 
     public void setLogIntensityGain(int logIntensityGain) {
-        chip.setLogIntensityGain(logIntensityGain/100f);
+        chip.setLogIntensityGain(logIntensityGain/10f);
     }
 
     public int getLogIntensityOffset() {

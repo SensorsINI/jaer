@@ -582,7 +582,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             byte[] biasBytes = super.formatConfigurationBytes(biasgen);
             byte[] configBytes = allMuxes.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
             bb.put(configBytes);
-            byte VDAC = Byte.valueOf("127");
+            byte VDAC = Byte.valueOf("9");
             bb.put(VDAC);   // VDAC needs 8 bits
             bb.put(biasBytes);
 

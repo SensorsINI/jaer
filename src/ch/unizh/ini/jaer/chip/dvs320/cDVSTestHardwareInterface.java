@@ -48,8 +48,8 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
     }
 
     private short TrackTime=1024, RefOnTime=256, RefOffTime=256, IdleTime=256;
-    private boolean Select5Tbuffer=false;
-    private boolean UseCalibration=false;
+    private boolean Select5Tbuffer=true;
+    private boolean UseCalibration=true;
 
     public void setTrackTime(short trackTimeUs) {
         TrackTime = (short)(15 * trackTimeUs);
@@ -130,7 +130,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         nBits += 1;
 
         //s.reverse();
-        System.out.println(s);
+        //System.out.println(s);
 
         BigInteger bi = new BigInteger(s.toString(), 2);
         byte[] byteArray = bi.toByteArray(); // finds minimal set of bytes in big endian format, with MSB as first element
@@ -536,7 +536,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
                                         addresses[eventCounter]=dataword;
                                         timestamps[eventCounter]=currentts;  // ADC event gets last timestamp
                                         eventCounter++;
-                                        System.out.println("ADC word: " + (dataword&cDVSTest20.ADC_DATA_MASK));
+                                  //      System.out.println("ADC word: " + (dataword&cDVSTest20.ADC_DATA_MASK));
                                     }else if ((buf[i + 1] & Xmask) == Xmask) {////  received an X address, write out event to addresses/timestamps output arrays
                                         // x adddress
                                         //xadd = (buf[i] & 0xff);  //
