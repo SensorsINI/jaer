@@ -47,9 +47,9 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         super.sendBiasBytes(bytes);
     }
 
-    private short TrackTime=50*15, RefOnTime=20*15, RefOffTime=20*15, IdleTime=10*15;
+    private short TrackTime=1024, RefOnTime=256, RefOffTime=256, IdleTime=256;
     private boolean Select5Tbuffer=false;
-    private boolean UseCalibration=true;
+    private boolean UseCalibration=false;
 
     public void setTrackTime(short trackTimeUs) {
         TrackTime = (short)(15 * trackTimeUs);
@@ -129,7 +129,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
             s.append(getBitString((short)0,(short)1));
         nBits += 1;
 
-        s.reverse();
+        //s.reverse();
         System.out.println(s);
 
         BigInteger bi = new BigInteger(s.toString(), 2);
