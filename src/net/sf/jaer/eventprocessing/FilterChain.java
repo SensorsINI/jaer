@@ -500,6 +500,6 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     public void setUpdateIntervalMs(float updateIntervalMs) {
 //        support.firePropertyChange("updateIntervalMs", this.updateIntervalMs, updateIntervalMs); // TODO add propertyChange here?
         this.updateIntervalMs = updateIntervalMs;
-        chip.getPrefs().putFloat("FilterChain.updateIntervalMs", updateIntervalMs); 
+        chip.getPrefs().putFloat("FilterChain.updateIntervalMs", updateIntervalMs);
     }
 }
