@@ -82,7 +82,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         ADCchannel = chan;
     }
 
-    private static short ADCconfig = (short) 0x908;
+    private static short ADCconfig =  (short) 0x100;   //normal power mode, single ended, sequencer unused : (short) 0x908;
     private final static short ADCconfigLength = (short) 12;
 
     private String getBitString(short value, short nSrBits) {
@@ -212,11 +212,14 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
     synchronized public void resetTimestamps() {
         log.info(this + ".resetTimestamps(): zeroing timestamps");
 
+
         // send vendor request for device to reset timestamps
         if (gUsbIo == null) {
             throw new RuntimeException("device must be opened before sending this vendor request");
         }
         try {
+            stopADC();
+            startADC();
             this.sendVendorRequest(VENDOR_REQUEST_RESET_TIMESTAMPS);
         } catch (HardwareInterfaceException e) {
             log.warning("could not send vendor request to reset timestamps: " + e);
@@ -511,7 +514,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
                     for (int i = 0; i < bytesSent; i += 2) {
                         //   tobiLogger.log(String.format("%d %x %x",eventCounter,buf[i],buf[i+1])); // DEBUG
                         //   int val=(buf[i+1] << 8) + buf[i]; // 16 bit value of data
-                        int dataword = (0xff&buf[i]) | (0xff&(buf[i + 1] << 8));  // data sent little endian
+                        int dataword = (0xff&buf[i]) | (0xff00&(buf[i + 1] << 8));  // data sent little endian
 
                         final int code = (buf[i + 1] & 0xC0) >> 6; // gets two bits at XX00 0000 0000 0000. (val&0xC000)>>>14;
                         //  log.info("code " + code);
@@ -533,7 +536,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
                                         addresses[eventCounter]=dataword;
                                         timestamps[eventCounter]=currentts;  // ADC event gets last timestamp
                                         eventCounter++;
-                                        System.out.println("ADC word" + (dataword&cDVSTest20.ADC_DATA_MASK));
+                                        System.out.println("ADC word: " + (dataword&cDVSTest20.ADC_DATA_MASK));
                                     }else if ((buf[i + 1] & Xmask) == Xmask) {////  received an X address, write out event to addresses/timestamps output arrays
                                         // x adddress
                                         //xadd = (buf[i] & 0xff);  //
