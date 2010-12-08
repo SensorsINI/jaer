@@ -45,8 +45,10 @@ public abstract class MotionData implements Cloneable{
     /** The time in System.currentTimeMillis() that this data was captured */
     private long timeCapturedMs=0;
 
+
     protected float [][][] rawDataPixel; //Array containing the raw data [channel][posX][posY]
     protected float [] rawDataGlobal;
+
 
 
     /* Motion data is basically represented as receptor outputs, local and global
@@ -65,6 +67,10 @@ public abstract class MotionData implements Cloneable{
 
     // contains the last few MotionData acquired
     protected MotionData[] pastMotionData;
+
+
+    
+
     
     /** Bits set in contents show what data has actually be acquired in this buffer.
      @see #GLOBAL_Y
@@ -449,19 +455,20 @@ public abstract class MotionData implements Cloneable{
         }
     }
 
+
     /** The serialized size in bytes of a MotionData instance */
     public int getLoggedObjectSize(){
-        int size =      4  //contents
-                      + 4   //float sequenceNumber
+        int size =      4  // int contents
+                      + 4   //int sequenceNumber
                       + 8  //long timecaptured
-                      + 4 * getNumGlobalChannels()     // float is 32bit (4byte)
-                      + 4 * 3 * (chip.getSizeX()*chip.getSizeY())// ph,ux,uy
-                      + 4 * getNumLocalChannels()* (chip.getSizeX()*chip.getSizeY()) ; // 2D float arrays for each channel
-
-                    //4+8+3+chip.MAX_NUM_PIXELCHANNELS*4*(chip.getSizeX()*chip.getSizeY());
+                      + 4 * 2 // float global ux, global uy     // float is 32bit (4byte)
+                      + 4 * 3 * (chip.getSizeX()*chip.getSizeY())// float arrays ph,ux,uy
+                      + 4 * getNumLocalChannels()* (chip.getSizeX()*chip.getSizeY()); // 2D float arrays for each channel
+//        size=4+4+8+3*4*(chip.getSizeX()*chip.getSizeY());
         return size;
     }
-
 }
+
+
 
 

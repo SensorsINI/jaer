@@ -50,10 +50,14 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
      @return the data frame
      */
     synchronized public MotionData readData(MotionData motionData) throws IOException{
-        int oldPosition=position();
-        motionData.read(dataInputStream);
-        getSupport().firePropertyChange("position",oldPosition,position());
-        return motionData;
+            try{
+                int oldPosition=position();
+                motionData.read(dataInputStream);
+                getSupport().firePropertyChange("position",oldPosition,position());
+                return motionData;
+            }catch(NullPointerException e){
+                throw new IOException();
+            }
     }
     
     // computes various quantities of input file
@@ -111,10 +115,12 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
         }
     }
     
+    @Override
     public void rewind() throws IOException {
         fileChannel.position(0);
     }
     
+    @Override
      synchronized  public void setFractionalPosition(float frac) {
         int oldPosition=position();
         position((int)(frac*size));

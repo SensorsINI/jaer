@@ -7,7 +7,6 @@
 package ch.unizh.ini.jaer.projects.opticalflow.graphics;
 
 import ch.unizh.ini.jaer.projects.opticalflow.*;
-import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.chip.*;
@@ -698,10 +697,12 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
                 }catch(InterruptedException ignore){}
                 rewind();
             }catch(IOException io){
-                io.printStackTrace();
+//                io.printStackTrace();
                 rewind();
+                return chip.getEmptyMotionData();
             }catch(NullPointerException np){
                 np.printStackTrace();
+                rewind();
             }
             return data;
         }
@@ -852,7 +853,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
                                 synchronized(loggingOutputStream){
                                     try{
                                         loggingOutputStream.writeData(motionData);
-                                        tobiLogger.log(String.format("%f %f",motionData.getGlobalX(), motionData.getGlobalY()));
+                                        tobiLogger.log(String.format("%f %s %f",motionData.getGlobalX(),"\t", motionData.getGlobalY()));
                                     }catch(IOException e){
                                         e.printStackTrace();
                                         loggingEnabled=false;

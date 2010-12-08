@@ -97,7 +97,8 @@ public class MotionDataMDC2D extends MotionData {
                 this.localUxUy_temporalAverage(3); //average local motion over time for (num) frames
                 this.globalUxUy_averageLocal();
                 break;
-        }  
+        }
+//        System.out.print(globalX);System.out.print("\t");System.out.println(globalY);
     }
 
     @Override
@@ -190,8 +191,8 @@ public class MotionDataMDC2D extends MotionData {
         float b1=0,  b2=0;
         float f1, f2, f3, f4;
         try{
-            for(int x=1; x< chip.NUM_COLUMNS-1;x++){ //leave out border pixel
-                for(int y=1; y< chip.NUM_ROWS-1; y++){ //leave out border pixel
+            for(int x=2; x< chip.NUM_COLUMNS-2;x++){ //leave out border pixel
+                for(int y=2; y< chip.NUM_ROWS-2; y++){ //leave out border pixel
                     f1=past[y][x+1];
                     f2=past[y][x-1];
                     f3=past[y+1][x];
