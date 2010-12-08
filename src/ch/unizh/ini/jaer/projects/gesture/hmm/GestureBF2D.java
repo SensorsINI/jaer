@@ -292,14 +292,11 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
 
              // default trimming
             ArrayList<ClusterPathPoint> trimmedPath = trajectoryTrimmingPointBase(path, 2, 2);
-//            ArrayList<ClusterPathPoint> trimmedPath = path;
 
             // doesn't have to classify short trajectroies
             if(trimmedPath.size() < numPointsThreshold)
             {
-                if(prevPath == null || doesAccumulate(trimmedPath, checkActivationTimeUs)){
-                    storePath(trimmedPath, true);
-                }
+                storePath(trimmedPath, true);
                 return;
             }
 
@@ -325,9 +322,6 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                     }
 
                 }
-//                else {
-//                    storePath(trimmedPath, false);
-//                }
 
             } else {
                 if(detectStartingGesture(trimmedPath)){
@@ -335,17 +329,20 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                     afterRecognitionProcess("Infinite", trimmedPath);
                     endTimePrevGesture = endTimeGesture;
                 }
-//                else {
-//                    storePath(trimmedPath, false);
-//                }
             }
-            if(bmg == null || (bmg == null && !bmg.startsWith("Infinite")))
+            if(bmg != null && (bmg.startsWith("Infinite")))
+                resetPrevPath();
+            else
                 storePath(trimmedPath, false);
         }
     }
 
+    public void resetPrevPath(){
+        prevPath = null;
+    }
+
     public void storePath(ArrayList<ClusterPathPoint> path, boolean accumulate){
-        if(!accumulate || prevPath == null)
+        if(prevPath == null || !accumulate || !doesAccumulate(path, checkActivationTimeUs))
             prevPath = new ArrayList<ClusterPathPoint>();
 
         for(ClusterPathPoint pt:path){
@@ -465,12 +462,17 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                                                                     new Point2D.Float(firstPointPath.x, firstPointPath.y));
                 if(distance <= chip.getSizeX()*0.20f)
                     ret = true;
-                else
+                else{
                     System.out.println("distance constraint");
-            } else
+                    prevPath = null;
+                }
+            } else {
                 System.out.println("time constraint");
-        } else
+                prevPath = null;
+            }
+        } else {
             System.out.println("null constraint");
+        }
 
         return ret;
     }
@@ -514,7 +516,6 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
             return false;
 
         boolean ret = true;
-//        boolean nullifyPrevPath = true;
 
         if(login){
              if(bmg.startsWith("Infinite")){
@@ -523,17 +524,9 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                 doPush();
             } else if(bmg.startsWith("SlashUp")){
                 ret = doSlashUp(path);
-                // if it's not a part of check-gesture, it should be store to be used later
-//                if(!ret){
-//                    storePath(path, false);
-//                    nullifyPrevPath = false;
-//                }
             } else {
                 if(bmg.startsWith("SlashDown")){
                     doSlashDown();
-                    // Slashdown is not a complete gesture. So, it can be a part of other gestures
- //                  storePath(path, false);
- //                  nullifyPrevPath = false;
                 } else {
                     // doesn't have consider refractory time for CW and CCW
                     if(bmg.startsWith("CW")){
@@ -569,9 +562,6 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                 doLogin();
             }
         }
-
-//        if(nullifyPrevPath)
-//            prevPath = null;
 
         return ret;
     }
@@ -1441,6 +1431,8 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                     log.log(Level.WARNING, "Gesture HMM has been loaded in {0}", file.getAbsoluteFile());
 
 
+//                    for(int i=0; i<16; i++)
+//                        System.out.println("sigma(" + i + ") = " + ghmm.getGTModel("Left_LRB").getSigma(i));
 //                    String[] bestSeq = new String[] {"6", "15", "10", "3", "13", "6", "15", "10", "3", "13", "6", "15", "10", "3", "13", "6"};
 //                    String[] idealSeq = new String[] {"12", "13", "14", "15", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"};
 //                    String[] localSeq = new String[] {"12", "13", "14", "15", "0", "1", "2", "3", "13", "14", "15", "0", "1", "2", "3", "4"};

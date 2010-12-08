@@ -599,6 +599,10 @@ public class GestureHmm implements Serializable{
         return gth.getMuToArray();
     }
 
+    public GaussianThreshold getGTModel(String name){
+        return gthModels.get(name);
+    }
+
     public float getGTCriterion() {
         return GTCriterion;
     }

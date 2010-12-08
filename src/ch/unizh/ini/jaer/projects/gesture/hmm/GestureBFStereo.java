@@ -63,14 +63,11 @@ public class GestureBFStereo extends GestureBF2D{
 
             // default trimming
             ArrayList<ClusterPathPoint> trimmedPath = trajectoryTrimmingPointBase(path, 2, 2);
-//            ArrayList<ClusterPathPoint> trimmedPath = path;
 
             // doesn't have to classify short trajectroies
             if(trimmedPath.size() < getNumPointsThreshold())
             {
-                if(getPrevPath() == null || doesAccumulate(trimmedPath, getCheckActivationTimeUs())){
-                    storePath(trimmedPath, true);
-                }
+                storePath(trimmedPath, true);
                 return;
             }
 
@@ -99,8 +96,6 @@ public class GestureBFStereo extends GestureBF2D{
 
                     pushDetected = false;
                 }
-//                else
-//                    storePath(trimmedPath, false);
 
             } else { // if the gesture recognition system is inactive, checks the start gesture only
                 if(detectStartingGesture(trimmedPath)){
@@ -119,10 +114,10 @@ public class GestureBFStereo extends GestureBF2D{
                     tmpTracker.setEnableDisparityLimit(true);
                      pushDetected = false;
                 }
-//                else
-//                    storePath(trimmedPath, false);
             }
-            if(bmg == null || (bmg == null && !bmg.startsWith("Infinite")))
+            if(bmg != null && (bmg.startsWith("Infinite")))
+                resetPrevPath();
+            else
                 storePath(trimmedPath, false);
         } 
     }
