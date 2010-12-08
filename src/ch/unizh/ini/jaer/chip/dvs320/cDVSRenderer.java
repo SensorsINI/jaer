@@ -5,6 +5,7 @@
 package ch.unizh.ini.jaer.chip.dvs320;
 
 import java.awt.geom.Point2D.Float;
+import java.beans.PropertyChangeSupport;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.graphics.RetinaRenderer;
 import net.sf.jaer.util.filter.LowpassFilter2d;
@@ -21,6 +22,7 @@ public class cDVSRenderer extends RetinaRenderer {
     private int sizeX = 1;
     private LowpassFilter2d agcFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
     private boolean agcEnabled;
+    public static final String AGC_VALUES="AGCValues";
 
     public cDVSRenderer(cDVSTest20 chip) {
         super(chip);
@@ -129,6 +131,7 @@ public class cDVSRenderer extends RetinaRenderer {
                     }
                     if (agcEnabled) {
                         Float filter2d = agcFilter.filter2d(min, max, b.getTimestamp());
+                        getSupport().firePropertyChange(AGC_VALUES, null, filter2d); // inform listeners (GUI) of new AGC min/max filterd log intensity values
                     }
                 } catch (IndexOutOfBoundsException ex) {
                     log.warning(ex.toString());
@@ -236,4 +239,5 @@ public class cDVSRenderer extends RetinaRenderer {
         this.agcEnabled = agcEnabled;
         chip.getPrefs().putBoolean("agcEnabled", agcEnabled);
     }
+
 }
