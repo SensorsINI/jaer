@@ -121,6 +121,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         cDVSDisplayMethod = new cDVSDisplayMethod(this);
         getCanvas().addDisplayMethod(cDVSDisplayMethod);
         getCanvas().setDisplayMethod(cDVSDisplayMethod);
+        cDVSDisplayMethod.setIntensitySource(this);
 
     }
 
