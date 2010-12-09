@@ -80,9 +80,13 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
     /**
      * time to wait for auto logout
      */
-    private int autoLogoutTimeMs = getPrefs().getInt("GestureBFStereo.autoLogoutTimeMs", 10000);
-    private boolean enableAutoLogout = getPrefs().getBoolean("GestureBFStereo.enableAutoLogout", true);
+    private int autoLogoutTimeMs = getPrefs().getInt("GestureBF2D.autoLogoutTimeMs", 10000);
+    private boolean enableAutoLogout = getPrefs().getBoolean("GestureBF2D.enableAutoLogout", true);
 
+    /**
+     * maximum time difference between correlated segments
+     */
+    private int maxTimeDiffCorrSegmentsUs = getPrefs().getInt("GestureBF2D.maxTimeDiffCorrSegmentsUs", 300000);
 
     
     /**
@@ -98,7 +102,8 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
     /**
      * images for gestures
      */
-    private Image imgHi, imgBye, imgLeft, imgRight, imgUp, imgDown, imgCW, imgCCW, imgCheck, imgPush;
+    private Image   imgHi = null, imgBye = null, imgLeft = null, imgRight = null, imgUp = null,
+                    imgDown = null, imgCW = null, imgCCW = null, imgCheck = null, imgPush = null;
 
     /**
      * timmings in the current and previous gestures
@@ -110,11 +115,6 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
      * checkActivated is true if 'SlashDown' is detected. It's false otherwise.
      */
     private boolean checkActivated = false;
-
-    /**
-     * time duration limit between 'SlashDown' and 'SlashUp' to make a valid 'Check' gesture
-     */
-    private static int checkActivationTimeUs = 400000;
 
     /**
      * previous path
@@ -131,12 +131,12 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
     /**
      * feature extractor
      */
-    FeatureExtraction fve = new FeatureExtraction(16, 16);
+    FeatureExtraction fve = null;
 
     /**
      * Hand drawing panel with gesture HMM module
      */
-    HmmDrawingPanel hmmDP;
+    HmmDrawingPanel hmmDP = null;
 
     /**
      * low pass filter to smoothe the trajectory of gestures
@@ -147,6 +147,8 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
      * timer for auto logout
      */
     protected Timer autoLogoutTimer;
+
+    boolean savePath = true;
 
 
 
@@ -174,19 +176,12 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         setPropertyTooltip(gesture,"refractoryTimeMs","refractory time in ms between gestures");
         setPropertyTooltip(gesture,"GTCriterion","criterion of Gaussian threshold");
         setPropertyTooltip(gesture,"usePrevPath","enables using prevPath to find gesture pattern");
+        setPropertyTooltip(gesture,"maxTimeDiffCorrSegmentsUs","maximum time difference between correlated segments");
         setPropertyTooltip(autoLogout,"autoLogoutTimeMs","time in ms to wait before auto logout");
         setPropertyTooltip(autoLogout,"enableAutoLogout","if true, auto logout is done if it's been more than autoLogoutTimeMs since the last gesture");
 
         // low pass filter
         this.lpf = new LowpassFilter2d();
-
-        // hand drawing panel with gesture HMM
-        String [] bNames = {"Add", "Remove", "Reset", "Show", "Learn", "Guess"};
-        hmmDP = new HmmDrawingPanel("HMM based gesture recognition test using hand drawing panel", bNames);
-        hmmDP.setVisible(false);
-
-        // load gesture images into the memory
-        loadGestureImages();
 
         // encloses tracker
         filterChainSetting ();
@@ -233,18 +228,25 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         tracker.resetFilter();
         endTimePrevGesture = 0;
         lpf.setTauMs(tauPathMs);
+        resetPrevPath();
     }
 
     @Override
     public synchronized void setFilterEnabled (boolean filterEventsEnabled){
         super.setFilterEnabled(filterEventsEnabled);
         
-        if ( hmmDP != null ){
-            if ( filterEventsEnabled ){
+        if ( filterEventsEnabled ){
+            if(hmmDP == null){
+                // hand drawing panel with gesture HMM
+                String [] bNames = {"Add", "Remove", "Reset", "Show", "Learn", "Guess"};
+                hmmDP = new HmmDrawingPanel("HMM based gesture recognition test using hand drawing panel", bNames);
+                // load gesture images into the memory
+                loadGestureImages();
+            } else
                 hmmDP.setVisible(true);
-            } else{
+        } else{
+            if(hmmDP != null)
                 hmmDP.setVisible(false);
-            }
         }
     }
 
@@ -258,7 +260,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
      */
     protected final void loadGestureImages(){
         Toolkit myToolkit = Toolkit.getDefaultToolkit();
-        
+
         imgHi = myToolkit.getImage(pathGesturePictures + "hi.jpg");
         hmmDP.putImage(imgHi);
         imgBye = myToolkit.getImage(pathGesturePictures + "bye.jpg");
@@ -291,7 +293,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                 return;
 
              // default trimming
-            ArrayList<ClusterPathPoint> trimmedPath = trajectoryTrimmingPointBase(path, 2, 2);
+            ArrayList<ClusterPathPoint> trimmedPath = trajectoryTrimmingPointBase(path, 1, 1);
 
             // doesn't have to classify short trajectroies
             if(trimmedPath.size() < numPointsThreshold)
@@ -300,29 +302,32 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                 return;
             }
 
+
             String bmg = null;
             if(login){
                 // estimates the best matching gesture
                 bmg = estimateGesture(trimmedPath);
 
                 if(usePrevPath && bmg == null)
-                    bmg = estimateGestureWithPrevPath(trimmedPath, checkActivationTimeUs);
+                    bmg = estimateGestureWithPrevPath(trimmedPath, maxTimeDiffCorrSegmentsUs);
 
                 System.out.println("Best matching gesture is " + bmg);
 
-                if(afterRecognitionProcess(bmg, trimmedPath)){
-                    endTimePrevGesture = endTimeGesture;
+                if(bmg != null){
+                    if(afterRecognitionProcess(bmg, trimmedPath)){
+                        endTimePrevGesture = endTimeGesture;
 
-                    // starts or restarts the auto logout timer
-                    if(isLogin()){ // has to check if the gesture recognition system is still active (to consider logout)
-                        if(autoLogoutTimer.isRunning())
-                            autoLogoutTimer.restart();
-                        else
-                            autoLogoutTimer.start();
+                        // starts or restarts the auto logout timer
+                        if(isLogin()){ // has to check if the gesture recognition system is still active (to consider logout)
+                            if(autoLogoutTimer.isRunning())
+                                autoLogoutTimer.restart();
+                            else
+                                autoLogoutTimer.start();
+                        }
                     }
-
-                }
-
+                }else
+                    savePath = true;
+                
             } else {
                 if(detectStartingGesture(trimmedPath)){
                     System.out.println("Gesture recognition system is enabled.");
@@ -330,10 +335,10 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                     endTimePrevGesture = endTimeGesture;
                 }
             }
-            if(bmg != null && (bmg.startsWith("Infinite")))
-                resetPrevPath();
-            else
+            if(savePath)
                 storePath(trimmedPath, false);
+            else
+                resetPrevPath();
         }
     }
 
@@ -342,11 +347,12 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
     }
 
     public void storePath(ArrayList<ClusterPathPoint> path, boolean accumulate){
-        if(prevPath == null || !accumulate || !doesAccumulate(path, checkActivationTimeUs))
+        if(prevPath == null || !accumulate || !doesAccumulate(path, maxTimeDiffCorrSegmentsUs))
             prevPath = new ArrayList<ClusterPathPoint>();
 
-        for(ClusterPathPoint pt:path){
-           ClusterPathPoint clonePt = new ClusterPathPoint(pt.x, pt.y, pt.t, pt.getNEvents());
+        for(int i=0; i<path.size(); i++){
+            ClusterPathPoint pt = path.get(i);
+            ClusterPathPoint clonePt = new ClusterPathPoint(pt.x, pt.y, pt.t, pt.getNEvents());
             clonePt.stereoDisparity = pt.stereoDisparity;
             if(clonePt.velocityPPT != null){
                 clonePt.velocityPPT.x = pt.velocityPPT.x;
@@ -372,7 +378,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
             ret = true;
         else {
             if(usePrevPath){
-                bmg = estimateGestureWithPrevPath(path, checkActivationTimeUs);
+                bmg = estimateGestureWithPrevPath(path, maxTimeDiffCorrSegmentsUs);
                 if(bmg != null && bmg.startsWith("Infinite")){
                     ret = true;
                 }
@@ -408,17 +414,18 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         if(path.size() < numPointsThreshold)
             return null;
 
-        String bmg = getBestmatchingGesture(path, -200);
+        double pathLength = FeatureExtraction.calTrajectoryLength(path);
 
+        String bmg = getBestmatchingGesture(path, -200, pathLength);
         if(bmg == null){
-            double pathLength = FeatureExtraction.calTrajectoryLength(path);
+            
             
             for(int i = 1; i <= 2 ; i++){
                 for(int j = 0; j<=1; j++){
                     // retries with the head trimming if failed
                     ArrayList<ClusterPathPoint> trimmedPath = trajectoryTrimming(path, i*headTrimmingPercents/2, j*tailTrimmingPercents, pathLength);
                     if(checkSpeedCriterion(trimmedPath)){
-                        bmg = getBestmatchingGesture(trimmedPath, -200 + ((i-1)*2+j+1)*100);
+                        bmg = getBestmatchingGesture(trimmedPath, -200 + ((i-1)*2+j+1)*100, pathLength*(1.0-(double)(i*headTrimmingPercents/2 + j*tailTrimmingPercents)*0.01));
                     } else {
 //                        System.out.println("Under speed limit");
 //                        break;
@@ -460,7 +467,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                 // checks distance
                 float distance = (float) FeatureExtraction.distance(new Point2D.Float(lastPointPrevPath.x, lastPointPrevPath.y),
                                                                     new Point2D.Float(firstPointPath.x, firstPointPath.y));
-                if(distance <= chip.getSizeX()*0.20f)
+                if(distance <= chip.getSizeX()*0.2f)
                     ret = true;
                 else{
                     System.out.println("distance constraint");
@@ -483,9 +490,19 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
      * @param path
      * @return
      */
-    private String getBestmatchingGesture(ArrayList<ClusterPathPoint> path, int offset){
-        String[] codewards = fve.convTrajectoryToCodewords(path);
-        String bmg = hmmDP.ghmm.getBestMatchingGesture(codewards, fve.vectorAngleSeq);
+    private String getBestmatchingGesture(ArrayList<ClusterPathPoint> path, int offset, double totalTrajLen){
+        String[] codewards = null;
+        String bmg = null;
+
+        if(fve != null)
+            codewards = fve.convTrajectoryToCodewords(path, totalTrajLen);
+        else
+            return null;
+
+        if(hmmDP != null && hmmDP.ghmm != null && fve != null)
+            bmg = hmmDP.ghmm.getBestMatchingGesture(codewards, fve.vectorAngleSeq);
+        else
+            return null;
 
 /*
         // draws the quantized vectors
@@ -517,6 +534,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
 
         boolean ret = true;
 
+        savePath = false;
         if(login){
              if(bmg.startsWith("Infinite")){
                 doLogout();
@@ -524,9 +542,11 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                 doPush();
             } else if(bmg.startsWith("SlashUp")){
                 ret = doSlashUp(path);
+                savePath = true;
             } else {
                 if(bmg.startsWith("SlashDown")){
                     doSlashDown();
+                    savePath = true;
                 } else {
                     // doesn't have consider refractory time for CW and CCW
                     if(bmg.startsWith("CW")){
@@ -551,6 +571,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                         }
                     } else {
                         endTimePrevGesture -= (refractoryTimeMs*1000);
+                        savePath = true;
                         ret = false;
                     }
 
@@ -659,18 +680,29 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
      */
     protected ArrayList<ClusterPathPoint> trajectoryTrimming(ArrayList<ClusterPathPoint> trajectory, int headTrimmingPercets, int tailTrimmingPercets, double trjLength){
         ArrayList<ClusterPathPoint> trimmedTrj;
+
         int numPointsHeadTrimming = 0;
         int numPointsTailTrimming = 0;
 
-//        int numPointsHeadTrimming = (int) (trajectory.size()*0.01*headTrimmingPercets);
-//        int numPointsTailTrimming = (int) (trajectory.size()*0.01*tailTrimmingPercets);
+        // get # of points to trim in the head
+        if(headTrimmingPercets > 2){
+            numPointsHeadTrimming = (int) (trajectory.size()*0.02);
+            double len = FeatureExtraction.calTrajectoryLengthTo(trajectory, numPointsHeadTrimming/2);
+            numPointsHeadTrimming += FeatureExtraction.getTrajectoryPositionForward(trajectory, len + trjLength*0.01*(headTrimmingPercets-1));
+        } else if (headTrimmingPercets > 0)
+            numPointsHeadTrimming += FeatureExtraction.getTrajectoryPositionForward(trajectory, trjLength*0.01*headTrimmingPercets);
+        else{}
+        
+        // get # of points to trim in the tail
+        if(tailTrimmingPercets > 1){
+            numPointsTailTrimming = (int) (trajectory.size()*0.02);
+            double len = FeatureExtraction.calTrajectoryLengthFrom(trajectory, trajectory.size() - 1 - numPointsHeadTrimming/2);
+            numPointsTailTrimming += trajectory.size() - 1 - FeatureExtraction.getTrajectoryPositionBackward(trajectory, len + trjLength*0.01*(tailTrimmingPercets-1));
+        } else if (tailTrimmingPercets > 0)
+            numPointsTailTrimming += trajectory.size() - 1 - FeatureExtraction.getTrajectoryPositionBackward(trajectory, trjLength*0.01*tailTrimmingPercets);
+        else {}
 
-
-        if(headTrimmingPercets > 0)
-            numPointsHeadTrimming = FeatureExtraction.getTrajectoryPositionForward(trajectory, trjLength*0.01*headTrimmingPercets);
-        if(tailTrimmingPercets > 0)
-            numPointsTailTrimming = trajectory.size() - 1 - FeatureExtraction.getTrajectoryPositionBackward(trajectory, trjLength*0.01*tailTrimmingPercets);
-
+        // do trimming
         if(numPointsHeadTrimming + numPointsTailTrimming > 0 && numPointsHeadTrimming + numPointsTailTrimming < trajectory.size()){
             trimmedTrj = new ArrayList<ClusterPathPoint>(trajectory.size() - numPointsHeadTrimming - numPointsTailTrimming);
             for(int j=numPointsHeadTrimming; j<trajectory.size()-numPointsTailTrimming; j++)
@@ -939,10 +971,16 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         return prevPath;
     }
 
-    public static int getCheckActivationTimeUs() {
-        return checkActivationTimeUs;
+    public int getMaxTimeDiffCorrSegmentsUs() {
+        return maxTimeDiffCorrSegmentsUs;
     }
 
+    public void setMaxTimeDiffCorrSegmentsUs(int maxTimeDiffCorrSegmentsUs) {
+        int old = this.maxTimeDiffCorrSegmentsUs;
+        this.maxTimeDiffCorrSegmentsUs = maxTimeDiffCorrSegmentsUs;
+        getPrefs().putInt("GestureBF2D.maxTimeDiffCorrSegmentsUs", maxTimeDiffCorrSegmentsUs);
+        support.firePropertyChange("maxTimeDiffCorrSegmentsUs",old,this.maxTimeDiffCorrSegmentsUs);
+    }
 
     /**
      * Class for HMM and GUI
@@ -999,6 +1037,11 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         protected int numState = 5;
 
         /**
+         * size of feature vector sequence
+         */
+        private int seqSize;
+
+        /**
          *  Feature vector space consists of 16 quantized vectors.
          */
         protected final String[] featureVectorSpace = new String[] {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"};
@@ -1006,7 +1049,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         /**
          * use dynamic threshold model. If you set 'false' instead of 'true', you can use a static threshold model.
          */
-        protected GestureHmm ghmm = new GestureHmm(featureVectorSpace, GestureHmm.GAUSSIAN_THRESHOLD);
+        protected GestureHmm ghmm = null;  // = new GestureHmm(featureVectorSpace, GestureHmm.GAUSSIAN_THRESHOLD);
 
         /**
          * Output statement buffer
@@ -1207,7 +1250,14 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
 
             String gestName = newGestName+"_"+hmmModelChoice.getSelectedItem();
 
+            if(ghmm == null){
+                doNew();
+            }
+
             if(!gestureItems.contains(gestName)){
+                String numStr = JOptionPane.showInputDialog(this, "Input the numver of states for the gesture model?");
+                int numStates = Integer.parseInt(numStr);
+
                 gestureItems.add(gestName);
                 gestureChoice.addItem(gestName);
                 HiddenMarkovModel.ModelType selectedModel;
@@ -1226,7 +1276,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                     return;
                 }
 
-                ghmm.addGesture(gestName, numState,  selectedModel);
+                ghmm.addGesture(gestName, numStates,  selectedModel);
                 ghmm.initializeGestureRandom(gestName);
 
                 System.out.println("A new gesture ("+ gestName + ") is added.");
@@ -1245,7 +1295,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                 return;
             }
 
-            String[] fv = fve.convTrajectoryToCodewords(trajectory);
+            String[] fv = fve.convTrajectoryToCodewords(trajectory, -1);
             if(fv[0] == null){
                 System.out.println("Warning: No trajectory is dected.");
                 return;
@@ -1280,7 +1330,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
          * excutes Guess button
          */
         public void doGuess(){
-            String[] fv = fve.convTrajectoryToCodewords(trajectory);
+            String[] fv = fve.convTrajectoryToCodewords(trajectory, -1);
 
             if(fv[0] == null){
                 System.out.println("Warning: No trajectory is dected.");
@@ -1347,6 +1397,17 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                 gImg.drawString("Hey, man.", (int) centerX - 50, (int) centerY);
 
             repaint();
+
+            // prints HMM characteristics
+            ghmm.getGestureHmm(gesName).printAllProbability();
+            System.out.println("\n------------   Gaussian Threshold   --------------");
+            System.out.print("mu:");
+            for(double mu:ghmm.getGTModel(gesName).getMuToArray())
+                System.out.print(mu+", ");
+            System.out.print("\nsigma:");
+            for(double sigma:ghmm.getGTModel(gesName).getSigmaToArray())
+                System.out.print(sigma+", ");
+            System.out.println();
         }
 
         /**
@@ -1367,7 +1428,12 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
          * excutes New menu
          */
         public void doNew(){
-            ghmm = new GestureHmm(featureVectorSpace, GestureHmm.GAUSSIAN_THRESHOLD);
+            String numStr = JOptionPane.showInputDialog(this, "Input the numver of observation sequence for classification?");
+            seqSize = Integer.parseInt(numStr);
+
+            fve = new FeatureExtraction(featureVectorSpace.length, seqSize);
+            ghmm = new GestureHmm(featureVectorSpace, GestureHmm.GAUSSIAN_THRESHOLD, seqSize);
+            ghmm.setGTCriterion(GTCriterion);
             gestureItems.clear();
             gestureChoice.removeAllItems();
             gestureChoice.addItem("Select a gesture");
@@ -1380,6 +1446,11 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
          */
         @SuppressWarnings("CallToThreadDumpStack")
         public void doSave(){
+            if(ghmm == null){
+                log.log(Level.WARNING, "There is nothing to save.");
+                return;
+            }
+
             int returnVal = fileChooser.showSaveDialog(HmmDrawingPanel.this);
             if (returnVal == JFileChooser.APPROVE_OPTION) {
                 File file = fileChooser.getSelectedFile();
@@ -1420,6 +1491,14 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                     ObjectInputStream ois = new ObjectInputStream(bis);
 
                     ghmm = (GestureHmm) ois.readObject();
+                    seqSize = ghmm.getSeqSize();
+                    ghmm.setGTCriterion(GTCriterion);
+                    
+                    // for backward compatibility
+                    if(seqSize == 0)
+                        seqSize = 16;
+
+                    fve = new FeatureExtraction(featureVectorSpace.length, seqSize);
                     gestureItems.clear();
                     gestureItems.addAll(ghmm.getGestureNames());
                     gestureChoice.removeAllItems();
@@ -1428,7 +1507,15 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
                         gestureChoice.addItem(gname);
                     
                     ois.close();
-                    log.log(Level.WARNING, "Gesture HMM has been loaded in {0}", file.getAbsoluteFile());
+                    System.out.println("Gesture HMM has been loaded from " + file.getAbsoluteFile());
+                    System.out.println("----------- Summary of gesture models -------------");
+                    System.out.println("Size of feature vector sequence : " + seqSize);
+                    System.out.println("Number of gestures : " + ghmm.getNumGestures());
+                    System.out.println("Defined gestures (# of states) : ");
+                    for(String gestName:ghmm.getGestureNames()){
+                        System.out.println("\t"+gestName+"("+ghmm.getGestureHmm(gestName).getNumStates()+")");
+                    }
+                    System.out.println("-----------       End of summary      -------------");
 
 
 //                    for(int i=0; i<16; i++)
@@ -1517,7 +1604,8 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         }
 
         public final void setGTCriterion(float criterion) {
-            ghmm.setGTCriterion(criterion);
+            if(ghmm !=null )
+                ghmm.setGTCriterion(criterion);
         }
     }
 
@@ -1565,7 +1653,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         if(!checkActivated && prevPath != null){
             System.out.print("Check the previous segment ---> ");
 
-            if(tryGestureWithPrevPath(path, 60, "Check", checkActivationTimeUs))
+            if(tryGestureWithPrevPath(path, 60, "Check", maxTimeDiffCorrSegmentsUs))
             {
                 System.out.println("Check");
                 checkActivated = true;
@@ -1589,8 +1677,8 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
 
     protected void doCW(ArrayList<ClusterPathPoint> path){
         // to detect broken infinite shaped gestures
-        if(prevPath != null && tryGestureWithPrevPath(path, 0, "Infinite", checkActivationTimeUs)){
-            System.out.println("----> might be an infinite-shaped gesture");
+        if(prevPath != null && tryGestureWithPrevPath(path, 0, "Infinite", maxTimeDiffCorrSegmentsUs)){
+            System.out.println("----------> might be an inifnite-shaped gesture");
             doLogout();
         } else
             hmmDP.putImage(imgCW);
@@ -1598,8 +1686,8 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
 
     protected void doCCW(ArrayList<ClusterPathPoint> path){
         // to detect broken infinite shaped gestures
-        if(prevPath != null && tryGestureWithPrevPath(path, 0, "Infinite", checkActivationTimeUs)){
-            System.out.println("----> might be an infinite-shaped gesture");
+        if(prevPath != null && tryGestureWithPrevPath(path, 0, "Infinite", maxTimeDiffCorrSegmentsUs)){
+            System.out.println("----------> might be an inifnite-shaped gesture");
             doLogout();
         } else
             hmmDP.putImage(imgCCW);
@@ -1614,10 +1702,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
     }
 
     protected void doUp(){
-//        if(checkActivated && startTimeGesture <= endTimePrevGesture + checkActivationTimeUs)
-//            hmmDP.putImage(imgCheck);
-//        else
-            hmmDP.putImage(imgUp);
+        hmmDP.putImage(imgUp);
     }
 
     protected void doDown(){
@@ -1627,6 +1712,4 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
     protected void doCheck(){
         hmmDP.putImage(imgCheck);
     }
-
-
 }

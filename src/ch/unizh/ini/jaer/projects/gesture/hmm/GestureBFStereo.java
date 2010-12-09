@@ -62,7 +62,7 @@ public class GestureBFStereo extends GestureBF2D{
                 return;
 
             // default trimming
-            ArrayList<ClusterPathPoint> trimmedPath = trajectoryTrimmingPointBase(path, 2, 2);
+            ArrayList<ClusterPathPoint> trimmedPath = trajectoryTrimmingPointBase(path, 1, 1);
 
             // doesn't have to classify short trajectroies
             if(trimmedPath.size() < getNumPointsThreshold())
@@ -79,23 +79,26 @@ public class GestureBFStereo extends GestureBF2D{
 
                 // tries again with prevPath if bmg is null
                 if(isUsePrevPath() && bmg == null)
-                    bmg = estimateGestureWithPrevPath(trimmedPath, getCheckActivationTimeUs());
+                    bmg = estimateGestureWithPrevPath(trimmedPath, getMaxTimeDiffCorrSegmentsUs());
                     
                 System.out.println("Best matching gesture is " + bmg);
 
-                if(afterRecognitionProcess(bmg, trimmedPath)){
-                    endTimePrevGesture = endTimeGesture;
+                if(bmg != null){
+                    if(afterRecognitionProcess(bmg, trimmedPath)){
+                        endTimePrevGesture = endTimeGesture;
 
-                    // starts or restarts the auto logout timer
-                    if(isLogin()){ // has to check if the gesture recognition system is still active (to consider logout)
-                        if(autoLogoutTimer.isRunning())
-                            autoLogoutTimer.restart();
-                        else
-                            autoLogoutTimer.start();
-                    }
+                        // starts or restarts the auto logout timer
+                        if(isLogin()){ // has to check if the gesture recognition system is still active (to consider logout)
+                            if(autoLogoutTimer.isRunning())
+                                autoLogoutTimer.restart();
+                            else
+                                autoLogoutTimer.start();
+                        }
 
-                    pushDetected = false;
-                }
+                        pushDetected = false;
+                        }
+                } else
+                    savePath = true;
 
             } else { // if the gesture recognition system is inactive, checks the start gesture only
                 if(detectStartingGesture(trimmedPath)){
@@ -115,10 +118,10 @@ public class GestureBFStereo extends GestureBF2D{
                      pushDetected = false;
                 }
             }
-            if(bmg != null && (bmg.startsWith("Infinite")))
-                resetPrevPath();
-            else
+            if(savePath)
                 storePath(trimmedPath, false);
+            else
+                resetPrevPath();
         } 
     }
 

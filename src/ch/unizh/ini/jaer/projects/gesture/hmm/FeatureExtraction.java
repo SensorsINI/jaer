@@ -51,13 +51,14 @@ public class FeatureExtraction{
      * @param trajectory
      * @return sequence of codewords
      */
-    public String[] convTrajectoryToCodewords(ArrayList<? extends Point2D.Float> trajectory){
+    public String[] convTrajectoryToCodewords(ArrayList<? extends Point2D.Float> trajectory, double totalTrajLen){
         String[] out = new String[seqLength];
 
         if(trajectory.size() < 2)
             return out;
 
-        double totalTrajLen = calTrajectoryLength(trajectory);
+        if(totalTrajLen < 0)
+            totalTrajLen = calTrajectoryLength(trajectory);
         double deltaTrajLen = totalTrajLen/seqLength;
         Point2D.Float startPosition = trajectory.get(0); // the oldest position
         Point2D.Float prevPosition = startPosition;
@@ -171,7 +172,53 @@ public class FeatureExtraction{
         double length = 0;
 
         Point2D.Float prevPosition = null;
-        for(Point2D.Float currPosition:trajectory){
+        for(int i=0; i<trajectory.size(); i++){
+            Point2D.Float currPosition  = trajectory.get(i);
+            if(prevPosition != null){
+                length += distance(prevPosition, currPosition);
+            }
+            prevPosition = currPosition;
+        }
+
+        return length;
+    }
+
+    public static double calTrajectoryLengthFrom(ArrayList<? extends Point2D.Float> trajectory, int offset){
+        double length = 0;
+
+        Point2D.Float prevPosition = null;
+        for(int i=offset; i<trajectory.size(); i++){
+            Point2D.Float currPosition  = trajectory.get(i);
+            if(prevPosition != null){
+                length += distance(prevPosition, currPosition);
+            }
+            prevPosition = currPosition;
+        }
+
+        return length;
+    }
+
+    public static double calTrajectoryLengthTo(ArrayList<? extends Point2D.Float> trajectory, int offset){
+        double length = 0;
+
+        Point2D.Float prevPosition = null;
+        for(int i=0; i<Math.min(offset, trajectory.size()); i++){
+            Point2D.Float currPosition  = trajectory.get(i);
+            if(prevPosition != null){
+                length += distance(prevPosition, currPosition);
+            }
+            prevPosition = currPosition;
+        }
+
+        return length;
+    }
+
+    public static double calTrajectoryLengthFromTo(ArrayList<? extends Point2D.Float> trajectory, int fromPos, int toPos){
+        double length = 0;
+
+        Point2D.Float prevPosition = null;
+        for(int i=fromPos; i<Math.min(toPos, trajectory.size()); i++){
+            Point2D.Float currPosition  = trajectory.get(i);
             if(prevPosition != null){
                 length += distance(prevPosition, currPosition);
             }
