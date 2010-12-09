@@ -49,7 +49,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
     private short TrackTime=50, RefOnTime=20, RefOffTime=20, IdleTime=10;
     private boolean Select5Tbuffer=true;
-    private boolean UseCalibration=true;
+    private boolean UseCalibration=false;
 
     public void setTrackTime(short trackTimeUs) {
         TrackTime =  trackTimeUs;

@@ -20,6 +20,7 @@ public class CDVSLogIntensityFrameData {
     private int timestamp=0; // timestamp of starting sample
     
     private int[] data1=new int[NUMSAMPLES], data2=new int[NUMSAMPLES];
+    
     /** Readers should access the current reading buffer. */
     public int[] currentReadingBuffer=data1;
     private int[] currentWritingBuffer=data2;
@@ -36,6 +37,8 @@ public class CDVSLogIntensityFrameData {
     }
 
     public int get(int x, int y){
+        if (isUseOffChipCalibration())
+            return (currentReadingBuffer[y+WIDTH*x]-calibData[y+WIDTH*x]);
         return currentReadingBuffer[y+WIDTH*x];
     }
 
@@ -69,5 +72,31 @@ public class CDVSLogIntensityFrameData {
     public void setTimestamp(int timestamp) {
         this.timestamp = timestamp;
     }
+
+    private boolean useOffChipCalibration=false;
+
+    /**
+     * @return the useOffChipCalibration
+     */
+    public boolean isUseOffChipCalibration() {
+        return useOffChipCalibration;
+    }
+
+    /**
+     * @param useOffChipCalibration the useOffChipCalibration to set
+     */
+    public void setUseOffChipCalibration(boolean useOffChipCalibration) {
+        this.useOffChipCalibration = useOffChipCalibration;
+    }
+
+    private int[] calibData=new int[NUMSAMPLES];
+
+    /**
+     * @param calibData the calibData to set
+     */
+    public void setCalibData() {
+        this.calibData = currentWritingBuffer;
+    }
+
 
 }
