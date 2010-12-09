@@ -6,6 +6,7 @@ package ch.unizh.ini.jaer.chip.dvs320;
 import ch.unizh.ini.jaer.chip.retina.*;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.biasgen.*;
+import net.sf.jaer.biasgen.VDAC.VPot;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.hardwareinterface.*;
@@ -24,6 +25,8 @@ import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import net.sf.jaer.biasgen.Pot.Sex;
 import net.sf.jaer.biasgen.Pot.Type;
+import net.sf.jaer.biasgen.VDAC.DAC;
+import net.sf.jaer.biasgen.VDAC.VPotGUIControl;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 
@@ -357,6 +360,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         AllMuxes allMuxes = new AllMuxes(); // the output muxes
         private ShiftedSourceBias ssn, ssp, ssnMid, sspMid;
         private ShiftedSourceBias[] ssBiases = new ShiftedSourceBias[4];
+        private VPot thermometerDAC;
         int pos = 0;
         // utility method to quickly add pot
 
@@ -400,6 +404,13 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             ssBiases[2] = sspMid;
             ssBiases[3] = ssp;
 
+//                public DAC(int numChannels, int resolutionBits, float refMinVolts, float refMaxVolts, float vdd){
+
+            // DAC object for simple voltage DAC
+            final float Vdd=1.8f;
+            DAC dac=new DAC(1,4,0,Vdd,Vdd);
+            //    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
+            thermometerDAC=new VPot(cDVSTest20.this, "LogAmpRef", dac, 0, Type.NORMAL, Sex.N, 9, 0, "Voltage DAC for log intensity switched cap amplifier");
 
             setPotArray(new IPotArray(this));
             /*
@@ -513,6 +524,9 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                     ss.loadPreferences();
                 }
             }
+            if(thermometerDAC!=null){
+                thermometerDAC.loadPreferences();
+            }
         }
 
         @Override
@@ -526,6 +540,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                     ss.storePreferences();
                 }
             }
+            if(thermometerDAC!=null) thermometerDAC.storePreferences();
         }
 
         /**
@@ -548,6 +563,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(ssp));
             combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(ssnMid));
             combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(sspMid));
+            combinedBiasShiftedSourcePanel.add(new VPotGUIControl(thermometerDAC));
             pane.addTab("Biases", combinedBiasShiftedSourcePanel);
             pane.addTab("Output control", new cDVSTest20ChipControlPanel(cDVSTest20.this));
             panel.add(pane, BorderLayout.CENTER);
@@ -561,8 +577,10 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             byte[] biasBytes = super.formatConfigurationBytes(biasgen);
             byte[] configBytes = allMuxes.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
             bb.put(configBytes);
-            byte VDAC = Byte.valueOf("9");
-            bb.put(VDAC);   // VDAC needs 8 bits
+
+            // 16 value (4 bit) VDAC for amplifier reference
+            byte vdac = (byte) thermometerDAC.getBitValue(); //Byte.valueOf("9");
+            bb.put(vdac);   // VDAC needs 8 bits
             bb.put(biasBytes);
 
             for (ShiftedSourceBias ss : ssBiases) {

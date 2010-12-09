@@ -139,18 +139,19 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         byte[] bytes = new byte[nbytes];
         System.arraycopy(byteArray, 0, bytes, nbytes - byteArray.length, byteArray.length);
 
-        this.sendVendorRequest(this.VENDOR_REQUEST_WRITE_CPLD_SR,(short) 0,(short) 0, bytes);
+        this.sendVendorRequest(VENDOR_REQUEST_WRITE_CPLD_SR,(short) 0,(short) 0, bytes);
     }
 
     synchronized public void startADC() throws HardwareInterfaceException {
         sendCPLDconfiguration();
-        this.sendVendorRequest(this.VENDOR_REQUEST_RUN_ADC,(short)1,(short)0);
+        this.sendVendorRequest(VENDOR_REQUEST_RUN_ADC,(short)1,(short)0);
     }
 
     synchronized public void stopADC() throws HardwareInterfaceException {
-        this.sendVendorRequest(this.VENDOR_REQUEST_RUN_ADC,(short)0,(short)0);
+        this.sendVendorRequest(VENDOR_REQUEST_RUN_ADC,(short)0,(short)0);
     }
 
+    @Override
     synchronized public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
         //        System.out.println("BiasgenUSBInterface.setPowerDown("+powerDown+")");
         //        if(!powerDown)
@@ -178,7 +179,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
         result = gUsbIo.classOrVendorOutRequest(dataBuffer, vendorRequest);
         if (result != de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_SUCCESS) {
-            throw new HardwareInterfaceException("setPowerDown: unable to send: " + gUsbIo.errorText(result));
+            throw new HardwareInterfaceException("setPowerDown: unable to send: " + UsbIo.errorText(result));
         }
         HardwareInterfaceException.clearException();
 
@@ -204,11 +205,12 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
         result = gUsbIo.classOrVendorOutRequest(dataBuffer, vendorRequest);
         if (result != de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_SUCCESS) {
-            throw new HardwareInterfaceException("setChipReset: unable to send: " + gUsbIo.errorText(result));
+            throw new HardwareInterfaceException("setChipReset: unable to send: " + UsbIo.errorText(result));
         }
         HardwareInterfaceException.clearException();
     }
 
+    @Override
     synchronized public void resetTimestamps() {
         log.info(this + ".resetTimestamps(): zeroing timestamps");
 
@@ -547,6 +549,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         private int currentts = 0;
         private int lastts = 0;
 
+        @Override
         protected void translateEvents(UsbIoBuf b) {
             try {
                 // data from cDVS is stateful. 2 bytes sent for each word of data can consist of either timestamp, y address, x address, or ADC value.
