@@ -15,7 +15,7 @@ import java.util.Random;
  * Hidden Markov Model
  * @author Jun Haeng Lee
  */
-public class HiddenMarkovModel implements Serializable{
+public final class HiddenMarkovModel implements Serializable{
     private static final long serialVersionUID = -717623833232998188L;
     
     /** HMM model type will be used to initialize the probabilities.
@@ -161,7 +161,7 @@ public class HiddenMarkovModel implements Serializable{
      * @param name : name of HMM instance
      */
     public HiddenMarkovModel(String name) {
-        this.name = new String(name);
+        this.name = name;
     }
 
     /**
@@ -554,15 +554,14 @@ public class HiddenMarkovModel implements Serializable{
             if(isSilentState(state))
                 deltaInit.put(state, new Object[]{0.0, new ArrayList<String>(), 0.0});
         }
-        
-        delta.put(new String("1"), deltaInit);
+        HashMap put = delta.put("1", deltaInit);
 
         // loop for observations
         for (int t=2; t<=T; t++)
         {
             HashMap<String, Object[]> deltaNext = new HashMap<String, Object[]>();
-            String prevObs = new String(""+(t-1));
-            String currObs = new String(""+t);
+            String prevObs = "" + (t - 1);
+            String currObs = "" + t;
 
             for (int i=0; i<size; i++)
             {
@@ -659,7 +658,7 @@ public class HiddenMarkovModel implements Serializable{
         {
             String state = states.get(i);
             if(!isSilentState(state)){
-                Object[] objs = getDelta(new String(""+T), state);
+                Object[] objs = getDelta(("" + T), state);
                 double prob = (Double) objs[0];
                 ArrayList<String> v_path = (ArrayList<String>) objs[1];
                 double v_prob = (Double) objs[2];
@@ -819,12 +818,12 @@ public class HiddenMarkovModel implements Serializable{
         alpha.clear();
 
         HashMap<String, Double> alphaInit = forwardInitialize(obs[0]);
-        alpha.put(new String("1"), alphaInit);
+        alpha.put("1", alphaInit);
 
         HashMap<String, Double> alphaNext = alphaInit;
         for (int t = 2; t <= T; t++)
         {
-            String currObs = new String(""+t);
+            String currObs = "" + t;
             alphaNext = forwardUpdate(alphaNext, obs[t-1]);
             alpha.put(currObs, alphaNext);
         }
@@ -833,7 +832,7 @@ public class HiddenMarkovModel implements Serializable{
         for (int i=0; i<states.size(); i++){
             String state = states.get(i);
             if(!isSilentState(state))
-                retSum += getAlpha(new String(""+T), state);
+                retSum += getAlpha(("" + T), state);
         }
 
         return retSum;
@@ -974,19 +973,19 @@ public class HiddenMarkovModel implements Serializable{
             sf += alphaInit.get(state);
         }
 
-        scaleFactor.put(new String("1"), sf);
+        scaleFactor.put("1", sf);
         for(int i=0; i<size; i++){
             String state = states.get(i);
             alphaInit.put(state, alphaInit.get(state)/sf);
         }
 
-        alpha.put(new String("1"), alphaInit);
+        alpha.put("1", alphaInit);
 
         for (int t = 2; t <= T; t++)
         {
             HashMap<String, Double> alphaNext = new HashMap<String, Double>();
-            String prevObs = new String(""+(t-1));
-            String currObs = new String(""+t);
+            String prevObs = "" + (t - 1);
+            String currObs = "" + t;
 
             sf = 0;
             for (int i=0; i<size; i++)
@@ -1022,7 +1021,7 @@ public class HiddenMarkovModel implements Serializable{
 
         double retSum = 0;
         for (int t=1; t<=T; t++)
-            retSum += Math.log(scaleFactor.get(new String(""+t)));
+            retSum += Math.log(scaleFactor.get(("" + t)));
 
         return retSum;
     }
@@ -1046,13 +1045,13 @@ public class HiddenMarkovModel implements Serializable{
             String state = states.get(i);
             betaFinal.put(state, 1.0);
         }
-        beta.put(new String(""+T), betaFinal);
+        beta.put(("" + T), betaFinal);
 
         for (int t = T; t >= 1; t--)
         {
             HashMap<String, Double> betaBefore = new HashMap<String, Double>();
-            String prevObs = new String(""+(t-1));
-            String currObs = new String(""+t);
+            String prevObs = "" + (t - 1);
+            String currObs = "" + t;
 
             for (int i=0; i<size; i++)
             {
@@ -1162,15 +1161,15 @@ public class HiddenMarkovModel implements Serializable{
         HashMap<String, Double> betaFinal = new HashMap<String, Double>();
         for(int i=0; i<size; i++){
             String state = states.get(i);
-            betaFinal.put(state, 1.0/scaleFactor.get(new String(""+T)));
+            betaFinal.put(state, 1.0/scaleFactor.get(("" + T)));
         }
-        beta.put(new String(""+T), betaFinal);
+        beta.put(("" + T), betaFinal);
 
         for (int t = T; t > 1; t--)
         {
             HashMap<String, Double> betaBefore = new HashMap<String, Double>();
-            String prevObs = new String(""+(t-1));
-            String currObs = new String(""+t);
+            String prevObs = "" + (t - 1);
+            String currObs = "" + t;
 
             for (int i=0; i<size; i++)
             {
@@ -1254,7 +1253,7 @@ public class HiddenMarkovModel implements Serializable{
                 gammaSum = 0.0;
                 if(updateTranstionProb || updateEmissionProb){
                     for (int t = 1; t <= T - 1; t++)
-                        gammaSum += getGamma(new String(""+t), sourceState);
+                        gammaSum += getGamma(("" + t), sourceState);
                 }
 
                 if(updateTranstionProb){
@@ -1263,7 +1262,7 @@ public class HiddenMarkovModel implements Serializable{
                         String targetState = states.get(j);
                         zetaSum = 0.0;
                         for (int t = 1; t <= T - 1; t++)
-                            zetaSum += getZeta(new String(""+t), sourceState, targetState);
+                            zetaSum += getZeta(("" + t), sourceState, targetState);
 
                         if(getTransitionProbability(sourceState, targetState) != 0){
                             if(zetaSum == 0)
@@ -1288,7 +1287,7 @@ public class HiddenMarkovModel implements Serializable{
                         gammaSumOt = 0.0;
                         for (int t = 1; t <= T - 1; t++) {
                             if (obs[t-1].equals(obsSet))
-                                gammaSumOt += getGamma(new String(""+t), sourceState);
+                                gammaSumOt += getGamma(("" + t), sourceState);
                         }
 
                         if(getEmissionProbability(sourceState, obsSet) != 0){
@@ -1364,11 +1363,11 @@ public class HiddenMarkovModel implements Serializable{
                 HashMap<String, Double> secondLevelElement = new HashMap<String, Double>();
                 for (int j=0; j<size; j++) {
                     String targetState = states.get(j);
-                    double value = getAlpha(new String(""+t), sourceState);
+                    double value = getAlpha(("" + t), sourceState);
                     if(isSilentState(targetState))
-                        value *= getBeta(new String(""+t), targetState);
+                        value *= getBeta(("" + t), targetState);
                     else
-                        value *= getBeta(new String(""+(t+1)), targetState);
+                        value *= getBeta(("" + (t + 1)), targetState);
                     value *= getTransitionProbability(sourceState, targetState);
                     if(!isSilentState(targetState))
                         value *= getEmissionProbability(targetState, obs[t]);
@@ -1388,7 +1387,7 @@ public class HiddenMarkovModel implements Serializable{
                     ((HashMap<String, Double> )firstLevelElement.get(sourceState)).put(targetState, value/sum);
                 }
             }
-            zeta.put(new String(""+t), firstLevelElement);
+            zeta.put(("" + t), firstLevelElement);
         }
     }
 
@@ -1407,14 +1406,14 @@ public class HiddenMarkovModel implements Serializable{
             for (int i=0; i<size; i++){
                 String sourceState = states.get(i);
                 double gammaValue = 0;
-                HashMap<String, Double> zetaElement = (HashMap<String, Double>) ((HashMap<String, HashMap>) zeta.get(new String(""+t))).get(sourceState);
+                HashMap<String, Double> zetaElement = (HashMap<String, Double>) ((HashMap<String, HashMap>) zeta.get(("" + t))).get(sourceState);
                 for (int j=0; j<size; j++) {
                     String targetState = states.get(j);
                     gammaValue += zetaElement.get(targetState);
                 }
                 gammaElement.put(sourceState, gammaValue);
             }
-            gamma.put(new String(""+t), gammaElement);
+            gamma.put(("" + t), gammaElement);
 	}
     }
 
@@ -1536,7 +1535,6 @@ public class HiddenMarkovModel implements Serializable{
             try{
                 throw new Exception(state  + " is not defined state in HMM("+name+").");
             } catch (Exception e){
-                e.printStackTrace();
             }
         }
 
@@ -1720,7 +1718,7 @@ public class HiddenMarkovModel implements Serializable{
      * @return probabilities
      */
     public double getViterbiPathProbability(int seqNum, String state){
-        Object[] objs = getDelta(new String(""+seqNum), state);
+        Object[] objs = getDelta(("" + seqNum), state);
 
         return ((Double) objs[2]);
     }
@@ -1738,7 +1736,7 @@ public class HiddenMarkovModel implements Serializable{
         {
             String state = states.get(i);
             if(!isSilentState(state)){
-                Object[] objs = getDelta(new String(""+seqNum), state);
+                Object[] objs = getDelta(("" + seqNum), state);
                 ArrayList<String> v_path = (ArrayList<String>) objs[1];
                 double v_prob = (Double) objs[2];
                 if (v_prob > valmax)
@@ -1791,7 +1789,7 @@ public class HiddenMarkovModel implements Serializable{
      * @return
      */
     public ArrayList<String> getViterbiPath(int seqNum, String state){
-        Object[] objs = getDelta(new String(""+seqNum), state);
+        Object[] objs = getDelta(("" + seqNum), state);
 
         return  (ArrayList<String>) objs[1];
     }
@@ -1803,7 +1801,7 @@ public class HiddenMarkovModel implements Serializable{
      * @return
      */
     public String getViterbiPathString(int seqNum, String state){
-        Object[] objs = getDelta(new String(""+seqNum), state);
+        Object[] objs = getDelta(("" + seqNum), state);
         ArrayList<String> path = (ArrayList<String>) objs[1];
         String out = "";
 
@@ -1822,7 +1820,7 @@ public class HiddenMarkovModel implements Serializable{
      * @return
      */
     public String[] getViterbiPathToArray(int seqNum, String state){
-        Object[] objs = getDelta(new String(""+seqNum), state);
+        Object[] objs = getDelta(("" + seqNum), state);
         ArrayList<String> path = (ArrayList<String>) objs[1];
         String[] out = new String[path.size()];
 

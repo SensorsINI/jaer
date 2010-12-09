@@ -272,17 +272,25 @@ public class GaussianThreshold implements Serializable {
             return ret;
         }
 
-        double prob = 1.0;
+        double prob = 0.0;
 
         if(!doBestMatching){
             for(int i=0; i<numElements; i++){
-                prob *= getGaussianPDF(gParam.get(i).mu, gParam.get(i).sigma, sample[i]);
+                double val = getGaussianPDF(gParam.get(i).mu, gParam.get(i).sigma, sample[i]);
+                if(val > 0)
+                    prob += Math.log10(val);
+                else{
+                    prob = Double.NEGATIVE_INFINITY;
+                    break;
+                }
             }
         } else {
             prob = calBestMatchingProb(sample);
         }
 
-        if(prob >= Math.pow(getGaussianPDF(0, 1, criterion), numElements))
+//        System.out.println("Gaussian Prob = " + prob + " (threshold: " + (Math.log10(GaussianPDF(0, 1, criterion))*numElements) + " with criterion of " + criterion + ")");
+
+        if(prob >= Math.log10(GaussianPDF(0, 1, criterion))*numElements)
             ret = true;
 
         return ret;
@@ -294,7 +302,7 @@ public class GaussianThreshold implements Serializable {
      * @return
      */
     private double calBestMatchingProb(double[] sample){
-        double bestProb = 0;
+        double bestProb = Double.NEGATIVE_INFINITY;
         
         for(int delay = 0; delay<numElements; delay++){
             double prob = calProbWithDelay(sample, delay, false);
@@ -312,17 +320,21 @@ public class GaussianThreshold implements Serializable {
      * @return
      */
     private int calBestMatchingDelay(double[] sample){
-        double bestProb = 0;
+        double bestProb = Double.NEGATIVE_INFINITY;
         int bestDelay = 0;
 
         for(int delay = 0; delay<numElements; delay++){
             double prob = calProbWithDelay(sample, delay, true);
+
+//            System.out.println("delay = " + delay + ", prob = " + prob);
 
             if(prob > bestProb){
                 bestProb = prob;
                 bestDelay = delay;
             }
         }
+
+//        System.out.println("best delay = " + bestDelay);
 
         return bestDelay;
     }
@@ -333,7 +345,7 @@ public class GaussianThreshold implements Serializable {
      * @return
      */
     private double calProbWithDelay(double[] sample, int delay, boolean forDelaySearch){
-        double prob = 1.0;
+        double prob = Double.NEGATIVE_INFINITY;
 
         if(sample.length != numElements){
             System.err.println("Sample length is not identical to the number of elements of Gaussian threshold.");
@@ -350,17 +362,47 @@ public class GaussianThreshold implements Serializable {
             }
         }
 
+        double val = 0;
+        prob = 0;
         for(int i=delay; i<numElements; i++){
-            if(forDelaySearch)
-                prob *= getGaussianPDF(gParam.get(i-delay).mu, range/10, sample[i]);
-            else
-                prob *= getGaussianPDF(gParam.get(i-delay).mu, gParam.get(i-delay).sigma, sample[i]);
+            if(forDelaySearch){
+                val = getGaussianPDF(gParam.get(i-delay).mu, range/10, sample[i]);
+                if(val > 0)
+                    prob += Math.log10(val);
+                else{
+                    prob = Double.NEGATIVE_INFINITY;
+                    break;
+                }
+            } else{
+                val = getGaussianPDF(gParam.get(i-delay).mu, gParam.get(i-delay).sigma, sample[i]);
+                if(val > 0)
+                    prob += Math.log10(val);
+                else{
+                    prob = Double.NEGATIVE_INFINITY;
+                    break;
+                }
+            }
         }
-        for(int i=0; i<delay; i++){
-            if(forDelaySearch)
-                prob *= getGaussianPDF(gParam.get(i+numElements-delay).mu, range/10, sample[i]);
-            else
-                prob *= getGaussianPDF(gParam.get(i+numElements-delay).mu, gParam.get(i+numElements-delay).sigma, sample[i]);
+        if(prob != Double.NEGATIVE_INFINITY){
+            for(int i=0; i<delay; i++){
+                if(forDelaySearch){
+                    val = getGaussianPDF(gParam.get(i+numElements-delay).mu, range/10, sample[i]);
+                    if(val > 0)
+                        prob += Math.log10(val);
+                    else{
+                        prob = Double.NEGATIVE_INFINITY;
+                        break;
+                    }
+                } else{
+                    val = getGaussianPDF(gParam.get(i+numElements-delay).mu, gParam.get(i+numElements-delay).sigma, sample[i]);
+                    if(val > 0)
+                        prob += Math.log10(val);
+                    else{
+                        prob = Double.NEGATIVE_INFINITY;
+                        break;
+                    }
+                }
+            }
         }
 
         return prob;
@@ -393,6 +435,14 @@ public class GaussianThreshold implements Serializable {
                 return out;
             }
         }
+
+        return out;
+    }
+
+    private static double GaussianPDF(double mu, double sigma, double pos){
+        double out = 1.0;
+
+        out = Math.exp(-Math.pow((pos-mu)/sigma, 2.0)/2)/Math.sqrt(2*Math.PI)/sigma;
 
         return out;
     }

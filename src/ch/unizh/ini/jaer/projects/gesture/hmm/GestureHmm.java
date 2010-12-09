@@ -7,6 +7,7 @@ package ch.unizh.ini.jaer.projects.gesture.hmm;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -14,7 +15,7 @@ import java.util.HashSet;
  * HMM based gesture recognition module
  * @author Jun Haeng Lee
  */
-public class GestureHmm implements Serializable{
+public final class GestureHmm implements Serializable{
     static final String START_STATE = "Start";
     static final String FINAL_STATE = "Final";
     static final String DYNAMIC_THRESHOLD_MODEL  = "Dynamic Threshold Model";
@@ -81,19 +82,25 @@ public class GestureHmm implements Serializable{
     private float GTCriterion = 3.0f;
 
     /**
+     * size of feature vector sequence
+     */
+    private int seqSize;
+
+    /**
      * Constructor with feature vector space
      * @param featureVectorSpace : feature vector space
      * @param thresholdOption : one of NO_THRESHOLD, GAUSSIAN_THRESHOLD, FIXED_THRESHOLD, DYNAMIC_THRESHOLD, GAUSSIAN_THRESHOLD | DYNAMIC_THRESHOLD
+     * @param seqSize : size of feature vector sequence
      */
-    public GestureHmm(String [] featureVectorSpace, int thresholdOption) {
-        for(String fv:featureVectorSpace)
-            this.featureVectorSpace.add(fv);
+    public GestureHmm(String [] featureVectorSpace, int thresholdOption, int seqSize) {
+        this.featureVectorSpace.addAll(Arrays.asList(featureVectorSpace));
 
         if((thresholdOption&FIXED_THRESHOLD) > 0 && (thresholdOption&DYNAMIC_THRESHOLD) > 0){
             System.out.println("FIXED_THRESHOLD and DYNAMIC_THRESHOLD cannot be used simulateously. DYNAMIC_THRESHOLD will be applied.");
             thresholdOption &= (0xff - FIXED_THRESHOLD);
         }
         this.thresholdOption = thresholdOption;
+        this.seqSize = seqSize;
         
         thresholdModel = new HiddenMarkovModel(DYNAMIC_THRESHOLD_MODEL, THRESHOLD_STATE, getFeatureVectorSpaceToArray(), HiddenMarkovModel.ModelType.USER_DEFINED);
         thresholdModel.initializeProbabilityMatrix(THRESHOLD_START_PROB, null, null);
@@ -121,7 +128,7 @@ public class GestureHmm implements Serializable{
         boolean doBestMatching = false;
         if(modelType == HiddenMarkovModel.ModelType.LRC_RANDOM ||  modelType == HiddenMarkovModel.ModelType.LRBC_RANDOM)
             doBestMatching = true;
-        gthModels.put(hmm.getName(), new GaussianThreshold(featureVectorSpace.size(), 3*Math.PI/180, GaussianThreshold.Type.CIRCULATING_ANGLE, doBestMatching));
+        gthModels.put(hmm.getName(), new GaussianThreshold(seqSize, 3*Math.PI/180, GaussianThreshold.Type.CIRCULATING_ANGLE, doBestMatching));
 
         numGestures++;
 
@@ -456,11 +463,81 @@ public class GestureHmm implements Serializable{
         // finds a gesture having maximum likelyhood.
         for(HiddenMarkovModel hmm : gestureHmms.values()){
             double prob = hmm.forward(obs);
+//            System.out.println(hmm.getName() + ":"+prob);
             if(prob > maxProb){
                 name = hmm.getName();
                 maxProb = prob;
             }
         }
+
+//        System.out.println("BMG by HMM is " + name);
+
+        if(name == null)
+            return null;
+
+        // checks state transition for LRB and LRBC types.
+        // If the viterbi pathes doesn't include all states, this may not be a proper guess.
+/*        HiddenMarkovModel.ModelType modelType = getGestureHmm(name).getModelType();
+        if(modelType == HiddenMarkovModel.ModelType.LRB_RANDOM || modelType == HiddenMarkovModel.ModelType.LRBC_RANDOM){
+            getGestureHmm(name).viterbi(obs);
+            ArrayList<String> viterbiPath = getGestureHmm(name).getViterbiPath(obs.length);
+            System.out.println( "path:"+getGestureHmm(name).getViterbiPathString(obs.length));
+            HashSet<String> visitedStates = new HashSet<String>();
+            for(int i=0; i<viterbiPath.size(); i++){
+                String state = viterbiPath.get(i);
+                visitedStates.add(state);
+            }
+            if(visitedStates.size() != getGestureHmm(name).getStates().size()){
+                System.out.println("Not full state transition on HMM");
+                return null;
+            }
+        }
+*/
+        // checks with Gaussian threshold
+        if((thresholdOption&GAUSSIAN_THRESHOLD)>0){
+            GaussianThreshold gth = gthModels.get(name);
+            if(gth.numSamples > 0){
+                if(!gth.isAboveThreshold(rawAngles, GTCriterion) && !gth.isAboveThreshold2(rawAngles, 0.7*GTCriterion)){
+//                    System.out.println("Blocked by GTM");
+                    return null;
+                }
+            }
+        }
+
+        // checks with dynamic threshold.
+        if((thresholdOption&DYNAMIC_THRESHOLD)>0){
+            if(maxProb < getGestureLikelyhoodTM(1.0, obs))
+                name = null;
+        } else if ((thresholdOption&FIXED_THRESHOLD)>0) {
+            // checks with fixed threshold
+            if(maxProb < refLikelyhood.get(name))
+                name = null;
+        }
+
+//        System.out.println("Maximum likelyhood = " + maxProb);
+        return name;
+    }
+
+    /*
+    public String getBestMatchingGesture(String[] obs, double[] rawAngles){
+        String name = null;
+        double maxProb = 0.0;
+        ArrayList<String> viterbiPath = null;
+
+
+        // finds a gesture having maximum likelyhood.
+        for(HiddenMarkovModel hmm : gestureHmms.values()){
+            Object [] objs = hmm.viterbi(obs);
+            double prob = (Double) objs[2];
+            System.out.println(hmm.getName() + ":"+prob + ", path:"+hmm.getViterbiPathString(obs.length));
+            if(prob > maxProb){
+                name = hmm.getName();
+                maxProb = prob;
+                viterbiPath = hmm.getViterbiPath(obs.length);
+            }
+        }
+
+//        System.out.println("BMG by HMM is " + name);
 
         if(name == null)
             return null;
@@ -469,8 +546,6 @@ public class GestureHmm implements Serializable{
         // If the viterbi pathes doesn't include all states, this may not be a proper guess.
         HiddenMarkovModel.ModelType modelType = getGestureHmm(name).getModelType();
         if(modelType == HiddenMarkovModel.ModelType.LRB_RANDOM || modelType == HiddenMarkovModel.ModelType.LRBC_RANDOM){
-            getGestureHmm(name).viterbi(obs);
-            ArrayList<String> viterbiPath = getGestureHmm(name).getViterbiPath(obs.length);
             HashSet<String> visitedStates = new HashSet<String>();
             for(int i=0; i<viterbiPath.size(); i++){
                 String state = viterbiPath.get(i);
@@ -486,7 +561,7 @@ public class GestureHmm implements Serializable{
         if((thresholdOption&GAUSSIAN_THRESHOLD)>0){
             GaussianThreshold gth = gthModels.get(name);
             if(gth.numSamples > 0){
-                if(!gth.isAboveThreshold2(rawAngles, GTCriterion)){
+                if(!gth.isAboveThreshold(rawAngles, GTCriterion) && !gth.isAboveThreshold2(rawAngles, 0.7*GTCriterion)){
 //                    System.out.println("Blocked by GTM");
                     return null;
                 }
@@ -498,6 +573,7 @@ public class GestureHmm implements Serializable{
             if(maxProb < getGestureLikelyhoodTM(1.0, obs))
                 name = null;
         } else if ((thresholdOption&FIXED_THRESHOLD)>0) {
+            // checks with fixed threshold
             if(maxProb < refLikelyhood.get(name))
                 name = null;
         }
@@ -505,6 +581,8 @@ public class GestureHmm implements Serializable{
 //        System.out.println("Maximum likelyhood = " + maxProb);
         return name;
     }
+*/
+  
 
     /**
      *  tries an observation to a specific gesture
@@ -611,6 +689,9 @@ public class GestureHmm implements Serializable{
         this.GTCriterion = GTcriterion;
     }
 
+    public int getSeqSize() {
+        return seqSize;
+    }
 
 
     /**

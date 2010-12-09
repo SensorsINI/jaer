@@ -89,7 +89,7 @@ public class HmmTestMain
         /**
          * use dynamic threshold model. If you set 'false' instead of 'true', you can use a static threshold model.
          */
-        GestureHmm ghmm = new GestureHmm(featureVectorSpace, GestureHmm.GAUSSIAN_THRESHOLD|GestureHmm.DYNAMIC_THRESHOLD);
+        GestureHmm ghmm = new GestureHmm(featureVectorSpace, GestureHmm.GAUSSIAN_THRESHOLD|GestureHmm.DYNAMIC_THRESHOLD, 16);
         
         /**
          * 16 observations are extracted from 16 directions feature vector space.
@@ -260,7 +260,7 @@ public class HmmTestMain
                 return;
             }
             
-            String[] fv = fve.convTrajectoryToCodewords(trajectory);
+            String[] fv = fve.convTrajectoryToCodewords(trajectory, -1);
             if(fv[0] == null){
                 System.out.println("Warning: No trajectory is dected.");
                 return;
@@ -295,7 +295,7 @@ public class HmmTestMain
          * excutes Guess button
          */
         public void doGuess(){
-            String[] fv = fve.convTrajectoryToCodewords(trajectory);
+            String[] fv = fve.convTrajectoryToCodewords(trajectory, -1);
             
             if(fv[0] == null){
                 System.out.println("Warning: No trajectory is dected.");
@@ -414,7 +414,7 @@ public class HmmTestMain
                                   {"0", "1", "2", "3", "4", "5", "1", "3"}, {"0", "1", "2", "3", "4", "5", "1", "3", "5"}};
         String[] TGnames = {"gesture1", "gesture2", "gesture3"};
 
-        GestureHmm ghmm = new GestureHmm(featureVectorSpace, GestureHmm.DYNAMIC_THRESHOLD); // use threshold model
+        GestureHmm ghmm = new GestureHmm(featureVectorSpace, GestureHmm.DYNAMIC_THRESHOLD, 0); // use threshold model
         for(int i=0; i<TGnames.length; i++){
             ghmm.addGesture(TGnames[i], numState, HiddenMarkovModel.ModelType.LRB_RANDOM);
             ghmm.initializeGestureRandom(TGnames[i]);
@@ -448,7 +448,7 @@ public class HmmTestMain
         String[][] gesture = {{"0", "1", "2", "3"}, {"1", "3", "2", "1"}, {"3", "1", "1", "2"}, {"2", "1", "0", "0"}};
         String[] names = {"gesture1", "gesture2", "gesture3", "gesture4"};
 
-        GestureHmm ghmm = new GestureHmm(featureVectorSpace, GestureHmm.DYNAMIC_THRESHOLD); // use threshold model
+        GestureHmm ghmm = new GestureHmm(featureVectorSpace, GestureHmm.DYNAMIC_THRESHOLD, 0); // use threshold model
         for(int i=0; i<names.length; i++){
             ghmm.addGesture(names[i], numState, HiddenMarkovModel.ModelType.LR_RANDOM);
             ghmm.initializeGestureRandom(names[i]);
@@ -488,7 +488,7 @@ public class HmmTestMain
 
         String[] gesture2 = new String[] {"0", "3", "2", "1"};
 
-        GestureHmm ghmm = new GestureHmm(featureVectorSpace, GestureHmm.DYNAMIC_THRESHOLD);
+        GestureHmm ghmm = new GestureHmm(featureVectorSpace, GestureHmm.DYNAMIC_THRESHOLD, 0);
         ghmm.addGesture(name, numState, HiddenMarkovModel.ModelType.LR_RANDOM);
         ghmm.initializeGestureRandom(name);
 
@@ -522,7 +522,7 @@ public class HmmTestMain
         String[] gesture1 = new String[] {"0", "1", "2", "3"};
         String name = "gesture1";
         
-        GestureHmm ghmm = new GestureHmm(featureVectorSpace, GestureHmm.NO_THRESHOLD);
+        GestureHmm ghmm = new GestureHmm(featureVectorSpace, GestureHmm.NO_THRESHOLD, 0);
         ghmm.addGesture(name, numState, HiddenMarkovModel.ModelType.LR_RANDOM);
         ghmm.initializeGestureRandom(name);
 

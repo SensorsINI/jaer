@@ -162,7 +162,7 @@ abstract public class TrajectoryDrawingPanel extends JFrame implements MouseMoti
         drawArrow(10, imgPanelWidth - 10, 60, imgPanelHeight - 10, 8, ArrowLocation.End);
         drawArrow(10, imgPanelWidth - 10, 10, imgPanelHeight - 60, 8, ArrowLocation.End);
     }
-    
+   
     /**
      * reset trajectory
      */

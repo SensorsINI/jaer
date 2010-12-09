@@ -43,7 +43,7 @@ public class FeatureExtractionTestMain{
         @Override
         public void buttonAction(String buttonName) {
             if(buttonName.equals(GET_TRJ)){
-                String[] fv = fve.convTrajectoryToCodewords(trajectory);
+                String[] fv = fve.convTrajectoryToCodewords(trajectory, -1);
 
 /*                System.out.print("Trajectory points : ");
                 for(Point2D.Float pt:trajectory)
@@ -76,7 +76,7 @@ public class FeatureExtractionTestMain{
         FeatureExtraction fve = new FeatureExtraction(16, 12);
         SampleTrajectory st = new SampleTrajectory();
 
-        String[] fv = fve.convTrajectoryToCodewords(st.getSampleTrajetory(SampleTrajectory.SAMPLE_TRJ_TYPE.CIRCLE, 200, 128, 128, 10));
+        String[] fv = fve.convTrajectoryToCodewords(st.getSampleTrajetory(SampleTrajectory.SAMPLE_TRJ_TYPE.CIRCLE, 200, 128, 128, 10), -1);
 
         int i = 1;
         System.out.print("Codewords sequence : ");
