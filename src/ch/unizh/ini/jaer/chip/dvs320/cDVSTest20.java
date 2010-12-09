@@ -323,7 +323,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                 } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
                     // TODO comment back in
                     if ((data & ADC_START_BIT) == ADC_START_BIT) {
-                        getFrameData().swapBuffers();
+                        getFrameData().swapBuffers();  // the hardware interface here swaps the reading and writing buffers so that new data goes into the other buffer and the old data will be displayed by the rendering thread
                         getFrameData().setTimestamp(timestamps[i]);
                     }
                     getFrameData().put(data & ADC_DATA_MASK);

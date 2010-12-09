@@ -8,7 +8,9 @@ package ch.unizh.ini.jaer.chip.dvs320;
 import java.util.concurrent.Semaphore;
 
 /**
+ * 
  * Holds the frame of log intensity values to be display for a cDVS chip with log intensity readout.
+ * Double-buffers the frame data with a locking mechanism.
  * @author Tobi
  */
 public class CDVSLogIntensityFrameData {
@@ -17,50 +19,40 @@ public class CDVSLogIntensityFrameData {
     private static final int NUMSAMPLES=WIDTH*HEIGHT;
     private int timestamp=0; // timestamp of starting sample
     
-//    IntBuffer buf1=IntBuffer.allocate(NUMSAMPLES), buf2=IntBuffer.allocate(NUMSAMPLES);
-//    public IntBuffer currentWritingBuffer=buf2, currentReadingBuffer=buf1;
+    private int[] data1=new int[NUMSAMPLES], data2=new int[NUMSAMPLES];
+    /** Readers should access the current reading buffer. */
+    public int[] currentReadingBuffer=data1;
+    private int[] currentWritingBuffer=data2;
+    private int writeCounter=0, readCounter=0;
+    private Semaphore semaphore=new Semaphore(1);
 
-    int[] data1=new int[NUMSAMPLES], data2=new int[NUMSAMPLES];
-    public int[] currentWritingBuffer=data2, currentReadingBuffer=data1;
-    int writeCounter=0, readCounter=0;
-    Semaphore semaphore=new Semaphore(1);
-
+    /** Acquire this semaphore to prevent buffer swapping. */
     public void acquire(){
         semaphore.acquireUninterruptibly();
     }
+    /** Don't forget to release the semaphore. */
     public void release(){
         semaphore.release();
     }
 
-//    public int get(){
-//        return currentReadingBuffer.get();
-//    }
-
     public int get(int x, int y){
-//        return currentReadingBuffer.get(x+WIDTH*y);
         return currentReadingBuffer[y+WIDTH*x];
     }
 
+    /** Put a value to the next writing position. Writes wrap around to the start position. */
     public void put(int val){
-//        currentWritingBuffer.put(val);
-//        if(!currentWritingBuffer.hasRemaining()) swapBuffers();
         currentWritingBuffer[writeCounter++]=val;
         if(writeCounter==NUMSAMPLES) writeCounter=0;
     }
 
+    /** Swaps the current writing and reading buffers after acquiring the lock. */
     public void swapBuffers() {
         acquire();
         int[] tmp=currentReadingBuffer;
         currentReadingBuffer=currentWritingBuffer;
-        //System.out.println(writeCounter);
         writeCounter=0;
         currentWritingBuffer=tmp;
         release();
-//        currentWritingBuffer.flip();
-//        IntBuffer tmp=currentWritingBuffer;
-//        currentWritingBuffer=currentReadingBuffer;
-//        currentReadingBuffer=tmp;
-//        currentWritingBuffer.clear();
     }
 
     /**
@@ -71,6 +63,7 @@ public class CDVSLogIntensityFrameData {
     }
 
     /**
+     * Sets the buffer timestamp. 
      * @param timestamp the timestamp to set
      */
     public void setTimestamp(int timestamp) {

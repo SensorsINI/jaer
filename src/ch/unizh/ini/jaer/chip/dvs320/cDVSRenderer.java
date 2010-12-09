@@ -108,7 +108,7 @@ public class cDVSRenderer extends RetinaRenderer {
             if (isDisplayLogIntensity()) {
                 CDVSLogIntensityFrameData b = cDVSChip.getFrameData();
                 try {
-                    b.acquire();
+                    b.acquire(); // gets the lock to prevent buffer swapping during display
                     float[] pm = getPixmapArray();
                     int min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
                     for (int y = 0; y < cDVSTest20.SIZE_Y_CDVS; y++) {
@@ -136,7 +136,7 @@ public class cDVSRenderer extends RetinaRenderer {
                 } catch (IndexOutOfBoundsException ex) {
                     log.warning(ex.toString());
                 } finally {
-                    b.release();
+                    b.release(); // releases the lock
                 }
             }
             autoScaleFrame(f);
