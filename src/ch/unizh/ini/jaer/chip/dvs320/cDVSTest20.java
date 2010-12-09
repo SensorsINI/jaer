@@ -184,6 +184,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         if(logIntensityGain<1) logIntensityGain=1; else if(logIntensityGain>MAX_ADC) logIntensityGain=MAX_ADC;
         this.logIntensityGain = logIntensityGain;
         getPrefs().putInt("logIntensityGain",logIntensityGain);
+        getAeViewer().interruptViewloop();
     }
 
     /**
@@ -202,6 +203,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         if(logIntensityOffset<0) logIntensityOffset=0; else if(logIntensityOffset>MAX_ADC) logIntensityOffset=MAX_ADC;
         this.logIntensityOffset = logIntensityOffset;
         getPrefs().putInt("logIntensityOffset", logIntensityOffset);
+        getAeViewer().interruptViewloop();
     }
 
     /** The event extractor. Each pixel has two polarities 0 and 1.
@@ -962,6 +964,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     public void setDisplayLogIntensity(boolean displayLogIntensity) {
         this.displayLogIntensity = displayLogIntensity;
         getPrefs().putBoolean("displayLogIntensity", displayLogIntensity);
+        getAeViewer().interruptViewloop();
     }
 
     /**
@@ -977,6 +980,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     public void setDisplayColorChangeEvents(boolean displayColorChangeEvents) {
         this.displayColorChangeEvents = displayColorChangeEvents;
         getPrefs().putBoolean("displayColorChangeEvents", displayColorChangeEvents);
+        getAeViewer().interruptViewloop();
     }
 
     /**
@@ -992,5 +996,6 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     public void setDisplayLogIntensityChangeEvents(boolean displayLogIntensityChangeEvents) {
         this.displayLogIntensityChangeEvents = displayLogIntensityChangeEvents;
         getPrefs().putBoolean("displayLogIntensityChangeEvents", displayLogIntensityChangeEvents);
+        getAeViewer().interruptViewloop();
     }
 }

@@ -110,6 +110,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return filterFrame;
     }
 
+    /** Call this method to break the ViewLoop out of a sleep wait, e.g. to force re-rendering of the data. */
+    public void interruptViewloop() {
+        viewLoop.interrupt(); // to break it out of blocking operation such as wait on cyclic barrier or socket
+    }
+
     public void reopenSocketInputStream () throws HeadlessException{
         log.info("closing and reopening socket " + aeSocket);
         if ( aeSocket != null ){
@@ -3799,7 +3804,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void viewSingleStepMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewSingleStepMenuItemActionPerformed
         jaerViewer.getSyncPlayer().doSingleStep();
-        viewLoop.interrupt();
+        interruptViewloop();
     }//GEN-LAST:event_viewSingleStepMenuItemActionPerformed
 
     private void buildMonSeqMenu (){
@@ -4058,7 +4063,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         renderer.setColorScale(renderer.getColorScale() + 1);
 //        System.out.println("interrupting viewloop");
 //        repaint();
-        viewLoop.interrupt();
+        interruptViewloop();
     }//GEN-LAST:event_decreaseContrastMenuItemActionPerformed
 
     private void increaseContrastMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_increaseContrastMenuItemActionPerformed
@@ -4066,7 +4071,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        viewLoop.rerenderFlagDone=false;
         renderer.setColorScale(renderer.getColorScale() - 1);
 //        System.out.println("interrupting viewloop");
-        viewLoop.interrupt();
+        interruptViewloop();
 //        repaint();
     }//GEN-LAST:event_increaseContrastMenuItemActionPerformed
 
@@ -4941,7 +4946,7 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
 //        log.info("settings paused=" + paused);
         boolean old = isPaused();
         jaerViewer.getSyncPlayer().setPaused(paused);
-        viewLoop.interrupt();  // to break out of exchangeers that might be waiting
+        interruptViewloop();  // to break out of exchangeers that might be waiting
         firePropertyChange(EVENT_PAUSED,old,isPaused());
     }
 
@@ -5122,7 +5127,7 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
         log.info("Changing PlayMode from " + this.playMode + " to " + playMode);
         synchronized ( viewLoop ){
             this.playMode = playMode;
-            viewLoop.interrupt(); // to break it out of blocking operation such as wait on cyclic barrier or socket
+            interruptViewloop();
         }
 //        if(this.playMode==PlayMode.WAITING){
 //            log.info("went to waiting state");
