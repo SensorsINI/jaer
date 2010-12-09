@@ -111,7 +111,7 @@ public class WindowSaver implements AWTEventListener {
         // replaced by hardcoded lowerInset
 //        lowerInset=64;
         GraphicsEnvironment ge=GraphicsEnvironment.getLocalGraphicsEnvironment();
-        GraphicsDevice[] gs=ge.getScreenDevices();
+        GraphicsDevice[] gs=ge.getScreenDevices(); // TODO it could be that remote session doesn't show screen that used to be used. Should check that we are not offscreen. Otherwise registy edit is required to show window!
 
         if(gs!=null&&gs.length>0) {
             GraphicsDevice gd=gs[0];

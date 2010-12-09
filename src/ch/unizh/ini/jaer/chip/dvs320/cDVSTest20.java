@@ -81,6 +81,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
 
    public static final int MAX_ADC = (int)((1<<12)-1);
 
+
     /** The computed intensity value. */
     private float globalIntensity = 0;
     private CDVSLogIntensityFrameData frameData = new CDVSLogIntensityFrameData();
@@ -90,9 +91,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     private boolean displayColorChangeEvents;
     private boolean displayLogIntensityChangeEvents;
 
-    /** Control scaling and offset of display of log intensity values. */
-    int logIntensityGain=getPrefs().getInt("logIntensityGain",1), logIntensityOffset=getPrefs().getInt("logIntensityOffset",0);
-
+  
     /** Creates a new instance of cDVSTest10.  */
     public cDVSTest20() {
         setName("cDVSTest20");
@@ -167,44 +166,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     Random random = new Random();  // TODO debug remove
     int debugSampleCounter=0;
 
-    /**
-     * Value from 1 to MAX_ADC. Gain of 1, offset of 0 turns full scale ADC to 1. Gain of MAX_ADC makes a single count go full scale.
-     * @return the logIntensityGain
-     */
-    public float getLogIntensityGain() {
-        return logIntensityGain;
-    }
 
-    /**
-     * Value from 1 to MAX_ADC. Gain of 1, offset of 0 turns full scale ADC to 1.
-     * Gain of MAX_ADC makes a single count go full scale.
-     * @param logIntensityGain the logIntensityGain to set
-     */
-    public void setLogIntensityGain(int logIntensityGain) {
-        if(logIntensityGain<1) logIntensityGain=1; else if(logIntensityGain>MAX_ADC) logIntensityGain=MAX_ADC;
-        this.logIntensityGain = logIntensityGain;
-        getPrefs().putInt("logIntensityGain",logIntensityGain);
-        getAeViewer().interruptViewloop();
-    }
-
-    /**
-     * Value subtracted from ADC count before gain multiplication. Ranges from 0 to MAX_ADC.
-     * @return the logIntensityOffset
-     */
-    public float getLogIntensityOffset() {
-        return logIntensityOffset;
-    }
-
-    /**
-    * Sets value subtracted from ADC count before gain multiplication. Clamped between 0 to MAX_ADC.
-      * @param logIntensityOffset the logIntensityOffset to set
-     */
-    public void setLogIntensityOffset(int logIntensityOffset) {
-        if(logIntensityOffset<0) logIntensityOffset=0; else if(logIntensityOffset>MAX_ADC) logIntensityOffset=MAX_ADC;
-        this.logIntensityOffset = logIntensityOffset;
-        getPrefs().putInt("logIntensityOffset", logIntensityOffset);
-        getAeViewer().interruptViewloop();
-    }
 
     /** The event extractor. Each pixel has two polarities 0 and 1.
      * There is one extra neuron which signals absolute intensity.

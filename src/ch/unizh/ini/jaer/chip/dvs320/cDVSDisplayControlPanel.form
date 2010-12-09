@@ -106,9 +106,11 @@
                                       <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
                                       <EmptySpace max="-2" attributes="0"/>
                                       <Component id="agcSpinner" min="-2" pref="64" max="-2" attributes="0"/>
+                                      <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                                      <Component id="applyButton" min="-2" max="-2" attributes="0"/>
                                   </Group>
                                   <Group type="102" alignment="1" attributes="0">
-                                      <EmptySpace pref="21" max="32767" attributes="0"/>
+                                      <EmptySpace pref="31" max="32767" attributes="0"/>
                                       <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
                                       <EmptySpace max="-2" attributes="0"/>
                                       <Component id="minTF" min="-2" max="-2" attributes="0"/>
@@ -157,6 +159,7 @@
                           <Component id="agcCB" alignment="3" min="-2" max="-2" attributes="0"/>
                           <Component id="agcSpinner" alignment="3" min="-2" max="-2" attributes="0"/>
                           <Component id="jLabel1" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="applyButton" alignment="3" min="-2" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace pref="6" max="32767" attributes="0"/>
                       <Group type="103" groupAlignment="2" attributes="0">
@@ -184,9 +187,9 @@
             <Component class="javax.swing.JSlider" name="gainSlider">
               <Properties>
                 <Property name="maximum" type="int" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
-                  <Connection code="cDVSTest20.MAX_ADC" type="code"/>
+                  <Connection code="cDVSTest20.MAX_ADC/10" type="code"/>
                 </Property>
-                <Property name="toolTipText" type="java.lang.String" value="Sets the gain applied to ADC count. Gain=1 scales full count to white when offset=0."/>
+                <Property name="toolTipText" type="java.lang.String" value="Sets the gain applied to ADC count. Gain=1 scales full count to white when offset=0. Gain=MAX_ADC scales a single count to full white when offset=0."/>
               </Properties>
               <BindingProperties>
                 <BindingProperty name="value" source="Form" sourcePath="${logIntensityGain}" target="gainSlider" targetPath="value" updateStrategy="0" immediately="false">
@@ -301,6 +304,19 @@
                 <Property name="text" type="java.lang.String" value="4095"/>
                 <Property name="toolTipText" type="java.lang.String" value="gain as computed by AGC"/>
               </Properties>
+            </Component>
+            <Component class="javax.swing.JButton" name="applyButton">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Apply"/>
+                <Property name="toolTipText" type="java.lang.String" value="Apply AGC offset and gain values to fixed values"/>
+                <Property name="iconTextGap" type="int" value="1"/>
+                <Property name="margin" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                  <Insets value="[1, 3, 1, 3]"/>
+                </Property>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="applyButtonActionPerformed"/>
+              </Events>
             </Component>
           </SubComponents>
         </Container>

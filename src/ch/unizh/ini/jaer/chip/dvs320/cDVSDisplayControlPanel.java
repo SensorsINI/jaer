@@ -36,6 +36,8 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
         initComponents();
         renderer.getSupport().addPropertyChangeListener(AEChipRenderer.COLOR_SCALE, this);
         renderer.getSupport().addPropertyChangeListener(cDVSRenderer.AGC_VALUES, this);
+        renderer.getSupport().addPropertyChangeListener(cDVSRenderer.LOG_INTENSITY_GAIN, this);
+        renderer.getSupport().addPropertyChangeListener(cDVSRenderer.LOG_INTENSITY_OFFSET, this);
     }
 
     /** This method is called from within the constructor to
@@ -66,6 +68,7 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
         jLabel5 = new javax.swing.JLabel();
         jLabel6 = new javax.swing.JLabel();
         gainAGCTF = new javax.swing.JTextField();
+        applyButton = new javax.swing.JButton();
         jPanel2 = new javax.swing.JPanel();
         logIntensityChangeCB = new javax.swing.JCheckBox();
         colorChangeCB = new javax.swing.JCheckBox();
@@ -86,8 +89,8 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
         org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${displayMethod.displayLogIntensity}"), logIntensityCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
-        gainSlider.setMaximum(cDVSTest20.MAX_ADC);
-        gainSlider.setToolTipText("Sets the gain applied to ADC count. Gain=1 scales full count to white when offset=0.");
+        gainSlider.setMaximum(cDVSTest20.MAX_ADC/10);
+        gainSlider.setToolTipText("Sets the gain applied to ADC count. Gain=1 scales full count to white when offset=0. Gain=MAX_ADC scales a single count to full white when offset=0.");
 
         binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${logIntensityGain}"), gainSlider, org.jdesktop.beansbinding.BeanProperty.create("value"));
         bindingGroup.addBinding(binding);
@@ -152,6 +155,16 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
         gainAGCTF.setText("4095");
         gainAGCTF.setToolTipText("gain as computed by AGC");
 
+        applyButton.setText("Apply");
+        applyButton.setToolTipText("Apply AGC offset and gain values to fixed values");
+        applyButton.setIconTextGap(1);
+        applyButton.setMargin(new java.awt.Insets(1, 3, 1, 3));
+        applyButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                applyButtonActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -179,9 +192,11 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(jLabel1)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(agcSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 64, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addComponent(agcSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 64, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addComponent(applyButton))
                             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 21, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 31, Short.MAX_VALUE)
                                 .addComponent(jLabel2)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(minTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -221,7 +236,8 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(agcCB)
                     .addComponent(agcSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel1))
+                    .addComponent(jLabel1)
+                    .addComponent(applyButton))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 6, Short.MAX_VALUE)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
                     .addComponent(jLabel2)
@@ -371,10 +387,15 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
         bindingGroup.bind();
     }// </editor-fold>//GEN-END:initComponents
 
+    private void applyButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_applyButtonActionPerformed
+        renderer.applyAGCValues();
+    }//GEN-LAST:event_applyButtonActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JCheckBox agcCB;
     private javax.swing.JSpinner agcSpinner;
+    private javax.swing.JButton applyButton;
     private javax.swing.JCheckBox colorChangeCB;
     private javax.swing.JSpinner colorScaleSpinner;
     private javax.swing.JPanel displayControlPanel;
@@ -432,19 +453,19 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
     }
 
     public void setLogIntensityOffset(int logIntensityOffset) {
-        chip.setLogIntensityOffset(logIntensityOffset);
+        renderer.setLogIntensityOffset(logIntensityOffset);
     }
 
     public void setLogIntensityGain(int logIntensityGain) {
-        chip.setLogIntensityGain(logIntensityGain);
+        renderer.setLogIntensityGain(logIntensityGain);
     }
 
     public int getLogIntensityOffset() {
-        return (int)(chip.getLogIntensityOffset());
+        return (int)(renderer.getLogIntensityOffset());
     }
 
     public int getLogIntensityGain() {
-        return (int)(chip.getLogIntensityGain());
+        return (int)(renderer.getLogIntensityGain());
     }
 
 
@@ -470,6 +491,10 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
             minTF.setText(String.format("%.0f",f.x));
             maxTF.setText(String.format("%.0f",f.y));
             gainAGCTF.setText(String.format("%.0f",cDVSTest20.MAX_ADC/(f.y-f.x)));
+        }else if(evt.getPropertyName()==cDVSRenderer.LOG_INTENSITY_GAIN){
+            gainSlider.setValue(renderer.getLogIntensityGain());
+        }else if(evt.getPropertyName()==cDVSRenderer.LOG_INTENSITY_OFFSET){
+            offsetSlider.setValue(renderer.getLogIntensityOffset());
         }
     }
 

@@ -22,13 +22,20 @@ public class cDVSRenderer extends RetinaRenderer {
     private int sizeX = 1;
     private LowpassFilter2d agcFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
     private boolean agcEnabled;
-    public static final String AGC_VALUES="AGCValues";
+    /** PropertyChange */
+    public static final String AGC_VALUES = "AGCValuesChanged";
+    /** PropertyChange when value is changed */
+    public static final String LOG_INTENSITY_GAIN = "logIntensityGain", LOG_INTENSITY_OFFSET = "logIntensityOffset";
+    /** Control scaling and offset of display of log intensity values. */
+    int logIntensityGain, logIntensityOffset;
 
     public cDVSRenderer(cDVSTest20 chip) {
         super(chip);
         cDVSChip = chip;
         agcEnabled = chip.getPrefs().getBoolean("agcEnabled", false);
         setAGCTauMs(chip.getPrefs().getFloat("agcTauMs", 1000));
+        logIntensityGain = chip.getPrefs().getInt("logIntensityGain", 1);
+        logIntensityOffset = chip.getPrefs().getInt("logIntensityOffset", 0);
     }
 
     @Override
@@ -129,7 +136,7 @@ public class cDVSRenderer extends RetinaRenderer {
                             changeCDVSPixel(x, y, pm, vv, 1);
                         }
                     }
-                    if (agcEnabled && (min>0 && max>0)) { // don't adapt to first frame which is all zeros
+                    if (agcEnabled && (min > 0 && max > 0)) { // don't adapt to first frame which is all zeros
                         Float filter2d = agcFilter.filter2d(min, max, b.getTimestamp());
                         getSupport().firePropertyChange(AGC_VALUES, null, filter2d); // inform listeners (GUI) of new AGC min/max filterd log intensity values
                     }
@@ -202,13 +209,13 @@ public class cDVSRenderer extends RetinaRenderer {
 
     private float adc01normalized(int count) {
         if (!agcEnabled) {
-            float v = (float) (cDVSChip.logIntensityGain * (count - cDVSChip.logIntensityOffset)) / cDVSTest20.MAX_ADC;
+            float v = (float) (logIntensityGain * (count - logIntensityOffset)) / cDVSChip.MAX_ADC;
             return v;
         } else {
-            Float filter2d=agcFilter.getValue2d();
-            float offset=filter2d.x;
-            float range=(filter2d.y-filter2d.x);
-            float v = ((count - offset)) / range ;
+            Float filter2d = agcFilter.getValue2d();
+            float offset = filter2d.x;
+            float range = (filter2d.y - filter2d.x);
+            float v = ((count - offset)) / range;
             return v;
         }
     }
@@ -240,4 +247,78 @@ public class cDVSRenderer extends RetinaRenderer {
         chip.getPrefs().putBoolean("agcEnabled", agcEnabled);
     }
 
+    void applyAGCValues() {
+        Float f = agcFilter.getValue2d();
+        setLogIntensityOffset(agcOffset());
+        setLogIntensityGain(agcGain());
+    }
+
+    private int agcOffset() {
+        return (int) agcFilter.getValue2d().x;
+    }
+
+    private int agcGain() {
+        Float f = agcFilter.getValue2d();
+        float diff = f.y - f.x;
+        if (diff < 1) {
+            return 1;
+        }
+        int gain = (int) (cDVSTest20.MAX_ADC / (f.y - f.x));
+        return gain;
+    }
+
+    /**
+     * Value from 1 to MAX_ADC. Gain of 1, offset of 0 turns full scale ADC to 1. Gain of MAX_ADC makes a single count go full scale.
+     * @return the logIntensityGain
+     */
+    public int getLogIntensityGain() {
+        return logIntensityGain;
+    }
+
+    /**
+     * Value from 1 to MAX_ADC. Gain of 1, offset of 0 turns full scale ADC to 1.
+     * Gain of MAX_ADC makes a single count go full scale.
+     * @param logIntensityGain the logIntensityGain to set
+     */
+    public void setLogIntensityGain(int logIntensityGain) {
+        int old = this.logIntensityGain;
+        if (logIntensityGain < 1) {
+            logIntensityGain = 1;
+        } else if (logIntensityGain > cDVSChip.MAX_ADC) {
+            logIntensityGain = cDVSChip.MAX_ADC;
+        }
+        this.logIntensityGain = logIntensityGain;
+        chip.getPrefs().putInt("logIntensityGain", logIntensityGain);
+        if (chip.getAeViewer() != null) {
+            chip.getAeViewer().interruptViewloop();
+        }
+        getSupport().firePropertyChange(LOG_INTENSITY_GAIN, old, logIntensityGain);
+    }
+
+    /**
+     * Value subtracted from ADC count before gain multiplication. Ranges from 0 to MAX_ADC.
+     * @return the logIntensityOffset
+     */
+    public int getLogIntensityOffset() {
+        return logIntensityOffset;
+    }
+
+    /**
+     * Sets value subtracted from ADC count before gain multiplication. Clamped between 0 to MAX_ADC.
+     * @param logIntensityOffset the logIntensityOffset to set
+     */
+    public void setLogIntensityOffset(int logIntensityOffset) {
+        int old = this.logIntensityOffset;
+        if (logIntensityOffset < 0) {
+            logIntensityOffset = 0;
+        } else if (logIntensityOffset > cDVSChip.MAX_ADC) {
+            logIntensityOffset = cDVSChip.MAX_ADC;
+        }
+        this.logIntensityOffset = logIntensityOffset;
+        chip.getPrefs().putInt("logIntensityOffset", logIntensityOffset);
+        if (chip.getAeViewer() != null) {
+            chip.getAeViewer().interruptViewloop();
+        }
+        getSupport().firePropertyChange(LOG_INTENSITY_OFFSET, old, logIntensityOffset);
+    }
 }
