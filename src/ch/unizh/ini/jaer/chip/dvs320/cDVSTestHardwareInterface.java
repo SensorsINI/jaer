@@ -49,7 +49,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
     private short TrackTime=1024, RefOnTime=256, RefOffTime=256, IdleTime=256;
     private boolean Select5Tbuffer=true;
-    private boolean UseCalibration=true;
+    private boolean UseCalibration=false;
 
     public void setTrackTime(short trackTimeUs) {
         TrackTime = (short)(15 * trackTimeUs);
@@ -100,30 +100,30 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
             }
 
     synchronized public void sendCPLDconfiguration() throws HardwareInterfaceException {
-        short ADCword=(short) (ADCconfig | (ADCchannel << ADCchannelshift));
+        short ADCword=(short) (ADCconfig | (getADCchannel() << ADCchannelshift));
 
         int nBits = 0;
 
         StringBuilder s = new StringBuilder();
 
-        s.append(getBitString(IdleTime, (short) 16));
+        s.append(getBitString(getIdleTime(), (short) 16));
         nBits += 16;
-        s.append(getBitString(RefOffTime, (short) 16));
+        s.append(getBitString(getRefOffTime(), (short) 16));
         nBits += 16;
-        s.append(getBitString(RefOnTime, (short) 16));
+        s.append(getBitString(getRefOnTime(), (short) 16));
         nBits += 16;
-        s.append(getBitString(TrackTime, (short) 16));
+        s.append(getBitString(getTrackTime(), (short) 16));
         nBits += 16;
         s.append(getBitString(ADCword, ADCconfigLength));
         nBits += ADCconfigLength;
 
-        if (UseCalibration)
+        if (isUseCalibration())
             s.append(getBitString((short)1,(short)1));
         else
             s.append(getBitString((short)0,(short)1));
         nBits += 1;
 
-        if (Select5Tbuffer)
+        if (isSelect5Tbuffer())
             s.append(getBitString((short)1,(short)1));
         else
             s.append(getBitString((short)0,(short)1));
@@ -219,12 +219,17 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         }
         try {
             stopADC();
+            setChipReset(isChipReset());
+            chipReset=!isChipReset();
             startADC();
             this.sendVendorRequest(VENDOR_REQUEST_RESET_TIMESTAMPS);
         } catch (HardwareInterfaceException e) {
             log.warning("could not send vendor request to reset timestamps: " + e);
         }
     }
+
+    private boolean chipReset=false;
+
 
     private byte[] parseHexData(String firmwareFile) throws IOException {
 
@@ -423,6 +428,62 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         HardwareInterfaceException.clearException();
     }
     boolean gotY = false; // TODO  hack for debugging state machine
+
+    /**
+     * @return the TrackTime
+     */
+    public short getTrackTime() {
+        return (short) (TrackTime/15);
+    }
+
+    /**
+     * @return the RefOnTime
+     */
+    public short getRefOnTime() {
+        return (short) (RefOnTime/15);
+    }
+
+    /**
+     * @return the RefOffTime
+     */
+    public short getRefOffTime() {
+        return (short) (RefOffTime/15);
+    }
+
+    /**
+     * @return the IdleTime
+     */
+    public short getIdleTime() {
+        return (short) (IdleTime/15);
+    }
+
+    /**
+     * @return the Select5Tbuffer
+     */
+    public boolean isSelect5Tbuffer() {
+        return Select5Tbuffer;
+    }
+
+    /**
+     * @return the UseCalibration
+     */
+    public boolean isUseCalibration() {
+        return UseCalibration;
+    }
+
+    /**
+     * @return the ADCchannel
+     */
+    public byte getADCchannel() {
+        return ADCchannel;
+    }
+
+    /**
+     * @return the chipReset
+     */
+    public boolean isChipReset() {
+        return chipReset;
+    }
 
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
     public class RetinaAEReader extends CypressFX2.AEReader {
