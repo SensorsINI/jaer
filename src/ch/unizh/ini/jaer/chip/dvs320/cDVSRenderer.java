@@ -129,7 +129,7 @@ public class cDVSRenderer extends RetinaRenderer {
                             changeCDVSPixel(x, y, pm, vv, 1);
                         }
                     }
-                    if (agcEnabled) {
+                    if (agcEnabled && (min>0 && max>0)) { // don't adapt to first frame which is all zeros
                         Float filter2d = agcFilter.filter2d(min, max, b.getTimestamp());
                         getSupport().firePropertyChange(AGC_VALUES, null, filter2d); // inform listeners (GUI) of new AGC min/max filterd log intensity values
                     }
