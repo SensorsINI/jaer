@@ -47,24 +47,24 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         super.sendBiasBytes(bytes);
     }
 
-    private short TrackTime=1024, RefOnTime=256, RefOffTime=256, IdleTime=256;
+    private short TrackTime=50, RefOnTime=20, RefOffTime=20, IdleTime=10;
     private boolean Select5Tbuffer=true;
-    private boolean UseCalibration=false;
+    private boolean UseCalibration=true;
 
     public void setTrackTime(short trackTimeUs) {
-        TrackTime = (short)(15 * trackTimeUs);
+        TrackTime =  trackTimeUs;
     }
 
     public void setIdleTime(short trackTimeUs) {
-        IdleTime = (short)(15 * trackTimeUs);
+        IdleTime = trackTimeUs;
     }
 
     public void setRefOnTime(short trackTimeUs) {
-        RefOnTime = (short)(15 * trackTimeUs);
+        RefOnTime = trackTimeUs;
     }
 
     public void setRefOffTime(short trackTimeUs) {
-        RefOffTime = (short)(15 * trackTimeUs);
+        RefOffTime =  trackTimeUs;
     }
 
     public void setSelect5Tbuffer(boolean se) {
@@ -106,13 +106,13 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
         StringBuilder s = new StringBuilder();
 
-        s.append(getBitString(getIdleTime(), (short) 16));
+        s.append(getBitString((short)(getIdleTime()*15), (short) 16)); // multiplication with 15 to get from us to clockcycles
         nBits += 16;
-        s.append(getBitString(getRefOffTime(), (short) 16));
+        s.append(getBitString((short)(getRefOffTime()*15), (short) 16)); // multiplication with 15 to get from us to clockcycles
         nBits += 16;
-        s.append(getBitString(getRefOnTime(), (short) 16));
+        s.append(getBitString((short)(getRefOnTime()*15), (short) 16)); // multiplication with 15 to get from us to clockcycles
         nBits += 16;
-        s.append(getBitString(getTrackTime(), (short) 16));
+        s.append(getBitString((short)(getTrackTime()*15), (short) 16)); // multiplication with 15 to get from us to clockcycles
         nBits += 16;
         s.append(getBitString(ADCword, ADCconfigLength));
         nBits += ADCconfigLength;
@@ -435,28 +435,28 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
      * @return the TrackTime
      */
     public short getTrackTime() {
-        return (short) (TrackTime/15);
+        return TrackTime;
     }
 
     /**
      * @return the RefOnTime
      */
     public short getRefOnTime() {
-        return (short) (RefOnTime/15);
+        return RefOnTime;
     }
 
     /**
      * @return the RefOffTime
      */
     public short getRefOffTime() {
-        return (short) (RefOffTime/15);
+        return RefOffTime;
     }
 
     /**
      * @return the IdleTime
      */
     public short getIdleTime() {
-        return (short) (IdleTime/15);
+        return IdleTime;
     }
 
     /**

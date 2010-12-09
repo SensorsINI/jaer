@@ -408,7 +408,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
 
             // DAC object for simple voltage DAC
             final float Vdd=1.8f;
-            DAC dac=new DAC(1,4,0,Vdd,Vdd);
+            DAC dac=new DAC(1,8,0,Vdd,Vdd);
             //    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
             thermometerDAC=new VPot(cDVSTest20.this, "LogAmpRef", dac, 0, Type.NORMAL, Sex.N, 9, 0, "Voltage DAC for log intensity switched cap amplifier");
 
@@ -578,7 +578,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             byte[] configBytes = allMuxes.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
             bb.put(configBytes);
 
-            // 16 value (4 bit) VDAC for amplifier reference
+            // 256 value (8 bit) VDAC for amplifier reference
             byte vdac = (byte) thermometerDAC.getBitValue(); //Byte.valueOf("9");
             bb.put(vdac);   // VDAC needs 8 bits
             bb.put(biasBytes);
