@@ -22,7 +22,7 @@ import javax.swing.border.TitledBorder;
  * Control panel for cDVSTest10 diagnostic output configuration.
  * @author  tobi
  */
-public class cDVSTest20ChipControlPanel extends javax.swing.JPanel {
+public class cDVSTest20OutputControlPanel extends javax.swing.JPanel {
 
     static Logger log = Logger.getLogger("cDVSTest20ControlPanel");
     class OutputSelectionAction extends AbstractAction implements Observer {
@@ -56,7 +56,7 @@ public class cDVSTest20ChipControlPanel extends javax.swing.JPanel {
     boolean panelBuilt = false;
 
     /** Creates new form DVS320ControlPanel */
-    public cDVSTest20ChipControlPanel(cDVSTest20 chip) {
+    public cDVSTest20OutputControlPanel(cDVSTest20 chip) {
         this.chip = chip;
         initComponents();
     }

@@ -4,6 +4,7 @@ created 26 Oct 2008 for new cDVSTest chip
 package ch.unizh.ini.jaer.chip.dvs320;
 
 import ch.unizh.ini.jaer.chip.retina.*;
+import javax.swing.JLabel;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.VDAC.VPot;
@@ -27,6 +28,7 @@ import net.sf.jaer.biasgen.Pot.Sex;
 import net.sf.jaer.biasgen.Pot.Type;
 import net.sf.jaer.biasgen.VDAC.DAC;
 import net.sf.jaer.biasgen.VDAC.VPotGUIControl;
+import net.sf.jaer.util.ParameterControlPanel;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 
@@ -59,7 +61,6 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     // The hardware interface translateEvents method packs the raw device data into 32 bit 'addresses' and timestamps.
     // timestamps are unwrapped and timestamp resets are handled in translateEvents. Addresses are filled with either AE or ADC data.
     // AEs are filled in according the XMASK, YMASK, XSHIFT, YSHIFT below.
-
     /**
      * bit masks/shifts for cDVS  AE data
      */
@@ -73,18 +74,13 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     /*
      * data type fields
      */
-
     /** data type is either timestamp or data (AE address or ADC reading) */
     public static final int DATA_TYPE_MASK = 0xc000, DATA_TYPE_ADDRESS = 0x0000, DATA_TYPE_TIMESTAMP = 0x4000, DATA_TYPE_WRAP = 0x8000, DATA_TYPE_TIMESTAMP_RESET = 0xd000;
     /** Address-type refers to data if is it an "address". This data is either an AE address or ADC reading.*/
     public static final int ADDRESS_TYPE_MASK = 0x2000, EVENT_ADDRESS_MASK = POLMASK | XMASK | YMASK, ADDRESS_TYPE_EVENT = 0x0000, ADDRESS_TYPE_ADC = 0x2000;
     /** For ADC data, the data is defined by the ADC channel and whether it is the first ADC value from the scanner. */
     public static final int ADC_TYPE_MASK = 0x1c00, ADC_DATA_MASK = 0x3ff, ADC_CHANNEL_MASK = 0x1800, ADC_START_BIT = 0x0400;
-
-
-   public static final int MAX_ADC = (int)((1<<12)-1);
-
-
+    public static final int MAX_ADC = (int) ((1 << 12) - 1);
     /** The computed intensity value. */
     private float globalIntensity = 0;
     private CDVSLogIntensityFrameData frameData = new CDVSLogIntensityFrameData();
@@ -94,7 +90,6 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     private boolean displayColorChangeEvents;
     private boolean displayLogIntensityChangeEvents;
 
-  
     /** Creates a new instance of cDVSTest10.  */
     public cDVSTest20() {
         setName("cDVSTest20");
@@ -138,8 +133,6 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         cDVSDisplayMethod.unregisterControlPanel();
     }
 
-
-
     /** Creates a new instance of cDVSTest10
      * @param hardwareInterface an existing hardware interface. This constructor is preferred. It makes a new cDVSTest10Biasgen object to talk to the on-chip biasgen.
      */
@@ -164,12 +157,9 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     public CDVSLogIntensityFrameData getFrameData() {
         return frameData;
     }
-
     // TODO debug remove
     Random random = new Random();  // TODO debug remove
-    int debugSampleCounter=0;
-
-
+    int debugSampleCounter = 0;
 
     /** The event extractor. Each pixel has two polarities 0 and 1.
      * There is one extra neuron which signals absolute intensity.
@@ -294,7 +284,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                         getFrameData().setTimestamp(timestamps[i]);
                     }
                     getFrameData().put(data & ADC_DATA_MASK);
-                    
+
                     ////////////// TODO debug remove
 //                    if(++debugSampleCounter==SIZE_X_CDVS*SIZE_Y_CDVS) {
 //                        debugSampleCounter=0;
@@ -315,12 +305,17 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     @Override
     public void setHardwareInterface(final HardwareInterface hardwareInterface) {
         this.hardwareInterface = hardwareInterface;
+        cDVSTest20.cDVSTestBiasgen bg;
         try {
             if (getBiasgen() == null) {
-                setBiasgen(new cDVSTest20.cDVSTestBiasgen(this));
+                setBiasgen(bg = new cDVSTest20.cDVSTestBiasgen(this));
+                // now we can add the control panel
+
             } else {
                 getBiasgen().setHardwareInterface((BiasgenHardwareInterface) hardwareInterface);
+
             }
+
         } catch (ClassCastException e) {
             log.warning(e.getMessage() + ": probably this chip object has a biasgen but the hardware interface doesn't, ignoring");
         }
@@ -356,13 +351,14 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
         private ConfigurableIPotRev0 pcas, diffOn, diffOff, diff, red, blue, amp;
         private ConfigurableIPotRev0 refr, pr, foll;
-        cDVSTest20ChipControlPanel controlPanel;
+        cDVSTest20OutputControlPanel controlPanel;
         AllMuxes allMuxes = new AllMuxes(); // the output muxes
         private ShiftedSourceBias ssn, ssp, ssnMid, sspMid;
         private ShiftedSourceBias[] ssBiases = new ShiftedSourceBias[4];
         private VPot thermometerDAC;
         int pos = 0;
-        // utility method to quickly add pot
+        JPanel bPanel;
+        JTabbedPane bgTabbedPane;
 
         /** Creates a new instance of cDVSTestBiasgen for cDVSTest with a given hardware interface
          *@param chip the chip this biasgen belongs to
@@ -407,10 +403,10 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
 //                public DAC(int numChannels, int resolutionBits, float refMinVolts, float refMaxVolts, float vdd){
 
             // DAC object for simple voltage DAC
-            final float Vdd=1.8f;
-            DAC dac=new DAC(1,8,0,Vdd,Vdd);
+            final float Vdd = 1.8f;
+            DAC dac = new DAC(1, 8, 0, Vdd, Vdd);
             //    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
-            thermometerDAC=new VPot(cDVSTest20.this, "LogAmpRef", dac, 0, Type.NORMAL, Sex.N, 9, 0, "Voltage DAC for log intensity switched cap amplifier");
+            thermometerDAC = new VPot(cDVSTest20.this, "LogAmpRef", dac, 0, Type.NORMAL, Sex.N, 9, 0, "Voltage DAC for log intensity switched cap amplifier");
 
             setPotArray(new IPotArray(this));
             /*
@@ -524,7 +520,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                     ss.loadPreferences();
                 }
             }
-            if(thermometerDAC!=null){
+            if (thermometerDAC != null) {
                 thermometerDAC.loadPreferences();
             }
         }
@@ -540,7 +536,9 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                     ss.storePreferences();
                 }
             }
-            if(thermometerDAC!=null) thermometerDAC.storePreferences();
+            if (thermometerDAC != null) {
+                thermometerDAC.storePreferences();
+            }
         }
 
         /**
@@ -552,9 +550,9 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         @Override
         public JPanel buildControlPanel() {
 //            if(controlPanel!=null) return controlPanel;
-            JPanel panel = new JPanel();
-            panel.setLayout(new BorderLayout());
-            JTabbedPane pane = new JTabbedPane();
+            bPanel = new JPanel();
+            bPanel.setLayout(new BorderLayout());
+            bgTabbedPane = new JTabbedPane();
 
             JPanel combinedBiasShiftedSourcePanel = new JPanel();
             combinedBiasShiftedSourcePanel.setLayout(new BoxLayout(combinedBiasShiftedSourcePanel, BoxLayout.Y_AXIS));
@@ -564,10 +562,17 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(ssnMid));
             combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(sspMid));
             combinedBiasShiftedSourcePanel.add(new VPotGUIControl(thermometerDAC));
-            pane.addTab("Biases", combinedBiasShiftedSourcePanel);
-            pane.addTab("Output control", new cDVSTest20ChipControlPanel(cDVSTest20.this));
-            panel.add(pane, BorderLayout.CENTER);
-            return panel;
+            bgTabbedPane.addTab("Biases", combinedBiasShiftedSourcePanel);
+            bgTabbedPane.addTab("Output control", new cDVSTest20OutputControlPanel(cDVSTest20.this));
+            final String tabTitle="ADC control";
+            if (!(hardwareInterface instanceof cDVSTestHardwareInterface)) {
+                log.warning("cannot add control panel for controlling ADC because hardware interface is not instance of cDVSTestHardwareInterface");
+                bgTabbedPane.addTab(tabTitle, new JLabel("couldn't add ADC controls - no hardware interface to build it from yet"));
+            } else {
+                bgTabbedPane.addTab(tabTitle,new ParameterControlPanel((cDVSTestHardwareInterface) hardwareInterface));
+            }
+            bPanel.add(bgTabbedPane, BorderLayout.CENTER);
+            return bPanel;
         }
 
         /** Formats the data sent to the microcontroller to load bias and other configuration. */
