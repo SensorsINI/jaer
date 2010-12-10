@@ -1667,6 +1667,9 @@ public final class HiddenMarkovModel implements Serializable{
                 return 0;
         }
 
+        if(observation == null)
+            return 0;
+
         HashMap<String, Double> tp = emissionProbability.get(state);
 
         return tp.get(observation);

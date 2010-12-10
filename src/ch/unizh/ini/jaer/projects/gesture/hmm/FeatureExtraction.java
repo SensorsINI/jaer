@@ -163,6 +163,18 @@ public class FeatureExtraction{
         return out;
     }
 
+    public double getAverageAngle(double startRatio, double endRatio){
+        double av = 0;
+        int startPos = (int)(vectorAngleSeq.length*startRatio);
+        int endPos = (int)(vectorAngleSeq.length*endRatio);
+        for(int i = startPos; i <= endPos; i++){
+            av += vectorAngleSeq[i];
+        }
+        av /= (double)(endPos - startPos + 1);
+
+        return av;
+    }
+
     /**
      * calculates the total length of the trajectory
      * @param trajectory

@@ -79,7 +79,7 @@ public class GestureBFStereo extends GestureBF2D{
 
                 // tries again with prevPath if bmg is null
                 if(isUsePrevPath() && bmg == null)
-                    bmg = estimateGestureWithPrevPath(trimmedPath, getMaxTimeDiffCorrSegmentsUs());
+                    bmg = estimateGestureWithPrevPath(trimmedPath, getMaxTimeDiffCorrSegmentsUs(), true, true);
                     
                 System.out.println("Best matching gesture is " + bmg);
 
@@ -116,7 +116,8 @@ public class GestureBFStereo extends GestureBF2D{
                     }
                     tmpTracker.setEnableDisparityLimit(true);
                      pushDetected = false;
-                }
+                } else
+                    savePath = true;
             }
             if(savePath)
                 storePath(trimmedPath, false);
