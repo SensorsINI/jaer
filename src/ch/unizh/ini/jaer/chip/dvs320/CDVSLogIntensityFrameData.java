@@ -92,11 +92,23 @@ public class CDVSLogIntensityFrameData {
     private int[] calibData=new int[NUMSAMPLES];
 
     /**
-     * @param calibData the calibData to set
+     * uses the current writing buffer as calibration data and substracts the mean
      */
     public void setCalibData() {
-        this.calibData = currentWritingBuffer;
+        System.arraycopy(currentWritingBuffer,0,calibData,0,NUMSAMPLES);
+        substractMean();
     }
 
-
+     private void substractMean(){
+         int mean=0;
+         for (int i=0;i<NUMSAMPLES; i++)
+         {
+             mean+=calibData[i];
+         }
+         mean=mean/NUMSAMPLES;
+         for (int i=0;i<NUMSAMPLES; i++)
+         {
+             calibData[i]-=mean;
+         }
+     }
 }

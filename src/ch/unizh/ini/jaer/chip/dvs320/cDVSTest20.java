@@ -151,6 +151,10 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         globalIntensity = f;
     }
 
+    private boolean useOffChipCalibration=false;
+
+
+
     /**
      * @return the frameData
      */
@@ -160,6 +164,23 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     // TODO debug remove
     Random random = new Random();  // TODO debug remove
     int debugSampleCounter = 0;
+
+    /**
+     * @return the useOffChipCalibration
+     */
+    public boolean isUseOffChipCalibration() {
+        return useOffChipCalibration;
+    }
+
+    /**
+     * @param useOffChipCalibration the useOffChipCalibration to set
+     */
+    public void setUseOffChipCalibration(boolean useOffChipCalibration) {
+        this.useOffChipCalibration = useOffChipCalibration;
+        this.getFrameData().setUseOffChipCalibration(useOffChipCalibration);
+        if (useOffChipCalibration)
+            this.getFrameData().setCalibData();
+    }
 
     /** The event extractor. Each pixel has two polarities 0 and 1.
      * There is one extra neuron which signals absolute intensity.
