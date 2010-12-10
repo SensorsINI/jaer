@@ -132,7 +132,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
     private PropertyDescriptor[] props;
     private Method[] methods;
     private static Logger log = Logger.getLogger("Parameters");
-    final float fontSize = 10f;
+    final float fontSize = 14f;
     private Border normalBorder, redLineBorder;
     private TitledBorder titledBorder;
     private HashMap<String, HasSetter> setterMap = new HashMap<String, HasSetter>(); // map from class to property, to apply property change events to control
@@ -239,16 +239,16 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 
 //            ArrayList<Component> sortedControls=new ArrayList();
             for (PropertyDescriptor p : props) {
-                System.out.println("clazz "+getClazz().getClass().getSimpleName()+" has property name="+p.getName()+" type="+p.getPropertyType());
-                if(false){
-                    System.out.println("prop "+p);
-                    System.out.println("prop name="+p.getName());
-                    System.out.println("prop write method="+p.getWriteMethod());
-                    System.out.println("prop read method="+p.getReadMethod());
-                    System.out.println("type "+p.getPropertyType());
-                    System.out.println("bound: "+p.isBound());
-                    System.out.println("");
-                }
+//                System.out.println("clazz "+getClazz().getClass().getSimpleName()+" has property name="+p.getName()+" type="+p.getPropertyType());
+//                if(false){
+//                    System.out.println("prop "+p);
+//                    System.out.println("prop name="+p.getName());
+//                    System.out.println("prop write method="+p.getWriteMethod());
+//                    System.out.println("prop read method="+p.getReadMethod());
+//                    System.out.println("type "+p.getPropertyType());
+//                    System.out.println("bound: "+p.isBound());
+//                    System.out.println("");
+//                }
                 try {
                     boolean inherited = false;
 
@@ -684,7 +684,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             add(label);
 
             tf = new JTextField("", 8);
-            tf.setMaximumSize(new Dimension(100, 50));
+            tf.setMaximumSize(new Dimension(100, 30));
             tf.setToolTipText("Integer control: use arrow keys or mouse wheel to change value by factor. Shift constrains to simple inc/dec");
             try {
                 Integer x = (Integer) r.invoke(clazz); // read int value

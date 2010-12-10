@@ -466,7 +466,9 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         @Override
         public void setHardwareInterface(BiasgenHardwareInterface hardwareInterface) {
             super.setHardwareInterface(hardwareInterface);
-            if(hardwareInterface instanceof cDVSTestHardwareInterface){
+            if(hardwareInterface==null ){
+                if(adcProxy!=null) adcProxy.setHw(null);
+            }else if(hardwareInterface instanceof cDVSTestHardwareInterface){
                 adcProxy.setHw((cDVSTestHardwareInterface)hardwareInterface);
             }else{
                 log.warning("cannot set ADC hardware interface proxy hardware interface to "+hardwareInterface+" because it is not a cDVSTestHardwareInterface");
@@ -946,9 +948,29 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
          * for purposes of GUI building using ParameterControlPanel.
          */
         public class ADCHardwareInterfaceProxy {
+            private final int minRefOnTime = 1;
+            private final int maxRefOnTime = 100;
+            private final int minTrackTime = 0;
+            private final int maxTrackTime = 100;
+            private final int minIdleTime = 0;
+            private final int maxIdleTime = 100;
+            private final int minADCchannel=0, maxADCchannel=3;
+            private boolean printedWarning=false;
+
             private cDVSTestHardwareInterface hw;
 
             public ADCHardwareInterfaceProxy() {
+            }
+
+            private boolean checkHw(){
+                if(hw==null){
+                    if(!printedWarning){
+                        printedWarning=true;
+                        log.warning("null hardware, not doing anything with ADC hardware");
+                    }
+                    return false;
+                }
+                return true;
             }
 
             /**
@@ -966,76 +988,151 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             }
 
             public synchronized void stopADC() throws HardwareInterfaceException {
+                if(!checkHw()) return;
                 hw.stopADC();
             }
 
             public synchronized void startADC() throws HardwareInterfaceException {
-                hw.startADC();
+                 if(!checkHw()) return;
+               hw.startADC();
             }
 
             public void setUseCalibration(boolean se) {
+                if(!checkHw()) return;
                 hw.setUseCalibration(se);
             }
 
             public void setTrackTime(int trackTimeUs) {
+                if(!checkHw()) return;
                 hw.setTrackTime((short)trackTimeUs);
             }
 
             public void setSelect5Tbuffer(boolean se) {
+                if(!checkHw()) return;
                 hw.setSelect5Tbuffer(se);
             }
 
             public void setRefOnTime(int trackTimeUs) {
+                if(!checkHw()) return;
                 hw.setRefOnTime((short)trackTimeUs);
             }
 
             public void setRefOffTime(int trackTimeUs) {
+                if(!checkHw()) return;
                 hw.setRefOffTime((short)trackTimeUs);
             }
 
             public void setIdleTime(int trackTimeUs) {
+                if(!checkHw()) return;
                 hw.setIdleTime((short)trackTimeUs);
             }
 
             public void setADCchannel(int chan) {
-                hw.setADCchannel((byte)chan);
+                 if(!checkHw()) return;
+               hw.setADCchannel((byte)chan);
             }
 
             public synchronized void resetTimestamps() {
-                hw.resetTimestamps();
+                 if(!checkHw()) return;
+               hw.resetTimestamps();
             }
 
             public boolean isUseCalibration() {
+                if(!checkHw()) return false;
                 return hw.isUseCalibration();
             }
 
             public boolean isSelect5Tbuffer() {
+                if(!checkHw()) return false;
                 return hw.isSelect5Tbuffer();
             }
 
             public boolean isChipReset() {
+                if(!checkHw()) return false;
                 return hw.isChipReset();
             }
 
             public int getTrackTime() {
-                return hw.getTrackTime();
+                 if(!checkHw()) return -1;
+               return hw.getTrackTime();
             }
 
             public int getRefOnTime() {
+                 if(!checkHw()) return -1;
                 return hw.getRefOnTime();
             }
 
             public int getRefOffTime() {
+                 if(!checkHw()) return -1;
                 return hw.getRefOffTime();
             }
 
             public int getIdleTime() {
+                 if(!checkHw()) return -1;
                 return hw.getIdleTime();
             }
 
             public int getADCchannel() {
+                 if(!checkHw()) return -1;
                 return hw.getADCchannel();
             }
+
+            /**
+             * @return the minRefOnTime
+             */
+            public int getMinRefOnTime() {
+                return minRefOnTime;
+            }
+
+            /**
+             * @return the maxRefOnTime
+             */
+            public int getMaxRefOnTime() {
+                return maxRefOnTime;
+            }
+
+            /**
+             * @return the minTrackTime
+             */
+            public int getMinTrackTime() {
+                return minTrackTime;
+            }
+
+            /**
+             * @return the maxTrackTime
+             */
+            public int getMaxTrackTime() {
+                return maxTrackTime;
+            }
+
+            /**
+             * @return the minIdleTime
+             */
+            public int getMinIdleTime() {
+                return minIdleTime;
+            }
+
+            /**
+             * @return the maxIdleTime
+             */
+            public int getMaxIdleTime() {
+                return maxIdleTime;
+            }
+
+            /**
+             * @return the minADCchannel
+             */
+            public int getMinADCchannel() {
+                return minADCchannel;
+            }
+
+            /**
+             * @return the maxADCchannel
+             */
+            public int getMaxADCchannel() {
+                return maxADCchannel;
+            }
+
 
             // delegated methods to hw
 
