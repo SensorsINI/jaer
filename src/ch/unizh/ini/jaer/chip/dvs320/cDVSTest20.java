@@ -408,6 +408,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             DAC dac = new DAC(1, 8, 0, Vdd, Vdd);
             //    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
             thermometerDAC = new VPot(cDVSTest20.this, "LogAmpRef", dac, 0, Type.NORMAL, Sex.N, 9, 0, "Voltage DAC for log intensity switched cap amplifier");
+            thermometerDAC.addObserver(this);
 
             setPotArray(new IPotArray(this));
             /*
