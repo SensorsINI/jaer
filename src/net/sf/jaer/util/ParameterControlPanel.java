@@ -209,7 +209,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                                 ex.printStackTrace();
                             } catch (InvocationTargetException ex) {
                                 ex.printStackTrace();
-                            } catch (IllegalAccessException ex) {
+                            } catch (Exception ex) {
                                 ex.printStackTrace();
                             }
                         }
@@ -313,7 +313,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             e.printStackTrace();
         }
         add(Box.createHorizontalGlue());
-        setControlsVisible(false);
+//        setControlsVisible(false);
 //        System.out.println("added glue to "+this);
     }
 
@@ -492,7 +492,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 checkBox.setSelected(initValue);
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
-            } catch (IllegalAccessException e) {
+            } catch (Exception e) {
                 log.warning("cannot access the field named " + name + " is the class or method not public?");
                 e.printStackTrace();
             }
@@ -503,7 +503,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                         w.invoke(clazz, checkBox.isSelected());
                     } catch (InvocationTargetException ite) {
                         ite.printStackTrace();
-                    } catch (IllegalAccessException iae) {
+                    } catch (Exception iae) {
                         iae.printStackTrace();
                     }
                 }
@@ -570,7 +570,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //                        tf.setText(Integer.toString(slider.getValue()));
                     } catch (InvocationTargetException ite) {
                         ite.printStackTrace();
-                    } catch (IllegalAccessException iae) {
+                    } catch (Exception iae) {
                         iae.printStackTrace();
                     }
                 }
@@ -646,7 +646,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //                        tf.setText(engFmt.format(currentValue));
                     } catch (InvocationTargetException ite) {
                         ite.printStackTrace();
-                    } catch (IllegalAccessException iae) {
+                    } catch (Exception iae) {
                         iae.printStackTrace();
                     }
                 }
@@ -711,7 +711,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                         tf.selectAll();
                     } catch (InvocationTargetException ite) {
                         ite.printStackTrace();
-                    } catch (IllegalAccessException iae) {
+                    } catch (Exception iae) {
                         iae.printStackTrace();
                     }
                 }
@@ -725,7 +725,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //                        System.out.println("x="+x);
                     } catch (InvocationTargetException e) {
                         e.printStackTrace();
-                    } catch (IllegalAccessException e) {
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                     int code = evt.getKeyCode();
@@ -745,7 +745,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
+                            } catch (Exception iae) {
                                 iae.printStackTrace();
                             }
                         } else if (code == KeyEvent.VK_DOWN) {
@@ -761,7 +761,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
+                            } catch (Exception iae) {
                                 iae.printStackTrace();
                             }
                         }
@@ -775,7 +775,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
+                            } catch (Exception iae) {
                                 iae.printStackTrace();
                             }
                         } else if (code == KeyEvent.VK_DOWN) {
@@ -786,7 +786,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
+                            } catch (Exception iae) {
                                 iae.printStackTrace();
                             }
                         }
@@ -804,7 +804,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //                        System.out.println("x="+x);
                     } catch (InvocationTargetException e) {
                         e.printStackTrace();
-                    } catch (IllegalAccessException e) {
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                     int code = evt.getWheelRotation();
@@ -823,7 +823,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                                 tf.setText(new Integer(nval).toString());
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
+                            } catch (Exception iae) {
                                 iae.printStackTrace();
                             }
                         } else if (code > 0) {
@@ -841,7 +841,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                                 tf.setText(new Integer(nval).toString());
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
+                            } catch (Exception iae) {
                                 iae.printStackTrace();
                             }
                         }
@@ -921,7 +921,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 tf.setText(s);
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
-            } catch (IllegalAccessException e) {
+            } catch (Exception e) {
                 log.warning("cannot access the field named " + name + " is the class or method not public?");
                 e.printStackTrace();
             }
@@ -940,7 +940,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                         tf.selectAll();
                     } catch (InvocationTargetException ite) {
                         ite.printStackTrace();
-                    } catch (IllegalAccessException iae) {
+                    } catch (Exception iae) {
                         iae.printStackTrace();
                     }
                 }
@@ -957,7 +957,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //                        System.out.println("x="+x);
                     } catch (InvocationTargetException e) {
                         e.printStackTrace();
-                    } catch (IllegalAccessException e) {
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                     int code = evt.getKeyCode();
@@ -981,7 +981,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                             tf.setText(String.format("%.4f", nval));
                         } catch (InvocationTargetException ite) {
                             ite.printStackTrace();
-                        } catch (IllegalAccessException iae) {
+                        } catch (Exception iae) {
                             iae.printStackTrace();
                         }
                     } else if (code == KeyEvent.VK_DOWN) {
@@ -998,7 +998,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                             tf.setText(String.format("%.4f", nval));
                         } catch (InvocationTargetException ite) {
                             ite.printStackTrace();
-                        } catch (IllegalAccessException iae) {
+                        } catch (Exception iae) {
                             iae.printStackTrace();
                         }
                     }
@@ -1013,7 +1013,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //                        System.out.println("x="+x);
                     } catch (InvocationTargetException e) {
                         e.printStackTrace();
-                    } catch (IllegalAccessException e) {
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                     int code = evt.getWheelRotation();
@@ -1034,7 +1034,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                                 tf.setText(String.format("%.4f", nval));
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
+                            } catch (Exception iae) {
                                 iae.printStackTrace();
                             }
                         } else if (code > 0) {
@@ -1051,7 +1051,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                                 tf.setText(String.format("%.4f", nval));
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
+                            } catch (Exception iae) {
                                 iae.printStackTrace();
                             }
                         }
@@ -1119,16 +1119,9 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jPanel1 = new javax.swing.JPanel();
-
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
-
-        jPanel1.setAlignmentX(1.0F);
-        jPanel1.setPreferredSize(new java.awt.Dimension(100, 23));
-        jPanel1.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 2, 2));
-        add(jPanel1);
     }// </editor-fold>//GEN-END:initComponents
-    boolean controlsVisible = false;
+    boolean controlsVisible = true;
 
     public boolean isControlsVisible() {
         return controlsVisible;
@@ -1174,7 +1167,6 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         this.clazz = clazz;
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JPanel jPanel1;
     // End of variables declaration//GEN-END:variables
 
     private class SliderParams {

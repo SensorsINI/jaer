@@ -356,6 +356,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         private ShiftedSourceBias ssn, ssp, ssnMid, sspMid;
         private ShiftedSourceBias[] ssBiases = new ShiftedSourceBias[4];
         private VPot thermometerDAC;
+        ADCHardwareInterfaceProxy adcProxy=new ADCHardwareInterfaceProxy(); // must set hardware later
         int pos = 0;
         JPanel bPanel;
         JTabbedPane bgTabbedPane;
@@ -462,6 +463,16 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
 
         }
 
+        @Override
+        public void setHardwareInterface(BiasgenHardwareInterface hardwareInterface) {
+            super.setHardwareInterface(hardwareInterface);
+            if(hardwareInterface instanceof cDVSTestHardwareInterface){
+                adcProxy.setHw((cDVSTestHardwareInterface)hardwareInterface);
+            }else{
+                log.warning("cannot set ADC hardware interface proxy hardware interface to "+hardwareInterface+" because it is not a cDVSTestHardwareInterface");
+            }
+        }
+
         private void pot(String s) throws ParseException {
             try {
                 String d = ",";
@@ -565,16 +576,12 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             bgTabbedPane.addTab("Biases", combinedBiasShiftedSourcePanel);
             bgTabbedPane.addTab("Output control", new cDVSTest20OutputControlPanel(cDVSTest20.this));
             final String tabTitle="ADC control";
-            if (!(hardwareInterface instanceof cDVSTestHardwareInterface)) {
-                log.warning("cannot add control panel for controlling ADC because hardware interface is not instance of cDVSTestHardwareInterface");
-                bgTabbedPane.addTab(tabTitle, new JLabel("couldn't add ADC controls - no hardware interface to build it from yet"));
-            } else {
-                bgTabbedPane.addTab(tabTitle,new ParameterControlPanel((cDVSTestHardwareInterface) hardwareInterface));
-            }
+            bgTabbedPane.addTab(tabTitle,new ParameterControlPanel(adcProxy));
             bPanel.add(bgTabbedPane, BorderLayout.CENTER);
             return bPanel;
         }
 
+ 
         /** Formats the data sent to the microcontroller to load bias and other configuration. */
         @Override
         public byte[] formatConfigurationBytes(Biasgen biasgen) {
@@ -933,6 +940,106 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
                 vmuxes[3].put(6, "Vs");
                 vmuxes[3].put(7, "sum");
             }
+        }
+
+        /** A proxy to wrap around the actual hardware interface to expose the ADC controls
+         * for purposes of GUI building using ParameterControlPanel.
+         */
+        public class ADCHardwareInterfaceProxy {
+            private cDVSTestHardwareInterface hw;
+
+            public ADCHardwareInterfaceProxy() {
+            }
+
+            /**
+             * @return the hw
+             */
+            public cDVSTestHardwareInterface getHw() {
+                return hw;
+            }
+
+            /**
+             * @param hw the hw to set
+             */
+            public void setHw(cDVSTestHardwareInterface hw) {
+                this.hw = hw;
+            }
+
+            public synchronized void stopADC() throws HardwareInterfaceException {
+                hw.stopADC();
+            }
+
+            public synchronized void startADC() throws HardwareInterfaceException {
+                hw.startADC();
+            }
+
+            public void setUseCalibration(boolean se) {
+                hw.setUseCalibration(se);
+            }
+
+            public void setTrackTime(int trackTimeUs) {
+                hw.setTrackTime((short)trackTimeUs);
+            }
+
+            public void setSelect5Tbuffer(boolean se) {
+                hw.setSelect5Tbuffer(se);
+            }
+
+            public void setRefOnTime(int trackTimeUs) {
+                hw.setRefOnTime((short)trackTimeUs);
+            }
+
+            public void setRefOffTime(int trackTimeUs) {
+                hw.setRefOffTime((short)trackTimeUs);
+            }
+
+            public void setIdleTime(int trackTimeUs) {
+                hw.setIdleTime((short)trackTimeUs);
+            }
+
+            public void setADCchannel(int chan) {
+                hw.setADCchannel((byte)chan);
+            }
+
+            public synchronized void resetTimestamps() {
+                hw.resetTimestamps();
+            }
+
+            public boolean isUseCalibration() {
+                return hw.isUseCalibration();
+            }
+
+            public boolean isSelect5Tbuffer() {
+                return hw.isSelect5Tbuffer();
+            }
+
+            public boolean isChipReset() {
+                return hw.isChipReset();
+            }
+
+            public int getTrackTime() {
+                return hw.getTrackTime();
+            }
+
+            public int getRefOnTime() {
+                return hw.getRefOnTime();
+            }
+
+            public int getRefOffTime() {
+                return hw.getRefOffTime();
+            }
+
+            public int getIdleTime() {
+                return hw.getIdleTime();
+            }
+
+            public int getADCchannel() {
+                return hw.getADCchannel();
+            }
+
+            // delegated methods to hw
+
+
         }
     }
 
