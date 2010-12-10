@@ -50,13 +50,17 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog{
         return optionPane.getValue();
     }
 
+    /** Overrides default setVisible so that if warning is disabled and we try to show, only a log.info is printed and dialog is never made visible.
+     * Otherwise, if show is false or warning is not disabled, setVisible acts as normal.
+     * @param show true to show (if warning not disabled), false to hide.
+     */
     @Override
-    public void setVisible (boolean b){
-        if ( isWarningDisabled() ){
+    public void setVisible (boolean show){
+        if ( show && isWarningDisabled() ){
             log.info("not showing WarningDialogWithDontShowPreference "+getTitle()+" because warning was disabled. To turn on this warning, remove the Preferences key "+prefsKey());
             return;
         }
-        super.setVisible(b);
+        super.setVisible(show);
     }
 
     /** returns true if user has disabled this warning */
