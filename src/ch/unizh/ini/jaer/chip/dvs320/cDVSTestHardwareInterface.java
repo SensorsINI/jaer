@@ -6,6 +6,8 @@
  */
 package ch.unizh.ini.jaer.chip.dvs320;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -46,87 +48,121 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         }
         super.sendBiasBytes(bytes);
     }
-
-    private short TrackTime=50, RefOnTime=20, RefOffTime=20, IdleTime=10;
-    private boolean Select5Tbuffer=true;
-    private boolean UseCalibration=false;
+    private short TrackTime = 50, RefOnTime = 20, RefOffTime = 20, IdleTime = 10;
+    private boolean Select5Tbuffer = true;
+    private boolean UseCalibration = false;
 
     public void setTrackTime(short trackTimeUs) {
-        TrackTime =  trackTimeUs;
+        try {
+            sendCPLDconfiguration();
+            TrackTime = trackTimeUs;
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
     }
 
     public void setIdleTime(short trackTimeUs) {
-        IdleTime = trackTimeUs;
+        try {
+            sendCPLDconfiguration();
+            IdleTime = trackTimeUs;
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
     }
 
     public void setRefOnTime(short trackTimeUs) {
-        RefOnTime = trackTimeUs;
+        try {
+            sendCPLDconfiguration();
+            RefOnTime = trackTimeUs;
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
     }
 
     public void setRefOffTime(short trackTimeUs) {
-        RefOffTime =  trackTimeUs;
+        try {
+            sendCPLDconfiguration();
+            RefOffTime = trackTimeUs;
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
     }
 
     public void setSelect5Tbuffer(boolean se) {
-        Select5Tbuffer = se;
+        try {
+            sendCPLDconfiguration();
+            Select5Tbuffer = se;
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
     }
 
     public void setUseCalibration(boolean se) {
-        UseCalibration = se;
+        try {
+            sendCPLDconfiguration();
+            UseCalibration = se;
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
     }
-
     private byte ADCchannel = 3;
-    private static final int ADCchannelshift=5;
+    private static final int ADCchannelshift = 5;
 
     public void setADCchannel(byte chan) {
-        ADCchannel = chan;
+        try {
+            sendCPLDconfiguration();
+            ADCchannel = chan;
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
     }
-
-    private static short ADCconfig =  (short) 0x100;   //normal power mode, single ended, sequencer unused : (short) 0x908;
+    private static short ADCconfig = (short) 0x100;   //normal power mode, single ended, sequencer unused : (short) 0x908;
     private final static short ADCconfigLength = (short) 12;
 
     private String getBitString(short value, short nSrBits) {
-                StringBuilder s = new StringBuilder();
+        StringBuilder s = new StringBuilder();
 
-                int k = nSrBits - 1;
-                while (k >= 0) {
-                    int x = value & (1 << k); // start with msb
-                    boolean b = (x == 0); // get bit
-                    s.append(b ? '0' : '1'); // append to string 0 or 1, string grows with msb on left
-                    k--;
-                } // construct big endian string e.g. code=14, s='1011'
-                String bitString = s.toString();
-                return bitString;
-            }
+        int k = nSrBits - 1;
+        while (k >= 0) {
+            int x = value & (1 << k); // start with msb
+            boolean b = (x == 0); // get bit
+            s.append(b ? '0' : '1'); // append to string 0 or 1, string grows with msb on left
+            k--;
+        } // construct big endian string e.g. code=14, s='1011'
+        String bitString = s.toString();
+        return bitString;
+    }
 
     synchronized public void sendCPLDconfiguration() throws HardwareInterfaceException {
-        short ADCword=(short) (ADCconfig | (getADCchannel() << ADCchannelshift));
+        short ADCword = (short) (ADCconfig | (getADCchannel() << ADCchannelshift));
 
         int nBits = 0;
 
         StringBuilder s = new StringBuilder();
 
-        s.append(getBitString((short)(getIdleTime()*15), (short) 16)); // multiplication with 15 to get from us to clockcycles
+        s.append(getBitString((short) (getIdleTime() * 15), (short) 16)); // multiplication with 15 to get from us to clockcycles
         nBits += 16;
-        s.append(getBitString((short)(getRefOffTime()*15), (short) 16)); // multiplication with 15 to get from us to clockcycles
+        s.append(getBitString((short) (getRefOffTime() * 15), (short) 16)); // multiplication with 15 to get from us to clockcycles
         nBits += 16;
-        s.append(getBitString((short)(getRefOnTime()*15), (short) 16)); // multiplication with 15 to get from us to clockcycles
+        s.append(getBitString((short) (getRefOnTime() * 15), (short) 16)); // multiplication with 15 to get from us to clockcycles
         nBits += 16;
-        s.append(getBitString((short)(getTrackTime()*15), (short) 16)); // multiplication with 15 to get from us to clockcycles
+        s.append(getBitString((short) (getTrackTime() * 15), (short) 16)); // multiplication with 15 to get from us to clockcycles
         nBits += 16;
         s.append(getBitString(ADCword, ADCconfigLength));
         nBits += ADCconfigLength;
 
-        if (isUseCalibration())
-            s.append(getBitString((short)1,(short)1));
-        else
-            s.append(getBitString((short)0,(short)1));
+        if (isUseCalibration()) {
+            s.append(getBitString((short) 1, (short) 1));
+        } else {
+            s.append(getBitString((short) 0, (short) 1));
+        }
         nBits += 1;
 
-        if (isSelect5Tbuffer())
-            s.append(getBitString((short)1,(short)1));
-        else
-            s.append(getBitString((short)0,(short)1));
+        if (isSelect5Tbuffer()) {
+            s.append(getBitString((short) 1, (short) 1));
+        } else {
+            s.append(getBitString((short) 0, (short) 1));
+        }
         nBits += 1;
 
         //s.reverse();
@@ -139,16 +175,16 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         byte[] bytes = new byte[nbytes];
         System.arraycopy(byteArray, 0, bytes, nbytes - byteArray.length, byteArray.length);
 
-        this.sendVendorRequest(VENDOR_REQUEST_WRITE_CPLD_SR,(short) 0,(short) 0, bytes);
+        this.sendVendorRequest(VENDOR_REQUEST_WRITE_CPLD_SR, (short) 0, (short) 0, bytes);
     }
 
     synchronized public void startADC() throws HardwareInterfaceException {
         sendCPLDconfiguration();
-        this.sendVendorRequest(VENDOR_REQUEST_RUN_ADC,(short)1,(short)0);
+        this.sendVendorRequest(VENDOR_REQUEST_RUN_ADC, (short) 1, (short) 0);
     }
 
     synchronized public void stopADC() throws HardwareInterfaceException {
-        this.sendVendorRequest(VENDOR_REQUEST_RUN_ADC,(short)0,(short)0);
+        this.sendVendorRequest(VENDOR_REQUEST_RUN_ADC, (short) 0, (short) 0);
     }
 
     @Override
@@ -222,16 +258,14 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         try {
             stopADC();
             setChipReset(isChipReset());
-            chipReset=!isChipReset();
+            chipReset = !isChipReset();
             startADC();
             this.sendVendorRequest(VENDOR_REQUEST_RESET_TIMESTAMPS);
         } catch (HardwareInterfaceException e) {
             log.warning("could not send vendor request to reset timestamps: " + e);
         }
     }
-
-    private boolean chipReset=false;
-
+    private boolean chipReset = false;
 
     private byte[] parseHexData(String firmwareFile) throws IOException {
 
@@ -532,7 +566,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         10xx xxxx xxxx xxxx	wrap
         11xx xxxx xxxx xxxx	timestamp reset
         </literal>
-
+        
          *The msb of the 16 bit timestamp is used to signal a wrap (the actual timestamp is only 15 bits).
          * The wrapAdd is incremented when an emtpy event is received which has the timestamp bit 15
          * set to one.
@@ -578,7 +612,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
                     for (int i = 0; i < bytesSent; i += 2) {
                         //   tobiLogger.log(String.format("%d %x %x",eventCounter,buf[i],buf[i+1])); // DEBUG
                         //   int val=(buf[i+1] << 8) + buf[i]; // 16 bit value of data
-                        int dataword = (0xff&buf[i]) | (0xff00&(buf[i + 1] << 8));  // data sent little endian
+                        int dataword = (0xff & buf[i]) | (0xff00 & (buf[i + 1] << 8));  // data sent little endian
 
                         final int code = (buf[i + 1] & 0xC0) >> 6; // gets two bits at XX00 0000 0000 0000. (val&0xC000)>>>14;
                         //  log.info("code " + code);
@@ -596,15 +630,15 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
                                 if ((eventCounter >= aeBufferSize) || (buffer.overrunOccuredFlag)) {
                                     buffer.overrunOccuredFlag = true; // throw away events if we have overrun the output arrays
                                 } else {
-                                    if((dataword&cDVSTest20.ADDRESS_TYPE_MASK)==cDVSTest20.ADDRESS_TYPE_ADC){
-                                        addresses[eventCounter]=dataword;
-                                        timestamps[eventCounter]=currentts;  // ADC event gets last timestamp
+                                    if ((dataword & cDVSTest20.ADDRESS_TYPE_MASK) == cDVSTest20.ADDRESS_TYPE_ADC) {
+                                        addresses[eventCounter] = dataword;
+                                        timestamps[eventCounter] = currentts;  // ADC event gets last timestamp
                                         eventCounter++;
-                                  //      System.out.println("ADC word: " + (dataword&cDVSTest20.ADC_DATA_MASK));
-                                    }else if ((buf[i + 1] & Xmask) == Xmask) {////  received an X address, write out event to addresses/timestamps output arrays
+                                        //      System.out.println("ADC word: " + (dataword&cDVSTest20.ADC_DATA_MASK));
+                                    } else if ((buf[i + 1] & Xmask) == Xmask) {////  received an X address, write out event to addresses/timestamps output arrays
                                         // x adddress
                                         //xadd = (buf[i] & 0xff);  //
-                                        addresses[eventCounter] = (lasty << cDVSTest20.YSHIFT) | (dataword&(cDVSTest20.XMASK|cDVSTest20.POLMASK));  // combine current bits with last y address bits and send
+                                        addresses[eventCounter] = (lasty << cDVSTest20.YSHIFT) | (dataword & (cDVSTest20.XMASK | cDVSTest20.POLMASK));  // combine current bits with last y address bits and send
                                         timestamps[eventCounter] = currentts; // add in the wrap offset and convert to 1us tick
                                         eventCounter++;
                                         //    log.info("received x address");
@@ -612,18 +646,18 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
                                     } else {// y address
                                         // lasty = (0xFF & buf[i]); //
                                         if (gotY) {// TODO creates bogus event to see y without x. This should not normally occur.
-                                            addresses[eventCounter] = (lasty << cDVSTest20.YSHIFT) + (cDVSTest20.SIZEX_TOTAL-1 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
+                                            addresses[eventCounter] = (lasty << cDVSTest20.YSHIFT) + (cDVSTest20.SIZEX_TOTAL - 1 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
                                             timestamps[eventCounter] = lastts; //*TICK_US; //add in the wrap offset and convert to 1us tick
                                             eventCounter++;
 //                                        //log.warning("received at least two Y addresses consecutively");
                                         }
-                                        if ((buf[i] & IntensityMask) != 0){ // intensity spike
+                                        if ((buf[i] & IntensityMask) != 0) { // intensity spike
                                             // log.info("received intensity bit");
                                             addresses[eventCounter] = cDVSTest20.INTENSITYMASK;
                                             timestamps[eventCounter] = currentts;
                                             eventCounter++;
                                         }
-                                        lasty = (cDVSTest20.YMASK>>>cDVSTest20.YSHIFT)&dataword; //(0xFF & buf[i]); //
+                                        lasty = (cDVSTest20.YMASK >>> cDVSTest20.YSHIFT) & dataword; //(0xFF & buf[i]); //
                                         gotY = true;
                                     }
                                 }

@@ -949,6 +949,8 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
          * for purposes of GUI building using ParameterControlPanel.
          */
         public class ADCHardwareInterfaceProxy {
+            // following define limits for slider controls that are automagically constucted by ParameterControlPanel
+            private final int minRefOffTime=0, maxRefOffTime=100;
             private final int minRefOnTime = 1;
             private final int maxRefOnTime = 100;
             private final int minTrackTime = 0;
@@ -1132,6 +1134,20 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
              */
             public int getMaxADCchannel() {
                 return maxADCchannel;
+            }
+
+            /**
+             * @return the minRefOffTime
+             */
+            public int getMinRefOffTime() {
+                return minRefOffTime;
+            }
+
+            /**
+             * @return the maxRefOffTime
+             */
+            public int getMaxRefOffTime() {
+                return maxRefOffTime;
             }
 
 
