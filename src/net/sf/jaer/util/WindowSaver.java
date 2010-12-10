@@ -36,7 +36,7 @@ Unexpected behavior can result if the user application resizes its
  */
 public class WindowSaver implements AWTEventListener {
     Preferences preferences=null;
-    static Logger log=Logger.getLogger("WindowSaver");
+    static final Logger log=Logger.getLogger("WindowSaver");
     /* Accounts for task bar at bottom; don't want window to underlap it. */
     public final int WINDOWS_TASK_BAR_HEIGHT=100;
     /** Offset from last window with same name. */
@@ -59,6 +59,7 @@ public class WindowSaver implements AWTEventListener {
     @param evt the AWTEvent. Only WINDOW_OPENED events are processed to loadSettings
     @see #loadSettings
      */
+    @Override
     public void eventDispatched(AWTEvent evt) {
         try {
             if(evt.getID()==WindowEvent.WINDOW_OPENED) {
@@ -114,9 +115,15 @@ public class WindowSaver implements AWTEventListener {
         GraphicsDevice[] gs=ge.getScreenDevices(); // TODO it could be that remote session doesn't show screen that used to be used. Should check that we are not offscreen. Otherwise registy edit is required to show window!
 
         if(gs!=null&&gs.length>0) {
+            if(gs.length>1){
+                log.info("There are "+gs.length+" GraphicsDevice's found; using first one which is "+gs[0].getIDstring());
+            }
             GraphicsDevice gd=gs[0];
             GraphicsConfiguration[] gc=gd.getConfigurations();
             if(gc!=null&&gc.length>0) {
+                if(gc.length>1){
+                    log.info("There are "+gc.length+" GraphicsConfiguration's found; using first one which is "+gc[0].toString());
+                }
                 Insets insets=Toolkit.getDefaultToolkit().getScreenInsets(gc[0]);
                 lowerInset=insets.bottom;
             }
@@ -221,7 +228,6 @@ public class WindowSaver implements AWTEventListener {
         } catch(IllegalComponentStateException e) {
             p=window.getLocation();
         }
-        ;
         prefs.putInt(name+".XPosition", (int) p.getX());
         prefs.putInt(name+".YPosition", (int) p.getY());
 //        log.info("saved location for window "+name);
