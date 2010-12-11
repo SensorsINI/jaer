@@ -139,7 +139,7 @@ public class AEChip extends Chip2D {
     public void setNumCellTypes(int numCellTypes) {
         this.numCellTypes = numCellTypes;
         setChanged();
-        notifyObservers("numCellTypes");
+        notifyObservers(EVENT_NUM_CELL_TYPES);
     }
 
     @Override

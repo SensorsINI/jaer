@@ -16,7 +16,7 @@ import net.sf.jaer.graphics.ChipCanvas;
 public class Chip2D extends Chip {
 
     /** Argument to notifyObservers */
-    public static final String EVENT_SIZEX="sizeX", EVENT_SIZEY="sizeY";
+    public static final String EVENT_SIZEX="sizeX", EVENT_SIZEY="sizeY", EVENT_NUM_CELL_TYPES="numCellTypes";
 
     /** Creates a new instance of Chip2D */
     public Chip2D() {
@@ -24,8 +24,11 @@ public class Chip2D extends Chip {
         setRenderer(new Chip2DRenderer(this));
         setCanvas(new ChipCanvas(this));
     }
+    /** Horizontal dimension of pixel array. Each pixel may have multiple cell types. */
     protected int sizeX = 0;
+    /** Vertical dimension of pixel array. Each pixel may have multiple cell types. */
     protected int sizeY = 0;
+    /** Number of cell types per pixel. */
     protected int numCellTypes = 0;
     protected ChipCanvas canvas = null;
     private Chip2DRenderer renderer = null;

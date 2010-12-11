@@ -183,6 +183,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         JPanel control = null;
         try {
             info = Introspector.getBeanInfo(clazz.getClass());
+
             props = info.getPropertyDescriptors();
             methods = clazz.getClass().getMethods();
             control = new JPanel();
@@ -239,16 +240,16 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 
 //            ArrayList<Component> sortedControls=new ArrayList();
             for (PropertyDescriptor p : props) {
-//                System.out.println("clazz "+getClazz().getClass().getSimpleName()+" has property name="+p.getName()+" type="+p.getPropertyType());
-//                if(false){
-//                    System.out.println("prop "+p);
-//                    System.out.println("prop name="+p.getName());
-//                    System.out.println("prop write method="+p.getWriteMethod());
-//                    System.out.println("prop read method="+p.getReadMethod());
-//                    System.out.println("type "+p.getPropertyType());
-//                    System.out.println("bound: "+p.isBound());
-//                    System.out.println("");
-//                }
+                System.out.println("clazz "+getClazz().getClass().getSimpleName()+" has property name="+p.getName()+" type="+p.getPropertyType());
+                if(true){
+                    System.out.println("prop name="+p.getName());
+                    System.out.println("prop description="+p.getShortDescription());
+                    System.out.println("prop write method="+p.getWriteMethod());
+                    System.out.println("prop read method="+p.getReadMethod());
+                    System.out.println("type "+p.getPropertyType());
+                    System.out.println("bound: "+p.isBound());
+                    System.out.println("");
+                }
                 try {
                     boolean inherited = false;
 
@@ -317,7 +318,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //        System.out.println("added glue to "+this);
     }
 
-    void addTip(Class f, JLabel label) {
+    void addTip(Object f, JLabel label) {
 //        String s = f.getPropertyTooltip(label.getText());
 //        if (s == null) {
 //            return;
@@ -326,7 +327,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //        label.setForeground(Color.BLUE);
     }
 
-    void addTip(Class f, JButton b) {
+    void addTip(Object f, JButton b) {
 //        String s = f.getPropertyTooltip(b.getText());
 //        if (s == null) {
 //            return;
@@ -335,7 +336,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //        b.setForeground(Color.BLUE);
     }
 
-    void addTip(Class f, JCheckBox label) {
+    void addTip(Object f, JCheckBox label) {
 //        String s = f.getPropertyTooltip(label.getText());
 //        if (s == null) {
 //            return;
@@ -424,7 +425,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             final JLabel label = new JLabel(name);
             label.setAlignmentX(ALIGNMENT);
             label.setFont(label.getFont().deriveFont(fontSize));
-//            addTip(f, label);
+            addTip(f, label);
             add(label);
 
             textField = new JTextField(name);

@@ -306,7 +306,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
                                 break;
                             }
                         }
-                        ;
+                        
                         as += s;
                         if (as >= 1.0) {
                             as -= 1.0;
