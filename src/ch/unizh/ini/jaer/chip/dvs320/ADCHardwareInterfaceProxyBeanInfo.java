@@ -25,35 +25,40 @@ public class ADCHardwareInterfaceProxyBeanInfo extends SimpleBeanInfo {
 
     // Property identifiers//GEN-FIRST:Properties
     private static final int PROPERTY_ADCchannel = 0;
-    private static final int PROPERTY_chipReset = 1;
-    private static final int PROPERTY_hw = 2;
-    private static final int PROPERTY_idleTime = 3;
-    private static final int PROPERTY_maxADCchannel = 4;
-    private static final int PROPERTY_maxIdleTime = 5;
-    private static final int PROPERTY_maxRefOffTime = 6;
-    private static final int PROPERTY_maxRefOnTime = 7;
-    private static final int PROPERTY_maxTrackTime = 8;
-    private static final int PROPERTY_minADCchannel = 9;
-    private static final int PROPERTY_minIdleTime = 10;
-    private static final int PROPERTY_minRefOffTime = 11;
-    private static final int PROPERTY_minRefOnTime = 12;
-    private static final int PROPERTY_minTrackTime = 13;
-    private static final int PROPERTY_refOffTime = 14;
-    private static final int PROPERTY_refOnTime = 15;
-    private static final int PROPERTY_select5Tbuffer = 16;
-    private static final int PROPERTY_trackTime = 17;
-    private static final int PROPERTY_useCalibration = 18;
+    private static final int PROPERTY_ADCEnabled = 1;
+    private static final int PROPERTY_chipReset = 2;
+    private static final int PROPERTY_hw = 3;
+    private static final int PROPERTY_idleTime = 4;
+    private static final int PROPERTY_maxADCchannel = 5;
+    private static final int PROPERTY_maxIdleTime = 6;
+    private static final int PROPERTY_maxRefOffTime = 7;
+    private static final int PROPERTY_maxRefOnTime = 8;
+    private static final int PROPERTY_maxTrackTime = 9;
+    private static final int PROPERTY_minADCchannel = 10;
+    private static final int PROPERTY_minIdleTime = 11;
+    private static final int PROPERTY_minRefOffTime = 12;
+    private static final int PROPERTY_minRefOnTime = 13;
+    private static final int PROPERTY_minTrackTime = 14;
+    private static final int PROPERTY_refOffTime = 15;
+    private static final int PROPERTY_refOnTime = 16;
+    private static final int PROPERTY_select5Tbuffer = 17;
+    private static final int PROPERTY_trackTime = 18;
+    private static final int PROPERTY_useCalibration = 19;
 
     // Property array 
     /*lazy PropertyDescriptor*/
     private static PropertyDescriptor[] getPdescriptor(){
-        PropertyDescriptor[] properties = new PropertyDescriptor[19];
+        PropertyDescriptor[] properties = new PropertyDescriptor[20];
     
         try {
             properties[PROPERTY_ADCchannel] = new PropertyDescriptor ( "ADCchannel", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getADCchannel", "setADCchannel" ); // NOI18N
+            properties[PROPERTY_ADCchannel].setShortDescription ( "The ADC channel number. Channel 3 is the log intensity" );
+            properties[PROPERTY_ADCEnabled] = new PropertyDescriptor ( "ADCEnabled", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "isADCEnabled", "setADCEnabled" ); // NOI18N
+            properties[PROPERTY_ADCEnabled].setShortDescription ( "Enables the ADC for conversion and transfer of samples to the host" );
             properties[PROPERTY_chipReset] = new PropertyDescriptor ( "chipReset", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "isChipReset", null ); // NOI18N
             properties[PROPERTY_hw] = new PropertyDescriptor ( "hw", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getHw", "setHw" ); // NOI18N
             properties[PROPERTY_idleTime] = new PropertyDescriptor ( "idleTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getIdleTime", "setIdleTime" ); // NOI18N
+            properties[PROPERTY_idleTime].setShortDescription ( "The idle time in ns after each AD conversion" );
             properties[PROPERTY_maxADCchannel] = new PropertyDescriptor ( "maxADCchannel", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMaxADCchannel", null ); // NOI18N
             properties[PROPERTY_maxIdleTime] = new PropertyDescriptor ( "maxIdleTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMaxIdleTime", null ); // NOI18N
             properties[PROPERTY_maxRefOffTime] = new PropertyDescriptor ( "maxRefOffTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMaxRefOffTime", null ); // NOI18N
@@ -65,10 +70,15 @@ public class ADCHardwareInterfaceProxyBeanInfo extends SimpleBeanInfo {
             properties[PROPERTY_minRefOnTime] = new PropertyDescriptor ( "minRefOnTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMinRefOnTime", null ); // NOI18N
             properties[PROPERTY_minTrackTime] = new PropertyDescriptor ( "minTrackTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMinTrackTime", null ); // NOI18N
             properties[PROPERTY_refOffTime] = new PropertyDescriptor ( "refOffTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getRefOffTime", "setRefOffTime" ); // NOI18N
+            properties[PROPERTY_refOffTime].setShortDescription ( "TODO" );
             properties[PROPERTY_refOnTime] = new PropertyDescriptor ( "refOnTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getRefOnTime", "setRefOnTime" ); // NOI18N
+            properties[PROPERTY_refOnTime].setShortDescription ( "TODO" );
             properties[PROPERTY_select5Tbuffer] = new PropertyDescriptor ( "select5Tbuffer", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "isSelect5Tbuffer", "setSelect5Tbuffer" ); // NOI18N
+            properties[PROPERTY_select5Tbuffer].setShortDescription ( "TODO" );
             properties[PROPERTY_trackTime] = new PropertyDescriptor ( "trackTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getTrackTime", "setTrackTime" ); // NOI18N
+            properties[PROPERTY_trackTime].setShortDescription ( "TODO" );
             properties[PROPERTY_useCalibration] = new PropertyDescriptor ( "useCalibration", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "isUseCalibration", "setUseCalibration" ); // NOI18N
+            properties[PROPERTY_useCalibration].setShortDescription ( "TODO" );
         }
         catch(IntrospectionException e) {
             e.printStackTrace();
@@ -91,21 +101,15 @@ public class ADCHardwareInterfaceProxyBeanInfo extends SimpleBeanInfo {
 
     // Method identifiers//GEN-FIRST:Methods
     private static final int METHOD_resetTimestamps0 = 0;
-    private static final int METHOD_startADC1 = 1;
-    private static final int METHOD_stopADC2 = 2;
 
     // Method array 
     /*lazy MethodDescriptor*/
     private static MethodDescriptor[] getMdescriptor(){
-        MethodDescriptor[] methods = new MethodDescriptor[3];
+        MethodDescriptor[] methods = new MethodDescriptor[1];
     
         try {
             methods[METHOD_resetTimestamps0] = new MethodDescriptor(ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class.getMethod("resetTimestamps", new Class[] {})); // NOI18N
             methods[METHOD_resetTimestamps0].setDisplayName ( "" );
-            methods[METHOD_startADC1] = new MethodDescriptor(ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class.getMethod("startADC", new Class[] {})); // NOI18N
-            methods[METHOD_startADC1].setDisplayName ( "" );
-            methods[METHOD_stopADC2] = new MethodDescriptor(ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class.getMethod("stopADC", new Class[] {})); // NOI18N
-            methods[METHOD_stopADC2].setDisplayName ( "" );
         }
         catch( Exception e) {}//GEN-HEADEREND:Methods
 

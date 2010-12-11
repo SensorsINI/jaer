@@ -240,16 +240,16 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 
 //            ArrayList<Component> sortedControls=new ArrayList();
             for (PropertyDescriptor p : props) {
-                System.out.println("clazz "+getClazz().getClass().getSimpleName()+" has property name="+p.getName()+" type="+p.getPropertyType());
-                if(true){
-                    System.out.println("prop name="+p.getName());
-                    System.out.println("prop description="+p.getShortDescription());
-                    System.out.println("prop write method="+p.getWriteMethod());
-                    System.out.println("prop read method="+p.getReadMethod());
-                    System.out.println("type "+p.getPropertyType());
-                    System.out.println("bound: "+p.isBound());
-                    System.out.println("");
-                }
+//                System.out.println("clazz "+getClazz().getClass().getSimpleName()+" has property name="+p.getName()+" type="+p.getPropertyType());
+//                if(true){
+//                    System.out.println("prop name="+p.getName());
+//                    System.out.println("prop description="+p.getShortDescription());
+//                    System.out.println("prop write method="+p.getWriteMethod());
+//                    System.out.println("prop read method="+p.getReadMethod());
+//                    System.out.println("type "+p.getPropertyType());
+//                    System.out.println("bound: "+p.isBound());
+//                    System.out.println("");
+//                }
                 try {
                     boolean inherited = false;
 
@@ -269,32 +269,32 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 
                         SliderParams params;
                         if ((params = isSliderType(p, clazz)) != null) {
-                            control = new IntSliderControl(getClazz(), p.getName(), p.getWriteMethod(), p.getReadMethod(), params);
+                            control = new IntSliderControl(getClazz(), p, params);
                         } else {
-                            control = new IntControl(getClazz(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                            control = new IntControl(getClazz(), p);
                         }
                         myadd(control, name, inherited);
                     } else if (c == Float.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
                         SliderParams params;
                         if ((params = isSliderType(p, clazz)) != null) {
-                            control = new FloatSliderControl(getClazz(), p.getName(), p.getWriteMethod(), p.getReadMethod(), params);
+                            control = new FloatSliderControl(getClazz(), p, params);
                         } else {
-                            control = new FloatControl(getClazz(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                            control = new FloatControl(getClazz(), p);
 
                         }
                         myadd(control, name, inherited);
                     } else if (c == Boolean.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
-                       
 
 
-                        control = new BooleanControl(getClazz(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+
+                        control = new BooleanControl(getClazz(), p);
                         myadd(control, name, inherited);
                     } else if (c == String.class && p.getReadMethod() != null && p.getWriteMethod() != null) {
-                       
-                        control = new StringControl(getClazz(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+
+                        control = new StringControl(getClazz(), p);
                         myadd(control, name, inherited);
                     } else if (c != null && c.isEnum() && p.getReadMethod() != null && p.getWriteMethod() != null) {
-                        control = new EnumControl(c, getClazz(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                        control = new EnumControl(c, getClazz(), p);
                         myadd(control, name, inherited);
                     } else {
 //                    log.warning("unknown property type "+p.getPropertyType()+" for property "+p.getName());
@@ -318,31 +318,31 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //        System.out.println("added glue to "+this);
     }
 
-    void addTip(Object f, JLabel label) {
-//        String s = f.getPropertyTooltip(label.getText());
-//        if (s == null) {
-//            return;
-//        }
-//        label.setToolTipText(s);
-//        label.setForeground(Color.BLUE);
+    void addTip(PropertyDescriptor p, JLabel label) {
+        String s = p.getShortDescription();
+        if (s == null) {
+            return;
+        }
+        label.setToolTipText(s);
+        label.setForeground(Color.BLUE);
     }
 
-    void addTip(Object f, JButton b) {
-//        String s = f.getPropertyTooltip(b.getText());
-//        if (s == null) {
-//            return;
-//        }
-//        b.setToolTipText(s);
-//        b.setForeground(Color.BLUE);
+    void addTip(PropertyDescriptor p, JButton b) {
+       String s = p.getShortDescription();
+         if (s == null) {
+            return;
+        }
+        b.setToolTipText(s);
+        b.setForeground(Color.BLUE);
     }
 
-    void addTip(Object f, JCheckBox label) {
-//        String s = f.getPropertyTooltip(label.getText());
-//        if (s == null) {
-//            return;
-//        }
-//        label.setToolTipText(s);
-//        label.setForeground(Color.BLUE);
+    void addTip(PropertyDescriptor p, JCheckBox label) {
+      String s = p.getShortDescription();
+        if (s == null) {
+            return;
+        }
+        label.setToolTipText(s);
+        label.setForeground(Color.BLUE);
     }
 
     class EnumControl extends JPanel implements HasSetter {
@@ -356,8 +356,11 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             control.setSelectedItem(o);
         }
 
-        public EnumControl(final Class<? extends Enum> c, final Object f, final String name, final Method w, final Method r) {
+        public EnumControl(final Class<? extends Enum> c, final Object f, PropertyDescriptor p) {
             super();
+            final String name = p.getName();
+            final Method r = p.getReadMethod(), w = p.getWriteMethod();
+
             setterMap.put(name, this);
             clazz = f;
             write = w;
@@ -367,7 +370,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             final JLabel label = new JLabel(name);
             label.setAlignmentX(ALIGNMENT);
             label.setFont(label.getFont().deriveFont(fontSize));
-//            addTip(f, label);
+            addTip(p, label);
             add(label);
 
             control = new JComboBox(c.getEnumConstants());
@@ -414,8 +417,11 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             }
         }
 
-        public StringControl(final Object f, final String name, final Method w, final Method r) {
+        public StringControl(final Object f, PropertyDescriptor p) {
             super();
+            final String name = p.getName();
+            final Method r = p.getReadMethod(), w = p.getWriteMethod();
+
             setterMap.put(name, this);
             clazz = f;
             write = w;
@@ -425,7 +431,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             final JLabel label = new JLabel(name);
             label.setAlignmentX(ALIGNMENT);
             label.setFont(label.getFont().deriveFont(fontSize));
-            addTip(f, label);
+            addTip(p, label);
             add(label);
 
             textField = new JTextField(name);
@@ -468,8 +474,11 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         boolean initValue = false, nval;
         final JCheckBox checkBox;
 
-        public BooleanControl(final Object f, final String name, final Method w, final Method r) {
+        public BooleanControl(final Object f, PropertyDescriptor p) {
             super();
+            final String name = p.getName();
+            final Method r = p.getReadMethod(), w = p.getWriteMethod();
+
             setterMap.put(name, this);
             clazz = f;
             write = w;
@@ -481,7 +490,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             checkBox.setAlignmentX(ALIGNMENT);
             checkBox.setFont(checkBox.getFont().deriveFont(fontSize));
             checkBox.setHorizontalTextPosition(SwingConstants.LEFT);
-//            addTip(f, checkBox);
+            addTip(p, checkBox);
             add(checkBox);
             try {
                 Boolean x = (Boolean) r.invoke(clazz);
@@ -534,8 +543,10 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             }
         }
 
-        public IntSliderControl(final Object f, final String name, final Method w, final Method r, SliderParams params) {
+        public IntSliderControl(final Object f, PropertyDescriptor p, SliderParams params) {
             super();
+            final String name = p.getName();
+            final Method r = p.getReadMethod(), w = p.getWriteMethod();
             setterMap.put(name, this);
             clazz = f;
             write = w;
@@ -543,7 +554,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
 
-            final IntControl ic = new IntControl(f, name, w, r);
+            final IntControl ic = new IntControl(f, p);
             add(ic);
             slider = new JSlider(params.minIntValue, params.maxIntValue);
             slider.setMaximumSize(new Dimension(200, 50));
@@ -603,8 +614,10 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             }
         }
 
-        public FloatSliderControl(final Object f, final String name, final Method w, final Method r, SliderParams params) {
+        public FloatSliderControl(final Object f, PropertyDescriptor p, SliderParams params) {
             super();
+            final String name = p.getName();
+            final Method r = p.getReadMethod(), w = p.getWriteMethod();
             setterMap.put(name, this);
             clazz = f;
             write = w;
@@ -612,7 +625,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
 
-            fc = new FloatControl(f, name, w, r);
+            fc = new FloatControl(f, p);
             add(fc);
             minValue = params.minFloatValue;
             maxValue = params.maxFloatValue;
@@ -669,8 +682,11 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             }
         }
 
-        public IntControl(final Object f, final String name, final Method w, final Method r) {
+        public IntControl(final Object f, PropertyDescriptor p) {
             super();
+            final String name = p.getName();
+            final Method r = p.getReadMethod(), w = p.getWriteMethod();
+
             setterMap.put(name, this);
             clazz = f;
             write = w;
@@ -681,7 +697,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             JLabel label = new JLabel(name);
             label.setAlignmentX(ALIGNMENT);
             label.setFont(label.getFont().deriveFont(fontSize));
-//            addTip(f, label);
+            addTip(p, label);
             add(label);
 
             tf = new JTextField("", 8);
@@ -872,12 +888,6 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-
-
-
-
-
     }
 
     class FloatControl extends JPanel implements HasSetter {
@@ -894,8 +904,11 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             }
         }
 
-        public FloatControl(final Object f, final String name, final Method w, final Method r) {
+        public FloatControl(final Object f, PropertyDescriptor p) {
             super();
+            final String name = p.getName();
+            final Method r = p.getReadMethod(), w = p.getWriteMethod();
+
             setterMap.put(name, this);
             clazz = f;
             write = w;
@@ -906,7 +919,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             JLabel label = new JLabel(name);
             label.setAlignmentX(ALIGNMENT);
             label.setFont(label.getFont().deriveFont(fontSize));
-//            addTip(f, label);
+            addTip(p, label);
             add(label);
             tf = new JTextField("", 10);
             tf.setMaximumSize(new Dimension(100, 50));
@@ -1080,7 +1093,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
      */
     public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
         if (propertyChangeEvent.getSource() == getClazz()) {
-           {
+            {
                 // we need to find the control and set it appropriately. we don't need to set the property itself since this has already been done!
                 try {
 //                    log.info("PropertyChangeEvent received from " +

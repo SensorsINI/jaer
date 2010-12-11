@@ -6,8 +6,6 @@
  */
 package ch.unizh.ini.jaer.chip.dvs320;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -18,6 +16,7 @@ import de.thesycon.usbio.structs.*;
 import javax.swing.ProgressMonitor;
 import java.io.*;
 import java.math.BigInteger;
+import java.util.prefs.Preferences;
 
 /**
  * Adds functionality of cDVSTest10 retina test chip to base classes for Cypress FX2 interface.
@@ -26,8 +25,17 @@ import java.math.BigInteger;
  */
 public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
+    static Preferences prefs=Preferences.userNodeForPackage(cDVSTestHardwareInterface.class);
+    
     /** The USB product ID of this device */
     static public final short PID = (short) 0x840A;
+    private boolean adcEnabled=prefs.getBoolean("cDVSTestHardwareInterface.adcEnabled", true);
+    private short TrackTime = (short)prefs.getInt("cDVSTestHardwareInterface.TrackTime", 50), 
+            RefOnTime = (short)prefs.getInt("cDVSTestHardwareInterface.RefOnTime", 20), 
+            RefOffTime = (short)prefs.getInt("cDVSTestHardwareInterface.RefOffTime", 20), 
+            IdleTime = (short)prefs.getInt("cDVSTestHardwareInterface.IdleTime", 10);
+    private boolean Select5Tbuffer = prefs.getBoolean("cDVSTestHardwareInterface.Select5Tbuffer", true);
+    private boolean UseCalibration = prefs.getBoolean("cDVSTestHardwareInterface.UseCalibration", false);
 
     /** Creates a new instance of CypressFX2Biasgen */
     public cDVSTestHardwareInterface(int devNumber) {
@@ -47,15 +55,14 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
             return;
         }
         super.sendBiasBytes(bytes);
+        if(adcEnabled){ startADC();} // TODO hack to restart ADC after sending configuration, shouldn't be necessary
     }
-    private short TrackTime = 50, RefOnTime = 20, RefOffTime = 20, IdleTime = 10;
-    private boolean Select5Tbuffer = true;
-    private boolean UseCalibration = false;
-
+ 
     public void setTrackTime(short trackTimeUs) {
         try {
+            TrackTime = trackTimeUs;  // TODO bound values here
             sendCPLDconfiguration();
-            TrackTime = trackTimeUs;
+            prefs.putInt("cDVSTestHardwareInterface.TrackTime",TrackTime);
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
@@ -63,17 +70,19 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
     public void setIdleTime(short trackTimeUs) {
         try {
+            IdleTime = trackTimeUs;// TODO bound values here
             sendCPLDconfiguration();
-            IdleTime = trackTimeUs;
-        } catch (HardwareInterfaceException ex) {
+              prefs.putInt("cDVSTestHardwareInterface.IdleTime",IdleTime);
+      } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
     }
 
     public void setRefOnTime(short trackTimeUs) {
         try {
+            RefOnTime = trackTimeUs;// TODO bound values here
             sendCPLDconfiguration();
-            RefOnTime = trackTimeUs;
+              prefs.putInt("cDVSTestHardwareInterface.RefOnTime",RefOnTime);
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
@@ -81,26 +90,29 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
     public void setRefOffTime(short trackTimeUs) {
         try {
+            RefOffTime = trackTimeUs;// TODO bound values here
             sendCPLDconfiguration();
-            RefOffTime = trackTimeUs;
-        } catch (HardwareInterfaceException ex) {
+             prefs.putInt("cDVSTestHardwareInterface.RefOffTime",RefOffTime);
+         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
     }
 
     public void setSelect5Tbuffer(boolean se) {
         try {
-            sendCPLDconfiguration();
             Select5Tbuffer = se;
-        } catch (HardwareInterfaceException ex) {
+            sendCPLDconfiguration();
+              prefs.putBoolean("cDVSTestHardwareInterface.Select5Tbuffer",Select5Tbuffer);
+       } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
     }
 
     public void setUseCalibration(boolean se) {
         try {
-            sendCPLDconfiguration();
             UseCalibration = se;
+            sendCPLDconfiguration();
+              prefs.putBoolean("cDVSTestHardwareInterface.UseCalibration",UseCalibration);
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
@@ -110,8 +122,10 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
     public void setADCchannel(byte chan) {
         try {
-            sendCPLDconfiguration();
+            if(chan<0) chan=0; else if(chan>3)chan=3;
             ADCchannel = chan;
+            sendCPLDconfiguration();
+              prefs.putInt("cDVSTestHardwareInterface.ADCchannel",ADCchannel);
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
@@ -175,7 +189,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         byte[] bytes = new byte[nbytes];
         System.arraycopy(byteArray, 0, bytes, nbytes - byteArray.length, byteArray.length);
 
-        this.sendVendorRequest(VENDOR_REQUEST_WRITE_CPLD_SR, (short) 0, (short) 0, bytes);
+        this.sendVendorRequest(VENDOR_REQUEST_WRITE_CPLD_SR, (short) 0, (short) 0, bytes); // stops ADC running
     }
 
     synchronized public void startADC() throws HardwareInterfaceException {
@@ -185,6 +199,19 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
     synchronized public void stopADC() throws HardwareInterfaceException {
         this.sendVendorRequest(VENDOR_REQUEST_RUN_ADC, (short) 0, (short) 0);
+    }
+
+    
+    public boolean isADCEnabled(){ return adcEnabled;}
+            
+
+    public void setADCEnabled(boolean yes) throws HardwareInterfaceException {
+        if (yes) {
+            startADC();
+        } else {
+            stopADC();
+        }
+        this.adcEnabled=yes;
     }
 
     @Override

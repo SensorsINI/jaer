@@ -10,8 +10,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  */
 public class ADCHardwareInterfaceProxy {
 
-    static Logger log=Logger.getLogger("cDVSTestHardwareInterface");
-
+    static Logger log = Logger.getLogger("cDVSTestHardwareInterface");
     // following define limits for slider controls that are automagically constucted by ParameterControlPanel
     private final int minRefOffTime = 0;
     private final int maxRefOffTime = 100;
@@ -33,7 +32,7 @@ public class ADCHardwareInterfaceProxy {
         if (hw == null) {
             if (!printedWarning) {
                 printedWarning = true;
-               log.warning("null hardware, not doing anything with ADC hardware");
+                log.warning("null hardware, not doing anything with ADC hardware");
             }
             return false;
         }
@@ -51,18 +50,18 @@ public class ADCHardwareInterfaceProxy {
         this.hw = hw;
     }
 
-    public synchronized void stopADC() throws HardwareInterfaceException {
+    public void setADCEnabled(boolean yes) throws HardwareInterfaceException {
         if (!checkHw()) {
             return;
         }
-        hw.stopADC();
+        hw.setADCEnabled(yes);
     }
 
-    public synchronized void startADC() throws HardwareInterfaceException {
+    public boolean isADCEnabled() {
         if (!checkHw()) {
-            return;
+            return false;
         }
-        hw.startADC();
+        return hw.isADCEnabled();
     }
 
     public void setUseCalibration(boolean se) {
