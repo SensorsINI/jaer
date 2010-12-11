@@ -170,9 +170,11 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 
         {
 //            add(Box.createHorizontalGlue());
-            comp.setAlignmentX(Component.LEFT_ALIGNMENT);
+//            comp.setAlignmentX(Component.LEFT_ALIGNMENT);
+            comp.setAlignmentX(Component.RIGHT_ALIGNMENT);
             pan.add(comp);
             pan.add(Box.createVerticalStrut(0));
+//            pan.add(Box.createVerticalGlue());
         }
         add(pan); // to fix horizontal all left alignment
         controls.add(comp);
@@ -303,10 +305,13 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //                        control.setToolTipText(getClazz().getPropertyTooltip(name));
 //                    }
 
+
                 } catch (Exception e) {
                     log.warning(e + " caught on property " + p.getName() + " from class " + clazz);
                 }
             }
+//            add(Box.createVerticalBox()); // to fill space at bottom - not needed
+
             groupContainerMap = null;
 //             sortedControls=null;
         } catch (Exception e) {
@@ -1133,6 +1138,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        setAlignmentX(0.5F);
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
     }// </editor-fold>//GEN-END:initComponents
     boolean controlsVisible = true;
