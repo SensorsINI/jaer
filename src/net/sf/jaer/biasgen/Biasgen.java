@@ -4,6 +4,7 @@
  * Created on September 23, 2005, 8:52 PM
  */
 package net.sf.jaer.biasgen;
+
 import java.io.IOException;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.graphics.AEViewer;
@@ -15,6 +16,7 @@ import java.util.prefs.*;
 import javax.swing.*;
 import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
+
 /**
  * Describes a complete bias
  *generator, with a masterbias. a bunch of IPots, and a hardware interface.
@@ -33,7 +35,8 @@ import net.sf.jaer.util.WarningDialogWithDontShowPreference;
  * can override this method to build their own arbitrarily-complex JPanel for control.
  * @author tobi
  */
-public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInterface{
+public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInterface {
+
     transient protected PotArray potArray = null; // this is now PotArray instead of IPotArray, to make this class more generic
     transient private Masterbias masterbias = null;
     private String name = null;
@@ -51,10 +54,10 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      *It also adds itself as an Observer for the Masterbias.
      *@see HardwareInterfaceException
      */
-    public Biasgen (Chip chip){
+    public Biasgen(Chip chip) {
         this.setChip(chip);
         prefs = chip.getPrefs();
-        setHardwareInterface((BiasgenHardwareInterface)chip.getHardwareInterface());
+        setHardwareInterface((BiasgenHardwareInterface) chip.getHardwareInterface());
         masterbias = new Masterbias(this);
         masterbias.addObserver(this);
 //        Pot.setModificationTrackingEnabled(false);
@@ -69,7 +72,7 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      * buildControlPanel.
      * @return the control panel
      */
-    public JPanel getControlPanel (){
+    public JPanel getControlPanel() {
         return controlPanel;
     }
 
@@ -80,22 +83,22 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      * Subclasses can override buildControlPanel to build their own control panel.
     @return the default control panel
      */
-    public JPanel buildControlPanel (){
+    public JPanel buildControlPanel() {
         startBatchEdit();
         BiasgenFrame frame = null;
-        if ( chip instanceof AEChip ){
-            AEViewer viewer = ( (AEChip)chip ).getAeViewer();
-            if ( viewer != null ){
+        if (chip instanceof AEChip) {
+            AEViewer viewer = ((AEChip) chip).getAeViewer();
+            if (viewer != null) {
                 frame = viewer.getBiasgenFrame();
-            } else{
+            } else {
                 log.warning("no BiasgenFrame to build biasgen control panel for");
                 return null;
             }
         }
-        JPanel panel = new BiasgenPanel(this,frame);    /// makes a panel for the pots and populates it, the frame handles undo support
-        try{
+        JPanel panel = new BiasgenPanel(this, frame);    /// makes a panel for the pots and populates it, the frame handles undo support
+        try {
             endBatchEdit();
-        } catch ( HardwareInterfaceException e ){
+        } catch (HardwareInterfaceException e) {
             log.warning(e.toString());
         }
         return panel;
@@ -105,7 +108,7 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
     panel, set the control panel to null and call getControlPanel.
     @param panel the new panel
      */
-    public void setControlPanel (JPanel panel){
+    public void setControlPanel(JPanel panel) {
         this.controlPanel = panel; // TODO - useless method since once it's set the GUI won't rebuild
     }
 
@@ -113,27 +116,27 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      * 
      * @return the PotArray
      */
-    public PotArray getPotArray (){
+    public PotArray getPotArray() {
         return this.potArray;
     }
 
-    public void setPotArray (final PotArray PotArray){
+    public void setPotArray(final PotArray PotArray) {
         this.potArray = PotArray;
     }
 
-    public Masterbias getMasterbias (){
+    public Masterbias getMasterbias() {
         return this.masterbias;
     }
 
-    public void setMasterbias (final Masterbias masterbias){
+    public void setMasterbias(final Masterbias masterbias) {
         this.masterbias = masterbias;
     }
 
-    public String getName (){
+    public String getName() {
         return this.name;
     }
 
-    public void setName (final String name){
+    public void setName(final String name) {
         this.name = name;
     }
 
@@ -145,13 +148,13 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      *@param os an output stream, typically constructed for a FileOutputStream
      *@throws IOException if the output stream cannot be written
      */
-    public void exportPreferences (java.io.OutputStream os) throws java.io.IOException{
+    public void exportPreferences(java.io.OutputStream os) throws java.io.IOException {
         storePreferences();
-        try{
+        try {
             prefs.exportNode(os);
             prefs.flush();
             log.info("exported prefs=" + prefs + " to os=" + os);
-        } catch ( BackingStoreException bse ){
+        } catch (BackingStoreException bse) {
             bse.printStackTrace();
         }
 
@@ -163,24 +166,25 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      *@param is an input stream, typically constructed for a FileInputStream
      *@throws IOException if the output stream cannot be read
      */
-    public void importPreferences (java.io.InputStream is) throws java.io.IOException,InvalidPreferencesFormatException,HardwareInterfaceException{
+    public void importPreferences(java.io.InputStream is) throws java.io.IOException, InvalidPreferencesFormatException, HardwareInterfaceException {
         log.info("importing preferences from InputStream=" + is + " to prefs=" + prefs);
         startBatchEdit();
         Preferences.importPreferences(is);  // this uses the Preferences object to load all preferences from the input stream which an xml file
         loadPreferences();
         // the preference change listeners may not have been called by the time this endBatchEdit is called
         // therefore we start a thread to end the batch edit a bit later
-        new Thread("Biasgen.endBatchEdit"){
+        new Thread("Biasgen.endBatchEdit") {
+
             @Override
-            public void run (){
-                try{
+            public void run() {
+                try {
                     Thread.sleep(1000); // sleep a bit for preference change listeners
-                } catch ( InterruptedException e ){
+                } catch (InterruptedException e) {
                 }
-                try{
+                try {
                     setBatchEditOccurring(false);
                     sendConfiguration(Biasgen.this);
-                } catch ( Exception e ){
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -191,17 +195,17 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      * to load additional information.
      */
     @Override
-    public void loadPreferences (){
+    public void loadPreferences() {
 //        log.info("Biasgen.loadPreferences()");
         startBatchEdit();
-        if ( getPotArray() != null ){
+        if (getPotArray() != null) {
             getPotArray().loadPreferences();
             masterbias.loadPreferences();
         }
 
-        try{
+        try {
             endBatchEdit();
-        } catch ( HardwareInterfaceException e ){
+        } catch (HardwareInterfaceException e) {
             log.warning(e.toString());
         }
     }
@@ -210,7 +214,7 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      * to store additional information!!! For example, a subclass that defines additional configuration information should
      * call storePreferences explicitly for additional configuration.
      */
-    public void storePreferences (){
+    public void storePreferences() {
         log.info("storing preferences to preferences tree");
         potArray.storePreferences();
         masterbias.storePreferences();
@@ -223,10 +227,10 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      * @param key your key.
      * @param value your value.
      */
-    public void putPref (String key,String value){
-        String s = prefs.get(key,null);
-        if ( s == null || !s.equals(value) ){
-            prefs.put(key,value);
+    public void putPref(String key, String value) {
+        String s = prefs.get(key, null);
+        if (s == null || !s.equals(value)) {
+            prefs.put(key, value);
 //            Thread.yield(); // sometimes let's preference change listeners run, but not always
         }
     }
@@ -236,8 +240,8 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      * @param key your key.
      * @param value your value.
      */
-    public void putPref (String key,boolean value){
-        putPref(key,String.valueOf(value));
+    public void putPref(String key, boolean value) {
+        putPref(key, String.valueOf(value));
     }
 
     /** Use this method to put a value to the preferences 
@@ -251,8 +255,8 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      * @param key your key.
      * @param value your value.
      */
-    public void putPref (String key,int value){
-        putPref(key,String.valueOf(value));
+    public void putPref(String key, int value) {
+        putPref(key, String.valueOf(value));
     }
 
     /** Use this method to put a value to the preferences only if the value is different than the stored Preference value. Using this method will thus not call preference change listeners unless the value has changed.
@@ -260,8 +264,8 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      * @param key your key.
      * @param value your value.
      */
-    public void putPref (String key,float value){
-        putPref(key,String.valueOf(value));
+    public void putPref(String key, float value) {
+        putPref(key, String.valueOf(value));
     }
 
     /** Use this method to put a value to the preferences only if the value is different than the stored Preference value. Using this method will thus not call preference change listeners unless the value has changed.
@@ -269,12 +273,12 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      * @param key your key.
      * @param value your value.
      */
-    public void putPref (String key,double value){
-        putPref(key,String.valueOf(value));
+    public void putPref(String key, double value) {
+        putPref(key, String.valueOf(value));
     }
 
     @Override
-    public String toString (){
+    public String toString() {
         String s = this.getClass().getSimpleName() + " with ";
         s = s + potArray.toString();
         return s;
@@ -283,15 +287,15 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
     /** call this when starting a set of related pot value changes.
      *@see #endBatchEdit
      */
-    public void startBatchEdit (){
+    public void startBatchEdit() {
         setBatchEditOccurring(true);
     }
 
     /** call this to end the edit and send the values over the hardware interface.
      *@see #startBatchEdit
      */
-    public void endBatchEdit () throws HardwareInterfaceException{
-        if ( isBatchEditOccurring() ){
+    public void endBatchEdit() throws HardwareInterfaceException {
+        if (isBatchEditOccurring()) {
             setBatchEditOccurring(false);
             sendConfiguration(this);
         }
@@ -301,32 +305,32 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
     Sets the powerDown state. 
     If there is not a batch edit occuring, opens device if not open and calls sendConfiguration.
      */
-    public void update (Observable observable,Object object){
+    public void update(Observable observable, Object object) {
 //        if(observable!=masterbias) {
 //            log.warning("Biasgen.update(): unknown observable "+observable);
 //            return;
 //        }
-        if ( object != null && object.equals("powerDownEnabled") ){
+        if (object != null && object.equals("powerDownEnabled")) {
 //            log.info("Biasgen.update(): setting powerdown");
-            try{
-                if ( !isBatchEditOccurring() ){
-                    if ( !isOpen() ){
+            try {
+                if (!isBatchEditOccurring()) {
+                    if (!isOpen()) {
                         open();
                     }
                     hardwareInterface.setPowerDown(masterbias.isPowerDownEnabled());
                 }
-            } catch ( HardwareInterfaceException e ){
+            } catch (HardwareInterfaceException e) {
                 log.warning("error setting powerDown: " + e);
             }
-        } else{
-            try{
-                if ( !isBatchEditOccurring() ){
-                    if ( !isOpen() ){
+        } else {
+            try {
+                if (!isBatchEditOccurring()) {
+                    if (!isOpen()) {
                         open();
                     }
                     hardwareInterface.sendConfiguration(this);
                 }
-            } catch ( HardwareInterfaceException e ){
+            } catch (HardwareInterfaceException e) {
                 log.warning("error sending pot values: " + e);
             }
 
@@ -337,7 +341,7 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      * @param name name of pot as assigned in IPot
      *@return the IPot, or null if there isn't one named that
      */
-    public Pot getPotByName (String name){
+    public Pot getPotByName(String name) {
         return getPotArray().getPotByName(name);
     }
 
@@ -345,36 +349,36 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      * @param number name of pot as assigned in IPot
      *@return the IPot, or null if there isn't one named that
      */
-    public Pot getPotByNumber (int number){
+    public Pot getPotByNumber(int number) {
         return getPotArray().getPotByNumber(number);
     }
 
     /** @return interface, or null if none has been successfully opened */
-    public BiasgenHardwareInterface getHardwareInterface (){
+    public BiasgenHardwareInterface getHardwareInterface() {
         return this.hardwareInterface;
     }
 
     /** Assigns the HardwareInterface to this Biasgen. If non-null, the configuration information (e.g. biases) are also sent to the device.
      * @param hardwareInterface the hardware interface. 
      */
-    public void setHardwareInterface (final BiasgenHardwareInterface hardwareInterface){
+    public void setHardwareInterface(final BiasgenHardwareInterface hardwareInterface) {
         this.hardwareInterface = hardwareInterface;
-        if ( hardwareInterface != null ){
+        if (hardwareInterface != null) {
 //            log.info(Thread.currentThread()+": Biasgen.setHardwareInterface("+hardwareInterface+"): sendIPotValues()");
-            try{
+            try {
                 sendConfiguration(this); // make sure after we set hardware interface that new bias values are sent to device, which may have been just connected.
-            } catch ( HardwareInterfaceException e ){
+            } catch (HardwareInterfaceException e) {
                 log.warning(e.getMessage() + ": sending configuration values after setting hardware interface");
             }
         }
     }
 
-    public int getNumPots (){
+    public int getNumPots() {
         return getPotArray().getNumPots();
     }
 
-    public void close (){
-        if ( hardwareInterface != null ){
+    public void close() {
+        if (hardwareInterface != null) {
             hardwareInterface.close();
         }
     }
@@ -385,17 +389,17 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      * which doesn't know about the particular bias generator instance.
      *@throws HardwareInterfaceException if there is a hardware error. If there is no interface, prints a message and just returns.
      **/
-    public void flashConfiguration (Biasgen biasgen) throws HardwareInterfaceException{
-        if ( !isOpen() ){
+    public void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
+        if (!isOpen()) {
             open();
         }
-        if ( isOpen() ){
+        if (isOpen()) {
             hardwareInterface.flashConfiguration(biasgen);
         }
     }
 
     /** opens the first available hardware interface found */
-    public void open () throws HardwareInterfaceException{
+    public void open() throws HardwareInterfaceException {
         // tobi removed automatic open of any available interface for biasgen since the addition of the UDPInteface hardware interface,
         // which would open this interface and throw an exception.
 //        if ( hardwareInterface == null ){
@@ -407,7 +411,7 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
 //            }
 //        }
         // doesn't throw exception, just returns null if there is no device
-        if ( hardwareInterface == null ){
+        if (hardwareInterface == null) {
 //            log.warning("Biasgen.open(): no device found");
             throw new HardwareInterfaceException("Biasgen.open(): can't find device to open");
         }
@@ -422,12 +426,12 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      *@see #startBatchEdit
      *@see #endBatchEdit
      **/
-    public void sendConfiguration (Biasgen biasgen) throws HardwareInterfaceException{
-        if ( hardwareInterface == null ){
+    public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
+        if (hardwareInterface == null) {
 //            log.warning("Biasgen.sendIPotValues(): no hardware interface");
             return;
         }
-        if ( !isBatchEditOccurring() && hardwareInterface != null && hardwareInterface.isOpen() ){
+        if (!isBatchEditOccurring() && hardwareInterface != null && hardwareInterface.isOpen()) {
             hardwareInterface.sendConfiguration(biasgen);
         }
     }
@@ -442,31 +446,31 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      * @return array of bytes to be sent.
      */
     @Override
-    public byte[] formatConfigurationBytes (Biasgen biasgen){
-        if ( hardwareInterface == null ){
+    public byte[] formatConfigurationBytes(Biasgen biasgen) {
+        if (hardwareInterface == null) {
             return null;
         }
         return hardwareInterface.formatConfigurationBytes(this);
     }
 
-    public void setPowerDown (boolean powerDown) throws HardwareInterfaceException{
-        if ( hardwareInterface == null ){
+    public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
+        if (hardwareInterface == null) {
             log.warning("Biasgen.setPowerDown(): no hardware interface");
             return;
         }
         hardwareInterface.setPowerDown(powerDown);
     }
 
-    public String getTypeName (){
-        if ( hardwareInterface == null ){
+    public String getTypeName() {
+        if (hardwareInterface == null) {
             log.warning("Biasgen.getTypeName(): no hardware interface, returning empty string");
             return "";
         }
         return hardwareInterface.getTypeName();
     }
 
-    public boolean isOpen (){
-        if ( hardwareInterface == null ){
+    public boolean isOpen() {
+        if (hardwareInterface == null) {
 //            log.info("Biasgen.isOpen(): no hardware interface, returning false");
             return false;
         }
@@ -476,14 +480,14 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
     /** sets all the biases to zero current
     @see #resume
      */
-    public void suspend (){
+    public void suspend() {
         startBatchEdit();
-        for ( Pot p:potArray.getPots() ){
+        for (Pot p : potArray.getPots()) {
             p.suspend();
         }
-        try{
+        try {
             endBatchEdit();
-        } catch ( HardwareInterfaceException e ){
+        } catch (HardwareInterfaceException e) {
             e.printStackTrace();
         }
     }
@@ -491,14 +495,14 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
     /** restores biases after suspend
      *@see #suspend
      */
-    public void resume (){
+    public void resume() {
         startBatchEdit();
-        for ( Pot p:potArray.getPots() ){
+        for (Pot p : potArray.getPots()) {
             p.resume();
         }
-        try{
+        try {
             endBatchEdit();
-        } catch ( HardwareInterfaceException e ){
+        } catch (HardwareInterfaceException e) {
             e.printStackTrace();
         }
     }
@@ -508,7 +512,7 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      *@see #startBatchEdit
      *@see #endBatchEdit
      */
-    public boolean isBatchEditOccurring (){
+    public boolean isBatchEditOccurring() {
         return batchEditOccurring;
     }
 
@@ -517,31 +521,31 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      *@see #startBatchEdit
      *@see #endBatchEdit
      */
-    public void setBatchEditOccurring (boolean batchEditOccurring){
+    public void setBatchEditOccurring(boolean batchEditOccurring) {
         this.batchEditOccurring = batchEditOccurring;
 //        log.info("batchEditOccurring="+batchEditOccurring);
     }
 
     /** @return the list of IPotGroup lists for this Biasgen */
-    public ArrayList<IPotGroup> getIPotGroups (){
+    public ArrayList<IPotGroup> getIPotGroups() {
         return iPotGroups;
     }
 
-    public void setIPotGroups (ArrayList<IPotGroup> iPotGroups){
+    public void setIPotGroups(ArrayList<IPotGroup> iPotGroups) {
         this.iPotGroups = iPotGroups;
     }
 
     /** Returns chip associated with this biasgen. Used, e.g. for preference keys.
     @return chip
      */
-    public Chip getChip (){
+    public Chip getChip() {
         return chip;
     }
 
     /** Sets chip associated with this biasgen
     @param chip the chip
      */
-    public void setChip (Chip chip){
+    public void setChip(Chip chip) {
         this.chip = chip;
     }
 
@@ -549,67 +553,52 @@ public class Biasgen implements BiasgenPreferences,Observer,BiasgenHardwareInter
      * 
      * @return true if any Pot value is non-zero.
      */
-    public boolean isInitialized (){
+    public boolean isInitialized() {
         ArrayList<Pot> pots = getPotArray().getPots();
-        if ( getNumPots() == 0 ){
+        if (getNumPots() == 0) {
             return true;
         }
-        for ( Pot p:pots ){
-            if ( p.getBitValue() != 0 ){
+        for (Pot p : pots) {
+            if (p.getBitValue() != 0) {
                 return true;
             }
         }
         return false;
     }
+    private boolean showedUnitializedBiasesWarning = false;
 
     /** Shows a dialog centered on the screen warning user to load bias settings
     @param container the window or panel that should contain the dialog
      */
-    public void showUnitializedBiasesWarningDialog (AEViewer container){
-        final String WARNING_MESSAGE = "<html>No bias values have been set.<p> To remove this warning and to run your hardware you probably need to load confiruration (e.g. biases) for your hardware.<p>To load existing bias values, open Biases panel and set or load values from a file in the folder <i>biasgenSettings</i><p>For the DVS128 sensor, using one of the <i>DVS128*.xml</i> files.<p>Or, to remove this message, set any bias to a non-zero value.</html>";
-        final String WARNING_TITLE = "Biases unitialized";
-//        JOptionPane.showMessageDialog(container,WARNING_MESSAGE, WARNING_TITLE, JOptionPane.WARNING_MESSAGE);
-//        AEViewer viewer = null;
-//        if ( chip != null && chip instanceof AEChip ){
-//            AEChip aechip = (AEChip)chip;
-//            viewer = aechip.getAeViewer();
-//
-//        }
-        WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(container,true,WARNING_TITLE,WARNING_MESSAGE);
-        d.setVisible(true);
-        d.getValue();  // TODO doesn't work yet, dialog does not dismiss and also will continue to pop up every 30 seconds
+    public void showUnitializedBiasesWarningDialog(final AEViewer container) {
+        if (showedUnitializedBiasesWarning) {
+            return;
+        }
+        showedUnitializedBiasesWarning = true;
+        try {
+            SwingUtilities.invokeAndWait(new Runnable() {
 
-        // following deadlocks in dialog
-        //        UninitializedBiasesWarningOKCancelDialog dialog = new UninitializedBiasesWarningOKCancelDialog(container,true);
-//        dialog.setVisible(true);
-//        int ret = dialog.getReturnStatus();
-//        switch ( ret ){
-//            case UninitializedBiasesWarningOKCancelDialog.RET_CANCEL:
-//                dialog.setVisible(false);
-//                break;
-//            case UninitializedBiasesWarningOKCancelDialog.RET_OK:
-//                dialog.setVisible(false);
-//                container.showBiasgen(true);
-//                while ( container.isBiasgenVisible() == false ){
-//                    try{
-//                        Thread.sleep(100);
-//                    } catch ( InterruptedException e ){
-//                    }
-//                }
-//                container.getBiasgenFrame().importPreferencesDialog();
-//                break;
-//            default:
-//
-//        }
+                public void run() {
+                    final String WARNING_MESSAGE = "<html>No bias values or other hardware configuration have been set for " + getChip().getName() + ".<p> To remove this warning and to run your hardware you probably need to load confiruration (e.g. biases) for your hardware.<p>To load existing bias values, open Biases panel and set or load values from a file in the folder <i>biasgenSettings</i><p>For the DVS128 sensor, using one of the <i>DVS128*.xml</i> files.<p>Or, to remove this message, set any bias to a non-zero value.</html>";
+                    final String WARNING_TITLE = "Unitialized configuration for " + getChip().getName();
+                    WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(container, true, WARNING_TITLE, WARNING_MESSAGE);
+                    d.setVisible(true);
+                }
+            });
+        } catch (Exception e) {
+            log.info(e.toString());
+        }
 
     }
+
     /** Marks a class (for example, some object in a subclass of Biasgen) as having a preference that can be loaded and stored. Classes do *not* store preferences unless
      * explicitly asked to do so. E.g. setters do not store preferences. Otherwise this can lead to an infinite loop of 
      * set/notify/set.
      */
-    protected interface HasPreference{
-        void loadPreference ();
+    protected interface HasPreference {
 
-        void storePreference ();
+        void loadPreference();
+
+        void storePreference();
     }
 }

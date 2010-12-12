@@ -172,7 +172,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     protected UsbIo gUsbIo=null;
     
     /** the devlist handle for USBIO */
-    protected int gDevList; // 'handle' (an integer) to an internal device list static to UsbIo
+    protected long gDevList; // 'handle' (an integer) to an internal device list static to UsbIo
     
     
     /** checks if device has a string identifier that is a non-empty string

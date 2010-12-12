@@ -1574,7 +1574,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * to the device*/
     protected UsbIo gUsbIo = null;
     /** the devlist handle for USBIO */
-    protected int gDevList; // 'handle' (an integer) to an internal device list static to UsbIo
+    protected long gDevList; // 'handle' (an integer) to an internal device list static to UsbIo
 
     /** checks if device has a string identifier that is a non-empty string
      *@return false if not, true if there is one

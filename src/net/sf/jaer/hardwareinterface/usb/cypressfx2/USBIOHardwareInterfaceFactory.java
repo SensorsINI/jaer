@@ -67,7 +67,7 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
     public final static String GUID = CypressFX2.GUID; // see guid.txt at root of CypressFX2USB2
     /** the UsbIo interface to the device. This is assigned when this particular instance is opened, after enumerating all devices */
     private UsbIo gUsbIo = null;
-    private int gDevList; // 'handle' (an integer) to an internal device list static to UsbIo
+    private long gDevList; // 'handle' (an integer) to an internal device list static to UsbIo
     private ArrayList<UsbIo> usbioList = null;
 
     private void maybeBuildUsbIoList() {
@@ -268,11 +268,11 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
     /** Handle used to refer to UsbIo's internal list of devices, built here on construction and for each add and remove
     @return the the handle
      */
-    synchronized public int getGDevList() {
+    synchronized public long getGDevList() {
         return gDevList;
     }
 
-    synchronized public void setGDevList(int gDevList) {
+    synchronized public void setGDevList(long gDevList) {
         this.gDevList = gDevList;
     }
 

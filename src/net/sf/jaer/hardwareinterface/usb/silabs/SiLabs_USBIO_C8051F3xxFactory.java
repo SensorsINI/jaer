@@ -123,7 +123,7 @@ public class SiLabs_USBIO_C8051F3xxFactory implements
     /** the UsbIo interface to the device. This is assigned when this particular instance is opened, after enumerating all devices */
     private UsbIo gUsbIo=null;
     
-    private int gDevList; // 'handle' (an integer) to an internal device list static to UsbIo
+    private long gDevList; // 'handle' (an integer) to an internal device list static to UsbIo
     
     
     void buildUsbIoList(){

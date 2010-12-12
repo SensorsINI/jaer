@@ -92,7 +92,7 @@ public class ToradexOakG3AxisAccelerationSensor extends UsbIoReader implements H
      */
     static Logger log = Logger.getLogger("ToradexOakG3AxisAccelerationSensor");
     int seqNum = 0;
-    int gDevList;
+    private long gDevList;
     public static String GUID = "{A08B149E-81AC-47b0-988F-52FDC1BB1E57}";
     private final int REP_LEN = 8;
     private byte ENDPOINT_ADDRESS = (byte) 0x82;

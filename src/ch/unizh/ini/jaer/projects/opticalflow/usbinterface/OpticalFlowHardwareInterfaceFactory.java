@@ -30,7 +30,7 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
     /** the UsbIo interface to the device. This is assigned when this particular instance is opened, after enumerating all devices */
     private UsbIo gUsbIo=null;
     
-    int gDevList; // 'handle' (an integer) to an internal device list static to UsbIo
+    private long gDevList; // 'handle' (an integer) to an internal device list static to UsbIo
     
     ArrayList<UsbIo> usbioList=null;
 

@@ -315,7 +315,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
         }
 
         int status;
-        int gDevList = UsbIo.createDeviceList(GUID);
+        long gDevList = UsbIo.createDeviceList(GUID);
         status = open(0, gDevList, GUID);
         if (status != USBIO_ERR_SUCCESS) {
             UsbIo.destroyDeviceList(gDevList);

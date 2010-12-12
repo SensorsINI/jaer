@@ -12,7 +12,9 @@
  * 
  */
 package net.sf.jaer.hardwareinterface.usb.linux;
+
 import java.util.prefs.Preferences;
+import javax.swing.SwingUtilities;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import java.io.FileNotFoundException;
@@ -27,11 +29,13 @@ import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 //import javax.usb.UsbHostManager;
 //import javax.usb.UsbHub;
 //import javax.usb.UsbServices;
+
 /**
  * Makes hardware interfaces under linux.
  * @author tobi
  */
-public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryInterface{
+public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryInterface {
+
     private static Preferences prefs = Preferences.userNodeForPackage(HardwareInterfaceFactoryLinux.class);
     static Logger log = Logger.getLogger("HardwareInterfaceFactoryLinux");
     private static HardwareInterfaceFactoryLinux instance = new HardwareInterfaceFactoryLinux();
@@ -42,53 +46,62 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
     private long lastCheckTimeMs = 0;
     /** Device file for retina driver. */
     public static final String DEVICE_FILE = "/dev/retina0";
-    private static final String WARNING = "To use DVS128, plug in a retina.\n Will check for device file " + DEVICE_FILE + " again in " + ( CHECK_INTERVAL_MS >>> 10 ) + "s\n"
+    private static final String WARNING = "To use DVS128, plug in a retina.\n Will check for device file " + DEVICE_FILE + " again in " + (CHECK_INTERVAL_MS >>> 10) + "s\n"
             + "See <jAER root>/drivers/linux/driverRetinaLinux for DVS128 linux driver.\n Email m.ebner.1979@gmail.com for driver issues";
     private static String WARNING_LABEL;
 
-    static{
-        WARNING_LABEL = "<html>" + WARNING.replace("\n","<p>");
+    static {
+        WARNING_LABEL = "<html>" + WARNING.replace("\n", "<p>");
     }
     private static final String WARNING_TITLE = "DVS linux driver warning";
     private boolean showedWarning = false;
 
     /** Creates a new instance of HardwareInterfaceFactoryLinux, private because this is a singleton factory class */
-    private HardwareInterfaceFactoryLinux (){
+    private HardwareInterfaceFactoryLinux() {
     }
 
     /** Use this instance to access the methods, e.g. <code>HardwareInterfaceFactoryLinux.instance().getNumInterfacesAvailable()</code>.
     @return the singleton instance.
      */
-    public static HardwareInterfaceFactoryLinux instance (){
+    public static HardwareInterfaceFactoryLinux instance() {
         return instance;
     }
-    private static short DVS128_PID = (short)0x8400;
-    private static short VID = (short)0x152A;
+    private static short DVS128_PID = (short) 0x8400;
+    private static short VID = (short) 0x152A;
 
-    private void buildInterfaceList (){
+    private void buildInterfaceList() {
         //log.info(System.getProperty("os.name"));
-        if ( !System.getProperty("os.name").startsWith("Linux") ){
+        if (!System.getProperty("os.name").startsWith("Linux")) {
             return; // only under linux
         }//        virtualRootUsbHub=getVirtualRootUsbHub();
 //         List usbDeviceList = getUsbDevicesWithId(virtualRootUsbHub, VID, DVS128_PID);
         //usbDeviceList.addAll(getUsbDevicesWithId(virtualRootUsbHub, (short)0x0547, (short)0x8700));
 
         // build a list of linux USB compatible devices, store it in interfaceList
-        try{
+        try {
 //        for (int i=0;i<usbDeviceList.size();i++) {
             long now = System.currentTimeMillis();
-            if ( lastCheckTimeMs == 0 || now - lastCheckTimeMs > CHECK_INTERVAL_MS ){// try first time, then reset counter if fail
+            if (lastCheckTimeMs == 0 || now - lastCheckTimeMs > CHECK_INTERVAL_MS) {// try first time, then reset counter if fail
                 lastCheckTimeMs = now;
                 interfaceList.clear();
                 interfaceList.add(new CypressFX2RetinaLinux(DEVICE_FILE));
             }
-        } catch ( FileNotFoundException e ){
-            if ( !showedWarning ){
-                showedWarning=true;
+        } catch (FileNotFoundException e) {
+            if (!showedWarning) {
+                showedWarning = true;
                 log.warning(e.toString() + WARNING);
-                WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(null,true,WARNING_TITLE,WARNING_LABEL);
-                d.setVisible(true);
-                d.getValue();  // TODO doesn't work yet, dialog does not dismiss and also will continue to pop up every 30 seconds
+                try {
+                    SwingUtilities.invokeAndWait(new Runnable() {
+
+                        public void run() {
+                            WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(null, true, WARNING_TITLE, WARNING_LABEL);
+                            d.setVisible(true);
+
+                        }
+                    });
+                } catch (Exception ex) {
+                    log.warning(ex.toString());
+                }
             }
         }
 
@@ -100,28 +113,28 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
     /** Says how many total of all types of hardware are available
     @return number of devices
      */
-    public int getNumInterfacesAvailable (){
+    public int getNumInterfacesAvailable() {
         buildInterfaceList();
-        if ( interfaceList == null ){
+        if (interfaceList == null) {
             return 0;
         }
         return interfaceList.size();
     }
 
     /** @return first available interface, starting with CypressFX2 and then going to SiLabsC8051F320 */
-    public HardwareInterface getFirstAvailableInterface (){
+    public HardwareInterface getFirstAvailableInterface() {
         return getInterface(0);
     }
 
     /** build list of devices and return the n'th one, 0 based */
-    public HardwareInterface getInterface (int n){
+    public HardwareInterface getInterface(int n) {
 //        buildInterfaceList();
-        if ( interfaceList == null || interfaceList.size() == 0 ){
+        if (interfaceList == null || interfaceList.size() == 0) {
             return null;
         }
-        if ( n > interfaceList.size() - 1 ){
+        if (n > interfaceList.size() - 1) {
             return null;
-        } else{
+        } else {
             HardwareInterface hw = interfaceList.get(n);
 //            log.info("HardwareInterfaceFactoryLinux.getInterace("+n+")="+hw);
             return hw;
