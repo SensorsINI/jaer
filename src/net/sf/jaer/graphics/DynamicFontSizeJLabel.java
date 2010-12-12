@@ -24,12 +24,13 @@ public class DynamicFontSizeJLabel extends JLabel {
     
     public static final int MIN_FONT_SIZE=13, MAX_FONT_SIZE=36;
     private Font currentFont=null;
+    private long lastResizeTime=System.currentTimeMillis();
 
     public DynamicFontSizeJLabel() {
         super();
-//        setFont(new java.awt.Font("Bitstream Vera Sans Mono 11 Bold", 0, 11));
+        setFont(new java.awt.Font("Bitstream Vera Sans Mono 11 Bold", 0, 11));
 //        setFont(new java.awt.Font("Monospaced", 0, 24));
-        setFont(new java.awt.Font("Arial Narrow", Font.BOLD, 24));
+//        setFont(new java.awt.Font("Arial Narrow", Font.BOLD, 24));
         addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentResized(java.awt.event.ComponentEvent evt) {
                 formComponentResized(evt);
@@ -38,6 +39,7 @@ public class DynamicFontSizeJLabel extends JLabel {
     }
     
     private void formComponentResized(java.awt.event.ComponentEvent evt) {
+        if(System.currentTimeMillis()-lastResizeTime<500) return; // don't resize too often or we can generate a storm of component resizing
         // handle label font sizing here
         double labelWidth=getWidth(); // width of text (approx)
         double parentWidth=getParent().getWidth(); // width of panel holding label
@@ -57,6 +59,7 @@ public class DynamicFontSizeJLabel extends JLabel {
 //        System.out.println("labelWidth="+labelWidth+" parentWidth="+parentWidth+" newsize="+newsize+" string="+getText());
         currentFont=f.deriveFont((float)newsize);
         setFont(currentFont);
+        lastResizeTime=System.currentTimeMillis();
         
     }
     

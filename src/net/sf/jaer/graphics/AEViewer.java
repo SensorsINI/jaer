@@ -8,6 +8,7 @@
 package net.sf.jaer.graphics;
 import java.awt.geom.Point2D.Float;
 import java.net.SocketException;
+import java.text.NumberFormat;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
@@ -1824,10 +1825,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             lastTimeExpansionFactor = getFrameRater().getAverageFPS() * dtMs / 1000f;
             return lastTimeExpansionFactor;
         }
-        private String statLabel = null;
+        
+//        private String statLabel = null;
+        private StringBuilder sb=new StringBuilder(100);
 
         private void makeStatisticsLabel (EventPacket packet){
-            if ( renderCount % 10 == 0 || isPaused() || isSingleStep() || getFrameRater().getDesiredFPS() < 20 ){  // don't draw stats too fast
+            if ( renderCount % 20 == 0 || isPaused() || isSingleStep() || getFrameRater().getDesiredFPS() < 20 ){  // don't draw stats too fast
                 if ( getAePlayer().isChoosingFile() ){
                     return;
                 } // don't render stats while user is choosing file
@@ -1835,34 +1838,41 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if ( packet == null ){
                     return;
                 }
-                String thisTimeString = null;
+                float dtMs = getDtMs(packet);
+                String timeSliceString = String.format("%10ss",engFmt.format((float) dtMs / 1000));
 
                 float ratekeps = packet.getEventRateHz() / 1e3f;
-                switch ( getPlayMode() ){
+                float thisTime=0;
+                switch (getPlayMode()) {
                     case SEQUENCING:
                     case LIVE:
                         if ( aemon == null ){
                             return;
                         }
 //                    ratekeps=aemon.getEstimatedEventRate()/1000f;
-                        thisTimeString = String.format("%5.3fs",packet.getLastTimestamp() * aemon.getTimestampTickUs() * 1e-6f);
+                        thisTime=packet.getLastTimestamp() * aemon.getTimestampTickUs() * 1e-6f;
+//                        thisTimeString = String.format("%5.3fs ",packet.getLastTimestamp() * aemon.getTimestampTickUs() * 1e-6f);
                         break;
                     case PLAYBACK:
 //                    if(ae.getNumEvents()>2) ratekeps=(float)ae.getNumEvents()/(float)dtMs;
 //                    if(packet.getSize()>2) ratekeps=(float)packet.getSize()/(float)dtMs;
 //                        thisTimeString = String.format("%5.3fs",getAePlayer().getTime() * 1e-6f); // hack here, we don't know timestamp from data file, we assume 1us
-                        thisTimeString = String.format("%5.3fs",packet.getLastTimestamp() * 1e-6f); // just use the raw timestamp from the data file, but this will not account for wrapping.
+                        thisTime = packet.getLastTimestamp() * 1e-6f; // just use the raw timestamp from the data file, but this will not account for wrapping.
                         break;
                     case REMOTE:
-                        thisTimeString = String.format("%5.3fs",packet.getLastTimestamp() * 1e-6f);
+                        thisTime = packet.getLastTimestamp() * 1e-6f;
                         break;
                 }
+                String thisTimeString = String.format("%5.3fs ",thisTime);
+
                 String rateString = null;
                 if ( ratekeps >= 10e3f ){
-                    rateString = "   >10 Meps";
+                    rateString = "   >10 Meps ";
                 } else{
-                    rateString = String.format("%6.2fkeps",ratekeps);
+                    rateString = String.format("%5.1fkeps",ratekeps); //String.format("%6.2fkeps ",ratekeps);
                 }
+
+
                 int cs = renderer.getColorScale();
 
                 String ovstring;
@@ -1875,23 +1885,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                if(numEvents==0) s=thisTimeString+ "s: No events";
 //                else {
                 String timeExpansionString;
-                float dtMs = getDtMs(packet);
                 if ( isPaused() ){
-                    timeExpansionString = "Paused";
+                    timeExpansionString = "Paused ";
                 } else if ( getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING ){
-                    timeExpansionString = "Live/Seq";
+                    timeExpansionString = "Live/Seq ";
                 } else{
                     float expansion = getTimeExpansion(dtMs);
                     if ( expansion == 0 ){
-                        timeExpansionString = "???";
+                        timeExpansionString = "??? ";
                     } else if ( expansion > 1 ){
-                        timeExpansionString = String.format("%5.1fX",expansion);
+                        timeExpansionString = String.format("%5.1fX ",expansion);
                     } else{
-                        timeExpansionString = String.format("%5.1f/",1 / expansion);
+                        timeExpansionString = String.format("%5.1f/ ",1 / expansion);
                     }
                 }
 
-                String numEventsString;
+
+               String numEventsString;
                 if ( chip.getFilterChain().isAnyFilterEnabled() ){
                     if ( filterChain.isTimedOut() ){
                         numEventsString = String.format("%5d/%-5d TO  ",numRawEvents,numFilteredEvents);
@@ -1902,21 +1912,34 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     numEventsString = String.format("%5devts",numRawEvents);
                 }
 
-                statLabel = String.format("%8ss@%-8s,%s%s,%s,%3.0f/%dfps,%4s,%2dms,%s=%2d",
-                        engFmt.format((float)dtMs / 1000),
-                        thisTimeString,
-                        numEventsString,
-                        ovstring,
-                        rateString,
-                        getFrameRater().getAverageFPS(),
-                        getFrameRater().getDesiredFPS(),
-                        timeExpansionString,
-                        getFrameRater().getLastDelayMs(),
-                        renderer.isAutoscaleEnabled() ? "AS" : "FS", // auto or fullscale rendering color
-                        cs);
+
+               FrameRater fr=getFrameRater();
+
+               String frameRateString=String.format("%3.0f/%dfps,%dms ",
+                       fr.getAverageFPS(),
+                       fr.getDesiredFPS(),
+                       fr.getLastDelayMs());
+
+               String colorScaleString=(renderer.isAutoscaleEnabled() ? "AS=" : "FS=")+Integer.toString(cs);
+
+               sb.delete(0, sb.length());
+               sb.append(timeSliceString).append('@').append(thisTimeString).append(numEventsString).append(ovstring).append(rateString)
+                       .append(frameRateString).append(timeExpansionString).append(frameRateString).append(colorScaleString);
+
+//               statLabel = String.format("%8ss@%-8s,%s%s,%s,%3.0f/%dfps,%4s,%2dms,%s=%2d",
+//                        timeSliceString,
+//                        thisTimeString,
+//                        numEventsString,
+//                        ovstring,
+//                        rateString,
+//                        frameRateString,
+//                        timeExpansionString,
+//                        frameRateString,
+//                        colorScaleString // auto or fullscale rendering color
+//                        );
 //                }
 //                System.out.println(statLabel.length());
-                setStatisticsLabel(statLabel);
+                setStatisticsLabel(sb.toString());
                 if ( overrunOccurred ){
                     statisticsLabel.setForeground(Color.RED);
                 } else{
@@ -2070,6 +2093,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         int index = 0;
         int delayMs = 1;
         int desiredPeriodMs = (int)( 1000f / desiredFPS );
+        private long beforeTimeNs = System.nanoTime(), lastdt, afterTimeNs;
 
         final void setDesiredFPS (int fps){
             if ( fps < 1 ){
@@ -2109,7 +2133,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         final long getLastDtNs (){
             return lastdt;
         }
-        private long beforeTimeNs = System.nanoTime(), lastdt, afterTimeNs;
 
         //  call this ONCE after capture/render. it will store the time since the last call
         void takeBefore (){
@@ -2130,7 +2153,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         // call this to delayForDesiredFPS enough to make the total time including last sample period equal to desiredPeriodMs
         final void delayForDesiredFPS (){
-            if(viewLoop.isInterrupted())return;
+            if(Thread.interrupted())return; // clear the interrupt flag here to make sure we don't just pass through with no one clearing the flag
             delayMs = (int)Math.round(desiredPeriodMs - (float)lastdt / 1000000);
             if ( delayMs < 0 ){
                 delayMs = 1;
