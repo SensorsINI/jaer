@@ -19,7 +19,6 @@ import javax.swing.BoxLayout;
 import javax.swing.border.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * A panel for a class that has Integer/Float/Boolean/String/enum getter/setter methods (bound properties).
@@ -157,6 +156,8 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         normalBorder = titledBorder.getBorder();
         redLineBorder = BorderFactory.createLineBorder(Color.red);
         addIntrospectedControls();
+//            add(new JPanel()); // to fill vertical space in GridLayout
+            add(Box.createVerticalGlue()); // to fill space at bottom - not needed
         // when clazz fires a property change event, we getString called here and we update all our controls
 //        getClazz().getPropertyChangeSupport().addPropertyChangeListener(this);
         ToolTipManager.sharedInstance().setDismissDelay(10000); // to show tips
@@ -164,19 +165,17 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 
     // checks for group container and adds to that if needed.
     private void myadd(JComponent comp, String propertyName, boolean inherited) {
-        JPanel pan = new JPanel();
-        pan.setLayout(new BoxLayout(pan, BoxLayout.X_AXIS));
-        controls.add(pan);
-
-        {
-//            add(Box.createHorizontalGlue());
-//            comp.setAlignmentX(Component.LEFT_ALIGNMENT);
-            comp.setAlignmentX(Component.RIGHT_ALIGNMENT);
-            pan.add(comp);
-            pan.add(Box.createVerticalStrut(0));
+//        JPanel pan = new JPanel();
+////      pan.setLayout(new GridLayout(0,1));
+//        pan.setLayout(new BoxLayout(pan, BoxLayout.X_AXIS));
+//        controls.add(pan);
+////            add(Box.createHorizontalGlue());
+////            comp.setAlignmentX(Component.LEFT_ALIGNMENT);
+//        comp.setAlignmentX(Component.RIGHT_ALIGNMENT);
+//        pan.add(comp);
+//        pan.add(Box.createVerticalStrut(0));
 //            pan.add(Box.createVerticalGlue());
-        }
-        add(pan); // to fix horizontal all left alignment
+        add(comp); // to fix horizontal all left alignment
         controls.add(comp);
     }
 
@@ -310,7 +309,6 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                     log.warning(e + " caught on property " + p.getName() + " from class " + clazz);
                 }
             }
-//            add(Box.createVerticalBox()); // to fill space at bottom - not needed
 
             groupContainerMap = null;
 //             sortedControls=null;
@@ -318,7 +316,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             log.warning("on adding controls for " + clazz + " caught " + e);
             e.printStackTrace();
         }
-        add(Box.createHorizontalGlue());
+//        add(Box.createHorizontalGlue());
 //        setControlsVisible(false);
 //        System.out.println("added glue to "+this);
     }
@@ -333,8 +331,8 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
     }
 
     void addTip(PropertyDescriptor p, JButton b) {
-       String s = p.getShortDescription();
-         if (s == null) {
+        String s = p.getShortDescription();
+        if (s == null) {
             return;
         }
         b.setToolTipText(s);
@@ -342,7 +340,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
     }
 
     void addTip(PropertyDescriptor p, JCheckBox label) {
-      String s = p.getShortDescription();
+        String s = p.getShortDescription();
         if (s == null) {
             return;
         }
@@ -357,6 +355,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         boolean initValue = false, nval;
         final JComboBox control;
 
+        @Override
         public void set(Object o) {
             control.setSelectedItem(o);
         }
@@ -370,7 +369,8 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             clazz = f;
             write = w;
             read = r;
-            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            setLayout(new GridLayout(1, 0));
+//            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
             final JLabel label = new JLabel(name);
             label.setAlignmentX(ALIGNMENT);
@@ -431,7 +431,8 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             clazz = f;
             write = w;
             read = r;
-            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            setLayout(new GridLayout(1, 0));
+//            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
             final JLabel label = new JLabel(name);
             label.setAlignmentX(ALIGNMENT);
@@ -488,13 +489,25 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             clazz = f;
             write = w;
             read = r;
-            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            setLayout(new GridLayout(1, 0));
+//         setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
-            checkBox = new JCheckBox(name);
+            JLabel label=new JLabel(name);
+            label.setAlignmentX(ALIGNMENT);
+            label.setHorizontalTextPosition(SwingConstants.LEFT);
+            label.setFont(label.getFont().deriveFont(fontSize));
+            add(label);
+            addTip(p,label);
+
+            checkBox = new JCheckBox();
             checkBox.setAlignmentX(ALIGNMENT);
-            checkBox.setFont(checkBox.getFont().deriveFont(fontSize));
+            checkBox.setHorizontalAlignment(SwingConstants.LEFT);
             checkBox.setHorizontalTextPosition(SwingConstants.LEFT);
+//            checkBox.setBorder(new EmptyBorder(0,0,0,0));
+//            Border border=checkBox.getBorder();
+//            Insets insets=border.getBorderInsets(this);
+//            insets.left=0;
             addTip(p, checkBox);
             add(checkBox);
             try {
@@ -556,13 +569,14 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             clazz = f;
             write = w;
             read = r;
-            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            setLayout(new GridLayout(1, 0));
+//           setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
 
             final IntControl ic = new IntControl(f, p);
             add(ic);
             slider = new JSlider(params.minIntValue, params.maxIntValue);
-            slider.setMaximumSize(new Dimension(200, 50));
+            slider.setMaximumSize(new Dimension(200, 25));
 
             try {
                 Integer x = (Integer) r.invoke(clazz); // read int value
@@ -580,6 +594,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 
             slider.addChangeListener(new ChangeListener() {
 
+                @Override
                 public void stateChanged(ChangeEvent e) {
                     try {
                         w.invoke(clazz, new Integer(slider.getValue())); // write int value
@@ -627,7 +642,8 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             clazz = f;
             write = w;
             read = r;
-            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            setLayout(new GridLayout(1, 0));
+//           setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
 
             fc = new FloatControl(f, p);
@@ -635,7 +651,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             minValue = params.minFloatValue;
             maxValue = params.maxFloatValue;
             slider = new JSlider();
-            slider.setMaximumSize(new Dimension(200, 50));
+            slider.setMaximumSize(new Dimension(200, 25));
 
             engFmt = new EngineeringFormat();
 
@@ -655,6 +671,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 
             slider.addChangeListener(new ChangeListener() {
 
+                @Override
                 public void stateChanged(ChangeEvent e) {
                     try {
                         int v = slider.getValue();
@@ -696,7 +713,8 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             clazz = f;
             write = w;
             read = r;
-            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+//            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            setLayout(new GridLayout(1, 0));
             setAlignmentX(ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
             JLabel label = new JLabel(name);
@@ -706,7 +724,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             add(label);
 
             tf = new JTextField("", 8);
-            tf.setMaximumSize(new Dimension(100, 30));
+            tf.setMaximumSize(new Dimension(100, 25));
             tf.setToolTipText("Integer control: use arrow keys or mouse wheel to change value by factor. Shift constrains to simple inc/dec");
             try {
                 Integer x = (Integer) r.invoke(clazz); // read int value
@@ -918,7 +936,8 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             clazz = f;
             write = w;
             read = r;
-            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            setLayout(new GridLayout(1, 0));
+//            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
             JLabel label = new JLabel(name);
@@ -927,7 +946,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             addTip(p, label);
             add(label);
             tf = new JTextField("", 10);
-            tf.setMaximumSize(new Dimension(100, 50));
+            tf.setMaximumSize(new Dimension(100, 25));
             tf.setToolTipText("Float control: use arrow keys or mouse wheel to change value by factor. Shift reduces factor.");
             try {
                 Float x = (Float) r.invoke(clazz);
@@ -1079,11 +1098,13 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             });
             tf.addFocusListener(new FocusListener() {
 
+                @Override
                 public void focusGained(FocusEvent e) {
                     tf.setSelectionStart(0);
                     tf.setSelectionEnd(tf.getText().length());
                 }
 
+                @Override
                 public void focusLost(FocusEvent e) {
                 }
             });
@@ -1096,6 +1117,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
      * with 
      * <code>support.firePropertyChange("mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled, this.mapEventsToLearnedTopologyEnabled);</code>
      */
+    @Override
     public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
         if (propertyChangeEvent.getSource() == getClazz()) {
             {
@@ -1138,8 +1160,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        setAlignmentX(0.5F);
-        setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
+        setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.PAGE_AXIS));
     }// </editor-fold>//GEN-END:initComponents
     boolean controlsVisible = true;
 
