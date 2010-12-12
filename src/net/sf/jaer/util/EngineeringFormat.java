@@ -31,28 +31,29 @@ public class EngineeringFormat {
     
     public boolean fillSignEnabled=false;
     
-    public String format(double x){
+    final public String format(double x){
         boolean isNeg=x<0;
         x=Math.abs(x);
         double dec=Math.floor(Math.log10(x)); // e.g. 2.3e-7 -> -7
         if(dec<smallestDecade) return "0";
         if(dec>largestDecade) return "inf";
-        StringBuilder s=new StringBuilder();
-        if(isNeg) s.append("-"); else if(fillSignEnabled) s.append("");
         double k=Math.floor(dec/3);
         double div=Math.pow(10, k*3);
         double mant=x/div;
-        s.append(String.format(formatterString,mant));
-        if(k==0) return s.toString();
-        if(k<0) s.append(suffixes[(int)k+6]); else s.append(suffixes[(int)k+6]);
-        return s.toString();
+        return String.format(formatterString,isNeg?'-':' ',mant,suffix((int)k+6));
+    }
+
+    private char suffix(int k){
+        if(k==0) return ' ';
+        if(k<0) return suffixes[k];
+        return suffixes[k];
     }
     
-    public String format(float x){
+    final public String format(float x){
         return format((double)x);
     }
     
-    public double parseDouble(String s){
+    final public double parseDouble(String s){
         if(s==null) return 0;
         try{
             return Double.parseDouble(s);
@@ -89,14 +90,14 @@ public class EngineeringFormat {
         }
     }
     
-    public float parseFloat(String s){
+    final public float parseFloat(String s){
         return (float)parseDouble(s);
     }
     
     
-    public void setPrecision(int p){
+    final public void setPrecision(int p){
         precision=p;
-        formatterString="%."+precision+"f";
+        formatterString="%c%."+precision+"f%c";
     }
     
 //    public static final void main(String[] args){
@@ -107,7 +108,7 @@ public class EngineeringFormat {
 //        }
 //    }
 
-    public int getPrecision() {
+    final public int getPrecision() {
         return this.precision;
     }
 }
