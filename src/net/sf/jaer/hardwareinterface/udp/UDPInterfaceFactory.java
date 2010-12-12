@@ -22,11 +22,13 @@ import net.sf.jaer.hardwareinterface.udp.SmartEyeTDS.*;
 public class UDPInterfaceFactory implements HardwareInterfaceFactoryInterface {
     //TODO Implement a nice way to build the list of available UDPInterfaces
 
-    static Logger log = Logger.getLogger("USBIOHardwareInterfaceFactory");
+    private static final Logger log = Logger.getLogger("USBIOHardwareInterfaceFactory");
 
     private ArrayList<String> availableInterfaces = new ArrayList<String>();
 
     private static UDPInterfaceFactory instance = new UDPInterfaceFactory();
+     private  byte[] buf = new byte[AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES];
+    private        DatagramPacket packet = new DatagramPacket(buf, buf.length);
 
     //private static UDPInterfaceFactory instance = null;
 
@@ -68,12 +70,11 @@ public class UDPInterfaceFactory implements HardwareInterfaceFactoryInterface {
         }
     }
 
-    void buildUdpIoList(){
+    private void buildUdpIoList(){
         try {
             DatagramSocket socket = new DatagramSocket(SmartEyeTDS.STREAM_PORT);
             socket.setReuseAddress(true);
-            byte[] buf = new byte[AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES];
-            DatagramPacket packet = new DatagramPacket(buf, buf.length);
+            packet.setData(buf);
             try {
                 socket.setSoTimeout(100);
                 socket.receive(packet);
@@ -85,6 +86,7 @@ public class UDPInterfaceFactory implements HardwareInterfaceFactoryInterface {
                 //TODO:ugly exception handling
             }
             socket.close();
+            socket=null; // garbage collect, don't allow weak references to build up
         } catch (SocketException ex) {
             //TODO:ugly exception handling
         }

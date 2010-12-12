@@ -60,7 +60,8 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
 
     synchronized public void onRemove() {
         log.info("device removed");
-        buildUsbIoList();
+        firstUse=false;
+//        buildUsbIoList();
     }
     
     /** driver guid (Globally unique ID, for this USB driver instance */
@@ -124,7 +125,7 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
     }
 
     /** returns the first interface in the list
-     *@return refernence to the first interface in the list
+     *@return reference to the first interface in the list
      */
     synchronized public USBInterface getFirstAvailableInterface() {
         return getInterface(0);
@@ -218,6 +219,7 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
     synchronized public int getNumInterfacesAvailable() {
 
         maybeBuildUsbIoList();
+        firstUse=true;
 //        System.out.println(instance.usbioList.size()+" CypressFX2 interfaces available ");
         return instance.usbioList.size();
     }
