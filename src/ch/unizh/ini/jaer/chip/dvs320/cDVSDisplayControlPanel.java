@@ -69,6 +69,8 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
         jLabel6 = new javax.swing.JLabel();
         gainAGCTF = new javax.swing.JTextField();
         applyButton = new javax.swing.JButton();
+        offchipCalibCB = new javax.swing.JCheckBox();
+        calibButton = new javax.swing.JButton();
         jPanel2 = new javax.swing.JPanel();
         logIntensityChangeCB = new javax.swing.JCheckBox();
         colorChangeCB = new javax.swing.JCheckBox();
@@ -165,13 +167,31 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
             }
         });
 
+        offchipCalibCB.setText("Use off-chip calibration");
+
+        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.useOffChipCalibration}"), offchipCalibCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
+        bindingGroup.addBinding(binding);
+
+        calibButton.setText("Store calibration frame");
+        calibButton.setMargin(new java.awt.Insets(0, 2, 2, 2));
+        calibButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                calibButtonActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(logIntensityCB)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(logIntensityCB)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(offchipCalibCB)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(calibButton))
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addContainerGap()
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -196,7 +216,7 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                                 .addComponent(applyButton))
                             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 31, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 107, Short.MAX_VALUE)
                                 .addComponent(jLabel2)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(minTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -217,7 +237,10 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addComponent(logIntensityCB, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(logIntensityCB, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(offchipCalibCB)
+                    .addComponent(calibButton))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addGroup(jPanel1Layout.createSequentialGroup()
@@ -391,11 +414,17 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
         renderer.applyAGCValues();
     }//GEN-LAST:event_applyButtonActionPerformed
 
+    private void calibButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_calibButtonActionPerformed
+        if(chip==null || chip.getFrameData()==null) return;
+        chip.getFrameData().setCalibData();
+    }//GEN-LAST:event_calibButtonActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JCheckBox agcCB;
     private javax.swing.JSpinner agcSpinner;
     private javax.swing.JButton applyButton;
+    private javax.swing.JButton calibButton;
     private javax.swing.JCheckBox colorChangeCB;
     private javax.swing.JSpinner colorScaleSpinner;
     private javax.swing.JPanel displayControlPanel;
@@ -419,6 +448,7 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
     private javax.swing.JTextField maxTF;
     private javax.swing.JTextField minTF;
     private javax.swing.JTextField offTF;
+    private javax.swing.JCheckBox offchipCalibCB;
     private javax.swing.JLabel offsetLabel;
     private javax.swing.JSlider offsetSlider;
     private org.jdesktop.beansbinding.BindingGroup bindingGroup;

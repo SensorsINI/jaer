@@ -37,7 +37,7 @@ public class CDVSLogIntensityFrameData {
     }
 
     public int get(int x, int y){
-        if (isUseOffChipCalibration())
+        if (useOffChipCalibration)
             return (currentReadingBuffer[y+WIDTH*x]-calibData[y+WIDTH*x]);
         return currentReadingBuffer[y+WIDTH*x];
     }
@@ -92,7 +92,7 @@ public class CDVSLogIntensityFrameData {
     private int[] calibData=new int[NUMSAMPLES];
 
     /**
-     * uses the current writing buffer as calibration data and substracts the mean
+     * uses the current writing buffer as calibration data and subtracts the mean
      */
     public void setCalibData() {
         System.arraycopy(currentWritingBuffer,0,calibData,0,NUMSAMPLES);

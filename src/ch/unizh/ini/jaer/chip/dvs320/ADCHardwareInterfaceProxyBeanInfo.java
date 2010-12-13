@@ -52,13 +52,13 @@ public class ADCHardwareInterfaceProxyBeanInfo extends SimpleBeanInfo {
     
         try {
             properties[PROPERTY_ADCchannel] = new PropertyDescriptor ( "ADCchannel", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getADCchannel", "setADCchannel" ); // NOI18N
-            properties[PROPERTY_ADCchannel].setShortDescription ( "The ADC channel number. Channel 3 is the log intensity" );
+            properties[PROPERTY_ADCchannel].setShortDescription ( "The ADC channel number. Must be consistent with chip output mux choice." );
             properties[PROPERTY_ADCEnabled] = new PropertyDescriptor ( "ADCEnabled", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "isADCEnabled", "setADCEnabled" ); // NOI18N
             properties[PROPERTY_ADCEnabled].setShortDescription ( "Enables the ADC for conversion and transfer of samples to the host" );
             properties[PROPERTY_chipReset] = new PropertyDescriptor ( "chipReset", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "isChipReset", null ); // NOI18N
             properties[PROPERTY_hw] = new PropertyDescriptor ( "hw", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getHw", "setHw" ); // NOI18N
             properties[PROPERTY_idleTime] = new PropertyDescriptor ( "idleTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getIdleTime", "setIdleTime" ); // NOI18N
-            properties[PROPERTY_idleTime].setShortDescription ( "The idle time in ns after each AD conversion" );
+            properties[PROPERTY_idleTime].setShortDescription ( "The idle time in us  after each AD conversion" );
             properties[PROPERTY_maxADCchannel] = new PropertyDescriptor ( "maxADCchannel", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMaxADCchannel", null ); // NOI18N
             properties[PROPERTY_maxIdleTime] = new PropertyDescriptor ( "maxIdleTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMaxIdleTime", null ); // NOI18N
             properties[PROPERTY_maxRefOffTime] = new PropertyDescriptor ( "maxRefOffTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMaxRefOffTime", null ); // NOI18N
@@ -70,15 +70,15 @@ public class ADCHardwareInterfaceProxyBeanInfo extends SimpleBeanInfo {
             properties[PROPERTY_minRefOnTime] = new PropertyDescriptor ( "minRefOnTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMinRefOnTime", null ); // NOI18N
             properties[PROPERTY_minTrackTime] = new PropertyDescriptor ( "minTrackTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMinTrackTime", null ); // NOI18N
             properties[PROPERTY_refOffTime] = new PropertyDescriptor ( "refOffTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getRefOffTime", "setRefOffTime" ); // NOI18N
-            properties[PROPERTY_refOffTime].setShortDescription ( "TODO" );
+            properties[PROPERTY_refOffTime].setShortDescription ( "Settling time for difference amplifier in us" );
             properties[PROPERTY_refOnTime] = new PropertyDescriptor ( "refOnTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getRefOnTime", "setRefOnTime" ); // NOI18N
-            properties[PROPERTY_refOnTime].setShortDescription ( "TODO" );
+            properties[PROPERTY_refOnTime].setShortDescription ( "Settle time for reference current in us" );
             properties[PROPERTY_select5Tbuffer] = new PropertyDescriptor ( "select5Tbuffer", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "isSelect5Tbuffer", "setSelect5Tbuffer" ); // NOI18N
-            properties[PROPERTY_select5Tbuffer].setShortDescription ( "TODO" );
+            properties[PROPERTY_select5Tbuffer].setShortDescription ( "Selects 5 transistor buffer. False uses source follower buffer before track/hold" );
             properties[PROPERTY_trackTime] = new PropertyDescriptor ( "trackTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getTrackTime", "setTrackTime" ); // NOI18N
-            properties[PROPERTY_trackTime].setShortDescription ( "TODO" );
+            properties[PROPERTY_trackTime].setShortDescription ( "Settling time for reading photocurrent after pixel selection in us" );
             properties[PROPERTY_useCalibration] = new PropertyDescriptor ( "useCalibration", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "isUseCalibration", "setUseCalibration" ); // NOI18N
-            properties[PROPERTY_useCalibration].setShortDescription ( "TODO" );
+            properties[PROPERTY_useCalibration].setShortDescription ( "true=use on-chip differencing amp to measure calibration value and subtract from each pixel reading" );
         }
         catch(IntrospectionException e) {
             e.printStackTrace();

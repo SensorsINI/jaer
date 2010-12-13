@@ -207,6 +207,15 @@ public class cDVSRenderer extends RetinaRenderer {
         return cDVSChip.isDisplayColorChangeEvents();
     }
 
+    public void setUseOffChipCalibration(boolean useOffChipCalibration) {
+        cDVSChip.setUseOffChipCalibration(useOffChipCalibration);
+    }
+
+    public boolean isUseOffChipCalibration() {
+        return cDVSChip.isUseOffChipCalibration();
+    }
+
+
     private float adc01normalized(int count) {
         if (!agcEnabled) {
             float v = (float) (logIntensityGain * (count - logIntensityOffset)) / cDVSChip.MAX_ADC;
