@@ -55,7 +55,6 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
             return;
         }
         super.sendBiasBytes(bytes);
-        if(adcEnabled){ startADC();} // TODO hack to restart ADC after sending configuration, shouldn't be necessary
     }
  
     public void setTrackTime(short trackTimeUs) {
@@ -190,10 +189,10 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         System.arraycopy(byteArray, 0, bytes, nbytes - byteArray.length, byteArray.length);
 
         this.sendVendorRequest(VENDOR_REQUEST_WRITE_CPLD_SR, (short) 0, (short) 0, bytes); // stops ADC running
-    }
+         if(adcEnabled){ startADC();} // TODO hack to restart ADC after sending configuration, shouldn't be necessary
+   }
 
     synchronized public void startADC() throws HardwareInterfaceException {
-        sendCPLDconfiguration();
         this.sendVendorRequest(VENDOR_REQUEST_RUN_ADC, (short) 1, (short) 0);
     }
 
