@@ -18,6 +18,7 @@ public class CDVSLogIntensityFrameData {
     public static final int WIDTH=cDVSTest20.SIZE_X_CDVS, HEIGHT=cDVSTest20.SIZE_Y_CDVS;
     private static final int NUMSAMPLES=WIDTH*HEIGHT;
     private int timestamp=0; // timestamp of starting sample
+    private static int MAX_ADC_VALUE=1023;
     
     private int[] data1=new int[NUMSAMPLES], data2=new int[NUMSAMPLES];
     
@@ -37,9 +38,17 @@ public class CDVSLogIntensityFrameData {
     }
 
     public int get(int x, int y){
-        if (useOffChipCalibration)
-            return (currentReadingBuffer[y+WIDTH*x]-calibData[y+WIDTH*x]);
-        return currentReadingBuffer[y+WIDTH*x];
+        if (invertADCvalues)
+        {
+            if (useOffChipCalibration)
+                return MAX_ADC_VALUE-((currentReadingBuffer[y+WIDTH*x]-calibData[y+WIDTH*x]));
+            return MAX_ADC_VALUE-currentReadingBuffer[y+WIDTH*x];
+        } else
+        {
+            if (useOffChipCalibration)
+                return (currentReadingBuffer[y+WIDTH*x]-calibData[y+WIDTH*x]);
+            return currentReadingBuffer[y+WIDTH*x];
+        }
     }
 
     /** Put a value to the next writing position. Writes wrap around to the start position. */
@@ -73,6 +82,8 @@ public class CDVSLogIntensityFrameData {
         this.timestamp = timestamp;
     }
 
+    private boolean invertADCvalues=false;
+
     private boolean useOffChipCalibration=false;
 
     /**
@@ -95,7 +106,9 @@ public class CDVSLogIntensityFrameData {
      * uses the current writing buffer as calibration data and subtracts the mean
      */
     public void setCalibData() {
+        acquire();
         System.arraycopy(currentWritingBuffer,0,calibData,0,NUMSAMPLES);
+        release();
         substractMean();
     }
 
@@ -111,4 +124,18 @@ public class CDVSLogIntensityFrameData {
              calibData[i]-=mean;
          }
      }
+
+    /**
+     * @return the invertADCvalues
+     */
+    public boolean isInvertADCvalues() {
+        return invertADCvalues;
+    }
+
+    /**
+     * @param invertADCvalues the invertADCvalues to set
+     */
+    public void setInvertADCvalues(boolean invertADCvalues) {
+        this.invertADCvalues = invertADCvalues;
+    }
 }

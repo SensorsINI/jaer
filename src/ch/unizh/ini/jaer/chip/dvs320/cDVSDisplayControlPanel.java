@@ -71,6 +71,7 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
         applyButton = new javax.swing.JButton();
         offchipCalibCB = new javax.swing.JCheckBox();
         calibButton = new javax.swing.JButton();
+        jCheckBox2 = new javax.swing.JCheckBox();
         jPanel2 = new javax.swing.JPanel();
         logIntensityChangeCB = new javax.swing.JCheckBox();
         colorChangeCB = new javax.swing.JCheckBox();
@@ -180,6 +181,11 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
             }
         });
 
+        jCheckBox2.setText("Invert ADC values");
+
+        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.frameData.invertADCvalues}"), jCheckBox2, org.jdesktop.beansbinding.BeanProperty.create("selected"));
+        bindingGroup.addBinding(binding);
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -216,7 +222,8 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                                 .addComponent(applyButton))
                             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 107, Short.MAX_VALUE)
+                                .addComponent(jCheckBox2)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 26, Short.MAX_VALUE)
                                 .addComponent(jLabel2)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(minTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -268,7 +275,8 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
                     .addComponent(maxTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel6)
                     .addComponent(gainAGCTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel5)))
+                    .addComponent(jLabel5)
+                    .addComponent(jCheckBox2)))
         );
 
         jPanel1Layout.linkSize(javax.swing.SwingConstants.VERTICAL, new java.awt.Component[] {gainLabel, gainSlider, gainTF});
@@ -433,6 +441,7 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
     private javax.swing.JSlider gainSlider;
     private javax.swing.JTextField gainTF;
     private javax.swing.JCheckBox jCheckBox1;
+    private javax.swing.JCheckBox jCheckBox2;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;

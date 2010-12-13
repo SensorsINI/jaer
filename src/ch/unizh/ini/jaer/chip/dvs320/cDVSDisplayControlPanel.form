@@ -116,7 +116,8 @@
                                       <Component id="applyButton" min="-2" max="-2" attributes="0"/>
                                   </Group>
                                   <Group type="102" alignment="1" attributes="0">
-                                      <EmptySpace pref="107" max="32767" attributes="0"/>
+                                      <Component id="jCheckBox2" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace pref="26" max="32767" attributes="0"/>
                                       <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
                                       <EmptySpace max="-2" attributes="0"/>
                                       <Component id="minTF" min="-2" max="-2" attributes="0"/>
@@ -179,6 +180,7 @@
                           <Component id="jLabel6" alignment="2" min="-2" max="-2" attributes="0"/>
                           <Component id="gainAGCTF" alignment="2" min="-2" max="-2" attributes="0"/>
                           <Component id="jLabel5" alignment="2" min="-2" max="-2" attributes="0"/>
+                          <Component id="jCheckBox2" alignment="2" min="-2" max="-2" attributes="0"/>
                       </Group>
                   </Group>
               </Group>
@@ -346,6 +348,14 @@
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="calibButtonActionPerformed"/>
               </Events>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="jCheckBox2">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Invert ADC values"/>
+              </Properties>
+              <BindingProperties>
+                <BindingProperty name="selected" source="Form" sourcePath="${chip.frameData.invertADCvalues}" target="jCheckBox2" targetPath="selected" updateStrategy="0" immediately="false"/>
+              </BindingProperties>
             </Component>
           </SubComponents>
         </Container>
