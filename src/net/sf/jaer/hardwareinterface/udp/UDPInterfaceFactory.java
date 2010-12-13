@@ -27,12 +27,12 @@ public class UDPInterfaceFactory implements HardwareInterfaceFactoryInterface {
     private ArrayList<String> availableInterfaces = new ArrayList<String>();
 
     private static UDPInterfaceFactory instance = new UDPInterfaceFactory();
-     private  byte[] buf = new byte[AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES];
-    private        DatagramPacket packet = new DatagramPacket(buf, buf.length);
+     private  byte[] buf = null;  // init when needed, null afterward
+    private        DatagramPacket packet = null; // init when needed
 
     //private static UDPInterfaceFactory instance = null;
 
-    UDPInterfaceFactory() {
+    private UDPInterfaceFactory() {
         buildUdpIoList();
     }
 
@@ -74,12 +74,16 @@ public class UDPInterfaceFactory implements HardwareInterfaceFactoryInterface {
         try {
             DatagramSocket socket = new DatagramSocket(SmartEyeTDS.STREAM_PORT);
             socket.setReuseAddress(true);
+            if(buf==null)  buf= new byte[AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES];
+            if(packet==null) packet=new DatagramPacket(buf, buf.length);
             packet.setData(buf);
             try {
                 socket.setSoTimeout(100);
                 socket.receive(packet);
                 if(packet != null && !availableInterfaces.contains("SmartEyeTDS")){
                     availableInterfaces.add("SmartEyeTDS");
+                    buf=null;  // reclaim memory
+                    packet=null;
                     log.info("UDP Interface 'SmartEyeTDS' found");
                 }
             } catch (IOException ex) {
