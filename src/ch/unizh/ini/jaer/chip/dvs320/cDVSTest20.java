@@ -179,7 +179,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         this.useOffChipCalibration = useOffChipCalibration;
         this.getFrameData().setUseOffChipCalibration(useOffChipCalibration);
         if (useOffChipCalibration)
-            this.getFrameData().setCalibData();
+            this.getFrameData().setCalibData1();
     }
 
     /** The event extractor. Each pixel has two polarities 0 and 1.

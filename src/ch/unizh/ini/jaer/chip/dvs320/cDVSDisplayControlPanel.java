@@ -53,10 +53,12 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
         displayControlPanel = new javax.swing.JPanel();
         jPanel1 = new javax.swing.JPanel();
         logIntensityCB = new javax.swing.JCheckBox();
-        jCheckBox2 = new javax.swing.JCheckBox();
+        invertADCvaluesCB = new javax.swing.JCheckBox();
         logIntenCalibPanel = new javax.swing.JPanel();
-        calibButton = new javax.swing.JButton();
         offchipCalibCB = new javax.swing.JCheckBox();
+        calibButton = new javax.swing.JButton();
+        twoPointCalibCB = new javax.swing.JCheckBox();
+        calibData2Button = new javax.swing.JButton();
         agcPanel = new javax.swing.JPanel();
         agcCB = new javax.swing.JCheckBox();
         jPanel5 = new javax.swing.JPanel();
@@ -99,13 +101,17 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
         org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${displayMethod.displayLogIntensity}"), logIntensityCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
-        jCheckBox2.setText("Invert ADC values");
+        invertADCvaluesCB.setText("Invert ADC values");
 
-        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.frameData.invertADCvalues}"), jCheckBox2, org.jdesktop.beansbinding.BeanProperty.create("selected"));
+        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.frameData.invertADCvalues}"), invertADCvaluesCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
         logIntenCalibPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Calibration"));
-        logIntenCalibPanel.setLayout(new javax.swing.BoxLayout(logIntenCalibPanel, javax.swing.BoxLayout.LINE_AXIS));
+
+        offchipCalibCB.setText("Use off-chip calibration");
+
+        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.useOffChipCalibration}"), offchipCalibCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
+        bindingGroup.addBinding(binding);
 
         calibButton.setText("Store");
         calibButton.setMargin(new java.awt.Insets(0, 2, 2, 2));
@@ -114,14 +120,55 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
                 calibButtonActionPerformed(evt);
             }
         });
-        logIntenCalibPanel.add(calibButton);
 
-        offchipCalibCB.setText("Use off-chip calibration");
+        twoPointCalibCB.setText("Two point calibration");
 
-        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.useOffChipCalibration}"), offchipCalibCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
+        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.frameData.twoPointCalibration}"), twoPointCalibCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
-        logIntenCalibPanel.add(offchipCalibCB);
+        twoPointCalibCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                twoPointCalibCBActionPerformed(evt);
+            }
+        });
+
+        calibData2Button.setText("Store CalibData2");
+        calibData2Button.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                calibData2ButtonActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout logIntenCalibPanelLayout = new javax.swing.GroupLayout(logIntenCalibPanel);
+        logIntenCalibPanel.setLayout(logIntenCalibPanelLayout);
+        logIntenCalibPanelLayout.setHorizontalGroup(
+            logIntenCalibPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(logIntenCalibPanelLayout.createSequentialGroup()
+                .addGroup(logIntenCalibPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(logIntenCalibPanelLayout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(calibButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addGroup(logIntenCalibPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(offchipCalibCB)
+                            .addComponent(twoPointCalibCB)))
+                    .addGroup(logIntenCalibPanelLayout.createSequentialGroup()
+                        .addGap(28, 28, 28)
+                        .addComponent(calibData2Button)))
+                .addContainerGap(23, Short.MAX_VALUE))
+        );
+        logIntenCalibPanelLayout.setVerticalGroup(
+            logIntenCalibPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(logIntenCalibPanelLayout.createSequentialGroup()
+                .addGroup(logIntenCalibPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(offchipCalibCB)
+                    .addComponent(calibButton))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(twoPointCalibCB)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(calibData2Button)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
 
         agcPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("AGC"));
         agcPanel.setLayout(new javax.swing.BoxLayout(agcPanel, javax.swing.BoxLayout.LINE_AXIS));
@@ -141,7 +188,7 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
         jPanel5.setLayout(jPanel5Layout);
         jPanel5Layout.setHorizontalGroup(
             jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 19, Short.MAX_VALUE)
+            .addGap(0, 20, Short.MAX_VALUE)
         );
         jPanel5Layout.setVerticalGroup(
             jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -283,7 +330,7 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addComponent(logIntensityCB)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jCheckBox2))
+                        .addComponent(invertADCvaluesCB))
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addComponent(logIntenStatPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -298,15 +345,19 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(logIntensityCB, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jCheckBox2))
+                    .addComponent(invertADCvaluesCB))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(agcPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(logIntenStatPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(logIntenCalibPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGap(9, 9, 9)
+                        .addComponent(logIntenStatPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addContainerGap(61, Short.MAX_VALUE))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(logIntenCalibPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
         );
 
         jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("Events"));
@@ -427,7 +478,7 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
                         .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(displayControlPanelLayout.createSequentialGroup()
                         .addGap(3, 3, 3)
-                        .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                 .addContainerGap())
         );
 
@@ -442,8 +493,19 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
 
     private void calibButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_calibButtonActionPerformed
         if(chip==null || chip.getFrameData()==null) return;
-        chip.getFrameData().setCalibData();
+        chip.getFrameData().setCalibData1();
     }//GEN-LAST:event_calibButtonActionPerformed
+
+    private void twoPointCalibCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_twoPointCalibCBActionPerformed
+        // TODO add your handling code here:
+        if(chip==null || chip.getFrameData()==null) return;
+        chip.getFrameData().calculateCalibration();
+    }//GEN-LAST:event_twoPointCalibCBActionPerformed
+
+    private void calibData2ButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_calibData2ButtonActionPerformed
+         if(chip==null || chip.getFrameData()==null) return;
+        chip.getFrameData().setCalibData2();
+    }//GEN-LAST:event_calibData2ButtonActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -452,6 +514,7 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
     private javax.swing.JSpinner agcSpinner;
     private javax.swing.JButton applyButton;
     private javax.swing.JButton calibButton;
+    private javax.swing.JButton calibData2Button;
     private javax.swing.JCheckBox colorChangeCB;
     private javax.swing.JSpinner colorScaleSpinner;
     private javax.swing.JPanel displayControlPanel;
@@ -459,8 +522,8 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
     private javax.swing.JLabel gainLabel;
     private javax.swing.JSlider gainSlider;
     private javax.swing.JTextField gainTF;
+    private javax.swing.JCheckBox invertADCvaluesCB;
     private javax.swing.JCheckBox jCheckBox1;
-    private javax.swing.JCheckBox jCheckBox2;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
@@ -483,6 +546,7 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
     private javax.swing.JCheckBox offchipCalibCB;
     private javax.swing.JLabel offsetLabel;
     private javax.swing.JSlider offsetSlider;
+    private javax.swing.JCheckBox twoPointCalibCB;
     private org.jdesktop.beansbinding.BindingGroup bindingGroup;
     // End of variables declaration//GEN-END:variables
 

@@ -41,12 +41,12 @@ public class CDVSLogIntensityFrameData {
         if (invertADCvalues)
         {
             if (useOffChipCalibration)
-                return MAX_ADC_VALUE-((currentReadingBuffer[y+WIDTH*x]-calibData[y+WIDTH*x]));
+                return MAX_ADC_VALUE-(int)(gain[y+WIDTH*x]*(currentReadingBuffer[y+WIDTH*x]-offset[y+WIDTH*x]));
             return MAX_ADC_VALUE-currentReadingBuffer[y+WIDTH*x];
         } else
         {
             if (useOffChipCalibration)
-                return (currentReadingBuffer[y+WIDTH*x]-calibData[y+WIDTH*x]);
+                return ((int)gain[y+WIDTH*x]*(currentReadingBuffer[y+WIDTH*x]-offset[y+WIDTH*x]));
             return currentReadingBuffer[y+WIDTH*x];
         }
     }
@@ -86,6 +86,8 @@ public class CDVSLogIntensityFrameData {
 
     private boolean useOffChipCalibration=false;
 
+    private boolean twoPointCalibration=false;
+
     /**
      * @return the useOffChipCalibration
      */
@@ -99,29 +101,64 @@ public class CDVSLogIntensityFrameData {
     public void setUseOffChipCalibration(boolean useOffChipCalibration) {
         this.useOffChipCalibration = useOffChipCalibration;
     }
+    
+    public void calculateCalibration() {
+        if (twoPointCalibration) {
+            int mean1 = getMean(calibData1);
+            int mean2 = getMean(calibData2);
+            for (int i = 0; i < NUMSAMPLES; i++) {
+                gain[i] = ((float) (mean2 - mean1)) /  ((float) (calibData2[i] - calibData1[i]));
+                offset[i]=(calibData1[i]-(int)(mean1/gain[i]));
+            }
+        } else {
+            for (int i = 0; i < NUMSAMPLES; i++) {
+                gain[i] = 1;
+            }
+            subtractMean(calibData1, offset);
+        }
+    }
 
-    private int[] calibData=new int[NUMSAMPLES];
+    private int[] calibData1=new int[NUMSAMPLES];
+    private int[] calibData2=new int[NUMSAMPLES];
+
+    private float[] gain=new float[NUMSAMPLES];
+    private int[] offset=new int[NUMSAMPLES];
 
     /**
      * uses the current writing buffer as calibration data and subtracts the mean
      */
-    public void setCalibData() {
+    public void setCalibData1() {
         acquire();
-        System.arraycopy(currentWritingBuffer,0,calibData,0,NUMSAMPLES);
+        System.arraycopy(currentWritingBuffer,0,calibData1,0,NUMSAMPLES);
         release();
-        substractMean();
+        calculateCalibration();
     }
 
-     private void substractMean(){
-         int mean=0;
-         for (int i=0;i<NUMSAMPLES; i++)
+    public void setCalibData2() {
+        acquire();
+        System.arraycopy(currentWritingBuffer,0,calibData2,0,NUMSAMPLES);
+        release();
+        calculateCalibration();
+        //substractMean();
+    }
+
+    private int getMean(int[] dataIn)
+    {
+        int mean=0;
+         for (int i=0;i<dataIn.length; i++)
          {
-             mean+=calibData[i];
+             mean+=dataIn[i];
          }
-         mean=mean/NUMSAMPLES;
-         for (int i=0;i<NUMSAMPLES; i++)
+         mean=mean/dataIn.length;
+         return mean;
+    }
+
+     private void subtractMean(int[] dataIn, int[] dataOut){
+         int mean=getMean(dataIn);
+
+         for (int i=0;i<dataOut.length; i++)
          {
-             calibData[i]-=mean;
+             dataOut[i]=dataIn[i]-mean;
          }
      }
 
@@ -137,5 +174,19 @@ public class CDVSLogIntensityFrameData {
      */
     public void setInvertADCvalues(boolean invertADCvalues) {
         this.invertADCvalues = invertADCvalues;
+    }
+
+    /**
+     * @return the twoPointCalibration
+     */
+    public boolean isTwoPointCalibration() {
+        return twoPointCalibration;
+    }
+
+    /**
+     * @param twoPointCalibration the twoPointCalibration to set
+     */
+    public void setTwoPointCalibration(boolean twoPointCalibration) {
+        this.twoPointCalibration = twoPointCalibration;
     }
 }
