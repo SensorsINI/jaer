@@ -1456,6 +1456,10 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
          */
         public void doNew(){
             String numStr = JOptionPane.showInputDialog(this, "Input the numver of observation sequence for classification?");
+
+            if(numStr == null || numStr.equals(""))
+                return;
+            
             seqSize = Integer.parseInt(numStr);
 
             fve = new FeatureExtraction(featureVectorSpace.length, seqSize);
