@@ -254,6 +254,20 @@
 
               <Layout class="org.netbeans.modules.form.compat2.layouts.DesignBoxLayout"/>
               <SubComponents>
+                <Component class="javax.swing.JLabel" name="jLabel2">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="min (offset)"/>
+                  </Properties>
+                </Component>
+                <Component class="javax.swing.JTextField" name="gainAGCTF">
+                  <Properties>
+                    <Property name="columns" type="int" value="4"/>
+                    <Property name="editable" type="boolean" value="false"/>
+                    <Property name="horizontalAlignment" type="int" value="11"/>
+                    <Property name="text" type="java.lang.String" value="4095"/>
+                    <Property name="toolTipText" type="java.lang.String" value="gain as computed by AGC"/>
+                  </Properties>
+                </Component>
                 <Component class="javax.swing.JLabel" name="jLabel5">
                   <Properties>
                     <Property name="text" type="java.lang.String" value="max"/>
@@ -268,15 +282,6 @@
                     <Property name="toolTipText" type="java.lang.String" value="lowpass max log intensity value"/>
                   </Properties>
                 </Component>
-                <Component class="javax.swing.JTextField" name="gainAGCTF">
-                  <Properties>
-                    <Property name="columns" type="int" value="4"/>
-                    <Property name="editable" type="boolean" value="false"/>
-                    <Property name="horizontalAlignment" type="int" value="11"/>
-                    <Property name="text" type="java.lang.String" value="4095"/>
-                    <Property name="toolTipText" type="java.lang.String" value="gain as computed by AGC"/>
-                  </Properties>
-                </Component>
                 <Component class="javax.swing.JLabel" name="jLabel6">
                   <Properties>
                     <Property name="text" type="java.lang.String" value="gain"/>
@@ -289,11 +294,6 @@
                     <Property name="horizontalAlignment" type="int" value="11"/>
                     <Property name="text" type="java.lang.String" value="0"/>
                     <Property name="toolTipText" type="java.lang.String" value="low pass min log intensity value"/>
-                  </Properties>
-                </Component>
-                <Component class="javax.swing.JLabel" name="jLabel2">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="min (offset)"/>
                   </Properties>
                 </Component>
               </SubComponents>

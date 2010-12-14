@@ -64,12 +64,12 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
         agcSpinner = new javax.swing.JSpinner();
         applyButton = new javax.swing.JButton();
         logIntenStatPanel = new javax.swing.JPanel();
+        jLabel2 = new javax.swing.JLabel();
+        gainAGCTF = new javax.swing.JTextField();
         jLabel5 = new javax.swing.JLabel();
         maxTF = new javax.swing.JTextField();
-        gainAGCTF = new javax.swing.JTextField();
         jLabel6 = new javax.swing.JLabel();
         minTF = new javax.swing.JTextField();
-        jLabel2 = new javax.swing.JLabel();
         jPanel4 = new javax.swing.JPanel();
         gainLabel = new javax.swing.JLabel();
         gainSlider = new javax.swing.JSlider();
@@ -175,6 +175,16 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
         logIntenStatPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("statistics"));
         logIntenStatPanel.setLayout(new javax.swing.BoxLayout(logIntenStatPanel, javax.swing.BoxLayout.LINE_AXIS));
 
+        jLabel2.setText("min (offset)");
+        logIntenStatPanel.add(jLabel2);
+
+        gainAGCTF.setColumns(4);
+        gainAGCTF.setEditable(false);
+        gainAGCTF.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
+        gainAGCTF.setText("4095");
+        gainAGCTF.setToolTipText("gain as computed by AGC");
+        logIntenStatPanel.add(gainAGCTF);
+
         jLabel5.setText("max");
         logIntenStatPanel.add(jLabel5);
 
@@ -185,13 +195,6 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
         maxTF.setToolTipText("lowpass max log intensity value");
         logIntenStatPanel.add(maxTF);
 
-        gainAGCTF.setColumns(4);
-        gainAGCTF.setEditable(false);
-        gainAGCTF.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
-        gainAGCTF.setText("4095");
-        gainAGCTF.setToolTipText("gain as computed by AGC");
-        logIntenStatPanel.add(gainAGCTF);
-
         jLabel6.setText("gain");
         logIntenStatPanel.add(jLabel6);
 
@@ -201,9 +204,6 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
         minTF.setText("0");
         minTF.setToolTipText("low pass min log intensity value");
         logIntenStatPanel.add(minTF);
-
-        jLabel2.setText("min (offset)");
-        logIntenStatPanel.add(jLabel2);
 
         gainLabel.setText("gain");
 
