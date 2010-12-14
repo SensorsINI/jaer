@@ -224,7 +224,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
     }
 
     private void initCapture() {
-        log.info("InitCapture");
+//        log.info("InitCapture");
         trackCaptureEventCounter = 1;
         // this will start collecting data in processEvent
 

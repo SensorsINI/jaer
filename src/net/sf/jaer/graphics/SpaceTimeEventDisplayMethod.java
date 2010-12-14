@@ -39,11 +39,14 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
     int spikeList = 1;
     GLUT glut = null;
     GLU glu = null;
-    final boolean useCubeEnabled = true;
-
+    final boolean useCubeEnabled = false; // true is too false or uses GPU improperly
+    
+    // TODO it doesn't make sense to redraw all data for each mouse drag transform change. All we should have to do is to change the projection matrix.
+    
     public void display(GLAutoDrawable drawable) {
 //        GL gl=setupGL(drawable);
 //        AEChipRenderer renderer = (AEChipRenderer) (getChipCanvas().getRenderer());
+//        log.info("display");
         Chip2D chip = getChipCanvas().getChip();
         if (glut == null) {
             glut = new GLUT();
@@ -65,6 +68,7 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
                     {
                         gl.glScalef(1, 1, .1f);
                         glut.glutSolidCube(1);
+                        spikeListCreated=true;
 //            gl.glRectf(.5f,.5f, .5f,.5f);
                     }
                     gl.glEndList();
@@ -117,8 +121,10 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
 //        int dt = ae.getLastTimestamp()-t0+1;
             float z;
             float zfac = chip.getMaxSize();
+//            int count=0;
             for (Object obj : packet) {
                 BasicEvent ev = (BasicEvent) obj;
+//                if(count++%1000==0)log.info("1000 events");
 //        for (int i = 0; i<n; i++){
 //            EventXYType ev = ae.getEvent2D(i);
                 z = (float) (ev.timestamp - t0) / dt; // z goes from 0 (oldest) to 1 (youngest)
@@ -154,7 +160,7 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
                 gl.glPopMatrix();
             }
 
-
+//            log.info("done rendering");
             checkGLError(gl);
             gl.glPopMatrix();
         }

@@ -300,6 +300,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             GL gl = drawable.getGL();
             gl.glMatrixMode(GL.GL_MODELVIEW);
             gl.glLoadIdentity();
+//            log.info("display");
 
             checkGLError(gl, glu, "before setting projection");
 //            gl.glPushMatrix(); // don't push so that mouse selection has correct matrices
@@ -575,7 +576,8 @@ public class ChipCanvas implements GLEventListener, Observer {
                         set3dOrigin(Math.round(getChip().getMaxSize() * ((float) x - drawable.getWidth() / 2) / drawable.getWidth()), Math.round(getChip().getMaxSize() * (drawable.getHeight() / 2 - (float) y) / drawable.getHeight()));
                     }
                 }
-                repaint(15);
+                repaint(100);
+//                log.info("repaint called for");
             }
 
             public void mouseMoved(MouseEvent e) {

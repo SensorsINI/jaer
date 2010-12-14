@@ -1787,7 +1787,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     try{
                         wait(1000);
                     } catch ( java.lang.InterruptedException e ){
-//                        log.info("viewLoop idle wait() was interrupted: " + e.toString());
+                        log.info("viewLoop idle wait() was interrupted: " + e.toString());
                     }
                 }
             }
@@ -2153,8 +2153,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         // call this to delayForDesiredFPS enough to make the total time including last sample period equal to desiredPeriodMs
         final void delayForDesiredFPS (){
-            if(Thread.interrupted())return; // clear the interrupt flag here to make sure we don't just pass through with no one clearing the flag
-            delayMs = (int)Math.round(desiredPeriodMs - (float)lastdt / 1000000);
+            if(Thread.interrupted())
+            {
+                return; // clear the interrupt flag here to make sure we don't just pass through with no one clearing the flag
+            }
+            
+            delayMs = (int) Math.round(desiredPeriodMs - (float) lastdt / 1000000);
             if ( delayMs < 0 ){
                 delayMs = 1;
             }
