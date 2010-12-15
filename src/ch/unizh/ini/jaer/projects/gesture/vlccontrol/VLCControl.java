@@ -18,22 +18,23 @@ import org.apache.commons.net.telnet.TelnetClient;
  *
  * @author Tobi
  */
-public class VLCControl extends TelnetClient {
+public class VLCControl extends TelnetClient implements Runnable, TelnetNotificationHandler {
 
     /** VLC should be started with as "vlc --rc-host=localhost:4444" */
     public static final int VLC_PORT = 4444;
     static final Logger log = Logger.getLogger("VLCControl");
     private BufferedReader reader = null;
-    private Writer writer = null;
+    private OutputStreamWriter writer = null;
     CharBuffer cbuf = CharBuffer.allocate(1024);
     private boolean addedHandlers = false;
+    static TelnetClient tc = null; // used to communicate among instances the active client
 
     public VLCControl() {
     }
 
     public void connect() throws IOException {
         try {
-            TerminalTypeOptionHandler ttopt = new TerminalTypeOptionHandler("VT100", false, false, true, false);
+            TerminalTypeOptionHandler ttopt = new TerminalTypeOptionHandler("dumb", false, false, true, false);
             EchoOptionHandler echoopt = new EchoOptionHandler(true, false, true, false);
             SuppressGAOptionHandler gaopt = new SuppressGAOptionHandler(true, true, true, true);
             if (!addedHandlers) {
@@ -41,13 +42,16 @@ public class VLCControl extends TelnetClient {
                     addOptionHandler(ttopt);
                     addOptionHandler(echoopt);
                     addOptionHandler(gaopt);
-                    addedHandlers=true;
+                    addedHandlers = true;
                 } catch (InvalidTelnetOptionException e) {
                     log.warning("Error registering option handlers: " + e.getMessage());
                 }
             }
             connect("localhost", VLC_PORT);
-            new MyReader().start();
+            tc=this; // used by reader to get input stream
+            Thread thread=new Thread(new VLCControl());
+            thread.start();
+            registerNotifHandler(new VLCControl());
             Runtime.getRuntime().addShutdownHook(new Thread() {
 
                 @Override
@@ -171,13 +175,15 @@ public class VLCControl extends TelnetClient {
         if (s == null) {
             return null;
         }
-        if (!s.endsWith("\n")) {
-            s = s + "\n";
-        }
         if (!isConnected()) {
             throw new IOException("not connected yet");
         }
-        writer.write(s);
+        if (!s.endsWith("\n")) {
+            s = s + "\n";
+        }
+        getOutputStream().write(s.getBytes());
+        getOutputStream().flush();
+//        writer.write(s);
 //        writer.flush();
 //        try {
 //            Thread.sleep(20);
@@ -190,29 +196,26 @@ public class VLCControl extends TelnetClient {
         return "sent " + s;
     }
 
-    class MyReader extends Thread {
+    /***
+     * Reader thread.
+     * Reads lines from the TelnetClient and echoes them
+     * on the screen.
+     ***/
+    public void run() {
+        InputStream instr = tc.getInputStream();
 
-        /***
-         * Reader thread.
-         * Reads lines from the TelnetClient and echoes them
-         * on the screen.
-         ***/
-        public void run() {
-            InputStream instr = VLCControl.this.getInputStream();
+        byte[] buff = new byte[1024];
+        int ret_read = 0;
 
+        do {
             try {
-                byte[] buff = new byte[1024];
-                int ret_read = 0;
-
-                do {
-                    ret_read = instr.read(buff);
-                    if (ret_read > 0) {
-                        log.info(new String(buff, 0, ret_read));
-                    }
-                } while (ret_read >= 0);
+                ret_read = instr.read(buff);
+                if (ret_read > 0) {
+                    log.info(new String(buff, 0, ret_read));
+                }
             } catch (Exception e) {
                 log.warning("Exception while reading socket:" + e.getMessage());
             }
-        }
+        } while (ret_read >= 0);
     }
 }
