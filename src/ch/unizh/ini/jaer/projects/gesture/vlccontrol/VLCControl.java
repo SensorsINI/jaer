@@ -4,6 +4,8 @@
  */
 package ch.unizh.ini.jaer.projects.gesture.vlccontrol;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.*;
 import java.io.IOException;
@@ -30,7 +32,7 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
     static final Logger log = Logger.getLogger("VLCControl");
     private CharBuffer cbuf = CharBuffer.allocate(1024);
     private static VLCControl staticInstance = null; // used to communicate among instances the active client
-    private PropertyChangeSupport support=new PropertyChangeSupport(this);  // listeners get informed by output from VLC strings
+    private PropertyChangeSupport support = new PropertyChangeSupport(this);  // listeners get informed by output from VLC strings
 
     public VLCControl() {
     }
@@ -42,6 +44,10 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
     }
 
     public void connect() throws IOException {
+        if(isConnected()) {
+            log.warning("already connected");
+            return;
+        }
         staticInstance = this; // used by reader to get input stream
         try {
             staticInstance.connect("localhost", VLC_PORT);
@@ -66,8 +72,6 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
             throw new IOException(e);
         }
     }
-
- 
 
     /** Sends a string command.  Commands do not need to be terminated with a newline.
     <p>
@@ -140,6 +144,8 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
     | shutdown . . . . . . . . . . . . . . . . . . . . . . . .shutdown VLC
     +----[ end of help ]
     </pre>
+     * @param s command to be sent, e.g. "pause", "seek 300" (seeks to 300 seconds)
+     * @return the same command string
 
      */
     public String sendCommand(String s) throws IOException {
@@ -157,8 +163,57 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
         return s;
     }
 
-    public static String PAUSE="pause", PLAY="play", STOP="stop", NEXT="next", PREV="prev", VOLUP="volup 1", VOLDOWN = "voldown 1";
-    public static final String CLIENT_MESSAGE="ClientMessage";
+    /** Sends a string, and returns the response from VLC. This is an expensive thread-creating blocking call that should not be used in time-critical code.
+     * @param s
+     * @return
+     * @throws IOException
+     */
+    public String query(String s) throws IOException {
+        class Listen extends Thread implements PropertyChangeListener {
+
+            Listen() {
+                setName("VLCQueryListener");
+            }
+            String s = null;
+
+            @Override
+            public void run() {
+                try {
+                    synchronized(this){wait();}
+                } catch (InterruptedException ex) {
+                    log.info("done waiting");
+                }
+            }
+
+            @Override
+            public void propertyChange(PropertyChangeEvent evt) {
+                if (evt.getNewValue() != null) {
+                    s = (String) evt.getNewValue();
+                }
+                synchronized(this){notify();}
+            }
+        }
+
+        if (!isConnected()) {
+            connect(); // make sure we have the static instance
+        }
+        final Listen listen = new Listen();
+        staticInstance.getSupport().addPropertyChangeListener(CLIENT_MESSAGE, listen);
+
+        listen.start();
+        sendCommand(s);
+        try {
+            synchronized (listen) {
+                listen.wait();
+            }
+        } catch (InterruptedException e) {
+            return null;
+        }
+        return listen.s;
+    }
+    public static String PAUSE = "pause", PLAY = "play", STOP = "stop", NEXT = "next", PREV = "prev", VOLUP = "volup 1", VOLDOWN = "voldown 1";
+    public static final String CLIENT_MESSAGE = "ClientMessage";
+
     /***
      * Reader thread.
      * Reads lines from the TelnetClient and echoes them
@@ -176,7 +231,7 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
             do {
                 ret_read = instr.read(buff);
                 if (ret_read > 0) {
-                    String s=new String(buff, 0, ret_read);
+                    String s = new String(buff, 0, ret_read);
                     log.info(s);
                     staticInstance.getSupport().firePropertyChange(CLIENT_MESSAGE, null, s); // listener on static instance that actually is connected gets the message
                 }
@@ -186,7 +241,7 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
         }
     }
 
-       /***
+    /***
      * Callback method called when TelnetClient receives an option
      * negotiation command.
      * <p>
