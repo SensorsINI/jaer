@@ -26,32 +26,38 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
     private BufferedReader reader = null;
     private OutputStreamWriter writer = null;
     CharBuffer cbuf = CharBuffer.allocate(1024);
-    private boolean addedHandlers = false;
-    static TelnetClient tc = null; // used to communicate among instances the active client
+    private static boolean addedHandlers = false;
+    private static TelnetClient tc = null; // used to communicate among instances the active client
 
     public VLCControl() {
     }
 
+    @Override
+    public void disconnect() throws IOException {
+        sendCommand("quit");
+        super.disconnect();
+    }
+
     public void connect() throws IOException {
+        tc = this; // used by reader to get input stream
         try {
-            TerminalTypeOptionHandler ttopt = new TerminalTypeOptionHandler("dumb", false, false, true, false);
-            EchoOptionHandler echoopt = new EchoOptionHandler(true, false, true, false);
-            SuppressGAOptionHandler gaopt = new SuppressGAOptionHandler(true, true, true, true);
-            if (!addedHandlers) {
-                try {
-                    addOptionHandler(ttopt);
-                    addOptionHandler(echoopt);
-                    addOptionHandler(gaopt);
-                    addedHandlers = true;
-                } catch (InvalidTelnetOptionException e) {
-                    log.warning("Error registering option handlers: " + e.getMessage());
-                }
-            }
-            connect("localhost", VLC_PORT);
-            tc=this; // used by reader to get input stream
-            Thread thread=new Thread(new VLCControl());
+//            if (!addedHandlers) {
+//                try {
+//                    TerminalTypeOptionHandler ttopt = new TerminalTypeOptionHandler("VT100", false, false, true, false);
+//                    EchoOptionHandler echoopt = new EchoOptionHandler(true, false, true, false);
+//                    SuppressGAOptionHandler gaopt = new SuppressGAOptionHandler(true, true, true, true);
+//                    tc.addOptionHandler(ttopt);
+//                    tc.addOptionHandler(echoopt);
+//                    tc.addOptionHandler(gaopt);
+//                    addedHandlers = true;
+//                } catch (InvalidTelnetOptionException e) {
+//                    log.warning("Error registering option handlers: " + e.getMessage());
+//                }
+//            }
+            tc.connect("localhost", VLC_PORT);
+            Thread thread = new Thread(new VLCControl());
             thread.start();
-            registerNotifHandler(new VLCControl());
+            tc.registerNotifHandler(this);
             Runtime.getRuntime().addShutdownHook(new Thread() {
 
                 @Override
@@ -95,7 +101,7 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
         } else if (negotiation_code == TelnetNotificationHandler.RECEIVED_WONT) {
             command = "WONT";
         }
-        System.out.println("Received " + command + " for option code " + option_code);
+        log.info("Received " + command + " for option code " + option_code);
     }
 
     /** Sends a string and reads the response line.
@@ -172,11 +178,12 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
 
      */
     public String sendCommand(String s) throws IOException {
+        if (!isConnected()) {
+//            throw new IOException("not connected yet");
+            connect();
+        }
         if (s == null) {
             return null;
-        }
-        if (!isConnected()) {
-            throw new IOException("not connected yet");
         }
         if (!s.endsWith("\n")) {
             s = s + "\n";
@@ -207,15 +214,15 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
         byte[] buff = new byte[1024];
         int ret_read = 0;
 
-        do {
-            try {
+        try {
+            do {
                 ret_read = instr.read(buff);
                 if (ret_read > 0) {
                     log.info(new String(buff, 0, ret_read));
                 }
-            } catch (Exception e) {
-                log.warning("Exception while reading socket:" + e.getMessage());
-            }
-        } while (ret_read >= 0);
+            } while (ret_read >= 0);
+        } catch (Exception e) {
+            log.warning("Reader ending - Exception while reading socket:" + e.getMessage());
+        }
     }
 }
