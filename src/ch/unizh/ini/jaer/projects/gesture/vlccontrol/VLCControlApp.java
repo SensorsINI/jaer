@@ -45,6 +45,7 @@ public class VLCControlApp extends javax.swing.JFrame {
         disconnectButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setTitle("VLCControl");
 
         commandTF.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

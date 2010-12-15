@@ -26,6 +26,7 @@ public class VLCControl extends TelnetClient {
     private BufferedReader reader = null;
     private Writer writer = null;
     CharBuffer cbuf = CharBuffer.allocate(1024);
+    private boolean addedHandlers = false;
 
     public VLCControl() {
     }
@@ -35,28 +36,33 @@ public class VLCControl extends TelnetClient {
             TerminalTypeOptionHandler ttopt = new TerminalTypeOptionHandler("VT100", false, false, true, false);
             EchoOptionHandler echoopt = new EchoOptionHandler(true, false, true, false);
             SuppressGAOptionHandler gaopt = new SuppressGAOptionHandler(true, true, true, true);
-
-            try {
-                addOptionHandler(ttopt);
-                addOptionHandler(echoopt);
-                addOptionHandler(gaopt);
-            } catch (InvalidTelnetOptionException e) {
-                log.warning("Error registering option handlers: " + e.getMessage());
+            if (!addedHandlers) {
+                try {
+                    addOptionHandler(ttopt);
+                    addOptionHandler(echoopt);
+                    addOptionHandler(gaopt);
+                    addedHandlers=true;
+                } catch (InvalidTelnetOptionException e) {
+                    log.warning("Error registering option handlers: " + e.getMessage());
+                }
             }
             connect("localhost", VLC_PORT);
+            new MyReader().start();
             Runtime.getRuntime().addShutdownHook(new Thread() {
 
                 @Override
                 public void run() {
                     try {
-                        if(isConnected()) disconnect();
+                        if (isConnected()) {
+                            disconnect();
+                        }
                     } catch (IOException ex) {
                         log.warning(ex.toString());
                     }
                 }
             });
-            setSoTimeout(500);
-            reader = new BufferedReader(new InputStreamReader(getInputStream()));
+//            setSoTimeout(500);
+//            reader = new BufferedReader(new InputStreamReader(getInputStream()));
             writer = (new OutputStreamWriter(getOutputStream()));
         } catch (IOException e) {
             log.warning("couldn't connect to VLC - you may need to start VLC with command line \"vlc --rc-host=localhost:4444\"");
@@ -173,14 +179,40 @@ public class VLCControl extends TelnetClient {
         }
         writer.write(s);
 //        writer.flush();
-        try {
-            Thread.sleep(20);
-        } catch (InterruptedException ex) {
+//        try {
+//            Thread.sleep(20);
+//        } catch (InterruptedException ex) {
+//        }
+//        cbuf.clear();
+//        reader.read(cbuf);
+//        String r = cbuf.flip().toString();
+//        log.info("sent line: " + s + "read line: " + r);
+        return "sent " + s;
+    }
+
+    class MyReader extends Thread {
+
+        /***
+         * Reader thread.
+         * Reads lines from the TelnetClient and echoes them
+         * on the screen.
+         ***/
+        public void run() {
+            InputStream instr = VLCControl.this.getInputStream();
+
+            try {
+                byte[] buff = new byte[1024];
+                int ret_read = 0;
+
+                do {
+                    ret_read = instr.read(buff);
+                    if (ret_read > 0) {
+                        log.info(new String(buff, 0, ret_read));
+                    }
+                } while (ret_read >= 0);
+            } catch (Exception e) {
+                log.warning("Exception while reading socket:" + e.getMessage());
+            }
         }
-        cbuf.clear();
-        reader.read(cbuf);
-        String r = cbuf.flip().toString();
-        log.info("sent line: " + s + "read line: " + r);
-        return r;
     }
 }
