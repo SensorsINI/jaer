@@ -28,7 +28,7 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
     /** VLC should be started with as "vlc --rc-host=localhost:4444" */
     public static final int VLC_PORT = 4444;
     static final Logger log = Logger.getLogger("VLCControl");
-    CharBuffer cbuf = CharBuffer.allocate(1024);
+    private CharBuffer cbuf = CharBuffer.allocate(1024);
     private static VLCControl staticInstance = null; // used to communicate among instances the active client
     private PropertyChangeSupport support=new PropertyChangeSupport(this);  // listeners get informed by output from VLC strings
 
