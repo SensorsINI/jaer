@@ -35,7 +35,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     /**
      * Time constant of LIF neurons membrane potential. It decays exponetially unless a new event is added.
      */
-    protected int MPTimeConstantUs = getPrefs().getInt("BlurringFilter2D.MPTimeConstantUs", 30000);
+    protected int MPTimeConstantUs = getPrefs().getInt("BlurringFilter2D.MPTimeConstantUs", 22000);
 
     /**
      * initial value of the membrane potential in percents of the MPThreshold

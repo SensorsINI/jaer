@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BinocularEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventprocessing.FilterChain;
 
 /** does blurringFiltering after the vegence of stereo images
@@ -29,14 +30,14 @@ public class BlurringFilterStereo extends BlurringFilter2D{
     protected StereoVergenceFilter svf;
 
     /**
-     * mass of left cells
+     * mass of left cells for ON and OFF events
      */
-    private ArrayList<Float> leftCellMass;
+    private ArrayList<Float> leftCellMassOnEvent, leftCellMassOffEvent;
 
     /**
-     * mass of right cells
+     * mass of right cells for ON and OFF events
      */
-    private ArrayList<Float> rightCellMass;
+    private ArrayList<Float> rightCellMassOnEvent, rightCellMassOffEvent;
 
     /**
      * Constructor. A StereoVergenceFilter is inside a FilterChain that is enclosed in this.
@@ -131,11 +132,21 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         ArrayList<Float> mainEye, secondaryEye;
 
         if(ev.eye == BinocularEvent.Eye.LEFT){
-            mainEye = leftCellMass;
-            secondaryEye = rightCellMass;
+            if(ev.polarity == Polarity.On){
+                mainEye = leftCellMassOnEvent;
+                secondaryEye = rightCellMassOnEvent;
+            } else {
+                mainEye = leftCellMassOffEvent;
+                secondaryEye = rightCellMassOffEvent;
+            }
         } else {
-            mainEye = rightCellMass;
-            secondaryEye = leftCellMass;
+            if(ev.polarity == Polarity.On){
+                mainEye = rightCellMassOnEvent;
+                secondaryEye = leftCellMassOnEvent;
+            }else {
+                mainEye = rightCellMassOffEvent;
+                secondaryEye = leftCellMassOffEvent;
+            }
         }
 
         // increases mass
@@ -164,11 +175,15 @@ public class BlurringFilterStereo extends BlurringFilter2D{
     public synchronized void initFilter() {
         super.initFilter();
         if(numOfNeuronsX*numOfNeuronsY > 0){
-            leftCellMass = new ArrayList<Float>(numOfNeuronsX*numOfNeuronsY);
-            rightCellMass = new ArrayList<Float>(numOfNeuronsX*numOfNeuronsY);
+            leftCellMassOnEvent = new ArrayList<Float>(numOfNeuronsX*numOfNeuronsY);
+            leftCellMassOffEvent = new ArrayList<Float>(numOfNeuronsX*numOfNeuronsY);
+            rightCellMassOnEvent = new ArrayList<Float>(numOfNeuronsX*numOfNeuronsY);
+            rightCellMassOffEvent = new ArrayList<Float>(numOfNeuronsX*numOfNeuronsY);
             for(int i=0; i<numOfNeuronsX*numOfNeuronsY; i++){
-                leftCellMass.add(0.0f);
-                rightCellMass.add(0.0f);
+                leftCellMassOnEvent.add(0.0f);
+                leftCellMassOffEvent.add(0.0f);
+                rightCellMassOnEvent.add(0.0f);
+                rightCellMassOffEvent.add(0.0f);
             }
         }
     }
@@ -179,8 +194,8 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         getEnclosedFilterChain().reset();
         super.resetFilter();
         for(int i=0; i<numOfNeuronsX*numOfNeuronsY; i++){
-            leftCellMass.set(i, 0.0f);
-            rightCellMass.set(i, 0.0f);
+            leftCellMassOnEvent.set(i, 0.0f);
+            rightCellMassOnEvent.set(i, 0.0f);
         }
     }
 
