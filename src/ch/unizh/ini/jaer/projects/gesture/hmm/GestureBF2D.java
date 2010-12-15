@@ -1735,6 +1735,13 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         return login;
     }
 
+    /**
+     *
+     */
+    public final void ignoreGesture(){
+        endTimePrevGesture -= refractoryTimeMs*1000;
+    }
+
 
     /**
      * defines the jobs to do during login
@@ -1774,7 +1781,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
      * @param path
      * @return
      */
-    protected boolean doSlashUp(ArrayList<ClusterPathPoint> path){
+    private boolean doSlashUp(ArrayList<ClusterPathPoint> path){
         boolean ret = true;
 
         // checks over-segmentation
@@ -1792,7 +1799,7 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
         }
 
         if(ret && checkActivated)
-            hmmDP.putImage(imgCheck);
+            doCheck();
 
         checkActivated = false;
 
@@ -1802,38 +1809,52 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
     /**
      * defines the jobs to do when SlashDown is detected
      */
-    protected void doSlashDown(){
+    private void doSlashDown(){
         checkActivated = true;
     }
 
     /**
-     * defines the jobs to do when CW is detected
+     * checks CW to detect broken infinite shaped gestures
      *
      * @param path
      */
-    protected void doCW(ArrayList<ClusterPathPoint> path){
+    private void doCW(ArrayList<ClusterPathPoint> path){
         // to detect broken infinite shaped gestures
         if(prevPath != null && tryGestureWithPrevPath(path, 0, "Infinite", maxTimeDiffCorrSegmentsUs, true, false)){
             System.out.println("----------> might be an inifnite-shaped gesture");
             doLogout();
         } else {
-            hmmDP.putImage(imgCW);
+            doCW();
+        }
+    }
+
+    /**
+     * defines the jobs to do when CW is detected
+     */
+    protected void doCW(){
+        hmmDP.putImage(imgCW);
+    }
+
+    /**
+     * checks CCW to detect broken infinite shaped gestures
+     *
+     * @param path
+     */
+    private void doCCW(ArrayList<ClusterPathPoint> path){
+        // to detect broken infinite shaped gestures
+        if(prevPath != null && tryGestureWithPrevPath(path, 0, "Infinite", maxTimeDiffCorrSegmentsUs, true, false)){
+            System.out.println("----------> might be an inifnite-shaped gesture");
+            doLogout();
+        } else {
+            doCCW();
         }
     }
 
     /**
      * defines the jobs to do when CCW is detected
-     *
-     * @param path
      */
-    protected void doCCW(ArrayList<ClusterPathPoint> path){
-        // to detect broken infinite shaped gestures
-        if(prevPath != null && tryGestureWithPrevPath(path, 0, "Infinite", maxTimeDiffCorrSegmentsUs, true, false)){
-            System.out.println("----------> might be an inifnite-shaped gesture");
-            doLogout();
-        } else {
-            hmmDP.putImage(imgCCW);
-        }
+    protected void doCCW(){
+        hmmDP.putImage(imgCCW);
     }
 
     /**
@@ -1854,11 +1875,15 @@ public class GestureBF2D extends EventFilter2D implements FrameAnnotater,Observe
      * defines the jobs to do when Up is detected
      * @param path
      */
-    protected void doUp(ArrayList<ClusterPathPoint> path){
+    private void doUp(ArrayList<ClusterPathPoint> path){
         if(fve.getAverageAngle(0.2, 0.8) > Math.PI*0.56){
             if(!doSlashUp(path))
-                hmmDP.putImage(imgUp);
+                doUp();
         } else
+            doUp();
+    }
+
+    protected void doUp(){
             hmmDP.putImage(imgUp);
     }
 

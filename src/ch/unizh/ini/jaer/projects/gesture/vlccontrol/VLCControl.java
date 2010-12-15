@@ -8,6 +8,7 @@ import java.beans.PropertyChangeSupport;
 import java.io.*;
 import java.io.IOException;
 import java.nio.CharBuffer;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.net.telnet.*;
 import org.apache.commons.net.telnet.TelnetClient;
@@ -141,29 +142,30 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
     </pre>
 
      */
-    public void sendCommand(String s) throws IOException {
+    public String sendCommand(String s) throws IOException {
         if (!isConnected()) {
             connect();
         }
         if (s == null) {
-            return;
+            return null;
         }
         if (!s.endsWith("\n")) {
             s = s + "\n";
         }
         getOutputStream().write(s.getBytes());
         getOutputStream().flush();
-        return;
+        return s;
     }
 
+    public static String PAUSE="pause", PLAY="play", STOP="stop", NEXT="next", PREV="prev", VOLUP="volup 1", VOLDOWN = "voldown 1";
     public static final String CLIENT_MESSAGE="ClientMessage";
-
     /***
      * Reader thread.
      * Reads lines from the TelnetClient and echoes them
      * on the logger.
      * PropertyChangeListeners are called with CLIENT_MESSAGE and String sent from VLC.
      ***/
+    @Override
     public void run() {
         InputStream instr = staticInstance.getInputStream();
 
@@ -180,7 +182,7 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
                 }
             } while (ret_read >= 0);
         } catch (Exception e) {
-            log.warning("Reader ending - Exception while reading socket:" + e.getMessage());
+            log.log(Level.WARNING, "Reader ending - Exception while reading socket:{0}", e.getMessage());
         }
     }
 
@@ -194,6 +196,7 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
      * @param option_code - code of the option negotiated
      * <p>
      ***/
+    @Override
     public void receivedNegotiation(int negotiation_code, int option_code) {
         String command = null;
         if (negotiation_code == TelnetNotificationHandler.RECEIVED_DO) {
@@ -205,7 +208,7 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
         } else if (negotiation_code == TelnetNotificationHandler.RECEIVED_WONT) {
             command = "WONT";
         }
-        log.info("Received " + command + " for option code " + option_code);
+        log.log(Level.INFO, "Received {0} for option code {1}", new Object[]{command, option_code});
     }
 
     /**

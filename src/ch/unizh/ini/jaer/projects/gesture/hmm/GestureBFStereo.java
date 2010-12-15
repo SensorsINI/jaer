@@ -7,6 +7,8 @@ package ch.unizh.ini.jaer.projects.gesture.hmm;
 
 import ch.unizh.ini.jaer.projects.gesture.stereo.BlurringFilterStereoTracker;
 import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2DTracker;
+import ch.unizh.ini.jaer.projects.gesture.vlccontrol.VLCControl;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -60,7 +62,9 @@ public class GestureBFStereo extends GestureBF2D{
     /**
      * true if Push-gesture is detected
      */
-    private boolean pushDetected = false; 
+    private boolean pushDetected = false;
+
+    private VLCControl vlc = null;
 
 
     /**
@@ -180,13 +184,12 @@ public class GestureBFStereo extends GestureBF2D{
         return meanDisparity/trimmedPath.size();
     }
 
-
-
     
 
     @Override
     protected void doLogin() {
         super.doLogin();
+        vlc = new VLCControl();
     }
 
     /**
@@ -203,6 +206,58 @@ public class GestureBFStereo extends GestureBF2D{
 
         // releases maximum disparity change limit
 //        ((BlurringFilterStereoTracker) super.tracker).setMaxDisparityChangePixels(100);
+
+        // disconnect VLC
+        disconnectVLC();
+    }
+
+    @Override
+    protected void doCCW() {
+        super.doCCW();
+        sendCommandVLC(VLCControl.STOP);
+        //ignoreGesture(); // this line should be activated to ignore refractory period if this gesture is not used
+    }
+
+    @Override
+    protected void doCW() {
+        super.doCW();
+        sendCommandVLC(VLCControl.PLAY);
+        //ignoreGesture(); // this line should be activated to ignore refractory period if this gesture is not used
+    }
+
+    @Override
+    protected void doCheck() {
+        super.doCheck();
+        sendCommandVLC(VLCControl.PAUSE);
+        //ignoreGesture(); // this line should be activated to ignore refractory period if this gesture is not used
+    }
+
+    @Override
+    protected void doUp() {
+        super.doUp();
+        sendCommandVLC(VLCControl.VOLUP);
+        //ignoreGesture(); // this line should be activated to ignore refractory period if this gesture is not used
+    }
+
+    @Override
+    protected void doDown() {
+        super.doDown();
+        sendCommandVLC(VLCControl.VOLDOWN);
+        //ignoreGesture(); // this line should be activated to ignore refractory period if this gesture is not used
+    }
+
+    @Override
+    protected void doLeft() {
+        super.doLeft();
+        sendCommandVLC(VLCControl.PREV);
+        //ignoreGesture(); // this line should be activated to ignore refractory period if this gesture is not used
+    }
+
+    @Override
+    protected void doRight() {
+        super.doRight();
+        sendCommandVLC(VLCControl.NEXT);
+        //ignoreGesture(); // this line should be activated to ignore refractory period if this gesture is not used
     }
 
     /**
@@ -211,5 +266,35 @@ public class GestureBFStereo extends GestureBF2D{
     @Override
     protected void doPush() {
         super.doPush(); 
+    }
+
+    /**
+     * sends a command string to VLC
+     *
+     * @param cmd
+     * @return
+     */
+    private boolean sendCommandVLC(String cmd){
+        try {
+                vlc.sendCommand(cmd);
+                return true;
+            } catch (IOException ex) {
+                log.warning(ex.toString());
+                return false;
+            }
+    }
+
+    /**
+     * disconnect VLC
+     */
+    private void disconnectVLC(){
+        if(vlc != null){
+            try{
+                vlc.disconnect();
+            } catch (IOException ex) {
+                log.warning(ex.toString());
+            }
+            vlc = null;
+        }
     }
 }
