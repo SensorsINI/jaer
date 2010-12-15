@@ -187,7 +187,9 @@ public class GaussianThreshold implements Serializable {
 
     /**
      * returns true of the sample sequence satisfies the threshold requirement.
+     *
      * @param sample
+     * @param criterion
      * @return
      */
     public boolean isAboveThreshold(double[] sample, double criterion){
@@ -261,7 +263,9 @@ public class GaussianThreshold implements Serializable {
 
     /**
      * returns true of the sample sequence satisfies the threshold requirement.
+     * 
      * @param sample
+     * @param criterion
      * @return
      */
     public boolean isAboveThreshold2(double[] sample, double criterion ){

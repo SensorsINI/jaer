@@ -49,6 +49,7 @@ public class FeatureExtraction{
     /**
      * converts a trajectory into a sequence of codewords
      * @param trajectory
+     * @param totalTrajLen
      * @return sequence of codewords
      */
     public String[] convTrajectoryToCodewords(ArrayList<? extends Point2D.Float> trajectory, double totalTrajLen){
@@ -163,6 +164,13 @@ public class FeatureExtraction{
         return out;
     }
 
+    /**
+     * returns the average angle of vectorAngleSeq from startRatio to endRatio
+     *
+     * @param startRatio
+     * @param endRatio
+     * @return
+     */
     public double getAverageAngle(double startRatio, double endRatio){
         double av = 0;
         int startPos = (int)(vectorAngleSeq.length*startRatio);
@@ -195,6 +203,12 @@ public class FeatureExtraction{
         return length;
     }
 
+    /**
+     * calculates the total length of the trajectory from the offset position
+     * @param trajectory
+     * @param offset
+     * @return
+     */
     public static double calTrajectoryLengthFrom(ArrayList<? extends Point2D.Float> trajectory, int offset){
         double length = 0;
 
@@ -210,6 +224,12 @@ public class FeatureExtraction{
         return length;
     }
 
+    /**
+     * calculates the total length of the trajectory to the offset position
+     * @param trajectory
+     * @param offset
+     * @return
+     */
     public static double calTrajectoryLengthTo(ArrayList<? extends Point2D.Float> trajectory, int offset){
         double length = 0;
 
@@ -225,6 +245,13 @@ public class FeatureExtraction{
         return length;
     }
 
+    /**
+     * calculates the total length of the trajectory from fromPos to toPos
+     * @param trajectory
+     * @param fromPos
+     * @param toPos
+     * @return
+     */
     public static double calTrajectoryLengthFromTo(ArrayList<? extends Point2D.Float> trajectory, int fromPos, int toPos){
         double length = 0;
 

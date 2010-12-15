@@ -887,6 +887,7 @@ public final class HiddenMarkovModel implements Serializable{
     /**
      * Updates forward probability with one additional observation.
      * Silent states are considered.
+     * @param alphaPrev
      * @param obs : observation
      * @return
      */
@@ -2047,10 +2048,18 @@ public final class HiddenMarkovModel implements Serializable{
         this.modelType = modelType;
     }
 
+    /**
+     * returns doesCheckState
+     * @return
+     */
     public boolean isDoesCheckState() {
         return doesCheckState;
     }
 
+    /**
+     * sets doesCheckState
+     * @param doesCheckState
+     */
     public void setDoesCheckState(boolean doesCheckState) {
         this.doesCheckState = doesCheckState;
     }

@@ -17,24 +17,60 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.ClusterPathPoint;
 
 /**
- *
+ * Gesture recognition system using two DVS sensors in stereo vision.
+ * BluringFilterStereoTracker is used to obtain the trajectory of moving object (eg, hand)
+ * HMM is used for classification. But, HMM is not used for spoting gestures (i.e., finding the start and end timing of gestures)
+ * Gesture spotting is done by the tracker by assuming that there is slow movement or abrupt change of moving direction between gestures.
  * @author Jun Haeng Lee
  */
 public class GestureBFStereo extends GestureBF2D{
+    /**
+     * stereo tracker
+     */
     protected BlurringFilterStereoTracker stereoTracker = null;
 
+    /**
+     * queue for disparity
+     * this is to detect Push-gesture. but Push gesture is currently not supported.
+     */
     protected LinkedList<Integer> disparityQueue = new LinkedList<Integer>();
+
+    /**
+     * max size of the disparity queue
+     * this is to detect Push-gesture. but Push gesture is currently not supported.
+     */
     protected int disparityQueueMaxSize = 10;
 
+    /**
+     * initial disparity
+     */
     public final static int IDLE_STATE_DISPARITY = -1000;
+
+    /**
+     * mean disparity of the starting gesture (i.e Infinite-shaped gesture)
+     */
     protected int meanDisparityOfStartGesture = IDLE_STATE_DISPARITY;
+
+    /**
+     * disparity threshold for Push-gesture
+     * Push gesture is currently not supported.
+     */
     protected int disparityThresholdPushGesture = 10;
+
+    /**
+     * true if Push-gesture is detected
+     */
     private boolean pushDetected = false; 
 
+
+    /**
+     * Constructor
+     * @param chip
+     */
     public GestureBFStereo(AEChip chip) {
         super(chip);
         
-        // deactivates lower disparity limit
+        // deactivates disparity limit
         ((BlurringFilterStereoTracker) super.tracker).setEnableDisparityLimit(false);
     }
 
@@ -153,6 +189,9 @@ public class GestureBFStereo extends GestureBF2D{
         super.doLogin();
     }
 
+    /**
+     * defines jobs to do during logout
+     */
     @Override
     protected void doLogout() {
         super.doLogout();
@@ -166,6 +205,9 @@ public class GestureBFStereo extends GestureBF2D{
 //        ((BlurringFilterStereoTracker) super.tracker).setMaxDisparityChangePixels(100);
     }
 
+    /**
+     * defines jobs to do when Push is detected
+     */
     @Override
     protected void doPush() {
         super.doPush(); 

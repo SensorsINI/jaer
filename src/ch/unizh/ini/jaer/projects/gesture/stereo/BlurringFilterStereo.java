@@ -19,11 +19,26 @@ import net.sf.jaer.eventprocessing.FilterChain;
  */
 public class BlurringFilterStereo extends BlurringFilter2D{
 
+    /**
+     * enables left-right association
+     */
     private boolean enableBinocluarAssociation = getPrefs().getBoolean("BlurringFilterStereo.enableBinocluarAssociation", false);
+
+    /**
+     * activate clustering and tracking in the non-overlaping side regions
+     */
     private boolean activateNonoverlapingArea = getPrefs().getBoolean("BlurringFilterStereo.activateNonoverlapingArea", false);
+
+
+    /**
+     * mass threshold for left-right association in percents of MPThreshold
+     */
     private float binocluarAssMassThresholdPercentTh = getPrefs().getFloat("BlurringFilterStereo.binocluarAssMassThresholdPercentTh", 20.0f);
+
+    /**
+     * RC time constant of the mass of binocular cells
+     */
     private int cellMassTimeConstatUs = getPrefs().getInt("BlurringFilterStereo.cellMassTimeConstatUs", 5000);
-    private float binocluarAssociationMassThreshold = 0;
 
     /**
      * Stereo vergence filter
@@ -52,7 +67,7 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         setEnclosedFilterChain(fc);
 
         setPropertyTooltip("Association", "enableBinocluarAssociation", "enables left-right association");
-        setPropertyTooltip("Association", "activateNonoverlapingArea", "activate non-overlaping area");
+        setPropertyTooltip("Association", "activateNonoverlapingArea", "activate clustering and tracking in the non-overlaping side regions");
         setPropertyTooltip("Association", "binocluarAssMassThresholdPercentTh", "mass threshold for left-right association in percents of MPThreshold");
         setPropertyTooltip("Association", "cellMassTimeConstatUs", "RC time constant of the mass of binocular cells");
     }
@@ -119,7 +134,8 @@ public class BlurringFilterStereo extends BlurringFilter2D{
     }
 
     /**
-     * increases mass of left or right eye based on a binocular event.
+     * increases mass of left or right eye based on a binocular event and returns synaptic weight for the event based on the cell mass of the other eye.
+     * polarity of the event is considered here to suppress out-of-vergence regions
      *
      * @param index
      * @param ev
@@ -133,6 +149,7 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         
         ArrayList<Float> mainEye, secondaryEye;
 
+        // checks eye and polarity of the event
         if(ev.eye == BinocularEvent.Eye.LEFT){
             if(ev.polarity == Polarity.On){
                 mainEye = leftCellMassOnEvent;
@@ -159,7 +176,7 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         mainEye.set(index, nextMass);
 
         // calcuates weight
-        binocluarAssociationMassThreshold = getMPThreshold() * binocluarAssMassThresholdPercentTh / 100.0f;
+        float binocluarAssociationMassThreshold = getMPThreshold() * binocluarAssMassThresholdPercentTh / 100.0f;
         if(!activateNonoverlapingArea)
             retVal -= (float) Math.exp(-secondaryEye.get(index)/binocluarAssociationMassThreshold);
         else{
@@ -274,28 +291,46 @@ public class BlurringFilterStereo extends BlurringFilter2D{
     }
 
     /**
-     * sets binocluarAssociationMassThreshold
+     * sets binocluarAssMassThresholdPercentTh
      * 
-     * @param binocluarAssociationMassThreshold
+     * @param binocluarAssMassThresholdPercentTh
      */
     public void setBinocluarAssMassThresholdPercentTh(float binocluarAssMassThresholdPercentTh) {
         this.binocluarAssMassThresholdPercentTh = binocluarAssMassThresholdPercentTh;
         getPrefs().putFloat("BlurringFilterStereo.binocluarAssMassThresholdPercentTh", binocluarAssMassThresholdPercentTh);
     }
 
+    /**
+     * returns cellMassTimeConstatUs
+     * @return
+     */
     public int getCellMassTimeConstatUs() {
         return cellMassTimeConstatUs;
     }
 
+    /**
+     * sets cellMassTimeConstatUs
+     * @param cellMassTimeConstatUs
+     */
     public void setCellMassTimeConstatUs(int cellMassTimeConstatUs) {
         this.cellMassTimeConstatUs = cellMassTimeConstatUs;
         getPrefs().putInt("BlurringFilterStereo.cellMassTimeConstatUs", cellMassTimeConstatUs);
     }
 
+    /**
+     * sets disparityLimit
+     *
+     * @param disparityLimit
+     * @param useLowLimit : sets low limit if true. otherwise, sets high limit
+     */
     public void setDisparityLimit(int disparityLimit, boolean useLowLimit){
         svf.setDisparityLimit(disparityLimit, useLowLimit);
     }
 
+    /**
+     * sets enableDisparityLimit
+     * @param enableDisparityLimit
+     */
     public void setEnableDisparityLimit(boolean enableDisparityLimit){
         svf.setEnableDisparityLimit(enableDisparityLimit);
     }

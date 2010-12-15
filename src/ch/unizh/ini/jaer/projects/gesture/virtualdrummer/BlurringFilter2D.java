@@ -53,11 +53,16 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      */
     private int MPThreshold = getPrefs().getInt("BlurringFilter2D.MPThreshold", 15);
 
-        /**
+    /**
      * size of the receptive field of an LIF neuron.
      */
     protected int receptiveFieldSizePixels = getPrefs().getInt("BlurringFilter2D.receptiveFieldSizePixels", 8);
-    protected int halfReceptiveFieldSizePixels; // We are going to use this parameter mostly.
+
+    /**
+     * half size of the receptive field of an LIF neuron.
+     * We are going to use this parameter mostly than receptiveFieldSizePixels.
+     */
+    protected int halfReceptiveFieldSizePixels;
 
     /**
      * Membrane potential of a neuron jumps down by this amount after firing.
@@ -399,8 +404,13 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         /**
          * Construct an LIF neuron with index.
          *
-         * @param indexX
-         * @param indexY
+         * @param cellNumber : cell number
+         * @param index : cell index
+         * @param location : location on DVS pixels (x,y)
+         * @param receptiveFieldSize : size of the receptive field
+         * @param tauMP : RC time constant of the membrane potential
+         * @param thresholdMP : threshold of the membrane potential to fire a spike
+         * @param MPDecreaseArterFiringPercentTh : membrane potential jump after the spike in the percents of thresholdMP
          */
         public LIFNeuron(int cellNumber, Point2D.Float index, Point2D.Float location, int receptiveFieldSize, float tauMP, float thresholdMP, float MPDecreaseArterFiringPercentTh) {
             // sets invariable parameters
@@ -432,8 +442,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         }
 
         /**
-        * set numSpikes
-        */
+         * set numSpikes
+         *
+         * @param n
+         */
         public final void setNumSpikes(int n) {
             numSpikes = n;
         }
@@ -1856,7 +1868,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     /**
      * sets MPTimeConstantUs
      *
-     * @param
+     * @param MPTimeConstantUs
      */
     public void setMPTimeConstantUs(int MPTimeConstantUs) {
         this.MPTimeConstantUs = MPTimeConstantUs;
@@ -2040,9 +2052,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     }
 
     /**
-     * sets MPJumpAfterFiring
+     * sets MPJumpAfterFiringPercentTh
      *
-     * @param MPJumpAfterFiring
+     * @param MPJumpAfterFiringPercentTh
      */
     public void setMPJumpAfterFiringPercentTh(float MPJumpAfterFiringPercentTh) {
         this.MPJumpAfterFiringPercentTh = MPJumpAfterFiringPercentTh;
@@ -2085,16 +2097,27 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
     /**
      * sets showMPThreshold
+     *
+     * @param showMPThreshold
      */
     public void setShowMPThreshold(boolean showMPThreshold) {
         this.showMPThreshold = showMPThreshold;
         getPrefs().putBoolean("BlurringFilter2D.showMPThreshold", showMPThreshold);
     }
 
+    /**
+     *
+     * @return MPInitialPercnetTh
+     */
     public float getMPInitialPercnetTh() {
         return MPInitialPercnetTh;
     }
 
+    /**
+     * sets MPInitialPercnetTh
+     * 
+     * @param MPInitialPercnetTh
+     */
     public void setMPInitialPercnetTh(float MPInitialPercnetTh) {
         this.MPInitialPercnetTh = MPInitialPercnetTh;
         getPrefs().putFloat("BlurringFilter2D.MPInitialPercnetTh", MPInitialPercnetTh);

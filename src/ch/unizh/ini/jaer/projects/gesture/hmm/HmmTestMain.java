@@ -14,7 +14,7 @@ import javax.swing.JTextField;
  */
 
 /**
- *
+ * Test example of HMM
  * @author Jun Haeng Lee
  */
 public class HmmTestMain

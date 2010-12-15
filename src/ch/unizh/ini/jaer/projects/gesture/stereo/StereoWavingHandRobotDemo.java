@@ -44,6 +44,11 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
     private float panOffset = getPrefs().getFloat("StereoWavingHandRobotDemo.panOffset",.5f);
     private float tiltOffset = getPrefs().getFloat("StereoWavingHandRobotDemo.tiltOffset",.5f);
 
+    /**
+     * Constructor
+     *
+     * @param chip
+     */
     public StereoWavingHandRobotDemo (AEChip chip){
         super(chip);
         setPropertyTooltip("servoLimit","limits servos to this value around 0.5f");
@@ -309,18 +314,34 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
         getPrefs().putFloat("StereoWavingHandRobotDemo.tiltOffset",tiltOffset);
     }
 
+    /**
+     * returns max pan offset
+     * @return
+     */
     public float getMaxPanOffset (){
         return 1;
     }
 
+    /**
+     * returns min pan offset
+     * @return
+     */
     public float getMinPanOffset (){
         return 0;
     }
 
+    /**
+     * returns max tilt offset
+     * @return
+     */
     public float getMaxTiltOffset (){
         return 1;
     }
 
+    /**
+     * returns min tilt offset
+     * @return
+     */
     public float getMinTiltOffset (){
         return 0;
     }

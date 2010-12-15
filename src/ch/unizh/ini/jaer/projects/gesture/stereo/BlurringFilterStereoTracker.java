@@ -17,25 +17,59 @@ import net.sf.jaer.chip.AEChip;
  */
 public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
 
+    /**
+     * global disparity
+     */
     protected int globalDisparity;
+
+    /**
+     * Stereo blurring filter
+     */
     protected BlurringFilterStereo stereoBF = null;
 
+    /**
+     * range of valid disparity
+     */
     protected int validDisparityRange = getPrefs().getInt("BlurringFilterStereoTracker.validDisparityRange", 5);
+
+    /**
+     * removes clusters with invalid disparity
+     */
     protected boolean removeInvalidClusters = getPrefs().getBoolean("BlurringFilterStereoTracker.removeInvalidClusters", true);
+
+    /**
+     * the threshold of LIF neuron of Blurring filter varies adaptively based on the disparity
+     */
     protected boolean enableAutoThreshold = getPrefs().getBoolean("BlurringFilterStereoTracker.enableAutoThreshold", true);
+
+
+    /**
+     * reference disparity to define the reference threshold
+     */
     protected int autoThresholdReferenceDisparity = getPrefs().getInt("BlurringFilterStereoTracker.autoThresholdReferenceDisparity", 0);
+    
+    /**
+     * autoThresholdReferenceThreshold
+     */
     protected int autoThresholdReferenceThreshold = getPrefs().getInt("BlurringFilterStereoTracker.autoThresholdReferenceThreshold", 35);
+
+    /**
+     * threshold/disparity
+     */
     protected float autoThresholdSlope = getPrefs().getFloat("BlurringFilterStereoTracker.autoThresholdSlope", 0.3f);
 
-    protected float thresholdAdptive = 0;
 
+    /**
+     * constructor
+     * @param chip
+     */
     public BlurringFilterStereoTracker(AEChip chip) {
         super(chip);
 
         String stereo = "Stereo";
         setPropertyTooltip(stereo, "validDisparityRange", "range of valid disparity.");
         setPropertyTooltip(stereo, "removeInvalidClusters", "removes clusters with invalid disparity.");
-        setPropertyTooltip(stereo, "enableAutoThreshold", "if true, the threshold of LIF neuron of Blurring filter varies apatively based on the disparity.");
+        setPropertyTooltip(stereo, "enableAutoThreshold", "if true, the threshold of LIF neuron of Blurring filter varies adaptively based on the disparity.");
         setPropertyTooltip(stereo, "autoThresholdReferenceDisparity", "reference disparity to define the reference threshold.");
         setPropertyTooltip(stereo, "autoThresholdReferenceThreshold", "Threshold of LIF neuron of Blurring filter at the reference disparity.");
         setPropertyTooltip(stereo, "autoThresholdSlope", "threshold/disparity.");
@@ -65,7 +99,7 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
 
         // adaptive threshold
         if(enableAutoThreshold){
-            thresholdAdptive = autoThresholdReferenceThreshold + ((globalDisparity - autoThresholdReferenceDisparity)*autoThresholdSlope);
+            float thresholdAdptive = autoThresholdReferenceThreshold + ((globalDisparity - autoThresholdReferenceDisparity)*autoThresholdSlope);
             if(thresholdAdptive < 1.0f)
                 thresholdAdptive = 1.0f;
 
@@ -157,8 +191,9 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
 
     /**
      * sets the limit of disparity value
-     *
+     * 
      * @param disparityLimit
+     * @param useLowLimit
      */
     public void setDisparityLimit(int disparityLimit, boolean useLowLimit){
         ((BlurringFilterStereo) super.bfilter).setDisparityLimit(disparityLimit, useLowLimit);

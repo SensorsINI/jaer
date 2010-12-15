@@ -14,9 +14,25 @@ import java.util.Random;
  * @author Jun Haeng Lee
  */
 public class SampleTrajectory {
+    /**
+     * random
+     */
     protected static Random random = new Random();
+    /**
+     * definition of sample patterns
+     */
     public enum SAMPLE_TRJ_TYPE {LEFT, RIGHT, UP, DOWN, CIRCLE};
 
+    /**
+     * returns a sample trajectory
+     *
+     * @param type
+     * @param totalLenPixels
+     * @param maxXPixels
+     * @param maxYPixels
+     * @param minNumPoints
+     * @return
+     */
     public synchronized ArrayList<Point2D.Float> getSampleTrajetory(SAMPLE_TRJ_TYPE type, int totalLenPixels, int maxXPixels, int maxYPixels, int minNumPoints){
         ArrayList<Point2D.Float> trajectory = new ArrayList<Point2D.Float>();
         Point2D.Float startPos = null;

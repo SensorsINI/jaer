@@ -677,18 +677,39 @@ public final class GestureHmm implements Serializable{
         return gth.getMuToArray();
     }
 
+    /**
+     * returns Gaussian threshold model for the given gesture name
+     *
+     * @param name
+     * @return
+     */
     public GaussianThreshold getGTModel(String name){
         return gthModels.get(name);
     }
 
+    /**
+     * returns GTCriterion
+     *
+     * @return
+     */
     public float getGTCriterion() {
         return GTCriterion;
     }
 
+    /**
+     * sets GTCriterion
+     *
+     * @param GTcriterion
+     */
     public void setGTCriterion(float GTcriterion) {
         this.GTCriterion = GTcriterion;
     }
 
+    /**
+     * returns the size of feature sequence
+     *
+     * @return
+     */
     public int getSeqSize() {
         return seqSize;
     }

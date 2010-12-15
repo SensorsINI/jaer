@@ -80,7 +80,11 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
      * disparity limit
      */
     protected int disparityLimit = 0;
-    protected boolean useLowLimit = true; // low limit if true, high limit if false
+
+    /**
+     * uses low limit if true, high limit if false
+     */
+    protected boolean useLowLimit = true;
 
     /**
      * if true, considers lowerDisparityLimit as the lower limit of the disparity
@@ -1111,8 +1115,9 @@ public class StereoVergenceFilter extends EventFilter2D implements FrameAnnotate
 
     /**
      * sets lowerDisparityLimit
-     *
+     * 
      * @param disparityLimit
+     * @param useLowLimit
      */
     public void setDisparityLimit(int disparityLimit, boolean useLowLimit) {
         this.disparityLimit = disparityLimit;
