@@ -22,6 +22,7 @@ public class BlurringFilterStereo extends BlurringFilter2D{
     private boolean enableBinocluarAssociation = getPrefs().getBoolean("BlurringFilterStereo.enableBinocluarAssociation", false);
     private boolean activateNonoverlapingArea = getPrefs().getBoolean("BlurringFilterStereo.activateNonoverlapingArea", false);
     private float binocluarAssMassThresholdPercentTh = getPrefs().getFloat("BlurringFilterStereo.binocluarAssMassThresholdPercentTh", 20.0f);
+    private int cellMassTimeConstatUs = getPrefs().getInt("BlurringFilterStereo.cellMassTimeConstatUs", 5000);
     private float binocluarAssociationMassThreshold = 0;
 
     /**
@@ -53,6 +54,7 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         setPropertyTooltip("Association", "enableBinocluarAssociation", "enables left-right association");
         setPropertyTooltip("Association", "activateNonoverlapingArea", "activate non-overlaping area");
         setPropertyTooltip("Association", "binocluarAssMassThresholdPercentTh", "mass threshold for left-right association in percents of MPThreshold");
+        setPropertyTooltip("Association", "cellMassTimeConstatUs", "RC time constant of the mass of binocular cells");
     }
 
 
@@ -153,7 +155,7 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         float nextMass = 0.0f;
         int timestampDiff = lifNeurons.get(index).getLastEventTimestamp() - ev.timestamp;
         if(timestampDiff <= 0)
-            nextMass = mainEye.get(index)*(float) Math.exp((float)timestampDiff / MPTimeConstantUs) + 1.0f;
+            nextMass = mainEye.get(index)*(float) Math.exp((float)timestampDiff / cellMassTimeConstatUs) + 1.0f;
         mainEye.set(index, nextMass);
 
         // calcuates weight
@@ -279,6 +281,15 @@ public class BlurringFilterStereo extends BlurringFilter2D{
     public void setBinocluarAssMassThresholdPercentTh(float binocluarAssMassThresholdPercentTh) {
         this.binocluarAssMassThresholdPercentTh = binocluarAssMassThresholdPercentTh;
         getPrefs().putFloat("BlurringFilterStereo.binocluarAssMassThresholdPercentTh", binocluarAssMassThresholdPercentTh);
+    }
+
+    public int getCellMassTimeConstatUs() {
+        return cellMassTimeConstatUs;
+    }
+
+    public void setCellMassTimeConstatUs(int cellMassTimeConstatUs) {
+        this.cellMassTimeConstatUs = cellMassTimeConstatUs;
+        getPrefs().putInt("BlurringFilterStereo.cellMassTimeConstatUs", cellMassTimeConstatUs);
     }
 
     public void setDisparityLimit(int disparityLimit, boolean useLowLimit){
