@@ -11,22 +11,25 @@
 
 package ch.unizh.ini.jaer.projects.gesture.vlccontrol;
 
+import java.beans.*;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- *
+ * Demo of controlling VLC from jAER project.
  * @author Tobi
  */
-public class VLCControlApp extends javax.swing.JFrame {
+public class VLCControlApp extends javax.swing.JFrame implements PropertyChangeListener{
 
     VLCControl vlc=new VLCControl();
+    public VLCControl getVLCControl(){return vlc;}
+    static Logger log=Logger.getLogger("VLCControlApp");
 
     /** Creates new form VLCControlApp */
     public VLCControlApp() {
         initComponents();
-
+        vlc.getSupport().addPropertyChangeListener(this);
     }
 
     /** This method is called from within the constructor to
@@ -47,6 +50,7 @@ public class VLCControlApp extends javax.swing.JFrame {
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("VLCControl");
 
+        commandTF.setToolTipText("enter text commands here, e.g. pause, fastforward, rewind");
         commandTF.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 commandTFActionPerformed(evt);
@@ -54,7 +58,9 @@ public class VLCControlApp extends javax.swing.JFrame {
         });
 
         responseTA.setColumns(20);
+        responseTA.setEditable(false);
         responseTA.setRows(5);
+        responseTA.setToolTipText("shows the output from vlc here");
         jScrollPane1.setViewportView(responseTA);
 
         connectButton.setText("Connect");
@@ -96,8 +102,8 @@ public class VLCControlApp extends javax.swing.JFrame {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(commandTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 174, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(60, Short.MAX_VALUE))
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 223, Short.MAX_VALUE)
+                .addContainerGap())
         );
 
         pack();
@@ -119,19 +125,16 @@ public class VLCControlApp extends javax.swing.JFrame {
         try {
             if(vlc.isConnected()) vlc.disconnect();
         } catch (IOException ex) {
-            Logger.getLogger(VLCControlApp.class.getName()).log(Level.SEVERE, null, ex);
+            log.warning(ex.toString());
             responseTA.append(ex.toString()+"\n");
         }
     }//GEN-LAST:event_disconnectButtonActionPerformed
 
     private void commandTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_commandTFActionPerformed
         try {
-            String response=vlc.sendCommand(commandTF.getText());
-            if(response==null) return;
-            if(!response.endsWith("\n"))response=response+"\n";
-            responseTA.append(response);
+            vlc.sendCommand(commandTF.getText());
         } catch (IOException ex) {
-            Logger.getLogger(VLCControlApp.class.getName()).log(Level.SEVERE, null, ex);
+            log.warning(ex.toString());
             responseTA.append(ex.toString()+"\n");
         }
     }//GEN-LAST:event_commandTFActionPerformed
@@ -154,5 +157,16 @@ public class VLCControlApp extends javax.swing.JFrame {
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JTextArea responseTA;
     // End of variables declaration//GEN-END:variables
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if(evt.getPropertyName()==VLCControl.CLIENT_MESSAGE){
+            if(evt.getNewValue()!=null){
+                String s=(String)evt.getNewValue();
+                responseTA.append(s);
+                responseTA.setCaretPosition(responseTA.getText().length());
+            }
+        }
+    }
 
 }

@@ -4,17 +4,21 @@
  */
 package ch.unizh.ini.jaer.projects.gesture.vlccontrol;
 
+import java.beans.PropertyChangeSupport;
 import java.io.*;
 import java.io.IOException;
-import java.io.Reader;
 import java.nio.CharBuffer;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.net.telnet.*;
 import org.apache.commons.net.telnet.TelnetClient;
 
 /**
- *  Exposes control of VLC media player (videolan.org) from java.
+ *  Exposes control of VLC media player (videolan.org) from java. VLC must be set up to open a telnet control on localhost:4444.
+ * <p>
+ * For VLC 1.1.5, use the following setup to expose the remote control (rc) interrface for telnet control:
+ * <p>
+ * This setting is in VLC Tools/Preferences/Show settings (All)/Interface/Main interfaces. Select the "Remote Control Interface" and replace "oldrc" with "rc" in the text field.
+ * In VLC Tools/Preferences/Show settings (All)/Interface/Main interfaces/RC/TCP command input, put the string "localhost:4444" in the text field.
  *
  * @author Tobi
  */
@@ -23,11 +27,9 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
     /** VLC should be started with as "vlc --rc-host=localhost:4444" */
     public static final int VLC_PORT = 4444;
     static final Logger log = Logger.getLogger("VLCControl");
-    private BufferedReader reader = null;
-    private OutputStreamWriter writer = null;
     CharBuffer cbuf = CharBuffer.allocate(1024);
-    private static boolean addedHandlers = false;
-    private static TelnetClient tc = null; // used to communicate among instances the active client
+    private static VLCControl staticInstance = null; // used to communicate among instances the active client
+    private PropertyChangeSupport support=new PropertyChangeSupport(this);  // listeners get informed by output from VLC strings
 
     public VLCControl() {
     }
@@ -39,26 +41,13 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
     }
 
     public void connect() throws IOException {
-        tc = this; // used by reader to get input stream
+        staticInstance = this; // used by reader to get input stream
         try {
-//            if (!addedHandlers) {
-//                try {
-//                    TerminalTypeOptionHandler ttopt = new TerminalTypeOptionHandler("VT100", false, false, true, false);
-//                    EchoOptionHandler echoopt = new EchoOptionHandler(true, false, true, false);
-//                    SuppressGAOptionHandler gaopt = new SuppressGAOptionHandler(true, true, true, true);
-//                    tc.addOptionHandler(ttopt);
-//                    tc.addOptionHandler(echoopt);
-//                    tc.addOptionHandler(gaopt);
-//                    addedHandlers = true;
-//                } catch (InvalidTelnetOptionException e) {
-//                    log.warning("Error registering option handlers: " + e.getMessage());
-//                }
-//            }
-            tc.connect("localhost", VLC_PORT);
-            Thread thread = new Thread(new VLCControl());
+            staticInstance.connect("localhost", VLC_PORT);
+            Thread thread = new Thread(new VLCControl()); // starts the thread to get the text sent back from VLC
             thread.start();
-            tc.registerNotifHandler(this);
-            Runtime.getRuntime().addShutdownHook(new Thread() {
+            staticInstance.registerNotifHandler(this); // notifications call back to logger
+            Runtime.getRuntime().addShutdownHook(new Thread() { // shutdown hook here makes sure to disconnect cleanly, as long as we are not terminated
 
                 @Override
                 public void run() {
@@ -71,40 +60,15 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
                     }
                 }
             });
-//            setSoTimeout(500);
-//            reader = new BufferedReader(new InputStreamReader(getInputStream()));
-            writer = (new OutputStreamWriter(getOutputStream()));
         } catch (IOException e) {
             log.warning("couldn't connect to VLC - you may need to start VLC with command line \"vlc --rc-host=localhost:4444\"");
             throw new IOException(e);
         }
     }
 
-    /***
-     * Callback method called when TelnetClient receives an option
-     * negotiation command.
-     * <p>
-     * @param negotiation_code - type of negotiation command received
-     * (RECEIVED_DO, RECEIVED_DONT, RECEIVED_WILL, RECEIVED_WONT)
-     * <p>
-     * @param option_code - code of the option negotiated
-     * <p>
-     ***/
-    public void receivedNegotiation(int negotiation_code, int option_code) {
-        String command = null;
-        if (negotiation_code == TelnetNotificationHandler.RECEIVED_DO) {
-            command = "DO";
-        } else if (negotiation_code == TelnetNotificationHandler.RECEIVED_DONT) {
-            command = "DONT";
-        } else if (negotiation_code == TelnetNotificationHandler.RECEIVED_WILL) {
-            command = "WILL";
-        } else if (negotiation_code == TelnetNotificationHandler.RECEIVED_WONT) {
-            command = "WONT";
-        }
-        log.info("Received " + command + " for option code " + option_code);
-    }
+ 
 
-    /** Sends a string and reads the response line.
+    /** Sends a string command.  Commands do not need to be terminated with a newline.
     <p>
     <pre>
     +----[ Remote control commands ]
@@ -177,39 +141,31 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
     </pre>
 
      */
-    public String sendCommand(String s) throws IOException {
+    public void sendCommand(String s) throws IOException {
         if (!isConnected()) {
-//            throw new IOException("not connected yet");
             connect();
         }
         if (s == null) {
-            return null;
+            return;
         }
         if (!s.endsWith("\n")) {
             s = s + "\n";
         }
         getOutputStream().write(s.getBytes());
         getOutputStream().flush();
-//        writer.write(s);
-//        writer.flush();
-//        try {
-//            Thread.sleep(20);
-//        } catch (InterruptedException ex) {
-//        }
-//        cbuf.clear();
-//        reader.read(cbuf);
-//        String r = cbuf.flip().toString();
-//        log.info("sent line: " + s + "read line: " + r);
-        return "sent " + s;
+        return;
     }
+
+    public static final String CLIENT_MESSAGE="ClientMessage";
 
     /***
      * Reader thread.
      * Reads lines from the TelnetClient and echoes them
-     * on the screen.
+     * on the logger.
+     * PropertyChangeListeners are called with CLIENT_MESSAGE and String sent from VLC.
      ***/
     public void run() {
-        InputStream instr = tc.getInputStream();
+        InputStream instr = staticInstance.getInputStream();
 
         byte[] buff = new byte[1024];
         int ret_read = 0;
@@ -218,11 +174,44 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
             do {
                 ret_read = instr.read(buff);
                 if (ret_read > 0) {
-                    log.info(new String(buff, 0, ret_read));
+                    String s=new String(buff, 0, ret_read);
+                    log.info(s);
+                    staticInstance.getSupport().firePropertyChange(CLIENT_MESSAGE, null, s); // listener on static instance that actually is connected gets the message
                 }
             } while (ret_read >= 0);
         } catch (Exception e) {
             log.warning("Reader ending - Exception while reading socket:" + e.getMessage());
         }
+    }
+
+       /***
+     * Callback method called when TelnetClient receives an option
+     * negotiation command.
+     * <p>
+     * @param negotiation_code - type of negotiation command received
+     * (RECEIVED_DO, RECEIVED_DONT, RECEIVED_WILL, RECEIVED_WONT)
+     * <p>
+     * @param option_code - code of the option negotiated
+     * <p>
+     ***/
+    public void receivedNegotiation(int negotiation_code, int option_code) {
+        String command = null;
+        if (negotiation_code == TelnetNotificationHandler.RECEIVED_DO) {
+            command = "DO";
+        } else if (negotiation_code == TelnetNotificationHandler.RECEIVED_DONT) {
+            command = "DONT";
+        } else if (negotiation_code == TelnetNotificationHandler.RECEIVED_WILL) {
+            command = "WILL";
+        } else if (negotiation_code == TelnetNotificationHandler.RECEIVED_WONT) {
+            command = "WONT";
+        }
+        log.info("Received " + command + " for option code " + option_code);
+    }
+
+    /**
+     * @return the support. Listeners can get the stuff sent back from VLC with CLIENT_MESSAGE events.
+     */
+    public PropertyChangeSupport getSupport() {
+        return support;
     }
 }
