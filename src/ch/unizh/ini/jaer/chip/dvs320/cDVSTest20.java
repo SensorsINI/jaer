@@ -150,10 +150,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     public void setIntensity(float f) {
         globalIntensity = f;
     }
-
-    private boolean useOffChipCalibration=false;
-
-
+    private boolean useOffChipCalibration = false;
 
     /**
      * @return the frameData
@@ -178,8 +175,9 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     public void setUseOffChipCalibration(boolean useOffChipCalibration) {
         this.useOffChipCalibration = useOffChipCalibration;
         this.getFrameData().setUseOffChipCalibration(useOffChipCalibration);
-        if (useOffChipCalibration)
+        if (useOffChipCalibration) {
             this.getFrameData().setCalibData1();
+        }
     }
 
     /** The event extractor. Each pixel has two polarities 0 and 1.
@@ -377,7 +375,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         private ShiftedSourceBias ssn, ssp, ssnMid, sspMid;
         private ShiftedSourceBias[] ssBiases = new ShiftedSourceBias[4];
         private VPot thermometerDAC;
-        ADCHardwareInterfaceProxy adcProxy=new ADCHardwareInterfaceProxy(); // must set hardware later
+        ADCHardwareInterfaceProxy adcProxy = new ADCHardwareInterfaceProxy(); // must set hardware later
         int pos = 0;
         JPanel bPanel;
         JTabbedPane bgTabbedPane;
@@ -488,12 +486,14 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
         @Override
         public void setHardwareInterface(BiasgenHardwareInterface hardwareInterface) {
             super.setHardwareInterface(hardwareInterface);
-            if(hardwareInterface==null ){
-                if(adcProxy!=null) adcProxy.setHw(null);
-            }else if(hardwareInterface instanceof cDVSTestHardwareInterface){
-                adcProxy.setHw((cDVSTestHardwareInterface)hardwareInterface);
-            }else{
-                log.warning("cannot set ADC hardware interface proxy hardware interface to "+hardwareInterface+" because it is not a cDVSTestHardwareInterface");
+            if (hardwareInterface == null) {
+                if (adcProxy != null) {
+                    adcProxy.setHw(null);
+                }
+            } else if (hardwareInterface instanceof cDVSTestHardwareInterface) {
+                adcProxy.setHw((cDVSTestHardwareInterface) hardwareInterface);
+            } else {
+                log.warning("cannot set ADC hardware interface proxy hardware interface to " + hardwareInterface + " because it is not a cDVSTestHardwareInterface");
             }
         }
 
@@ -599,13 +599,24 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             combinedBiasShiftedSourcePanel.add(new VPotGUIControl(thermometerDAC));
             bgTabbedPane.addTab("Biases", combinedBiasShiftedSourcePanel);
             bgTabbedPane.addTab("Output control", new cDVSTest20OutputControlPanel(cDVSTest20.this));
-            final String tabTitle="ADC control";
-            bgTabbedPane.addTab(tabTitle,new ParameterControlPanel(adcProxy));
+            final String tabTitle = "ADC control";
+            bgTabbedPane.addTab(tabTitle, new ParameterControlPanel(adcProxy));
             bPanel.add(bgTabbedPane, BorderLayout.CENTER);
+            bgTabbedPane.setSelectedIndex(getPrefs().getInt("cDVSTest20.bgTabbedPaneSelectedIndex", 0));
+            bgTabbedPane.addMouseListener(new java.awt.event.MouseAdapter() {
+
+                @Override
+                public void mouseClicked(java.awt.event.MouseEvent evt) {
+                    tabbedPaneMouseClicked(evt);
+                }
+            });
             return bPanel;
         }
 
- 
+        private void tabbedPaneMouseClicked(java.awt.event.MouseEvent evt) {
+            getPrefs().putInt("cDVSTest20.bgTabbedPaneSelectedIndex", bgTabbedPane.getSelectedIndex());
+        }
+
         /** Formats the data sent to the microcontroller to load bias and other configuration. */
         @Override
         public byte[] formatConfigurationBytes(Biasgen biasgen) {
