@@ -44,6 +44,13 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         super(devNumber);
     }
 
+    @Override
+    public void open() throws HardwareInterfaceException {
+        super.open();
+        sendCPLDconfiguration();
+    }
+
+
     /** Overrides sendConfiguration to use this bias generator to format the data
      * 
      * @param biasgen the DVS320 biasgen which knows how to format the bias and bit configuration.

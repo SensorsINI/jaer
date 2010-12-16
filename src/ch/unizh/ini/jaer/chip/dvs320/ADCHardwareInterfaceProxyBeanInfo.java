@@ -33,25 +33,29 @@ public class ADCHardwareInterfaceProxyBeanInfo extends SimpleBeanInfo {
     private static final int PROPERTY_maxIdleTime = 6;
     private static final int PROPERTY_maxRefOffTime = 7;
     private static final int PROPERTY_maxRefOnTime = 8;
-    private static final int PROPERTY_maxTrackTime = 9;
-    private static final int PROPERTY_minADCchannel = 10;
-    private static final int PROPERTY_minIdleTime = 11;
-    private static final int PROPERTY_minRefOffTime = 12;
-    private static final int PROPERTY_minRefOnTime = 13;
-    private static final int PROPERTY_minTrackTime = 14;
-    private static final int PROPERTY_refOffTime = 15;
-    private static final int PROPERTY_refOnTime = 16;
-    private static final int PROPERTY_scanContinuouslyEnabled = 17;
-    private static final int PROPERTY_scanX = 18;
-    private static final int PROPERTY_scanY = 19;
-    private static final int PROPERTY_select5Tbuffer = 20;
-    private static final int PROPERTY_trackTime = 21;
-    private static final int PROPERTY_useCalibration = 22;
+    private static final int PROPERTY_maxScanX = 9;
+    private static final int PROPERTY_maxScanY = 10;
+    private static final int PROPERTY_maxTrackTime = 11;
+    private static final int PROPERTY_minADCchannel = 12;
+    private static final int PROPERTY_minIdleTime = 13;
+    private static final int PROPERTY_minRefOffTime = 14;
+    private static final int PROPERTY_minRefOnTime = 15;
+    private static final int PROPERTY_minScanX = 16;
+    private static final int PROPERTY_minScanY = 17;
+    private static final int PROPERTY_minTrackTime = 18;
+    private static final int PROPERTY_refOffTime = 19;
+    private static final int PROPERTY_refOnTime = 20;
+    private static final int PROPERTY_scanContinuouslyEnabled = 21;
+    private static final int PROPERTY_scanX = 22;
+    private static final int PROPERTY_scanY = 23;
+    private static final int PROPERTY_select5Tbuffer = 24;
+    private static final int PROPERTY_trackTime = 25;
+    private static final int PROPERTY_useCalibration = 26;
 
     // Property array 
     /*lazy PropertyDescriptor*/
     private static PropertyDescriptor[] getPdescriptor(){
-        PropertyDescriptor[] properties = new PropertyDescriptor[23];
+        PropertyDescriptor[] properties = new PropertyDescriptor[27];
     
         try {
             properties[PROPERTY_ADCchannel] = new PropertyDescriptor ( "ADCchannel", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getADCchannel", "setADCchannel" ); // NOI18N
@@ -66,11 +70,15 @@ public class ADCHardwareInterfaceProxyBeanInfo extends SimpleBeanInfo {
             properties[PROPERTY_maxIdleTime] = new PropertyDescriptor ( "maxIdleTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMaxIdleTime", null ); // NOI18N
             properties[PROPERTY_maxRefOffTime] = new PropertyDescriptor ( "maxRefOffTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMaxRefOffTime", null ); // NOI18N
             properties[PROPERTY_maxRefOnTime] = new PropertyDescriptor ( "maxRefOnTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMaxRefOnTime", null ); // NOI18N
+            properties[PROPERTY_maxScanX] = new PropertyDescriptor ( "maxScanX", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMaxScanX", null ); // NOI18N
+            properties[PROPERTY_maxScanY] = new PropertyDescriptor ( "maxScanY", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMaxScanY", null ); // NOI18N
             properties[PROPERTY_maxTrackTime] = new PropertyDescriptor ( "maxTrackTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMaxTrackTime", null ); // NOI18N
             properties[PROPERTY_minADCchannel] = new PropertyDescriptor ( "minADCchannel", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMinADCchannel", null ); // NOI18N
             properties[PROPERTY_minIdleTime] = new PropertyDescriptor ( "minIdleTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMinIdleTime", null ); // NOI18N
             properties[PROPERTY_minRefOffTime] = new PropertyDescriptor ( "minRefOffTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMinRefOffTime", null ); // NOI18N
             properties[PROPERTY_minRefOnTime] = new PropertyDescriptor ( "minRefOnTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMinRefOnTime", null ); // NOI18N
+            properties[PROPERTY_minScanX] = new PropertyDescriptor ( "minScanX", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMinScanX", null ); // NOI18N
+            properties[PROPERTY_minScanY] = new PropertyDescriptor ( "minScanY", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMinScanY", null ); // NOI18N
             properties[PROPERTY_minTrackTime] = new PropertyDescriptor ( "minTrackTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getMinTrackTime", null ); // NOI18N
             properties[PROPERTY_refOffTime] = new PropertyDescriptor ( "refOffTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getRefOffTime", "setRefOffTime" ); // NOI18N
             properties[PROPERTY_refOffTime].setShortDescription ( "Settling time for difference amplifier in us" );
@@ -78,17 +86,17 @@ public class ADCHardwareInterfaceProxyBeanInfo extends SimpleBeanInfo {
             properties[PROPERTY_refOnTime].setShortDescription ( "Settle time for reference current in us" );
             properties[PROPERTY_scanContinuouslyEnabled] = new PropertyDescriptor ( "scanContinuouslyEnabled", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "isScanContinuouslyEnabled", "setScanContinuouslyEnabled" ); // NOI18N
             properties[PROPERTY_scanContinuouslyEnabled].setDisplayName ( "Scan continuosly" );
-            properties[PROPERTY_scanContinuouslyEnabled].setShortDescription ( "Enable to scan contnuously (normal mode); disable to freeze scanner on one pixel" );
+            properties[PROPERTY_scanContinuouslyEnabled].setShortDescription ( "Enable to scan contnuously (normal mode)" );
             properties[PROPERTY_scanX] = new PropertyDescriptor ( "scanX", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getScanX", "setScanX" ); // NOI18N
-            properties[PROPERTY_scanX].setShortDescription ( "column scanner column, from left" );
+            properties[PROPERTY_scanX].setShortDescription (  "column scanner column,from left"  );
             properties[PROPERTY_scanY] = new PropertyDescriptor ( "scanY", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getScanY", "setScanY" ); // NOI18N
-            properties[PROPERTY_scanY].setShortDescription ( "row scanner row, from bottom" );
+            properties[PROPERTY_scanY].setShortDescription (  "row scanner row,from bottom"  );
             properties[PROPERTY_select5Tbuffer] = new PropertyDescriptor ( "select5Tbuffer", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "isSelect5Tbuffer", "setSelect5Tbuffer" ); // NOI18N
-            properties[PROPERTY_select5Tbuffer].setShortDescription ( "Selects 5 transistor buffer. False uses source follower buffer before track/hold" );
+            properties[PROPERTY_select5Tbuffer].setShortDescription (  "Selects5 transistor buffer.False uses source follower buffer before track/hold"  );
             properties[PROPERTY_trackTime] = new PropertyDescriptor ( "trackTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getTrackTime", "setTrackTime" ); // NOI18N
-            properties[PROPERTY_trackTime].setShortDescription ( "Settling time for reading photocurrent after pixel selection in us" );
+            properties[PROPERTY_trackTime].setShortDescription (  "Settling time for reading photocurrent after pixel selection in us"  );
             properties[PROPERTY_useCalibration] = new PropertyDescriptor ( "useCalibration", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "isUseCalibration", "setUseCalibration" ); // NOI18N
-            properties[PROPERTY_useCalibration].setShortDescription ( "true=use on-chip differencing amp to measure calibration value and subtract from each pixel reading" );
+            properties[PROPERTY_useCalibration].setShortDescription (  "true=use on-chip differencing amp to measure calibration value and subtract from each pixel reading"  );
         }
         catch(IntrospectionException e) {
             e.printStackTrace();
@@ -110,16 +118,20 @@ public class ADCHardwareInterfaceProxyBeanInfo extends SimpleBeanInfo {
         return eventSets;     }//GEN-LAST:Events
 
     // Method identifiers//GEN-FIRST:Methods
-    private static final int METHOD_resetTimestamps0 = 0;
+    private static final int METHOD_doSendConfiguration0 = 0;
+    private static final int METHOD_resetTimestamps1 = 1;
 
     // Method array 
     /*lazy MethodDescriptor*/
     private static MethodDescriptor[] getMdescriptor(){
-        MethodDescriptor[] methods = new MethodDescriptor[1];
+        MethodDescriptor[] methods = new MethodDescriptor[2];
     
         try {
-            methods[METHOD_resetTimestamps0] = new MethodDescriptor(ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class.getMethod("resetTimestamps", new Class[] {})); // NOI18N
-            methods[METHOD_resetTimestamps0].setDisplayName ( "" );
+            methods[METHOD_doSendConfiguration0] = new MethodDescriptor(ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class.getMethod("doSendConfiguration", new Class[] {})); // NOI18N
+            methods[METHOD_doSendConfiguration0].setDisplayName ( "Send configuration" );
+            methods[METHOD_doSendConfiguration0].setShortDescription ( "Sends the CPLD configuration" );
+            methods[METHOD_resetTimestamps1] = new MethodDescriptor(ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class.getMethod("resetTimestamps", new Class[] {})); // NOI18N
+            methods[METHOD_resetTimestamps1].setDisplayName ( "" );
         }
         catch( Exception e) {}//GEN-HEADEREND:Methods
 

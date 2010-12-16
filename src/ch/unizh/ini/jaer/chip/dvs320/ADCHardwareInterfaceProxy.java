@@ -51,6 +51,13 @@ public class ADCHardwareInterfaceProxy {
         this.hw = hw;
     }
 
+    public void doSendConfiguration() throws HardwareInterfaceException {
+         if (!checkHw()) {
+            return;
+        }
+        hw.sendCPLDconfiguration();
+    }
+
     public void setADCEnabled(boolean yes) throws HardwareInterfaceException {
         if (!checkHw()) {
             return;
