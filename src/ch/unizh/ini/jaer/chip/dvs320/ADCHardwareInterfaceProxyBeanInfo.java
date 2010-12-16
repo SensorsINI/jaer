@@ -41,14 +41,17 @@ public class ADCHardwareInterfaceProxyBeanInfo extends SimpleBeanInfo {
     private static final int PROPERTY_minTrackTime = 14;
     private static final int PROPERTY_refOffTime = 15;
     private static final int PROPERTY_refOnTime = 16;
-    private static final int PROPERTY_select5Tbuffer = 17;
-    private static final int PROPERTY_trackTime = 18;
-    private static final int PROPERTY_useCalibration = 19;
+    private static final int PROPERTY_scanContinuouslyEnabled = 17;
+    private static final int PROPERTY_scanX = 18;
+    private static final int PROPERTY_scanY = 19;
+    private static final int PROPERTY_select5Tbuffer = 20;
+    private static final int PROPERTY_trackTime = 21;
+    private static final int PROPERTY_useCalibration = 22;
 
     // Property array 
     /*lazy PropertyDescriptor*/
     private static PropertyDescriptor[] getPdescriptor(){
-        PropertyDescriptor[] properties = new PropertyDescriptor[20];
+        PropertyDescriptor[] properties = new PropertyDescriptor[23];
     
         try {
             properties[PROPERTY_ADCchannel] = new PropertyDescriptor ( "ADCchannel", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getADCchannel", "setADCchannel" ); // NOI18N
@@ -73,6 +76,13 @@ public class ADCHardwareInterfaceProxyBeanInfo extends SimpleBeanInfo {
             properties[PROPERTY_refOffTime].setShortDescription ( "Settling time for difference amplifier in us" );
             properties[PROPERTY_refOnTime] = new PropertyDescriptor ( "refOnTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getRefOnTime", "setRefOnTime" ); // NOI18N
             properties[PROPERTY_refOnTime].setShortDescription ( "Settle time for reference current in us" );
+            properties[PROPERTY_scanContinuouslyEnabled] = new PropertyDescriptor ( "scanContinuouslyEnabled", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "isScanContinuouslyEnabled", "setScanContinuouslyEnabled" ); // NOI18N
+            properties[PROPERTY_scanContinuouslyEnabled].setDisplayName ( "Scan continuosly" );
+            properties[PROPERTY_scanContinuouslyEnabled].setShortDescription ( "Enable to scan contnuously (normal mode); disable to freeze scanner on one pixel" );
+            properties[PROPERTY_scanX] = new PropertyDescriptor ( "scanX", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getScanX", "setScanX" ); // NOI18N
+            properties[PROPERTY_scanX].setShortDescription ( "column scanner column, from left" );
+            properties[PROPERTY_scanY] = new PropertyDescriptor ( "scanY", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getScanY", "setScanY" ); // NOI18N
+            properties[PROPERTY_scanY].setShortDescription ( "row scanner row, from bottom" );
             properties[PROPERTY_select5Tbuffer] = new PropertyDescriptor ( "select5Tbuffer", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "isSelect5Tbuffer", "setSelect5Tbuffer" ); // NOI18N
             properties[PROPERTY_select5Tbuffer].setShortDescription ( "Selects 5 transistor buffer. False uses source follower buffer before track/hold" );
             properties[PROPERTY_trackTime] = new PropertyDescriptor ( "trackTime", ch.unizh.ini.jaer.chip.dvs320.ADCHardwareInterfaceProxy.class, "getTrackTime", "setTrackTime" ); // NOI18N

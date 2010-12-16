@@ -23,6 +23,7 @@ public class ADCHardwareInterfaceProxy {
     private final int minADCchannel = 0;
     private final int maxADCchannel = 3;
     private boolean printedWarning = false;
+    private final int minScanX = 0, maxScanX = cDVSTest20.SIZE_X_CDVS - 1, minScanY = 0, maxScanY = cDVSTest20.SIZE_Y_CDVS - 1;
     private cDVSTestHardwareInterface hw;
 
     public ADCHardwareInterfaceProxy() {
@@ -215,5 +216,74 @@ public class ADCHardwareInterfaceProxy {
     public int getMaxRefOffTime() {
         return maxRefOffTime;
     }
-    // delegated methods to hw
+
+    public void setScanY(int scanY) {
+        if (!checkHw()) {
+            return;
+        }
+        hw.setScanY(scanY);
+    }
+
+    public void setScanX(int scanX) {
+        if (!checkHw()) {
+            return;
+        }
+        hw.setScanX(scanX);
+    }
+
+    public void setScanContinuouslyEnabled(boolean scanContinuouslyEnabled) {
+        if (!checkHw()) {
+            return;
+        }
+        hw.setScanContinuouslyEnabled(scanContinuouslyEnabled);
+    }
+
+    public boolean isScanContinuouslyEnabled() {
+        if (!checkHw()) {
+            return false;
+        }
+        return hw.isScanContinuouslyEnabled();
+    }
+
+    public int getScanY() {
+        if (!checkHw()) {
+            return -1;
+        }
+        return hw.getScanY();
+    }
+
+    public int getScanX() {
+        if (!checkHw()) {
+            return -1;
+        }
+        return hw.getScanX();
+    }
+
+    /**
+     * @return the minScanX
+     */
+    public int getMinScanX() {
+        return minScanX;
+    }
+
+    /**
+     * @return the maxScanX
+     */
+    public int getMaxScanX() {
+        return maxScanX;
+    }
+
+    /**
+     * @return the minScanY
+     */
+    public int getMinScanY() {
+        return minScanY;
+    }
+
+    /**
+     * @return the maxScanY
+     */
+    public int getMaxScanY() {
+        return maxScanY;
+    }
 }
