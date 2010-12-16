@@ -19,7 +19,7 @@ import java.math.BigInteger;
 import java.util.prefs.Preferences;
 
 /**
- * Adds functionality of cDVSTest10 retina test chip to base classes for Cypress FX2 interface.
+ * Adds functionality of cDVSTest retina test chips to base classes for Cypress FX2 interface.
  *
  * @author tobi
  */
@@ -62,8 +62,8 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
     public void setTrackTime(short trackTimeUs) {
         try {
             TrackTime = trackTimeUs;  // TODO bound values here
-            sendCPLDconfiguration();
             prefs.putInt("cDVSTestHardwareInterface.TrackTime", TrackTime);
+            sendCPLDconfiguration();
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
@@ -72,8 +72,8 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
     public void setIdleTime(short trackTimeUs) {
         try {
             IdleTime = trackTimeUs;// TODO bound values here
-            sendCPLDconfiguration();
             prefs.putInt("cDVSTestHardwareInterface.IdleTime", IdleTime);
+            sendCPLDconfiguration();
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
@@ -92,8 +92,8 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
     public void setRefOffTime(short trackTimeUs) {
         try {
             RefOffTime = trackTimeUs;// TODO bound values here
-            sendCPLDconfiguration();
             prefs.putInt("cDVSTestHardwareInterface.RefOffTime", RefOffTime);
+            sendCPLDconfiguration();
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
@@ -102,8 +102,8 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
     public void setSelect5Tbuffer(boolean se) {
         try {
             Select5Tbuffer = se;
-            sendCPLDconfiguration();
             prefs.putBoolean("cDVSTestHardwareInterface.Select5Tbuffer", Select5Tbuffer);
+            sendCPLDconfiguration();
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
@@ -112,8 +112,8 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
     public void setUseCalibration(boolean se) {
         try {
             UseCalibration = se;
-            sendCPLDconfiguration();
             prefs.putBoolean("cDVSTestHardwareInterface.UseCalibration", UseCalibration);
+            sendCPLDconfiguration();
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
@@ -129,8 +129,8 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
                 chan = 3;
             }
             ADCchannel = chan;
-            sendCPLDconfiguration();
             prefs.putInt("cDVSTestHardwareInterface.ADCchannel", ADCchannel);
+            sendCPLDconfiguration();
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
@@ -159,6 +159,14 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
         StringBuilder s = new StringBuilder();
 
+        // scanner control
+        final int SCANXY_NBITS = 6;
+        s.append(getBitString(isScanContinuouslyEnabled() ? (short) 1 : (short) 0, (short) 1));
+        s.append(getBitString((short) getScanX(), (short) SCANXY_NBITS));
+        s.append(getBitString((short) getScanY(), (short) SCANXY_NBITS));
+        nBits+=1+2*SCANXY_NBITS;
+        
+        // ADC params
         s.append(getBitString((short) (getIdleTime() * 15), (short) 16)); // multiplication with 15 to get from us to clockcycles
         nBits += 16;
         s.append(getBitString((short) (getRefOffTime() * 15), (short) 16)); // multiplication with 15 to get from us to clockcycles
@@ -170,6 +178,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         s.append(getBitString(ADCword, ADCconfigLength));
         nBits += ADCconfigLength;
 
+        // readout pathway
         if (isUseCalibration()) {
             s.append(getBitString((short) 1, (short) 1));
         } else {
@@ -213,12 +222,13 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
     }
 
     public void setADCEnabled(boolean yes) throws HardwareInterfaceException {
+        this.adcEnabled = yes;
+        prefs.putBoolean("cDVSTestHardwareInterface.adcEnabled", yes);
         if (yes) {
             startADC();
         } else {
             stopADC();
         }
-        this.adcEnabled = yes;
     }
 
     @Override
@@ -566,8 +576,13 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
      * @param scanContinuouslyEnabled the scanContinuouslyEnabled to set
      */
     public void setScanContinuouslyEnabled(boolean scanContinuouslyEnabled) {
-        this.scanContinuouslyEnabled = scanContinuouslyEnabled;
-        prefs.putBoolean("cDVSTestHardwareInterface.scanContinuouslyEnabled", scanContinuouslyEnabled);
+        try {
+            this.scanContinuouslyEnabled = scanContinuouslyEnabled;
+            prefs.putBoolean("cDVSTestHardwareInterface.scanContinuouslyEnabled", scanContinuouslyEnabled);
+            sendCPLDconfiguration();
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
     }
 
     /**
@@ -586,8 +601,13 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         } else if (scanX >= cDVSTest20.SIZE_X_CDVS) {
             scanX = cDVSTest20.SIZE_X_CDVS - 1;
         }
-        this.scanX = scanX;
-        prefs.putInt("cDVSTestHardwareInterface.scanX", scanX);
+        try {
+            this.scanX = scanX;
+            prefs.putInt("cDVSTestHardwareInterface.scanX", scanX);
+            sendCPLDconfiguration();
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
     }
 
     /**
@@ -601,13 +621,18 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
      * @param scanY the scanY to set
      */
     public void setScanY(int scanY) {
-        this.scanY = scanY;
         if (scanY < 0) {
             scanY = 0;
         } else if (scanY >= cDVSTest20.SIZE_Y_CDVS) {
             scanY = cDVSTest20.SIZE_Y_CDVS - 1;
         }
-        prefs.putInt("cDVSTestHardwareInterface.scanY", scanY);
+        try {
+            this.scanY = scanY;
+            prefs.putInt("cDVSTestHardwareInterface.scanY", scanY);
+            sendCPLDconfiguration();
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
     }
 
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
