@@ -74,6 +74,7 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
     }
 
     /** Sends a string command.  Commands do not need to be terminated with a newline.
+     * Sending too many commands too quickly can cause VLC to crash.
     <p>
     <pre>
     +----[ Remote control commands ]
@@ -208,6 +209,8 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
             }
         } catch (InterruptedException e) {
             return null;
+        }finally{
+            staticInstance.getSupport().removePropertyChangeListener(listen);
         }
         return listen.s;
     }

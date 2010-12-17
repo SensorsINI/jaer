@@ -11,10 +11,14 @@
 
 package ch.unizh.ini.jaer.projects.gesture.vlccontrol;
 
+import java.awt.event.KeyEvent;
 import java.beans.*;
 import java.io.IOException;
-import java.util.logging.Level;
+import java.util.*;
+import java.util.LinkedList;
+import java.util.ListIterator;
 import java.util.logging.Logger;
+import java.util.prefs.Preferences;
 
 /**
  * Demo of controlling VLC from jAER project.
@@ -25,11 +29,41 @@ public class VLCControlApp extends javax.swing.JFrame implements PropertyChangeL
     VLCControl vlc=new VLCControl();
     public VLCControl getVLCControl(){return vlc;}
     static Logger log=Logger.getLogger("VLCControlApp");
+    static Preferences prefs=Preferences.userNodeForPackage(VLCControlApp.class);
+    ArrayList<String> hist=new ArrayList();
+    final int MAX_CMDS=20;
+    int idx=0;
 
     /** Creates new form VLCControlApp */
     public VLCControlApp() {
         initComponents();
         vlc.getSupport().addPropertyChangeListener(this);
+        commandTF.setText(prefs.get("lastcommand", ""));
+        putCmd("fastforward");
+        putCmd("rewind");
+        putCmd("volup 1");
+        putCmd("voldown 1");
+        putCmd("pause");
+        putCmd(prefs.get("lastcommand","pause"));
+    }
+
+
+    final void putCmd(String s){
+        if(s==null || s.isEmpty()) return;
+        if(s.equals(hist.get(hist.size()-1))) return;
+        hist.add(s);
+        idx++;
+    }
+
+
+    String prevCmd(){
+        if(idx==0) return hist.get(0);
+        return hist.get(idx-1);
+    }
+
+    String nextCmd(){
+        if(idx==hist.size()-1) return hist.get(hist.size()-1);
+        return hist.get(idx+1);
     }
 
     /** This method is called from within the constructor to
@@ -46,8 +80,6 @@ public class VLCControlApp extends javax.swing.JFrame implements PropertyChangeL
         responseTA = new javax.swing.JTextArea();
         connectButton = new javax.swing.JButton();
         disconnectButton = new javax.swing.JButton();
-        queryTF = new javax.swing.JTextField();
-        jLabel1 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("VLCControl");
@@ -56,6 +88,14 @@ public class VLCControlApp extends javax.swing.JFrame implements PropertyChangeL
         commandTF.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 commandTFActionPerformed(evt);
+            }
+        });
+        commandTF.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                commandTFKeyReleased(evt);
+            }
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                commandTFKeyTyped(evt);
             }
         });
 
@@ -79,33 +119,19 @@ public class VLCControlApp extends javax.swing.JFrame implements PropertyChangeL
             }
         });
 
-        queryTF.setToolTipText("enter query here, e.g. get_time");
-        queryTF.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                queryTFActionPerformed(evt);
-            }
-        });
-
-        jLabel1.setText("?");
-
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 380, Short.MAX_VALUE)
-                    .addGroup(layout.createSequentialGroup()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 380, Short.MAX_VALUE)
+                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
                         .addComponent(connectButton)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(disconnectButton))
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                        .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
-                            .addComponent(jLabel1)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addComponent(queryTF))
-                        .addComponent(commandTF, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 202, Short.MAX_VALUE)))
+                    .addComponent(commandTF, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 380, Short.MAX_VALUE))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -118,11 +144,7 @@ public class VLCControlApp extends javax.swing.JFrame implements PropertyChangeL
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(commandTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(queryTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel1))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 197, Short.MAX_VALUE)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 223, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
@@ -150,20 +172,36 @@ public class VLCControlApp extends javax.swing.JFrame implements PropertyChangeL
 
     private void commandTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_commandTFActionPerformed
         try {
-            vlc.sendCommand(commandTF.getText());
+            String s=commandTF.getText();
+            prefs.put("lastcommand", s);
+            putCmd(s);
+            vlc.sendCommand(s);
         } catch (IOException ex) {
             log.warning(ex.toString());
         }
     }//GEN-LAST:event_commandTFActionPerformed
 
-    private void queryTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_queryTFActionPerformed
-          try {
-            vlc.query(queryTF.getText());
-        } catch (IOException ex) {
-            log.warning(ex.toString());
-        }
+    private void commandTFKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_commandTFKeyTyped
 
-    }//GEN-LAST:event_queryTFActionPerformed
+    }//GEN-LAST:event_commandTFKeyTyped
+
+    private void commandTFKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_commandTFKeyReleased
+         int code=evt.getKeyCode();
+        switch(code){
+            case KeyEvent.VK_UP:
+                if(idx>0){
+                    idx--;
+                    commandTF.setText(hist.get(idx));
+                }
+               break;
+            case KeyEvent.VK_DOWN:
+                if(idx<hist.size()-1){
+                    idx++;
+                commandTF.setText(hist.get(idx));
+                }
+                break;
+        }
+    }//GEN-LAST:event_commandTFKeyReleased
 
     /**
     * @param args the command line arguments
@@ -180,9 +218,7 @@ public class VLCControlApp extends javax.swing.JFrame implements PropertyChangeL
     private javax.swing.JTextField commandTF;
     private javax.swing.JButton connectButton;
     private javax.swing.JButton disconnectButton;
-    private javax.swing.JLabel jLabel1;
     private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JTextField queryTF;
     private javax.swing.JTextArea responseTA;
     // End of variables declaration//GEN-END:variables
 
