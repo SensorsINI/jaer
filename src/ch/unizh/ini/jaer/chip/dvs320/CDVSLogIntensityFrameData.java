@@ -18,7 +18,7 @@ public class CDVSLogIntensityFrameData {
     public static final int WIDTH=cDVSTest20.SIZE_X_CDVS, HEIGHT=cDVSTest20.SIZE_Y_CDVS;
     private static final int NUMSAMPLES=WIDTH*HEIGHT;
     private int timestamp=0; // timestamp of starting sample
-    private static int MAX_ADC_VALUE=1023;
+    private static int MAX_ADC_VALUE=cDVSTest20.MAX_ADC;
     
     private int[] data1=new int[NUMSAMPLES], data2=new int[NUMSAMPLES];
     

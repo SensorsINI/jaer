@@ -79,7 +79,7 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
     /** Address-type refers to data if is it an "address". This data is either an AE address or ADC reading.*/
     public static final int ADDRESS_TYPE_MASK = 0x2000, EVENT_ADDRESS_MASK = POLMASK | XMASK | YMASK, ADDRESS_TYPE_EVENT = 0x0000, ADDRESS_TYPE_ADC = 0x2000;
     /** For ADC data, the data is defined by the ADC channel and whether it is the first ADC value from the scanner. */
-    public static final int ADC_TYPE_MASK = 0x1c00, ADC_DATA_MASK = 0x3ff, ADC_CHANNEL_MASK = 0x1800, ADC_START_BIT = 0x0400;
+    public static final int ADC_TYPE_MASK = 0x1000, ADC_DATA_MASK = 0xfff, ADC_START_BIT = 0x1000, ADC_CHANNEL_MASK = 0x0000; // right now there is no channel info in the data word
     public static final int MAX_ADC = (int) ((1 << 12) - 1);
     /** The computed intensity value. */
     private float globalIntensity = 0;
