@@ -43,8 +43,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     public int maxClusters = 200;
     public int dsx = 100;
     public int dsy = 100;
+    public int outputSubSample = 10;
     public short[] xHistogram;
-
     public DatagramSocket socket;
     public InetAddress address;
     public ClusterOSCInterface oscInterface = new ClusterOSCInterface();
@@ -90,6 +90,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     private boolean showClusterMass = getPrefs().getBoolean("BlurringTunnelTracker.showClusterMass",false);
     private float maximumClusterLifetimeMs = getPrefs().getFloat("BlurringTunnelTracker.maximumClusterLifetimeMs",100.0f);
 
+    private int inputCount = 0;
     /**
      * Creates a new instance of BlurringTunnelTracker.
      * @param chip
@@ -223,7 +224,13 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 
         update(this,new UpdateMessage(this,out,out.getLastTimestamp()));
         //if(udpEnabled)sendOutput(in);
-        if(oscEnabled)sendOSC(in);
+        if(oscEnabled){
+            if(inputCount == outputSubSample){
+                inputCount = 0;
+                sendOSC(in);
+            }
+            inputCount++;
+        }
 
         return out;
     }
@@ -1471,7 +1478,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             }
 
             // Create cluster for the rest cell groups
-            if ( cgCollection.size() != 0 ){
+            if ( !cgCollection.isEmpty() ){
                 for ( CellGroup cg:cgCollection ){
                     track(cg,msg.packet.getDurationUs());
                 }
