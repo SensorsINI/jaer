@@ -62,6 +62,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private float eventRateScaleMax = getPrefs().getFloat("Info.eventRateScaleMax", 1e5f);
     private boolean timeScaling = getPrefs().getBoolean("Info.timeScaling", true);
     private boolean showRateTrace = getBoolean("showRateTrace", true);
+    public final int MAX_SAMPLES=1000; // to avoid running out of memory
+    private int maxSamples=getInt("maxSamples",MAX_SAMPLES);
     private long dataFileTimestampStartTimeMs = 0;
     private long wrappingCorrectionMs = 0;
     private long absoluteStartTimeMs = 0;
@@ -74,7 +76,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     private class RateHistory {
 
-        ArrayList<RateSample> rateSamples = new ArrayList();
+
+        ArrayList<RateSample> rateSamples = new ArrayList(getMaxSamples());
         float startTime = Float.MAX_VALUE, endTime = Float.MIN_VALUE;
         float minRate = Float.MAX_VALUE, maxRate = Float.MIN_VALUE;
         TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.BOLD, 24));
@@ -88,6 +91,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         }
 
         void addSample(float time, float rate) {
+            if(rateSamples.size()>=getMaxSamples()){
+                clear();
+            }
             rateSamples.add(new RateSample(time, rate));
             if (time < startTime) {
                 startTime = time;
@@ -169,6 +175,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         setPropertyTooltip("eventRate", "shows average event rate");
         setPropertyTooltip("eventRateTauMs", "lowpass time constant in ms for filtering event rate");
         setPropertyTooltip("showRateTrace", "shows a historical trace of event rate");
+        setPropertyTooltip("maxSamples","maximum number of samples before clearing rate history");
     }
 
     /** handles tricky property changes coming from AEViewer and AEFileInputStream */
@@ -538,5 +545,23 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public void setShowRateTrace(boolean showRateTrace) {
         this.showRateTrace = showRateTrace;
         putBoolean("showRateTrace", showRateTrace);
+    }
+
+    /**
+     * @return the maxSamples
+     */
+    public int getMaxSamples() {
+        return maxSamples;
+    }
+
+    /**
+     * @param maxSamples the maxSamples to set
+     */
+    public void setMaxSamples(int maxSamples) {
+        int old=this.maxSamples;
+        if(maxSamples<100) maxSamples=100;
+        this.maxSamples = maxSamples;
+        putInt("maxSamples",maxSamples);
+        getSupport().firePropertyChange("maxSamples", old, maxSamples);
     }
 }
