@@ -80,7 +80,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     protected float[][][] fr; // this is legacy data that we render here to the screen
     protected RenderingFrame frameData; // this is new form of pixel data to render
     protected GLU glu; // instance this if we need glu calls on context
-    protected GLUT glut = new GLUT();
+    protected GLUT glut = null;
     protected Logger log = Logger.getLogger("Graphics");
     protected boolean openGLEnabled = prefs.getBoolean("ChipCanvas.openGLEnabled", false);
     private float origin3dx = prefs.getInt("ChipCanvas.origin3dx", 0);
@@ -120,6 +120,15 @@ public class ChipCanvas implements GLEventListener, Observer {
     /** Creates a new instance of ChipCanvas */
     public ChipCanvas(Chip2D chip) {
         this.chip = chip;
+
+        try{
+            glut=new GLUT();
+        }catch(NoClassDefFoundError err){
+            log.warning("Could not construct GLUT object as the OpenGL utilities helper. There is some problem with your JOGL libraries."
+                    + "It could be that you are trying to run a 64-bit JVM under linux. Try using a 32-bit Java Virtual Machine (JVM) instead, because"
+                    + "the jAER JOGL native libraries are built for 32-bit JVMs.");
+            throw err;
+        }
 
         // design capabilities of opengl canvas
         GLCapabilities caps = new GLCapabilities();
