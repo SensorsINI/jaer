@@ -36,7 +36,7 @@ import ch.unizh.ini.jaer.chip.retina.DVS128;
 public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, MultiChip{
 
     /** Maximum number of network cameras in the linear array. */
-    public static final int MAX_NUM_CAMERAS = 6;
+    public static final int MAX_NUM_CAMERAS = 1;
     /** Width in pixels of each camera - same as DVS128. */
     public static final int CAM_WIDTH = 128;
 

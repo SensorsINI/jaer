@@ -41,8 +41,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     public int csx, csy, maxHistogramX, packetCounter;
     public int commandPort = 20021;
     public int maxClusters = 200;
-    public int dsx = 100;
-    public int dsy = 100;
     public int outputSubSample = 10;
     public short[] xHistogram;
     public DatagramSocket socket;
@@ -64,13 +62,14 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     /**
      * keeps track of absolute cluster number
      */
-    protected int clusterCounter = 0;
+    protected int clusterCounter = 1;
     /**
      * random
      */
     protected Random random = new Random();
     private int numVelocityPoints = getPrefs().getInt("BlurringTunnelTracker.numVelocityPoints",15);
     private int minCellsPerCluster = getPrefs().getInt("BlurringTunnelTracker.minCellsPerCluster",20);
+    private int clusterRadius = getPrefs().getInt("BlurringTunnelTracker.clusterRadius",15);
     private boolean pathsEnabled = getPrefs().getBoolean("BlurringTunnelTracker.pathsEnabled",true);
     //private boolean udpEnabled = getPrefs().getBoolean("BlurringTunnelTracker.udpEnabled",true);
     private boolean oscEnabled = getPrefs().getBoolean("BlurringTunnelTracker.oscEnabled",true);
@@ -80,7 +79,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     //private boolean sendSize = getPrefs().getBoolean("BlurringTunnelTracker.sendSize",false);
     private boolean sendActivity = getPrefs().getBoolean("BlurringTunnelTracker.sendActivity",false);
     private int pathLength = getPrefs().getInt("BlurringTunnelTracker.pathLength", 50);
-    private boolean useVelocity = getPrefs().getBoolean("BlurringTunnelTracker.useVelocity",true); // enabling this enables both computation and rendering of cluster velocities
     private boolean showClusters = getPrefs().getBoolean("BlurringTunnelTracker.showClusters",true);
     private float velAngDiffDegToNotMerge = getPrefs().getFloat("BlurringTunnelTracker.velAngDiffDegToNotMerge",60.0f);
     private boolean showClusterNumber = getPrefs().getBoolean("BlurringTunnelTracker.showClusterNumber",false);
@@ -102,7 +100,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         final String movement = "Movement", disp = "Display", global = "Global", output = "Output", update = "Update", logging = "Logging";
         setPropertyTooltip(global,"maximumClusterLifetimeMs","upper limit of cluster lifetime. It increases by when the cluster is properly updated. Otherwise, it decreases. When the lifetime becomes zero, the cluster will be expired.");
         setPropertyTooltip(global,"minCellsPerCluster","the minimal amount of active cells in a cell group to be tracked");
-        setPropertyTooltip(output,"udpEnabled","creates UDP output of the observed activities and cluster ");
+        setPropertyTooltip(global,"clusterRadius","size of the cluster boxes");
+	setPropertyTooltip(output,"udpEnabled","creates UDP output of the observed activities and cluster ");
         setPropertyTooltip(output,"oscEnabled","enables a OSC output of the tracked information");
         setPropertyTooltip(output,"sendActivity","should a histogram of the x-activity be send out");
         setPropertyTooltip(output,"activityDecayFactor","how fast should the x-activity histogram decay");
@@ -139,47 +138,47 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     you start with. each time we merge two clusters, we start over, until there are no more merges on iteration.
     for each cluster, if it is close to another cluster then merge them and start over.
      */
-    private void mergeClusters (){
-        boolean mergePending;
-        Cluster c1 = null;
-        Cluster c2 = null;
-        do{
-            mergePending = false;
-            int nc = clusters.size();
-            outer:
-            for ( int i = 0 ; i < nc ; i++ ){
-                c1 = clusters.get(i);
-                for ( int j = i + 1 ; j < nc ; j++ ){
-                    c2 = clusters.get(j); // getString the other cluster
-                    final boolean overlapping = c1.distanceTo(c2) < ( c1.getMaxRadius() + c2.getMaxRadius() );
-                    boolean velSimilar = true; // start assuming velocities are similar
-                    if ( overlapping && velAngDiffDegToNotMerge > 0 && c1.isVelocityValid() && c2.isVelocityValid() && c1.velocityAngleTo(c2) > velAngDiffDegToNotMerge * Math.PI / 180 ){
-                        // if velocities valid for both and velocities are sufficiently different
-                        velSimilar = false; // then flag them as different velocities
-                    }
-                    if ( overlapping && velSimilar ){
-                        // if cluster is close to another cluster, merge them
-                        // if distance is less than sum of radii merge them and if velAngle < threshold
-                        mergePending = true;
-                        break outer; // break out of the outer loop
-                    }
-                }
-            }
-            if ( mergePending && c1 != null && c2 != null ){
-//                System.out.print("Cluster_"+c1.getClusterNumber()+"("+c1.firstEventTimestamp+") and cluster_"+c2.getClusterNumber()+"("+c2.firstEventTimestamp+ ") are merged to ");
-                clusters.remove(c1);
-                clusters.remove(c2);
-                clusters.add(new Cluster(c1,c2));
-
-//                System.out.print("Age of "+clusters.size()+" clusters after merging : ");
-//                for (Cluster c : clusters) {
-//                    System.out.print("cluster("+c.getClusterNumber()+")-"+c.getAgeUpdates()+", ");
+//    private void mergeClusters (){
+//        boolean mergePending;
+//        Cluster c1 = null;
+//        Cluster c2 = null;
+//        do{
+//            mergePending = false;
+//            int nc = clusters.size();
+//            outer:
+//            for ( int i = 0 ; i < nc ; i++ ){
+//                c1 = clusters.get(i);
+//                for ( int j = i + 1 ; j < nc ; j++ ){
+//                    c2 = clusters.get(j); // getString the other cluster
+//                    final boolean overlapping = c1.distanceTo(c2) < ( c1.getMaxRadius() + c2.getMaxRadius() );
+//                    boolean velSimilar = true; // start assuming velocities are similar
+//                    if ( overlapping && velAngDiffDegToNotMerge > 0 && c1.isVelocityValid() && c2.isVelocityValid() && c1.velocityAngleTo(c2) > velAngDiffDegToNotMerge * Math.PI / 180 ){
+//                        // if velocities valid for both and velocities are sufficiently different
+//                        velSimilar = false; // then flag them as different velocities
+//                    }
+//                    if ( overlapping && velSimilar ){
+//                        // if cluster is close to another cluster, merge them
+//                        // if distance is less than sum of radii merge them and if velAngle < threshold
+//                        mergePending = true;
+//                        break outer; // break out of the outer loop
+//                    }
 //                }
-//                System.out.println("");
-            }
-        } while ( mergePending );
-
-    }
+//            }
+//            if ( mergePending && c1 != null && c2 != null ){
+////                System.out.print("Cluster_"+c1.getClusterNumber()+"("+c1.firstEventTimestamp+") and cluster_"+c2.getClusterNumber()+"("+c2.firstEventTimestamp+ ") are merged to ");
+//                clusters.remove(c1);
+//                clusters.remove(c2);
+//                clusters.add(new Cluster(c1,c2));
+//
+////                System.out.print("Age of "+clusters.size()+" clusters after merging : ");
+////                for (Cluster c : clusters) {
+////                    System.out.print("cluster("+c.getClusterNumber()+")-"+c.getAgeUpdates()+", ");
+////                }
+////                System.out.println("");
+//            }
+//        } while ( mergePending );
+//
+//    }
 
     public void initFilter (){
         resetFilter();
@@ -188,11 +187,11 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     /**
      * Prunes out old clusters that don't have support or that should be purged for some other reason.
      */
-    private void pruneClusters (){
-//        System.out.println(pruneList.size()+ " clusters are removed");
-        clusters.removeAll(pruneList);
-        pruneList.clear();
-    }
+//    private void pruneClusters (){
+////        System.out.println(pruneList.size()+ " clusters are removed");
+//        clusters.removeAll(pruneList);
+//        pruneList.clear();
+//    }
 
     /** This method updates the list of clusters, pruning and
      * merging clusters and updating positions.
@@ -201,8 +200,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
      * @param t the global timestamp of the update.
      */
     private void updateClusterList (int t){
-        mergeClusters();
-        pruneClusters();
+//        mergeClusters();
+//        pruneClusters();
         updateClusterPaths(t);
     }
 
@@ -467,9 +466,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         for ( Cluster c:clusters ){
             float dx = c.distanceToX(cg);
             float dy = c.distanceToY(cg);
-            float aveRadius = ( c.getMaxRadius() + cg.getOutterRadiusPixels() ) / 2.0f;
 
-            if ( !c.isUpdated() && dx < aveRadius && dy < aveRadius ){
+            if ( !c.isUpdated() && dx < clusterRadius && dy < clusterRadius ){
                 if ( dx + dy < minDistance ){
                     closest = c;
                     minDistance = dx + dy;
@@ -516,10 +514,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
          * used to flag invalid or uncomputable velocityPPT
          */
         private boolean velocityValid = false;
-        /**
-         * in chip chip pixels
-         */
-        private float innerRadius, outterRadius, maxRadius;
         /**
          * true if the cluster is hitting any adge of the frame
          */
@@ -599,7 +593,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             Color c = Color.getHSBColor(hue,1f,1f);
             setColor(c);
             setClusterNumber(clusterCounter++);
-            maxRadius = 0;
         }
 
         /** Constructs a cluster with the first cell group
@@ -615,8 +608,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             numEvents = cg.getNumEvents();
             numCells = cg.getNumMemberCells();
             mass = cg.getMass();
+	    color = cg.getColor();
             increaseAgeUs(initialAge);
-            setRadius(cg, 0f, mass);
             hitEdge = cg.isHitEdge();
             if ( hitEdge ){
                 ageUs = (int)( 1000 * maximumClusterLifetimeMs );
@@ -672,10 +665,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             velocityPPS.y = older.velocityPPS.y;
             velocityValid = older.velocityValid;
             ageUs = older.ageUs;
+	    color = older.color;
 
-            innerRadius = one.mass > two.mass ? one.innerRadius : two.innerRadius;
-            outterRadius = one.mass > two.mass ? one.outterRadius : two.outterRadius;
-            maxRadius = one.mass > two.mass ? one.maxRadius : two.maxRadius;
             setColor(older.getColor());
 
             hitEdge = one.hasHitEdge() | two.hasHitEdge();
@@ -697,6 +688,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
          * @param drawable area to draw this.
          */
         public void draw (GLAutoDrawable drawable){
+            //log.log(Level.INFO, "draw {0}", String.format("#%d", hashCode()));
             final float BOX_LINE_WIDTH = 2f; // in chip
             final float PATH_POINT_SIZE = 4f;
             final float VEL_LINE_WIDTH = 4f;
@@ -710,7 +702,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             gl.glLineWidth(BOX_LINE_WIDTH);
 
             // draw cluster rectangle
-            drawBox(gl,x,y,(int)maxRadius);
+            drawBox(gl,x,y,clusterRadius);
 
             gl.glPointSize(PATH_POINT_SIZE);
 
@@ -832,18 +824,11 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
                 increaseAgeUs(cg.getLastEventTimestamp() - lastEventTimestamp);
                 lastEventTimestamp = cg.getLastEventTimestamp();
             }
-                
-            if ( maxRadius == 0 ){
-                birthLocation = cg.getLocation();
-                firstEventTimestamp = cg.getFirstEventTimestamp();
-            }
 
             hitEdge = cg.isHitEdge();
             if ( hitEdge ){
                 ageUs = (int)( 1000 * maximumClusterLifetimeMs );
             }
-
-            setRadius(cg, curMass, cgMass);
         }
 
         /** Measures distance from cluster center to a cell group.
@@ -873,9 +858,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         private float distanceToX (CellGroup cg){
             int dt = cg.getLastEventTimestamp() - lastEventTimestamp;
             float currentLocationX = location.x;
-            if ( useVelocity ){
-                currentLocationX += velocityPPT.x * dt;
-            }
 
             if ( currentLocationX < 0 ){
                 currentLocationX = 0;
@@ -893,9 +875,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         private float distanceToY (CellGroup cg){
             int dt = cg.getLastEventTimestamp() - lastEventTimestamp;
             float currentLocationY = location.y;
-            if ( useVelocity ){
-                currentLocationY += velocityPPT.y * dt;
-            }
 
             if ( currentLocationY < 0 ){
                 currentLocationY = 0;
@@ -938,7 +917,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
          * @return
          */
         private boolean doesCover (CellGroup cg){
-            float radius = maxRadius;
+            float radius = clusterRadius;
             float dx, dy;
 
             dx = distanceToX(cg);
@@ -950,68 +929,14 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             return false;
         }
 
-        /** Returns measure of cluster radius, here the maxRadius.
+
+	/** get the radius
          *
-         * @return the maxRadius radius.
+         * @return location
          */
-        public float getRadius (){
-            return maxRadius;
-        }
-
-        /** returns the inner radius of the cluster
-         *
-         * @return innerRadius
-         */
-        public final float getInnerRadius (){
-            return innerRadius;
-        }
-
-        /** returns the outter radius of the cluster
-         * 
-         * @return outterRadius
-         */
-        public final float getOutterRadius (){
-            return outterRadius;
-        }
-
-        /** returns the max radius of the cluster
-         *
-         * @return maxRadius
-         */
-        public final float getMaxRadius (){
-            return maxRadius;
-        }
-
-        /** the radius of a cluster is the distance in pixels from the cluster center
-         * that is the putative model size.
-         * If highwayPerspectiveEnabled is true, then the radius is set to a fixed size
-         * depending on the defaultClusterRadius and the perspective
-         * location of the cluster and r is ignored. The aspect ratio parameters
-         * radiusX and radiusY of the cluster are also set.
-         * @param r the radius in pixels
-         */
-        private void setRadius (CellGroup cg, float curMass, float cgMass){
-            float totalMass = curMass + cgMass;
-            innerRadius = (innerRadius*curMass + cg.getInnerRadiusPixels()*cgMass)/totalMass;
-            outterRadius = (outterRadius*curMass + cg.getOutterRadiusPixels()*cgMass)/totalMass;
-            float maxRadiusCandidate;
-
-            if ( cg.isHitEdge() ){
-                maxRadiusCandidate = outterRadius;
-            } else{
-                maxRadiusCandidate = ( outterRadius + cg.getAreaRadiusPixels() ) / 2.0f;
-            }
-
-            if ( maxRadius < maxRadiusCandidate ){
-                maxRadius = maxRadiusCandidate;
-
-                int chipSize = chip.getSizeX() < chip.getSizeY() ? chip.getSizeX() : chip.getSizeY();
-                if ( maxRadius > chipSize * 0.3f ){
-                    maxRadius = chipSize * 0.3f;
-                }
-            } else{
-                maxRadius = maxRadius * 0.95f + outterRadius * 0.05f;
-            }
+	@Override
+        final public float getRadius (){
+            return clusterRadius;
         }
 
         /** getString the cluster location
@@ -1146,8 +1071,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
          */
         public void setClusterNumber (int clusterNumber){
             if(clusterNumber == Integer.MAX_VALUE){
-                this.clusterNumber = 0;
-                clusterCounter = 0;
+                this.clusterNumber = 1;
+                clusterCounter = 1;
             } else {
                 this.clusterNumber = clusterNumber;
             }
@@ -1440,7 +1365,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     public void update (Observable o,Object arg){
         if ( o instanceof EventFilter2D ){
             CellGroup tmpcg = null;
-            Collection<CellGroup> cgCollection = bfilter.getCellGroup();
+            Collection<CellGroup> cgCollection = bfilter.getCellGroups();
             UpdateMessage msg = (UpdateMessage)arg;
 
             for ( Cluster c:clusters ){
@@ -1450,10 +1375,10 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
                 while ( itr.hasNext() ){
                     CellGroup cg = (CellGroup)itr.next();
 
-                    if ( c.doesCover(cg) && !cg.isMatched() ){ // If there are multiple cell groups under coverage of this cluster, merge all cell groups into one
+                    if ( c.doesCover(cg) && cg.getTrackerIndex() > 0 ){ // If there are multiple cell groups under coverage of this cluster, merge all cell groups into one
                         if ( tmpcg == null ){
                             tmpcg = cg;
-                            cg.setMatched(true);
+                            cg.setTrackerIndex(c.clusterNumber);
                         } else{
                             tmpcg.merge(cg);
                             cgCollection.remove(cg);
@@ -1537,28 +1462,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             log.warning(e.getMessage());
         }
         gl.glPopMatrix();
-    }
-
-    /** Use cluster velocityPPT to estimate the location of cluster.
-     * This is useful to select cell groups to take into this cluster.
-     * @param useVelocity
-     * @see #setPathsEnabled(boolean)
-     */
-    public void setUseVelocity (boolean useVelocity){
-        if ( useVelocity ){
-            setPathsEnabled(true);
-        }
-        getSupport().firePropertyChange("useVelocity",this.useVelocity,useVelocity);
-        this.useVelocity = useVelocity;
-        getPrefs().putBoolean("BlurringTunnelTracker.useVelocity",useVelocity);
-    }
-
-    /**
-     *
-     * @return
-     */
-    public boolean isUseVelocity (){
-        return useVelocity;
     }
 
     /** returns true of the cluster is visible on the screen
@@ -1744,6 +1647,26 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         this.minCellsPerCluster = minCellsPerCluster;
         getPrefs().putInt("BlurringTunnelTracker.minCellsPerCluster",minCellsPerCluster);
         getSupport().firePropertyChange("minCellsPerCluster",old,this.minCellsPerCluster);
+
+    }
+
+    /** @see #setClusterRadius(int)
+     *
+     * @return Radius of a Cluster.
+     */
+    public int getClusterRadius (){
+        return clusterRadius;
+    }
+
+    /** Sets the radius of a cluster
+     *
+     * @param clusterRadius
+     */
+    public void setClusterRadius (int clusterRadius){
+        int old = this.clusterRadius;
+        this.clusterRadius = clusterRadius;
+        getPrefs().putInt("BlurringTunnelTracker.clusterRadius",clusterRadius);
+        getSupport().firePropertyChange("clusterRadius",old,this.clusterRadius);
 
     }
 
