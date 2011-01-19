@@ -82,7 +82,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
      * Subclasses of EventFilter2D should check for Observers which may wish to be informed of these updates during iteration over packets.
      *
      */
-    protected static float updateIntervalMs;
+    protected float updateIntervalMs;
 
     /** Filters can either be processed in the rendering or the data acquisition cycle. Procesing in the rendering cycle is certainly more efficient because
     events are processed in larger packets, but latency is increased to the rendering frame rate delay. Processing in the data acquisition thread has the
