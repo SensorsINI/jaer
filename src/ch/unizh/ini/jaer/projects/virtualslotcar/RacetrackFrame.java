@@ -161,7 +161,7 @@ public class RacetrackFrame extends javax.swing.JFrame {
             raceTrack.initCarState();
             myCar = new Slotcar(raceTrack);
             myCar.setDriveCar(true);
-            myCar.setThrottle((float) ThrottleSlider.getValue() / (float) ThrottleSlider.getMaximum());
+            myCar.setThrottleValue((float) ThrottleSlider.getValue() / (float) ThrottleSlider.getMaximum());
             myCar.setDrawCircle(drawCurve.isSelected());
 
             trackDisplay.setCar(myCar);
@@ -192,7 +192,7 @@ public class RacetrackFrame extends javax.swing.JFrame {
         // TODO add your handling code here:
         double newThrottle = (double) ThrottleSlider.getValue() / (double) ThrottleSlider.getMaximum();
         if (myCar != null)
-            myCar.setThrottle((float) newThrottle);
+            myCar.setThrottleValue((float) newThrottle);
 
     }//GEN-LAST:event_ThrottleSliderStateChanged
 

@@ -45,14 +45,14 @@ abstract public class AbstractSlotCarController extends EventFilter2D implements
      * @param track
      * @return the throttle setting ranging from 0 to 1.
      */
-    abstract public float computeControl(CarTracker tracker, SlotcarTrack track);
+    abstract public ThrottleBrake computeControl(CarTracker tracker, SlotcarTrack track);
     
 
    /** Returns the last computed throttle setting.
      *
      * @return the throttle setting.
      */
-    abstract public  float getThrottle();
+    abstract public  ThrottleBrake getThrottle();
 
      /** Implement this method to return a string logging the state of the controller, e.g. throttle, measured speed, and curvature.
      *

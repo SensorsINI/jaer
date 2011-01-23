@@ -55,19 +55,19 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     private float playSoundThrottleChangeThreshold = 0.01F;
     private float lastSoundThrottleValue = 0;
     private long lastTimeSoundPlayed;
-    private float throttle = 0;
+    private ThrottleBrake throttle = new ThrottleBrake();
 
     private void playThrottleSounds() {
-        if (playThrottleSound && Math.abs(throttle - lastSoundThrottleValue) > playSoundThrottleChangeThreshold) {
+        if (playThrottleSound && Math.abs(throttle.throttle - lastSoundThrottleValue) > playSoundThrottleChangeThreshold) {
             long now;
-            if (throttle > lastSoundThrottleValue && (now = System.currentTimeMillis()) - lastTimeSoundPlayed > 5) {
+            if (throttle.throttle > lastSoundThrottleValue && (now = System.currentTimeMillis()) - lastTimeSoundPlayed > 5) {
                 if (spikeSound == null) {
                     spikeSound = new SpikeSound();
                 }
                 spikeSound.play();
                 lastTimeSoundPlayed = now;
             }
-            lastSoundThrottleValue = throttle;
+            lastSoundThrottleValue = throttle.throttle;
         }
     }
 
@@ -137,8 +137,8 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
         out = getEnclosedFilterChain().filterPacket(in);
         
         throttle=throttleController.getThrottle();
-        throttle = throttle > maxThrottle ? maxThrottle : throttle;
-        throttle=isOverrideThrottle()? getOverriddenThrottleSetting():throttle;
+        throttle.throttle = throttle.throttle > maxThrottle ? maxThrottle : throttle.throttle;
+        throttle.throttle=isOverrideThrottle()? getOverriddenThrottleSetting():throttle.throttle;
         
         hw.setThrottle(throttle);
 
@@ -170,7 +170,9 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     @Override
     public void resetFilter() {
         if (hw.isOpen()) {
-            hw.setThrottle(0);
+            throttle.throttle=0;
+            throttle.brake=false;
+            hw.setThrottle(throttle);
             hw.close();
         }
         filterChain.reset();

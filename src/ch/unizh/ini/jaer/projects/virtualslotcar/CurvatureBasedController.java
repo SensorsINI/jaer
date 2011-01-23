@@ -24,7 +24,7 @@ licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_Genera
  */
 public class CurvatureBasedController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater {
 
-    private float throttle = 0; // last output throttle setting
+    private ThrottleBrake throttle = new ThrottleBrake(); // last output throttle setting
     private float defaultThrottle = prefs().getFloat("CurvatureBasedController.defaultThrottle", .1f); // default throttle setting if no car is detected
     private float measuredSpeedPPS; // the last measured speed
     private Point2D.Float measuredLocation;
@@ -68,7 +68,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
      * @return the throttle from 0-1.
      */
     @Override
-    public float computeControl(CarTracker tracker, SlotcarTrack track) {
+    public ThrottleBrake computeControl(CarTracker tracker, SlotcarTrack track) {
         // find the csar, pass it to the track if there is one to getString it's location, the use the UpcomingCurvature to compute the curvature coming up,
         // then compute the throttle to getString our speed at the limit of traction.
 
@@ -150,7 +150,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
     }
 
     @Override
-    public float getThrottle() {
+    public ThrottleBrake getThrottle() {
         return throttle;
     }
 

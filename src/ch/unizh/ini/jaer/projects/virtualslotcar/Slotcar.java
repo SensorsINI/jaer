@@ -12,7 +12,7 @@ import java.awt.geom.Point2D;
  * Implements the movement and drawing of a slotcar
  * @author Michael Pfeiffer
  */
-public class Slotcar implements Runnable, ThrottleInterface {
+public class Slotcar implements Runnable, ThrottleBrakeInterface {
 
     // The race track
     SlotcarTrack theTrack;
@@ -45,7 +45,7 @@ public class Slotcar implements Runnable, ThrottleInterface {
     boolean drawForce;
 
     // Throttle value
-    float throttle;
+    ThrottleBrake throttle;
 
 
     // Open GL context
@@ -67,7 +67,8 @@ public class Slotcar implements Runnable, ThrottleInterface {
             curState = theTrack.getCarState();
         else
             curState = null;
-        throttle = 0.0f;
+        throttle.throttle = 0.0f;
+        throttle.brake=false;
     }
 
     /**
@@ -89,7 +90,7 @@ public class Slotcar implements Runnable, ThrottleInterface {
                 long sinceTime = newTime - lastTime;
                 // Compute new state of the car
                 
-                curState = theTrack.advance(throttle, sinceTime / 1.0e9f);
+                curState = theTrack.advance(throttle.throttle, sinceTime / 1.0e9f);
                 
                 // TODO: Let controller change throttle
                 //System.out.println("Here the controller should take over...");
@@ -126,7 +127,7 @@ public class Slotcar implements Runnable, ThrottleInterface {
             if (lastTime >= 0) {
                 long sinceTime = newTime - lastTime;
                 // Compute new position
-                curState = theTrack.advance(throttle, sinceTime / 1.0e9f);
+                curState = theTrack.advance(throttle.throttle, sinceTime / 1.0e9f);
 
                 // TODO: Let controller change speed
                 //System.out.println("Here the controller should take over...");
@@ -283,18 +284,24 @@ public class Slotcar implements Runnable, ThrottleInterface {
         return this.curState;
     }
 
-    public float getThrottle() {
+    public ThrottleBrake getThrottle() {
         return throttle;
     }
 
-    public boolean setThrottle(float throttle) {
-        this.throttle = throttle;
-        return true;
+     @Override
+    public void setThrottle(ThrottleBrake throttle) {
+        this.throttle=throttle;
+    }
+
+
+     public void setThrottleValue(float throttle) {
+        this.throttle.throttle=throttle;
     }
 
     public void setTrack(SlotcarTrack newTrack) {
         theTrack = newTrack;
         curState = newTrack.getCarState();
     }
+
 
 }

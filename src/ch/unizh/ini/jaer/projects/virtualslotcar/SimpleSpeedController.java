@@ -23,7 +23,7 @@ licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_Genera
  */
 public class SimpleSpeedController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater {
 
-    private float throttle=0; // last output throttle setting
+    private ThrottleBrake throttle=new ThrottleBrake(); // last output throttle setting
     private float desiredSpeedPPS=prefs().getFloat("SimpleSpeedController.desiredSpeedPPS",0); // desired speed of card in pixels per second
     private float defaultThrottle=prefs().getFloat("SimpleSpeedController.defaultThrottle",.1f); // default throttle setting if no car is detected
     private float gain=prefs().getFloat("SimpleSpeedController.gain", 1e-5f); // gain of proportional controller
@@ -46,30 +46,31 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
     }
 
     @Override
-    public float computeControl(CarTracker tracker, SlotcarTrack track) {
+    public ThrottleBrake computeControl(CarTracker tracker, SlotcarTrack track) {
         ClusterInterface car = tracker.findCarCluster();
         if (useModelEnabled) {
-            throttle=throttleModel.computeThrottle(desiredSpeedPPS);
+            throttle.throttle=throttleModel.computeThrottle(desiredSpeedPPS);
         } else {
             if (car == null) {
-                return defaultThrottle;
+                throttle.throttle=defaultThrottle;
+                return throttle;
             } else {
                 measuredSpeedPPS = (float) car.getSpeedPPS();
                 float error = measuredSpeedPPS - desiredSpeedPPS;
-                float newThrottle = throttle - gain * error;
+                float newThrottle = throttle.throttle - gain * error;
                 if (newThrottle < 0) {
                     newThrottle = defaultThrottle;
                 } else if (newThrottle > 1) {
                     newThrottle = 1;
                 }
-                throttle = newThrottle;
+                throttle.throttle = newThrottle;
             }
         }
         return throttle;
     }
 
     @Override
-    public float getThrottle (){
+    public ThrottleBrake getThrottle (){
         return throttle;
     }
 

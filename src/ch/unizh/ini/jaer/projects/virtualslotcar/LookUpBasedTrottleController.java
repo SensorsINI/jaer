@@ -19,7 +19,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 public class LookUpBasedTrottleController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater {
     private float fractionOfTrackToPunish  =prefs().getFloat("LookUpBasedTrottleController.fractionOfTrackToPunish",0.06f);
 
-    private float throttle = 0; // last output throttle setting
+    private ThrottleBrake throttle = new ThrottleBrake(); // last output throttle setting
     private float defaultThrottle = prefs().getFloat("CurvatureBasedController.defaultThrottle", .1f); // default throttle setting if no car is detected
     private float measuredSpeedPPS; // the last measured speed
     private Point2D.Float measuredLocation;
@@ -56,7 +56,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
      * @return the throttle from 0-1.
      */
     @Override
-    synchronized public float computeControl(CarTracker tracker, SlotcarTrack track) {
+    synchronized public ThrottleBrake computeControl(CarTracker tracker, SlotcarTrack track) {
         // find the csar, pass it to the track if there is one to getString it's location, the use the UpcomingCurvature to compute the curvature coming up,
         // then compute the throttle to getString our speed at the limit of traction.
         ClusterInterface car = tracker.findCarCluster();
@@ -117,7 +117,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
             }
 
 
-            throttle = lookUpTable[currentTrackPos]==null ? defaultThrottle : lookUpTable[currentTrackPos].definethrottle;
+            throttle.throttle = lookUpTable[currentTrackPos]==null ? defaultThrottle : lookUpTable[currentTrackPos].definethrottle;
             return throttle;
         }
     }
@@ -136,7 +136,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
     }
 
     @Override
-    public float getThrottle() {
+    public ThrottleBrake getThrottle() {
         return throttle;
     }
 

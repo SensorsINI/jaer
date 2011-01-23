@@ -112,20 +112,20 @@ public class VirtualSlotcarRacer extends EventFilter2D implements FrameAnnotater
         return in;
     }
 
-    private float lastThrottle=0;
+    private ThrottleBrake lastThrottle=new ThrottleBrake();
 
     synchronized private void setThrottle() {
 
         if (isOverrideThrottle()) {
-            lastThrottle = getOverriddenThrottleSetting();
+            lastThrottle.throttle = getOverriddenThrottleSetting();
         } else {
             lastThrottle = speedController.computeControl(carTracker, trackModel);
         }
-        lastThrottle=lastThrottle>maxThrottle? maxThrottle:lastThrottle;
+        lastThrottle.throttle=lastThrottle.throttle>maxThrottle? maxThrottle:lastThrottle.throttle;
 
         if (throttleController != null) {
             // Pass current throttle to virtual racer
-            throttleController.setThrottle(lastThrottle);
+            throttleController.setThrottleValue(lastThrottle.throttle);
         }
        
         if (isLogRacerDataEnabled()) {
