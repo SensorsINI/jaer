@@ -411,6 +411,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     @Override
     public void resetFilter() {
+        state.set(State.STARTING);
         lapTimer.reset();
         getEnclosedFilterChain().reset();
         lastCrashLocation = -1;
@@ -874,9 +875,12 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             return sb.toString();
         }
 
+        /** Resets all throttle values to defaultThrottleValue, unsets all brake segments. */
         private void reset() {
             log.info("reset all throttle settings to defaultThrottle=" + defaultThrottleValue);
-            Arrays.fill(throttleValues, defaultThrottleValue);
+            for(ThrottleBrake t:throttleValues){
+                t.set(defaultThrottleValue, false);
+            }
             resetMarkedSegments();
         }
 

@@ -513,7 +513,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         }
 
         public String toString() {
-            return "CarCluster segmentIdx=" + segmentIdx + " segmentSpeedSPS=" + segmentSpeedSPS + " crashed=" + crashed + "computerControlledCar="+computerControlledCar+" numSegmentIncreases=" + numSegmentIncreases + " wasRunningSuccessfully=" + wasRunningSuccessfully + " " + super.toString();
+            return "CarCluster segmentIdx=" + segmentIdx + " segmentSpeedSPS=" + segmentSpeedSPS + " crashed=" + crashed + " computerControlledCar="+computerControlledCar+" numSegmentIncreases=" + numSegmentIncreases + " wasRunningSuccessfully=" + wasRunningSuccessfully + " " + super.toString();
         }
 
         /**
