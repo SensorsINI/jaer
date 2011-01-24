@@ -82,7 +82,7 @@ public class SiLabsC8051F320_USBIO_SlotCarController implements UsbIoErrorCodes,
      */
     public static final int SERVO_QUEUE_LENGTH=20;
     
-    ServoCommandWriter servoCommandWriter=null; // this worker thread asynchronously writes to device
+    UsbCommandWriterThread servoCommandWriter=null; // this worker thread asynchronously writes to device
     private volatile ArrayBlockingQueue<USBCommand> servoQueue; // this queue is used for holding servo commands that must be sent out.
     
     /** the device number, out of all potential compatible devices that could be opened */
@@ -318,7 +318,7 @@ public class SiLabsC8051F320_USBIO_SlotCarController implements UsbIoErrorCodes,
             throw new HardwareInterfaceException("didn't find any pipes to bind to");
         }
         
-        servoCommandWriter=new ServoCommandWriter();
+        servoCommandWriter=new UsbCommandWriterThread();
         status=servoCommandWriter.bind(0,(byte)ENDPOINT_OUT,gDevList,GUID);
         if (status != USBIO_ERR_SUCCESS) {
             UsbIo.destroyDeviceList(gDevList);
@@ -477,7 +477,7 @@ public class SiLabsC8051F320_USBIO_SlotCarController implements UsbIoErrorCodes,
     }
     
     /** This thread actually talks to the hardware */
-    private class ServoCommandWriter extends UsbIoWriter{
+    private class UsbCommandWriterThread extends UsbIoWriter{
         
         // overridden to change priority
         @Override
@@ -579,9 +579,11 @@ public class SiLabsC8051F320_USBIO_SlotCarController implements UsbIoErrorCodes,
         submitCommand(cmd);
     }
 
-    /** Attempts to set the PWM frequency.
+    /** Attempts to set the PWM output frequency;
+     * assumes that setPCAClockSource has been called to
+     * set clock source for PCA to Timer0 overflow clock source.
      *<p>
-     *The default frequency is 23296Hz.
+     *
      *@param freq the desired frequency in Hz. The actual value is returned.
      *@return the actual value or 0 if there is an error.
      */
@@ -591,9 +593,12 @@ public class SiLabsC8051F320_USBIO_SlotCarController implements UsbIoErrorCodes,
             log.warning("freq="+freq+" is not a valid value");
             return 0;
         }
-        int n=Math.round(SYSCLK_MHZ*1e6f/256f/freq); // we get about 2 here with freq=90Hz
+        // Timer0 is clocked by Sysclk=12MHz always.
+        // Timer0 overflows after 255-reload cycles and this clocks the PCA counter.
+        // The 8 bit PCA counter overflows after counting to 255.
+        int n=Math.round(SYSCLK_MHZ*1e6f/256f/freq); //
         if(n==0) {
-            log.warning("freq="+freq+" too high, setting max possible of 183Hz");
+            log.warning("freq="+freq+" too high, setting max possible frequency.");
             n=1;
         }
         float freqActual=SYSCLK_MHZ*1e6f/256f/n; // n=1, we get 183Hz
@@ -716,7 +721,7 @@ public class SiLabsC8051F320_USBIO_SlotCarController implements UsbIoErrorCodes,
      *
      * @param source the clock source, e.g. Sysclk
      */
-    public void setPCA0MD_CPS_Bits(PCA_ClockSource source){
+    public void setPCAClockSource(PCA_ClockSource source){
         checkUsbCommandThread();
         USBCommand cmd=new USBCommand();
         cmd.bytes=new byte[2];
@@ -725,6 +730,10 @@ public class SiLabsC8051F320_USBIO_SlotCarController implements UsbIoErrorCodes,
         submitCommand(cmd);
     }
 
+    /** The PCA counter/timer clock source. Sysclk is 12MHz. SysclkOver12 is 1MHz. SysclkOver4 is 3MHz.
+     *
+     * Timer0 is an 8 bit counter that overflows according to the Timer0 reload value; Timer0 is clocked by Sysclk=12MHz.
+     */
     public enum PCA_ClockSource {
 
         SysclkOver12(0),

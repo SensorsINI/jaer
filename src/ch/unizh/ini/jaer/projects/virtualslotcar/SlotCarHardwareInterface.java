@@ -52,8 +52,8 @@ public class SlotCarHardwareInterface implements HardwareInterface, ThrottleBrak
             try {
                 hw.open();
                 hw.setFullDutyCycleMode(true); // sets the servo outputs to do 0-100% duty cycle rather than usual 1-2ms pulses
-                hw.setPWMFreqHz(200);
-                hw.setPCA0MD_CPS_Bits(SiLabsC8051F320_USBIO_SlotCarController.PCA_ClockSource.Sysclk);
+                hw.setPCAClockSource(SiLabsC8051F320_USBIO_SlotCarController.PCA_ClockSource.Timer0Overflow);
+                hw.setPWMFreqHz(1000);
                 // we don't need open drain with garrick's 3.3V PNP inverter before the MOSFET
                 //hw.setPortDOutRegisters((byte)0x00,(byte)0x00); // sets the servo output port to open drain
             } catch (HardwareInterfaceException ex) {
@@ -69,7 +69,7 @@ public class SlotCarHardwareInterface implements HardwareInterface, ThrottleBrak
             } else {
                 // the PWM output must be low to turn on MOSFET so if speed=0 then write 255
                 // compute the sqrt of speed to account for the MOSFET nonlinearity
-                float t = (float) Math.sqrt(throttle.throttle);
+                float t = (float) Math.pow(throttle.throttle,1);
                 hw.setPWMValue(THROTTLE_CHANNEL, (int) ((1f - t) * 255));
             }
         }
