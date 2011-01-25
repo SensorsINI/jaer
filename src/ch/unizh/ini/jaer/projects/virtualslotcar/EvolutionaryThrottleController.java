@@ -126,6 +126,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         setPropertyTooltip(s, "throttleChange", "max amount to increase throttle for perturbation");
         setPropertyTooltip(s, "editThrottleChange", "amount to change throttle for mouse edits of the throttle profile");
         setPropertyTooltip(s, "numSuccessfulLapsToReward", "number of successful (no crash) laps between rewards");
+        setPropertyTooltip(s, "numSegmentsToBrakeBeforeCrash", "number track segments to brake for just prior to crash location");
         setPropertyTooltip(s, "fractionOfTrackToSpeedUp", "fraction of track spline points to increase throttle on after successful laps");
         setPropertyTooltip(s, "fractionOfTrackToSlowDownPreCrash", "fraction of track spline points before crash point to reduce throttle on");
         setPropertyTooltip(s, "startingThrottleValue", "throttle value when starting (no car cluster detected)");
@@ -194,11 +195,11 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
         float prevThrottle = throttle.throttle;
         if (state.get() == State.OVERRIDDEN) {
-            throttle.throttle = getStartingThrottleValue();
+//            throttle.throttle = getStartingThrottleValue();
 
         } else if (state.get() == State.STARTING) {
-            throttle.throttle = getStartingThrottleValue();
-            if (car != null && car.wasRunningSuccessfully) {
+//            throttle.throttle = getStartingThrottleValue();
+            if (car != null && car.isRunning()) {
                 state.set(State.RUNNING);
             }
         } else if (state.get() == State.RUNNING) {
@@ -241,7 +242,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                 if (carTracker.getCrashedCar() != null) {
                     state.set(State.CRASHED);
                     lastCrashLocation = car.crashSegment;
-                    throttle.throttle = getStartingThrottleValue();
+//                    throttle.throttle = getStartingThrottleValue(); // don't actually change profile, starting comes from getThrottle
                     sounds.play();
                     if (learningEnabled) {
                         if (lastSuccessfulProfile != null && currentProfile != lastSuccessfulProfile) {
@@ -260,7 +261,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                 }
             }
         } else if (state.get() == State.CRASHED) {
-            throttle.throttle = getStartingThrottleValue();
+//            throttle.throttle = getStartingThrottleValue();
             state.set(State.STARTING);
         }
 
@@ -401,9 +402,21 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         return t;
     }
 
-    public ThrottleBrake getThrottle() {
-        return throttle;
+    final ThrottleBrake startingThrottle=new ThrottleBrake(startingThrottleValue,false);
 
+    public ThrottleBrake getThrottle() {
+        Enum s = state.get();
+        if (s == State.RUNNING) {
+            return throttle;
+        } else if (s == State.CRASHED || s == State.STARTING) {
+            startingThrottle.throttle = startingThrottleValue;
+            return startingThrottle;
+        } else if (s == State.OVERRIDDEN) {
+            startingThrottle.throttle = defaultThrottleValue;
+            return startingThrottle;
+        } else {
+            throw new Error("state not found for RacerState, shouldn't happen");
+        }
     }
 
     @Override

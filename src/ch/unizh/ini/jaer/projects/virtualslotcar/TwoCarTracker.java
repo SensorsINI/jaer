@@ -541,6 +541,10 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             return crashed;
         }
 
+        public boolean isRunning(){
+            return !crashed && numSegmentIncreases>NUM_SEGMENTS_TO_BE_MARKED_RUNNING;
+        }
+
         /**
          * @param crashed the crashed to set
          */
