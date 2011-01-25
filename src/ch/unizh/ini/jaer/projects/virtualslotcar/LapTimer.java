@@ -2,6 +2,7 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.Iterator;
 import java.util.LinkedList;
 
 /**
@@ -156,14 +157,17 @@ class LapTimer implements PropertyChangeListener {
 
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("Laps: %d %d/4\nAvg: %.2f, Best: %.2f\nLast: %s",
+        sb.append(String.format("Laps: %d %d/4\nAvg: %.2f, Best: %.2f\n",
                 lapCounter, quarters - 1,
                 (float) sumTime * 1.0E-6F / lapCounter,
-                (float) bestTime * 1.0E-6F,
-                getLastLap()));
+                (float) bestTime * 1.0E-6F)
+                );
         int count = 0;
-        for (Lap l : laps) {
-            sb.append(String.format("\n%3d: %s", count++, l.toString()));
+
+        Iterator<Lap> itr=laps.descendingIterator();
+        while(itr.hasNext()){
+            Lap l=itr.next();
+            sb.append(String.format("\n%6d: %s", -(count++), l.toString()));
         }
         return sb.toString();
     }

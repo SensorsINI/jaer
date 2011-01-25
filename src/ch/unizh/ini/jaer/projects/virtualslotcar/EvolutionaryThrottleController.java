@@ -214,7 +214,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                         int dt = lapTime - prevLapTime;
                         if (dt < 0) {
                             log.info("lap time improved by " + dt / 1000 + " ms");
-                        } else {
+                        } else if(dt>0) {
                             log.info("lap time worsened by " + dt / 1000 + " ms");
                         }
                         prevLapTime = lapTime;

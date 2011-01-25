@@ -5,11 +5,13 @@
 
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
+import java.io.Serializable;
+
 /**
  * Encapsulates throttle float and brake boolean for a track.
  * @author tobi
  */
-public class ThrottleBrake {
+public class ThrottleBrake implements Serializable{
     float throttle=0;
     boolean brake=false;
 
@@ -19,6 +21,11 @@ public class ThrottleBrake {
     ThrottleBrake(float throttle, boolean b) {
         this.throttle=throttle;
         this.brake=b;
+    }
+
+    public String toString(){
+        if(brake) return "Braking";
+        return String.format("%.2f",throttle);
     }
 
     /** Resets throttle to zero and brake off. */

@@ -444,7 +444,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                 int y = (int) getLocation().y;
                 int sy = (int) radiusY; // sx sy are (half) size of rectangle
                 int sx = (int) radiusX;
-                gl.glColor3f(.8f, .8f, .8f);
+                gl.glColor4f(.8f, .8f, .8f,.5f);
                 gl.glLineWidth(BOX_LINE_WIDTH);
                 // draw cluster rectangle
                 drawBox(gl, x, y, sx, sy, getAngle());
@@ -453,7 +453,8 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                 gl.glColor3fv(rgb, 0);
             }
 
-            gl.glRasterPos3f(location.x, location.y - 4, 0);
+                 gl.glColor3f(1, 1, 1);
+           gl.glRasterPos3f(location.x, location.y - 4, 0);
             chip.getCanvas().getGlut().glutBitmapString(
                     GLUT.BITMAP_HELVETICA_18,
                     String.format("dist=%.1f segSp=%.1f", distFilter.getValue(), segmentSpeedSPS));
