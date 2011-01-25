@@ -58,6 +58,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         return "Evolution-based slot car throttle controller";
     }
     // prefs
+    private int numSegmentsToBrakeBeforeCrash=getInt("numSegmentsToBrakeBeforeCrash",2);
     private float fractionOfTrackToSpeedUp = getFloat("fractionOfTrackToSpeedUp", 0.3f);
     private float fractionOfTrackToSlowDownPreCrash = getFloat("fractionOfTrackToSlowDownPreCrash", .15f);
     private float defaultThrottleValue = getFloat("defaultThrottle", .1f); // default throttle setting if no car is detected
@@ -69,6 +70,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     private float startingThrottleValue = getFloat("startingThrottleValue", .1f);
     private boolean showThrottleProfile = getBoolean("showThrottleProfile", true);
     private GLUT glut=new GLUT();
+
+ 
 
     /** possible states,
      * <ol>
@@ -245,7 +248,11 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                             log.info("crashed at segment" + lastCrashLocation + ", switching back to previous profile");
                             currentProfile = lastSuccessfulProfile;
                         }
-                        currentProfile.subtractBump(carTracker.getCrashedCar().crashSegment);
+                        if(numSegmentsToBrakeBeforeCrash>0){
+                            currentProfile.addBrake(carTracker.getCrashedCar().crashSegment);
+                        }else{
+                            currentProfile.subtractBump(carTracker.getCrashedCar().crashSegment);
+                        }
                     }
                     lastRewardLap = lapTimer.lapCounter; // don't reward until we make some laps from here
                 } else {
@@ -436,7 +443,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     synchronized public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName() == SlotcarTrack.EVENT_TRACK_CHANGED) {
             SlotcarTrack track = (SlotcarTrack) evt.getNewValue();
-            if (track.getNumPoints() != currentProfile.getNumPoints()) {
+            if (currentProfile==null || track.getNumPoints() != currentProfile.getNumPoints()) {
                 log.warning("new track has different number of points than current throttle profile, making a new default profile");
                 currentProfile = new ThrottleProfile(track.getNumPoints());
             }
@@ -630,6 +637,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         return fractionOfTrackToSpeedUp;
     }
 
+
     /**
      * @param fractionOfTrackToSpeedUp the fractionOfTrackToPunish to set
      */
@@ -641,6 +649,24 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         }
         this.fractionOfTrackToSpeedUp = fractionOfTrackToSpeedUp;
         putFloat("fractionOfTrackToSpeedUp", fractionOfTrackToSpeedUp);
+    }
+
+       /**
+     * @return the numSegmentsToBrakeBeforeCrash
+     */
+    public int getNumSegmentsToBrakeBeforeCrash() {
+        return numSegmentsToBrakeBeforeCrash;
+    }
+
+    /**
+     * @param numSegmentsToBrakeBeforeCrash the numSegmentsToBrakeBeforeCrash to set
+     */
+    public void setNumSegmentsToBrakeBeforeCrash(int numSegmentsToBrakeBeforeCrash) {
+        if(numSegmentsToBrakeBeforeCrash<0) numSegmentsToBrakeBeforeCrash=0;
+        int old=this.numSegmentsToBrakeBeforeCrash;
+        this.numSegmentsToBrakeBeforeCrash = numSegmentsToBrakeBeforeCrash;
+        putInt("numSegmentsToBrakeBeforeCrash",numSegmentsToBrakeBeforeCrash);
+        getSupport().firePropertyChange("numSegmentsToBrakeBeforeCrash",old,numSegmentsToBrakeBeforeCrash);
     }
 
     /**
@@ -799,12 +825,13 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             // increase throttle settings around randomly around some track point
             int center = getNextThrottleBumpPoint();
             int m = (int) (numPoints * getFractionOfTrackToSpeedUp());
-            log.info("rewarding " + m + " of " + numPoints + " throttle settings around track point " + center);
+            log.info("speeding up " + m + " of " + numPoints + " throttle settings around track point " + center);
             for (int i = 0; i < m; i++) {
                 float dist = (float) Math.abs(i - m / 2);
                 float factor = (m / 2 - dist) / (m / 2);
                 int ind = getIndexFrom(center, i);
                 throttleValues[ind].throttle = clipThrottle(throttleValues[ind].throttle + (float) throttleChange * factor); // increase throttle by tent around random center point
+                throttleValues[ind].brake=false;
                 spedUpSegments[ind] = true;
             }
         }
@@ -831,6 +858,24 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                 log.warning(e.toString());
             }
         }
+
+         private void addBrake(int segment) {
+             int n = numSegmentsToBrakeBeforeCrash;
+            log.info("braking for "+numSegmentsToBrakeBeforeCrash+" starting from segment " + segment);
+            try {
+                for (int i = 0; i < n; i++) {
+                    int seg = (segment - i);
+                    if (seg < 0) { // if segment=1, then reduce 1, 0,
+                        seg = numPoints + seg;
+                    }
+//                System.out.println("reducing "+seg);
+                    throttleValues[seg].brake = true;
+//                    slowedDownSegments[seg] = true;
+                }
+            } catch (ArrayIndexOutOfBoundsException e) {
+                log.warning(e.toString());
+            }
+       }
 
         public void resetMarkedSegments() {
             Arrays.fill(slowedDownSegments, false);
@@ -985,6 +1030,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                 throttleValues[shiftedIdx].throttle = min(1, startingThrottleValue * 2 * (float) Math.pow((smoothed[idx] / maxCurv), .15));
             }
         }
+
+
     } // ThrottleProfile
 
     private float min(float a, float b) {
