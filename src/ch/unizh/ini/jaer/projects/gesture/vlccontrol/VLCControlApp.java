@@ -50,7 +50,7 @@ public class VLCControlApp extends javax.swing.JFrame implements PropertyChangeL
 
     final void putCmd(String s){
         if(s==null || s.isEmpty()) return;
-        if(s.equals(hist.get(hist.size()-1))) return;
+        if(hist.size()>0 && s.equals(hist.get(hist.size()-1))) return;
         hist.add(s);
         idx++;
     }
