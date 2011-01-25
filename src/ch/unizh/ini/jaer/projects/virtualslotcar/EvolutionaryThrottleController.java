@@ -59,6 +59,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     }
     // prefs
     private int numSegmentsToBrakeBeforeCrash=getInt("numSegmentsToBrakeBeforeCrash",2);
+    private int numSegmentsSpacingFromCrashToBrakingPoint=getInt("numSegmentsSpacingFromCrashToBrakingPoint",4);
     private float fractionOfTrackToSpeedUp = getFloat("fractionOfTrackToSpeedUp", 0.3f);
     private float fractionOfTrackToSlowDownPreCrash = getFloat("fractionOfTrackToSlowDownPreCrash", .15f);
     private float defaultThrottleValue = getFloat("defaultThrottle", .1f); // default throttle setting if no car is detected
@@ -127,6 +128,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         setPropertyTooltip(s, "editThrottleChange", "amount to change throttle for mouse edits of the throttle profile");
         setPropertyTooltip(s, "numSuccessfulLapsToReward", "number of successful (no crash) laps between rewards");
         setPropertyTooltip(s, "numSegmentsToBrakeBeforeCrash", "number track segments to brake for just prior to crash location");
+        setPropertyTooltip(s, "numSegmentsSpacingFromCrashToBrakingPoint", "number track segments before crash that braking segments start");
         setPropertyTooltip(s, "fractionOfTrackToSpeedUp", "fraction of track spline points to increase throttle on after successful laps");
         setPropertyTooltip(s, "fractionOfTrackToSlowDownPreCrash", "fraction of track spline points before crash point to reduce throttle on");
         setPropertyTooltip(s, "startingThrottleValue", "throttle value when starting (no car cluster detected)");
@@ -672,6 +674,26 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     }
 
     /**
+     * @return the numSegmentsSpacingFromCrashToBrakingPoint
+     */
+    public int getNumSegmentsSpacingFromCrashToBrakingPoint() {
+        return numSegmentsSpacingFromCrashToBrakingPoint;
+    }
+
+    /**
+     * @param numSegmentsSpacingFromCrashToBrakingPoint the numSegmentsSpacingFromCrashToBrakingPoint to set
+     */
+    public void setNumSegmentsSpacingFromCrashToBrakingPoint(int numSegmentsSpacingFromCrashToBrakingPoint) {
+        if (numSegmentsSpacingFromCrashToBrakingPoint < 0) {
+            numSegmentsSpacingFromCrashToBrakingPoint = 0;
+        }
+        int old = this.numSegmentsSpacingFromCrashToBrakingPoint;
+        this.numSegmentsSpacingFromCrashToBrakingPoint = numSegmentsSpacingFromCrashToBrakingPoint;
+        putInt("numSegmentsSpacingFromCrashToBrakingPoint", numSegmentsSpacingFromCrashToBrakingPoint);
+        getSupport().firePropertyChange("numSegmentsSpacingFromCrashToBrakingPoint", old, numSegmentsSpacingFromCrashToBrakingPoint);
+    }
+
+    /**
      * @param numSegmentsToBrakeBeforeCrash the numSegmentsToBrakeBeforeCrash to set
      */
     public void setNumSegmentsToBrakeBeforeCrash(int numSegmentsToBrakeBeforeCrash) {
@@ -874,9 +896,14 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
          private void addBrake(int segment) {
              int n = numSegmentsToBrakeBeforeCrash;
-            log.info("braking for "+numSegmentsToBrakeBeforeCrash+" starting from segment " + segment);
-            try {
-                for (int i = 0; i < n; i++) {
+             int s = segment - numSegmentsSpacingFromCrashToBrakingPoint;
+             if (s < 0) {
+                 s = numPoints + s;
+             }
+             segment = s;
+             log.info("braking for " + numSegmentsToBrakeBeforeCrash + " starting from segment " + segment);
+             try {
+                 for (int i = 0; i < n; i++) {
                     int seg = (segment - i);
                     if (seg < 0) { // if segment=1, then reduce 1, 0,
                         seg = numPoints + seg;
