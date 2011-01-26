@@ -34,7 +34,7 @@ public class SlotCarHardwareInterface implements HardwareInterface, ThrottleBrak
     }
 
     /**
-     * @return the last speed that was set.
+     * @return the last speed that was copyFrom.
      */
     @Override
     public ThrottleBrake getThrottle() {
@@ -42,7 +42,7 @@ public class SlotCarHardwareInterface implements HardwareInterface, ThrottleBrak
     }
 
     /**  Set the speed and returns success.
-     * @param throttle the speed to set.
+     * @param throttle the speed to copyFrom.
      * @return true if interface was open.
      */
     @Override

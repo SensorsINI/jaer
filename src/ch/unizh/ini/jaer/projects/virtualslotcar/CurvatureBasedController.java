@@ -32,7 +32,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
 //    private int numUpcomingCurvaturePoints=prefs().getInt("CurvatureBasedController.numUpcomingCurvaturePoints",3);
     private float desiredSpeedPPS = 0;
     private SimpleSpeedController speedController;
-    private float maxDistanceFromTrackPoint = prefs().getFloat("CurvatureBasedController.maxDistanceFromTrackPoint", 30); // pixels - need to set in track model
+    private float maxDistanceFromTrackPoint = prefs().getFloat("CurvatureBasedController.maxDistanceFromTrackPoint", 30); // pixels - need to copyFrom in track model
 //    private float curvatureDeltaTimeMs=prefs().getFloat("CurvatureBasedController.curvatureDeltaTimeMs",1);
     private float lateralAccelerationLimitPPS2 = prefs().getFloat("CurvatureBasedController.lateralAccelerationLimitPPS2", 4000);// 400pps change in 0.1s is about 4000pps2
     private float upcomingCurvature = 0;
@@ -81,7 +81,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
                 log.warning("null track model - can't compute control");
                 return getThrottle();
             }
-            this.track = track; // set track for logging
+            this.track = track; // copyFrom track for logging
             track.setPointTolerance(maxDistanceFromTrackPoint);
             /*
              * during the normal running of the car, the steps would be as follows (which are computed in the controller, given the CarTracker and SlotcarTrack)
@@ -185,7 +185,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
     }
 
     /**
-     * @param defaultThrottle the defaultThrottle to set
+     * @param defaultThrottle the defaultThrottle to copyFrom
      */
     public void setDefaultThrottle(float defaultThrottle) {
         this.defaultThrottle = defaultThrottle;
@@ -239,7 +239,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
     }
 
     /**
-     * @param lateralAccelerationLimitPPS2 the lateralAccelerationLimitPPS2 to set
+     * @param lateralAccelerationLimitPPS2 the lateralAccelerationLimitPPS2 to copyFrom
      */
     public void setLateralAccelerationLimitPPS2(float lateralAccelerationLimitPPS2) {
         this.lateralAccelerationLimitPPS2 = lateralAccelerationLimitPPS2;
@@ -254,7 +254,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
     }
 
     /**
-     * @param maxDistanceFromTrackPoint the maxDistanceFromTrackPoint to set
+     * @param maxDistanceFromTrackPoint the maxDistanceFromTrackPoint to copyFrom
      */
     public void setMaxDistanceFromTrackPoint(float maxDistanceFromTrackPoint) {
         this.maxDistanceFromTrackPoint = maxDistanceFromTrackPoint;
@@ -271,7 +271,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
     }
 
     /**
-     * @param throttleDelayMs the throttleDelayMs to set
+     * @param throttleDelayMs the throttleDelayMs to copyFrom
      */
     public void setThrottleDelayMs(float throttleDelayMs) {
         this.throttleDelayMs = throttleDelayMs;

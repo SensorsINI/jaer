@@ -40,4 +40,10 @@ public class ThrottleBrake implements Serializable{
         this.brake=brake;
     }
 
+    /** Copies fields from another ThrottleBrake */
+    void copyFrom(ThrottleBrake throttle) {
+        this.throttle=throttle.throttle;
+        this.brake=throttle.brake;
+    }
+
 }

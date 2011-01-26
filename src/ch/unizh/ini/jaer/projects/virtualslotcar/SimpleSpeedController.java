@@ -109,7 +109,7 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
     }
 
     /**
-     * @param gain the gain to set
+     * @param gain the gain to copyFrom
      */
     public void setGain (float gain){
         this.gain = gain;
@@ -126,7 +126,7 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
     /**
      * Sets the desired speed but does NOT store the preferred value in the Preferences (for speed).
      *
-     * @param desiredSpeedPPS the desiredSpeedPPS to set
+     * @param desiredSpeedPPS the desiredSpeedPPS to copyFrom
      */
     public void setDesiredSpeedPPS (float desiredSpeedPPS){
         float old=this.desiredSpeedPPS;
@@ -143,7 +143,7 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
     }
 
     /**
-     * @param defaultThrottle the defaultThrottle to set
+     * @param defaultThrottle the defaultThrottle to copyFrom
      */
     public void setDefaultThrottle(float defaultThrottle) {
         this.defaultThrottle = defaultThrottle;
@@ -163,7 +163,7 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
     }
 
     /**
-     * @param useModelEnabled the useModelEnabled to set
+     * @param useModelEnabled the useModelEnabled to copyFrom
      */
     public void setUseModelEnabled(boolean useModelEnabled) {
         this.useModelEnabled = useModelEnabled;

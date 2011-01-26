@@ -193,7 +193,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             currentTrackPos = car.segmentIdx;
         }
 
-        // choose state & set throttle
+        // choose state & copyFrom throttle
 
         float prevThrottle = throttle.throttle;
         if (state.get() == State.OVERRIDDEN) {
@@ -406,6 +406,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     final ThrottleBrake startingThrottle=new ThrottleBrake(startingThrottleValue,false);
 
+    @Override
     public ThrottleBrake getThrottle() {
         Enum s = state.get();
         if (s == State.RUNNING) {
@@ -423,7 +424,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     @Override
     public String logControllerState() {
-        return String.format("%s\t%d\t%f\t%s", state, currentTrackPos, throttle, car);
+        return String.format("%s\t%d\t%s\t%s", state, currentTrackPos, throttle, car);
     }
 
     @Override
@@ -473,7 +474,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     }
 
     /**
-     * @param defaultThrottle the defaultThrottle to set
+     * @param defaultThrottle the defaultThrottle to copyFrom
      */
     public void setDefaultThrottle(float defaultThrottle) {
         this.defaultThrottleValue = defaultThrottle;
@@ -604,7 +605,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     }
 
     /**
-     * @param showThrottleProfile the showThrottleProfile to set
+     * @param showThrottleProfile the showThrottleProfile to copyFrom
      */
     public void setShowThrottleProfile(boolean showThrottleProfile) {
         this.showThrottleProfile = showThrottleProfile;
@@ -618,7 +619,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     }
 
     /**
-     * @param learning the learning to set
+     * @param learning the learning to copyFrom
      */
     public void setLearningEnabled(boolean learning) {
         this.learningEnabled = learning;
@@ -633,7 +634,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     }
 
     /**
-     * @param change the throttlePunishment to set
+     * @param change the throttlePunishment to copyFrom
      */
     public void setThrottleChange(float change) {
         if (change > 1) {
@@ -654,7 +655,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
 
     /**
-     * @param fractionOfTrackToSpeedUp the fractionOfTrackToPunish to set
+     * @param fractionOfTrackToSpeedUp the fractionOfTrackToPunish to copyFrom
      */
     synchronized public void setFractionOfTrackToSpeedUp(float fractionOfTrackToSpeedUp) {
         if (fractionOfTrackToSpeedUp < 0) {
@@ -681,7 +682,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     }
 
     /**
-     * @param numSegmentsSpacingFromCrashToBrakingPoint the numSegmentsSpacingFromCrashToBrakingPoint to set
+     * @param numSegmentsSpacingFromCrashToBrakingPoint the numSegmentsSpacingFromCrashToBrakingPoint to copyFrom
      */
     public void setNumSegmentsSpacingFromCrashToBrakingPoint(int numSegmentsSpacingFromCrashToBrakingPoint) {
         if (numSegmentsSpacingFromCrashToBrakingPoint < 0) {
@@ -694,7 +695,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     }
 
     /**
-     * @param numSegmentsToBrakeBeforeCrash the numSegmentsToBrakeBeforeCrash to set
+     * @param numSegmentsToBrakeBeforeCrash the numSegmentsToBrakeBeforeCrash to copyFrom
      */
     public void setNumSegmentsToBrakeBeforeCrash(int numSegmentsToBrakeBeforeCrash) {
         if(numSegmentsToBrakeBeforeCrash<0) numSegmentsToBrakeBeforeCrash=0;
@@ -712,7 +713,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     }
 
     /**
-     * @param numSuccessfulLapsToReward the numSuccessfulLapsToReward to set
+     * @param numSuccessfulLapsToReward the numSuccessfulLapsToReward to copyFrom
      */
     public void setNumSuccessfulLapsToReward(int numSuccessfulLapsToReward) {
         if (numSuccessfulLapsToReward < 1) {
@@ -737,7 +738,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     }
 
     /**
-     * @param fractionOfTrackToSlowDownPreCrash the fractionOfTrackToSlowDownPreCrash to set
+     * @param fractionOfTrackToSlowDownPreCrash the fractionOfTrackToSlowDownPreCrash to copyFrom
      */
     public void setFractionOfTrackToSlowDownPreCrash(float fractionOfTrackToSlowDownPreCrash) {
         if (fractionOfTrackToSlowDownPreCrash < 0) {
@@ -763,7 +764,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     }
 
     /**
-     * @param editThrottleChange the editThrottleChange to set
+     * @param editThrottleChange the editThrottleChange to copyFrom
      */
     public void setEditThrottleChange(float editThrottleChange) {
         if (editThrottleChange < .001f) {
@@ -776,7 +777,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     }
 
     /**
-     * @param startingThrottleValue the startingThrottleValue to set
+     * @param startingThrottleValue the startingThrottleValue to copyFrom
      */
     public void setStartingThrottleValue(float startingThrottleValue) {
         if (startingThrottleValue < 0) {

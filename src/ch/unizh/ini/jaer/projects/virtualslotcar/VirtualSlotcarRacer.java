@@ -233,7 +233,7 @@ public class VirtualSlotcarRacer extends EventFilter2D implements FrameAnnotater
     }
 
     /**
-     * @param overrideThrottle the overrideThrottle to set
+     * @param overrideThrottle the overrideThrottle to copyFrom
      */
     public void setOverrideThrottle (boolean overrideThrottle){
         this.overrideThrottle = overrideThrottle;
@@ -248,7 +248,7 @@ public class VirtualSlotcarRacer extends EventFilter2D implements FrameAnnotater
     }
 
     /**
-     * @param overriddenThrottleSetting the overriddenThrottleSetting to set
+     * @param overriddenThrottleSetting the overriddenThrottleSetting to copyFrom
      */
     public void setOverriddenThrottleSetting (float overriddenThrottleSetting){
         this.overriddenThrottleSetting = overriddenThrottleSetting;
@@ -272,7 +272,7 @@ public class VirtualSlotcarRacer extends EventFilter2D implements FrameAnnotater
     }
 
     /**
-     * @param virtualCarEnabled the virtualCarEnabled to set
+     * @param virtualCarEnabled the virtualCarEnabled to copyFrom
      */
     public void setVirtualCarEnabled (boolean virtualCarEnabled){
         this.virtualCarEnabled = virtualCarEnabled;
@@ -301,7 +301,7 @@ public class VirtualSlotcarRacer extends EventFilter2D implements FrameAnnotater
     }
 
     /**
-     * @param maxThrottle the maxThrottle to set
+     * @param maxThrottle the maxThrottle to copyFrom
      */
     public void setMaxThrottle(float maxThrottle) {
         if(maxThrottle>1) maxThrottle=1; else if(maxThrottle<0) maxThrottle=0;

@@ -55,19 +55,19 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     private float playSoundThrottleChangeThreshold = 0.01F;
     private float lastSoundThrottleValue = 0;
     private long lastTimeSoundPlayed;
-    private ThrottleBrake throttle = new ThrottleBrake();
+    private ThrottleBrake lastThrottle = new ThrottleBrake();
 
     private void playThrottleSounds() {
-        if (playThrottleSound && Math.abs(throttle.throttle - lastSoundThrottleValue) > playSoundThrottleChangeThreshold) {
+        if (playThrottleSound && Math.abs(lastThrottle.throttle - lastSoundThrottleValue) > playSoundThrottleChangeThreshold) {
             long now;
-            if (throttle.throttle > lastSoundThrottleValue && (now = System.currentTimeMillis()) - lastTimeSoundPlayed > 5) {
+            if (lastThrottle.throttle > lastSoundThrottleValue && (now = System.currentTimeMillis()) - lastTimeSoundPlayed > 5) {
                 if (spikeSound == null) {
                     spikeSound = new SpikeSound();
                 }
                 spikeSound.play();
                 lastTimeSoundPlayed = now;
             }
-            lastSoundThrottleValue = throttle.throttle;
+            lastSoundThrottleValue = lastThrottle.throttle;
         }
     }
 
@@ -136,31 +136,21 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         out = getEnclosedFilterChain().filterPacket(in);
         
-        throttle=throttleController.getThrottle();
-        throttle.throttle = throttle.throttle > maxThrottle ? maxThrottle : throttle.throttle;
-        throttle.throttle=isOverrideThrottle()? getOverriddenThrottleSetting():throttle.throttle;
-        
-        hw.setThrottle(throttle);
+        lastThrottle.copyFrom(throttleController.getThrottle()); // copy from profile for example
+        // clip and apply override
+        lastThrottle.throttle = lastThrottle.throttle > maxThrottle ? maxThrottle : lastThrottle.throttle;
+        lastThrottle.throttle=isOverrideThrottle()? getOverriddenThrottleSetting():lastThrottle.throttle;
 
-//        if (isLogRacerDataEnabled()) {
-//            if (overrideThrottle) {
-//                float measuredSpeedPPS = Float.NaN;
-//                Point2D.Float pos = new Point2D.Float(Float.NaN, Float.NaN);
-//                if (carTracker.findCarCluster() != null) {
-//                    ClusterInterface c = carTracker.findCarCluster();
-//                    measuredSpeedPPS = c.getSpeedPPS();
-//                    pos = c.getLocation();
-//                }
-//                logRacerData(String.format("%f %f %f %f", pos.getX(), pos.getY(), measuredSpeedPPS, throttle));
-//            } else {
-//                if (car != null) {
-//                    String lt = lapTimer.toString().replace('\n', ' ');
-//                    logRacerData(String.format("%d %f %f %f %f %s %s", ((RectangularClusterTracker.Cluster) car).getLastEventTimestamp(), car.getLocation().x, car.getLocation().y, car.getSpeedPPS(), throttle, throttleController.logControllerState(), lt));
-//                } else {
-//                    logRacerData(throttleController.logControllerState());
-//                }
-//            }
-//        }
+        // send to hardware
+        hw.setThrottle(lastThrottle);
+
+        if (isLogRacerDataEnabled()) {
+            if (car != null) {
+                logRacerData(String.format("%d %f %f %f %f %s", ((TwoCarTracker.Cluster) car).getLastEventTimestamp(), car.getLocation().x, car.getLocation().y, car.getSpeedPPS(), lastThrottle, throttleController.logControllerState()));
+            } else {
+                logRacerData(throttleController.logControllerState());
+            }
+        }
 
         playThrottleSounds();
         return out;
@@ -170,9 +160,9 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     @Override
     public void resetFilter() {
         if (hw.isOpen()) {
-            throttle.throttle=0;
-            throttle.brake=false;
-            hw.setThrottle(throttle);
+            lastThrottle.throttle=0;
+            lastThrottle.brake=false;
+            hw.setThrottle(lastThrottle);
             hw.close();
         }
         filterChain.reset();
@@ -185,7 +175,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     public synchronized void annotate(GLAutoDrawable drawable) { // TODO may not want to synchronize here since this will block filtering durring annotation
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY());
 
-        String s = "SlotCarRacer\nstate: " + state.toString() + "\nthrottle: " + throttle ;
+        String s = "SlotCarRacer\nstate: " + state.toString() + "\nthrottle: " + lastThrottle ;
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 
@@ -199,7 +189,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     /**
      * Overrides any controller action to manually control the throttle.
      *
-     * @param overrideThrottle the overrideThrottle to set
+     * @param overrideThrottle the overrideThrottle to copyFrom
      */
     public void setOverrideThrottle(boolean overrideThrottle) {
         this.overrideThrottle = overrideThrottle;
@@ -221,7 +211,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     /**
      * Sets the value of the throttle override throttle.
      *
-     * @param overriddenThrottleSetting the overriddenThrottleSetting to set
+     * @param overriddenThrottleSetting the overriddenThrottleSetting to copyFrom
      */
     public void setOverriddenThrottleSetting(float overriddenThrottleSetting) {
         this.overriddenThrottleSetting = overriddenThrottleSetting;
@@ -261,7 +251,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
 
     /**
      *  Sets the failsafe maximum throttle that overrides any controller action.
-     * @param maxThrottle the maxThrottle to set
+     * @param maxThrottle the maxThrottle to copyFrom
      */
     public void setMaxThrottle(float maxThrottle) {
         if (maxThrottle > 1) {
@@ -291,7 +281,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     /**
      * Swaps in the chosen controller and rebuilds the GUI and filterChain.
      *
-     * @param controllerToUse the controllerToUse to set
+     * @param controllerToUse the controllerToUse to copyFrom
      */
     synchronized final public void setControllerToUse(ControllerToUse controllerToUse) {
         this.controllerToUse = controllerToUse;
@@ -345,7 +335,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     }
 
     /**
-     * @param playThrottleSound the playThrottleSound to set
+     * @param playThrottleSound the playThrottleSound to copyFrom
      */
     public void setPlayThrottleSound(boolean playThrottleSound) {
         this.playThrottleSound = playThrottleSound;
@@ -360,7 +350,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     }
 
     /**
-     * @param playSoundThrottleChangeThreshold the playSoundThrottleChangeThreshold to set
+     * @param playSoundThrottleChangeThreshold the playSoundThrottleChangeThreshold to copyFrom
      */
     public void setPlaySoundThrottleChangeThreshold(float playSoundThrottleChangeThreshold) {
         this.playSoundThrottleChangeThreshold = playSoundThrottleChangeThreshold;

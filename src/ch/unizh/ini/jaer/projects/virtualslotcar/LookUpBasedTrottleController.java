@@ -25,7 +25,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
     private Point2D.Float measuredLocation;
     private float throttleDelayMs = prefs().getFloat("CurvatureBasedController.throttleDelayMs", 200);
     private SimpleSpeedController speedController;
-    private float maxDistanceFromTrackPoint = prefs().getFloat("CurvatureBasedController.maxDistanceFromTrackPoint", 30); // pixels - need to set in track model
+    private float maxDistanceFromTrackPoint = prefs().getFloat("CurvatureBasedController.maxDistanceFromTrackPoint", 30); // pixels - need to copyFrom in track model
     private SlotcarTrack track;
     private int currentTrackPos; // position in spline parameter of track
     private int lastTrackPos; // last position in spline parameter of track
@@ -65,7 +65,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
                 log.warning("null track model - can't compute control");
                 return getThrottle();
             }
-            this.track = track; // set track for logging
+            this.track = track; // copyFrom track for logging
             track.setPointTolerance(maxDistanceFromTrackPoint);
             
             measuredSpeedPPS = car==null? Float.NaN: (float) car.getSpeedPPS();
@@ -171,7 +171,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
     }
 
     /**
-     * @param defaultThrottle the defaultThrottle to set
+     * @param defaultThrottle the defaultThrottle to copyFrom
      */
     public void setDefaultThrottle(float defaultThrottle) {
         this.defaultThrottle = defaultThrottle;
@@ -192,7 +192,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
     }
 
     /**
-     * @param maxDistanceFromTrackPoint the maxDistanceFromTrackPoint to set
+     * @param maxDistanceFromTrackPoint the maxDistanceFromTrackPoint to copyFrom
      */
     public void setMaxDistanceFromTrackPoint(float maxDistanceFromTrackPoint) {
         this.maxDistanceFromTrackPoint = maxDistanceFromTrackPoint;
@@ -209,7 +209,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
     }
 
     /**
-     * @param learning the learning to set
+     * @param learning the learning to copyFrom
      */
     public void setLearning(boolean learning) {
         this.learning = learning;
@@ -223,7 +223,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
     }
 
     /**
-     * @param crash the crash to set
+     * @param crash the crash to copyFrom
      */
     public void setCrash(boolean crash) {
         this.crash = crash;
@@ -240,7 +240,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
     }
 
     /**
-     * @param throttlePunishment the throttlePunishment to set
+     * @param throttlePunishment the throttlePunishment to copyFrom
      */
     public void setThrottleChange(float throttlePunishment) {
         this.throttleChange = throttlePunishment;
@@ -255,7 +255,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
     }
 
     /**
-     * @param fractionOfTrackToPunish the fractionOfTrackToPunish to set
+     * @param fractionOfTrackToPunish the fractionOfTrackToPunish to copyFrom
      */
     synchronized public void setFractionOfTrackToPunish(float fractionOfTrackToPunish) {
         this.fractionOfTrackToPunish = fractionOfTrackToPunish;
@@ -272,7 +272,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
 
 
     /**
-     * @param punishmentFactorIncrease the punishmentFactorIncrease to set
+     * @param punishmentFactorIncrease the punishmentFactorIncrease to copyFrom
      */
     public void setPunishmentFactorIncrease(float punishmentFactorIncrease) {
         this.punishmentFactorIncrease = punishmentFactorIncrease;
