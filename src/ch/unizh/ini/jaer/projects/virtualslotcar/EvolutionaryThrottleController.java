@@ -267,12 +267,12 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             state.set(State.STARTING);
         }
 
-        setBigStatusText(state.toString(), Color.RED);
+        setBigStatusText(state.toString(), bigStatusColor);
 
         return out;
     }
     private TextRenderer statusRenderer = null;
-    private Color bigStatusColor = Color.WHITE;
+    private Color bigStatusColor = new Color(1,0,0,.4f);
     private String bigStatusText = null;
 
     synchronized private void setBigStatusText(String s, Color c) {
@@ -285,7 +285,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             return;
         }
         if (statusRenderer == null) {
-            statusRenderer = new TextRenderer(new Font("Serif", Font.BOLD, 60));
+            statusRenderer = new TextRenderer(new Font("Serif", Font.BOLD, 50));
         }
         statusRenderer.setColor(bigStatusColor);
         Rectangle2D bounds = statusRenderer.getBounds(bigStatusText);

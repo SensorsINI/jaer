@@ -1050,7 +1050,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         private float mass = 1;
         /** This is the last time in timestamp ticks that the cluster was updated, either by an event
          * or by a regular update such as {@link #updateClusterLocations(int)}. This time can be used to
-         * compute postion updates given a cluster velocityPPT and time now.
+         * compute position updates given a cluster velocityPPT and time now.
          */
         protected int lastUpdateTime;
         /** events/tick event rate for last two events. */
@@ -1146,12 +1146,12 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             final float PATH_POINT_SIZE = 4f;
             final float VEL_LINE_WIDTH = 4f;
             GL gl = drawable.getGL();
-            int x = (int) getLocation().x;
-            int y = (int) getLocation().y;
+            float x =  getLocation().x;
+            float y =  getLocation().y;
 
 
-            int sy = (int) radiusY; // sx sy are (half) size of rectangle
-            int sx = (int) radiusX;
+            float sy =  radiusY; // sx sy are (half) size of rectangle
+            float sx =  radiusX;
 
             // set color and line width of cluster annotation
             setColorAutomatically();
@@ -1182,7 +1182,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 gl.glLineWidth(VEL_LINE_WIDTH);
                 gl.glBegin(GL.GL_LINES);
                 {
-                    gl.glVertex2i(x, y);
+                    gl.glVertex2f(x, y);
                     gl.glVertex2f(x + getVelocityPPT().x * VELOCITY_VECTOR_SCALING * velocityVectorScaling, y + getVelocityPPT().y * VELOCITY_VECTOR_SCALING * velocityVectorScaling);
                 }
                 gl.glEnd();
@@ -1225,7 +1225,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
          * If a pixel has been selected (we ask the renderer) then we compute the perspective from this vanishing point, otherwise
          * it is the top middle pixel.
          * @param p a point with 0,0 at lower left corner
-         * @return updateShape factor, which grows linearly to 1 at botton of scene
+         * @return updateShape factor, which grows linearly to 1 at bottom of scene
          */
         protected float getPerspectiveScaleFactor(Point2D.Float p) {
             if (!highwayPerspectiveEnabled) {
@@ -1357,7 +1357,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 }
             }
 
-            lastUpdateTime = event.timestamp;
 
             updateMass(event);
 
@@ -1368,6 +1367,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
             // if scaling is enabled, now updateShape the cluster size
             updateShape(event);
+            lastUpdateTime = event.timestamp;
 
         }
 
@@ -2547,24 +2547,24 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         putBoolean("useOffPolarityOnlyEnabled", useOffPolarityOnlyEnabled);
     }
 
-    protected void drawBox(GL gl, int x, int y, int sx, int sy, float angle) {
+    protected void drawBox(GL gl, float x, float y, float sx, float sy, float angle) {
         final float r2d = (float) (180 / Math.PI);
         gl.glPushMatrix();
         gl.glTranslatef(x, y, 0);
         gl.glRotatef(angle * r2d, 0, 0, 1);
         gl.glBegin(GL.GL_LINE_LOOP);
         {
-            gl.glVertex2i(-sx, -sy);
-            gl.glVertex2i(+sx, -sy);
-            gl.glVertex2i(+sx, +sy);
-            gl.glVertex2i(-sx, +sy);
+            gl.glVertex2f(-sx, -sy);
+            gl.glVertex2f(+sx, -sy);
+            gl.glVertex2f(+sx, +sy);
+            gl.glVertex2f(-sx, +sy);
         }
         gl.glEnd();
         if (dynamicAngleEnabled) {
             gl.glBegin(GL.GL_LINES);
             {
-                gl.glVertex2i(0, 0);
-                gl.glVertex2i(sx, 0);
+                gl.glVertex2f(0, 0);
+                gl.glVertex2f(sx, 0);
             }
             gl.glEnd();
         }
