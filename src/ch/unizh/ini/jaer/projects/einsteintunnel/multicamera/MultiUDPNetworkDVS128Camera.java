@@ -46,7 +46,8 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
     private static final String CLIENT_MAPPING_LIST_PREFS_KEY = "MultiUDPNetworkDVS128Camera.camHashLlist";  // preferences key for mapping table
     private JMenu chipMenu = null; // menu for specialized control
     private CameraMapperDialog cameraMapperDialog = null;
-    private CameraMap cameraMap = new CameraMap(); // the mapping from InetSocketAddress to camera position
+	private PowerSettingsDialog powerSettingsDialog = null;
+	private CameraMap cameraMap = new CameraMap(); // the mapping from InetSocketAddress to camera position
     private MultiUDPNetworkDVS128CameraDisplayMethod displayMethod=null;
 
     private String localhost; // "localhost"
@@ -74,6 +75,7 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
         getCanvas().addDisplayMethod(displayMethod);
         getCanvas().setDisplayMethod(displayMethod);
         chipMenu.add(new JCheckBoxMenuItem(new DisplayCameraInfoAction(displayMethod)));
+		chipMenu.add(new JMenuItem(new ShowPowerSettingsAction()));
         activateCameras();
   }
 
@@ -110,6 +112,13 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
             cameraMapperDialog = new CameraMapperDialog(getAeViewer(), false, this);
         }
         cameraMapperDialog.setVisible(true);
+    }
+
+	private void showPowerSettingsDialog() {
+        if (powerSettingsDialog == null) {
+            powerSettingsDialog = new PowerSettingsDialog(getAeViewer(), false, this);
+        }
+        powerSettingsDialog.setVisible(true);
     }
 
     /** Overrides to add the menu. */
@@ -378,6 +387,19 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
 
         public void actionPerformed(ActionEvent e) {
             showCameraMapperDialog();
+        }
+    }
+
+	private class ShowPowerSettingsAction extends AbstractAction {
+
+        public ShowPowerSettingsAction() {
+            putValue(NAME, "UDP Power tools");
+            putValue(MNEMONIC_KEY, KeyEvent.VK_S);
+            putValue(SHORT_DESCRIPTION, "Allows to switch the power of ");
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            showPowerSettingsDialog();
         }
     }
 
