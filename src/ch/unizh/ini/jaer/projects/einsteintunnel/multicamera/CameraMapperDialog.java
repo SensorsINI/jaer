@@ -74,6 +74,7 @@ public class CameraMapperDialog extends javax.swing.JDialog implements PropertyC
         moveDownButton = new javax.swing.JButton();
         deleteButton = new javax.swing.JButton();
         applyButton = new javax.swing.JButton();
+        resetButton = new javax.swing.JButton();
 
         setTitle("CameraMapper");
         setName("CameraMapper"); // NOI18N
@@ -127,6 +128,14 @@ public class CameraMapperDialog extends javax.swing.JDialog implements PropertyC
             }
         });
 
+        resetButton.setText("Reset");
+        resetButton.setToolTipText("Resets the Map");
+        resetButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                resetButtonActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -137,8 +146,10 @@ public class CameraMapperDialog extends javax.swing.JDialog implements PropertyC
                     .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 582, Short.MAX_VALUE)
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(okButton)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(applyButton)))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(applyButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(resetButton)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(moveUpButton)
@@ -156,7 +167,8 @@ public class CameraMapperDialog extends javax.swing.JDialog implements PropertyC
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(applyButton)
-                            .addComponent(okButton)))
+                            .addComponent(okButton)
+                            .addComponent(resetButton)))
                     .addGroup(layout.createSequentialGroup()
                         .addGap(41, 41, 41)
                         .addComponent(moveUpButton)
@@ -212,6 +224,10 @@ public class CameraMapperDialog extends javax.swing.JDialog implements PropertyC
         }
         camera.getCameraMap().deleteCameraAtPosition(sel);
     }//GEN-LAST:event_deleteButtonActionPerformed
+
+	private void resetButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetButtonActionPerformed
+		camera.getCameraMap().clear();
+	}//GEN-LAST:event_resetButtonActionPerformed
 
     private void doClose(int retStatus) {
         returnStatus = retStatus;
@@ -309,6 +325,7 @@ public class CameraMapperDialog extends javax.swing.JDialog implements PropertyC
     private javax.swing.JButton moveDownButton;
     private javax.swing.JButton moveUpButton;
     private javax.swing.JButton okButton;
+    private javax.swing.JButton resetButton;
     // End of variables declaration//GEN-END:variables
     private int returnStatus = RET_CANCEL;
 
