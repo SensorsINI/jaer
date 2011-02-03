@@ -68,19 +68,6 @@ public class PowerSettingsDialog extends javax.swing.JDialog {
 		}
 	}
 
-	public void sendResetSettings(){
-		String s = "Reset:"+adminPassword;
-		try {
-			sendString(s);
-		} catch (SocketException ex) {
-			Logger.getLogger(PowerSettingsDialog.class.getName()).log(Level.SEVERE, null, ex);
-		} catch (UnknownHostException ex) {
-			Logger.getLogger(PowerSettingsDialog.class.getName()).log(Level.SEVERE, null, ex);
-		} catch (IOException ex) {
-			Logger.getLogger(PowerSettingsDialog.class.getName()).log(Level.SEVERE, null, ex);
-		}
-	}
-
 	public void sendNewSettings() {
 		String s;
 		if(onRadioButton.isSelected()){
@@ -126,7 +113,6 @@ public class PowerSettingsDialog extends javax.swing.JDialog {
         showSettingsButton = new javax.swing.JButton();
         showSettingPane = new java.awt.ScrollPane();
         jLabel1 = new javax.swing.JLabel();
-        jButton1 = new javax.swing.JButton();
         onRadioButton = new javax.swing.JRadioButton();
         jButton2 = new javax.swing.JButton();
         supplyNumberSpinner = new javax.swing.JSpinner();
@@ -154,14 +140,6 @@ public class PowerSettingsDialog extends javax.swing.JDialog {
         });
 
         jLabel1.setText("Power Supply Settings");
-
-        jButton1.setText("Reset");
-        jButton1.setActionCommand("resetButton");
-        jButton1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                resetButtonActionPerformed(evt);
-            }
-        });
 
         onRadioButton.setSelected(true);
         onRadioButton.setText("ON");
@@ -194,16 +172,14 @@ public class PowerSettingsDialog extends javax.swing.JDialog {
                         .addComponent(showSettingPane, javax.swing.GroupLayout.DEFAULT_SIZE, 250, Short.MAX_VALUE)
                         .addGap(29, 29, 29)
                         .addComponent(showSettingsButton))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                    .addGroup(layout.createSequentialGroup()
                         .addComponent(jLabel4)
                         .addGap(18, 18, 18)
                         .addComponent(supplyNumberSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(10, 10, 10)
                         .addComponent(onRadioButton)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jButton2)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 106, Short.MAX_VALUE)
-                        .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 75, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(jButton2)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -220,12 +196,10 @@ public class PowerSettingsDialog extends javax.swing.JDialog {
                     .addComponent(jLabel4)
                     .addComponent(onRadioButton)
                     .addComponent(jButton2)
-                    .addComponent(jButton1)
                     .addComponent(supplyNumberSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap())
         );
 
-        jButton1.getAccessibleContext().setAccessibleName("resetButton");
         onRadioButton.getAccessibleContext().setAccessibleName("onRadioButton");
         jButton2.getAccessibleContext().setAccessibleName("setSettings");
         supplyNumberSpinner.getAccessibleContext().setAccessibleName("supplyNumberSpinner");
@@ -237,10 +211,6 @@ public class PowerSettingsDialog extends javax.swing.JDialog {
 		sendShowSettings();
 	}//GEN-LAST:event_showSettingsActionPerformed
 
-	private void resetButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetButtonActionPerformed
-		sendResetSettings();
-	}//GEN-LAST:event_resetButtonActionPerformed
-
 	private void setSettingsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setSettingsActionPerformed
 		sendNewSettings();
 	}//GEN-LAST:event_setSettingsActionPerformed
@@ -251,7 +221,6 @@ public class PowerSettingsDialog extends javax.swing.JDialog {
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton jButton1;
     private javax.swing.JButton jButton2;
     private javax.swing.JDialog jDialog1;
     private javax.swing.JLabel jLabel1;
