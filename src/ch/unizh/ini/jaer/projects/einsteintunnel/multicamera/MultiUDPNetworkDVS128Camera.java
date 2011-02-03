@@ -36,12 +36,13 @@ import ch.unizh.ini.jaer.chip.retina.DVS128;
 public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, MultiChip{
 
     /** Maximum number of network cameras in the linear array. */
-    public static final int MAX_NUM_CAMERAS = 1;
+    public static final int MAX_NUM_CAMERAS = 10;
     /** Width in pixels of each camera - same as DVS128. */
     public static final int CAM_WIDTH = 128;
 
-    private String cameraDomain = "169.254.0.";
-    private boolean useTunnelRotaion = true;
+    private String cameraDomain = "192.168.100.";
+    private int cameraDomainOffset = 20;
+    private boolean useTunnelRotaion = false;
     private int numChips = 1; // actual number of cameras we've gotten data from
     private static final String CLIENT_MAPPING_LIST_PREFS_KEY = "MultiUDPNetworkDVS128Camera.camHashLlist";  // preferences key for mapping table
     private JMenu chipMenu = null; // menu for specialized control
@@ -89,8 +90,8 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
             log.warning(ex.toString());
         }
         log.info("sending activation commands to cameras");
-        for(int i=1; i<=MAX_NUM_CAMERAS; i++){
-            String s = "t+\n";
+        for(int i=cameraDomainOffset; i<=cameraDomainOffset+MAX_NUM_CAMERAS; i++){
+            String s = "t+\r\n";
             byte[] b = s.getBytes();
             try{
                 InetAddress IPAddress =  InetAddress.getByName(cameraDomain+i);
@@ -98,8 +99,9 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
                 log.info("send "+b+" to "+IPAddress.getHostAddress()+":"+controlPort);
                 DatagramPacket d = new DatagramPacket(b,b.length,cameraSocketAddress);
                 if (outputSocket != null){
-                    outputSocket.send(d);
-                    outputSocket.close();
+
+		    outputSocket.send(d);
+                    
                 }
             } catch ( Exception e ){
                 log.warning(e.toString());

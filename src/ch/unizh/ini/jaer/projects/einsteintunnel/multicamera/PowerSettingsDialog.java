@@ -25,12 +25,13 @@ import javax.swing.*;
 public class PowerSettingsDialog extends javax.swing.JDialog {
 
 	public int sendPort = 75;
-	public int receivePort = 78;
+	public int receivePort = 77;
 	public String answer;
 
 	private String localhost; // "localhost"
 	private String powerSupplyIP = "192.168.1.40";
 	private String adminPassword = "admin";
+	private String adminUser = "admin";
 	private InetSocketAddress powerSupplySocketAddress;
 	private DatagramSocket outputSocket = null;
 	private JTextArea showSettingsArea;
@@ -71,9 +72,9 @@ public class PowerSettingsDialog extends javax.swing.JDialog {
 	public void sendNewSettings() {
 		String s;
 		if(onRadioButton.isSelected()){
-			s = "Sw_on"+supplyNumberSpinner.getValue()+0x00+adminPassword+"\r\n";
+			s = "Sw_on"+supplyNumberSpinner.getValue()+adminUser+adminPassword+"\r\n";
 		}else{
-			s = "Sw_off"+supplyNumberSpinner.getValue()+0x00+adminPassword+"\r\n";
+			s = "Sw_off"+supplyNumberSpinner.getValue()+adminUser+adminPassword+"\r\n";
 		}
 		try {
 			sendString(s);
@@ -95,8 +96,8 @@ public class PowerSettingsDialog extends javax.swing.JDialog {
 		powerSupplySocketAddress = new InetSocketAddress(IPAddress,sendPort);
 		DatagramPacket d = new DatagramPacket(b,b.length,powerSupplySocketAddress);
 		if (outputSocket != null){
-			outputSocket.send(d);
-			outputSocket.close();
+		    outputSocket.send(d);
+		    outputSocket.close();
 		}
 	}
 
@@ -117,6 +118,7 @@ public class PowerSettingsDialog extends javax.swing.JDialog {
         jButton2 = new javax.swing.JButton();
         supplyNumberSpinner = new javax.swing.JSpinner();
         jLabel4 = new javax.swing.JLabel();
+        jButton1 = new javax.swing.JButton();
 
         javax.swing.GroupLayout jDialog1Layout = new javax.swing.GroupLayout(jDialog1.getContentPane());
         jDialog1.getContentPane().setLayout(jDialog1Layout);
@@ -160,6 +162,13 @@ public class PowerSettingsDialog extends javax.swing.JDialog {
 
         jLabel4.setText("Supply Nr.");
 
+        jButton1.setText("Reboot");
+        jButton1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                rebootButtonActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -179,7 +188,9 @@ public class PowerSettingsDialog extends javax.swing.JDialog {
                         .addGap(10, 10, 10)
                         .addComponent(onRadioButton)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jButton2)))
+                        .addComponent(jButton2)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 114, Short.MAX_VALUE)
+                        .addComponent(jButton1)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -196,7 +207,8 @@ public class PowerSettingsDialog extends javax.swing.JDialog {
                     .addComponent(jLabel4)
                     .addComponent(onRadioButton)
                     .addComponent(jButton2)
-                    .addComponent(supplyNumberSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(supplyNumberSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jButton1))
                 .addContainerGap())
         );
 
@@ -219,8 +231,17 @@ public class PowerSettingsDialog extends javax.swing.JDialog {
 		// TODO add your handling code here:
 	}//GEN-LAST:event_onRadioButtonActionPerformed
 
+	private void rebootButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rebootButtonActionPerformed
+	try {
+	    Runtime.getRuntime().exec("cmd /c start C:/reboot.bat");
+	} catch (IOException ex) {
+	    Logger.getLogger(PowerSettingsDialog.class.getName()).log(Level.SEVERE, null, ex);
+	}
+	}//GEN-LAST:event_rebootButtonActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton jButton1;
     private javax.swing.JButton jButton2;
     private javax.swing.JDialog jDialog1;
     private javax.swing.JLabel jLabel1;
