@@ -250,9 +250,8 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
          *
          * @param drawable area to draw this.
          */
-        public void draw(GLAutoDrawable drawable) {
+        public void draw(GL gl) {
             final float BOX_LINE_WIDTH = 2f; // in chip
-            GL gl = drawable.getGL();
 
             // set color and line width of cell annotation
             setColorAutomatically();
@@ -562,7 +561,7 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
                         possibleTag ++;
                     } else {
                         tag = possibleTag;
-			tagFound = true;
+						tagFound = true;
                     }
                 }
                 firstEventTimestamp = inCell.getFirstEventTimestamp();
@@ -1488,7 +1487,7 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
                 for (int i = 0; i < cellArray.size(); i++) {
                     tmpCell = cellArray.get(i);
                     if (tmpCell.isVisible()) {
-                        tmpCell.draw(drawable);
+                        tmpCell.draw(gl);
                     }
                 }
             }
