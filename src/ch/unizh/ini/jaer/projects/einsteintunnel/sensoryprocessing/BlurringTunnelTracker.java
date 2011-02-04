@@ -250,166 +250,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
                 oscInterface.sendCluster(clusters.get(i));
             }
         }
-//        if(clusters.size()>0){
-//            if(sendClusterInfo){
-//                for(int i=0; i<clusters.size(); i++){
-//                    oscInterface.sendXPosition(clusters.get(i).getLocation().x*dsx/csx);
-//                    oscInterface.sendYPosition(clusters.get(i).getLocation().y*dsy/csy);
-//                }
-//            }
-//            if(sendVelocity){
-//                for(int i=0; i<clusters.size(); i++){
-//                    oscInterface.sendSpeed(clusters.get(i).getSpeedPPS());
-//                }
-//            }
-//            if(sendSize){
-//
-//            }
-//        }
-    }
-
-//    public void sendOutput(EventPacket<?> in){
-//        byte[] message = new byte[maxClusters*8+4+4];
-//        if(sendActivity){
-//            for(BasicEvent e:in){
-//                xHistogram[e.x*dsx/csx] += 1;
-//            }
-//            //sequence #
-//            message[0]=(byte)((packetCounter & 0xff000000)>>>24);
-//            message[1]=(byte)((packetCounter & 0x00ff0000)>>>16);
-//            message[2]=(byte)((packetCounter & 0x0000ff00)>>>8);
-//            message[3]=(byte)((packetCounter & 0x000000ff));
-//            //msg
-//            message[4]=(byte)'h';
-//            message[5]=(byte)'i';
-//            message[6]=(byte)'s';
-//            message[7]=(byte)'t';
-//            //no nrc
-//            message[8]=0;
-//            message[9]=0;
-//            //data
-//            for (int i=0; i<dsx; i++){
-//                message[10+2*i]=(byte)((xHistogram[i] & 0xff00>>>8));
-//                message[11+2*i]=(byte)((xHistogram[i] & 0x00ff));
-//            }
-//            try {
-//                sendPacket(message);
-//            } catch (IOException ex) {
-//                Logger.getLogger(SensorsToUDP.class.getName()).log(Level.SEVERE, null, ex);
-//            }
-//
-//            for(int i = 0; i<xHistogram.length; i++){
-//                xHistogram[i] = (short)(xHistogram[i]*activityDecayFactor);
-//            }
-//            packetCounter += 1;
-//        }
-//        if(sendClusterInfo && clusters.size()>0){
-//            //sequence #
-//            message[0]=(byte)((packetCounter & 0xff000000)>>>24);
-//            message[1]=(byte)((packetCounter & 0x00ff0000)>>>16);
-//            message[2]=(byte)((packetCounter & 0x0000ff00)>>>8);
-//            message[3]=(byte)((packetCounter & 0x000000ff));
-//            //msg
-//            message[4]=(byte)'p';
-//            message[5]=(byte)'o';
-//            message[6]=(byte)'s';
-//            message[7]=(byte)'n';
-//            //number of clusters
-//            message[8]=(byte)((clusters.size() & 0x0000ff00)>>>8);
-//            message[9]=(byte)(clusters.size() & 0x000000ff);
-//            //data
-//            for(int i=0; i<clusters.size(); i++){
-//                //System.out.println("location: "+clusters.getString(i).getLocation().x+"  NrCells: "+clusters.getString(i).numCells);
-//                int offset=8*i;
-//                //x position
-//                int xInt = Float.floatToRawIntBits(clusters.get(i).getLocation().x*dsx/csx);
-//                message[10+offset]=(byte)((xInt & 0xff000000)>>>24);
-//                message[11+offset]=(byte)((xInt & 0x00ff0000)>>>16);
-//                message[12+offset]=(byte)((xInt & 0x0000ff00)>>>8);
-//                message[13+offset]=(byte)((xInt & 0x000000ff));
-//                //y position
-//                int yInt = Float.floatToRawIntBits(clusters.get(i).getLocation().y*dsy/csy);
-//                message[14+offset]=(byte)((yInt & 0xff000000)>>>24);
-//                message[15+offset]=(byte)((yInt & 0x00ff0000)>>>16);
-//                message[16+offset]=(byte)((yInt & 0x0000ff00)>>>8);
-//                message[17+offset]=(byte)((yInt & 0x000000ff));
-//            }
-//            try {
-//                sendPacket(message);
-//            } catch (IOException ex) {
-//                Logger.getLogger(SensorsToUDP.class.getName()).log(Level.SEVERE, null, ex);
-//            }
-//            packetCounter += 1;
-//        }
-//        if(sendVelocity && clusters.size()>0){
-//            //sequence #
-//            message[0]=(byte)((packetCounter & 0xff000000)>>>24);
-//            message[1]=(byte)((packetCounter & 0x00ff0000)>>>16);
-//            message[2]=(byte)((packetCounter & 0x0000ff00)>>>8);
-//            message[3]=(byte)((packetCounter & 0x000000ff));
-//            //msg
-//            message[4]=(byte)'v';
-//            message[5]=(byte)'e';
-//            message[6]=(byte)'l';
-//            message[7]=(byte)'o';
-//            //number of clusters
-//            message[8]=(byte)((clusters.size() & 0x0000ff00)>>>8);
-//            message[9]=(byte)(clusters.size() & 0x000000ff);
-//            //data
-//            for(int i=0; i<clusters.size(); i++){
-//                int offset=8*i;
-//                //x velocity
-//                int xInt = Float.floatToRawIntBits(clusters.get(i).velocityPPS.x);
-//                message[10+offset]=(byte)((xInt & 0xff000000)>>>24);
-//                message[11+offset]=(byte)((xInt & 0x00ff0000)>>>16);
-//                message[12+offset]=(byte)((xInt & 0x0000ff00)>>>8);
-//                message[13+offset]=(byte)((xInt & 0x000000ff));
-//                //y velocity
-//                int yInt = Float.floatToRawIntBits(clusters.get(i).velocityPPS.y);
-//                message[14+offset]=(byte)((yInt & 0xff000000)>>>24);
-//                message[15+offset]=(byte)((yInt & 0x00ff0000)>>>16);
-//                message[16+offset]=(byte)((yInt & 0x0000ff00)>>>8);
-//                message[17+offset]=(byte)((yInt & 0x000000ff));
-//            }
-//            try {
-//                sendPacket(message);
-//            } catch (IOException ex) {
-//                Logger.getLogger(SensorsToUDP.class.getName()).log(Level.SEVERE, null, ex);
-//            }
-//            packetCounter += 1;
-//        }
-//        if(sendSize && clusters.size()>0){
-//            //sequence #
-//            message[0]=(byte)((packetCounter & 0xff000000)>>>24);
-//            message[1]=(byte)((packetCounter & 0x00ff0000)>>>16);
-//            message[2]=(byte)((packetCounter & 0x0000ff00)>>>8);
-//            message[3]=(byte)((packetCounter & 0x000000ff));
-//            //msg
-//            message[4]=(byte)'s';
-//            message[5]=(byte)'i';
-//            message[6]=(byte)'z';
-//            message[7]=(byte)'e';
-//            //number of clusters
-//            message[8]=(byte)((clusters.size() & 0x0000ff00)>>>8);
-//            message[9]=(byte)(clusters.size() & 0x000000ff);
-//            //data
-//            for(int i=0; i<clusters.size(); i++){
-//                int offset=4*i;
-//                //size
-//                int xInt = clusters.get(i).numEvents;
-//                message[10+offset]=(byte)((xInt & 0xff000000)>>>24);
-//                message[11+offset]=(byte)((xInt & 0x00ff0000)>>>16);
-//                message[12+offset]=(byte)((xInt & 0x0000ff00)>>>8);
-//                message[13+offset]=(byte)((xInt & 0x000000ff));
-//            }
-//            try {
-//                sendPacket(message);
-//            } catch (IOException ex) {
-//                Logger.getLogger(SensorsToUDP.class.getName()).log(Level.SEVERE, null, ex);
-//            }
-//            packetCounter += 1;
-//        }
-//    }
+	}
 
     public void sendPacket(byte[] message) throws IOException {
         DatagramPacket packet = new DatagramPacket(message, message.length, address, commandPort);
@@ -649,10 +490,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             numEvents = one.numEvents + two.numEvents;
             numCells = one.numCells + two.numCells;
 
-            // merge locations by average weighted by mass of events supporting each cluster
-            location.x = ( one.location.x * one_mass + two.location.x * two_mass ) / ( mass );
-            location.y = ( one.location.y * one_mass + two.location.y * two_mass ) / ( mass );
-
             lastEventTimestamp = one.lastEventTimestamp > two.lastEventTimestamp ? one.lastEventTimestamp : two.lastEventTimestamp;
             firstEventTimestamp = one.firstEventTimestamp < two.firstEventTimestamp ? one.firstEventTimestamp : two.firstEventTimestamp;
             path = older.path;
@@ -817,8 +654,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 
             int timeshift = cg.getLastEventTimestamp() - lastEventTimestamp;
             if(timeshift < 0) timeshift = 0;
-            location.x = ( location.x * curMass + (cg.getLocation().x + velocityPPT.x * timeshift) * cgMass ) / ( mass );
-            location.y = ( location.y * curMass + (cg.getLocation().y  + velocityPPT.y * timeshift)* cgMass ) / ( mass );
 
             if(cg.getLastEventTimestamp() > lastEventTimestamp){
                 increaseAgeUs(cg.getLastEventTimestamp() - lastEventTimestamp);
