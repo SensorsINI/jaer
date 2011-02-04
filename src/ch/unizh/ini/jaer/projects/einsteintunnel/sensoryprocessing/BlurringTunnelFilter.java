@@ -37,6 +37,7 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
     private boolean showCells = getPrefs().getBoolean("BlurringFilter2D.showCells", true);
     private boolean filledCells = getPrefs().getBoolean("BlurringFilter2D.filledCells", false);
     private int cellSizePixels = getPrefs().getInt("BlurringFilter2D.cellSizePixels", 5);
+	private int maxGroupSizeX = getPrefs().getInt("BlurringFilter2D.maxGroupSizeX", 50);
 
     /* Constants to define neighbor cells */
     static int UPDATE_UP = 0x01;
@@ -94,6 +95,7 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
         setPropertyTooltip(disp, "showBorderCellsOnly", "Show border cells (boundary cells of a cell group) only among the active cells");
         setPropertyTooltip(disp, "showInsideCellsOnly", "Show inside cells (surrounded by the border cells) only among the active cells");
         setPropertyTooltip(sizing, "cellSizePixels", "Side length of a square cell in number of pixels. Cell spacing is decided to the half of this value. Thus, neighboring cells overlaps each other.");
+		setPropertyTooltip(sizing, "maxGroupSizeX", "Maximal size of a cell group (along the x axis) before it gets disolved.");
 
 
     }
@@ -516,9 +518,9 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
          * maxX(Y) : maximum X(Y) among the locations of member cells
          */
         protected float minX, maxX, minY, maxY;
-	protected int numEvents = 0;
+		protected int numEvents = 0;
         protected int tag = -1; // Group number (index)
-	protected int trackerIndex = -1; // tracker which covers group
+		protected int trackerIndex = -1; // tracker which covers group
         protected boolean hitEdge = false; // Indicate if this cell group is hitting edge
         HashSet<Cell> memberCells = null; // Member cells consisting of this group
 
@@ -550,7 +552,7 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
             location.setLocation(-1f, -1f);
             mass = 0;
             tag = -1;
-	    numEvents = 0;
+			numEvents = 0;
             memberCells.clear();
             maxX = maxY = 0;
             minX = chip.getSizeX();
@@ -683,11 +685,7 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
          * @param cell
          */
         public void remove(Cell rmCell) {
-            float prev_mass = mass;
-            mass -= rmCell.getMassNow(lastEventTimestamp);
-	    numEvents -= rmCell.numEvents;
-            location.x = (location.x * prev_mass - rmCell.getLocation().x * rmCell.getMassNow(lastEventTimestamp)) / (mass);
-            location.y = (location.y * prev_mass - rmCell.getLocation().y * rmCell.getMassNow(lastEventTimestamp)) / (mass);
+			numEvents -= rmCell.numEvents;
 
             rmCell.setGroupTag(-1);
             memberCells.remove(rmCell);
@@ -1042,20 +1040,20 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
     }
 
     private void updateCellGroups(){
-	//log.info("update cell groups");
+		//log.info("update cell groups");
         HashSet<CellGroup> oldGroups = new HashSet<CellGroup>();// array of cells
-	Iterator groupItr = cellGroups.keySet().iterator();
+		Iterator groupItr = cellGroups.keySet().iterator();
         while(groupItr.hasNext()) {
             Object key = groupItr.next();
             CellGroup tmpGroup  = cellGroups.get((Integer)key);
-	    if(tmpGroup.getMassNow(lastTime)<thresholdMassForVisibleCell){
-		oldGroups.add(tmpGroup);
-	    }
+			if(tmpGroup.getMassNow(lastTime)<thresholdMassForVisibleCell){
+				oldGroups.add(tmpGroup);
+			}
         }
-	Iterator delItr = oldGroups.iterator();
-	while(delItr.hasNext()){
-	    deleteGroup((CellGroup)delItr.next());
-	}
+		Iterator delItr = oldGroups.iterator();
+		while(delItr.hasNext()){
+			deleteGroup((CellGroup)delItr.next());
+		}
     }
 
     synchronized private void updateCells(){
@@ -1395,52 +1393,58 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
                             rightCell = cellArray.get(cellIndexX + 1 + cellIndexY * numOfCellsX);
                             leftCell = cellArray.get(cellIndexX - 1 + cellIndexY * numOfCellsX);
 
-			    //update actual cell
-			    tmpCell.isAboveThreshold();
-			    //log.info("Cntr: "+String.valueOf(tmpCell.cellNumber)+": "+String.valueOf(tmpCell.visible)+", Up: "+String.valueOf(upCell.cellNumber)+": "+String.valueOf(upCell.visible)+", Down: "+String.valueOf(downCell.cellNumber)+": "+String.valueOf(downCell.visible)+", Left: "+String.valueOf(leftCell.cellNumber)+": "+String.valueOf(leftCell.visible)+", Right: "+String.valueOf(rightCell.cellNumber)+": "+String.valueOf(rightCell.visible));
+							//update actual cell
+							if(tmpCell.isAboveThreshold() && tmpCell.getGroupTag()>0){
+								CellGroup tmpGroup = cellGroups.get(tmpCell.getGroupTag());
+								if(Math.abs(tmpCell.location.x - tmpGroup.minX) > maxGroupSizeX || Math.abs(tmpCell.location.x - tmpGroup.maxX) > maxGroupSizeX){
+									deleteGroup(tmpGroup);
+								}
+							}
+							//log.info("Cntr: "+String.valueOf(tmpCell.cellNumber)+": "+String.valueOf(tmpCell.visible)+", Up: "+String.valueOf(upCell.cellNumber)+": "+String.valueOf(upCell.visible)+", Down: "+String.valueOf(downCell.cellNumber)+": "+String.valueOf(downCell.visible)+", Left: "+String.valueOf(leftCell.cellNumber)+": "+String.valueOf(leftCell.visible)+", Right: "+String.valueOf(rightCell.cellNumber)+": "+String.valueOf(rightCell.visible));
+
 
                             if (upCell.isAboveThreshold()) {
                                 if(upCell.getGroupTag() > 0 && tmpCell.getGroupTag() != upCell.getGroupTag()){
                                     if(tmpCell.getGroupTag() > 0){
-					cellGroups.get(upCell.getGroupTag()).merge(cellGroups.get(tmpCell.getGroupTag()));
-                                    } else {
-					cellGroups.get(upCell.getGroupTag()).add(tmpCell);
-				    }
-				}
+										cellGroups.get(upCell.getGroupTag()).merge(cellGroups.get(tmpCell.getGroupTag()));
+									} else {
+										cellGroups.get(upCell.getGroupTag()).add(tmpCell);
+									}
+								}
                             }
                             if (downCell.isAboveThreshold()) {
                                 if(downCell.getGroupTag() > 0 && tmpCell.getGroupTag() != downCell.getGroupTag()){
                                     if(tmpCell.getGroupTag() > 0){
-					cellGroups.get(downCell.getGroupTag()).merge(cellGroups.get(tmpCell.getGroupTag()));
-                                    } else {
-					cellGroups.get(downCell.getGroupTag()).add(tmpCell);
-				    }
-				}
+										cellGroups.get(downCell.getGroupTag()).merge(cellGroups.get(tmpCell.getGroupTag()));
+									} else {
+										cellGroups.get(downCell.getGroupTag()).add(tmpCell);
+									}
+								}
                             }
 
                             if (leftCell.isAboveThreshold()) {
                                 if(leftCell.getGroupTag() > 0 && tmpCell.getGroupTag() != leftCell.getGroupTag()){
                                     if(tmpCell.getGroupTag() > 0){
-					cellGroups.get(leftCell.getGroupTag()).merge(cellGroups.get(tmpCell.getGroupTag()));
+										cellGroups.get(leftCell.getGroupTag()).merge(cellGroups.get(tmpCell.getGroupTag()));
                                     } else {
-					cellGroups.get(leftCell.getGroupTag()).add(tmpCell);
-				    }
-				}
+										cellGroups.get(leftCell.getGroupTag()).add(tmpCell);
+									}
+								}
                             }
                             if (rightCell.isAboveThreshold()) {
                                 if(rightCell.getGroupTag() > 0 && tmpCell.getGroupTag() != rightCell.getGroupTag()){
                                     if(tmpCell.getGroupTag() > 0){
-					cellGroups.get(rightCell.getGroupTag()).merge(cellGroups.get(tmpCell.getGroupTag()));
-                                    } else {
-					cellGroups.get(rightCell.getGroupTag()).add(tmpCell);
-				    }
-				}
+										cellGroups.get(rightCell.getGroupTag()).merge(cellGroups.get(tmpCell.getGroupTag()));
+									} else {
+										cellGroups.get(rightCell.getGroupTag()).add(tmpCell);
+									}
+								}
                             }
 
                             if(tmpCell.isVisible()){
                                 if(tmpCell.getGroupTag()<0){
                                     CellGroup newGroup = new CellGroup(tmpCell);
-				    cellGroups.put(newGroup.getTag(), newGroup);
+									cellGroups.put(newGroup.getTag(), newGroup);
                                 }
                             }
                             break;
@@ -1450,9 +1454,9 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
                 } catch (java.util.ConcurrentModificationException e) {
                     // this is in case cell list is modified by real time filter during updating cells
                     initFilter();
-                    log.warning(e.getMessage());
-                }
-        } // End of if
+					log.warning(e.getMessage());
+			}
+		} // End of if
     }
 
     public void annotate(GLAutoDrawable drawable) {
@@ -1623,6 +1627,24 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
     synchronized public void setCellSizePixels(int cellSizePixels) {
         this.cellSizePixels = cellSizePixels;
         getPrefs().putInt("BlurringFilter2D.cellSizePixels", cellSizePixels);
+        initFilter();
+    }
+
+	/** returns max size of a cell group along the x axis
+     *
+     * @return maxGroupSizeX
+     */
+    public int getMaxGroupSizeX() {
+        return maxGroupSizeX;
+    }
+
+    /** set the cell size
+     *
+     * @param cellSizePixels
+     */
+    synchronized public void setMaxGroupSizeX(int maxGroupSizeX) {
+        this.maxGroupSizeX = maxGroupSizeX;
+        getPrefs().putInt("BlurringFilter2D.maxGroupSizeX", maxGroupSizeX);
         initFilter();
     }
 
