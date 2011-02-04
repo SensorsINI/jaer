@@ -203,7 +203,7 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
             resetGroupTag();
             visible = false;
             mass = 0.0f;
-	    numEvents = 0;
+			numEvents = 0;
             lastEventTimestamp = firstEventTimestamp = 0;
         }
 
@@ -246,22 +246,34 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
             return cellNumber == test.cellNumber;
         }
 
-        /** Draws this cell using OpenGL.
-         *
-         * @param drawable area to draw this.
-         */
-        public void draw(GL gl) {
-            final float BOX_LINE_WIDTH = 2f; // in chip
+		protected void drawCell(GLAutoDrawable drawable) {
+			final float BOX_LINE_WIDTH = 2f; // in chip
+			GL gl = drawable.getGL();
 
-            // set color and line width of cell annotation
-            setColorAutomatically();
-            getColor().getRGBComponents(rgb);
-            gl.glColor3fv(rgb, 0);
-            gl.glLineWidth(BOX_LINE_WIDTH);
+			setColorAccordingToGroup();
+			// set color and line width
+			gl.glColor3fv(color.getRGBColorComponents(null), 0);
+			gl.glLineWidth(BOX_LINE_WIDTH);
 
-            // draw cell rectangle
-            drawCell(gl, (int) getLocation().x, (int) getLocation().y, (int) cellSizePixels / 2, (int) cellSizePixels / 2);
-        }
+			// draws the receptive field of a neuron
+			gl.glPushMatrix();
+			gl.glTranslatef((int) getLocation().x, (int) getLocation().y, 0);
+
+			if (filledCells) {
+				gl.glBegin(GL.GL_QUADS);
+			} else {
+				gl.glBegin(GL.GL_LINE_LOOP);
+			}
+
+			int halfSize = (int) cellSizePixels / 2;
+			gl.glVertex2i(-halfSize, -halfSize);
+			gl.glVertex2i(+halfSize, -halfSize);
+			gl.glVertex2i(+halfSize, +halfSize);
+			gl.glVertex2i(-halfSize, +halfSize);
+
+			gl.glEnd();
+			gl.glPopMatrix();
+		}
 
         /** updates cell by one event.
          *
@@ -1443,34 +1455,6 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
         } // End of if
     }
 
-    /** Draw cell
-     *
-     * @param gl
-     * @param x
-     * @param y
-     * @param sx
-     * @param sy
-     */
-    protected void drawCell(GL gl, int x, int y, int sx, int sy) {
-        gl.glPushMatrix();
-        gl.glTranslatef(x, y, 0);
-
-        if (filledCells) {
-            gl.glBegin(GL.GL_QUADS);
-        } else {
-            gl.glBegin(GL.GL_LINE_LOOP);
-        }
-
-        {
-            gl.glVertex2i(-sx, -sy);
-            gl.glVertex2i(+sx, -sy);
-            gl.glVertex2i(+sx, +sy);
-            gl.glVertex2i(-sx, +sy);
-        }
-        gl.glEnd();
-        gl.glPopMatrix();
-    }
-
     public void annotate(GLAutoDrawable drawable) {
         if (!isFilterEnabled()) {
             return;
@@ -1481,18 +1465,20 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
             return;
         }
         gl.glPushMatrix();
+
         try {
             if (showCells) {
                 Cell tmpCell;
                 for (int i = 0; i < cellArray.size(); i++) {
                     tmpCell = cellArray.get(i);
-                    if (tmpCell.isVisible()) {
-                        tmpCell.draw(gl);
-                    }
+
+                    if (tmpCell.isVisible()){
+                        tmpCell.drawCell(drawable);
+					}
                 }
             }
         } catch (java.util.ConcurrentModificationException e) {
-            // this is in case cell list is modified by real time filter during rendering of cells
+            // this is in case neuron list is modified by real time filter during rendering of neurons
             log.warning(e.getMessage());
         }
         gl.glPopMatrix();
