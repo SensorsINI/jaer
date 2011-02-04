@@ -18,6 +18,7 @@ import java.util.logging.*;
  */
 public class ClusterOSCInterface {
 
+	public String DEFAULT_IP = "localhost";
     public int DEFAULT_PORT = 9997;
 
     public OSCutils utils ;
@@ -25,7 +26,7 @@ public class ClusterOSCInterface {
     public ClusterOSCInterface(){
         InetAddress address = null;
         try {
-            address = InetAddress.getByName("localhost");
+            address = InetAddress.getByName(DEFAULT_IP);
         } catch (UnknownHostException ex) {
             Logger.getLogger(ClusterOSCInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
