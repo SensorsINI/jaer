@@ -41,7 +41,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     public int csx, csy, maxHistogramX, packetCounter;
     public int commandPort = 20021;
     public int maxClusters = 200;
-    public int outputSubSample = 10;
+    public int outputSubSample = 1;
     public short[] xHistogram;
     public DatagramSocket socket;
     public InetAddress address;
@@ -187,11 +187,11 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     /**
      * Prunes out old clusters that don't have support or that should be purged for some other reason.
      */
-//    private void pruneClusters (){
-////        System.out.println(pruneList.size()+ " clusters are removed");
-//        clusters.removeAll(pruneList);
-//        pruneList.clear();
-//    }
+    private void pruneClusters (){
+//        System.out.println(pruneList.size()+ " clusters are removed");
+        clusters.removeAll(pruneList);
+        pruneList.clear();
+    }
 
     /** This method updates the list of clusters, pruning and
      * merging clusters and updating positions.
@@ -201,7 +201,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
      */
     private void updateClusterList (int t){
 //        mergeClusters();
-//        pruneClusters();
+	pruneClusters();
         updateClusterPaths(t);
     }
 
@@ -246,8 +246,9 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 
         }
         if(sendClusterInfo){
-            for(int i=0; i<clusters.size(); i++){
-                oscInterface.sendCluster(clusters.get(i));
+	    ListIterator clusterItr = clusters.listIterator();
+            while(clusterItr.hasNext()){
+                oscInterface.sendCluster((Cluster)clusterItr.next());
             }
         }
 	}
@@ -1273,8 +1274,23 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         gl.glPopMatrix();
     }
 
+    @Override
     synchronized public void annotate (GLAutoDrawable drawable){
-        if ( !isFilterEnabled() ){
+        //send clusters through osc
+//	if(oscEnabled){
+//            if(inputCount == outputSubSample){
+//                inputCount = 0;
+//                if(sendClusterInfo){
+//		    ListIterator clusterItr = clusters.listIterator();
+//		    while(clusterItr.hasNext()){
+//			oscInterface.sendCluster((Cluster)clusterItr.next());
+//		    }
+//		}
+//            }
+//            inputCount++;
+//        }
+
+	if ( !isFilterEnabled() ){
             return;
 
         }

@@ -18,7 +18,7 @@ import java.util.logging.*;
  */
 public class ClusterOSCInterface {
 
-	public String DEFAULT_IP = "localhost";
+	public String DEFAULT_IP = "192.168.1.101";
     public int DEFAULT_PORT = 9997;
 
     public OSCutils utils ;
