@@ -42,6 +42,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     public int commandPort = 20021;
     public int maxClusters = 200;
     public int outputSubSample = 1;
+	public int lastPacketTimestamp = 0;
     public short[] xHistogram;
     public DatagramSocket socket;
     public InetAddress address;
@@ -80,13 +81,14 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     private boolean sendActivity = getPrefs().getBoolean("BlurringTunnelTracker.sendActivity",false);
     private int pathLength = getPrefs().getInt("BlurringTunnelTracker.pathLength", 50);
     private boolean showClusters = getPrefs().getBoolean("BlurringTunnelTracker.showClusters",true);
-    private float velAngDiffDegToNotMerge = getPrefs().getFloat("BlurringTunnelTracker.velAngDiffDegToNotMerge",60.0f);
     private boolean showClusterNumber = getPrefs().getBoolean("BlurringTunnelTracker.showClusterNumber",false);
     private boolean showClusterVelocity = getPrefs().getBoolean("BlurringTunnelTracker.showClusterVelocity",false);
     private float velocityVectorScaling = getPrefs().getFloat("BlurringTunnelTracker.velocityVectorScaling",1.0f);
     private final float VELOCITY_VECTOR_SCALING = 1e6f; // to scale rendering of cluster velocityPPT vector, velocityPPT is in pixels/tick=pixels/us so this gives 1 screen pixel per 1 pix/s actual vel
     private boolean showClusterMass = getPrefs().getBoolean("BlurringTunnelTracker.showClusterMass",false);
     private float maximumClusterLifetimeMs = getPrefs().getFloat("BlurringTunnelTracker.maximumClusterLifetimeMs",100.0f);
+	private float minimumClusterLifetimeMs = getPrefs().getFloat("BlurringTunnelTracker.minimumClusterLifetimeMs",100.0f);
+	private float minimumClusterLifetimeUs = minimumClusterLifetimeMs*1000;
 
     private int inputCount = 0;
     /**
@@ -99,9 +101,10 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         chip.addObserver(this);
         final String movement = "Movement", disp = "Display", global = "Global", output = "Output", update = "Update", logging = "Logging";
         setPropertyTooltip(global,"maximumClusterLifetimeMs","upper limit of cluster lifetime. It increases by when the cluster is properly updated. Otherwise, it decreases. When the lifetime becomes zero, the cluster will be expired.");
+		setPropertyTooltip(global,"minimumClusterLifetimeMs","minimal cell group lifetime to get a tracker");
         setPropertyTooltip(global,"minCellsPerCluster","the minimal amount of active cells in a cell group to be tracked");
         setPropertyTooltip(global,"clusterRadius","size of the cluster boxes");
-	setPropertyTooltip(output,"udpEnabled","creates UDP output of the observed activities and cluster ");
+		setPropertyTooltip(output,"udpEnabled","creates UDP output of the observed activities and cluster ");
         setPropertyTooltip(output,"oscEnabled","enables a OSC output of the tracked information");
         setPropertyTooltip(output,"sendActivity","should a histogram of the x-activity be send out");
         setPropertyTooltip(output,"activityDecayFactor","how fast should the x-activity histogram decay");
@@ -131,54 +134,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         bfilter.addObserver(this); // to getString us called during blurring filter iteration at least every updateIntervalUs
         setEnclosedFilter(bfilter);
     }
-
-    /**
-     * merge clusters that are too close to each other and that have sufficiently similar velocities (if velocityRatioToNotMergeClusters).
-    this must be done interatively, because merging 4 or more clusters feedforward can result in more clusters than
-    you start with. each time we merge two clusters, we start over, until there are no more merges on iteration.
-    for each cluster, if it is close to another cluster then merge them and start over.
-     */
-//    private void mergeClusters (){
-//        boolean mergePending;
-//        Cluster c1 = null;
-//        Cluster c2 = null;
-//        do{
-//            mergePending = false;
-//            int nc = clusters.size();
-//            outer:
-//            for ( int i = 0 ; i < nc ; i++ ){
-//                c1 = clusters.get(i);
-//                for ( int j = i + 1 ; j < nc ; j++ ){
-//                    c2 = clusters.get(j); // getString the other cluster
-//                    final boolean overlapping = c1.distanceTo(c2) < ( c1.getMaxRadius() + c2.getMaxRadius() );
-//                    boolean velSimilar = true; // start assuming velocities are similar
-//                    if ( overlapping && velAngDiffDegToNotMerge > 0 && c1.isVelocityValid() && c2.isVelocityValid() && c1.velocityAngleTo(c2) > velAngDiffDegToNotMerge * Math.PI / 180 ){
-//                        // if velocities valid for both and velocities are sufficiently different
-//                        velSimilar = false; // then flag them as different velocities
-//                    }
-//                    if ( overlapping && velSimilar ){
-//                        // if cluster is close to another cluster, merge them
-//                        // if distance is less than sum of radii merge them and if velAngle < threshold
-//                        mergePending = true;
-//                        break outer; // break out of the outer loop
-//                    }
-//                }
-//            }
-//            if ( mergePending && c1 != null && c2 != null ){
-////                System.out.print("Cluster_"+c1.getClusterNumber()+"("+c1.firstEventTimestamp+") and cluster_"+c2.getClusterNumber()+"("+c2.firstEventTimestamp+ ") are merged to ");
-//                clusters.remove(c1);
-//                clusters.remove(c2);
-//                clusters.add(new Cluster(c1,c2));
-//
-////                System.out.print("Age of "+clusters.size()+" clusters after merging : ");
-////                for (Cluster c : clusters) {
-////                    System.out.print("cluster("+c.getClusterNumber()+")-"+c.getAgeUpdates()+", ");
-////                }
-////                System.out.println("");
-//            }
-//        } while ( mergePending );
-//
-//    }
 
     public void initFilter (){
         resetFilter();
@@ -220,6 +175,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         } else{
             out = in;
         }
+
+		lastPacketTimestamp = out.getLastTimestamp();
 
         update(this,new UpdateMessage(this,out,out.getLastTimestamp()));
         //if(udpEnabled)sendOutput(in);
@@ -1241,7 +1198,9 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             // Create cluster for the rest cell groups
             if ( !cgCollection.isEmpty() ){
                 for ( CellGroup cg:cgCollection ){
-                    track(cg,msg.packet.getDurationUs());
+					if(lastPacketTimestamp-cg.firstEventTimestamp>minimumClusterLifetimeUs){
+						track(cg,msg.packet.getDurationUs());
+					}
                 }
             }
 
@@ -1358,26 +1317,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     }
 
     /**
-     * @return the velAngDiffDegToNotMerge
-     */
-    public float getVelAngDiffDegToNotMerge (){
-        return velAngDiffDegToNotMerge;
-    }
-
-    /**
-     * @param velAngDiffDegToNotMerge the velAngDiffDegToNotMerge to set
-     */
-    public void setVelAngDiffDegToNotMerge (float velAngDiffDegToNotMerge){
-        if ( velAngDiffDegToNotMerge < 0 ){
-            velAngDiffDegToNotMerge = 0;
-        } else if ( velAngDiffDegToNotMerge > 180 ){
-            velAngDiffDegToNotMerge = 180;
-        }
-        this.velAngDiffDegToNotMerge = velAngDiffDegToNotMerge;
-        getPrefs().putFloat("BlurringTunnelTracker.velAngDiffDegToNotMerge",velAngDiffDegToNotMerge);
-    }
-
-    /**
      * @return the showClusterNumber
      */
     public boolean isShowClusterNumber (){
@@ -1439,6 +1378,26 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         this.maximumClusterLifetimeMs = maximumClusterLifetimeMs;
         getPrefs().putFloat("BlurringTunnelTracker.maximumClusterLifetimeMs",maximumClusterLifetimeMs);
         getSupport().firePropertyChange("maximumClusterLifetimeMs",old,this.maximumClusterLifetimeMs);
+    }
+
+	/**
+     *
+     * @return
+     */
+    public float getMinimumClusterLifetimeMs (){
+        return minimumClusterLifetimeMs;
+    }
+
+    /**
+     *
+     * @param minimumClusterLifetimeMs
+     */
+    public void setMinimumClusterLifetimeMs (float minimumClusterLifetimeMs){
+        float old = this.minimumClusterLifetimeMs;
+        this.minimumClusterLifetimeMs = minimumClusterLifetimeMs;
+		this.minimumClusterLifetimeUs = minimumClusterLifetimeMs*1000;
+        getPrefs().putFloat("BlurringTunnelTracker.minimumClusterLifetimeMs",minimumClusterLifetimeMs);
+        getSupport().firePropertyChange("minimumClusterLifetimeMs",old,this.minimumClusterLifetimeMs);
     }
 
     /**
