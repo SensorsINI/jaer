@@ -4260,7 +4260,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         /*getAePlayer().*/ this.aePlayer.openAEInputFileDialog();
     }//GEN-LAST:event_openMenuItemActionPerformed
 
-    void showFilters (boolean yes){
+    public void showFilters (boolean yes){
         if ( yes && !filterFrameBuilt ){
             filterFrameBuilt = true;
             filterFrame = new FilterFrame(chip);
