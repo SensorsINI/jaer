@@ -29,7 +29,9 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     // TODO split out the optical gryo stuff into its own subclass
     // TODO split out the Cluster object as it's own class.
 
-	public int outputSubSample = 1;
+	public int outputSubSample = 5;
+	public int lastTimestamp = 0;
+	public int flow = 0;
 	public short[] xHistogram;
 	public ClusterOSCInterface oscInterface = new ClusterOSCInterface();
 
@@ -78,6 +80,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     private float tauLPFMs = getPrefs().getFloat("BlurringTunnelTracker.tauLPFMs",5.0f);
 	private boolean oscEnabled = getPrefs().getBoolean("BlurringTunnelTracker.oscEnabled",true);
     private boolean sendClusterInfo = getPrefs().getBoolean("BlurringTunnelTracker.sendClusterInfo",true);
+	private int minClusterAge = getPrefs().getInt("BlurringTunnelTracker.minClusterAge",1000);
 	private float activityDecayFactor = getPrefs().getFloat("BlurringTunnelTracker.activityDecayFactor",0.9f);
     private boolean sendActivity = getPrefs().getBoolean("BlurringTunnelTracker.sendActivity",false);
 	private float flowThreshold = getPrefs().getFloat("BlurringTunnelTracker.flowThreshold",15f);
@@ -111,6 +114,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         setPropertyTooltip(disp,"showClusterMass","shows cluster mass");
 		setPropertyTooltip(disp,"velocityVectorScaling","scaling of drawn velocity vectors");
         setPropertyTooltip(einstein,"oscEnabled","enables a OSC output of the tracked information");
+		setPropertyTooltip(einstein,"minClusterAge","how Old a Cluster has to be for OSC transfer");
 		setPropertyTooltip(einstein,"sendClusterInfo","should the informations on the cluster be send out");
 		setPropertyTooltip(einstein,"sendActivity","should a histogram of the x-activity be send out");
 		setPropertyTooltip(einstein,"activityDecayFactor","how fast should the x-activity histogram decay");
@@ -219,6 +223,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             out = in;
         }
 
+		lastTimestamp = out.getLastTimestamp();
+
 		if(oscEnabled){
             if(inputCount == outputSubSample){
                 inputCount = 0;
@@ -246,16 +252,21 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 			int flowSum = 0;
             while(clusterItr.hasNext()){
 				Cluster clusterToSend = (Cluster)clusterItr.next();
-				flowSum+=clusterToSend.getVelocityPPS().x;
-                oscInterface.sendCluster(clusterToSend);
+				if (lastTimestamp - clusterToSend.firstUpdateTimestamp > minClusterAge){
+					clusterToSend.validForOSC = true;
+					flowSum+=clusterToSend.getVelocityPPS().x;
+					oscInterface.sendCluster(clusterToSend);
+				}
             }
 			if(flowSum > flowThreshold){
-				oscInterface.sendFlow(1);
+				flow = 1;
 			}else if(flowSum < -flowThreshold){
-				oscInterface.sendFlow(-1);
+				flow = -1;
 			}else{
-				oscInterface.sendFlow(0);
+				flow = 0;
 			}
+
+			oscInterface.sendFlow(flow);
         }
 	}
 
@@ -373,6 +384,11 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
          * used to flag invalid or uncomputable velocityPPT
          */
         private boolean velocityValid = false;
+
+		/**
+         * used to flag invalid or uncomputable velocityPPT
+         */
+        public boolean validForOSC = false;
 
         /**
          * radius of the cluster in chip pixels
@@ -613,7 +629,11 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             }
             // text annoations on clusters, setup
             final int font = GLUT.BITMAP_HELVETICA_18;
-            gl.glColor3f(1,1,1);
+            if(validForOSC){
+				gl.glColor3f(1,0,0);
+			}else{
+				gl.glColor3f(1,1,1);
+			}
             gl.glRasterPos3f(location.x,location.y,0);
 
             // annotate the cluster with hash ID
@@ -1430,6 +1450,15 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
                 if ( showClusters && c.isVisible() ){
                     c.draw(drawable);
                 }
+				// text annoations on clusters, setup
+				final int font = GLUT.BITMAP_HELVETICA_18;
+				gl.glColor3f(1,1,1);
+				gl.glRasterPos3f(chip.getSizeX()/2,chip.getSizeY()+10,0);
+
+				// annotate the cluster with hash ID
+				if ( sendClusterInfo ){
+					chip.getCanvas().getGlut().glutBitmapString(font,String.format("Flow: %d",flow));
+				}
             }
         } catch ( java.util.ConcurrentModificationException e ){
             // this is in case cluster list is modified by real time filter during rendering of clusters
@@ -1704,6 +1733,18 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     public void setOscEnabled (boolean oscEnabled){
         this.oscEnabled = oscEnabled;
         getPrefs().putBoolean("BlurringTunnelTracker.oscEnabled",oscEnabled);
+    }
+
+	public int getMinClusterAge() {
+        return minClusterAge;
+    }
+
+
+    public void setMinClusterAge(int minClusterAge) {
+        int old = this.minClusterAge;
+        this.minClusterAge = minClusterAge;
+        getPrefs().putInt("BlurringTunnelTracker.minClusterAge",minClusterAge);
+        getSupport().firePropertyChange("minClusterAge",old,this.minClusterAge);
     }
 	
 	public boolean getSendClusterInfo (){
