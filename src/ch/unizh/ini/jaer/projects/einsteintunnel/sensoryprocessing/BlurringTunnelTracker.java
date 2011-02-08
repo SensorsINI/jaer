@@ -1743,7 +1743,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         getPrefs().putFloat("BlurringTunnelTracker.tauLPFMs",tauLPFMs);
         getSupport().firePropertyChange("tauLPFMs",old,this.tauLPFMs);
     }
-	
+
 	public boolean getOscEnabled (){
         return oscEnabled;
     }
@@ -1764,7 +1764,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         getPrefs().putInt("BlurringTunnelTracker.minClusterAge",minClusterAge);
         getSupport().firePropertyChange("minClusterAge",old,this.minClusterAge);
     }
-	
+
 	public boolean getSendClusterInfo (){
         return sendClusterInfo;
     }
