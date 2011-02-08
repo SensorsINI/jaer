@@ -179,7 +179,7 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
             input.setPaused(enable);
         }
         if ( isOpen() ){
-            String s = enable ? "t+\n" : "t-\n";
+            String s = enable ? "t+\r\n" : "t-\r\n";
             byte[] b = s.getBytes();
             try{
                 DatagramPacket d = new DatagramPacket(b,b.length,client);

@@ -5,6 +5,7 @@
  * and open the template in the editor.
  */
 package ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing;
+import ch.unizh.ini.jaer.projects.einsteintunnel.multicamera.Resetter;
 import ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing.BlurringTunnelFilter.NeuronGroup;
 import com.sun.opengl.util.GLUT;
 import net.sf.jaer.aemonitor.AEConstants;
@@ -86,7 +87,9 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 	private float activityDecayFactor = getPrefs().getFloat("BlurringTunnelTracker.activityDecayFactor",0.9f);
     private boolean sendActivity = getPrefs().getBoolean("BlurringTunnelTracker.sendActivity",false);
 	private float flowThreshold = getPrefs().getFloat("BlurringTunnelTracker.flowThreshold",15f);
+
 	private int inputCount = 0;
+	private Timer resetTimer = new Timer();
 
     /**
      * Creates a new instance of BlurringFilter2DTracker.
@@ -183,7 +186,18 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     public void initFilter (){
         clusters.clear();
         clusterCounter = 0;
+		setTimer();
     }
+
+	private void setTimer(){
+		//reset the computer every day at 4:00
+		Calendar nextReset = new GregorianCalendar();
+		nextReset.add(Calendar.DAY_OF_MONTH, 1);
+		nextReset.set(Calendar.HOUR_OF_DAY, 4);
+		nextReset.set(Calendar.MINUTE, 00);
+		TimerTask resetTask = new Resetter();
+		resetTimer.schedule(resetTask, nextReset.getTime());
+	}
 
     /**
      * Prunes out old clusters that don't have support or that should be purged for some other reason.

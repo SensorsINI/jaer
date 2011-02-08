@@ -99,9 +99,10 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
                 log.info("send "+b+" to "+IPAddress.getHostAddress()+":"+controlPort);
                 DatagramPacket d = new DatagramPacket(b,b.length,cameraSocketAddress);
                 if (outputSocket != null){
-
-		    outputSocket.send(d);
-                    
+					//repeat the sending 10 to be sure of data transmission
+					for(int j=0; j<10; j++){
+						outputSocket.send(d);
+					}
                 }
             } catch ( Exception e ){
                 log.warning(e.toString());
