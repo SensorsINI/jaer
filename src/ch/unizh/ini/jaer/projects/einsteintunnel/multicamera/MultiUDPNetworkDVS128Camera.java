@@ -78,7 +78,13 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
         chipMenu.add(new JCheckBoxMenuItem(new DisplayCameraInfoAction(displayMethod)));
 		chipMenu.add(new JMenuItem(new ShowPowerSettingsAction()));
         activateCameras();
+		initFilters();
   }
+
+	 private void initFilters(){
+		 AEViewer aeviewer = this.getAeViewer();
+		 aeviewer.showFilters(true);
+	 }
 
     private void activateCameras() {
         try{
