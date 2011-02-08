@@ -630,7 +630,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             // text annoations on clusters, setup
             final int font = GLUT.BITMAP_HELVETICA_18;
             if(validForOSC){
-				gl.glColor3f(1,0,0);
+				gl.glColor3f(0,1,0);
 			}else{
 				gl.glColor3f(1,1,1);
 			}
