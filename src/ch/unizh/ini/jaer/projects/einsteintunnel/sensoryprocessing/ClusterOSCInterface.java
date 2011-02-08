@@ -83,6 +83,11 @@ public class ClusterOSCInterface {
 
     }
 
+	public void sendFlow(int flow){
+		Object[] args = { new Integer(flow)};
+		utils.sendMessage("/jAER/flow", args);
+	}
+
     public void sendXPosition(float position){
         Object[] args = {new Float(position)};
         utils.sendMessage("/jAER/position/x", args);

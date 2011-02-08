@@ -80,6 +80,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     private boolean sendClusterInfo = getPrefs().getBoolean("BlurringTunnelTracker.sendClusterInfo",true);
 	private float activityDecayFactor = getPrefs().getFloat("BlurringTunnelTracker.activityDecayFactor",0.9f);
     private boolean sendActivity = getPrefs().getBoolean("BlurringTunnelTracker.sendActivity",false);
+	private float flowThreshold = getPrefs().getFloat("BlurringTunnelTracker.flowThreshold",15f);
 	private int inputCount = 0;
 
     /**
@@ -108,10 +109,12 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         setPropertyTooltip(disp,"showClusterVelocity","annotates velocity in pixels/second");
         setPropertyTooltip(disp,"showClusterNumber","shows cluster ID number");
         setPropertyTooltip(disp,"showClusterMass","shows cluster mass");
+		setPropertyTooltip(disp,"velocityVectorScaling","scaling of drawn velocity vectors");
         setPropertyTooltip(einstein,"oscEnabled","enables a OSC output of the tracked information");
 		setPropertyTooltip(einstein,"sendClusterInfo","should the informations on the cluster be send out");
 		setPropertyTooltip(einstein,"sendActivity","should a histogram of the x-activity be send out");
 		setPropertyTooltip(einstein,"activityDecayFactor","how fast should the x-activity histogram decay");
+		setPropertyTooltip(einstein,"flowThreshold","threshold of average velocity to become left or right output");
 
         filterChainSetting();
     }
@@ -239,10 +242,20 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 
         }
         if(sendClusterInfo){
-	    ListIterator clusterItr = clusters.listIterator();
+			ListIterator clusterItr = clusters.listIterator();
+			int flowSum = 0;
             while(clusterItr.hasNext()){
-                oscInterface.sendCluster((Cluster)clusterItr.next());
+				Cluster clusterToSend = (Cluster)clusterItr.next();
+				flowSum+=clusterToSend.getVelocityPPS().x;
+                oscInterface.sendCluster(clusterToSend);
             }
+			if(flowSum > flowThreshold){
+				oscInterface.sendFlow(1);
+			}else if(flowSum < -flowThreshold){
+				oscInterface.sendFlow(-1);
+			}else{
+				oscInterface.sendFlow(0);
+			}
         }
 	}
 
@@ -1720,5 +1733,16 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         this.activityDecayFactor = activityDecayFactor;
         getPrefs().putFloat("BlurringTunnelTracker.activityDecayFactor",activityDecayFactor);
         getSupport().firePropertyChange("activityDecayFactor",old,this.activityDecayFactor);
+    }
+
+	public float getFlowThreshold(){
+        return flowThreshold;
+    }
+
+    public void setFlowThreshold(float flowThreshold){
+        float old = this.flowThreshold;
+        this.flowThreshold = flowThreshold;
+        getPrefs().putFloat("BlurringTunnelTracker.flowThreshold",flowThreshold);
+        getSupport().firePropertyChange("flowThreshold",old,this.flowThreshold);
     }
 }
