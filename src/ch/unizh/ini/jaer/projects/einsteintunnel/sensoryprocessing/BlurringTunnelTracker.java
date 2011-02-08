@@ -30,8 +30,10 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     // TODO split out the Cluster object as it's own class.
 
 	public int outputSubSample = 5;
+	public int flowSubSample = 200;
 	public int lastTimestamp = 0;
 	public int flow = 0;
+	public int flowSum = 0;
 	public short[] xHistogram;
 	public ClusterOSCInterface oscInterface = new ClusterOSCInterface();
 
@@ -226,10 +228,20 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 		lastTimestamp = out.getLastTimestamp();
 
 		if(oscEnabled){
-            if(inputCount == outputSubSample){
-                inputCount = 0;
+            if(inputCount % outputSubSample == 0){
                 sendOSC(in);
             }
+			if(inputCount % flowSubSample == 0){
+				if(flowSum > flowThreshold){
+					flow = 1;
+				}else if(flowSum < -flowThreshold){
+					flow = -1;
+				}else{
+					flow = 0;
+				}
+				flowSum = 0;
+            }
+			if(inputCount >= outputSubSample && inputCount >= flowSubSample) inputCount = 0;
             inputCount++;
         }
 
@@ -249,7 +261,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         }
         if(sendClusterInfo){
 			ListIterator clusterItr = clusters.listIterator();
-			int flowSum = 0;
             while(clusterItr.hasNext()){
 				Cluster clusterToSend = (Cluster)clusterItr.next();
 				if (lastTimestamp - clusterToSend.firstUpdateTimestamp > minClusterAge){
@@ -258,13 +269,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 					oscInterface.sendCluster(clusterToSend);
 				}
             }
-			if(flowSum > flowThreshold){
-				flow = 1;
-			}else if(flowSum < -flowThreshold){
-				flow = -1;
-			}else{
-				flow = 0;
-			}
 
 			oscInterface.sendFlow(flow);
         }
