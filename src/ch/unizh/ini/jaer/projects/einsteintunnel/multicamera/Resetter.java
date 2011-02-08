@@ -8,7 +8,6 @@ package ch.unizh.ini.jaer.projects.einsteintunnel.multicamera;
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.util.*;
 import java.util.logging.*;
 
 import javax.mail.*;
@@ -103,7 +102,7 @@ public class Resetter extends TimerTask{
 		for( int i=0; i < alert_recipients.length; i++ ) { // changed from a while loop
 			toAddress[i] = new InternetAddress(alert_recipients[i]);
 		}
-		System.out.println(Message.RecipientType.TO);
+		//System.out.println(Message.RecipientType.TO);
 
 		for( int i=0; i < toAddress.length; i++) { // changed from a while loop
 			message.addRecipient(Message.RecipientType.TO, toAddress[i]);
