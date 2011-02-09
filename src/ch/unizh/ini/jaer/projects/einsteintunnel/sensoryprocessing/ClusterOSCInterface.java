@@ -43,6 +43,16 @@ public class ClusterOSCInterface {
         utils = new OSCutils(address, port);
     }
 
+	public ClusterOSCInterface(String ip){
+        InetAddress address = null;
+        try {
+            address = InetAddress.getByName(ip);
+        } catch (UnknownHostException ex) {
+            Logger.getLogger(ClusterOSCInterface.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        utils = new OSCutils(address, DEFAULT_PORT);
+    }
+
     public void sendActivity(short[] xHistogram){
         Object args[] = new Object[xHistogram.length];
         for(int i = 0; i<xHistogram.length; i++){

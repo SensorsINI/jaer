@@ -36,7 +36,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 	public int flow = 0;
 	public int flowSum = 0;
 	public short[] xHistogram;
-	public ClusterOSCInterface oscInterface = new ClusterOSCInterface();
+	public ClusterOSCInterface oscInterface1 = new ClusterOSCInterface();
+	public ClusterOSCInterface oscInterface2 = new ClusterOSCInterface("192.168.1.103");
 
 	/**
      *
@@ -267,7 +268,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             for(BasicEvent e:in){
                 xHistogram[e.x] += 1;
             }
-            oscInterface.sendActivity(xHistogram);
+            oscInterface1.sendActivity(xHistogram);
+			oscInterface2.sendActivity(xHistogram);
             for(int i = 0; i<xHistogram.length; i++){
                 xHistogram[i] = (short)(xHistogram[i]*activityDecayFactor);
             }
@@ -280,11 +282,13 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 				if (lastTimestamp - clusterToSend.firstUpdateTimestamp > minClusterAge){
 					clusterToSend.validForOSC = true;
 					flowSum+=clusterToSend.getVelocityPPS().x;
-					oscInterface.sendCluster(clusterToSend);
+					oscInterface1.sendCluster(clusterToSend);
+					oscInterface2.sendCluster(clusterToSend);
 				}
             }
 
-			oscInterface.sendFlow(flow);
+			oscInterface1.sendFlow(flow);
+			oscInterface2.sendFlow(flow);
         }
 	}
 
