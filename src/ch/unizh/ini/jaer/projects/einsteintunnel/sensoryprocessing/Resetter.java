@@ -3,8 +3,9 @@
  * and open the template in the editor.
  */
 
-package ch.unizh.ini.jaer.projects.einsteintunnel.multicamera;
+package ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing;
 
+import ch.unizh.ini.jaer.projects.einsteintunnel.multicamera.PowerSettingsDialog;
 import java.io.*;
 import java.net.*;
 import java.util.*;

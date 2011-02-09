@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="ch">
+      <map/>
+      <node name="unizh">
+        <map/>
+        <node name="ini">
+          <map/>
+          <node name="jaer">
+            <map/>
+            <node name="projects">
+              <map/>
+              <node name="einsteintunnel">
+                <map/>
+                <node name="multicamera">
+                  <map>
+                    <entry key="FilterChain.timeLimitEnabled" value="false"/>
+                    <entry key="FilterChain.timeLimitMs" value="10"/>
+                    <entry key="MultiUDPNetworkDVS128Camera.camHashLlist" value="rO0ABXNyAD9jaC51bml6aC5pbmkuamFlci5wcm9qZWN0cy5laW5zdGVpbnR1bm5lbC5tdWx0aWNhbWVyYS5DYW1lcmFNYXAAAAAAAAAAKgMAAkwAC3Bvc2l0aW9uTWFwdAAPTGphdmEvdXRpbC9NYXA7TAAHc3VwcG9ydHQAIkxqYXZhL2JlYW5zL1Byb3BlcnR5Q2hhbmdlU3VwcG9ydDt4cgAmamF2YS51dGlsLmNvbmN1cnJlbnQuQ29uY3VycmVudEhhc2hNYXBkmd4SnYcpPQMAA0kAC3NlZ21lbnRNYXNrSQAMc2VnbWVudFNoaWZ0WwAIc2VnbWVudHN0ADFbTGphdmEvdXRpbC9jb25jdXJyZW50L0NvbmN1cnJlbnRIYXNoTWFwJFNlZ21lbnQ7eHAAAAAPAAAAHHVyADFbTGphdmEudXRpbC5jb25jdXJyZW50LkNvbmN1cnJlbnRIYXNoTWFwJFNlZ21lbnQ7Unc/QTKbOXQCAAB4cAAAABBzcgAuamF2YS51dGlsLmNvbmN1cnJlbnQuQ29uY3VycmVudEhhc2hNYXAkU2VnbWVudB82TJBYkyk9AgABRgAKbG9hZEZhY3RvcnhyAChqYXZhLnV0aWwuY29uY3VycmVudC5sb2Nrcy5SZWVudHJhbnRMb2NrZlWoLCzIausCAAFMAARzeW5jdAAvTGphdmEvdXRpbC9jb25jdXJyZW50L2xvY2tzL1JlZW50cmFudExvY2skU3luYzt4cHNyADRqYXZhLnV0aWwuY29uY3VycmVudC5sb2Nrcy5SZWVudHJhbnRMb2NrJE5vbmZhaXJTeW5jZYgy51N7vwsCAAB4cgAtamF2YS51dGlsLmNvbmN1cnJlbnQubG9ja3MuUmVlbnRyYW50TG9jayRTeW5juB6ilKpEWnwCAAB4cgA1amF2YS51dGlsLmNvbmN1cnJlbnQubG9ja3MuQWJzdHJhY3RRdWV1ZWRTeW5jaHJvbml6ZXJmVahDdT9S4wIAAUkABXN0YXRleHIANmphdmEudXRpbC5jb25jdXJyZW50LmxvY2tzLkFic3RyYWN0T3duYWJsZVN5bmNocm9uaXplcjPfr7mtbW+pAgAAeHAAAAAAP0AAAHNxAH4ACHNxAH4ADAAAAAA/QAAAc3EAfgAIc3EAfgAMAAAAAD9AAABzcQB+AAhzcQB+AAwAAAAAP0AAAHNxAH4ACHNxAH4ADAAAAAA/QAAAc3EAfgAIc3EAfgAMAAAAAD9AAABzcQB+AAhzcQB+AAwAAAAAP0AAAHNxAH4ACHNxAH4ADAAAAAA/QAAAc3EAfgAIc3EAfgAMAAAAAD9AAABzcQB+AAhzcQB+AAwAAAAAP0AAAHNxAH4ACHNxAH4ADAAAAAA/QAAAc3EAfgAIc3EAfgAMAAAAAD9AAABzcQB+AAhzcQB+AAwAAAAAP0AAAHNxAH4ACHNxAH4ADAAAAAA/QAAAc3EAfgAIc3EAfgAMAAAAAD9AAABzcQB+AAhzcQB+AAwAAAAAP0AAAHBweHcEAAAAAHg="/>
+                    <entry key="XYTypeFilter.filterEnabled" value="true"/>
+                    <entry key="RotateFilter.filterEnabled" value="false"/>
+                    <entry key="BackgroundActivityFilter.filterEnabled" value="true"/>
+                    <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAADdwQAAAADdAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5YWVR5cGVGaWx0ZXJ0ADtuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLkJhY2tncm91bmRBY3Rpdml0eUZpbHRlcnQAUWNoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLmVpbnN0ZWludHVubmVsLnNlbnNvcnlwcm9jZXNzaW5nLkJsdXJyaW5nVHVubmVsVHJhY2tlcng="/>
+                    <entry key="SampleTunnelFilter.filterEnabled" value="false"/>
+                    <entry key="SensorsToUDP.filterEnabled" value="false"/>
+                    <entry key="BlurringTunnelTracker.filterEnabled" value="true"/>
+                    <entry key="BlurringTunnelTracker.showClusters" value="true"/>
+                    <entry key="BlurringTunnelTracker.pathsEnabled" value="true"/>
+                    <entry key="BlurringTunnelTracker.sendPosition" value="true"/>
+                    <entry key="BlurringTunnelTracker.sendActivity" value="false"/>
+                    <entry key="BlurringTunnelTracker.udpEnabled" value="true"/>
+                    <entry key="BlurringTunnelTracker.minCellsPerCluster" value="10"/>
+                    <entry key="BlurringTunnelTracker.maximumClusterLifetimeMs" value="100.0"/>
+                    <entry key="BlurringTunnelTracker.useVelocity" value="true"/>
+                    <entry key="BlurringTunnelTracker.numVelocityPoints" value="10"/>
+                    <entry key="BlurringTunnelTracker.velAngDiffDegToNotMerge" value="90.0"/>
+                    <entry key="BlurringTunnelTracker.showClusterMass" value="false"/>
+                    <entry key="BlurringTunnelTracker.showClusterVelocity" value="false"/>
+                    <entry key="BlurringTunnelFilter.filterEnabled" value="false"/>
+                    <entry key="BlurringTunnelTracker.showClusterNumber" value="true"/>
+                    <entry key="BlurringFilter2D.filterEnabled" value="false"/>
+                    <entry key="BlurringFilter2D.showMPThreshold" value="false"/>
+                    <entry key="BlurringFilter2D.filledReceptiveField" value="true"/>
+                    <entry key="BlurringFilter2DTracker.filterEnabled" value="false"/>
+                    <entry key="BluringFilter2DTracker.showClusterMass" value="false"/>
+                    <entry key="BluringFilter2DTracker.showClusters" value="true"/>
+                    <entry key="BlurringFilter2D.cellSizePixels" value="15"/>
+                    <entry key="XYTypeFilter.yEnabled" value="true"/>
+                    <entry key="XYTypeFilter.endY" value="96"/>
+                    <entry key="XYTypeFilter.startY" value="73"/>
+                    <entry key="XYTypeFilter.xEnabled" value="true"/>
+                    <entry key="XYTypeFilter.multiSelectionEnabled" value="true"/>
+                    <entry key="XYTypeFilter.startX" value="0"/>
+                    <entry key="XYTypeFilter.endX" value="1014"/>
+                    <entry key="XYTypeFilter.startType" value="0"/>
+                    <entry key="XYTypeFilter.typeEnabled" value="false"/>
+                    <entry key="XYTypeFilter.endType" value="1"/>
+                    <entry key="XYTypeFilter.invertEnabled" value="false"/>
+                    <entry key="BlurringFilter2D.maxGroupSizeX" value="80"/>
+                    <entry key="BackgroundActivityFilter.dt" value="10000"/>
+                    <entry key="BlurringTunnelTracker.clusterRadius" value="20"/>
+                    <entry key="BlurringTunnelTracker.minimumClusterLifetimeMs" value="2000.0"/>
+                    <entry key="BlurringTunnelTracker.pathLength" value="48"/>
+                    <entry key="BlurringTunnelTracker.activityDecayFactor" value="0.85714287"/>
+                    <entry key="FilterChain.processingMode" value="RENDERING"/>
+                    <entry key="BluringFilter2DTracker.enableMerge" value="false"/>
+                    <entry key="BluringFilter2DTracker.showClusterNumber" value="true"/>
+                    <entry key="BluringFilter2DTracker.pathLength" value="50"/>
+                    <entry key="BluringFilter2DTracker.tauLPFMs" value="7.0355"/>
+                    <entry key="BluringFilter2DTracker.useVelocity" value="true"/>
+                    <entry key="BluringFilter2DTracker.velocityVectorScaling" value="0.56"/>
+                    <entry key="BluringFilter2DTracker.maximumClusterLifetimeMs" value="86.38377"/>
+                    <entry key="BluringFilter2DTracker.clusterRadiusLifetimeMs" value="10.0"/>
+                    <entry key="BluringFilter2DTracker.minimumClusterSizePixels" value="10"/>
+                    <entry key="BluringFilter2DTracker.enableTrjPersLimit" value="false"/>
+                    <entry key="BluringFilter2DTracker.pathsEnabled" value="true"/>
+                    <entry key="BluringFilter2DTracker.showClusterVelocity" value="false"/>
+                    <entry key="BlurringTunnelTracker.velocityVectorScaling" value="1.0"/>
+                    <entry key="BlurringTunnelTracker.flowThreshold" value="1000.0"/>
+                    <entry key="BlurringTunnelTracker.minClusterAge" value="100000"/>
+                    <entry key="BlurringFilter2D.showFiringNeurons" value="true"/>
+                    <entry key="XYTypeFilter.multiSelection" value="rO0ABXVyAAJbSU26YCZ26rKlAgAAeHAAAAACAAAAAAAAAAB1cQB+AAAAAAACAAAAAAAAAEl1cQB+AAAAAAACAAAE/wAAA/Z1cQB+AAAAAAACAAAASAAAABc="/>
+                  </map>
+                  <node name="ch">
+                    <map/>
+                    <node name="unizh">
+                      <map/>
+                      <node name="ini">
+                        <map/>
+                        <node name="jaer">
+                          <map/>
+                          <node name="projects">
+                            <map/>
+                            <node name="einsteintunnel">
+                              <map/>
+                              <node name="sensoryprocessing">
+                                <map/>
+                                <node name="BlurringTunnelFilter">
+                                  <map>
+                                    <entry key="BackgroundActivityFilter.dt" value="1000"/>
+                                    <entry key="BackgroundActivityFilter.subsampleBy" value="2"/>
+                                  </map>
+                                </node>
+                                <node name="BlurringTunnelTracker">
+                                  <map>
+                                    <entry key="BlurringFilter2D.showCells" value="true"/>
+                                    <entry key="BlurringFilter2D.cellMassTimeConstantUs" value="100000"/>
+                                    <entry key="BlurringFilter2D.cellSizePixels" value="15"/>
+                                    <entry key="BlurringFilter2D.filledCells" value="false"/>
+                                    <entry key="BlurringFilter2D.thresholdMassForVisibleCell" value="2"/>
+                                    <entry key="BlurringFilter2D.cellLifeTimeUs" value="100000"/>
+                                    <entry key="BlurringFilter2D.maxGroupSizeX" value="100"/>
+                                    <entry key="BlurringFilter2D.colorToDrawRF" value="red"/>
+                                    <entry key="BlurringFilter2D.showFiringNeurons" value="true"/>
+                                    <entry key="BlurringFilter2D.filledReceptiveField" value="false"/>
+                                    <entry key="BlurringFilter2D.receptiveFieldSizePixels" value="25"/>
+                                    <entry key="BlurringFilter2D.MPThreshold" value="10"/>
+                                    <entry key="BlurringFilter2D.MPTimeConstantUs" value="100000"/>
+                                    <entry key="BlurringFilter2D.MPInitialPercnetTh" value="50.0"/>
+                                  </map>
+                                </node>
+                              </node>
+                            </node>
+                            <node name="gesture">
+                              <map/>
+                              <node name="virtualdrummer">
+                                <map/>
+                                <node name="BlurringFilter2DTracker">
+                                  <map>
+                                    <entry key="BlurringFilter2D.MPTimeConstantUs" value="95238"/>
+                                    <entry key="BlurringFilter2D.MPThreshold" value="5"/>
+                                    <entry key="BlurringFilter2D.colorToDrawRF" value="red"/>
+                                    <entry key="BlurringFilter2D.filledReceptiveField" value="false"/>
+                                    <entry key="BlurringFilter2D.showFiringNeurons" value="true"/>
+                                    <entry key="BlurringFilter2D.receptiveFieldSizePixels" value="15"/>
+                                    <entry key="BlurringFilter2D.neuronLifeTimeUs" value="4761905"/>
+                                    <entry key="BlurringFilter2D.MPJumpAfterFiringPercentTh" value="5.0"/>
+                                    <entry key="BlurringFilter2D.MPInitialPercnetTh" value="80.0"/>
+                                    <entry key="BlurringFilter2D.showMPThreshold" value="false"/>
+                                  </map>
+                                </node>
+                              </node>
+                            </node>
+                          </node>
+                        </node>
+                      </node>
+                    </node>
+                  </node>
+                </node>
+              </node>
+            </node>
+          </node>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>

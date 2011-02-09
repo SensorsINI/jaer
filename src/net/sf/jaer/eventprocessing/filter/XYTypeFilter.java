@@ -19,9 +19,12 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import java.awt.Graphics2D;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.io.*;
+import java.io.Serializable;
 import java.util.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.*;
+import ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing.*;
 /**
  * An AE filter that filters for a range of x,y,type address. These values are persistent and can be used to filter out borders of the input or particular
  * types of input events. A rectangular region may either be passed (default) or blocked.
@@ -72,7 +75,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         setXEnabled(false); setYEnabled(false); setTypeEnabled(false);
     }
 
-    public XYTypeFilter (AEChip chip){
+    public XYTypeFilter (AEChip chip) {
         super(chip);
         setPropertyTooltip("invertEnabled","invert so that events inside region are blocked");
         resetFilter();
@@ -92,6 +95,8 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         setPropertyTooltip(t,"endType","ending cell type");
         setPropertyTooltip("invertEnabled","invert filtering to pass events outside selection");
         setPropertyTooltip("multiSelectionEnabled", "allows defining multiple regions to filter on");
+
+		doLoadMultiSelection();
     }
 
     /**
@@ -216,6 +221,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         getPrefs().putInt("XYTypeFilter.startX",startX);
         getSupport().firePropertyChange("startX",old,startX);
         setXEnabled(true);
+		
     }
 
     public int getEndX (){
@@ -229,7 +235,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         getPrefs().putInt("XYTypeFilter.endX",endX);
         getSupport().firePropertyChange("endX",old,endX);
         setXEnabled(true);
-
+		
     }
 
     public boolean isXEnabled (){
@@ -241,6 +247,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         this.xEnabled = xEnabled;
         getPrefs().putBoolean("XYTypeFilter.xEnabled",xEnabled);
         getSupport().firePropertyChange("xEnabled",old,xEnabled);
+		
     }
 
     public int getStartY (){
@@ -253,6 +260,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         this.startY = startY;
         getPrefs().putInt("XYTypeFilter.startY",startY);
         getSupport().firePropertyChange("startY",old,startY);
+		
         setYEnabled(true);
     }
 
@@ -267,6 +275,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         getPrefs().putInt("XYTypeFilter.endY",endY);
         getSupport().firePropertyChange("endY",old,endY);
         setYEnabled(true);
+		
     }
 
     public boolean isYEnabled (){
@@ -278,6 +287,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         this.yEnabled = yEnabled;
         getPrefs().putBoolean("XYTypeFilter.yEnabled",yEnabled);
         getSupport().firePropertyChange("yEnabled",old,yEnabled);
+		
     }
 
     public int getStartType (){
@@ -291,6 +301,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         getPrefs().putInt("XYTypeFilter.startType",startType);
         getSupport().firePropertyChange("startType",old,startType);
         setTypeEnabled(true);
+		
     }
 
     public int getEndType (){
@@ -304,6 +315,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         getPrefs().putInt("XYTypeFilter.endType",endType);
         getSupport().firePropertyChange("endType",old,endType);
         setTypeEnabled(true);
+		
     }
 
     public boolean isTypeEnabled (){
@@ -315,6 +327,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         this.typeEnabled = typeEnabled;
         getPrefs().putBoolean("XYTypeFilter.typeEnabled",typeEnabled);
         getSupport().firePropertyChange("typeEnabled",old,typeEnabled);
+		
     }
 
     public void annotate (GLAutoDrawable drawable){
@@ -377,6 +390,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
     public void setInvertEnabled (boolean invertEnabled){
         this.invertEnabled = invertEnabled;
         getPrefs().putBoolean("XYTypeFilter.invertEnabled",invertEnabled);
+		
     }
 
     public void mousePressed (MouseEvent e){
@@ -398,6 +412,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         setStartY(starty);
         setEndY(endy);
         selecting = false;
+		
     }
 
     public void mouseMoved (MouseEvent e){
@@ -475,6 +490,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
             glCanvas.removeMouseListener(this);
             glCanvas.removeMouseMotionListener(this);
         }
+		
     }
 
 
@@ -492,9 +508,10 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
     public void setMultiSelectionEnabled (boolean multiSelectionEnabled){
         this.multiSelectionEnabled = multiSelectionEnabled;
         prefs().putBoolean("XYTypeFilter.multiSelectionEnabled",multiSelectionEnabled);
+		
     }
 
-       private class SelectionRectangle extends Rectangle{
+    private class SelectionRectangle  extends Rectangle implements Serializable{
         public SelectionRectangle (int x,int y,int width,int height){
             super(x,y,width,height);
         }
@@ -515,4 +532,87 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         }
     }
 
+		 public final synchronized void doLoadMultiSelection() {
+
+
+		 try {
+
+				byte[] b = prefs().getByteArray("XYTypeFilter.multiSelection", null);
+				if (b == null) {
+					log.info("no MultiSelection save in preferences, can't load it");
+					return;
+				}
+				ByteArrayInputStream bis = new ByteArrayInputStream(b);
+				ObjectInputStream ois = new ObjectInputStream(bis);
+				Object o = ois.readObject();
+				if (o == null) {
+					throw new NullPointerException("Couldn't read x values for the MuliSelection from preferences");
+				}
+				int[] xValues = (int[]) o;
+				o = ois.readObject();
+				if (o == null) {
+					throw new NullPointerException("Couldn't read y values for the MuliSelection from preferences");
+				}
+				int[] yValues = (int[]) o;
+				o = ois.readObject();
+				if (o == null) {
+					throw new NullPointerException("Couldn't read x values for the MuliSelection from preferences");
+				}
+				int[] widthValues = (int[]) o;
+				o = ois.readObject();
+				if (o == null) {
+					throw new NullPointerException("Couldn't read x values for the MuliSelection from preferences");
+				}
+				int[] heightValues = (int[]) o;
+				for(int n = 0; n < xValues.length; n++){
+					selectionList.add(new SelectionRectangle(xValues[n],yValues[n],widthValues[n],heightValues[n]));
+				}
+				ois.close();
+				bis.close();
+				log.info("loaded selection from preferencdes");
+			} catch (Exception e) {
+				log.warning("couldn't load throttle profile: " + e);
+			}
+	   }
+
+	 synchronized public void doSaveMultiSelection() {
+		if (selectionList == null) {
+            log.warning("no profile to save");
+            return;
+        }
+        try {
+			int xValue[] = new int[selectionList.size()];
+			int yValue[] = new int[selectionList.size()];
+			int widthValue[] = new int[selectionList.size()];
+			int heightValue[] = new int[selectionList.size()];
+			Iterator iterator = selectionList.iterator();
+			int j=0;
+			while(iterator.hasNext()){
+				SelectionRectangle tmpRect = (SelectionRectangle)iterator.next();
+				xValue[j] = tmpRect.x;
+				yValue[j] = tmpRect.y;
+				widthValue[j] = tmpRect.width;
+				heightValue[j] = tmpRect.height;
+				j++;
+			}
+
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            ObjectOutputStream oos = new ObjectOutputStream(bos);
+            oos.writeObject(xValue);
+            oos.writeObject(yValue);
+			oos.writeObject(widthValue);
+            oos.writeObject(heightValue);
+            prefs().putByteArray("XYTypeFilter.multiSelection", bos.toByteArray());
+            oos.close();
+            bos.close();
+            log.info("multi selection saveed to preferences");
+        } catch (Exception e) {
+            log.warning("couldn't save profile: " + e);
+        }
+
+    }
+
+
+
+	
 }

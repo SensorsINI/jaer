@@ -480,7 +480,7 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
         }
     }//GEN-LAST:event_loadMenuItemActionPerformed
 
-    private void loadFile(File f) {
+    public void loadFile(File f) {
         try {
             FileInputStream fis = new FileInputStream(f);
             Preferences.importPreferences(fis);  // we import the tree into *this* preference node, which is not the one exported (which is root node)

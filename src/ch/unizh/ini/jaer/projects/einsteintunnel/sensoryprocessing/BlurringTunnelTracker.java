@@ -5,7 +5,6 @@
  * and open the template in the editor.
  */
 package ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing;
-import ch.unizh.ini.jaer.projects.einsteintunnel.multicamera.Resetter;
 import ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing.BlurringTunnelFilter.NeuronGroup;
 import com.sun.opengl.util.GLUT;
 import net.sf.jaer.aemonitor.AEConstants;
@@ -91,6 +90,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 
 	private int inputCount = 0;
 	private Timer resetTimer = new Timer();
+	private Timer swooshTimer = new Timer();
+	private TunnelStateMachine stateMachine = new TunnelStateMachine(this);
 
     /**
      * Creates a new instance of BlurringFilter2DTracker.
@@ -187,10 +188,17 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     public void initFilter (){
         clusters.clear();
         clusterCounter = 0;
-		setTimer();
+		setTimers();
     }
 
-	private void setTimer(){
+	private void setTimers(){
+		//make timer to change the minAge parameters
+		Calendar switchToSwoosh = new GregorianCalendar();
+		//switchToSwoosh.add(Calendar.DAY_OF_MONTH, 1);
+		switchToSwoosh.set(Calendar.HOUR_OF_DAY, 19);
+		switchToSwoosh.set(Calendar.MINUTE, 39);
+		TimerTask switchToSwooshTask = stateMachine.getSetSwooshState();
+		resetTimer.schedule(switchToSwooshTask, switchToSwoosh.getTime());
 		//reset the computer every day at 4:00
 		Calendar nextReset = new GregorianCalendar();
 		nextReset.add(Calendar.DAY_OF_MONTH, 1);
