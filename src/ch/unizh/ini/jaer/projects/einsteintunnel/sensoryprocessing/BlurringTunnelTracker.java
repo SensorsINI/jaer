@@ -243,7 +243,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 
 		if(oscEnabled){
             if(inputCount % outputSubSample == 0){
-                sendOSC(in);
+                sendOSC(out);
             }
 			if(inputCount % flowSubSample == 0){
 				if(flowSum > flowThreshold){
@@ -262,7 +262,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         return out;
     }
 
-	public void sendOSC(EventPacket<?> in){
+	public void sendOSC(EventPacket<BasicEvent> in){
         if(sendActivity){
             for(BasicEvent e:in){
                 xHistogram[e.x] += 1;
