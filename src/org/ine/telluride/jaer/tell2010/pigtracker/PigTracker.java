@@ -49,11 +49,18 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
     private final int linewidth = 1;
 
     private void computeChipSizeConstants() {
-        if (sx > 0 && sy > 0) {
+            sx = chip.getSizeX();
+            sy = chip.getSizeY();
+       if (sx > 0 && sy > 0) {
             sx2 = sx / 2;
             sy2 = sy / 2;
             sx1 = sx - 1;
             sy1 = sy - 1;
+        }
+    }
+
+    private void checkInit() {
+        if(sx==0 || sy==0 || captureEventMatrix==null || captureEventMatrix.length==0){
             initFilter();
         }
     }
@@ -121,6 +128,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         checkOutputPacketEventType(PolarityEvent.class);
+        checkInit();
         OutputEventIterator outItr = out.outputIterator();
         for (BasicEvent e : in) {
             PolarityEvent ev = (PolarityEvent) e;
@@ -138,12 +146,15 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 
     @Override
     synchronized public void resetFilter() {
-        init();
+        initFilter();
     }
 
     @Override
     public void initFilter() {
-        init();
+        computeChipSizeConstants();
+        captureEventMatrix = new boolean[sx][sy];
+        resetIdentityMatrix();
+        initTemplate();
     }
 
     @Override
@@ -197,10 +208,8 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
             precomputeUsingEndpoints();
             resetIdentityMatrix();
         } else if (o instanceof AEChip && arg == AEChip.EVENT_SIZEX) {
-            sx = chip.getSizeX();
             computeChipSizeConstants();
         } else if (o instanceof AEChip && arg == AEChip.EVENT_SIZEY) {
-            sy = chip.getSizeY();
             computeChipSizeConstants();
         }
 
@@ -429,13 +438,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
         cm[0]=cm[4]=cm[8]=1;        precomputeUsingEndpoints();
     }
 
-    public void init() {
-        captureEventMatrix = new boolean[sx][sy];
-        resetIdentityMatrix();
-        initTemplate();
-
-
-    }
+  
 
     @Override
     public void annotate(GLAutoDrawable drawable) {

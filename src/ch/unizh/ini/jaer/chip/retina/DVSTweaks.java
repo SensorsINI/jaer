@@ -13,13 +13,20 @@ package ch.unizh.ini.jaer.chip.retina;
  */
 public interface DVSTweaks {
 
-    public void tweakBandwidth(float val);
+    /** PropertyChangeEvents that can be fired by implementations. The "new" value is the new tweak value. */
+    public static final String BANDWIDTH="bandwidth", MAX_FIRING_RATE="maxFiringRate",THRESHOLD="threshold",ON_OFF_BALANCE="onOffBalance";
 
-    public void tweakMaximumFiringRate(float val);
+    public void setBandwidthTweak(float val);
+   public float getBandwidthTweak();
 
-    public void tweakThreshold(float val);
+    public void setMaxFiringRateTweak(float val);
+  public float getMaxFiringRateTweak();
 
-    public void tweakOnOffBalance(float val);
+    public void setThresholdTweak(float val);
+   public float getThresholdTweak();
+
+    public void setOnOffBalanceTweak(float val);
+ public float getOnOffBalanceTweak();
 
 
 }

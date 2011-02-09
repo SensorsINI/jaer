@@ -5,6 +5,8 @@
  */
 package ch.unizh.ini.jaer.chip.retina;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.logging.Logger;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
@@ -15,17 +17,11 @@ import net.sf.jaer.biasgen.PotTweaker;
 
  * @author  tobi
  */
-public class DVSFunctionalControlPanel extends javax.swing.JPanel  {
+public class DVSFunctionalControlPanel extends javax.swing.JPanel implements PropertyChangeListener {
 
     AERetina chip;
     DVSTweaks biasgen;
-    private static Logger log=Logger.getLogger("DVSFunctionalControlPanel");
-
-    private void setFileModified() {
-        if (chip != null && chip.getAeViewer() != null && chip.getAeViewer().getBiasgenFrame() != null) {
-            chip.getAeViewer().getBiasgenFrame().setFileModified(true);
-        }
-    }
+    private static final Logger log = Logger.getLogger("DVSFunctionalControlPanel");
 
     /** Creates new form Tmpdiff128FunctionalBiasgenPanel */
     public DVSFunctionalControlPanel(AERetina chip) {
@@ -35,6 +31,16 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel  {
         PotTweaker[] tweakers = {thresholdTweaker, onOffBalanceTweaker, maxFiringRateTweaker, bandwidthTweaker};
         for (PotTweaker tweaker : tweakers) {
             chip.getPrefs().addPreferenceChangeListener(tweaker); // to reset sliders on load/save of biases
+        }
+        if (chip instanceof DVS128) {
+            DVS128 dvs = (DVS128) chip;
+            dvs.getSupport().addPropertyChangeListener(this);
+        }
+    }
+
+    private void setFileModified() {
+        if (chip != null && chip.getAeViewer() != null && chip.getAeViewer().getBiasgenFrame() != null) {
+            chip.getAeViewer().getBiasgenFrame().setFileModified(true);
         }
     }
 
@@ -99,22 +105,22 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel  {
     }// </editor-fold>//GEN-END:initComponents
 
     private void bandwidthTweakerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_bandwidthTweakerStateChanged
-        biasgen.tweakBandwidth(bandwidthTweaker.getValue());
+        biasgen.setBandwidthTweak(bandwidthTweaker.getValue());
         setFileModified();
     }//GEN-LAST:event_bandwidthTweakerStateChanged
 
     private void thresholdTweakerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_thresholdTweakerStateChanged
-        biasgen.tweakThreshold(thresholdTweaker.getValue());
+        biasgen.setThresholdTweak(thresholdTweaker.getValue());
         setFileModified();
     }//GEN-LAST:event_thresholdTweakerStateChanged
 
     private void maxFiringRateTweakerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_maxFiringRateTweakerStateChanged
-        biasgen.tweakMaximumFiringRate(maxFiringRateTweaker.getValue());
+        biasgen.setMaxFiringRateTweak(maxFiringRateTweaker.getValue());
         setFileModified();
     }//GEN-LAST:event_maxFiringRateTweakerStateChanged
 
     private void onOffBalanceTweakerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_onOffBalanceTweakerStateChanged
-        biasgen.tweakOnOffBalance(onOffBalanceTweaker.getValue());
+        biasgen.setOnOffBalanceTweak(onOffBalanceTweaker.getValue());
         setFileModified();
     }//GEN-LAST:event_onOffBalanceTweakerStateChanged
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -124,4 +130,29 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel  {
     private net.sf.jaer.biasgen.PotTweaker thresholdTweaker;
     // End of variables declaration//GEN-END:variables
 
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        try {
+            if (evt.getPropertyName() == DVSTweaks.THRESHOLD) {
+                float v = (Float) evt.getNewValue();
+                thresholdTweaker.setValue(v);
+
+            } else if (evt.getPropertyName() == DVSTweaks.BANDWIDTH) {
+                float v = (Float) evt.getNewValue();
+                bandwidthTweaker.setValue(v);
+
+            } else if (evt.getPropertyName() == DVSTweaks.MAX_FIRING_RATE) {
+                float v = (Float) evt.getNewValue();
+                maxFiringRateTweaker.setValue(v);
+
+            } else if (evt.getPropertyName() == DVSTweaks.ON_OFF_BALANCE) {
+                float v = (Float) evt.getNewValue();
+                onOffBalanceTweaker.setValue(v);
+
+            }
+        } catch (Exception e) {
+            log.warning("responding to property change, caught " + e.toString());
+            e.printStackTrace();
+        }
+    }
 }

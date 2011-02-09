@@ -9,6 +9,7 @@
  */
 package ch.unizh.ini.jaer.chip.retina;
 
+import java.beans.PropertyChangeSupport;
 import java.util.Observable;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.biasgen.*;
@@ -44,7 +45,9 @@ public class DVS128 extends AERetina implements Serializable, Observer {
     private JMenu dvs128Menu = null;
     private JMenuItem arrayResetMenuItem = null, syncEnabledMenuItem = null;
     private JMenuItem setArrayResetMenuItem = null;
+    private PropertyChangeSupport support=new PropertyChangeSupport(this);
 
+ 
     public static String getDescription() {
         return "DVS128 Dynamic Vision Sensor";
     }
@@ -395,9 +398,9 @@ public class DVS128 extends AERetina implements Serializable, Observer {
         /** the change in current from an increase* or decrease* call */
         public final float RATIO = 1.05f;
         /** the minimum on/diff or diff/off current allowed by decreaseThreshold */
-        public final float MIN_THRESHOLD_RATIO = 2f;
-        public final float MAX_DIFF_ON_CURRENT = 6e-6f;
-        public final float MIN_DIFF_OFF_CURRENT = 1e-9f;
+        public final float MIN_THRESHOLD_RATIO = 4f;
+        public final float MAX_DIFF_ON_CURRENT = 12e-6f;
+        public final float MIN_DIFF_OFF_CURRENT = 1e-10f;
 
         synchronized public void increaseThreshold() {
             if (diffOn.getCurrent() * RATIO > MAX_DIFF_ON_CURRENT) {
@@ -473,26 +476,77 @@ public class DVS128 extends AERetina implements Serializable, Observer {
             return panel;
         }
 
-        public void tweakBandwidth(float val) {
+        private float bandwidth=1, maxFiringRate=1, threshold=1, onOffBalance=1;
+
+        public void setBandwidthTweak(float val) {
+            if(val>1)val=1; else if(val<-1) val=-1;
+            float old=bandwidth;
+            bandwidth=val;
             final float MAX = 300;
             pr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
             sf.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
+            getSupport().firePropertyChange(DVSTweaks.BANDWIDTH,old,val);
         }
 
-        public void tweakMaximumFiringRate(float val) {
+        public void setMaxFiringRateTweak(float val) {
+             if(val>1)val=1; else if(val<-1) val=-1;
+            float old=maxFiringRate;
+            maxFiringRate=val;
             final float MAX = 300;
             refr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
+            getSupport().firePropertyChange(DVSTweaks.MAX_FIRING_RATE,old,val);
         }
 
-        public void tweakThreshold(float val) {
-            final float MAX = 100;
+        public void setThresholdTweak(float val) {
+             if(val>1)val=1; else if(val<-1) val=-1;
+           float old=threshold;
+             final float MAX = 100;
+             threshold=val;
             diffOn.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
             diffOff.changeByRatioFromPreferred(1 / PotTweakerUtilities.getRatioTweak(val, MAX));
-        }
+             getSupport().firePropertyChange(DVSTweaks.THRESHOLD,old,val);
 
-        public void tweakOnOffBalance(float val) {
+       }
+
+        public void setOnOffBalanceTweak(float val) {
+             if(val>1)val=1; else if(val<-1) val=-1;
+            float old=onOffBalance;
+            onOffBalance=val;
             final float MAX = 100;
             diff.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
+              getSupport().firePropertyChange(DVSTweaks.ON_OFF_BALANCE,old,val);
+       }
+
+        @Override
+        public float getBandwidthTweak() {
+            return bandwidth;
         }
-    } // Tmpdiff128Biasgen
+
+        @Override
+        public float getThresholdTweak() {
+            return threshold;
+        }
+
+        @Override
+        public float getMaxFiringRateTweak() {
+            return maxFiringRate;
+        }
+
+        @Override
+        public float getOnOffBalanceTweak() {
+            return onOffBalance;
+        }
+    } // DVS128Biasgen
+
+
+
+    /**
+     * Fires PropertyChangeEvents when biases are tweaked according to {@link ch.unizh.ini.jaer.chip.retina.DVSTweaks}.
+     * 
+     * @return the support
+     */
+    public PropertyChangeSupport getSupport() {
+        return support;
+    }
+
 }

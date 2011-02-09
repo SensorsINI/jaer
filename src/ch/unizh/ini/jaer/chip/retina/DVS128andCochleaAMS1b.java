@@ -462,26 +462,46 @@ public class DVS128andCochleaAMS1b extends AERetina implements Serializable, Obs
             return panel;
         }
 
-        public void tweakBandwidth(float val) {
+        public void setBandwidthTweak(float val) {
             final float MAX = 300;
             pr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
             sf.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
         }
 
-        public void tweakMaximumFiringRate(float val) {
+        public void setMaxFiringRateTweak(float val) {
             final float MAX = 300;
             refr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
         }
 
-        public void tweakThreshold(float val) {
+        public void setThresholdTweak(float val) {
             final float MAX = 100;
             diffOn.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
             diffOff.changeByRatioFromPreferred(1 / PotTweakerUtilities.getRatioTweak(val, MAX));
         }
 
-        public void tweakOnOffBalance(float val) {
+        public void setOnOffBalanceTweak(float val) {
             final float MAX = 100;
             diff.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
+        }
+
+        @Override
+        public float getBandwidthTweak() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public float getMaxFiringRateTweak() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public float getThresholdTweak() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public float getOnOffBalanceTweak() {
+            throw new UnsupportedOperationException("Not supported yet.");
         }
     } // Tmpdiff128Biasgen
 }

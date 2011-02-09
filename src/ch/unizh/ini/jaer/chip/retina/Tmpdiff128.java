@@ -295,7 +295,7 @@ public class Tmpdiff128 extends AERetina implements Serializable {
             getDiffOff().changeByRatio(1 / RATIO);
         }
 
-        public void tweakBandwidth(float val) {
+        public void setBandwidthTweak(float val) {
             // TODO needs sensible method
         }
 
@@ -310,17 +310,17 @@ public class Tmpdiff128 extends AERetina implements Serializable {
             return v;
         }
 
-        public void tweakThreshold(float val) {
+        public void setThresholdTweak(float val) {
             float v = getRatioFromSlider(val);
             diffOn.setBitValue((int) (diffOn.getBitValue() * v));
             diffOff.setBitValue((int) (diffOff.getBitValue() / v));
         }
 
-        public void tweakMaximumFiringRate(float val) {
+        public void setMaxFiringRateTweak(float val) {
             // TODO needs sensible method here
         }
 
-        public void tweakOnOffBalance(float val) {
+        public void setOnOffBalanceTweak(float val) {
             throw new UnsupportedOperationException("Not supported yet.");
         }
         Tmpdiff128FunctionalBiasgenPanel biasUserControlPanel = null;
@@ -361,6 +361,26 @@ public class Tmpdiff128 extends AERetina implements Serializable {
 
         public IPot getSf() {
             return sf;
+        }
+
+        @Override
+        public float getBandwidthTweak() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public float getMaxFiringRateTweak() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public float getThresholdTweak() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public float getOnOffBalanceTweak() {
+            throw new UnsupportedOperationException("Not supported yet.");
         }
     } // Tmpdiff128Biasgen
 }

@@ -46,6 +46,7 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
     UndoableEditSupport editSupport = new UndoableEditSupport();
     private boolean addedUndoListener = false;
     private Hashtable<Integer,JComponent> labelTable = new Hashtable();
+    private boolean ignoreNextChange=false;
 
     public PotTweaker (){
         initComponents();
@@ -272,6 +273,7 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
      * @see EventListenerList
      */
     public void stateChanged (ChangeEvent e){
+        if(ignoreNextChange) return;
         Object[] listeners = listenerList.getListenerList();
         for ( int i = listeners.length - 2 ; i >= 0 ; i -= 2 ){
             if ( listeners[i] == ChangeListener.class ){
@@ -290,6 +292,18 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
     public float getValue (){
         return ( (float)slider.getValue() - halfMaxSlider ) / maxSlider;
     }
+
+    /** Sets the tweak value to something in range -1 to 1. Values outside this range are clipped.
+     */
+    public void setValue(float val){
+        if(val<-1) val=-1; else if(val>1) val=1;
+        int sliderValue=(int)Math.floor((val+1)/2*maxSlider);
+        ignoreNextChange=true;
+        slider.setValue(sliderValue);
+        ignoreNextChange=false;
+
+    }
+
     private String lessDescription = "Less";
 
     /**
