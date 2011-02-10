@@ -7,6 +7,9 @@
 package ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing;
 import ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing.BlurringTunnelFilter.NeuronGroup;
 import com.sun.opengl.util.GLUT;
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
@@ -15,6 +18,7 @@ import net.sf.jaer.eventprocessing.tracking.*;
 import net.sf.jaer.graphics.*;
 import java.awt.*;
 import java.awt.geom.*;
+import java.net.*;
 import java.util.*;
 import javax.media.opengl.*;
 import net.sf.jaer.event.EventPacket;
@@ -37,6 +41,9 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 	public short[] xHistogram;
 	public ClusterOSCInterface oscInterface1 = new ClusterOSCInterface();
 	public ClusterOSCInterface oscInterface2 = new ClusterOSCInterface("192.168.1.103");
+
+	public static final int RECEIVE_PORT = 9998;
+	private DatagramSocket dsocket;
 
 	/**
      *
@@ -128,7 +135,17 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 		setPropertyTooltip(einstein,"flowThreshold","threshold of average velocity to become left or right output");
 
         filterChainSetting();
+		initReceiver();
     }
+
+	protected void initReceiver(){
+		try {
+			dsocket = new DatagramSocket(RECEIVE_PORT);
+			dsocket.setSoTimeout(100);
+		} catch (SocketException ex) {
+			log.warning(TunnelStateMachine.class.getName()+ex.getMessage());
+		}
+	}
 
     /**
      * sets the BlurringFilter2D as a enclosed filter to find cluster
@@ -267,6 +284,17 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 			if(inputCount >= outputSubSample && inputCount >= flowSubSample) inputCount = 0;
             inputCount++;
         }
+
+		byte[] buffer = new byte[2048];
+		DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+		try {
+			dsocket.receive(packet);
+		} catch (IOException ex) {
+			Logger.getLogger(BlurringTunnelTracker.class.getName()).log(Level.SEVERE, null, ex);
+		}
+		String msg = new String(buffer, 0, packet.getLength());
+        System.out.println(packet.getAddress().getHostName() + ": "
+            + msg);
 
         return out;
     }
