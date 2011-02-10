@@ -295,8 +295,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 				}
             }
 
-			oscInterface1.sendFlow(flow);
-			oscInterface2.sendFlow(flow);
+			//oscInterface1.sendFlow(flow);
+			//oscInterface2.sendFlow(flow);
         }
 	}
 
