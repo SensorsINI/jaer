@@ -33,7 +33,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     // TODO split out the optical gryo stuff into its own subclass
     // TODO split out the Cluster object as it's own class.
 
-	public int outputSubSample = 5;
+	public int outputSubSample = 4;
 	public int flowSubSample = 200;
 	public int lastTimestamp = 0;
 	public int flow = 0;
@@ -94,6 +94,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 	private float activityDecayFactor = getPrefs().getFloat("BlurringTunnelTracker.activityDecayFactor",0.9f);
     private boolean sendActivity = getPrefs().getBoolean("BlurringTunnelTracker.sendActivity",false);
 	private float flowThreshold = getPrefs().getFloat("BlurringTunnelTracker.flowThreshold",15f);
+	private boolean getVVVVstate = getPrefs().getBoolean("BlurringTunnelTracker.getVVVVstate",false);
 
 	private int inputCount = 0;
 	private Timer resetTimer = new Timer();
@@ -132,6 +133,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 		setPropertyTooltip(einstein,"sendActivity","should a histogram of the x-activity be send out");
 		setPropertyTooltip(einstein,"activityDecayFactor","how fast should the x-activity histogram decay");
 		setPropertyTooltip(einstein,"flowThreshold","threshold of average velocity to become left or right output");
+		setPropertyTooltip(einstein,"getVVVVstate","wait on vvvv machine to respond on osc message");
 
         filterChainSetting();
 		initReceiver();
@@ -140,7 +142,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 	protected void initReceiver(){
 		try {
 			dsocket = new DatagramSocket(RECEIVE_PORT);
-			dsocket.setSoTimeout(100);
+			dsocket.setSoTimeout(10000);
 		} catch (SocketException ex) {
 			log.warning(TunnelStateMachine.class.getName()+ex.getMessage());
 		}
@@ -277,17 +279,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             inputCount++;
         }
 
-		byte[] buffer = new byte[2048];
-		DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-		try {
-			dsocket.receive(packet);
-		} catch (IOException ex) {
-			Logger.getLogger(BlurringTunnelTracker.class.getName()).log(Level.SEVERE, null, ex);
-		}
-		String msg = new String(buffer, 0, packet.getLength());
-        System.out.println(packet.getAddress().getHostName() + ": "
-            + msg);
-
         return out;
     }
 
@@ -315,10 +306,24 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 				}
             }
 
-			//oscInterface1.sendFlow(flow);
-			//oscInterface2.sendFlow(flow);
+			oscInterface1.sendFlow(flow);
+			oscInterface2.sendFlow(flow);
         }
+	if(getVVVVstate){
+	    byte[] buffer = new byte[2048];
+	    DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+	    try {
+		dsocket.receive(packet);
+	    } catch (IOException ex) {
+		Logger.getLogger(BlurringTunnelTracker.class.getName()).log(Level.WARNING, null, ex);
+	    }
+	    String msg = new String(buffer, 0, packet.getLength());
+	    //System.out.println(packet.getAddress().getHostName() + ": "+msg);
+	    if(msg.equals("swoosh"))stateMachine.setSwooshState();
+	    else if(stateMachine.state == TunnelStateMachine.stateTypes.SWOOSH) stateMachine.setDefaultState();
+	 }
 	}
+
 
     /**
      * the method that actually does the tracking
@@ -1813,6 +1818,15 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     public void setSendActivity (boolean sendActivity){
         this.sendActivity = sendActivity;
         getPrefs().putBoolean("BlurringTunnelTracker.sendActivity",sendActivity);
+    }
+
+    public boolean getGetVVVVstate (){
+        return getVVVVstate;
+    }
+
+    public void setGetVVVVstate (boolean getVVVVstate){
+        this.getVVVVstate = getVVVVstate;
+        getPrefs().putBoolean("BlurringTunnelTracker.getVVVVstate",getVVVVstate);
     }
 
 	public float getActivityDecayFactor (){
