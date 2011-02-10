@@ -36,7 +36,7 @@ public class Resetter extends TimerTask{
 	@Override
 	public void run(){
 		try {
-			sendCameraResetCommand();
+			//sendCameraResetCommand();
 			reboot();
 		} catch (MessagingException ex) {
 			Logger.getLogger(Resetter.class.getName()).log(Level.SEVERE, null, ex);

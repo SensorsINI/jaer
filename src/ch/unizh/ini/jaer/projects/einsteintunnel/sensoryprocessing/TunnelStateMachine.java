@@ -5,7 +5,7 @@
 
 package ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing;
 
-import java.io.*;
+//import java.io.*;
 import java.util.*;
 import net.sf.jaer.eventprocessing.FilterFrame;
 
@@ -27,6 +27,7 @@ public class TunnelStateMachine {
 		this.tunnelTracker = tunnelTracker;
 		filterFrame = new FilterFrame(tunnelTracker.getChip());
 		state = stateTypes.DEFAULT;
+
 	}
 
 	public setSwooshState getSetSwooshState(){
