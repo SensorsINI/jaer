@@ -17,7 +17,7 @@ public class TunnelStateMachine {
 
 	private BlurringTunnelTracker tunnelTracker;
 	private FilterFrame filterFrame;
-	private stateTypes state;
+	public stateTypes state;
 
 	public enum stateTypes{
 		DEFAULT, SWOOSH
@@ -39,13 +39,18 @@ public class TunnelStateMachine {
 
 		@Override
 		public void run(){
-			tunnelTracker.setMinClusterAge(1000000);
-			state = stateTypes.SWOOSH;
+			setSwooshState();
 			//File f = new File("src/ch/unizh/ini/jaer/projects/einsteintunnel/sensoryprocessing/EinsteinTunnel_swoosh.xml");
             //filterFrame.loadFile(f);
 		}
 
-	}
+    }
+
+    public void setSwooshState(){
+	//System.out.println("set swoosh state");
+	tunnelTracker.setMinClusterAge(1000000);
+	state = stateTypes.SWOOSH;
+    }
 	
 	public setDefaultState getSetDefaultState(){
 		return new setDefaultState();
@@ -56,10 +61,15 @@ public class TunnelStateMachine {
 
 		@Override
 		public void run(){
-			tunnelTracker.setMinClusterAge(1000);
-			state = stateTypes.DEFAULT;
+			setDefaultState();
 		}
 
+	}
+
+	public void setDefaultState(){
+	    //System.out.println("set default state");
+	    tunnelTracker.setMinClusterAge(1000);
+	    state = stateTypes.DEFAULT;
 	}
 
 }
