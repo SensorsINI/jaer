@@ -81,8 +81,14 @@ public class ClusterOSCInterface {
         Object[] clusterMass = { new Float(c.mass)};
         OSCMessage msg6 = utils.new OSCMessage("/jAER/mass", clusterMass);
 
+		Object[] superPosX = { new Float(c.getSuperPos().x)};
+        OSCMessage msg7 = utils.new OSCMessage("/jAER/superPos/x", superPosX);
+
+        Object[] superPosY = { new Float(c.getSuperPos().y)};
+        OSCMessage msg8 = utils.new OSCMessage("/jAER/superPos/y", superPosY);
+
         // create a timeStamped bundle of the messages
-        OSCPacket[] packets = {msg1, msg2, msg3, msg4, msg5, msg6};
+        OSCPacket[] packets = {msg1, msg2, msg3, msg4, msg5, msg6, msg7, msg8};
         Date newDate = new Date();
         long time = newDate.getTime();
         newDate.setTime(time);

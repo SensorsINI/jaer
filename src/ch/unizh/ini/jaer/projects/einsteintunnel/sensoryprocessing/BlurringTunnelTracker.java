@@ -92,6 +92,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     private boolean sendClusterInfo = getPrefs().getBoolean("BlurringTunnelTracker.sendClusterInfo",true);
 	private int minClusterAge = getPrefs().getInt("BlurringTunnelTracker.minClusterAge",1000);
 	private float activityDecayFactor = getPrefs().getFloat("BlurringTunnelTracker.activityDecayFactor",0.9f);
+	private float superPosIntFactor = getPrefs().getFloat("BlurringTunnelTracker.superPosIntFactor",50f);
     private boolean sendActivity = getPrefs().getBoolean("BlurringTunnelTracker.sendActivity",false);
 	private float flowThreshold = getPrefs().getFloat("BlurringTunnelTracker.flowThreshold",15f);
 	private boolean getVVVVstate = getPrefs().getBoolean("BlurringTunnelTracker.getVVVVstate",false);
@@ -132,6 +133,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 		setPropertyTooltip(einstein,"sendClusterInfo","should the informations on the cluster be send out");
 		setPropertyTooltip(einstein,"sendActivity","should a histogram of the x-activity be send out");
 		setPropertyTooltip(einstein,"activityDecayFactor","how fast should the x-activity histogram decay");
+		setPropertyTooltip(einstein,"superPosIntFactor","how fast the velocity should be integrated for the superPos");
 		setPropertyTooltip(einstein,"flowThreshold","threshold of average velocity to become left or right output");
 		setPropertyTooltip(einstein,"getVVVVstate","wait on vvvv machine to respond on osc message");
 
@@ -310,17 +312,17 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 			oscInterface2.sendFlow(flow);
         }
 	if(getVVVVstate){
-	    byte[] buffer = new byte[2048];
-	    DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-	    try {
-		dsocket.receive(packet);
-	    } catch (IOException ex) {
-		Logger.getLogger(BlurringTunnelTracker.class.getName()).log(Level.WARNING, null, ex);
-	    }
-	    String msg = new String(buffer, 0, packet.getLength());
-	    //System.out.println(packet.getAddress().getHostName() + ": "+msg);
-	    if(msg.equals("swoosh"))stateMachine.setSwooshState();
-	    else if(stateMachine.state == TunnelStateMachine.stateTypes.SWOOSH) stateMachine.setDefaultState();
+//	    byte[] buffer = new byte[2048];
+//	    DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+//	    try {
+//		dsocket.receive(packet);
+//	    } catch (IOException ex) {
+//		Logger.getLogger(BlurringTunnelTracker.class.getName()).log(Level.WARNING, null, ex);
+//	    }
+//	    String msg = new String(buffer, 0, packet.getLength());
+//	    //System.out.println(packet.getAddress().getHostName() + ": "+msg);
+//	    if(msg.equals("swoosh"))stateMachine.setSwooshState();
+//	    else if(stateMachine.state == TunnelStateMachine.stateTypes.SWOOSH) stateMachine.setDefaultState();
 	 }
 	}
 
@@ -434,6 +436,11 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
          * cluster velocityPPT in pixels/second
          */
         private Point2D.Float velocityPPS = new Point2D.Float();
+
+		/**
+         * anticipated position by integration of the velocity
+         */
+        private Point2D.Float superPos = new Point2D.Float();
 
         /**
          * used to flag invalid or uncomputable velocityPPT
@@ -562,6 +569,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         public Cluster (NeuronGroup ng,int initialAge){
             this();
             location = ng.getLocation();
+			superPos = (Point2D.Float) ng.getLocation().clone();
             birthLocation = ng.getLocation();
             lastUpdateTimestamp = ng.getLastEventTimestamp();
             firstUpdateTimestamp = ng.getLastEventTimestamp();
@@ -610,6 +618,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             // merge locations by average weighted by totalMP of events supporting each cluster
             location.x = ( one.location.x * one_mass + two.location.x * two_mass ) / ( mass );
             location.y = ( one.location.y * one_mass + two.location.y * two_mass ) / ( mass );
+			superPos = (Point2D.Float) location.clone();
 
             lastUpdateTimestamp = one.lastUpdateTimestamp > two.lastUpdateTimestamp ? one.lastUpdateTimestamp : two.lastUpdateTimestamp;
             firstUpdateTimestamp = one.firstUpdateTimestamp < two.firstUpdateTimestamp ? one.firstUpdateTimestamp : two.firstUpdateTimestamp;
@@ -650,6 +659,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         public void draw (GLAutoDrawable drawable){
             final float BOX_LINE_WIDTH = 2f; // in chip
             final float PATH_POINT_SIZE = 4f;
+			final float SUPER_POINT_SIZE = 8f;
             final float VEL_LINE_WIDTH = 4f;
             GL gl = drawable.getGL();
             int x = (int)getLocation().x;
@@ -701,6 +711,13 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
                 Point2D.Float velpps = getVelocityPPS();
                 chip.getCanvas().getGlut().glutBitmapString(font,String.format("%.0f,%.0f pps",velpps.x,velpps.y));
             }
+
+			//show superPos
+			gl.glColor3f(1,0,0);
+			gl.glPointSize(SUPER_POINT_SIZE);
+			gl.glBegin(GL.GL_POINTS);
+            gl.glVertex2f(superPos.x,superPos.y);
+            gl.glEnd();
         }
 
         /** Returns true if the cluster center is outside the array
@@ -1046,6 +1063,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             } else{
                 velocityValid = false;
             }
+			superPos.x += superPosIntFactor*velocityPPS.x/1000;
+			superPos.y += superPosIntFactor*velocityPPS.y/1000;
         }
 
         @Override
@@ -1119,6 +1138,14 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
          */
         public int getClusterNumber (){
             return clusterNumber;
+        }
+
+		/** returns the superPos
+         *
+         * @return
+         */
+        public Point2D.Float getSuperPos (){
+            return superPos;
         }
 
         /** set the cluster number
@@ -1838,6 +1865,17 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
         this.activityDecayFactor = activityDecayFactor;
         getPrefs().putFloat("BlurringTunnelTracker.activityDecayFactor",activityDecayFactor);
         getSupport().firePropertyChange("activityDecayFactor",old,this.activityDecayFactor);
+    }
+
+	public float getSuperPosIntFactor (){
+        return superPosIntFactor;
+    }
+
+    public void setSuperPosIntFactor (float superPosIntFactor){
+        float old = this.superPosIntFactor;
+        this.superPosIntFactor = superPosIntFactor;
+        getPrefs().putFloat("BlurringTunnelTracker.activityDecayFactor",superPosIntFactor);
+        getSupport().firePropertyChange("superPosIntFactor",old,this.superPosIntFactor);
     }
 
 	public float getFlowThreshold(){
