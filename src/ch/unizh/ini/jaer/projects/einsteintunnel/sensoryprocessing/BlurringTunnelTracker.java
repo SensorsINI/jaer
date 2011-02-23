@@ -93,7 +93,8 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 	private int minClusterAge = getPrefs().getInt("BlurringTunnelTracker.minClusterAge",1000);
 	private float activityDecayFactor = getPrefs().getFloat("BlurringTunnelTracker.activityDecayFactor",0.9f);
 	private float superPosIntFactor = getPrefs().getFloat("BlurringTunnelTracker.superPosIntFactor",50f);
-    private boolean sendActivity = getPrefs().getBoolean("BlurringTunnelTracker.sendActivity",false);
+    private float maxSuperPos = getPrefs().getFloat("BlurringTunnelTracker.maxSuperPos",100f);
+	private boolean sendActivity = getPrefs().getBoolean("BlurringTunnelTracker.sendActivity",false);
 	private float flowThreshold = getPrefs().getFloat("BlurringTunnelTracker.flowThreshold",15f);
 	private boolean getVVVVstate = getPrefs().getBoolean("BlurringTunnelTracker.getVVVVstate",false);
 
@@ -134,6 +135,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 		setPropertyTooltip(einstein,"sendActivity","should a histogram of the x-activity be send out");
 		setPropertyTooltip(einstein,"activityDecayFactor","how fast should the x-activity histogram decay");
 		setPropertyTooltip(einstein,"superPosIntFactor","how fast the velocity should be integrated for the superPos");
+		setPropertyTooltip(einstein,"maxSuperPos","how fast the velocity should be integrated for the superPos");
 		setPropertyTooltip(einstein,"flowThreshold","threshold of average velocity to become left or right output");
 		setPropertyTooltip(einstein,"getVVVVstate","wait on vvvv machine to respond on osc message");
 
@@ -1065,6 +1067,10 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
             }
 			superPos.x += superPosIntFactor*velocityPPS.x/1000;
 			superPos.y += superPosIntFactor*velocityPPS.y/1000;
+			if(superPos.x - location.x > maxSuperPos)superPos.x = location.x+maxSuperPos;
+			if(location.x - superPos.x > maxSuperPos)superPos.x = location.x-maxSuperPos;
+			if(superPos.y - location.y > maxSuperPos)superPos.y = location.y+maxSuperPos;
+			if(location.y - superPos.y > maxSuperPos)superPos.y = location.y-maxSuperPos;
         }
 
         @Override
@@ -1874,8 +1880,19 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
     public void setSuperPosIntFactor (float superPosIntFactor){
         float old = this.superPosIntFactor;
         this.superPosIntFactor = superPosIntFactor;
-        getPrefs().putFloat("BlurringTunnelTracker.activityDecayFactor",superPosIntFactor);
+        getPrefs().putFloat("BlurringTunnelTracker.superPosIntFactor",superPosIntFactor);
         getSupport().firePropertyChange("superPosIntFactor",old,this.superPosIntFactor);
+    }
+
+	public float getMaxSuperPos (){
+        return maxSuperPos;
+    }
+
+    public void setMaxSuperPos (float maxSuperPos){
+        float old = this.maxSuperPos;
+        this.maxSuperPos = maxSuperPos;
+        getPrefs().putFloat("BlurringTunnelTracker.maxSuperPos",maxSuperPos);
+        getSupport().firePropertyChange("maxSuperPos",old,this.maxSuperPos);
     }
 
 	public float getFlowThreshold(){
