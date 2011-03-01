@@ -453,6 +453,7 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
             this.setTitle("EKF Parameters");
             //setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
             setSize( 200, 400 );
+            tabPane.setRequestFocusEnabled(false); // might help with java.lang.ArrayIndexOutOfBoundsException: 1 according to http://coding.derkeiler.com/Archive/Java/comp.lang.java.gui/2005-06/msg00352.html
             add(tabPane);
             setVisible( true );
         }
@@ -1379,8 +1380,9 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
             gl.glPopMatrix();
             
             //draw the wings
-            //draw the leading edges in red:
-            gl.glColor3f(1,0,0);
+            //draw the leading edges in black:
+            gl.glColor3f(0,0,0);
+            gl.glLineWidth(3);
             gl.glPushMatrix();
             gl.glRotatef((180/(float)Math.PI)*rightLeadingEdge,0,0,1);
             gl.glBegin(GL.GL_LINES);
@@ -1395,8 +1397,8 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
             gl.glEnd();
             gl.glPopMatrix();
             
-            //draw the trailing edges in light red:
-            gl.glColor3f(1,.5f,.5f);
+            //draw the trailing edges in white:
+            gl.glColor3f(1,1,1);
             gl.glPushMatrix();
             gl.glRotatef((180/(float)Math.PI)*rightTrailingEdge,0,0,1);
             gl.glBegin(GL.GL_LINES);
@@ -1413,7 +1415,8 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
             
             
             //draw the circle around the fly
-            if(glu==null) glu=new GLU();
+             gl.glLineWidth(1);
+           if(glu==null) glu=new GLU();
             if(flySurround==null) flySurround = glu.gluNewQuadric();
             gl.glColor4f(0,1,0,.2f);
             glu.gluQuadricDrawStyle(flySurround,GLU.GLU_FILL);
@@ -1484,9 +1487,9 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
             gl.glEnd();
             
             //draw the wings
-            //draw the leading edges in green:
+            //draw the leading edges in black:
             if(LLE.getUseEdge()){
-                gl.glColor3f(1,0f,0f);
+                gl.glColor3f(0,0f,0f);
                 gl.glPushMatrix();
                 gl.glRotatef((180/(float)Math.PI)*LLE.getEdgeInRads(),0,0,1);
                 gl.glBegin(GL.GL_LINES);
@@ -1496,7 +1499,7 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
                 gl.glPopMatrix();
             }
             if(RLE.getUseEdge()){
-                gl.glColor3f(1,0f,0f);
+                gl.glColor3f(0,0f,0f);
                 gl.glPushMatrix();
                 gl.glRotatef((180/(float)Math.PI)*RLE.getEdgeInRads(),0,0,1);
                 gl.glBegin(GL.GL_LINES);
@@ -1505,9 +1508,9 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
                 gl.glEnd();
                 gl.glPopMatrix();
             }
-            //draw the trailing edges in light red
+            //draw the trailing edges in white
             if(RTE.getUseEdge()){
-                gl.glColor3f(1,.5f,.5f);
+                gl.glColor3f(1,1,1);
                 gl.glPushMatrix();
                 gl.glRotatef((180/(float)Math.PI)*RTE.getEdgeInRads(),0,0,1);
                 gl.glBegin(GL.GL_LINES);
@@ -1517,7 +1520,7 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
                 gl.glPopMatrix();
             }
             if(LTE.getUseEdge()){
-                gl.glColor3f(1,.5f,.5f);
+                gl.glColor3f(1,1,1);
                 gl.glPushMatrix();
                 gl.glRotatef((180/(float)Math.PI)*LTE.getEdgeInRads(),0,0,1);
                 gl.glBegin(GL.GL_LINES);
