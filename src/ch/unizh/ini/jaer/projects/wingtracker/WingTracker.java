@@ -51,8 +51,9 @@ import java.io.*;
 */
 public class WingTracker extends EventFilter2D implements FrameAnnotater, Observer{//, PreferenceChangeListener {
     
-    
-//    static Preferences prefs=Preferences.userNodeForPackage(WingTracker.class);
+    public static String getDescription(){
+        return "<html> Tracks a fruit fly wing beat in two different ways, after a initialization phase. <br> Begin with the method track, there the events are classified to the right edge and <br>depending on the state the evaluation goes on.o there are different states in this filter: <br>initialization: data are recorded(a hardcoded number of events in the method track() with state = Init) and then an <br>analysis is done for this data. First there is a 2-means algorithm(method kmeans) to <br>localize the 2 wings. afterwards basic geometry is used to calculate the bodyposition and the heading of the fly. <br>This is done in the method findFly().  <p>Tracking: every event changes the actual position of the correspoinding wingedge with a lowpassfilter. <br>This is done in the method track() with the state = TRACKING.  <br>Kalman: the second way to track is with a extended Kalman Filter. <br>Every event is taken as a measurement for the filter. <br>First in the method track the events is classified in left/right wing and leading/trailing edge. <br>There are 4 instances of the inner class EKF which supports data for each wingedge. <br>The prediction and update are methods of this inner class.";
+    }
     AEChip chip;
     AEChipRenderer renderer;
     GLUT glut;
@@ -94,28 +95,28 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
     private float searchRange;
     
     //if auto-detection of the heading fails, one can flip the heading manually, should not be done while Kalmanfiltering
-    private boolean flipHeading = getPrefs().getBoolean("WingTracker.flipHeading",false);
+    private boolean flipHeading = getBoolean("WingTracker.flipHeading",false);
     //if the searchRange is to small, one can increase it by hand with a additional offset
-    private float searchRangeOffset = getPrefs().getFloat("WingTracker.searchRangeOffset",0);
+    private float searchRangeOffset = getFloat("WingTracker.searchRangeOffset",0);
     //the hysteresis is used for the TRACKING state for updating the frequency and amplitude ->see doParamUpdate()
-    private float hysteresis = getPrefs().getFloat("WingTracker.hysteresis",(float)(Math.PI/180)*10f);
+    private float hysteresis = getFloat("WingTracker.hysteresis",(float)(Math.PI/180)*10f);
     //the mixing factor is the parameter of the low-pass filter, indicates how a single event influence the track.
-    private float mixingFactor =  getPrefs().getFloat("WingTracker.mixingFactor",0.1f);
+    private float mixingFactor =  getFloat("WingTracker.mixingFactor",0.1f);
     //one can do a log->in the std. home directory there will be a txt file created.
-    private boolean doLog = getPrefs().getBoolean("WingTracker.doLog",false);
+    private boolean doLog = getBoolean("WingTracker.doLog",false);
     //the prototypes are updated each wing-beat. so with this option on, this is also done with the body. (if there was
     //a correction by a mouse click, this correction is stored and added to the new mean position of the prototypes)
-    private boolean doBodyUpdate = getPrefs().getBoolean("WingTracker.doBodyUpdate",true);
+    private boolean doBodyUpdate = getBoolean("WingTracker.doBodyUpdate",true);
     //The prototypes are updated each wing beat. with this option on, the heading (orthogonal to the line between the
     //prototypes) is updated too.
-    private boolean doHeadingUpdate = getPrefs().getBoolean("WingTracker.doHeadingUpdate",true);
+    private boolean doHeadingUpdate = getBoolean("WingTracker.doHeadingUpdate",true);
     //changes the state to KALMAN, if false-> state = TRACKING (e.g.low-pass filtering)
-    private boolean useKalmanFiltering = getPrefs().getBoolean("WingTracker.useKalmanFiltering",false);
+    private boolean useKalmanFiltering = getBoolean("WingTracker.useKalmanFiltering",false);
     //this is a modified checkbox and should be in reality a button, just to show the EKFParameterwindow, if one closed it
-    private boolean showEKFParameterWindow = getPrefs().getBoolean("WingTracker.showEKFParameterWindow",false);
+    private boolean showEKFParameterWindow = getBoolean("WingTracker.showEKFParameterWindow",false);
     //this parameter is for KALMAN only. If it is too slow, one can increase this number a little bit. Then events are
     //buffered and averaged( a sort of prefiltering) before a new update of the EKF is invoked.
-    private int nbEventsToCollectPerEdge = getPrefs().getInt("WingTracker.nbEventsToCollectPerEdge",1);
+    private int nbEventsToCollectPerEdge = getInt("WingTracker.nbEventsToCollectPerEdge",1);
     //the EKF-instances, for each wing-edge there is one.
     
     private EKF LLE,RLE,LTE,RTE;//leftleadingedge EKF
@@ -127,6 +128,17 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
         super(chip);
         this.chip=chip;
         renderer=(AEChipRenderer)chip.getRenderer();
+       setPropertyTooltip("nbEventsToCollectPerEdge", "this parameter is for KALMAN only. If it is too slow, one can increase this number a little bit. Then events are buffered and averaged( a sort of prefiltering) before a new update of the EKF is invoked");
+       setPropertyTooltip("showEKFParameterWindow", "this is a modified checkbox and should be in reality a button, just to show the EKFParameterwindow, if one closed it");
+       setPropertyTooltip("useKalmanFiltering", "changes the state to KALMAN, if false-> state = TRACKING (e.g.low-pass filtering)");
+       setPropertyTooltip("doHeadingUpdate", "The prototypes are updated each wing beat. with this option on, the heading (orthogonal to the line between the prototypes) is updated too.");
+       setPropertyTooltip("doBodyUpdate", "the prototypes are updated each wing-beat. so with this option on, this is also done with the body. (if there was a correction by a mouse click, this correction is stored and added to the new mean position of the prototypes)");
+       setPropertyTooltip("doLog", "one can do a log->in the std. home directory there will be a txt file created.");
+       setPropertyTooltip("mixingFactor", "the mixing factor is the parameter of the low-pass filter, indicates how a single event influence the track.");
+       setPropertyTooltip("hysteresis", "the hysteresis is used for the TRACKING state for updating the frequency and amplitude ->see doParamUpdate()");
+       setPropertyTooltip("searchRangeOffset", "if the searchRange is to small, one can increase it by hand with a additional offset");
+       setPropertyTooltip("flipHeading", "if auto-detection of the heading fails, one can flip the heading manually, should not be done while Kalmanfiltering");
+       setPropertyTooltip("doShowEKFParameterWindow", "Shows the parameters for the Kalman filters");
         initFilter();
         chip.addObserver(this);
 //        prefs.addPreferenceChangeListener(this);
@@ -451,8 +463,8 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
     }
     
     /**
-     * This class serves as datastructure for the Kalman Filter for all the wing-edges. 
-     * It supports also the calculations "predict" and "update". There is also an innerclass. Each wing has its own ParamterPanel
+     * This class serves as data structure for the Kalman Filter for all the wing-edges.
+     * It supports also the calculations "predict" and "update". There is also an inner class. Each wing has its own ParamterPanel
      * which is then sent to the EKFParameterwindow. In this Parameterpanel the variables of the EKF are displayed and can be changed
      * by the user.
      */
@@ -1684,15 +1696,13 @@ public class WingTracker extends EventFilter2D implements FrameAnnotater, Observ
     public boolean getFlipHeading(){
         return flipHeading;
     }
-    public void setShowEKFParameterWindow(boolean showEKFParameterWindow){
+    public void doShowEKFParameterWindow(){
         if(!(ekfpw == null)){
             ekfpw.setVisible(true);
         }
         getPrefs().putBoolean("WingTracker.showEKFParameterWindow",false);
     }
-    public boolean getShowEKFParameterWindow(){
-        return false;
-    }
+   
 }
 
 
