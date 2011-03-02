@@ -10,7 +10,6 @@ package ch.unizh.ini.jaer.projects.opticalflow.graphics;
 import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MotionDataMDC2D;
-import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.SiLabsC8051F320_OpticalFlowHardwareInterface;
 import javax.swing.*;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
@@ -482,7 +481,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
             }
         });
 
-        jRadioButton10.setText("on chip ADC output");
+        jRadioButton10.setText("on-chip ADC output: ph");
         jRadioButton10.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jRadioButton10ActionPerformed(evt);
@@ -599,14 +598,11 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
             .add(jPanel3Layout.createSequentialGroup()
                 .addContainerGap()
                 .add(jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(jPanel3Layout.createSequentialGroup()
-                        .add(jPanel7, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                        .addContainerGap())
-                    .add(jPanel3Layout.createSequentialGroup()
-                        .add(jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING, false)
-                            .add(org.jdesktop.layout.GroupLayout.LEADING, jPanel6, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .add(org.jdesktop.layout.GroupLayout.LEADING, rawChannelControlPanel1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 201, Short.MAX_VALUE))
-                        .addContainerGap())))
+                    .add(jPanel7, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING, false)
+                        .add(org.jdesktop.layout.GroupLayout.LEADING, jPanel6, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .add(org.jdesktop.layout.GroupLayout.LEADING, rawChannelControlPanel1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 201, Short.MAX_VALUE)))
+                .addContainerGap())
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
@@ -719,7 +715,8 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
     private void jRadioButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton4ActionPerformed
         if(this.onChipADCSelector.isSelected()){ // set on-chip ADC channel
             try{
-                viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x08, (short)0);
+                viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x0D, (short)0); //1101 selects photoreceptor
+                this.jRadioButton10.setText("on-chip ADC output: ph");
             }catch(HardwareInterfaceException e){
                 System.out.println(e);
             }
@@ -731,7 +728,8 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
     private void jRadioButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton5ActionPerformed
         if(this.onChipADCSelector.isSelected()){ // set on-chip ADC channel
             try{
-                viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x04, (short)0);
+                viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x0B, (short)0); //1011 selects photoreceptor
+                this.jRadioButton10.setText("on-chip ADC output: lmc1");
             }catch(HardwareInterfaceException e){
                 System.out.println(e);
             }
@@ -743,7 +741,8 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
     private void jRadioButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton6ActionPerformed
         if(this.onChipADCSelector.isSelected()){ // set on-chip ADC channel
             try{
-                viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x02, (short)0);
+                viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x07, (short)0); //0111 selects photoreceptor
+                this.jRadioButton10.setText("on-chip ADC output: lmc2");
             }catch(HardwareInterfaceException e){
                 System.out.println(e);
             }
@@ -795,9 +794,18 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         if(this.onChipADCSelector.isSelected()){ // set on-chip ADC channel
             displayMethod.setRawChannelDisplayed(3);
             try{
-                if(this.jRadioButton4.isSelected()) viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x08, (short)0);
-                if(this.jRadioButton5.isSelected()) viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x04, (short)0);
-                if(this.jRadioButton6.isSelected()) viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x02, (short)0);
+                if(this.jRadioButton4.isSelected()) {
+                    viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x0d, (short)0);
+                    this.jRadioButton10.setText("on-chip ADC output: ph");
+                }
+                if(this.jRadioButton5.isSelected()){
+                    viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x0b, (short)0);
+                    this.jRadioButton10.setText("on-chip ADC output: lmc1");
+                }
+                if(this.jRadioButton6.isSelected()) {
+                    viewer.getHardware().sendVendorRequest(viewer.getHardware().VENDOR_REQUEST_SET_DATA_TO_SEND_MDC2D, (short)0x07, (short)0);
+                    this.jRadioButton10.setText("on-chip ADC output: lmc2");
+                }
             }catch(HardwareInterfaceException e){
                 System.out.println(e);
             }

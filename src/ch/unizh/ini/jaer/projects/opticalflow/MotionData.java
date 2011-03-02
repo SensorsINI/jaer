@@ -412,9 +412,10 @@ public abstract class MotionData implements Cloneable{
         out.writeFloat(globalX);
         out.writeFloat(globalY);
         write2DArray(out,ph);
+        this.fillUxUy();
         write2DArray(out,ux);
         write2DArray(out,uy);
-        for(int i=0;i<getNumLocalChannels();i++){  //RetoTODO fix 
+        for(int i=0;i<getNumLocalChannels();i++){ 
             write2DArray(out,rawDataPixel[i]);
         }
     }

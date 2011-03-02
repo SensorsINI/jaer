@@ -18,14 +18,12 @@ import net.sf.jaer.biasgen.VDAC.*;
 import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.util.*;
 import ch.unizh.ini.jaer.projects.opticalflow.*;
-import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D.MDC2DBiasgen;
-import ch.unizh.ini.jaer.projects.opticalflow.graphics.MotionViewer;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D;
+import ch.unizh.ini.jaer.projects.opticalflow.motion18.Motion18;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.PnPNotifyInterface;
 import de.thesycon.usbio.UsbIoErrorCodes;
 import de.thesycon.usbio.structs.*;
-import java.util.Iterator;
 import java.util.concurrent.*;
 import java.util.logging.Logger;
 
@@ -91,7 +89,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     
     private int captureMode;
 
-    private Chip2DMotion chip = new MDC2D();//RetoTODO REPLACE!!!!!
+    private Chip2DMotion chip=new MDC2D();
 
     private MotionData lastbuffer;
 
@@ -108,7 +106,10 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     }
 
     public void setChip(Chip2DMotion chip){
-                this.chip=chip;
+        this.chip=chip;
+        initialEmptyBuffer = chip.getEmptyMotionData(); // the buffer to start capturing into
+        initialFullBuffer = chip.getEmptyMotionData();    // the buffer to render/process first
+        currentBuffer=initialFullBuffer;
     }
     
 //    public void startMotionUsbThread() {
@@ -394,8 +395,8 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     
     /** the concurrent object to exchange data between rendering and the MotionReader capture thread */
     Exchanger<MotionData> exchanger = new Exchanger();
-    MotionData initialEmptyBuffer = chip.getEmptyMotionData(); // the buffer to start capturing into
-    MotionData initialFullBuffer = chip.getEmptyMotionData();    // the buffer to render/process first
+    MotionData initialEmptyBuffer=chip.getEmptyMotionData(); // the buffer to start capturing into
+    MotionData initialFullBuffer=chip.getEmptyMotionData();    // the buffer to render/process first
     MotionData currentBuffer=initialFullBuffer;
     
     /**
@@ -633,6 +634,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
         }           
     }
     
+    @Override
     public void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         log.warning("not implemented yet");
     }
@@ -642,6 +644,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
      @param mode the mode
      @see ch.unizh.ini.jaer.projects.opticalflow.chip.Motion18
      */
+    @Override
     public void setCaptureMode(int mode) {
         this.captureMode=mode;
         if(!isOpen()) {
@@ -655,11 +658,13 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
         }
     }
 
+    @Override
     public byte[] formatConfigurationBytes(Biasgen biasgen) {
         return null; // each bias is handled independently for this kind of off-chip, channel-addressable DAC
     }
 
      /** get text name of interface, e.g. "CypressFX2" or "SiLabsC8051F320" */
+    @Override
     public String getTypeName(){
         return "SiLabsC8051F320";
     }

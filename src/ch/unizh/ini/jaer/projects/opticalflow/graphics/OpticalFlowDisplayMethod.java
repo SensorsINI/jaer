@@ -97,6 +97,7 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
         float[][] ux=motionData.getUx();//rawChannel
         float[][] uy=motionData.getUy();//ux
 
+
         
         if(xvec==null){
             xvec=new float[(nRows-2)*(nCols-2)]; // cache motion vector components
@@ -165,12 +166,6 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
             gl.glEnd();
         }
         gl.glPopMatrix();
-        //RetoTODO delete if not finished
-//        String str = new String();
-//        str.format("%s\n, %s\n, %s\n" , "global Ux:"+ String.valueOf(motionData.getGlobalX())+" [pixel/ms]","global Uy: [pixel/ms]","rot" );
-//        //display the motion in a numeric form for MDC2D chip
-//        MotionViewer.numericPanel.setText("global Ux:"+ String.valueOf(motionData.getGlobalX()));
-////        MotionViewer.numericPanel.setVisible(true);
     }
     
 // draws motion vector arrow from point x,y with magnitude ux, uy

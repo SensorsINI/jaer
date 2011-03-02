@@ -13,7 +13,6 @@ package ch.unizh.ini.jaer.projects.opticalflow.motion18;
  */
 
 import ch.unizh.ini.jaer.projects.opticalflow.*;
-import java.util.Random;
 
 /**
  * Packs data returned from optical flow sensor.
@@ -40,10 +39,12 @@ public class MotionDataMotion18 extends MotionData {
 
 
     /* Method override */
+    @Override
     protected void fillPh(){
         this.setPh( extractRawChannel(1)); //ph is the first channel from the chip
     }
 
+    @Override
     protected void fillUxUy(){
         //first local channels: just copy from raw data
         this.setUx( extractRawChannel(2));
@@ -69,6 +70,7 @@ public class MotionDataMotion18 extends MotionData {
     }
 
 
+    @Override
     protected void fillMinMax(){
         float minPh=0, maxPh=0, minUx=0, maxUx=0, minUy=0, maxUy =0;
         float[][] ux = getUx();
@@ -87,9 +89,11 @@ public class MotionDataMotion18 extends MotionData {
 
     }
 
+    @Override
     protected void fillAdditional(){
         ; //nothing to do in this class
     }
+    @Override
         protected void updateContents(){
         setContents(0x1F); //global X,Y ; localX,Y ; photoreceptor
     }

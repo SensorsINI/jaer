@@ -202,12 +202,6 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         imagePanel.setLayout(new BorderLayout());
         chipCanvas=chip.getCanvas();
         imagePanel.add(chipCanvas.getCanvas(), BorderLayout.CENTER);
-        //RetoTODO: delete if not finished
-//        numericPanel= new DynamicFontSizeJLabel();
-//        imagePanel.add(numericPanel, BorderLayout.EAST);
-//        numericPanel.setForeground(Color.red);
-//        numericPanel.setBackground(Color.red);
-//        numericPanel.setText("a");
         chipCanvas.getCanvas().invalidate();
         // find display menu reference and fill it with display menu for this canvas
         viewMenu.remove(displayMethodMenu);
@@ -410,9 +404,10 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         }
         try{
             hardware=(SiLabsC8051F320_OpticalFlowHardwareInterface)OpticalFlowHardwareInterfaceFactory.instance().getFirstAvailableInterface();
-            hardware.open();
             hardware.setChip(chip);
             chip.setHardwareInterface(hardware);
+            hardware.open();
+
 
             
             if(hardware==null) {
@@ -842,6 +837,11 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
                             }
                             try{
                                 motionData=hardware.getData(); // exchanges data with hardware interface, returns the new data buffer
+                                try{
+                                    motionData.collectMotionInfo();
+                                }catch(Exception e){
+                                ;
+                                }
                             }catch(java.util.concurrent.TimeoutException to){
                                 log.warning(to.getMessage());
                                 hardware.close();

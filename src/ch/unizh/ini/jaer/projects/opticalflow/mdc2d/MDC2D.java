@@ -113,7 +113,7 @@ public class MDC2D extends Chip2DMotion {
             super(chip);
             chipp=chip;
 
-            //RetoTODO clean up here
+
             bufferIPot.addObserver(this);
 
             potArray = new IPotArray(this);  // create the appropriate PotArray
