@@ -4,6 +4,10 @@
  */
 package ch.unizh.ini.jaer.hardware.pantilt;
 
+import java.awt.geom.Point2D;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.chip.AEChip;
@@ -20,15 +24,59 @@ import javax.media.opengl.GLAutoDrawable;
  * 
  * @author Tobi Delbruck
  */
-public class PanTiltAimer extends EventFilter2D implements FrameAnnotater, PanTiltInterface, LaserOnOffControl {
+public class PanTiltAimer extends EventFilter2D implements  PanTiltInterface, LaserOnOffControl, PropertyChangeListener {
 
     public static final String getDescription(){ return "Allows control of pan-tilt using a panel to aim it and parameters to control the jitter";}
     private PanTilt panTiltHardware;
-    private PanTiltAimerGUI calibrator;
-    private float jitterFreqHz=prefs().getFloat("PanTiltAimer.jitterFreqHz", 3);
-    private float jitterAmplitude=prefs().getFloat("PanTiltAimer.jitterAmplitude",.1f);
-    private float panValue=prefs().getFloat("PanTiltAimer.panValue",.5f);
-   private float tiltValue=prefs().getFloat("PanTiltAimer.tiltValue",.5f);
+    private PanTiltAimerGUI gui;
+    private boolean jitterEnabled=getBoolean("jitterEnabled",false);
+    private float jitterFreqHz=prefs().getFloat("jitterFreqHz",1);
+    private float jitterAmplitude=prefs().getFloat("jitterAmplitude",.02f);
+    private float panValue=prefs().getFloat("panValue",.5f);
+   private float tiltValue=prefs().getFloat("tiltValue",.5f);
+   private int panServoNumber=getInt("panServoNumber",1);
+   private int tiltServoNumber=getInt("tiltServoNumber",2);
+   private boolean invertPan=getBoolean("invertPan",false);
+   private boolean invertTilt=getBoolean("invertTilt",false);
+     private boolean recordingEnabled=false;
+
+    Trajectory trajectory;
+
+    class Trajectory extends ArrayList<TrajectoryPoint>{
+        void add(long millis, float pan, float tilt){
+            add(new TrajectoryPoint(millis, pan, tilt));
+        }
+    }
+
+    class TrajectoryPoint{
+        long timeMillis;
+        float pan, tilt;
+
+        public TrajectoryPoint(long timeMillis, float pan, float tilt) {
+            this.timeMillis = timeMillis;
+            this.pan=pan;
+            this.tilt=tilt;
+        }
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if(evt.getPropertyName()==Message.SetRecordingEnabled.name()){
+            recordingEnabled=(Boolean)evt.getNewValue();
+        }else if(evt.getPropertyName()==Message.AbortRecording.name()){
+            recordingEnabled=false;
+            trajectory.clear();
+        } else if(evt.getPropertyName()==Message.ClearRecording.name()){
+            trajectory.clear();
+        }
+    }
+
+   public enum Message {
+
+        AbortRecording,
+        ClearRecording,
+        SetRecordingEnabled
+    }
 
     /** Constructs instance of the new 'filter' CalibratedPanTilt. The only time events are actually used
      * is during calibration. The PanTilt hardware interface is also constructed.
@@ -37,8 +85,23 @@ public class PanTiltAimer extends EventFilter2D implements FrameAnnotater, PanTi
     public PanTiltAimer(AEChip chip) {
         super(chip);
         panTiltHardware = new PanTilt();
+        panTiltHardware.setPanServoNumber(panServoNumber);
+        panTiltHardware.setTiltServoNumber(tiltServoNumber);
+        panTiltHardware.setJitterAmplitude(jitterAmplitude);
+        panTiltHardware.setJitterFreqHz(jitterFreqHz);
+        panTiltHardware.setJitterEnabled(jitterEnabled);
+        panTiltHardware.setPanInverted(invertPan);
+        panTiltHardware.setTiltInverted(invertTilt);
+        
         setPropertyTooltip("jitterAmplitude","Jitter of pantilt amplitude for circular motion");
         setPropertyTooltip("jitterFreqHz","Jitter frequency in Hz of circular motion");
+        setPropertyTooltip("doAim","shows GUI for aiming pan-tilt");
+        setPropertyTooltip("doDisableServos","disables servos, e.g. to turn off annoying servo hum");
+        setPropertyTooltip("jitterEnabled","enables servo jitter to produce microsaccadic movement");
+        setPropertyTooltip("panServoNumber","servo channel for pan (0-3)");
+        setPropertyTooltip("tiltServoNumber","servo channel for tilt (0-3)");
+        setPropertyTooltip("tiltInverted","flips the tilt");
+        setPropertyTooltip("panInverted","flips the pan");
     }
     
     @Override
@@ -55,21 +118,28 @@ public class PanTiltAimer extends EventFilter2D implements FrameAnnotater, PanTi
         resetFilter();
     }
 
-    public void annotate(GLAutoDrawable drawable) {
-
-//        GL gl = drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
-
-    }
-
 
     /** Invokes the calibration GUI. Calibration values are stored persistently as preferences. 
      * Built automatically into filter parameter panel as an action.
      */
     public void doAim() {
-        if (calibrator == null) {
-            calibrator = new PanTiltAimerGUI(panTiltHardware);
+        if (gui == null) {
+            gui = new PanTiltAimerGUI(panTiltHardware);
+            gui.addPropertyChangeListener(this);
+
         }
-        calibrator.setVisible(true);
+        gui.setVisible(true);
+    }
+
+    public void doDisableServos(){
+        if(panTiltHardware!=null && panTiltHardware.getServoInterface()!=null){
+            try {
+             panTiltHardware.stopJitter();
+               panTiltHardware.getServoInterface().disableAllServos();
+            } catch (HardwareInterfaceException ex) {
+                log.warning(ex.toString());
+            }
+        }
     }
 
     public PanTilt getPanTiltHardware() {
@@ -91,11 +161,13 @@ public class PanTiltAimer extends EventFilter2D implements FrameAnnotater, PanTi
      * @param jitterAmplitude the amplitude
      */
     public void setJitterAmplitude(float jitterAmplitude) {
+        if(panTiltHardware==null) return;
         panTiltHardware.setJitterAmplitude(jitterAmplitude);
-        prefs().putFloat("PanTiltAimer.jitterAmplitude",jitterAmplitude);
+        putFloat("jitterAmplitude",jitterAmplitude);
     }
 
     public float getJitterFreqHz() {
+        if(panTiltHardware==null) return 0;
         return panTiltHardware.getJitterFreqHz();
     }
 
@@ -104,8 +176,9 @@ public class PanTiltAimer extends EventFilter2D implements FrameAnnotater, PanTi
      * @param jitterFreqHz in Hz
      */
     public void setJitterFreqHz(float jitterFreqHz) {
+        if(panTiltHardware==null) return;
         panTiltHardware.setJitterFreqHz(jitterFreqHz);
-        prefs().putFloat("PanTiltAimer.jitterFreqHz",jitterFreqHz);
+        putFloat("jitterFreqHz",jitterFreqHz);
     }
 
     public void acquire() {
@@ -161,15 +234,80 @@ public class PanTiltAimer extends EventFilter2D implements FrameAnnotater, PanTi
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
         if (yes) {
+            panTiltHardware.setPanServoNumber(panServoNumber);
+            panTiltHardware.setTiltServoNumber(tiltServoNumber);
+            panTiltHardware.setJitterAmplitude(jitterAmplitude);
+            panTiltHardware.setJitterFreqHz(jitterFreqHz);
+            panTiltHardware.setJitterEnabled(jitterEnabled);
+            panTiltHardware.setPanInverted(invertPan);
+            panTiltHardware.setTiltInverted(invertTilt);
+        } else {
             try {
-                setPanTiltValues(panValue, tiltValue);
-                setJitterFreqHz(jitterFreqHz);
-                setJitterAmplitude(jitterAmplitude);
-            } catch (HardwareInterfaceException ex) {
+                panTiltHardware.stopJitter();
+                panTiltHardware.getServoInterface().disableAllServos();
+                panTiltHardware.close();
+            } catch (Exception ex) {
                 log.warning(ex.toString());
             }
         }
     }
+
+    /**
+     * @return the jitterEnabled
+     */
+    public boolean isJitterEnabled() {
+        return jitterEnabled;
+    }
+
+    /**
+     * @param jitterEnabled the jitterEnabled to set
+     */
+    public void setJitterEnabled(boolean jitterEnabled) {
+        this.jitterEnabled = jitterEnabled;
+        putBoolean("jitterEnabled", jitterEnabled);
+        panTiltHardware.setJitterEnabled(jitterEnabled);
+    }
+
+    public void setPanServoNumber(int panServoNumber) {
+        if(panServoNumber<0)panServoNumber=0; else if(panServoNumber>3)panServoNumber=3;
+        panTiltHardware.setPanServoNumber(panServoNumber);
+        putInt("panServoNumber",panServoNumber);
+    }
+
+
+    public void setTiltServoNumber(int tiltServoNumber) {
+        if(tiltServoNumber<0) tiltServoNumber=0; else if(tiltServoNumber>3) tiltServoNumber=3;
+        panTiltHardware.setTiltServoNumber(tiltServoNumber);
+        putInt("tiltServoNumber",tiltServoNumber);
+    }
+
+    public void setTiltInverted(boolean tiltInverted) {
+        panTiltHardware.setTiltInverted(tiltInverted);
+        putBoolean("invertTilt",tiltInverted);
+    }
+
+   public void setPanInverted(boolean panInverted) {
+        panTiltHardware.setPanInverted(panInverted);
+        putBoolean("invertPan",panInverted);
+   }
+
+    public boolean isTiltInverted() {
+        return panTiltHardware.isTiltInverted();
+    }
+
+    public boolean isPanInverted() {
+        return panTiltHardware.isPanInverted();
+    }
+
+    public int getTiltServoNumber() {
+        return panTiltHardware.getTiltServoNumber();
+    }
+
+    public int getPanServoNumber() {
+        return panTiltHardware.getPanServoNumber();
+    }
+
+
 
 
 

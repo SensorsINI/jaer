@@ -14,15 +14,15 @@ import java.util.logging.Logger;
 /**
  * Encapsulates a pan tilt controller based on using SiLabsC8051F320_USBIO_ServoController.
  * Currently assumes that there is only one controller attached and that the pan and tilt servos are 
- * tied to the PAN and TILT servo output channels on the board.
+ * tied to the panServoNumber and DEFAULT_TILT_SERVO servo output channels on the board.
  * Port 2 of the ServoUSB board is used to power a laser pointer that can be activated.
  * PanTilt directly controls the servo settings, but does not implement a calbration that maps from 
  * visual coordinates to pan tilt settings. To control the pan tilt to aim at a particular visual location
  * in the field of view of a silicon retina, see PanTiltTracker.
  * 
  * @author tobi
- * @see #PAN
- * @see #TILT
+ * @see #DEFAULT_PAN_SERVO
+ * @see #DEFAULT_TILT_SERVO
  * @see ch.unizh.ini.jaer.hardware.pantilt.PanTiltTracker
  */
 public class PanTilt implements PanTiltInterface, LaserOnOffControl {
@@ -30,15 +30,20 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     private static Logger log = Logger.getLogger("PanTilt");
     ServoInterface servo;
     /** Servo output number on SiLabsC8051F320_USBIO_ServoController, 0 based. */
-    public final int PAN = 1,  TILT = 2; // number of servo output on controller
+    public final int DEFAULT_PAN_SERVO = 1,  DEFAULT_TILT_SERVO = 2; // number of servo output on controller
     volatile boolean lockAcquired = false;
     java.util.Timer timer;
     private float pan, tilt;
     private float jitterAmplitude=.01f;
     private float jitterFreqHz=10f;
+    private boolean jitterEnabled=false;
+    private boolean panInverted=false, tiltInverted=false;
+    private int panServoNumber=DEFAULT_PAN_SERVO, tiltServoNumber=DEFAULT_TILT_SERVO;
+
 
     public PanTilt() {
          Runtime.getRuntime().addShutdownHook(new Thread(){
+            @Override
             public void run(){
                 log.info("disabling laser");
                 setLaserEnabled(false);
@@ -80,37 +85,43 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
      * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException.
      If this exception is thrown, the interface should be closed. The next attempt to set the pan/tilt values will reopen
      the interface.
-     * @see #PAN
-     * @see #TILT
+     * @see #DEFAULT_PAN_SERVO
+     * @see #tiltServoNumber
      */
+    @Override
     synchronized public void setPanTiltValues(float pan, float tilt) throws HardwareInterfaceException {
         checkServos();
-        this.pan=pan;
+         this.pan=pan;
         this.tilt=tilt; //efferent copy
-        float[] lastValues = servo.getLastServoValues();
-        lastValues[PAN] = pan;
-        lastValues[TILT] = tilt;
+        if(panInverted)pan=1-pan;
+        if(tiltInverted)tilt=1-tilt;
+       float[] lastValues = servo.getLastServoValues();
+        lastValues[panServoNumber] = pan;
+        lastValues[tiltServoNumber] = tilt;
 //        for(int i=0;i<4;i++){
 //            System.out.print(lastValues[i]+", ");
 //        }
 //        System.out.println("");
-        servo.setServoValue(PAN,pan);
-        servo.setServoValue(TILT,tilt);
+        servo.setServoValue(panServoNumber,pan);
+        servo.setServoValue(tiltServoNumber,tilt);
 //        servo.setAllServoValues(lastValues);
         setLaserOn(true);
     }
 
     /** A method can set this flag to tell other objects that the servo is "owned" */
+    @Override
     public void acquire() {
         lockAcquired = true;
     }
 
     /** Releases the "acquired" flag */
+    @Override
     public void release() {
         lockAcquired = false;
     }
 
     /** A method can check this to see if it can use the servo */
+    @Override
     public boolean isLockOwned() {
         return lockAcquired;
     }
@@ -120,11 +131,13 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
      * @return a float[] array with the 0 component being the pan value, and the 1 component being the tilt 
      * 
      */
+    @Override
     public float[] getPanTiltValues(){
         float[] r={pan,tilt};
         return r;
     }
 
+    @Override
     public float getJitterAmplitude() {
         return jitterAmplitude;
     }
@@ -133,10 +146,12 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
      * 
      * @param jitterAmplitude the amplitude
      */
+    @Override
     public void setJitterAmplitude(float jitterAmplitude) {
         this.jitterAmplitude = jitterAmplitude;
     }
 
+    @Override
     public float getJitterFreqHz() {
         return jitterFreqHz;
     }
@@ -145,8 +160,65 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
      * 
      * @param jitterFreqHz in Hz.
      */
+    @Override
     public void setJitterFreqHz(float jitterFreqHz) {
         this.jitterFreqHz = jitterFreqHz;
+    }
+
+    /**
+     * @return the panInverted
+     */
+    public boolean isPanInverted() {
+        return panInverted;
+    }
+
+    /**
+     * @param panInverted the panInverted to set
+     */
+    public void setPanInverted(boolean panInverted) {
+        this.panInverted = panInverted;
+    }
+
+    /**
+     * @return the tiltInverted
+     */
+    public boolean isTiltInverted() {
+        return tiltInverted;
+    }
+
+    /**
+     * @param tiltInverted the tiltInverted to set
+     */
+    public void setTiltInverted(boolean tiltInverted) {
+        this.tiltInverted = tiltInverted;
+    }
+
+    /**
+     * @return the panServoNumber
+     */
+    public int getPanServoNumber() {
+        return panServoNumber;
+    }
+
+    /**
+     * @param panServoNumber the panServoNumber to set
+     */
+    public void setPanServoNumber(int panServoNumber) {
+        this.panServoNumber = panServoNumber;
+    }
+
+    /**
+     * @return the tiltServoNumber
+     */
+    public int getTiltServoNumber() {
+        return tiltServoNumber;
+    }
+
+    /**
+     * @param tiltServoNumber the tiltServoNumber to set
+     */
+    public void setTiltServoNumber(int tiltServoNumber) {
+        this.tiltServoNumber = tiltServoNumber;
     }
     
     
@@ -165,6 +237,7 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
             pantiltvalues=ptv;
         }
 
+        @Override
         public void run() {
             long t=System.currentTimeMillis()-startTime;
             double phase=Math.PI*2*(double)t/1000*jitterFreqHz;
@@ -184,17 +257,35 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     /** Starts the servo jittering around its set position at a frequency of 50 Hz with an amplitude of 0.02f
      @see #setJitterAmplitude
      */
+    @Override
     public void startJitter() {
+        if(timer!=null) stopJitter(); //  running, must stop to get new position correct
         timer = new java.util.Timer();
         timer.scheduleAtFixedRate(new JittererTask(getPanTiltValues()), 0, 20); // 40 ms delay
     }
 
     /** Stops the jittering */
+    @Override
     public void stopJitter() {
         if (timer != null) {
             timer.cancel();
             timer = null;
         }
+    }
+
+    /**
+     * @return the jitterEnabled
+     */
+    public boolean isJitterEnabled() {
+        return jitterEnabled;
+    }
+
+    /**
+     * @param jitterEnabled the jitterEnabled to set
+     */
+    public void setJitterEnabled(boolean jitterEnabled) {
+        this.jitterEnabled = jitterEnabled;
+        if(jitterEnabled) startJitter(); else stopJitter();
     }
     
     /** Hack to control laser pointer power through pin 2 opendrain pulldown pins (multiple to share laser
