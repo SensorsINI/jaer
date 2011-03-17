@@ -25,7 +25,8 @@ public class Resetter extends TimerTask{
 	private String powerSupplyIP = "192.168.1.40";
 	private String adminPassword = "admin";
 	private String adminUser = "admin";
-	private String supplyNumber = "8";
+	private String cameraSupplyNumber = "8";
+        private String routerSupplyNumber = "5";
 	String[] alert_recipients = {"ch.braendli@gmail.com"}; // added this line
 	private InetSocketAddress powerSupplySocketAddress;
 	private DatagramSocket outputSocket = null;
@@ -45,11 +46,36 @@ public class Resetter extends TimerTask{
 
 	private void sendCameraResetCommand() throws MessagingException{
 		try {String s;
-			s = "Sw_on"+supplyNumber+adminUser+adminPassword+"\r\n";
+			s = "Sw_on"+cameraSupplyNumber+adminUser+adminPassword+"\r\n";
 			//make sure thate message gets received
 			for(int i=0; i<10; i++)sendString(s);
 			Thread.sleep(30000);
-			s = "Sw_off"+supplyNumber+adminUser+adminPassword+"\r\n";
+			s = "Sw_off"+cameraSupplyNumber+adminUser+adminPassword+"\r\n";
+			//make sure thate message gets received
+			for(int i=0; i<10; i++)sendString(s);
+			Thread.sleep(3000);
+		} catch (InterruptedException ex) {
+			sendAlertEmail(ex.getMessage());
+			Logger.getLogger(Resetter.class.getName()).log(Level.SEVERE, null, ex);
+		} catch (SocketException ex) {
+			sendAlertEmail(ex.getMessage());
+			Logger.getLogger(PowerSettingsDialog.class.getName()).log(Level.SEVERE, null, ex);
+		} catch (UnknownHostException ex) {
+			sendAlertEmail(ex.getMessage());
+			Logger.getLogger(PowerSettingsDialog.class.getName()).log(Level.SEVERE, null, ex);
+		} catch (IOException ex) {
+			sendAlertEmail(ex.getMessage());
+			Logger.getLogger(PowerSettingsDialog.class.getName()).log(Level.SEVERE, null, ex);
+		}
+	}
+
+        private void sendRouterResetCommand() throws MessagingException{
+		try {String s;
+			s = "Sw_off"+routerSupplyNumber+adminUser+adminPassword+"\r\n";
+			//make sure thate message gets received
+			for(int i=0; i<10; i++)sendString(s);
+			Thread.sleep(30000);
+			s = "Sw_on"+routerSupplyNumber+adminUser+adminPassword+"\r\n";
 			//make sure thate message gets received
 			for(int i=0; i<10; i++)sendString(s);
 			Thread.sleep(3000);
@@ -118,12 +144,13 @@ public class Resetter extends TimerTask{
 	}
 
 	private void reboot() throws MessagingException{
-		try {
-			Runtime.getRuntime().exec("cmd /c start C:/reboot.bat");
-		} catch (IOException ex) {
-			sendAlertEmail(ex.getMessage());
-			Logger.getLogger(PowerSettingsDialog.class.getName()).log(Level.SEVERE, null, ex);
-		}
+            sendRouterResetCommand();
+            try {
+                    Runtime.getRuntime().exec("cmd /c start C:/reboot.bat");
+            } catch (IOException ex) {
+                    sendAlertEmail(ex.getMessage());
+                    Logger.getLogger(PowerSettingsDialog.class.getName()).log(Level.SEVERE, null, ex);
+            }
 	}
 
 }
