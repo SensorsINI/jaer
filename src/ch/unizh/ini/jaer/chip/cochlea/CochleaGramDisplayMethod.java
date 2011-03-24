@@ -45,6 +45,10 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
      * @param drawable the drawable passed in by OpenGL
      */
     public void display(GLAutoDrawable drawable) {
+        if(drawable==null){
+            log.warning("null drawable, not displaying");
+            return;
+        }
         GL gl = drawable.getGL();
         if(!hasBlendChecked){
             hasBlendChecked=true;
@@ -114,6 +118,10 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
         int t0 = ae.getFirstTimestamp();
         int dt = ae.getLastTimestamp() - t0 + 1;
         float z;
+        if(chip.getRenderer()==null){
+            log.warning("null chip Renderer, can't get event type colors, not rendering events");
+            return;
+        }
         float[][] typeColors = ((AEChipRenderer) chip.getRenderer()).getTypeColorRGBComponents();
         try {
             for (Object o : ae) {
