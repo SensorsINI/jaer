@@ -970,6 +970,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         if (getAeReader() != null) {
             AEReader reader=getAeReader();
             //   System.out.println("CypressFX2.stopAEReader(): stopping aeReader thread");
+            if(reader==null){
+                log.warning("null reader, nothing to stop");
+                return;
+            }
             reader.shutdownThread();
             // unbind pipe
             reader.unbind();
