@@ -1085,7 +1085,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         int interfaceNumber = (Integer)comp.getClientProperty("HardwareInterfaceNumber");
                         HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(interfaceNumber);
                         //only select an interface if it is not the same as already selected
-                        if(chip.getHardwareInterface() == null || hw.getTypeName() != chip.getHardwareInterface().getTypeName()){
+                        if(chip.getHardwareInterface() == null || !hw.toString().equals(chip.getHardwareInterface().toString())){
                             // close interface on chip if there is one and it's open
                             if ( chip.getHardwareInterface() != null && chip.getHardwareInterface().isOpen() ){
                                 log.info("closing "+chip.getHardwareInterface().toString());
