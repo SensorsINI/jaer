@@ -23,19 +23,19 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import java.util.logging.Logger;
 /**
- * A hardware interface to a stereo pair of sensors. 
-This class merges the data from two AEMonitorInterface's to a single
- * unified stereo stream, with events sorted by timestamp in 
-the output packets.
+ * A hardware interface to two stereo pair sensors.
+This class merges the data from two streams to a single
+ * unified stream, with events sorted by timestamp in 
+the output packets, depending on the value of the ignoreTimestampNonmonotonicity flag.
  * <p>
  * This class also deals with the awkwardness of the fact
- * that you are not guarenteed to get all events in order of generation 
+ * that you are not guaranteed to get all events in order of generation
 from the devices owing to buffering.
  * <p>
  * Depending on the setting of
  * the flag in {@link #setIgnoreTimestampNonmonotonicity(boolean)}, events from one source (say the left eye)
  * are held back until it is assured there are no earlier events from the other source
-(the right eye). Setting this flag to igmore non-monotonicity substantially reduces computational overhead,
+(the right eye). Setting this flag to ignore non-monotonicity substantially reduces computational overhead,
  * but affects many other aspects of jAER regarding it's inbuilt assumption that time increases monotonically.
  *
  * @author tobi
@@ -45,7 +45,7 @@ public class StereoPairHardwareInterface implements AEMonitorInterface,ReaderBuf
     protected AEChip chip;
     private AEMonitorInterface aemonLeft;
     private AEMonitorInterface aemonRight;
-    Logger log = Logger.getLogger("HardwareInterface");
+    final static Logger log = Logger.getLogger("HardwareInterface");
     private boolean ignoreTimestampNonmonotonicity = false;
     private int RESET_DELAY_MS = 200;
 
