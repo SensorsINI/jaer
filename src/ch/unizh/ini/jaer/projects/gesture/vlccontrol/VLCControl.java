@@ -39,7 +39,7 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
 
     @Override
     public void disconnect() throws IOException {
-        sendCommand("quit");
+        sendCommand("logout");
         super.disconnect();
     }
 
@@ -161,6 +161,7 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
         }
         getOutputStream().write(s.getBytes());
         getOutputStream().flush();
+        
         return s;
     }
 
@@ -214,7 +215,8 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
         }
         return listen.s;
     }
-    public static String PAUSE = "pause", PLAY = "play", STOP = "stop", NEXT = "next", PREV = "prev", VOLUP = "volup 1", VOLDOWN = "voldown 1";
+    public static String PAUSE = "pause", PLAY = "play", STOP = "stop", NEXT = "next", NORMAL = "normal",
+                         PREV = "prev", VOLUP = "volup 2", VOLDOWN = "voldown 2", SLOWER = "slower", FASTER = "faster";
     public static final String CLIENT_MESSAGE = "ClientMessage";
 
     /***
