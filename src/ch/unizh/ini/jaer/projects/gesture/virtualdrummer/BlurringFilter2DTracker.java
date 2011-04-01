@@ -1725,6 +1725,11 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         getEnclosedFilter().resetFilter();
         clusters.clear();
         clusterCounter = 0;
+        try{
+            chip.getAeViewer().zeroTimestamps();
+        }catch(Exception e){
+            log.warning(e.toString());
+        }
     }
 
     /**

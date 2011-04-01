@@ -5,6 +5,7 @@
 
 package ch.unizh.ini.jaer.projects.gesture.hmm;
 
+import ch.unizh.ini.jaer.projects.gesture.application.ImageComponent;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.Point2D;
@@ -38,6 +39,7 @@ abstract public class TrajectoryDrawingPanel extends JFrame implements MouseMoti
 
     Image img = null;
     Graphics2D gImg = null;
+    ImageComponent drawImg = null;
 
     JMenuBar menuBar;
     ButtonActionListener buttonActionListener = new ButtonActionListener();
@@ -77,6 +79,10 @@ abstract public class TrajectoryDrawingPanel extends JFrame implements MouseMoti
 
         img = createImage(imgPanelWidth, imgPanelHeight);
         gImg = (Graphics2D) img.getGraphics();
+        drawImg = new ImageComponent(img);
+        drawImg.setBounds(0, 0, imgPanelWidth, imgPanelHeight);
+        add(drawImg);
+
         initialDeco();
     }
 
@@ -106,7 +112,9 @@ abstract public class TrajectoryDrawingPanel extends JFrame implements MouseMoti
         setPreferredSize(new Dimension(imgPanelWidth, winHeight));
         setLocation(100, 100);
         pack();
-        setResizable(false);
+//        setResizable(false);
+
+        setSize(imgPanelWidth, winHeight);
     }
 
     /**
@@ -143,8 +151,10 @@ abstract public class TrajectoryDrawingPanel extends JFrame implements MouseMoti
 
     @Override
     public void paint(Graphics g) {
-        if(img != null)
-            g.drawImage(img, 0, yOffset, this);
+        if(drawImg != null)
+            drawImg.repaint();
+//        if(img != null)
+//            g.drawImage(img, 0, yOffset, this);
     }
 
 
@@ -295,7 +305,7 @@ abstract public class TrajectoryDrawingPanel extends JFrame implements MouseMoti
      * @param me
      */
     public void mouseMoved(MouseEvent me){
-        
+
     }
 
     /**

@@ -176,11 +176,21 @@ public class FeatureExtraction{
         int startPos = (int)(vectorAngleSeq.length*startRatio);
         int endPos = (int)(vectorAngleSeq.length*endRatio);
         for(int i = startPos; i <= endPos; i++){
-            av += vectorAngleSeq[i];
+            if(i == startPos)
+                av += vectorAngleSeq[i];
+            else{
+                if(Math.abs(vectorAngleSeq[i-1] - vectorAngleSeq[i]) > Math.PI){
+                    if(vectorAngleSeq[i-1] > vectorAngleSeq[i])
+                        av += (vectorAngleSeq[i] + 2*Math.PI);
+                    else
+                        av += (vectorAngleSeq[i] - 2*Math.PI);
+                }else
+                    av += vectorAngleSeq[i];
+            }
         }
         av /= (double)(endPos - startPos + 1);
 
-        return av;
+        return refactorAngle(av);
     }
 
     /**
@@ -378,7 +388,7 @@ public class FeatureExtraction{
      * @return
      */
     public static ArrayList<Point2D.Float> convAnglesToTrajectory(Point2D.Float startPos, double[] angles, double sectionLength){
-        ArrayList<Point2D.Float> outTrj = new ArrayList<Point2D.Float>(angles.length+1);
+        ArrayList<Point2D.Float> outTrj = new ArrayList<Point2D.Float>();
         Point2D.Float prevPos = startPos;
 
         outTrj.add(startPos);
@@ -404,7 +414,7 @@ public class FeatureExtraction{
      * @return
      */
     public static ArrayList<Point2D.Float> convAnglesToTrajectoryInScaledArea(Point2D.Float center, float size, double[] angles){
-        ArrayList<Point2D.Float> outTrj = new ArrayList<Point2D.Float>(angles.length+1);
+        ArrayList<Point2D.Float> outTrj = new ArrayList<Point2D.Float>();
         float minX, minY, maxX, maxY;
 
         outTrj = convAnglesToTrajectory(new Point2D.Float(0.0f, 0.0f), angles, 1.0);

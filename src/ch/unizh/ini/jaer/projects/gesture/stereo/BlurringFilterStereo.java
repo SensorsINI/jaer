@@ -6,10 +6,13 @@
 package ch.unizh.ini.jaer.projects.gesture.stereo;
 
 import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2D;
+import java.awt.Point;
+import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BinocularEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventprocessing.FilterChain;
 
@@ -22,28 +25,28 @@ public class BlurringFilterStereo extends BlurringFilter2D{
     /**
      * enables left-right association
      */
-    private boolean enableBinocluarAssociation = getPrefs().getBoolean("BlurringFilterStereo.enableBinocluarAssociation", false);
+    private boolean enableBinocluarAssociation = getPrefs().getBoolean("BlurringFilterStereo.enableBinocluarAssociation", true);
 
     /**
      * activate clustering and tracking in the non-overlaping side regions
      */
-    private boolean activateNonoverlapingArea = getPrefs().getBoolean("BlurringFilterStereo.activateNonoverlapingArea", false);
+    private boolean activateNonoverlapingArea = getPrefs().getBoolean("BlurringFilterStereo.activateNonoverlapingArea", true);
 
 
     /**
      * mass threshold for left-right association in percents of MPThreshold
      */
-    private float binocluarAssMassThresholdPercentTh = getPrefs().getFloat("BlurringFilterStereo.binocluarAssMassThresholdPercentTh", 20.0f);
+    private float binocluarAssMassThresholdPercentTh = getPrefs().getFloat("BlurringFilterStereo.binocluarAssMassThresholdPercentTh", 10.0f);
 
     /**
      * RC time constant of the mass of binocular cells
      */
-    private int cellMassTimeConstatUs = getPrefs().getInt("BlurringFilterStereo.cellMassTimeConstatUs", 5000);
+    private int cellMassTimeConstatUs = getPrefs().getInt("BlurringFilterStereo.cellMassTimeConstatUs", 3000);
 
     /**
      * Stereo vergence filter
      */
-    protected StereoVergenceFilter svf;
+    public DisparityUpdater disparityUpdater;
 
     /**
      * mass of left cells for ON and OFF events
@@ -55,16 +58,57 @@ public class BlurringFilterStereo extends BlurringFilter2D{
      */
     private ArrayList<Float> rightCellMassOnEvent, rightCellMassOffEvent;
 
+
+    /**
+     * defines the event occurance ration
+     */
+    public class EventRatio{
+        /**
+         * total number of events
+         */
+        public int totalNumOfEvents;
+        /**
+         * number of events from left eye
+         * x: # of On events
+         * y: # of Off events
+         */
+        public Point leftNumOfEvents;
+        /**
+         * number of events from right eye
+         * x: # of On events
+         * y: # of Off events
+         */
+        public Point rightNumOfEvents;
+        /**
+         * event ratio
+         */
+        public Point2D.Float leftEventRaio;
+        /**
+         * event ratio
+         */
+        public Point2D.Float rightEventRaio;
+
+        EventRatio(){
+            totalNumOfEvents = 0;
+            leftNumOfEvents = new Point(0, 0);
+            rightNumOfEvents = new Point(0, 0);
+            leftEventRaio = new Point2D.Float(1, 1);
+            rightEventRaio = new Point2D.Float(1, 1);
+        }
+    }
+
     /**
      * Constructor. A StereoVergenceFilter is inside a FilterChain that is enclosed in this.
      * @param chip
      */
     public BlurringFilterStereo(AEChip chip) {
         super(chip);
-        svf = new StereoVergenceFilter(chip);
+        disparityUpdater = new DisparityUpdater(chip);
         FilterChain fc=new FilterChain(chip);
-        fc.add(svf);
+        fc.add(disparityUpdater);
         setEnclosedFilterChain(fc);
+
+        addObserver(disparityUpdater);
 
         setPropertyTooltip("Association", "enableBinocluarAssociation", "enables left-right association");
         setPropertyTooltip("Association", "activateNonoverlapingArea", "activate clustering and tracking in the non-overlaping side regions");
@@ -74,63 +118,146 @@ public class BlurringFilterStereo extends BlurringFilter2D{
 
 
     @Override
-    protected synchronized EventPacket<?> blurring(EventPacket<?> in) {
-//        boolean updatedCells = false;
-
+    protected  EventPacket<?> blurring(EventPacket<?> in) {
         if(in == null)
             return in;
 
-        if (in.getSize() == 0) {
+        if (in.isEmpty()) {
             return in;
         }
 
-        try {
-            // add events to the corresponding cell
-            for(int i=0; i<in.getSize(); i++){
-                BinocularEvent ev = (BinocularEvent)in.getEvent(i);
+        checkOutputPacketEventType(in);
+        OutputEventIterator oei=out.outputIterator();
 
-                int subIndexX = (int) (ev.getX() / halfReceptiveFieldSizePixels);
-                int subIndexY = (int) (ev.getY() / halfReceptiveFieldSizePixels);
+        EventRatio er = calculateEventRatio(in);
+        for(int i=0; i<in.getSize(); i++){
+            BinocularEvent ev = (BinocularEvent)in.getEvent(i);
 
-                if (subIndexX >= numOfNeuronsX && subIndexY >= numOfNeuronsY) {
-                    initFilter();
-                }
+            // skips disordered event
+            if(ev.getTimestamp() < lastTime) continue;
 
-                float weight;
-                if (subIndexX != numOfNeuronsX && subIndexY != numOfNeuronsY) {
-                    weight = increaseBinocularMass(subIndexX + subIndexY * numOfNeuronsX, ev);
-                    lifNeurons.get(subIndexX + subIndexY * numOfNeuronsX).addEvent(ev, weight);
-                }
-                if (subIndexX != numOfNeuronsX && subIndexY != 0) {
-                    weight = increaseBinocularMass(subIndexX + (subIndexY - 1) * numOfNeuronsX, ev);
-                    lifNeurons.get(subIndexX + (subIndexY - 1) * numOfNeuronsX).addEvent(ev, weight);
-                }
-                if (subIndexX != 0 && subIndexY != numOfNeuronsY) {
-                    weight = increaseBinocularMass(subIndexX - 1 + subIndexY * numOfNeuronsX, ev);
-                    lifNeurons.get(subIndexX - 1 + subIndexY * numOfNeuronsX).addEvent(ev, weight);
-                }
-                if (subIndexY != 0 && subIndexX != 0) {
-                    weight = increaseBinocularMass(subIndexX - 1 + (subIndexY - 1) * numOfNeuronsX, ev);
-                    lifNeurons.get(subIndexX - 1 + (subIndexY - 1) * numOfNeuronsX).addEvent(ev, weight);
-                }
+            // updates lastTime
+            lastTime = ev.getTimestamp();
 
+            // updates event histograms in disparity updater
+            disparityUpdater.addEvent(ev);
 
-                lastTime = ev.getTimestamp();
-                //updatedCells = maybeCallUpdateObservers(in, lastTime);
-                maybeCallUpdateObservers(in, lastTime);
+            // stereo vergence
+            int evx = vergence(ev, (int) (disparityUpdater.getVergenceDisparity()/2), oei);
+            if(evx == chip.getSizeX()) continue; // vergenced event falls on outside of DVS
 
-            }
-        } catch (IndexOutOfBoundsException e) {
-            initFilter();
-            // this is in case cell list is modified by real time filter during updating cells
-            log.warning(e.getMessage());
+            // add events to the corresponding LIF neurons
+            addEvent(ev, evx, er);
+
+            // periodic update
+            maybeCallUpdateObservers(in, lastTime);
         }
 
-//        if (!updatedCells) {
-//            updateNeurons(lastTime); // at laest once per packet update list
-//        }
-
         return out;
+    }
+
+    private EventRatio calculateEventRatio(EventPacket<?> in){
+        EventRatio er = new EventRatio();
+        
+        for(int i=0; i<in.getSize(); i++){
+            BinocularEvent ev = (BinocularEvent)in.getEvent(i);
+
+            if(ev.eye == BinocularEvent.Eye.LEFT){
+                if(ev.polarity == BinocularEvent.Polarity.On){
+                    er.leftNumOfEvents.x++;
+                } else {
+                    er.leftNumOfEvents.y++;
+                }
+            } else {
+                if(ev.polarity == BinocularEvent.Polarity.On){
+                    er.rightNumOfEvents.x++;
+                } else {
+                    er.rightNumOfEvents.y++;
+                }
+            }
+        }
+        er.totalNumOfEvents = er.leftNumOfEvents.x + er.leftNumOfEvents.y + er.rightNumOfEvents.x + er.rightNumOfEvents.y;
+        er.leftEventRaio.x = (float) er.leftNumOfEvents.x/er.totalNumOfEvents*4f;
+        er.leftEventRaio.y = (float) er.leftNumOfEvents.y/er.totalNumOfEvents*4f;
+        er.rightEventRaio.x = (float) er.rightNumOfEvents.x/er.totalNumOfEvents*4f;
+        er.rightEventRaio.y = (float) er.rightNumOfEvents.y/er.totalNumOfEvents*4f;
+
+        return er;
+    }
+
+    /**
+     * stereo vergence
+     * 
+     * @param ev
+     * @param dx
+     * @param oei
+     * @return
+     */
+    protected int vergence(BinocularEvent ev, int dx, OutputEventIterator oei){
+        int x;
+
+        if (ev.eye==BinocularEvent.Eye.LEFT)
+            x = ev.x - dx;
+        else
+            x = ev.x + dx;
+
+        if (x < 0 || x > chip.getSizeX() - 1)
+            return chip.getSizeX();
+
+        BinocularEvent oe=(BinocularEvent)oei.nextOutput();
+
+        // to reduce computational cost... (oe.copyFrom() takes too much cost!)
+        oe.address = ev.address;
+        oe.eye = ev.eye;
+        oe.polarity = ev.polarity;
+        oe.timestamp = ev.timestamp;
+        oe.type = ev.type;
+        oe.x = (short) x;
+        oe.y = ev.y;
+
+        return x;
+    }
+
+
+    /**
+     * add an event to the corresponding LIF neurons
+     * 
+     * @param ev
+     * @return
+     */
+    private boolean addEvent(BinocularEvent ev, int evx, EventRatio er){
+        int subIndexX = (int) (evx / halfReceptiveFieldSizePixels);
+        if (subIndexX == numOfNeuronsX)
+            subIndexX--;
+        int subIndexY = (int) (ev.getY() / halfReceptiveFieldSizePixels);
+        if (subIndexY == numOfNeuronsY)
+            subIndexY--;
+
+        if (subIndexX >= numOfNeuronsX && subIndexY >= numOfNeuronsY) {
+            initFilter();
+            return false;
+        }
+
+        // stereo association and blurring
+        float weight;
+        if (subIndexX != numOfNeuronsX && subIndexY != numOfNeuronsY) {
+            weight = increaseBinocularMass(subIndexX + subIndexY * numOfNeuronsX, ev, er);
+            lifNeurons.get(subIndexX + subIndexY * numOfNeuronsX).addEvent(ev, weight);
+        }
+        if (subIndexX != numOfNeuronsX && subIndexY != 0) {
+            weight = increaseBinocularMass(subIndexX + (subIndexY - 1) * numOfNeuronsX, ev, er);
+            lifNeurons.get(subIndexX + (subIndexY - 1) * numOfNeuronsX).addEvent(ev, weight);
+        }
+        if (subIndexX != 0 && subIndexY != numOfNeuronsY) {
+            weight = increaseBinocularMass(subIndexX - 1 + subIndexY * numOfNeuronsX, ev, er);
+            lifNeurons.get(subIndexX - 1 + subIndexY * numOfNeuronsX).addEvent(ev, weight);
+        }
+        if (subIndexY != 0 && subIndexX != 0) {
+            weight = increaseBinocularMass(subIndexX - 1 + (subIndexY - 1) * numOfNeuronsX, ev, er);
+            lifNeurons.get(subIndexX - 1 + (subIndexY - 1) * numOfNeuronsX).addEvent(ev, weight);
+        }
+
+        return true;
     }
 
     /**
@@ -141,11 +268,8 @@ public class BlurringFilterStereo extends BlurringFilter2D{
      * @param ev
      * @return massWeight.
      */
-    private float increaseBinocularMass(int index, BinocularEvent ev){
-        float retVal = 1.0f;
-
-        if(!enableBinocluarAssociation)
-            return retVal;
+    private float increaseBinocularMass(int index, BinocularEvent ev, EventRatio er){
+        float retVal = 1f;
         
         ArrayList<Float> mainEye, secondaryEye;
 
@@ -154,19 +278,26 @@ public class BlurringFilterStereo extends BlurringFilter2D{
             if(ev.polarity == Polarity.On){
                 mainEye = leftCellMassOnEvent;
                 secondaryEye = rightCellMassOnEvent;
+                retVal = (er.leftEventRaio.x + er.rightEventRaio.x)/2;
             } else {
                 mainEye = leftCellMassOffEvent;
                 secondaryEye = rightCellMassOffEvent;
+                retVal = (er.leftEventRaio.y + er.rightEventRaio.y)/2;
             }
         } else {
             if(ev.polarity == Polarity.On){
                 mainEye = rightCellMassOnEvent;
                 secondaryEye = leftCellMassOnEvent;
+                retVal = (er.leftEventRaio.x + er.rightEventRaio.x)/2;
             }else {
                 mainEye = rightCellMassOffEvent;
                 secondaryEye = leftCellMassOffEvent;
+                retVal = (er.leftEventRaio.y + er.rightEventRaio.y)/2;
             }
         }
+
+        if(!enableBinocluarAssociation)
+            return retVal;
 
         // increases mass
         float nextMass = 0.0f;
@@ -178,11 +309,11 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         // calcuates weight
         float binocluarAssociationMassThreshold = getMPThreshold() * binocluarAssMassThresholdPercentTh / 100.0f;
         if(!activateNonoverlapingArea)
-            retVal -= (float) Math.exp(-secondaryEye.get(index)/binocluarAssociationMassThreshold);
+            retVal *= (1- (float) Math.exp(-secondaryEye.get(index)/binocluarAssociationMassThreshold));
         else{
-            int halfDisparity = svf.getGlobalDisparity()/2;
+            int halfDisparity = (int) (disparityUpdater.getVergenceDisparity()/2);
             if(ev.x > halfDisparity && ev.x < chip.getSizeX() - halfDisparity)
-                retVal -= (float) Math.exp(-secondaryEye.get(index)/binocluarAssociationMassThreshold);
+                retVal *= (1- (float) Math.exp(-secondaryEye.get(index)/binocluarAssociationMassThreshold));
         }
 
         return retVal;
@@ -204,13 +335,16 @@ public class BlurringFilterStereo extends BlurringFilter2D{
                 rightCellMassOnEvent.add(0.0f);
                 rightCellMassOffEvent.add(0.0f);
             }
+
+            if(disparityUpdater != null)
+                disparityUpdater.initFilter();
         }
     }
 
 
     @Override
     public void resetFilter() {
-        getEnclosedFilterChain().reset();
+//        getEnclosedFilterChain().reset();
         super.resetFilter();
         for(int i=0; i<numOfNeuronsX*numOfNeuronsY; i++){
             leftCellMassOnEvent.set(i, 0.0f);
@@ -218,33 +352,6 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         }
     }
 
-    /** returns the global disparity between left and right eyes.
-     * it returns prevDisparity rather than currentGlobalDisparity to cover the failure of disparity estimation.
-     *
-     * @return
-     */
-    synchronized public int getGlobalDisparity(){
-        return svf.getGlobalDisparity();
-    }
-
-    /** returns true if the disparity of the specified position is properly updated.
-     *
-     * @param yPos
-     * @return
-     */
-    public boolean isDisparityValid(int yPos){
-        return svf.isDisparityValid(yPos);
-    }
-
-    /** returns the disparity at the specified position.
-     * Disparity values obtained from mutiples sections are used to getString it.
-     *
-     * @param yPos
-     * @return
-     */
-    public int getDisparity(int yPos){
-        return svf.getDisparity(yPos);
-    }
 
     /**
      * returns enableBinocluarAssociation
@@ -322,16 +429,38 @@ public class BlurringFilterStereo extends BlurringFilter2D{
      *
      * @param disparityLimit
      * @param useLowLimit : sets low limit if true. otherwise, sets high limit
+     * @param id : -1 for global disparity, cluster number for cluster disparity
      */
-    public void setDisparityLimit(int disparityLimit, boolean useLowLimit){
-        svf.setDisparityLimit(disparityLimit, useLowLimit);
+    public void setDisparityLimit(int disparityLimit, boolean useLowLimit, int id){
+        disparityUpdater.setDisparityLimit(disparityLimit, useLowLimit, id);
     }
 
     /**
      * sets enableDisparityLimit
      * @param enableDisparityLimit
+     * @param id : -1 for global disparity, cluster number for cluster disparity
      */
-    public void setEnableDisparityLimit(boolean enableDisparityLimit){
-        svf.setEnableDisparityLimit(enableDisparityLimit);
+    public void setDisparityLimitEnabled(boolean enableDisparityLimit, int id){
+        disparityUpdater.setDisparityLimitEnabled(enableDisparityLimit, id);
     }
+
+    /**
+     * returns true if the disparity limit is enabled
+     * @param id : -1 for global disparity, cluster number for cluster disparity
+     *
+     * @return
+     */
+    public boolean isDisparityLimitEnabled(int id){
+        return disparityUpdater.isDisparityLimitEnabled(id);
+    }
+
+    /**
+     * sets the maximum change of the disparity change in vergence filter
+     * @param maxDisparityChange
+     * @param id : -1 for global disparity, cluster number for cluster disparity
+     */
+    public void setMaxDisparityChangePixels(int maxDisparityChange, int id){
+        disparityUpdater.setMaxDisparityChangePixels(maxDisparityChange, id);
+    }
+
 }

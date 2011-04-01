@@ -5,9 +5,9 @@
 
 package ch.unizh.ini.jaer.projects.gesture.stereo;
 
-import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2D.NeuronGroup;
 import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2DTracker;
-import java.util.Observable;
+import java.awt.Rectangle;
+import java.util.LinkedList;
 import net.sf.jaer.chip.AEChip;
 
 
@@ -16,47 +16,41 @@ import net.sf.jaer.chip.AEChip;
  * @author Jun Haeng Lee
  */
 public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
-
-    /**
-     * global disparity
-     */
-    protected int globalDisparity;
-
-    /**
-     * Stereo blurring filter
-     */
-    protected BlurringFilterStereo stereoBF = null;
-
-    /**
-     * range of valid disparity
-     */
-    protected int validDisparityRange = getPrefs().getInt("BlurringFilterStereoTracker.validDisparityRange", 5);
-
-    /**
-     * removes clusters with invalid disparity
-     */
-    protected boolean removeInvalidClusters = getPrefs().getBoolean("BlurringFilterStereoTracker.removeInvalidClusters", true);
-
     /**
      * the threshold of LIF neuron of Blurring filter varies adaptively based on the disparity
      */
-    protected boolean enableAutoThreshold = getPrefs().getBoolean("BlurringFilterStereoTracker.enableAutoThreshold", true);
+    private boolean enableAutoThreshold = getPrefs().getBoolean("BlurringFilterStereoTracker.enableAutoThreshold", true);
 
 
     /**
      * reference disparity to define the reference threshold
      */
-    protected int autoThresholdReferenceDisparity = getPrefs().getInt("BlurringFilterStereoTracker.autoThresholdReferenceDisparity", 0);
+    private int autoThresholdReferenceDisparity = getPrefs().getInt("BlurringFilterStereoTracker.autoThresholdReferenceDisparity", 0);
     
     /**
      * autoThresholdReferenceThreshold
      */
-    protected int autoThresholdReferenceThreshold = getPrefs().getInt("BlurringFilterStereoTracker.autoThresholdReferenceThreshold", 35);
+    private int autoThresholdReferenceThreshold = getPrefs().getInt("BlurringFilterStereoTracker.autoThresholdReferenceThreshold", 60);
 
     /**
      * threshold/disparity
      */
-    protected float autoThresholdSlope = getPrefs().getFloat("BlurringFilterStereoTracker.autoThresholdSlope", 0.3f);
+    private float autoThresholdSlope = getPrefs().getFloat("BlurringFilterStereoTracker.autoThresholdSlope", 1.0f);
+
+    /**
+     * if true, limits the range of disparity chagne in the vergence filter when there are live clusters.
+     */
+    private boolean enableVergenceAttention = getPrefs().getBoolean("BlurringFilterStereoTracker.enableVergenceAttention", false);
+
+    /**
+     * maximum disparity change in vergence filter when enableVergenceAttention is true
+     */
+    private int allowedMaxDisparityChange = getPrefs().getInt("BlurringFilterStereoTracker.allowedMaxDisparityChange", 20);
+
+    /**
+     * vergence attention will be released when this amount of time in msec is passed since the last cluster was dead.
+     */
+    private int vergenceAttentionLifetimeMs = getPrefs().getInt("BlurringFilterStereoTracker.vergenceAttentionLifetimeMs", 500);
 
 
     /**
@@ -67,12 +61,13 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
         super(chip);
 
         String stereo = "Stereo";
-        setPropertyTooltip(stereo, "validDisparityRange", "range of valid disparity.");
-        setPropertyTooltip(stereo, "removeInvalidClusters", "removes clusters with invalid disparity.");
         setPropertyTooltip(stereo, "enableAutoThreshold", "if true, the threshold of LIF neuron of Blurring filter varies adaptively based on the disparity.");
         setPropertyTooltip(stereo, "autoThresholdReferenceDisparity", "reference disparity to define the reference threshold.");
         setPropertyTooltip(stereo, "autoThresholdReferenceThreshold", "Threshold of LIF neuron of Blurring filter at the reference disparity.");
         setPropertyTooltip(stereo, "autoThresholdSlope", "threshold/disparity.");
+        setPropertyTooltip(stereo, "enableVergenceAttention", "if true, limits the range of disparity chagne in the vergence filter when there are live clusters.");
+        setPropertyTooltip(stereo, "allowedMaxDisparityChange", "maximum disparity change in vergence filter when enableVergenceAttention is true.");
+        setPropertyTooltip(stereo, "vergenceAttentionLifetimeMs", "vergence attention will be released when this amount of time in msec is passed since the last cluster was dead.");
     }
 
     /**
@@ -80,32 +75,88 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
      */
     @Override
     protected void filterChainSetting() {
-        stereoBF = new BlurringFilterStereo(chip);
-        super.bfilter = stereoBF;
+        super.bfilter = new BlurringFilterStereo(chip);
         super.bfilter.addObserver(this);
-        setEnclosedFilter(bfilter);
+        setEnclosedFilter(super.bfilter);
     }
 
     /**
-     * overides this method to update global disparity
-     *
-     * @param o
-     * @param arg
+     * core of update process
+     * @param msg
      */
     @Override
-    public void update(Observable o, Object arg) {
-        super.update(o, arg);
-        globalDisparity = ((BlurringFilterStereo) bfilter).getGlobalDisparity();
+    public void updateCore(UpdateMessage msg) {
+        super.updateCore(msg);
+
+        DisparityUpdater du = ((BlurringFilterStereo) bfilter).disparityUpdater;
 
         // adaptive threshold
         if(enableAutoThreshold){
-            float thresholdAdptive = autoThresholdReferenceThreshold + ((globalDisparity - autoThresholdReferenceDisparity)*autoThresholdSlope);
+            float disparity = du.getVergenceDisparity();
+            float thresholdAdptive = autoThresholdReferenceThreshold + ((disparity - autoThresholdReferenceDisparity)*autoThresholdSlope);
             if(thresholdAdptive < 1.0f)
                 thresholdAdptive = 1.0f;
 
             super.bfilter.setMPThreshold((int) thresholdAdptive);
         }
+
+        // checks all clusters for SV management
+        for(Cluster cl:clusters){
+            Rectangle refRect = cl.getClusterArea();
+            int median = refRect.x + refRect.width/2;
+            int radius = (int) calRadius(cl);
+
+            if(!du.containsClusterSV(cl.getClusterNumber())){ // if the cluster is not registered yet, registers it
+                Rectangle area = new Rectangle(median - radius , refRect.y, 2*radius, refRect.height);
+                du.addClusterSV(cl.getClusterNumber(), area, du.getVergenceDisparity(), du.lastTimestamp);
+            } else { // if it's registered already, updates area
+                // offset is used to compensate the latency caused by clustering algorithm
+                float offset = 0.3f*radius*(float) Math.tanh((double) cl.getVelocityPPS().x/100)/2;
+
+                Rectangle area = new Rectangle(median - radius + (int)offset , refRect.y, 2*radius, refRect.height);
+
+                du.updateClusterSVArea(cl.getClusterNumber(), area);
+            }
+        }
+
+        // cross-checks all SVs
+        LinkedList<StereoDisparity> sdListDie = new LinkedList<StereoDisparity>();
+        for(StereoDisparity sd:du.clusterDisparity.values()){
+            Cluster matched = null;
+            for(Cluster cl:clusters){
+                if(cl.getClusterNumber() == sd.getId()){
+                    matched = cl;
+                    break;
+                }
+            }
+
+            if(matched == null)
+                sdListDie.add(sd);
+        }
+
+        // removes SVs for dead clusters
+        for(StereoDisparity sd:sdListDie)
+            du.removeClusterSV(sd.getId());
+
+        // selective vergence attention
+        if(enableVergenceAttention){
+            if(clusters.isEmpty()){
+                if(du.getIDforVergence() != -1){
+                    du.setIDforVergence(-1);
+                    du.setIDforAnnotation(-1);
+                }
+            } else {
+                // gives attention to the oldest cluster
+                // TODO : find a better way in selecting an cluster to make attention
+                if(du.getIDforVergence() == -1){
+                    int id = clusters.get(0).getClusterNumber();
+                    du.setIDforVergence(id);
+                    du.setIDforAnnotation(id);
+                }
+            }
+        }
     }
+
 
     /**
      * overides this method to put disparity into cluster path
@@ -116,77 +167,22 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
     protected void updateClusterPaths(int t) {
         // update paths of clusters
         for ( Cluster c:clusters ){
-            if(c.isDead())
-                continue;
-            c.updatePath(t, globalDisparity);
-            c.setUpdated(false);
-        }
-    }
-
-    @Override
-    protected void track(NeuronGroup cellGroup, int initialAge) {
-        if (cellGroup.getNumMemberNeurons() == 0) {
-            return;
-        }
-
-        Cluster closest = null;
-        closest = getNearestCluster(cellGroup); // find cluster that event falls within (or also within surround if scaling enabled)
-
-        if (closest != null) {
-            closest.addGroup(cellGroup);
-        } else { // start a new cluster
-            if(removeInvalidClusters){
-                if(((BlurringFilterStereo) bfilter).isDisparityValid((int) cellGroup.getLocation().y))
-                    if(((BlurringFilterStereo) bfilter).getDisparity((int) cellGroup.getLocation().y) > globalDisparity - validDisparityRange)
-                        clusters.add(new Cluster(cellGroup, initialAge));
-            } else {
-                clusters.add(new Cluster(cellGroup, initialAge));
+            if(!c.isDead() && c.isUpdated()){
+                c.updatePath(t, ((BlurringFilterStereo) bfilter).disparityUpdater.getDisparity(c.getClusterNumber()));
+                c.setMinimumClusterSize(getMinimumClusterSizePixels() + (int)c.getDisparity(1));
+                c.setUpdated(false);
             }
         }
     }
 
     /**
      * returns global disparity
-     * @return
-     */
-    public int getDisparity() {
-        return globalDisparity;
-    }
-
-    /**
-     * returns validDisparityRange
-     * @return
-     */
-    public int getValidDisparityRange() {
-        return validDisparityRange;
-    }
-
-    /**
-     * sets validDisparityRange
      *
-     * @param validDisparityRange
-     */
-    public void setValidDisparityRange(int validDisparityRange) {
-        this.validDisparityRange = validDisparityRange;
-        getPrefs().putInt("BlurringFilterStereoTracker.validDisparityRange", validDisparityRange);
-    }
-
-    /**
-     * returns removeInvalidClusters
+     * @param id
      * @return
      */
-    public boolean isRemoveInvalidClusters() {
-        return removeInvalidClusters;
-    }
-
-    /**
-     * sets removeInvalidClusters
-     * 
-     * @param removeInvalidClusters
-     */
-    public void setRemoveInvalidClusters(boolean removeInvalidClusters) {
-        this.removeInvalidClusters = removeInvalidClusters;
-        getPrefs().putBoolean("BlurringFilterStereoTracker.removeInvalidClusters", removeInvalidClusters);
+    public float getDisparity(int id) {
+        return ((BlurringFilterStereo) bfilter).disparityUpdater.getDisparity(id);
     }
 
     /**
@@ -196,7 +192,7 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
      * @param useLowLimit
      */
     public void setDisparityLimit(int disparityLimit, boolean useLowLimit){
-        ((BlurringFilterStereo) super.bfilter).setDisparityLimit(disparityLimit, useLowLimit);
+        ((BlurringFilterStereo) super.bfilter).setDisparityLimit(disparityLimit, useLowLimit, -1);
     }
 
     /**
@@ -205,7 +201,7 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
      * @param maxDisparityChangePixels
      */
     public void setMaxDisparityChangePixels(int maxDisparityChangePixels){
-        ((BlurringFilterStereo) super.bfilter).svf.setMaxDisparityChangePixels(maxDisparityChangePixels);
+        ((BlurringFilterStereo) super.bfilter).setMaxDisparityChangePixels(maxDisparityChangePixels, -1);
     }
 
     /**
@@ -214,7 +210,15 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
      * @param enableDisparityLimit
      */
     public void setEnableDisparityLimit(boolean enableDisparityLimit){
-        ((BlurringFilterStereo) super.bfilter).setEnableDisparityLimit(enableDisparityLimit);
+        ((BlurringFilterStereo) super.bfilter).setDisparityLimitEnabled(enableDisparityLimit, -1);
+    }
+
+    /**
+     * returns true if the disparity limit is enabled
+     * @return
+     */
+    public boolean isDisparityLimitEnabled(){
+        return ((BlurringFilterStereo) super.bfilter).isDisparityLimitEnabled(-1);
     }
 
     /**
@@ -291,5 +295,63 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
     public void setEnableAutoThreshold(boolean enableAutoThreshold) {
         this.enableAutoThreshold = enableAutoThreshold;
         getPrefs().putBoolean("BlurringFilterStereoTracker.enableAutoThreshold", enableAutoThreshold);
+    }
+
+    /**
+     * returns allowedMaxDisparityChange
+     *
+     * @return
+     */
+    public int getAllowedMaxDisparityChange() {
+        return allowedMaxDisparityChange;
+    }
+
+    /**
+     * sets allowedMaxDisparityChange
+     *
+     * @param allowedMaxDisparityChange
+     */
+    public void setAllowedMaxDisparityChange(int allowedMaxDisparityChange) {
+        this.allowedMaxDisparityChange = allowedMaxDisparityChange;
+        getPrefs().putInt("BlurringFilterStereoTracker.allowedMaxDisparityChange", allowedMaxDisparityChange);
+    }
+
+    /**
+     * returns enableVergenceAttention
+     * @return
+     */
+    public boolean isEnableVergenceAttention() {
+        return enableVergenceAttention;
+    }
+
+    /**
+     * sets enableVergenceAttention
+     *
+     * @param enableVergenceAttention
+     */
+    public void setEnableVergenceAttention(boolean enableVergenceAttention) {
+        this.enableVergenceAttention = enableVergenceAttention;
+        getPrefs().putBoolean("BlurringFilterStereoTracker.enableVergenceAttention", enableVergenceAttention);
+
+        ((BlurringFilterStereo) bfilter).disparityUpdater.setMaxDisparityChangeEnabled(false, -1);
+    }
+
+    /**
+     * returns vergenceAttentionLifetimeMs
+     *
+     * @return
+     */
+    public int getVergenceAttentionLifetimeMs() {
+        return vergenceAttentionLifetimeMs;
+    }
+
+    /**
+     * sets vergenceAttentionLifetimeMs
+     * 
+     * @param vergenceAttentionLifetimeMs
+     */
+    public void setVergenceAttentionLifetimeMs(int vergenceAttentionLifetimeMs) {
+        this.vergenceAttentionLifetimeMs = vergenceAttentionLifetimeMs;
+        getPrefs().putInt("BlurringFilterStereoTracker.vergenceAttentionLifetimeMs", vergenceAttentionLifetimeMs);
     }
 }

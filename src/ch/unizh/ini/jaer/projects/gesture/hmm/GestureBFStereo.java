@@ -7,8 +7,6 @@ package ch.unizh.ini.jaer.projects.gesture.hmm;
 
 import ch.unizh.ini.jaer.projects.gesture.stereo.BlurringFilterStereoTracker;
 import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2DTracker;
-import ch.unizh.ini.jaer.projects.gesture.vlccontrol.VLCControl;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -26,11 +24,6 @@ import net.sf.jaer.eventprocessing.tracking.ClusterPathPoint;
  * @author Jun Haeng Lee
  */
 public class GestureBFStereo extends GestureBF2D{
-    /**
-     * stereo tracker
-     */
-    protected BlurringFilterStereoTracker stereoTracker = null;
-
     /**
      * queue for disparity
      * this is to detect Push-gesture. but Push gesture is currently not supported.
@@ -62,10 +55,7 @@ public class GestureBFStereo extends GestureBF2D{
     /**
      * true if Push-gesture is detected
      */
-    private boolean pushDetected = false;
-
-    private VLCControl vlc = null;
-
+    protected boolean pushDetected = false;
 
     /**
      * Constructor
@@ -73,6 +63,9 @@ public class GestureBFStereo extends GestureBF2D{
      */
     public GestureBFStereo(AEChip chip) {
         super(chip);
+
+        this.chip = chip;
+        chip.addObserver(this);
         
         // deactivates disparity limit
         ((BlurringFilterStereoTracker) super.tracker).setEnableDisparityLimit(false);
@@ -82,19 +75,21 @@ public class GestureBFStereo extends GestureBF2D{
 
     @Override
     protected void filterChainSetting() {
-        stereoTracker = new BlurringFilterStereoTracker(chip);
-        super.tracker = stereoTracker;
-        ( (EventFilter2D) stereoTracker ).addObserver(this);
+        super.tracker = new BlurringFilterStereoTracker(chip);
+        ( (EventFilter2D) super.tracker ).addObserver(this);
         setEnclosedFilterChain(new FilterChain(chip));
-        getEnclosedFilterChain().add((EventFilter2D)stereoTracker);
-        ( (EventFilter2D) stereoTracker ).setEnclosed(true,this);
-        ( (EventFilter2D) stereoTracker ).setFilterEnabled(isFilterEnabled());
+        getEnclosedFilterChain().add((EventFilter2D)super.tracker);
+        ( (EventFilter2D) super.tracker ).setEnclosed(true,this);
+        ( (EventFilter2D) super.tracker ).setFilterEnabled(isFilterEnabled());
     }
 
     @Override
     public void update(Observable o, Object arg) {
-        if ( o instanceof BlurringFilterStereoTracker ){
-            UpdateMessage msg = (UpdateMessage)arg;
+        if ( !(o instanceof BlurringFilterStereoTracker) )
+            return;
+
+        UpdateMessage msg = (UpdateMessage)arg;
+        if( enableGestureRecognition ){
             List<BlurringFilter2DTracker.Cluster> cl = tracker.getClusters();
             ArrayList<ClusterPathPoint> path = selectClusterTrajectory(cl);
 
@@ -116,11 +111,10 @@ public class GestureBFStereo extends GestureBF2D{
             if(isLogin()){
                 // estimates the best matching gesture
                 bmg = estimateGesture(trimmedPath);
-
-                // tries again with prevPath if bmg is null
+                 // tries again with prevPath if bmg is null
                 if(isUsePrevPath() && bmg == null)
                     bmg = estimateGestureWithPrevPath(trimmedPath, getMaxTimeDiffCorrSegmentsUs(), true, true);
-                    
+
                 System.out.println("Best matching gesture is " + bmg);
 
                 if(bmg != null){
@@ -155,7 +149,7 @@ public class GestureBFStereo extends GestureBF2D{
                         tmpTracker.setDisparityLimit(meanDisparityOfStartGesture+2, false);
                     }
                     tmpTracker.setEnableDisparityLimit(true);
-                     pushDetected = false;
+                    pushDetected = false;
                 } else
                     savePath = true;
             }
@@ -163,7 +157,10 @@ public class GestureBFStereo extends GestureBF2D{
                 storePath(trimmedPath, false);
             else
                 resetPrevPath();
-        } 
+        }
+
+        // callback to update() of any listeners on us, e.g. VirtualDrummer
+        callUpdateObservers(msg.packet, msg.timestamp);
     }
 
     /**
@@ -184,12 +181,15 @@ public class GestureBFStereo extends GestureBF2D{
         return meanDisparity/trimmedPath.size();
     }
 
+    @Override
+    public BlurringFilterStereoTracker getTracker() {
+        return (BlurringFilterStereoTracker)tracker;
+    }
     
 
     @Override
     protected void doLogin() {
         super.doLogin();
-        vlc = new VLCControl();
     }
 
     /**
@@ -206,59 +206,63 @@ public class GestureBFStereo extends GestureBF2D{
 
         // releases maximum disparity change limit
 //        ((BlurringFilterStereoTracker) super.tracker).setMaxDisparityChangePixels(100);
-
-        // disconnect VLC
-        disconnectVLC();
     }
 
     @Override
     protected void doCCW() {
         super.doCCW();
-        sendCommandVLC(VLCControl.STOP);
-        //ignoreGesture(); // this line should be activated to ignore refractory period if this gesture is not used
     }
 
     @Override
     protected void doCW() {
         super.doCW();
-        sendCommandVLC(VLCControl.PLAY);
-        //ignoreGesture(); // this line should be activated to ignore refractory period if this gesture is not used
     }
 
     @Override
     protected void doCheck() {
         super.doCheck();
-        sendCommandVLC(VLCControl.PAUSE);
-        //ignoreGesture(); // this line should be activated to ignore refractory period if this gesture is not used
     }
 
     @Override
     protected void doUp() {
         super.doUp();
-        sendCommandVLC(VLCControl.VOLUP);
-        //ignoreGesture(); // this line should be activated to ignore refractory period if this gesture is not used
     }
 
     @Override
     protected void doDown() {
         super.doDown();
-        sendCommandVLC(VLCControl.VOLDOWN);
-        //ignoreGesture(); // this line should be activated to ignore refractory period if this gesture is not used
     }
 
     @Override
     protected void doLeft() {
         super.doLeft();
-        sendCommandVLC(VLCControl.PREV);
-        //ignoreGesture(); // this line should be activated to ignore refractory period if this gesture is not used
     }
 
     @Override
     protected void doRight() {
         super.doRight();
-        sendCommandVLC(VLCControl.NEXT);
-        //ignoreGesture(); // this line should be activated to ignore refractory period if this gesture is not used
     }
+
+    @Override
+    protected void doSlashDown() {
+        super.doSlashDown();
+    }
+
+    @Override
+    protected void doSlashUp() {
+        super.doSlashUp();
+    }
+
+    @Override
+    protected void doDCCW() {
+        super.doDCCW();
+    }
+
+    @Override
+    protected void doDCW() {
+        super.doDCW();
+    }
+
 
     /**
      * defines jobs to do when Push is detected
@@ -266,35 +270,5 @@ public class GestureBFStereo extends GestureBF2D{
     @Override
     protected void doPush() {
         super.doPush(); 
-    }
-
-    /**
-     * sends a command string to VLC
-     *
-     * @param cmd
-     * @return
-     */
-    private boolean sendCommandVLC(String cmd){
-        try {
-                vlc.sendCommand(cmd);
-                return true;
-            } catch (IOException ex) {
-                log.warning(ex.toString());
-                return false;
-            }
-    }
-
-    /**
-     * disconnect VLC
-     */
-    private void disconnectVLC(){
-        if(vlc != null){
-            try{
-                vlc.disconnect();
-            } catch (IOException ex) {
-                log.warning(ex.toString());
-            }
-            vlc = null;
-        }
     }
 }
