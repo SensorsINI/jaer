@@ -171,7 +171,7 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
         Cluster sc = findCluster();
         if ( sc != null ){
             Point2D.Float p = sc.getLocation();
-            float disparity = (float)( ( ( tracker.getDisparity() ) / ( chip.getSizeX() * .7f ) ) + 1 ) / 2 * disparityScaling;
+            float disparity = (float)( ( ( tracker.getDisparity(-1) ) / ( chip.getSizeX() * .7f ) ) + 1 ) / 2 * disparityScaling;
             float tilt = (float)p.getY() / sizeY;
             float pan = (float)p.getX() / sizeX;
 
