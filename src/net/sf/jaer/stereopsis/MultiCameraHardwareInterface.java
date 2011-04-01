@@ -532,9 +532,8 @@ public class MultiCameraHardwareInterface implements AEMonitorInterface, ReaderB
     private void labelCamera(AEPacketRaw aeRaw, int camera) {
         int[] adr = aeRaw.getAddresses();
         int n = aeRaw.getNumEvents();
-        for (int i = 0; i
-                < n; i++) {
-            MultiCameraEvent.setCameraNumberToRawAddress(camera, adr[i]);
+        for (int i = 0; i < n; i++) {
+            adr[i]=MultiCameraEvent.setCameraNumberToRawAddress(camera, adr[i]);
         }
     }
 

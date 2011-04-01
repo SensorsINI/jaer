@@ -157,7 +157,7 @@ public class MultiDVS128CameraChip extends DVS128 implements MultiCameraInterfac
             for (int i = 0; i < packet.getSize(); i++) {
                 MultiCameraEvent mce = (MultiCameraEvent) packet.getEvent(i);
                 EventRaw event = p.getEvent(i);
-                MultiCameraEvent.setCameraNumberToRawAddress(mce.camera, event.address);
+                event.address=MultiCameraEvent.setCameraNumberToRawAddress(mce.camera, event.address);
             }
             return p;
         }

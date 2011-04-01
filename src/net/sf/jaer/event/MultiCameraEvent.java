@@ -27,9 +27,16 @@ public class MultiCameraEvent extends PolarityEvent {
         return (byte)((i>>>24)&0xff);
     }
 
-    /** Sets the camera number in the raw address, as the MSB of the 32 bits */
-    public static void setCameraNumberToRawAddress(int camera, int address){
+    /** Sets the camera number in the raw address, as the MSB of the 32 bits and returns the new address with camera number
+     *
+     * @param camera by convention starting with 0 for the leftmost looking at the array of cameras
+     * @param address the address of the pixel in the cmaera
+     * @return the combined address
+     */
+
+    public static int setCameraNumberToRawAddress(int camera, int address){
         address=0xffffffff&(address | (0xffffffff&(camera<<24)));
+        return address;
     }
 
     /** The index of the camera, 0 based. */
