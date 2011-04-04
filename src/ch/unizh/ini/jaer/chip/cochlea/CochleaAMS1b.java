@@ -677,10 +677,12 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 return value;
             }
 
+            @Override
             public String toString() {
                 return String.format("ConfigBit name=%s portbit=%s value=%s", name, portBitString, Boolean.toString(value));
             }
 
+            @Override
             public void preferenceChange(PreferenceChangeEvent e) {
                 if (e.getKey().equals(key)) {
 //                    log.info(this+" preferenceChange(): event="+e+" key="+e.getKey()+" newValue="+e.getNewValue());
@@ -689,10 +691,12 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
                 }
             }
 
+            @Override
             public void loadPreference() {
                 set(getPrefs().getBoolean(key, false));
             }
 
+            @Override
             public void storePreference() {
                 putPref(key, value); // will eventually call pref change listener which will call set again
             }
