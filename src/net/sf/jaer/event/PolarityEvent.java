@@ -17,7 +17,7 @@ package net.sf.jaer.event;
  * @author tobi
  */
 public class PolarityEvent extends TypedEvent{
-    
+
     public static enum Polarity {On, Off};
     public Polarity polarity=Polarity.On;
     
@@ -45,4 +45,20 @@ public class PolarityEvent extends TypedEvent{
     @Override public int getType(){
         return polarity==Polarity.Off? 0: 1;
     }
+
+       /**
+     * @return the polarity
+     */
+    public Polarity getPolarity() {
+        return polarity;
+    }
+
+    /**
+     * @param polarity the polarity to set
+     */
+    public void setPolarity(Polarity polarity) {
+        this.polarity = polarity;
+    }
+
+
 }
