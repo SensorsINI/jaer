@@ -57,7 +57,6 @@ public class MultiCameraEvent extends PolarityEvent {
     }
 
 
-
    /**
      * @return the camera
      */
