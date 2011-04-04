@@ -487,7 +487,7 @@ public class AEChipRenderer extends Chip2DRenderer {
                 typeColorRGBComponents[i][0] = (float) c.getRed() / 255;
                 typeColorRGBComponents[i][1] = (float) c.getGreen() / 255;
                 typeColorRGBComponents[i][2] = (float) c.getBlue() / 255;
-                JButton but = new JButton(" ");
+                JButton but = new JButton(" "); // TODO why is this button here?  maybe to be used by some subclasses or users?
                 but.setBackground(c);
                 but.setForeground(c);
                 b.append(String.format("type %d: %.2f, %.2f, %.2f\n", i, typeColorRGBComponents[i][0], typeColorRGBComponents[i][1], typeColorRGBComponents[i][2]));
