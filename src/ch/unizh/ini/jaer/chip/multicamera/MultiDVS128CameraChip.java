@@ -40,7 +40,7 @@ to supply MultiCameraInterface which are multiple DVS128 hardware interfaces.
 public class MultiDVS128CameraChip extends DVS128 implements MultiCameraInterface {
 
     public static String getDescription() {
-        return "A multi DVS128 retina (DVS128) each on it's own USB interface";
+        return "A multi DVS128 retina (DVS128) each on it's own USB interface with merged and presumably aligned fields of view";
     }
     private AEChip[] cameras = new AEChip[MultiCameraEvent.NUM_CAMERAS];
 
@@ -135,13 +135,17 @@ public class MultiDVS128CameraChip extends DVS128 implements MultiCameraInterfac
             OutputEventIterator outItr = out.outputIterator();
             for (int i = 0; i < n; i += skipBy) { // bug here
                 MultiCameraEvent e = (MultiCameraEvent) outItr.nextOutput();
+                // we need to be careful to fill in all the fields here or understand how the super of MultiCameraEvent fills its fields
                 e.address = a[i];
                 e.timestamp = timestamps[i];
+                e.camera = MultiCameraEvent.getCameraFromRawAddress(a[i]);
                 e.x = getXFromAddress(a[i]);
                 e.y = getYFromAddress(a[i]);
-                e.type = getTypeFromAddress(a[i]);
-                e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
-                e.camera = MultiCameraEvent.getCameraFromRawAddress(a[i]);
+                // assumes that the raw address format has polarity in msb and that 0==OFF type
+                int pol = a[i] & 1;
+                e.polarity = pol == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
+                // combines polarity with camera to assign 2*NUM_CAMERA types
+                e.type = (byte) (2 * e.camera + pol); // assign e.type here so that superclasses don't get fooled by using default type of event for polarity event
             }
             return out;
         }
