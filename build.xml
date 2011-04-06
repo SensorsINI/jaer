@@ -5,7 +5,6 @@
 <project name="jAER" default="default" basedir=".">
     <description>Builds, tests, and runs the project jAER</description>
     <import file="nbproject/build-impl.xml"/>
-    <import file="nbproject/profiler-build-impl.xml"/>
     <echo message="build.xml project opened"/>
     <!--
 
