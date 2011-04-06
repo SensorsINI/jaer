@@ -5,6 +5,7 @@
  */
 package net.sf.jaer.biasgen;
 
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cHardwareInterface;
 import java.io.IOException;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.graphics.AEViewer;

@@ -15,7 +15,7 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
  *
  * @author tobi
  */
-public class cDVSRenderer extends RetinaRenderer {
+public class cDVSTest20Renderer extends RetinaRenderer {
 
     private cDVSTest20 cDVSChip = null;
     private final float[] redder = {1, 0, 0}, bluer = {0, 0, 1}, brighter = {1, 1, 1}, darker = {-1, -1, -1};
@@ -29,7 +29,7 @@ public class cDVSRenderer extends RetinaRenderer {
     /** Control scaling and offset of display of log intensity values. */
     int logIntensityGain, logIntensityOffset;
 
-    public cDVSRenderer(cDVSTest20 chip) {
+    public cDVSTest20Renderer(cDVSTest20 chip) {
         super(chip);
         cDVSChip = chip;
         agcEnabled = chip.getPrefs().getBoolean("agcEnabled", false);

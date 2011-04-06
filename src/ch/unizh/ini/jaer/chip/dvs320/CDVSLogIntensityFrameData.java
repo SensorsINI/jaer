@@ -6,6 +6,7 @@
 package ch.unizh.ini.jaer.chip.dvs320;
 
 import java.util.concurrent.Semaphore;
+import java.util.logging.Logger;
 
 /**
  * 
@@ -14,6 +15,8 @@ import java.util.concurrent.Semaphore;
  * @author Tobi
  */
 public class CDVSLogIntensityFrameData {
+
+    final static Logger log=Logger.getLogger("CDVSLogIntensityFrameData");
 
     public static final int WIDTH=cDVSTest20.SIZE_X_CDVS, HEIGHT=cDVSTest20.SIZE_Y_CDVS;
     private static final int NUMSAMPLES=WIDTH*HEIGHT;
@@ -53,6 +56,10 @@ public class CDVSLogIntensityFrameData {
 
     /** Put a value to the next writing position. Writes wrap around to the start position. */
     public void put(int val){
+        if(writeCounter>=currentReadingBuffer.length-1) {
+//            log.info("buffer overflowed - missing start frame bit?");
+            return;
+        }
         currentWritingBuffer[writeCounter++]=val;
         if(writeCounter==NUMSAMPLES) writeCounter=0;
     }

@@ -1,16 +1,22 @@
-package ch.unizh.ini.jaer.chip.dvs320;
+package ch.unizh.ini.jaer.chip.util.externaladc;
 
+import ch.unizh.ini.jaer.chip.dvs320.cDVSTest20;
+import ch.unizh.ini.jaer.chip.dvs320.cDVSTestHardwareInterface;
 import java.util.logging.Logger;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceProxy;
 
 /**
  * A proxy to wrap around the actual hardware interface to expose the ADC controls
  * for purposes of GUI building using ParameterControlPanel.
  */
-public class ADCHardwareInterfaceProxy {
+public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy {
 
-    static Logger log = Logger.getLogger("cDVSTestHardwareInterface");
+    static final Logger log = Logger.getLogger("HardwareInterfaceProxy");
+    private boolean adcEnabled;
+    private short trackTime, refOnTime, refOffTime, idleTime;
+    private boolean UseCalibration;
     // following define limits for slider controls that are automagically constucted by ParameterControlPanel
     private final int minRefOffTime = 0;
     private final int maxRefOffTime = 100;
@@ -23,10 +29,24 @@ public class ADCHardwareInterfaceProxy {
     private final int minADCchannel = 0;
     private final int maxADCchannel = 3;
     private boolean printedWarning = false;
-    private final int minScanX = 0, maxScanX = cDVSTest20.SIZE_X_CDVS - 1, minScanY = 0, maxScanY = cDVSTest20.SIZE_Y_CDVS - 1;
-    private cDVSTestHardwareInterface hw;
+    private ADCHardwareInterface hw;
+    private static final int adcChannelshift = 5;
+    private static final short adcConfig = (short) 0x100;   //normal power mode, single ended, sequencer unused : (short) 0x908;
+    private final static short adcConfigLength = (short) 12;
+    private final byte adcChannel;
 
-    public ADCHardwareInterfaceProxy() {
+    public ADCHardwareInterfaceProxy(Chip chip) {
+        super(chip);
+        adcChannel = (byte) getPrefs().getInt("CochleaAMS1cHardwareInterface.ADCchannel", 3);
+        adcEnabled = getPrefs().getBoolean("CochleaAMS1cHardwareInterface.adcEnabled", true);
+
+        UseCalibration = getPrefs().getBoolean("CochleaAMS1cHardwareInterface.UseCalibration", false);
+        adcEnabled = getPrefs().getBoolean("CochleaAMS1cHardwareInterface.adcEnabled", true);
+        trackTime = (short) getPrefs().getInt("CochleaAMS1cHardwareInterface.TrackTime", 50);
+        refOnTime = (short) getPrefs().getInt("CochleaAMS1cHardwareInterface.RefOnTime", 20);
+        refOffTime = (short) getPrefs().getInt("CochleaAMS1cHardwareInterface.RefOffTime", 20);
+        idleTime = (short) getPrefs().getInt("CochleaAMS1cHardwareInterface.IdleTime", 10);
+        UseCalibration = getPrefs().getBoolean("CochleaAMS1cHardwareInterface.UseCalibration", false);
     }
 
     private boolean checkHw() {
@@ -40,22 +60,22 @@ public class ADCHardwareInterfaceProxy {
         return true;
     }
 
-    public cDVSTestHardwareInterface getHw() {
+    public ADCHardwareInterface getHw() {
         return hw;
     }
 
     /**
-     * @param hw the hw to set
+     * @param hw the hardware interface to set
      */
-    public void setHw(cDVSTestHardwareInterface hw) {
+    public void setHw(ADCHardwareInterface hw) {
         this.hw = hw;
     }
 
     public void doSendConfiguration() throws HardwareInterfaceException {
-         if (!checkHw()) {
+        if (!checkHw()) {
             return;
         }
-        hw.sendCPLDconfiguration();
+        hw.sendADCConfiguration();
     }
 
     public void setADCEnabled(boolean yes) throws HardwareInterfaceException {
@@ -72,13 +92,12 @@ public class ADCHardwareInterfaceProxy {
         return hw.isADCEnabled();
     }
 
-    public void setUseCalibration(boolean se) {
-        if (!checkHw()) {
-            return;
-        }
-        hw.setUseCalibration(se);
-    }
-
+//    public void setUseCalibration(boolean se) {
+//        if (!checkHw()) {
+//            return;
+//        }
+//        hw.setUseCalibration(se);
+//    }
     public void setTrackTime(int trackTimeUs) {
         if (!checkHw()) {
             return;
@@ -86,13 +105,12 @@ public class ADCHardwareInterfaceProxy {
         hw.setTrackTime((short) trackTimeUs);
     }
 
-    public void setSelect5Tbuffer(boolean se) {
-        if (!checkHw()) {
-            return;
-        }
-        hw.setSelect5Tbuffer(se);
-    }
-
+//    public void setSelect5Tbuffer(boolean se) {
+//        if (!checkHw()) {
+//            return;
+//        }
+//        hw.setSelect5Tbuffer(se);
+//    }
     public void setRefOnTime(int trackTimeUs) {
         if (!checkHw()) {
             return;
@@ -121,34 +139,32 @@ public class ADCHardwareInterfaceProxy {
         hw.setADCchannel((byte) chan);
     }
 
-    public synchronized void resetTimestamps() {
-        if (!checkHw()) {
-            return;
-        }
-        hw.resetTimestamps();
-    }
+//    public synchronized void resetTimestamps() {
+//        if (!checkHw()) {
+//            return;
+//        }
+//        hw.resetTimestamps();
+//    }
 
-    public boolean isUseCalibration() {
-        if (!checkHw()) {
-            return false;
-        }
-        return hw.isUseCalibration();
-    }
-
-    public boolean isSelect5Tbuffer() {
-        if (!checkHw()) {
-            return false;
-        }
-        return hw.isSelect5Tbuffer();
-    }
-
-    public boolean isChipReset() {
-        if (!checkHw()) {
-            return false;
-        }
-        return hw.isChipReset();
-    }
-
+//    public boolean isUseCalibration() {
+//        if (!checkHw()) {
+//            return false;
+//        }
+//        return hw.isUseCalibration();
+//    }
+//
+//    public boolean isSelect5Tbuffer() {
+//        if (!checkHw()) {
+//            return false;
+//        }
+//        return hw.isSelect5Tbuffer();
+//    }
+//    public boolean isChipReset() {
+//        if (!checkHw()) {
+//            return false;
+//        }
+//        return hw.isChipReset();
+//    }
     public int getTrackTime() {
         if (!checkHw()) {
             return -1;
@@ -222,75 +238,5 @@ public class ADCHardwareInterfaceProxy {
 
     public int getMaxRefOffTime() {
         return maxRefOffTime;
-    }
-
-    public void setScanY(int scanY) {
-        if (!checkHw()) {
-            return;
-        }
-        hw.setScanY(scanY);
-    }
-
-    public void setScanX(int scanX) {
-        if (!checkHw()) {
-            return;
-        }
-        hw.setScanX(scanX);
-    }
-
-    public void setScanContinuouslyEnabled(boolean scanContinuouslyEnabled) {
-        if (!checkHw()) {
-            return;
-        }
-        hw.setScanContinuouslyEnabled(scanContinuouslyEnabled);
-    }
-
-    public boolean isScanContinuouslyEnabled() {
-        if (!checkHw()) {
-            return false;
-        }
-        return hw.isScanContinuouslyEnabled();
-    }
-
-    public int getScanY() {
-        if (!checkHw()) {
-            return -1;
-        }
-        return hw.getScanY();
-    }
-
-    public int getScanX() {
-        if (!checkHw()) {
-            return -1;
-        }
-        return hw.getScanX();
-    }
-
-    /**
-     * @return the minScanX
-     */
-    public int getMinScanX() {
-        return minScanX;
-    }
-
-    /**
-     * @return the maxScanX
-     */
-    public int getMaxScanX() {
-        return maxScanX;
-    }
-
-    /**
-     * @return the minScanY
-     */
-    public int getMinScanY() {
-        return minScanY;
-    }
-
-    /**
-     * @return the maxScanY
-     */
-    public int getMaxScanY() {
-        return maxScanY;
     }
 }

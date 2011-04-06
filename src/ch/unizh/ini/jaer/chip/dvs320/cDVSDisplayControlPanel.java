@@ -24,20 +24,20 @@ import org.jdesktop.beansbinding.Validator;
  */
 public class cDVSDisplayControlPanel extends javax.swing.JPanel implements PropertyChangeListener{
 
-    private cDVSDisplayMethod displayMethod=null;
-    private cDVSRenderer renderer=null;
+    private cDVSTest20DisplayMethod displayMethod=null;
+    private cDVSTest20Renderer renderer=null;
     private cDVSTest20 chip;
 
     /** Creates new form cDVSDisplayControlPanel */
     public cDVSDisplayControlPanel(cDVSTest20 chip) {
         this.chip=chip;
-        this.displayMethod=(cDVSDisplayMethod)chip.getCanvas().getDisplayMethod();
-        this.renderer=(cDVSRenderer)chip.getRenderer();
+        this.displayMethod=(cDVSTest20DisplayMethod)chip.getCanvas().getDisplayMethod();
+        this.renderer=(cDVSTest20Renderer)chip.getRenderer();
         initComponents();
         renderer.getSupport().addPropertyChangeListener(AEChipRenderer.COLOR_SCALE, this);
-        renderer.getSupport().addPropertyChangeListener(cDVSRenderer.AGC_VALUES, this);
-        renderer.getSupport().addPropertyChangeListener(cDVSRenderer.LOG_INTENSITY_GAIN, this);
-        renderer.getSupport().addPropertyChangeListener(cDVSRenderer.LOG_INTENSITY_OFFSET, this);
+        renderer.getSupport().addPropertyChangeListener(cDVSTest20Renderer.AGC_VALUES, this);
+        renderer.getSupport().addPropertyChangeListener(cDVSTest20Renderer.LOG_INTENSITY_GAIN, this);
+        renderer.getSupport().addPropertyChangeListener(cDVSTest20Renderer.LOG_INTENSITY_OFFSET, this);
     }
 
     /** This method is called from within the constructor to
@@ -561,14 +561,14 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
     /**
      * @return the displayMethod
      */
-    public cDVSDisplayMethod getDisplayMethod() {
+    public cDVSTest20DisplayMethod getDisplayMethod() {
         return displayMethod;
     }
 
     /**
      * @param displayMethod the displayMethod to set
      */
-    public void setDisplayMethod(cDVSDisplayMethod displayMethod) {
+    public void setDisplayMethod(cDVSTest20DisplayMethod displayMethod) {
         this.displayMethod = displayMethod;
     }
 
@@ -620,14 +620,14 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
     public void propertyChange(PropertyChangeEvent evt) {
         if(evt.getPropertyName()==AEChipRenderer.COLOR_SCALE){
             colorScaleSpinner.setValue((Integer)evt.getNewValue());
-        }else if(evt.getPropertyName()==cDVSRenderer.AGC_VALUES){
+        }else if(evt.getPropertyName()==cDVSTest20Renderer.AGC_VALUES){
             Point2D.Float f=(Point2D.Float)evt.getNewValue();
             minTF.setText(String.format("%.0f",f.x));
             maxTF.setText(String.format("%.0f",f.y));
             gainAGCTF.setText(String.format("%.0f",cDVSTest20.MAX_ADC/(f.y-f.x)));
-        }else if(evt.getPropertyName()==cDVSRenderer.LOG_INTENSITY_GAIN){
+        }else if(evt.getPropertyName()==cDVSTest20Renderer.LOG_INTENSITY_GAIN){
             gainSlider.setValue(renderer.getLogIntensityGain());
-        }else if(evt.getPropertyName()==cDVSRenderer.LOG_INTENSITY_OFFSET){
+        }else if(evt.getPropertyName()==cDVSTest20Renderer.LOG_INTENSITY_OFFSET){
             offsetSlider.setValue(renderer.getLogIntensityOffset());
         }
     }
@@ -635,7 +635,7 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
     /**
      * @return the renderer
      */
-    public cDVSRenderer getRenderer() {
+    public cDVSTest20Renderer getRenderer() {
         return renderer;
     }
 

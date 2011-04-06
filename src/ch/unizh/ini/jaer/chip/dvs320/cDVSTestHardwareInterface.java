@@ -6,6 +6,8 @@
  */
 package ch.unizh.ini.jaer.chip.dvs320;
 
+import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterface;
+import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterface;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -13,6 +15,7 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Biasgen;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
+import java.beans.PropertyChangeSupport;
 import javax.swing.ProgressMonitor;
 import java.io.*;
 import java.math.BigInteger;
@@ -23,21 +26,29 @@ import java.util.prefs.Preferences;
  *
  * @author tobi
  */
-public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
+public class cDVSTestHardwareInterface extends CypressFX2Biasgen implements  ADCHardwareInterface, ScannerHardwareInterface {
 
-    static Preferences prefs = Preferences.userNodeForPackage(cDVSTestHardwareInterface.class);
+    static Preferences cdvshwprefs = Preferences.userNodeForPackage(cDVSTestHardwareInterface.class); // TODO should really come from Chip instance, not this class
     /** The USB product ID of this device */
     static public final short PID = (short) 0x840A;
-    private boolean adcEnabled = prefs.getBoolean("cDVSTestHardwareInterface.adcEnabled", true);
-    private short TrackTime = (short) prefs.getInt("cDVSTestHardwareInterface.TrackTime", 50),
-            RefOnTime = (short) prefs.getInt("cDVSTestHardwareInterface.RefOnTime", 20),
-            RefOffTime = (short) prefs.getInt("cDVSTestHardwareInterface.RefOffTime", 20),
-            IdleTime = (short) prefs.getInt("cDVSTestHardwareInterface.IdleTime", 10);
-    private boolean Select5Tbuffer = prefs.getBoolean("cDVSTestHardwareInterface.Select5Tbuffer", true);
-    private boolean UseCalibration = prefs.getBoolean("cDVSTestHardwareInterface.UseCalibration", false);
-    private boolean scanContinuouslyEnabled = prefs.getBoolean("cDVSTestHardwareInterface.scanContinuouslyEnabled", true);
-    private int scanX = prefs.getInt("cDVSTestHardwareInterface.scanX", 0);
-    private int scanY = prefs.getInt("cDVSTestHardwareInterface.scanY", 0);
+    private boolean adcEnabled = cdvshwprefs.getBoolean("cDVSTestHardwareInterface.adcEnabled", true);
+    private short TrackTime = (short) cdvshwprefs.getInt("cDVSTestHardwareInterface.TrackTime", 50),
+            RefOnTime = (short) cdvshwprefs.getInt("cDVSTestHardwareInterface.RefOnTime", 20),
+            RefOffTime = (short) cdvshwprefs.getInt("cDVSTestHardwareInterface.RefOffTime", 20),
+            IdleTime = (short) cdvshwprefs.getInt("cDVSTestHardwareInterface.IdleTime", 10);
+    private boolean Select5Tbuffer = cdvshwprefs.getBoolean("cDVSTestHardwareInterface.Select5Tbuffer", true);
+    private boolean UseCalibration = cdvshwprefs.getBoolean("cDVSTestHardwareInterface.UseCalibration", false);
+    private boolean scanContinuouslyEnabled = cdvshwprefs.getBoolean("cDVSTestHardwareInterface.scanContinuouslyEnabled", true);
+    private int scanX = cdvshwprefs.getInt("cDVSTestHardwareInterface.scanX", 0);
+    private int scanY = cdvshwprefs.getInt("cDVSTestHardwareInterface.scanY", 0);
+    private byte ADCchannel = (byte)cdvshwprefs.getInt("cDVSTestHardwareInterface.ADCchannel", 3);
+    private static final int ADCchannelshift = 5;
+    private static final short ADCconfig = (short) 0x100;   //normal power mode, single ended, sequencer unused : (short) 0x908;
+    private final static short ADCconfigLength = (short) 12;
+
+    public static final String
+            EVENT_SELECT_5T_BUFFER="Select5Tbuffer",
+            EVENT_USE_CALIBRATION="UseCalibration";
 
     /** Creates a new instance of CypressFX2Biasgen */
     public cDVSTestHardwareInterface(int devNumber) {
@@ -47,7 +58,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
     @Override
     public void open() throws HardwareInterfaceException {
         super.open();
-        sendCPLDconfiguration();
+        sendADCConfiguration();
     }
 
 
@@ -68,9 +79,11 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
     public void setTrackTime(short trackTimeUs) {
         try {
+            int old=this.TrackTime;
             TrackTime = trackTimeUs;  // TODO bound values here
-            prefs.putInt("cDVSTestHardwareInterface.TrackTime", TrackTime);
-            sendCPLDconfiguration();
+            cdvshwprefs.putInt("cDVSTestHardwareInterface.TrackTime", TrackTime);
+            getSupport().firePropertyChange(EVENT_TRACK_TIME,old,TrackTime);
+            sendADCConfiguration();
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
@@ -78,9 +91,11 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
     public void setIdleTime(short trackTimeUs) {
         try {
-            IdleTime = trackTimeUs;// TODO bound values here
-            prefs.putInt("cDVSTestHardwareInterface.IdleTime", IdleTime);
-            sendCPLDconfiguration();
+             int old=this.IdleTime;
+           IdleTime = trackTimeUs;// TODO bound values here
+            cdvshwprefs.putInt("cDVSTestHardwareInterface.IdleTime", IdleTime);
+            getSupport().firePropertyChange(EVENT_IDLE_TIME,old,IdleTime);
+            sendADCConfiguration();
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
@@ -88,9 +103,11 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
     public void setRefOnTime(short trackTimeUs) {
         try {
+            int old=this.RefOnTime;
             RefOnTime = trackTimeUs;// TODO bound values here
-            sendCPLDconfiguration();
-            prefs.putInt("cDVSTestHardwareInterface.RefOnTime", RefOnTime);
+            sendADCConfiguration();
+            cdvshwprefs.putInt("cDVSTestHardwareInterface.RefOnTime", RefOnTime);
+            getSupport().firePropertyChange(EVENT_REF_ON_TIME,old,RefOnTime);
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
@@ -98,9 +115,11 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
     public void setRefOffTime(short trackTimeUs) {
         try {
+            int old=this.RefOffTime;
             RefOffTime = trackTimeUs;// TODO bound values here
-            prefs.putInt("cDVSTestHardwareInterface.RefOffTime", RefOffTime);
-            sendCPLDconfiguration();
+            cdvshwprefs.putInt("cDVSTestHardwareInterface.RefOffTime", RefOffTime);
+            getSupport().firePropertyChange(EVENT_REF_OFF_TIME,old,RefOffTime);
+            sendADCConfiguration();
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
@@ -108,9 +127,11 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
     public void setSelect5Tbuffer(boolean se) {
         try {
+            boolean old=this.Select5Tbuffer;
             Select5Tbuffer = se;
-            prefs.putBoolean("cDVSTestHardwareInterface.Select5Tbuffer", Select5Tbuffer);
-            sendCPLDconfiguration();
+            cdvshwprefs.putBoolean("cDVSTestHardwareInterface.Select5Tbuffer", Select5Tbuffer);
+            getSupport().firePropertyChange(EVENT_SELECT_5T_BUFFER, old, Select5Tbuffer);
+            sendADCConfiguration();
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
@@ -118,32 +139,119 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
 
     public void setUseCalibration(boolean se) {
         try {
-            UseCalibration = se;
-            prefs.putBoolean("cDVSTestHardwareInterface.UseCalibration", UseCalibration);
-            sendCPLDconfiguration();
+           boolean old=this.UseCalibration;
+             UseCalibration = se;
+            cdvshwprefs.putBoolean("cDVSTestHardwareInterface.UseCalibration", UseCalibration);
+          getSupport().firePropertyChange(EVENT_USE_CALIBRATION, old, UseCalibration);
+             sendADCConfiguration();
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
     }
-    private byte ADCchannel = 3;
-    private static final int ADCchannelshift = 5;
 
     public void setADCchannel(byte chan) {
         try {
+            int old=this.ADCchannel;
             if (chan < 0) {
                 chan = 0;
             } else if (chan > 3) {
                 chan = 3;
             }
             ADCchannel = chan;
-            prefs.putInt("cDVSTestHardwareInterface.ADCchannel", ADCchannel);
-            sendCPLDconfiguration();
+            cdvshwprefs.putInt("cDVSTestHardwareInterface.ADCchannel", ADCchannel);
+         getSupport().firePropertyChange(EVENT_ADC_CHANNEL, old, ADCchannel);
+             sendADCConfiguration();
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.toString());
         }
     }
-    private static short ADCconfig = (short) 0x100;   //normal power mode, single ended, sequencer unused : (short) 0x908;
-    private final static short ADCconfigLength = (short) 12;
+
+    /**
+     * @return the scanContinuouslyEnabled
+     */
+    public boolean isScanContinuouslyEnabled() {
+        return scanContinuouslyEnabled;
+    }
+
+    /**
+     * @param scanContinuouslyEnabled the scanContinuouslyEnabled to set
+     */
+    public void setScanContinuouslyEnabled(boolean scanContinuouslyEnabled) {
+        try {
+            boolean old=this.scanContinuouslyEnabled;
+            this.scanContinuouslyEnabled = scanContinuouslyEnabled;
+            cdvshwprefs.putBoolean("cDVSTestHardwareInterface.scanContinuouslyEnabled", scanContinuouslyEnabled);
+            getSupport().firePropertyChange(EVENT_SCAN_CONTINUOUSLY_ENABLED, old, this.scanContinuouslyEnabled);
+            sendADCConfiguration();
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
+    }
+
+    /**
+     * @return the scanX
+     */
+    public int getScanX() {
+        return scanX;
+    }
+
+    @Override
+    public int getSizeX() {
+        return cDVSTest20.SIZE_X_CDVS;
+    }
+
+    @Override
+    public int getSizeY() {
+        return cDVSTest20.SIZE_Y_CDVS;
+    }
+
+
+    /**
+     * @param scanX the scanX to set
+     */
+    public void setScanX(int scanX) {
+        int old=this.scanX;
+        if (scanX < 0) {
+            scanX = 0;
+        } else if (scanX >= getSizeX()) {
+            scanX = getSizeX() - 1;
+        }
+        try {
+            this.scanX = scanX;
+            cdvshwprefs.putInt("cDVSTestHardwareInterface.scanX", scanX);
+            getSupport().firePropertyChange(EVENT_SCAN_X,old,this.scanX);
+            sendADCConfiguration();
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
+    }
+
+    /**
+     * @return the scanY
+     */
+    public int getScanY() {
+        return scanY;
+    }
+
+    /**
+     * @param scanY the scanY to set
+     */
+    public void setScanY(int scanY) {
+       int old=this.scanY;
+         if (scanY < 0) {
+            scanY = 0;
+        } else if (scanY >= getSizeY()) {
+            scanY = getSizeY() - 1;
+        }
+        try {
+            this.scanY = scanY;
+            cdvshwprefs.putInt("cDVSTestHardwareInterface.scanY", scanY);
+           getSupport().firePropertyChange(EVENT_SCAN_Y,old,this.scanY);
+             sendADCConfiguration();
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
+    }
 
     private String getBitString(short value, short nSrBits) {
         StringBuilder s = new StringBuilder();
@@ -159,7 +267,8 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         return bitString;
     }
 
-    synchronized public void sendCPLDconfiguration() throws HardwareInterfaceException {
+    @Override
+    synchronized public void sendADCConfiguration() throws HardwareInterfaceException {
         short ADCword = (short) (ADCconfig | (getADCchannel() << ADCchannelshift));
 
         int nBits = 0;
@@ -211,9 +320,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         System.arraycopy(byteArray, 0, bytes, nbytes - byteArray.length, byteArray.length);
 
         this.sendVendorRequest(VENDOR_REQUEST_WRITE_CPLD_SR, (short) 0, (short) 0, bytes); // stops ADC running
-        if (adcEnabled) {
-            startADC();
-        } // TODO hack to restart ADC after sending configuration, shouldn't be necessary
+        setADCEnabled(isADCEnabled());
     }
 
     synchronized public void startADC() throws HardwareInterfaceException {
@@ -229,8 +336,10 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
     }
 
     public void setADCEnabled(boolean yes) throws HardwareInterfaceException {
+        boolean old=this.adcEnabled;
         this.adcEnabled = yes;
-        prefs.putBoolean("cDVSTestHardwareInterface.adcEnabled", yes);
+        cdvshwprefs.putBoolean("cDVSTestHardwareInterface.adcEnabled", yes);
+        getSupport().firePropertyChange(EVENT_ADC_ENABLED, old, this.adcEnabled);
         if (yes) {
             startADC();
         } else {
@@ -562,7 +671,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
      * @return the ADCchannel
      */
     public byte getADCchannel() {
-        return ADCchannel;
+        return (byte)ADCchannel;
     }
 
     /**
@@ -572,75 +681,6 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen {
         return chipReset;
     }
 
-    /**
-     * @return the scanContinuouslyEnabled
-     */
-    public boolean isScanContinuouslyEnabled() {
-        return scanContinuouslyEnabled;
-    }
-
-    /**
-     * @param scanContinuouslyEnabled the scanContinuouslyEnabled to set
-     */
-    public void setScanContinuouslyEnabled(boolean scanContinuouslyEnabled) {
-        try {
-            this.scanContinuouslyEnabled = scanContinuouslyEnabled;
-            prefs.putBoolean("cDVSTestHardwareInterface.scanContinuouslyEnabled", scanContinuouslyEnabled);
-            sendCPLDconfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
-
-    /**
-     * @return the scanX
-     */
-    public int getScanX() {
-        return scanX;
-    }
-
-    /**
-     * @param scanX the scanX to set
-     */
-    public void setScanX(int scanX) {
-        if (scanX < 0) {
-            scanX = 0;
-        } else if (scanX >= cDVSTest20.SIZE_X_CDVS) {
-            scanX = cDVSTest20.SIZE_X_CDVS - 1;
-        }
-        try {
-            this.scanX = scanX;
-            prefs.putInt("cDVSTestHardwareInterface.scanX", scanX);
-            sendCPLDconfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
-
-    /**
-     * @return the scanY
-     */
-    public int getScanY() {
-        return scanY;
-    }
-
-    /**
-     * @param scanY the scanY to set
-     */
-    public void setScanY(int scanY) {
-        if (scanY < 0) {
-            scanY = 0;
-        } else if (scanY >= cDVSTest20.SIZE_Y_CDVS) {
-            scanY = cDVSTest20.SIZE_Y_CDVS - 1;
-        }
-        try {
-            this.scanY = scanY;
-            prefs.putInt("cDVSTestHardwareInterface.scanY", scanY);
-            sendCPLDconfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
 
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
     public class RetinaAEReader extends CypressFX2.AEReader {

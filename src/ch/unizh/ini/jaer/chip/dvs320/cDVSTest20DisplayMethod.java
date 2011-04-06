@@ -15,13 +15,13 @@ import net.sf.jaer.graphics.AEViewer;
  * Displays data from CDVS chips.
  * @author Tobi
  */
-public class cDVSDisplayMethod extends DVSWithIntensityDisplayMethod {
+public class cDVSTest20DisplayMethod extends DVSWithIntensityDisplayMethod {
 
     private cDVSTest20 cDVSChip = null;
     boolean registeredControlPanel = false;
     private cDVSDisplayControlPanel controlPanel = null;
 
-    public cDVSDisplayMethod(cDVSTest20 chip) {
+    public cDVSTest20DisplayMethod(cDVSTest20 chip) {
         super(chip.getCanvas());
         this.cDVSChip = chip;
     }
