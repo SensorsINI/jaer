@@ -6,6 +6,7 @@
  */
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
 
+import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.LIFNeuronJHLee.ADAPTATION_TYPE;
 import com.sun.opengl.util.GLUT;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -134,20 +135,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      * maximum value of LIF neuron's refractory period
      */
     private float RefractoryPeriodMaxMs = getPrefs().getFloat("BlurringFilter2D.RefractoryPeriodMaxMs", 1.0f);
-
-
-
-
-    /**
-     * type of adaptation
-     * TODO : adds more adaptation types
-     */
-    public static enum ADAPTATION_TYPE {
-        /**
-         * adapts the refractory period
-         */
-        REFRACTORY_PERIOD,
-    }
 
 
     /**
@@ -390,17 +377,12 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      * Spacing of the receptive field of two adjacent LIF neurons is decided to the half of side length of the receptive field to increase the spatial resolution.
      * Thus, each neuron shares half area of the receptive field with its neighbor.
      */
-    public class LIFNeuron {
+    public class LIFNeuron extends LIFNeuronJHLee{
 
         /**
          * Neuron index in (x_index, y_index)
          */
         public Point2D.Float index = new Point2D.Float();
-
-        /**
-         *  spatial location of a neuron in chip pixels
-         */
-        public Point2D.Float location = new Point2D.Float();
 
         /**
          * location type of a neuron. One of {CORNER_00, CORNER_01, CORNER_10, CORNER_11, EDGE_0Y, EDGE_1Y, EDGE_X0, EDGE_X1, INSIDE}
@@ -422,78 +404,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          */
         protected boolean fired = false;
 
-        /** The "membranePotential" of the neuron.
-         * The membranePotential decays over time (i.e., leaky) and is incremented by one by each collected event.
-         * The membranePotential decays with a first order time constant of tauMP in us.
-         * The membranePotential dreases by the amount of MPJumpAfterFiring after firing an event.
-         */
-        protected float membranePotential = 0;
-
         /**
          *  number of firing neighbors
          */
         protected int numFiringNeighbors = 0;
-
-        /**
-         * This is the last in timestamp ticks that the neuron was updated, by an event
-         */
-        protected int lastEventTimestamp;
-
-        /**
-         * defined as index.x + index.y * numOfNeuronsX
-         */
-        private int cellNumber;
-
-         /**
-         * size of the receptive field.
-         */
-        protected int receptiveFieldSize;
-
-        /**
-         * maximum time constant of membrane potentail
-         */
-        protected float tauMP;
-
-        /**
-         * threshold
-         */
-        protected float thresholdMP;
-
-
-        /**
-         * amount of membrane potential that decreases after firing
-         */
-        protected float MPDecreaseArterFiringPercentTh;
-
-        /**
-         * number of spikes fired since
-         */
-        protected int numSpikes;
-
-        /**
-         * refractory period
-         */
-        protected float RefractoryPeriod = 0.0f;
-
-        /**
-         * control parameter for refractory period
-         */
-        protected float adaptationParam = 0.0f;
-
-        /**
-         * last timestamp that the MP if LIF neuron went above the threshold
-         * The neuron might fired or not at this timing depending on the refractory period
-         */
-        protected int lastAboveThresholdTimestamp = -1;
-
-        /**
-         * timestamp of the last spike
-         */
-        protected int lastSpikeTimestamp = 0;
-
-
-
-
 
 
         /**
@@ -507,28 +421,28 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @param thresholdMP : threshold of the membrane potential to fire a spike
          * @param MPDecreaseArterFiringPercentTh : membrane potential jump after the spike in the percents of thresholdMP
          */
-        public LIFNeuron(int cellNumber, Point2D.Float index, Point2D.Float location, int receptiveFieldSize, float tauMP, float thresholdMP, float MPDecreaseArterFiringPercentTh) {
-            // sets invariable parameters
-            this.cellNumber = cellNumber;
-            this.index.setLocation(index);
-            this.location.setLocation(location);
-            this.receptiveFieldSize = receptiveFieldSize;
-            this.tauMP = tauMP;
-            this.thresholdMP = thresholdMP;
-            this.MPDecreaseArterFiringPercentTh = MPDecreaseArterFiringPercentTh;
+        LIFNeuron(int cellNumber, Point2D.Float index, Point2D.Float location, int receptiveFieldSize, float tauMP, float thresholdMP, float MPDecreaseArterFiringPercentTh) {
+            super(cellNumber, location, receptiveFieldSize, tauMP, thresholdMP, MPDecreaseArterFiringPercentTh);
 
-            // resets initially variable parameters
-            reset();
+            // sets invariable parameters
+            this.index.setLocation(index);
+
+            setFiringType(FiringType.SILENT);
+            groupTag = -1;
+            fired = false;
+            membranePotential = MPInitialPercnetTh*thresholdMP;
+            numFiringNeighbors = 0;
         }
 
         /**
         * Resets a neuron with initial values
         */
-        public final void reset() {
+        @Override
+        public void reset() {
             setFiringType(FiringType.SILENT);
             resetGroupTag();
             fired = false;
-            membranePotential = MPInitialPercnetTh*MPThreshold;
+            membranePotential = MPInitialPercnetTh*thresholdMP;
             numFiringNeighbors = 0;
             lastEventTimestamp = 0;
             numSpikes = 0;
@@ -538,32 +452,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             lastSpikeTimestamp = 0;
         }
 
-        /**
-         * set numSpikes
-         *
-         * @param n
-         */
-        public final void setNumSpikes(int n) {
-            numSpikes = n;
-        }
-
-        @Override
-        public int hashCode() {
-            return cellNumber;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if ((obj == null) || (obj.getClass() != this.getClass())) {
-                return false;
-            }
-
-            LIFNeuron test = (LIFNeuron) obj;
-            return cellNumber == test.cellNumber;
-        }
 
         /** Draws the neuron using OpenGL.
          *
@@ -634,121 +522,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         }
 
         /**
-         * updates a neuron with an additional event.
-         *
-         * @param event
-         * @param weight
-         */
-        public void addEvent(BasicEvent event,float weight) {
-            incrementMP(event.timestamp, weight);
-            lastEventTimestamp = event.timestamp;
-
-            if(enableAdaptation){
-                if(lastAboveThresholdTimestamp == -1){
-                    adaptationParam = 0;
-                }else{
-                    float deltaMs = 0.001f * (lastEventTimestamp - lastAboveThresholdTimestamp);
-                    adaptationParam = (adaptationParam + adaptationParamDelta)*((float) Math.exp((double) (-deltaMs/adaptationParamTauMs)));
-                }
-
-                switch(adaptationType){
-                    case REFRACTORY_PERIOD:
-                        if(MPDecreaseArterFiringPercentTh > 0 && membranePotential >= thresholdMP){
-                            // calculates refractory period
-                            if(adaptationParam < adaptationParamMax){
-                                RefractoryPeriod = RefractoryPeriodMaxMs*(1.0f - (float)Math.exp((double) -adaptationParam/adaptationParamSlop));
-
-                                // if it's not constrained by the refractory period
-                                if(lastEventTimestamp > lastSpikeTimestamp + (int)(RefractoryPeriod*1000f)){
-                                    // fires a spike
-                                    numSpikes++;
-                                    // decreases MP by MPJumpAfterFiring after firing
-                                    reduceMPafterFiring();
-                                    // spike timing
-                                    lastSpikeTimestamp = lastEventTimestamp;
-                                } else {
-                                    membranePotential = thresholdMP;
-                                }
-                            } else {
-                                membranePotential = thresholdMP;
-                            }
-                        }
-                        break;
-                    default:
-                        break;
-                }
-            } else {
-                if(MPDecreaseArterFiringPercentTh > 0 && membranePotential >= thresholdMP){
-                    // fires a spike
-                    numSpikes++;
-                    // decreases MP by MPJumpAfterFiring after firing
-                    reduceMPafterFiring();
-                }
-            }
-            
-            lastAboveThresholdTimestamp = lastEventTimestamp;
-        }
-
-        /**
-         * Computes and returns membranePotential at time t, using the last time an event hit this neuron
-         * and the tauMP. Does not change the membranePotential itself.
-         *
-         * @param t timestamp now.
-         * @return the membranePotential.
-         */
-        protected float getMPNow(int t) {
-            float m = membranePotential * (float) Math.exp(((float) (lastEventTimestamp - t)) / tauMP);
-            if(m < 1e-3f)
-                m = 1e-3f;
-            
-            return m;
-        }
-
-        /**
-         * returns the membranePotential without considering the current time.
-         *
-         * @return membranePotential
-         */
-        public float getMP() {
-            return membranePotential;
-        }
-
-        /**
-         * sets membranePotential
-         * @param membranePotential
-         */
-        public void setMP(float membranePotential){
-            this.membranePotential = membranePotential;
-        }
-
-        /**
-         * Increments membranePotential of the neuron by amount of weight after decaying it away since the lastEventTimestamp according
-         * to exponential decay with time constant tauMP.
-         *
-         * @param timeStamp
-         * @param weight
-         */
-        public void incrementMP(int timeStamp, float weight) {
-            float timeDiff = (float) lastEventTimestamp - timeStamp;
-            if(timeDiff > 0)
-                membranePotential = 0;
-            else{
-                membranePotential = weight + membranePotential * (float) Math.exp(timeDiff / tauMP);
-                if(membranePotential < 0f)
-                    membranePotential = 0f;
-            }
-        }
-
-        /**
-         * returns the neuron's location in pixels.
-         *
-         * @return
-         */
-        final public Point2D.Float getLocation() {
-            return location;
-        }
-
-        /**
          * returns true if the neuron fired a spike.
          * Otherwise, returns false.
          *
@@ -777,17 +550,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             groupTag = -1;
 
             return fired;
-        }
-
-        /**
-         * decreases MP by MPJumpAfterFiring after firing
-         */
-        public void reduceMPafterFiring(){
-            float MPjump = MPThreshold*MPDecreaseArterFiringPercentTh/100.0f;
-            if(MPjump < 1.0f)
-                MPjump = 1.0f;
-
-            membranePotential -= MPjump;
         }
 
         @Override
@@ -860,15 +622,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         }
 
         /**
-         * returns the cell number of a neuron
-         *
-         * @return cell number
-         */
-        public int getNeuronNumber() {
-            return cellNumber;
-        }
-
-        /**
          * returns the group tag
          *
          * @return group tag
@@ -900,81 +653,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          */
         public void resetGroupTag() {
             this.groupTag = -1;
-        }
-
-        /**
-         * returns the last event timestamp
-         *
-         * @return timestamp of the last event collected by the neuron
-         */
-        public int getLastEventTimestamp() {
-            return lastEventTimestamp;
-        }
-
-        /**
-         * sets the last event timestamp
-         *
-         * @param lastEventTimestamp
-         */
-        public void setLastEventTimestamp(int lastEventTimestamp) {
-            this.lastEventTimestamp = lastEventTimestamp;
-        }
-
-        /**
-         * returns receptiveFieldSize
-         *
-         * @return
-         */
-        public int getReceptiveFieldSize() {
-            return receptiveFieldSize;
-        }
-
-        /**
-         * returns the current control parameter value for refractory period
-         * @return
-         */
-        public float getRPControlParam() {
-            return adaptationParam;
-        }
-
-        /**
-         * sets the current control parameter value for refractory period
-         * @param RPControlParam
-         */
-        public void setRPControlParam(float RPControlParam) {
-            this.adaptationParam = RPControlParam;
-        }
-
-        /**
-         * returns the refractory period
-         * @return
-         */
-        public float getRefractoryPeriod() {
-            return RefractoryPeriod;
-        }
-
-        /**
-         * sets the refractory period
-         * @param RefractoryPeriod
-         */
-        public void setRefractoryPeriod(float RefractoryPeriod) {
-            this.RefractoryPeriod = RefractoryPeriod;
-        }
-
-        /**
-         * returns lastAboveThresholdTimestamp
-         * @return
-         */
-        public int getLastAboveThresholdTimestamp() {
-            return lastAboveThresholdTimestamp;
-        }
-
-        /**
-         * sets lastAboveThresholdTimestamp
-         * @param lastAboveThresholdTimestamp
-         */
-        public void setLastAboveThresholdTimestamp(int lastAboveThresholdTimestamp) {
-            this.lastAboveThresholdTimestamp = lastAboveThresholdTimestamp;
         }
     } // End of class LIFNeuron
 
@@ -2370,6 +2048,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     public void setEnableAdaptation(boolean enableAdaptation) {
         this.enableAdaptation = enableAdaptation;
         getPrefs().putBoolean("BlurringFilter2D.enableAdaptation", enableAdaptation);
+
+        for(LIFNeuron neuron:lifNeurons)
+            neuron.enableAdaptation = enableAdaptation;
     }
 
     /**
@@ -2388,6 +2069,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     public void setAdaptationType(ADAPTATION_TYPE adaptationType) {
         this.adaptationType = adaptationType;
         getPrefs().put("BlurringFilter2D.adaptationType",adaptationType.toString());
+
+        for(LIFNeuron neuron:lifNeurons)
+            neuron.adaptationType = adaptationType;
     }
 
 
@@ -2407,6 +2091,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     public void setAdaptationParamDelta(float adaptationParamDelta) {
         this.adaptationParamDelta = adaptationParamDelta;
         getPrefs().putFloat("BlurringFilter2D.adaptationParamDelta", adaptationParamDelta);
+
+        for(LIFNeuron neuron:lifNeurons)
+            neuron.adaptationParamDelta = adaptationParamDelta;
     }
 
     /**
@@ -2424,6 +2111,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     public void setAdaptationParamMax(float adaptationParamMax) {
         this.adaptationParamMax = adaptationParamMax;
         getPrefs().putFloat("BlurringFilter2D.adaptationParamMax", adaptationParamMax);
+
+        for(LIFNeuron neuron:lifNeurons)
+            neuron.adaptationParamMax = adaptationParamMax;
     }
 
     /**
@@ -2443,6 +2133,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     public void setAdaptationParamTauMs(float adaptationParamTauMs) {
         this.adaptationParamTauMs = adaptationParamTauMs;
         getPrefs().putFloat("BlurringFilter2D.adaptationParamTauMs", adaptationParamTauMs);
+
+        for(LIFNeuron neuron:lifNeurons)
+            neuron.adaptationParamTauMs = adaptationParamTauMs;
     }
 
     /**
@@ -2462,6 +2155,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     public void setAdaptationParamSlop(float adaptationParamSlop) {
         this.adaptationParamSlop = adaptationParamSlop;
         getPrefs().putFloat("BlurringFilter2D.adaptationParamSlop", adaptationParamSlop);
+
+        for(LIFNeuron neuron:lifNeurons)
+            neuron.adaptationParamSlop = adaptationParamSlop;
     }
 
     /**
@@ -2481,6 +2177,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     public void setRefractoryPeriodMaxMs(float RefractoryPeriodMaxMs) {
         this.RefractoryPeriodMaxMs = RefractoryPeriodMaxMs;
         getPrefs().putFloat("BlurringFilter2D.RefractoryPeriodMaxMs", RefractoryPeriodMaxMs);
+
+        for(LIFNeuron neuron:lifNeurons)
+            neuron.RefractoryPeriodMaxMs = RefractoryPeriodMaxMs;
     }
 
 }
