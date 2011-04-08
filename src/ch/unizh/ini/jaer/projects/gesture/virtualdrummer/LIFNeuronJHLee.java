@@ -151,7 +151,7 @@ public class LIFNeuronJHLee {
      * @param thresholdMP : threshold of the membrane potential to fire a spike
      * @param MPDecreaseArterFiringPercentTh : membrane potential jump after the spike in the percents of thresholdMP
      */
-    LIFNeuronJHLee(int cellNumber, Point2D.Float location, int receptiveFieldSize, float tauMP, float thresholdMP, float MPDecreaseArterFiringPercentTh) {
+    public LIFNeuronJHLee(int cellNumber, Point2D.Float location, int receptiveFieldSize, float tauMP, float thresholdMP, float MPDecreaseArterFiringPercentTh) {
         // sets invariable parameters
         this.cellNumber = cellNumber;
         this.location.setLocation(location);
