@@ -3,7 +3,8 @@
  * and open the template in the editor.
  */
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
-import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2DTracker.Cluster;
+import ch.unizh.ini.jaer.projects.gesture.blurringFilter.BlurringFilter2DTracker;
+import ch.unizh.ini.jaer.projects.gesture.blurringFilter.BlurringFilter2DTracker.Cluster;
 import java.awt.Graphics2D;
 //import java.util.ArrayList;
 import java.awt.geom.Point2D;

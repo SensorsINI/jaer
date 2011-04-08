@@ -5,7 +5,7 @@
 
 package ch.unizh.ini.jaer.projects.gesture.stereo;
 
-import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2D;
+import ch.unizh.ini.jaer.projects.gesture.blurringFilter.BlurringFilter2D;
 import java.awt.Point;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;

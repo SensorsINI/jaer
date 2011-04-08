@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 
-package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
+package ch.unizh.ini.jaer.projects.gesture.blurringFilter;
 
 import java.awt.geom.Point2D;
 import net.sf.jaer.event.BasicEvent;

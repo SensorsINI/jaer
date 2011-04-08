@@ -6,7 +6,7 @@
 package ch.unizh.ini.jaer.projects.gesture.hmm;
 
 import ch.unizh.ini.jaer.projects.gesture.stereo.BlurringFilterStereoTracker;
-import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2DTracker;
+import ch.unizh.ini.jaer.projects.gesture.blurringFilter.BlurringFilter2DTracker;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;

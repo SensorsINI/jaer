@@ -5,7 +5,7 @@
 
 package ch.unizh.ini.jaer.projects.gesture.hmm;
 
-import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2DTracker;
+import ch.unizh.ini.jaer.projects.gesture.blurringFilter.BlurringFilter2DTracker;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.Point2D;

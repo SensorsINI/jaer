@@ -5,7 +5,7 @@
 
 package ch.unizh.ini.jaer.projects.gesture.stereo;
 
-import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2DTracker;
+import ch.unizh.ini.jaer.projects.gesture.blurringFilter.BlurringFilter2DTracker;
 import java.awt.Rectangle;
 import java.util.LinkedList;
 import net.sf.jaer.chip.AEChip;

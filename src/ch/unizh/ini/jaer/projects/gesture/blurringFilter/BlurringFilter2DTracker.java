@@ -4,8 +4,8 @@
  *  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
-import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2D.NeuronGroup;
+package ch.unizh.ini.jaer.projects.gesture.blurringFilter;
+import ch.unizh.ini.jaer.projects.gesture.blurringFilter.BlurringFilter2D.NeuronGroup;
 import com.sun.opengl.util.GLUT;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.*;

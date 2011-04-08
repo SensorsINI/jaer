@@ -4,7 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.gesture.stereo;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
-import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.BlurringFilter2DTracker.Cluster;
+import ch.unizh.ini.jaer.projects.gesture.blurringFilter.BlurringFilter2DTracker.Cluster;
 import com.sun.opengl.util.GLUT;
 import java.awt.geom.*;
 import java.beans.PropertyChangeEvent;
