@@ -379,6 +379,71 @@ public class LIFNeuronJHLee {
     }
 
     /**
+     * returns MPDecreaseArterFiringPercentTh
+     * @return
+     */
+    public float getMPDecreaseArterFiringPercentTh() {
+        return MPDecreaseArterFiringPercentTh;
+    }
+
+    /**
+     * sets MPDecreaseArterFiringPercentTh
+     * @param MPDecreaseArterFiringPercentTh
+     */
+    public void setMPDecreaseArterFiringPercentTh(float MPDecreaseArterFiringPercentTh) {
+        this.MPDecreaseArterFiringPercentTh = MPDecreaseArterFiringPercentTh;
+    }
+
+    /**
+     * returns adaptationParam
+     * @return
+     */
+    public float getAdaptationParam() {
+        return adaptationParam;
+    }
+
+    /**
+     * sets adaptationParam
+     * @param adaptationParam
+     */
+    public void setAdaptationParam(float adaptationParam) {
+        this.adaptationParam = adaptationParam;
+    }
+
+
+    /**
+     * returns tauMP
+     * @return
+     */
+    public float getTauMP() {
+        return tauMP;
+    }
+
+    /**
+     * sets tauMP
+     * @param tauMP
+     */
+    public void setTauMP(float tauMP) {
+        this.tauMP = tauMP;
+    }
+
+    /**
+     * returns thresholdMP
+     * @return
+     */
+    public float getThresholdMP() {
+        return thresholdMP;
+    }
+
+    /**
+     * sets thresholdMP
+     * @param thresholdMP
+     */
+    public void setThresholdMP(float thresholdMP) {
+        this.thresholdMP = thresholdMP;
+    }
+
+    /**
      * returns the refractory period
      * @return
      */
