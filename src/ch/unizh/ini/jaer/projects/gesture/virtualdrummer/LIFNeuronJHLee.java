@@ -371,14 +371,6 @@ public class LIFNeuronJHLee {
     }
 
     /**
-     * sets the current control parameter value for refractory period
-     * @param RPControlParam
-     */
-    public void setRPControlParam(float RPControlParam) {
-        this.adaptationParam = RPControlParam;
-    }
-
-    /**
      * returns MPDecreaseArterFiringPercentTh
      * @return
      */
@@ -401,15 +393,6 @@ public class LIFNeuronJHLee {
     public float getAdaptationParam() {
         return adaptationParam;
     }
-
-    /**
-     * sets adaptationParam
-     * @param adaptationParam
-     */
-    public void setAdaptationParam(float adaptationParam) {
-        this.adaptationParam = adaptationParam;
-    }
-
 
     /**
      * returns tauMP
