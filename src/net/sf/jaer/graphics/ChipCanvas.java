@@ -335,13 +335,13 @@ public class ChipCanvas implements GLEventListener, Observer {
             }
             if(getChip() instanceof AEChip && ((AEChip)chip).getFilterChain()!=null && ((AEChip)chip).getFilterChain().getProcessingMode()==FilterChain.ProcessingMode.ACQUISITION){
                 if ( renderer == null ){
-                    renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,10),true,true);
+                    renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,24),true,true);
                 }
                 renderer.begin3DRendering();
                 renderer.setColor(0,0,1,0.8f);
                 final String s = "Real-time mode - raw data shown here";
                 Rectangle2D r = renderer.getBounds(s);
-                renderer.draw3D(s,1f,1f,0f,(float)(chip.getSizeX() / r.getWidth()));
+                renderer.draw3D(s,1f,1f,0f,(float)(chip.getSizeX()/2 / r.getWidth()));
                 renderer.end3DRendering();
             }
             gl.glFlush();
