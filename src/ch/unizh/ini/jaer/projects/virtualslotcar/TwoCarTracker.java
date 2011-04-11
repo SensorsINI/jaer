@@ -151,7 +151,14 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 
     @Override
     protected void updateClusterLocations(int t) {
-        return; // don't move clusters between events to avoid clusters running off of track. TODO this may mess up the prediction step and perhaps we should predict *along* the track
+        if (!useVelocity) {
+            return;
+        }
+
+        for (Cluster rc : clusters) {
+            TwoCarCluster c = (TwoCarCluster) rc;
+            c.updatePositionFromSeqmentSpeed(t);
+        }
     }
 
     /** The method that actually does the tracking.
@@ -239,13 +246,13 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             if (cc == sameAsLast) {
                 votes[idx] += 4;
             }
+            if (cc == highestMass) {
+                votes[idx] += 4;
+            }
             if (cc == closestAvgToTrack) {
                 votes[idx] += 3;
             }
             if (cc == oldest) {
-                votes[idx] += 1;
-            }
-            if (cc == highestMass) {
                 votes[idx] += 1;
             }
             if (cc.isVisible()) {
@@ -310,7 +317,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             addList.get(r).cluster.addEvent(ev);
 
         } else if (clusters.size() < getMaxNumClusters()) {
-            // start a new cluster bu tonly if event in range of track
+            // start a new cluster but only if event in range of track
             if (track == null || track.findClosestIndex(new Point(ev.x, ev.y), track.getPointTolerance(), true) != -1) {
                 Cluster newCluster = null;
                 newCluster = createCluster(ev); // new Cluster(ev);
@@ -369,15 +376,16 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 
         private final int SEGMENT_HISTORY_LENGTH = 150; // number of segments to keep track of in past
         private final int NUM_SEGMENTS_TO_BE_MARKED_RUNNING = 30;
-        int segmentIdx = -1; // current segment
-        int highestSegment = -1; // highwater mark for segment, for counting increases
-        boolean crashed = false; // flag that we crashed
-        boolean wasRunningSuccessfully = false; // marked true when car has been running successfully over segments for a while
-        float lastDistanceFromTrack = 0, avgDistanceFromTrack = 0; // instantaneous and lowpassed distance from track model
-        int birthSegmentIdx = -1; // which segment we were born on
-        int numSegmentIncreases = 0; // how many times segment number increased
-        int crashSegment = -1; // where we crashed
-        int[] segmentHistory = new int[SEGMENT_HISTORY_LENGTH]; // ring buffer of segment history
+        /** Current segment index */
+        public int segmentIdx = -1; // current segment
+        public int highestSegment = -1; // highwater mark for segment, for counting increases
+        public boolean crashed = false; // flag that we crashed
+        public boolean wasRunningSuccessfully = false; // marked true when car has been running successfully over segments for a while
+        public float lastDistanceFromTrack = 0, avgDistanceFromTrack = 0; // instantaneous and lowpassed distance from track model
+        public int birthSegmentIdx = -1; // which segment we were born on
+        public int numSegmentIncreases = 0; // how many times segment number increased
+        public int crashSegment = -1; // where we crashed
+        public int[] segmentHistory = new int[SEGMENT_HISTORY_LENGTH]; // ring buffer of segment history
 
         {
             Arrays.fill(segmentHistory, Integer.MIN_VALUE);
@@ -387,7 +395,8 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         int segmentHistoryPointer = 0; // ring pointer, points to next location in ring buffer
         LowpassFilter distFilter = new LowpassFilter(distanceFromTrackMetricTauMs);
         boolean computerControlledCar = false;
-        float segmentSpeedSPS = 0;  // segments per second traversed of the track
+        /** segments per second traversed of the track */
+        protected float segmentSpeedSPS = 0;
         private LowpassFilter segmentSpeedFilter = new LowpassFilter(segmentSpeedTauMs); // lowpass filter for segment speed
 
         public TwoCarCluster(BasicEvent ev, OutputEventIterator outItr) {
@@ -469,7 +478,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                     gl.glBegin(GL.GL_LINES);
                     {
                         gl.glVertex2f(x, y);
-                        gl.glVertex2f(x + segVec.x*fac * velocityVectorScaling, y + segVec.y*fac * velocityVectorScaling);
+                        gl.glVertex2f(x + segVec.x * fac * velocityVectorScaling, y + segVec.y * fac * velocityVectorScaling);
                     }
                     gl.glEnd();
                 }
@@ -511,9 +520,10 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                     if (dt >= 0) {
 
                         float instantaneousSegSp = (float) 1e6f * AEConstants.TICK_DEFAULT_US * dseg / dt;
-//                    if(instantaneousSegSp<0){
-//                        log.info("negative speed");
-//                    }
+                        if (instantaneousSegSp < 0) {
+//                        log.info("negative segment speed, clipping to zero");
+                            instantaneousSegSp = 0;
+                        }
                         segmentSpeedSPS = segmentSpeedFilter.filter(instantaneousSegSp, lastTimestamp);
                         lastSegmentChangeTimestamp = lastTimestamp;
                     }
@@ -709,6 +719,21 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             avgDistanceFromTrack = distFilter.filter(lastDistanceFromTrack, getLastEventTimestamp());
 //            determineIfcrashed();
 
+        }
+
+        /** Updates position based on segment speed and time now; used for prediction step of tracking. */
+        private void updatePositionFromSeqmentSpeed(int t) {
+            if (segmentIdx == -1 || track == null) {
+                return;
+            }
+            int dt=t - lastUpdateTime;
+            if(dt==0) return;
+            Point2D.Float v = track.segmentVectors.get(segmentIdx);
+            float ds = AEConstants.TICK_DEFAULT_US * 1e-6f * (dt)*segmentSpeedSPS;
+            location.x += ds * v.x;
+            location.y += ds * v.y;
+            updateSegmentInfo(t);
+            lastUpdateTime = t;
         }
     } // TwoCarCluster
 
