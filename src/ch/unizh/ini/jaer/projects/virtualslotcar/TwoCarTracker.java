@@ -499,7 +499,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             if (track == null) {
                 return -1;
             }
-            int idx = track.findClosestIndex(location, 0, true);
+            int idx = track.findClosestIndex(location, maxDistanceFromTrackPoint, true);
             if (birthSegmentIdx == -1 && idx != -1) {
                 birthSegmentIdx = idx;
             }

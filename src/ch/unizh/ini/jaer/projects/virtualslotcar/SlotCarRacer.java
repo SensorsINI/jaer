@@ -40,7 +40,6 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     private TwoCarTracker.TwoCarCluster car = null;
     private FilterChain filterChain;
     private AbstractSlotCarController throttleController;
-    private TrackdefineFilter trackDefineFilter;
     private SpikeSound spikeSound;
     private float playSoundThrottleChangeThreshold = 0.01F;
     private float lastSoundThrottleValue = 0;
@@ -141,11 +140,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
         hw.setThrottle(lastThrottle);
 
         if (isLogRacerDataEnabled()) {
-            if (car != null) {
-                logRacerData(String.format("%d %f %f %f %f %s", ((TwoCarTracker.Cluster) car).getLastEventTimestamp(), car.getLocation().x, car.getLocation().y, car.getSpeedPPS(), lastThrottle, throttleController.logControllerState()));
-            } else {
-                logRacerData(throttleController.logControllerState());
-            }
+            logRacerData(throttleController.logControllerState());
         }
 
         playThrottleSounds();
@@ -168,6 +163,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     public void initFilter() {
     }
 
+    @Override
     public synchronized void annotate(GLAutoDrawable drawable) { // TODO may not want to synchronize here since this will block filtering durring annotation
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY());
 

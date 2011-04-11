@@ -376,6 +376,7 @@ public class SlotcarTrack implements java.io.Serializable {
             Arrays.fill(map, -1);
             for (int x = 0; x < size; x++) {
                 for (int y = 0; y < size; y++) {
+                    // for each grid entry, locate point at center of grid point, then find nearest track vertex and put in map
                     Point2D.Float pos = new Point2D.Float(x * xPixPerUnit + xPixPerUnit / 2 + (float) bounds.getX(), y * yPixPerUnit + yPixPerUnit / 2 + (float) bounds.getY());
                     int idx = findClosestIndex(pos, getPointTolerance(), false);
                     setMapEntry(idx, x, y);
@@ -462,14 +463,14 @@ public class SlotcarTrack implements java.io.Serializable {
         }
 
         int findPoint(Point2D.Float pos) {
-            int x = (int) (size * (pos.x - bounds.getX() - xPixPerUnit / 2) / bounds.getWidth());
-            int y = (int) (size * (pos.y - bounds.getY() - yPixPerUnit / 2) / bounds.getHeight());
+            int x = (int) (size * (pos.x - bounds.getX() /*- xPixPerUnit / 2*/) / bounds.getWidth());
+            int y = (int) (size * (pos.y - bounds.getY() /*- yPixPerUnit / 2*/) / bounds.getHeight());
             return getMapEntry(x, y);
         }
 
         int findPoint(double x, double y) {
-            int xx = (int) (size * (x - bounds.getX() - xPixPerUnit / 2) / bounds.getWidth());
-            int yy = (int) (size * (y - bounds.getY() - yPixPerUnit / 2) / bounds.getHeight());
+            int xx = (int) (size * (x - bounds.getX() /*- xPixPerUnit / 2*/) / bounds.getWidth());
+            int yy = (int) (size * (y - bounds.getY() /*- yPixPerUnit / 2*/) / bounds.getHeight());
             return getMapEntry(xx, yy);
         }
 

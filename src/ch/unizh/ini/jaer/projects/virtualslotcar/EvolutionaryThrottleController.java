@@ -70,8 +70,9 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     private int numSuccessfulLapsToReward = getInt("numSuccessfulLapsToReward", 2);
     private float startingThrottleValue = getFloat("startingThrottleValue", .1f);
     private boolean showThrottleProfile = getBoolean("showThrottleProfile", true);
-    private GLUT glut=new GLUT();
 
+
+    private int lastTimestamp=0;
  
 
     /** possible states,
@@ -181,6 +182,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
 
+        if(in.getSize()>0) lastTimestamp=in.getLastTimestamp(); // for logging
+
         if (trackDefineFilter.getTrack() != null && (currentProfile == null || currentProfile.getNumPoints() != getTrack().getNumPoints())) {
             currentProfile = new ThrottleProfile(getTrack().getNumPoints());
             log.info("made a new ThrottleProfile :" + currentProfile);
@@ -195,7 +198,6 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
         // choose state & copyFrom throttle
 
-        float prevThrottle = throttle.throttle;
         if (state.get() == State.OVERRIDDEN) {
 //            throttle.throttle = getStartingThrottleValue();
 
@@ -424,7 +426,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     @Override
     public String logControllerState() {
-        return String.format("%s\t%d\t%s\t%s", state, currentTrackPos, throttle, car);
+        return String.format("%d\t%s\t%d\t%s\t%s", lastTimestamp, state, currentTrackPos, throttle, car);
     }
 
     @Override

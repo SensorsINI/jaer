@@ -151,7 +151,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         setPropertyTooltip("extractTrack", "Extracts track model from accumulated histogram data");
         setPropertyTooltip("reverseTrack", "Reverse the path numbering so that car increases point number - required for most algorithms");
         setPropertyTooltip("extractTrackFromTrackerPoints", "extract track model from accumlated CarTracker points");
-        setPropertyTooltip(disp, "displayClosestPointMap","shows a map of the closeset track points, color coded for distance from the track");
+        setPropertyTooltip(disp, "doDisplayClosestPointMap","shows a map of the closeset track points, color coded for distance from the track");
 
         // New in TrackdefineFilter
         // Initialize histogram
@@ -1246,17 +1246,9 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
         }
     }
 
-    public void setDisplayClosestPointMap(boolean displayClosestPointMap) {
+    public void doDisplayClosestPointMap() {
         if(extractedTrack==null) return;
-        extractedTrack.setDisplayClosestPointMap(displayClosestPointMap);
+        extractedTrack.setDisplayClosestPointMap(true);
     }
-
-    public boolean isDisplayClosestPointMap() {
-        if(extractedTrack==null) return false;
-        return extractedTrack.isDisplayClosestPointMap();
-    }
-
-
-
 
 }
