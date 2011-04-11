@@ -4,22 +4,12 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
-import java.beans.PropertyChangeEvent;
-import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.sound.sampled.LineUnavailableException;
-import javax.sound.sampled.UnsupportedAudioFileException;
-import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
-import java.awt.geom.Point2D;
-import java.beans.PropertyChangeListener;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.SpikeSound;
 import net.sf.jaer.util.StateMachineStates;
@@ -58,13 +48,19 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     private ThrottleBrake lastThrottle = new ThrottleBrake();
 
     private void playThrottleSounds() {
+        if(playThrottleSound && lastThrottle.brake){
+                 if (spikeSound == null) {
+                    spikeSound = new SpikeSound();
+                }
+                 spikeSound.play(0);
+        }
         if (playThrottleSound && Math.abs(lastThrottle.throttle - lastSoundThrottleValue) > playSoundThrottleChangeThreshold) {
             long now;
             if (lastThrottle.throttle > lastSoundThrottleValue && (now = System.currentTimeMillis()) - lastTimeSoundPlayed > 5) {
                 if (spikeSound == null) {
                     spikeSound = new SpikeSound();
                 }
-                spikeSound.play();
+                spikeSound.play(1);
                 lastTimeSoundPlayed = now;
             }
             lastSoundThrottleValue = lastThrottle.throttle;
