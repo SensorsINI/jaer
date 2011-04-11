@@ -239,6 +239,8 @@ public class LIFNeuronJHLee {
                         } else {
                             membranePotential = thresholdMP;
                         }
+
+                        lastAboveThresholdTimestamp = lastEventTimestamp;
                     }
                     break;
                 default:
@@ -250,10 +252,12 @@ public class LIFNeuronJHLee {
                 numSpikes++;
                 // decreases MP by MPJumpAfterFiring after firing
                 reduceMPafterFiring();
+
+                // spike timing
+                lastSpikeTimestamp = lastEventTimestamp;
+                lastAboveThresholdTimestamp = lastEventTimestamp;
             }
         }
-
-        lastAboveThresholdTimestamp = lastEventTimestamp;
     }
 
     /**
@@ -263,7 +267,7 @@ public class LIFNeuronJHLee {
      * @param t timestamp now.
      * @return the membranePotential.
      */
-    protected float getMPNow(int t) {
+    public float getMPNow(int t) {
         float m = membranePotential * (float) Math.exp(((float) (lastEventTimestamp - t)) / tauMP);
         if(m < 1e-3f)
             m = 1e-3f;
@@ -301,8 +305,8 @@ public class LIFNeuronJHLee {
             membranePotential = 0;
         else{
             membranePotential = weight + membranePotential * (float) Math.exp(timeDiff / tauMP);
-            if(membranePotential < 0f)
-                membranePotential = 0f;
+//            if(membranePotential < 0f)
+//                membranePotential = 0f;
         }
     }
 
@@ -443,19 +447,11 @@ public class LIFNeuronJHLee {
     }
 
     /**
-     * returns lastAboveThresholdTimestamp
+     * returns the last spike timing
      * @return
      */
-    public int getLastAboveThresholdTimestamp() {
-        return lastAboveThresholdTimestamp;
-    }
-
-    /**
-     * sets lastAboveThresholdTimestamp
-     * @param lastAboveThresholdTimestamp
-     */
-    public void setLastAboveThresholdTimestamp(int lastAboveThresholdTimestamp) {
-        this.lastAboveThresholdTimestamp = lastAboveThresholdTimestamp;
+    public int getLastSpikeTimestamp() {
+        return lastSpikeTimestamp;
     }
     
     /**
