@@ -36,6 +36,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.StateMachineStates;
+import net.sf.jaer.util.TobiLogger;
 
 /**
  * Learns the throttle at different part of the track.
@@ -118,6 +119,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     private int lastCrashLocation = -1;
     private GLCanvas glCanvas;
     private ChipCanvas canvas;
+    TobiLogger learningLogger=new TobiLogger("EvolutionaryThrottleController","throttle settings log for slot car racer during learning");
 
     public EvolutionaryThrottleController(AEChip chip) {
         super(chip);
@@ -176,6 +178,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         if (chip.getCanvas() != null && chip.getCanvas().getCanvas() != null) {
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
         }
+        learningLogger.setEnabled(true);
 
     }
 
@@ -186,6 +189,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
         if (trackDefineFilter.getTrack() != null && (currentProfile == null || currentProfile.getNumPoints() != getTrack().getNumPoints())) {
             currentProfile = new ThrottleProfile(getTrack().getNumPoints());
+            currentProfile.log();
             log.info("made a new ThrottleProfile :" + currentProfile);
         }
 
@@ -240,6 +244,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                             throw new RuntimeException("couldn't clone the current throttle profile: " + e);
                         }
                         currentProfile.addBump();
+                        currentProfile.log();
                         lastRewardLap = lapTimer.lapCounter;
                     }
                 }
@@ -252,11 +257,14 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                         if (lastSuccessfulProfile != null && currentProfile != lastSuccessfulProfile) {
                             log.info("crashed at segment" + lastCrashLocation + ", switching back to previous profile");
                             currentProfile = lastSuccessfulProfile;
+                            currentProfile.log();
                         }
                         if(numSegmentsToBrakeBeforeCrash>0){
                             currentProfile.addBrake(carTracker.getCrashedCar().crashSegment);
+                            currentProfile.log();
                         }else{
                             currentProfile.subtractBump(carTracker.getCrashedCar().crashSegment);
+                            currentProfile.log();
                         }
                     }
                     lastRewardLap = lapTimer.lapCounter; // don't reward until we make some laps from here
@@ -313,6 +321,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             return;
         }
         currentProfile.reset();
+        currentProfile.log();
     }
 
     synchronized public void doGuessThrottleFromTrackModel() {
@@ -378,6 +387,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         if (currentProfile != null) {
             currentProfile.slowDown();
             log.info("slowed down current profile to " + currentProfile);
+            currentProfile.log();
         }
     }
 
@@ -385,6 +395,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         if (currentProfile != null) {
             currentProfile.speedUp();
             log.info("speeded up current profile to " + currentProfile);
+            currentProfile.log();
         }
     }
 
@@ -392,6 +403,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         if (lastSuccessfulProfileEvenOlder != null) {
             currentProfile = lastSuccessfulProfileEvenOlder;
             log.info("reverted to " + lastSuccessfulProfileEvenOlder);
+            currentProfile.log();
         } else {
             log.info("cannot revert - no lastSuccessfulProfileEvenOlder stored yet");
         }
@@ -464,6 +476,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             if (currentProfile==null || track.getNumPoints() != currentProfile.getNumPoints()) {
                 log.warning("new track has different number of points than current throttle profile, making a new default profile");
                 currentProfile = new ThrottleProfile(track.getNumPoints());
+                currentProfile.log();
             }
         }
     }
@@ -958,7 +971,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         public String toString() {
             StringBuilder sb = new StringBuilder("ThrottleProfile: ");
             for (int i = 0; i < numPoints; i++) {
-                sb.append(String.format(" %d:%.2f", i, throttleValues[i].throttle));
+                sb.append(String.format(" %.2f", throttleValues[i].brake? -1:throttleValues[i].throttle));
             }
             return sb.toString();
         }
@@ -1074,6 +1087,10 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             }
         }
 
+        private void log() {
+            learningLogger.log(lastTimestamp+" "+toString());
+        }
+
 
     } // ThrottleProfile
 
@@ -1183,19 +1200,23 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             if(e.isAltDown() && e.isShiftDown()){
                 // brake point
                 currentProfile.editClearBrake(idx);
+                currentProfile.log();
                  editState = EditState.None;
                  glCanvas.repaint();
             } else if(e.isAltDown() && !e.isShiftDown()){
                 // brake point
                 currentProfile.editSetBrake(idx);
+                currentProfile.log();
                  editState = EditState.None;
                  glCanvas.repaint();
             } else if(isShift(e)) {
                 currentProfile.editIncreaseThrottle(idx);
+                currentProfile.log();
                 editState = EditState.Increae;
                 glCanvas.repaint();
             } else if (isControl(e)) {
                 currentProfile.editDecreaseThrottle(idx);
+                currentProfile.log();
                 editState = EditState.Decrease;
                 glCanvas.repaint();
             } else {
