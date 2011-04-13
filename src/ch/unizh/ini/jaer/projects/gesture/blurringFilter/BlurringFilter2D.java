@@ -416,13 +416,13 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @param cellNumber : cell number
          * @param index : cell index
          * @param location : location on DVS pixels (x,y)
-         * @param receptiveFieldSize : size of the receptive field
+         * @param numSynapses : number of synapses
          * @param tauMP : RC time constant of the membrane potential
          * @param thresholdMP : threshold of the membrane potential to fire a spike
          * @param MPDecreaseArterFiringPercentTh : membrane potential jump after the spike in the percents of thresholdMP
          */
-        LIFNeuron(int cellNumber, Point2D.Float index, Point2D.Float location, int receptiveFieldSize, float tauMP, float thresholdMP, float MPDecreaseArterFiringPercentTh) {
-            super(cellNumber, location, receptiveFieldSize, tauMP, thresholdMP, MPDecreaseArterFiringPercentTh);
+        public LIFNeuron(int cellNumber, Point2D.Float index, Point2D.Float location, int numSynapses, float tauMP, float thresholdMP, float MPDecreaseArterFiringPercentTh) {
+            super(cellNumber, location, numSynapses, tauMP, thresholdMP, MPDecreaseArterFiringPercentTh);
 
             // sets invariable parameters
             this.index.setLocation(index);
@@ -475,7 +475,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                 gl.glBegin(GL.GL_LINE_LOOP);
             }
 
-            int halfSize = (int) receptiveFieldSize / 2;
+            int halfSize = (int) receptiveFieldSizePixels/2;
             gl.glVertex2i(-halfSize, -halfSize);
             gl.glVertex2i(+halfSize, -halfSize);
             gl.glVertex2i(+halfSize, +halfSize);
@@ -1670,8 +1670,12 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                     int neuronNumber = i+j*numOfNeuronsX;
                     Point2D.Float neuronIndex = new Point2D.Float(i, j);
                     Point2D.Float neuronLocationPixels = new Point2D.Float((i+1)*halfReceptiveFieldSizePixels, (j+1)*halfReceptiveFieldSizePixels);
-                    LIFNeuron newNeuron = new LIFNeuron(neuronNumber, neuronIndex, neuronLocationPixels,
-                                                        receptiveFieldSizePixels, MPTimeConstantUs, MPThreshold,
+                    LIFNeuron newNeuron = new LIFNeuron(neuronNumber, 
+                                                        neuronIndex,
+                                                        neuronLocationPixels,
+                                                        receptiveFieldSizePixels*receptiveFieldSizePixels,
+                                                        MPTimeConstantUs,
+                                                        MPThreshold,
                                                         MPJumpAfterFiringPercentTh);
 
                     newNeuron.setMP(MPInitialPercnetTh*MPThreshold);

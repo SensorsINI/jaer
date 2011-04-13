@@ -45,9 +45,9 @@ public class LIFNeuronJHLee {
     protected int lastEventTimestamp;
 
     /**
-     * size of the receptive field.
+     * number of synapses.
      */
-    protected int receptiveFieldSize;
+    protected int numSynapses;
 
     /**
      * maximum time constant of membrane potentail
@@ -146,16 +146,16 @@ public class LIFNeuronJHLee {
      * @param cellNumber : cell number
      * @param index : cell index
      * @param location : location on DVS pixels (x,y)
-     * @param receptiveFieldSize : size of the receptive field
+     * @param numSynapses : number of synapses
      * @param tauMP : RC time constant of the membrane potential
      * @param thresholdMP : threshold of the membrane potential to fire a spike
      * @param MPDecreaseArterFiringPercentTh : membrane potential jump after the spike in the percents of thresholdMP
      */
-    public LIFNeuronJHLee(int cellNumber, Point2D.Float location, int receptiveFieldSize, float tauMP, float thresholdMP, float MPDecreaseArterFiringPercentTh) {
+    public LIFNeuronJHLee(int cellNumber, Point2D.Float location, int numSynapses, float tauMP, float thresholdMP, float MPDecreaseArterFiringPercentTh) {
         // sets invariable parameters
         this.cellNumber = cellNumber;
         this.location.setLocation(location);
-        this.receptiveFieldSize = receptiveFieldSize;
+        this.numSynapses = numSynapses;
         this.tauMP = tauMP;
         this.thresholdMP = thresholdMP;
         this.MPDecreaseArterFiringPercentTh = MPDecreaseArterFiringPercentTh;
@@ -358,12 +358,12 @@ public class LIFNeuronJHLee {
     }
 
     /**
-     * returns receptiveFieldSize
+     * returns numSynapses
      *
      * @return
      */
-    public int getReceptiveFieldSize() {
-        return receptiveFieldSize;
+    public int getNumSynapses() {
+        return numSynapses;
     }
 
     /**
