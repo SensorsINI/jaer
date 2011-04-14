@@ -1094,8 +1094,14 @@ public class PanTiltFrame extends javax.swing.JFrame {
         if (panTiltControl.isConnected() == false) {
             try {
                 panTiltControl.connect((String) this.cbxComPort.getSelectedItem());
-            } catch (Exception e) {
-                e.printStackTrace();
+            } catch (Exception e1) {
+                panTiltControl = new PanTiltControlUSB();
+                 try {
+                    panTiltControl.connect((String) this.cbxComPort.getSelectedItem());
+                } catch (Exception e2) {
+                    e1.printStackTrace();
+                    e2.printStackTrace();
+                }
             }
         }
         panTiltControl.addPanTiltListener(new PanTiltListener() {
