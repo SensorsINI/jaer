@@ -250,7 +250,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                 }
                 if (carTracker.getCrashedCar() != null) {
                     state.set(State.CRASHED);
-                    lastCrashLocation = car.crashSegment;
+                    lastCrashLocation = carTracker.getCrashedCar().crashSegment;
 //                    throttle.throttle = getStartingThrottleValue(); // don't actually change profile, starting comes from getThrottle
                     sounds.play();
                     if (learningEnabled) {

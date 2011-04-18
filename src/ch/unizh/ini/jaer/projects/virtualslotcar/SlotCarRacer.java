@@ -134,7 +134,10 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
         lastThrottle.copyFrom(throttleController.getThrottle()); // copy from profile for example
         // clip and apply override
         lastThrottle.throttle = lastThrottle.throttle > maxThrottle ? maxThrottle : lastThrottle.throttle;
-        lastThrottle.throttle=isOverrideThrottle()? getOverriddenThrottleSetting():lastThrottle.throttle;
+        if(isOverrideThrottle()){
+            lastThrottle.throttle=getOverriddenThrottleSetting();
+            lastThrottle.brake=false;
+        }
 
         // send to hardware
         hw.setThrottle(lastThrottle);

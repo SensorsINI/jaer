@@ -207,7 +207,10 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         // Accumulate the results in a LowPassFilter for each cluster.
         TwoCarCluster closestAvgToTrack = null, oldest = null, sameAsLast = null, highestMass = null;
         float minDistFromTrack = Float.MAX_VALUE, maxAge = Integer.MIN_VALUE, minFromLast = Float.MAX_VALUE, maxMass = Float.MIN_VALUE;
+        int numPossible=0;
         for (ClusterInterface c : clusters) {
+            if(!c.isVisible()) continue;
+            numPossible++;
             TwoCarCluster cc = (TwoCarCluster) c;
             cc.computerControlledCar = false; // mark all false
             cc.updateState();
@@ -239,9 +242,10 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 //                }
             }
         }
-        int[] votes = new int[getNumClusters()];
+        int[] votes = new int[numPossible];
         int idx = 0;
         for (ClusterInterface c : clusters) {
+            if(!c.isVisible()) continue;
             TwoCarCluster cc = (TwoCarCluster) c;
             if (cc == sameAsLast) {
                 votes[idx] += 4;
@@ -267,7 +271,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
                 maxbin = i;
             }
         }
-        if (clusters.size() > 0 && maxVote > 1) {
+        if (numPossible > 0 && maxVote > 1) {
             computerControlledCarCluster = (TwoCarCluster) clusters.get(maxbin);
             computerControlledCarCluster.computerControlledCar = true;
 //            if (compControlled != currentCarCluster) {
@@ -276,6 +280,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             currentCarCluster = (TwoCarCluster) computerControlledCarCluster;
         } else {
             currentCarCluster = null;
+            computerControlledCarCluster=null;
         }
         if (currentCarCluster != null) {
             computerControlledCarCluster = currentCarCluster;
