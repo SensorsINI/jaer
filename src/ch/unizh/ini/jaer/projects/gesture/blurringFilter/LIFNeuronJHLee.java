@@ -5,7 +5,6 @@
 
 package ch.unizh.ini.jaer.projects.gesture.blurringFilter;
 
-import java.awt.geom.Point2D;
 import net.sf.jaer.event.BasicEvent;
 
 /**
@@ -25,12 +24,7 @@ public class LIFNeuronJHLee {
     /**
      * id for this neuron
      */
-    protected int cellNumber;
-
-    /**
-     *  spatial location of a neuron in chip pixels
-     */
-    public Point2D.Float location = new Point2D.Float();
+    protected int id;
 
     /** The "membranePotential" of the neuron.
      * The membranePotential decays over time (i.e., leaky) and is incremented by one by each collected event.
@@ -43,11 +37,6 @@ public class LIFNeuronJHLee {
      * This is the last in timestamp ticks that the neuron was updated, by an event
      */
     protected int lastEventTimestamp;
-
-    /**
-     * number of synapses.
-     */
-    protected int numSynapses;
 
     /**
      * maximum time constant of membrane potentail
@@ -143,19 +132,14 @@ public class LIFNeuronJHLee {
     /**
      * Construct an LIF neuron with index.
      *
-     * @param cellNumber : cell number
-     * @param index : cell index
-     * @param location : location on DVS pixels (x,y)
-     * @param numSynapses : number of synapses
+     * @param id : cell id
      * @param tauMP : RC time constant of the membrane potential
      * @param thresholdMP : threshold of the membrane potential to fire a spike
      * @param MPDecreaseArterFiringPercentTh : membrane potential jump after the spike in the percents of thresholdMP
      */
-    public LIFNeuronJHLee(int cellNumber, Point2D.Float location, int numSynapses, float tauMP, float thresholdMP, float MPDecreaseArterFiringPercentTh) {
+    public LIFNeuronJHLee(int id, float tauMP, float thresholdMP, float MPDecreaseArterFiringPercentTh) {
         // sets invariable parameters
-        this.cellNumber = cellNumber;
-        this.location.setLocation(location);
-        this.numSynapses = numSynapses;
+        this.id = id;
         this.tauMP = tauMP;
         this.thresholdMP = thresholdMP;
         this.MPDecreaseArterFiringPercentTh = MPDecreaseArterFiringPercentTh;
@@ -310,14 +294,6 @@ public class LIFNeuronJHLee {
         }
     }
 
-    /**
-     * returns the neuron's location in pixels.
-     *
-     * @return
-     */
-    final public Point2D.Float getLocation() {
-        return location;
-    }
 
     /**
      * decreases MP by MPJumpAfterFiring after firing
@@ -331,12 +307,12 @@ public class LIFNeuronJHLee {
     }
 
     /**
-     * returns the cell number of a neuron
+     * returns the id of the neuron
      *
-     * @return cell number
+     * @return 
      */
-    public int getNeuronNumber() {
-        return cellNumber;
+    public int getID() {
+        return id;
     }
 
     /**
@@ -355,15 +331,6 @@ public class LIFNeuronJHLee {
      */
     public void setLastEventTimestamp(int lastEventTimestamp) {
         this.lastEventTimestamp = lastEventTimestamp;
-    }
-
-    /**
-     * returns numSynapses
-     *
-     * @return
-     */
-    public int getNumSynapses() {
-        return numSynapses;
     }
 
     /**

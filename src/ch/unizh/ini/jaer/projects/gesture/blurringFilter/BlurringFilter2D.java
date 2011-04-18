@@ -385,6 +385,11 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         public Point2D.Float index = new Point2D.Float();
 
         /**
+         *  spatial location of a neuron in chip pixels
+         */
+        public Point2D.Float location = new Point2D.Float();
+
+        /**
          * location type of a neuron. One of {CORNER_00, CORNER_01, CORNER_10, CORNER_11, EDGE_0Y, EDGE_1Y, EDGE_X0, EDGE_X1, INSIDE}
          */
         LocationType locationType;
@@ -421,11 +426,12 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @param thresholdMP : threshold of the membrane potential to fire a spike
          * @param MPDecreaseArterFiringPercentTh : membrane potential jump after the spike in the percents of thresholdMP
          */
-        public LIFNeuron(int cellNumber, Point2D.Float index, Point2D.Float location, int numSynapses, float tauMP, float thresholdMP, float MPDecreaseArterFiringPercentTh) {
-            super(cellNumber, location, numSynapses, tauMP, thresholdMP, MPDecreaseArterFiringPercentTh);
+        public LIFNeuron(int cellNumber, Point2D.Float index, Point2D.Float location, float tauMP, float thresholdMP, float MPDecreaseArterFiringPercentTh) {
+            super(cellNumber, tauMP, thresholdMP, MPDecreaseArterFiringPercentTh);
 
             // sets invariable parameters
             this.index.setLocation(index);
+            this.location.setLocation(location);
 
             setFiringType(FiringType.SILENT);
             groupTag = -1;
@@ -555,7 +561,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         @Override
         public String toString() {
             return String.format("LIF Neuron number=%d index=(%d, %d), location = (%d, %d), membrane potential = %.2f",
-                    cellNumber,
+                    index,
                     (int) index.x, (int) index.y,
                     (int) location.x, (int) location.y,
                     getMPNow(lastTime));
@@ -569,6 +575,15 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          */
         public Float getIndex() {
             return index;
+        }
+
+        /**
+         * returns the neuron's location in pixels.
+         *
+         * @return
+         */
+        final public Point2D.Float getLocation() {
+            return location;
         }
 
         /**
@@ -1192,15 +1207,15 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 //                        tmpNeuron.reset();
 //                    }
 
-                    int cellNum = tmpNeuron.cellNumber;
+                    int id = tmpNeuron.id;
 
                     tmpNeuron.numFiringNeighbors = 0;
 
                     switch (tmpNeuron.locationType) {
                         case CORNER_00:
                             // gets neighbor neurons
-                            upNeuron = lifNeurons.get(cellNum + numOfNeuronsX);
-                            rightNeuron = lifNeurons.get(cellNum + 1);
+                            upNeuron = lifNeurons.get(id + numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(id + 1);
 
                             // checks the threshold of the first neuron
                             tmpNeuron.isAboveThreshold();
@@ -1228,8 +1243,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             if(!tmpNeuron.fired)
                                 break;
 
-                            downNeuron = lifNeurons.get(cellNum - numOfNeuronsX);
-                            rightNeuron = lifNeurons.get(cellNum + 1);
+                            downNeuron = lifNeurons.get(id - numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(id + 1);
 
                             if (downNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
@@ -1253,8 +1268,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             }
                             break;
                         case CORNER_10:
-                            upNeuron = lifNeurons.get(cellNum + numOfNeuronsX);
-                            leftNeuron = lifNeurons.get(cellNum - 1);
+                            upNeuron = lifNeurons.get(id + numOfNeuronsX);
+                            leftNeuron = lifNeurons.get(id - 1);
 
                             if (upNeuron.isAboveThreshold()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
@@ -1281,8 +1296,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             if(!tmpNeuron.fired)
                                 break;
 
-                            downNeuron = lifNeurons.get(cellNum - numOfNeuronsX);
-                            leftNeuron = lifNeurons.get(cellNum - 1);
+                            downNeuron = lifNeurons.get(id - numOfNeuronsX);
+                            leftNeuron = lifNeurons.get(id - 1);
 
                             if (downNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
@@ -1317,9 +1332,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             }
                             break;
                         case EDGE_0Y:
-                            upNeuron = lifNeurons.get(cellNum + numOfNeuronsX);
-                            downNeuron = lifNeurons.get(cellNum - numOfNeuronsX);
-                            rightNeuron = lifNeurons.get(cellNum + 1);
+                            upNeuron = lifNeurons.get(id + numOfNeuronsX);
+                            downNeuron = lifNeurons.get(id - numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(id + 1);
 
                             if (upNeuron.isAboveThreshold()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
@@ -1351,9 +1366,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             }
                             break;
                         case EDGE_1Y:
-                            upNeuron = lifNeurons.get(cellNum + numOfNeuronsX);
-                            downNeuron = lifNeurons.get(cellNum - numOfNeuronsX);
-                            leftNeuron = lifNeurons.get(cellNum - 1);
+                            upNeuron = lifNeurons.get(id + numOfNeuronsX);
+                            downNeuron = lifNeurons.get(id - numOfNeuronsX);
+                            leftNeuron = lifNeurons.get(id - 1);
 
                             if (upNeuron.isAboveThreshold()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
@@ -1396,9 +1411,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             }
                             break;
                         case EDGE_X0:
-                            upNeuron = lifNeurons.get(cellNum + numOfNeuronsX);
-                            rightNeuron = lifNeurons.get(cellNum + 1);
-                            leftNeuron = lifNeurons.get(cellNum - 1);
+                            upNeuron = lifNeurons.get(id + numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(id + 1);
+                            leftNeuron = lifNeurons.get(id - 1);
 
                             if (upNeuron.isAboveThreshold()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
@@ -1428,9 +1443,9 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             if(!tmpNeuron.fired)
                                 break;
 
-                            downNeuron = lifNeurons.get(cellNum - numOfNeuronsX);
-                            rightNeuron = lifNeurons.get(cellNum + 1);
-                            leftNeuron = lifNeurons.get(cellNum - 1);
+                            downNeuron = lifNeurons.get(id - numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(id + 1);
+                            leftNeuron = lifNeurons.get(id - 1);
 
                             if (downNeuron.fired) {
                                 tmpNeuron.increaseNumFiringNeighbors();
@@ -1473,10 +1488,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                             }
                             break;
                         case INSIDE:
-                            upNeuron = lifNeurons.get(cellNum + numOfNeuronsX);
-                            downNeuron = lifNeurons.get(cellNum - numOfNeuronsX);
-                            rightNeuron = lifNeurons.get(cellNum + 1);
-                            leftNeuron = lifNeurons.get(cellNum - 1);
+                            upNeuron = lifNeurons.get(id + numOfNeuronsX);
+                            downNeuron = lifNeurons.get(id - numOfNeuronsX);
+                            rightNeuron = lifNeurons.get(id + 1);
+                            leftNeuron = lifNeurons.get(id - 1);
 
                             if (upNeuron.isAboveThreshold()) {
                                 tmpNeuron.increaseNumFiringNeighbors();
@@ -1673,7 +1688,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                     LIFNeuron newNeuron = new LIFNeuron(neuronNumber, 
                                                         neuronIndex,
                                                         neuronLocationPixels,
-                                                        receptiveFieldSizePixels*receptiveFieldSizePixels,
                                                         MPTimeConstantUs,
                                                         MPThreshold,
                                                         MPJumpAfterFiringPercentTh);
@@ -1705,7 +1719,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                         }
                     }
 
-                    lifNeurons.add(newNeuron.getNeuronNumber(), newNeuron);
+                    lifNeurons.add(newNeuron.getID(), newNeuron);
                 }
             }
         }

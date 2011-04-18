@@ -1875,7 +1875,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         if ( !ngCollection.isEmpty() ){
             switch(maxNumClusters){
                 case SINGLE: // if we track only one cluster
-                    if(clusters.size() == 0){
+                    if(clusters.isEmpty()){
                         trackLargestGroup(ngCollection, 0, defaultUpdateInterval);
                     } else {
                         if(!clusters.get(0).isUpdated())
