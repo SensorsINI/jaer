@@ -268,9 +268,9 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                         }
                     }
                     lastRewardLap = lapTimer.lapCounter; // don't reward until we make some laps from here
-                } else {
+                } else if(car!=null){
                     throttle = currentProfile.getThrottle(car.segmentIdx);
-                }
+                } 
             }
         } else if (state.get() == State.CRASHED) {
 //            throttle.throttle = getStartingThrottleValue();

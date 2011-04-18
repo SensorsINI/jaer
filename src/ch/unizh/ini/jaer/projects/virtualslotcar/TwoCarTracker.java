@@ -335,12 +335,26 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
     @Override
     public synchronized void annotate(GLAutoDrawable drawable) {
 //        super.annotate(drawable);
+        GL gl=drawable.getGL();
+        int offset=0;
+        final int w=2;
         for (Cluster c : clusters) {
             TwoCarCluster cc = (TwoCarCluster) c;
-            if (isShowAllClusters() || cc.isVisible()) {
-                cc.draw(drawable);
-            }
 
+
+
+            if (isShowAllClusters() || cc.isVisible()) {
+
+                cc.draw(drawable);
+                gl.glColor3f(0, 0, 1);
+                gl.glRectf(offset, 0, offset+w, chip.getSizeY()*cc.segmentSpeedSPS/300);
+                offset+=2*w;
+
+
+
+
+
+            }
         }
 
     }
@@ -573,6 +587,39 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             this.segmentIdx = segmentIdx;
         }
 
+        @Override
+        public float getAverageEventYDistance() {
+            return super.getAverageEventYDistance();
+        }
+
+        @Override
+        protected void updateVelocity() {
+            if (track == null) {
+                super.updateVelocity();
+            }
+            if (segmentIdx == -1) {
+                return;
+            }
+            Point2D.Float v = track.segmentVectors.get(segmentIdx);
+            float vnorm = (float) v.distance(0, 0);
+            velocityPPS.x = segmentSpeedSPS * v.x / vnorm;
+            velocityPPS.y = segmentSpeedSPS * v.x / vnorm;
+            velocityPPT.x = velocityPPS.x / VELPPS_SCALING;
+            velocityPPT.y = velocityPPS.y / VELPPS_SCALING;
+            setVelocityValid(true);
+              setAngle((float)Math.atan2(v.y, v.x));
+      }
+
+//        @Override
+//        protected void updateAngle(BasicEvent event) {
+//            if(segmentIdx==-1) return;
+//            if(track==null) super.updateAngle(event);
+//            Point2D.Float v=track.segmentVectors.get(segmentIdx);
+//        }
+
+
+
+
         /**
          * @return the crashed
          */
@@ -737,7 +784,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             float ds = AEConstants.TICK_DEFAULT_US * 1e-6f * (dt)*segmentSpeedSPS;
             location.x += ds * v.x;
             location.y += ds * v.y;
-            updateSegmentInfo(t);
+                updateSegmentInfo(t);
             lastUpdateTime = t;
         }
     } // TwoCarCluster
