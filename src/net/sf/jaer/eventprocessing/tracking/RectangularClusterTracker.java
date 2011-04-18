@@ -837,10 +837,10 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         private Point2D.Float lastPacketLocation = new Point2D.Float(); // location at end of last packet, used for movement sample
         /** velocityPPT of cluster in pixels/tick, where tick is timestamp tick (usually microseconds) */
         protected Point2D.Float velocityPPT = new Point2D.Float(); // velocityPPT in chip pixels/tick
-        private Point2D.Float velocityPPS = new Point2D.Float(); // cluster velocityPPT in pixels/second
+        protected Point2D.Float velocityPPS = new Point2D.Float(); // cluster velocityPPT in pixels/second
         private boolean velocityValid = false; // used to flag invalid or uncomputable velocityPPT
         private LowpassFilter vxFilter = new LowpassFilter(), vyFilter = new LowpassFilter();
-        final float VELPPS_SCALING = 1e6f / AEConstants.TICK_DEFAULT_US;
+        public final float VELPPS_SCALING = 1e6f / AEConstants.TICK_DEFAULT_US;
 //        public float tauMsVelocity=50; // LP filter time constant for velocityPPT change
 //        private LowpassFilter velocityFilter=new LowpassFilter();
         private float radius; // in chip chip pixels
@@ -1443,7 +1443,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
             // if scaling is enabled, now updateShape the cluster size
             updateShape(event);
-            lastUpdateTime = event.timestamp;
+             lastUpdateTime = event.timestamp;
 
         }
 
