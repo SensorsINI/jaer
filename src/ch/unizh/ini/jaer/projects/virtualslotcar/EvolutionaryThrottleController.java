@@ -178,7 +178,6 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         if (chip.getCanvas() != null && chip.getCanvas().getCanvas() != null) {
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
         }
-        learningLogger.setEnabled(true);
 
     }
 
@@ -1088,6 +1087,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         }
 
         private void log() {
+            if(!isLoggingEnabled()) return;
             learningLogger.log(lastTimestamp+" "+toString());
         }
 
@@ -1291,4 +1291,12 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
         }
     }
+
+    @Override
+    public void setLoggingEnabled(boolean loggingEnabled) {
+        super.setLoggingEnabled(loggingEnabled);
+        learningLogger.setEnabled(loggingEnabled);
+    }
+
+
 }

@@ -319,7 +319,9 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
             // we have a list of cluster that all contain the event.
             // We now partition the event randomly to the clusters.
             int r = random.nextInt(addList.size());
-            addList.get(r).cluster.addEvent(ev);
+            TwoCarCluster c=(TwoCarCluster)addList.get(r).cluster;
+            c.addEvent(ev);
+//            c.updateSegmentInfo(ev.timestamp);
 
         } else if (clusters.size() < getMaxNumClusters()) {
             // start a new cluster but only if event in range of track
