@@ -90,7 +90,9 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
     public boolean isSyncEventEnabled() {
         return syncEventEnabled;
     }
-    
+
+    int lastTimestampTmp=0; // TODO debug remove
+
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
     public class RetinaAEReader extends CypressFX2.AEReader{
         private int printedSyncEventWarningCount=0; // only print this many sync events
@@ -116,8 +118,8 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                 AEPacketRaw buffer=aePacketRawPool.writeBuffer();
             //    if(buffer.overrunOccuredFlag) return;  // don't bother if there's already an overrun, consumer must get the events to clear this flag before there is more room for new events
                 int shortts;
-                int NumberOfWrapEvents;
-                NumberOfWrapEvents=0;
+//                int NumberOfWrapEvents;
+//                NumberOfWrapEvents=0;
                 
                 byte[] aeBuffer=b.BufferMem;
                 //            byte lsb,msb;
@@ -147,7 +149,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                         wrapAdd+=0x4000L; //uses only 14 bit timestamps
                       
                         //System.out.println("received wrap event, index:" + eventCounter + " wrapAdd: "+ wrapAdd);
-                        NumberOfWrapEvents++;
+//                        NumberOfWrapEvents++;
                     } else if  ((aeBuffer[i+3]&0x40)==0x40  ) { // timestamp bit 14 is one -> wrapAdd reset
                         // this firmware version uses reset events to reset timestamps
                         this.resetTimestamps();
@@ -160,8 +162,14 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 
                         // same for timestamp, LSB MSB
                         shortts=(aeBuffer[i+2]&0xff | ((aeBuffer[i+3]&0xff)<<8)); // this is 15 bit value of timestamp in TICK_US tick
-                        
+
+
                         timestamps[eventCounter]=(int)(TICK_US*(shortts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+
+                        if(timestamps[eventCounter]<lastTimestampTmp){
+                            log.info("nonmonotonic timestamp");
+                        }
+                        lastTimestampTmp=timestamps[eventCounter];
                         // this is USB2AERmini2 or StereoRetina board which have 1us timestamp tick
                        if((addresses[eventCounter] & SYNC_EVENT_BITMASK) != 0) {
                             if (printedSyncEventWarningCount++ < 10) {

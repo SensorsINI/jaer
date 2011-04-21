@@ -1273,7 +1273,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         @Override
         public void processData(UsbIoBuf Buf) {
             cycleCounter++;
-            // instrument cycle times
+////             instrument cycle times
 //            long thisTime=System.nanoTime();
 //            times[cycleCounter%NTIMES]=thisTime-lastTime;
 //            lastTime=thisTime;
@@ -1281,11 +1281,12 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //                try {
 //                    if(timeWriter==null){
 //                        timeWriter=new PrintWriter("cycleTimes.csv");
+//                        log.info("saving CypressFX2.processData cycle times to cycleTimes.cvs in startup folder");
 //                    }
 //                    for(long t:times){
 //                        timeWriter.format("%d\n",t);
 //                    }
-//                    timeWriter.flush();
+////                    timeWriter.flush();
 //                } catch (FileNotFoundException ex) {
 //                    ex.printStackTrace();
 //                }
