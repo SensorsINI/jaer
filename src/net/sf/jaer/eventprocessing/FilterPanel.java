@@ -211,6 +211,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         EventFilter filter = getFilter();
         try {
             info = Introspector.getBeanInfo(filter.getClass());
+            // TODO check if class is public, otherwise we can't access methods usually
             props = info.getPropertyDescriptors();
             methods = filter.getClass().getMethods();
             control = new JPanel();
@@ -1515,7 +1516,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
             } catch (IllegalAccessException e) {
-                log.warning("cannot access the field named " + name + " is the class or method not public?");
+                log.warning("cannot access the field named " + name + " check if the class or method is not public?");
                 e.printStackTrace();
             }
 
