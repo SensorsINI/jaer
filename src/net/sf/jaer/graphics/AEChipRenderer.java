@@ -321,8 +321,10 @@ public class AEChipRenderer extends Chip2DRenderer {
             }
             autoScaleFrame(f);
         } catch (ArrayIndexOutOfBoundsException e) {
-            e.printStackTrace();
-            log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type?");
+            if(chip.getFilterChain()!=null && (chip.getFilterChain().getProcessingMode()!=net.sf.jaer.eventprocessing.FilterChain.ProcessingMode.ACQUISITION)){ // only print if real-time mode has not invalidated the packet we are trying render
+                e.printStackTrace();
+                log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type?");
+            }
         }
         pixmap.rewind();
     }
