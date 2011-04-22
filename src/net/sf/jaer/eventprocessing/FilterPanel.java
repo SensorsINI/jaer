@@ -8,6 +8,7 @@ package net.sf.jaer.eventprocessing;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.event.ActionListener;
+import java.awt.geom.Point2D;
 import java.beans.*;
 import java.beans.Introspector;
 import java.lang.reflect.InvocationTargetException;
@@ -123,8 +124,6 @@ setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for a
  */
 public class FilterPanel extends javax.swing.JPanel implements PropertyChangeListener {
 
-
-
     private interface HasSetter {
 
         void set(Object o);
@@ -141,8 +140,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private HashMap<String, HasSetter> setterMap = new HashMap<String, HasSetter>(); // map from filter to property, to apply property change events to control
     private java.util.ArrayList<JComponent> controls = new ArrayList<JComponent>();
     private HashMap<String, Container> groupContainerMap = new HashMap();
-    private JPanel inheritedPanel=null;
-    
+    private JPanel inheritedPanel = null;
+
     /** Creates new form FilterPanel */
     public FilterPanel() {
         initComponents();
@@ -179,7 +178,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //        if(inherited){
 //            pan.setBorder(BorderFactory.createLineBorder(Color.yellow) );
 //        }
-           pan.add(Box.createVerticalStrut(0));
+            pan.add(Box.createVerticalStrut(0));
             add(pan);
             controls.add(comp);
             return;
@@ -194,7 +193,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                inherPan.add(comp,BorderLayout.WEST);
 //                container.add(inherPan);
 //            }else{
-                container.add(comp);
+            container.add(comp);
 //            }
         } else {
 //            add(Box.createHorizontalGlue());
@@ -204,7 +203,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
         add(pan); // to fix horizontal all left alignment
         controls.add(comp);
-     }
+    }
 
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
     private void addIntrospectedControls() {
@@ -220,9 +219,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             // these methods, e.g. "void doDisableServo()" do an action.
             Insets butInsets = new Insets(0, 0, 0, 0);
             for (Method m : methods) {
-                if (m.getName().startsWith("do") &&
-                        m.getParameterTypes().length == 0 &&
-                        m.getReturnType() == void.class) {
+                if (m.getName().startsWith("do")
+                        && m.getParameterTypes().length == 0
+                        && m.getReturnType() == void.class) {
                     numDoButtons++;
                     JButton button = new JButton(m.getName().substring(2));
                     button.setMargin(butInsets);
@@ -347,17 +346,17 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 ////                    System.out.println("");
 //                }
                 try {
-                    boolean inherited=false;
+                    boolean inherited = false;
 
                     // TODO handle indexed properties 
                     Class c = p.getPropertyType();
                     String name = p.getName();
 
-                     // check if method comes from a superclass of this EventFilter
-                    if(control!=null && p.getReadMethod()!=null && p.getWriteMethod()!=null){
-                        Method m=p.getReadMethod();
-                        if(m.getDeclaringClass()!=getFilter().getClass()){
-                            inherited=true;
+                    // check if method comes from a superclass of this EventFilter
+                    if (control != null && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                        Method m = p.getReadMethod();
+                        if (m.getDeclaringClass() != getFilter().getClass()) {
+                            inherited = true;
                         }
                     }
 
@@ -402,8 +401,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         }
                         control = new StringControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
                         myadd(control, name, inherited);
-                    } else if (c!=null && c.isEnum() && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                    } else if (c != null && c.isEnum() && p.getReadMethod() != null && p.getWriteMethod() != null) {
                         control = new EnumControl(c, getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                        myadd(control, name, inherited);
+                    }else if (c != null && c==Point2D.Float.class && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                        control = new Point2DControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
                         myadd(control, name, inherited);
                     } else {
 //                    log.warning("unknown property type "+p.getPropertyType()+" for property "+p.getName());
@@ -411,12 +413,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     if (control != null) {
                         control.setToolTipText(getFilter().getPropertyTooltip(name));
                     }
-                   
-                 } catch (Exception e) {
+
+                } catch (Exception e) {
                     log.warning(e + " caught on property " + p.getName() + " from EventFilter " + filter);
                 }
             }
-           groupContainerMap = null;
+            groupContainerMap = null;
 //             sortedControls=null;
         } catch (Exception e) {
             log.warning("on adding controls for EventFilter " + filter + " caught " + e);
@@ -493,7 +495,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 }
                 control.setSelectedItem(x);
             } catch (Exception e) {
-                log.warning("cannot access the field named "+name+" is the class or method not public?");
+                log.warning("cannot access the field named " + name + " is the class or method not public?");
                 e.printStackTrace();
             }
             control.addActionListener(new ActionListener() {
@@ -553,7 +555,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 textField.setText(x);
                 textField.setToolTipText(x);
             } catch (Exception e) {
-                log.warning("cannot access the field named "+name+" is the class or method not public?");
+                log.warning("cannot access the field named " + name + " is the class or method not public?");
                 e.printStackTrace();
             }
             textField.addActionListener(new ActionListener() {
@@ -603,7 +605,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
             } catch (IllegalAccessException e) {
-                log.warning("cannot access the field named "+name+" is the class or method not public?");
+                log.warning("cannot access the field named " + name + " is the class or method not public?");
                 e.printStackTrace();
             }
             checkBox.addActionListener(new ActionListener() {
@@ -666,7 +668,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 initValue = x.intValue();
                 slider.setValue(initValue);
             } catch (Exception e) {
-                log.warning("cannot access the field named "+name+" is the class or method not public?");
+                log.warning("cannot access the field named " + name + " is the class or method not public?");
                 e.printStackTrace();
             }
             add(slider);
@@ -739,7 +741,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 currentValue = x.floatValue();
                 set(new Float(currentValue));
             } catch (Exception e) {
-                log.warning("cannot access the field named "+name+" is the class or method not public?");
+                log.warning("cannot access the field named " + name + " is the class or method not public?");
                 e.printStackTrace();
             }
             add(slider);
@@ -1032,7 +1034,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
             } catch (IllegalAccessException e) {
-                log.warning("cannot access the field named "+name+" is the class or method not public?");
+                log.warning("cannot access the field named " + name + " is the class or method not public?");
                 e.printStackTrace();
             }
             add(tf);
@@ -1189,9 +1191,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      */
     public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
         if (propertyChangeEvent.getSource() == getFilter()) {
-            if(propertyChangeEvent.getPropertyName().equals("selected")){
+            if (propertyChangeEvent.getPropertyName().equals("selected")) {
                 return; // ignore changes to "selected" for filter because these are masked out from GUI building
-            }else if (propertyChangeEvent.getPropertyName().equals("filterEnabled")) { // comes from EventFilter when filter is enabled or disabled
+            } else if (propertyChangeEvent.getPropertyName().equals("filterEnabled")) { // comes from EventFilter when filter is enabled or disabled
 //            log.info("propertyChangeEvent name="+propertyChangeEvent.getPropertyName()+" src="+propertyChangeEvent.getSource()+" oldValue="+propertyChangeEvent.getOldValue()+" newValue="+propertyChangeEvent.getNewValue());
                 boolean yes = (Boolean) propertyChangeEvent.getNewValue();
                 enabledCheckBox.setSelected(yes);
@@ -1204,9 +1206,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                            propertyChangeEvent.getPropertyName() +
 //                            " newValue=" + propertyChangeEvent.getNewValue());
                     HasSetter setter = setterMap.get(propertyChangeEvent.getPropertyName());
-                    if(setter==null){
-                        log.warning("null setter for property named "+propertyChangeEvent.getPropertyName());
-                    }else{
+                    if (setter == null) {
+                        log.warning("null setter for property named " + propertyChangeEvent.getPropertyName());
+                    } else {
                         setter.set(propertyChangeEvent.getNewValue());
                     }
 
@@ -1312,7 +1314,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 for (FilterPanel f : ff.filterPanels) {
                     if (f == this) {  // for us and if !visible
                         f.setVisible(true); // always set us visible in chain since we are the one being touched
-                        continue;  
+                        continue;
                     }
 
                     f.setVisible(!visible); // hide / show other filters
@@ -1432,4 +1434,120 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         return params;
     }
 
+    class Point2DControl extends JPanel implements HasSetter {
+
+        Method write, read;
+        EventFilter filter;
+        Point2D.Float point;
+        float initValue = 0, nval;
+        final JTextField tfx, tfy;
+        final String format = "%.1f";
+
+        final public void set(Object o) {
+            if (o instanceof Point2D.Float) {
+                Point2D.Float b = (Point2D.Float) o;
+                tfx.setText(String.format(format, b.x));
+                tfy.setText(String.format(format, b.y));
+            }
+        }
+
+        final class PointActionListener implements ActionListener {
+
+            Method readMethod, writeMethod;
+            Point2D.Float point = new Point2D.Float(0, 0);
+
+            public PointActionListener(Method readMethod, Method writeMethod) {
+                this.readMethod = readMethod;
+                this.writeMethod = writeMethod;
+            }
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+//                    System.out.println(e);
+                try {
+                    float x = Float.parseFloat(tfx.getText());
+                    float y = Float.parseFloat(tfy.getText());
+                    point.setLocation(x, y);
+                    writeMethod.invoke(filter, point);
+                    point = (Point2D.Float) readMethod.invoke(filter); // getString the value from the getter method to constrain it
+                    set(point);
+                } catch (NumberFormatException fe) {
+                    tfx.selectAll();
+                    tfy.selectAll();
+                } catch (InvocationTargetException ite) {
+                    ite.printStackTrace();
+                } catch (IllegalAccessException iae) {
+                    iae.printStackTrace();
+                }
+            }
+        }
+
+        public Point2DControl(final EventFilter f, final String name, final Method w, final Method r) {
+            super();
+            setterMap.put(name, this);
+            filter = f;
+            write = w;
+            read = r;
+            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            setAlignmentX(ALIGNMENT);
+//            setLayout(new FlowLayout(FlowLayout.LEADING));
+            JLabel label = new JLabel(name);
+            label.setAlignmentX(ALIGNMENT);
+            label.setFont(label.getFont().deriveFont(fontSize));
+            addTip(f, label);
+            add(label);
+
+            tfx = new JTextField("", 10);
+            tfx.setMaximumSize(new Dimension(100, 50));
+            tfx.setToolTipText("Point2D X: type new value here and press enter.");
+
+            tfy = new JTextField("", 10);
+            tfy.setMaximumSize(new Dimension(100, 50));
+            tfy.setToolTipText("Point2D Y: type new value here and press enter.");
+
+            try {
+                Point2D.Float p = (Point2D.Float) r.invoke(filter);
+                if (p == null) {
+                    log.warning("null object returned from read method " + r);
+                    return;
+                }
+                set(p);
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                log.warning("cannot access the field named " + name + " is the class or method not public?");
+                e.printStackTrace();
+            }
+
+            add(tfx);
+            add(new JLabel(", "));
+            add(tfy);
+
+            tfx.addActionListener(new PointActionListener(r, w));
+            tfy.addActionListener(new PointActionListener(r, w));
+
+            tfx.addFocusListener(new FocusListener() {
+
+                public void focusGained(FocusEvent e) {
+                    tfx.setSelectionStart(0);
+                    tfx.setSelectionEnd(tfx.getText().length());
+                }
+
+                public void focusLost(FocusEvent e) {
+                }
+            });
+            tfy.addFocusListener(new FocusListener() {
+
+                public void focusGained(FocusEvent e) {
+                    tfy.setSelectionStart(0);
+                    tfy.setSelectionEnd(tfy.getText().length());
+                }
+
+                public void focusLost(FocusEvent e) {
+                }
+            });
+
+
+        }
+    }
 }
