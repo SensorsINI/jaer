@@ -875,6 +875,14 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             return mass;
         }
 
+        /** Sets the internal "mass" of the cluster.
+         * @see #getMass()
+         * @param mass
+         */
+        public void setMass(float mass){
+            this.mass=mass;
+        }
+
         protected void updateAngle(BasicEvent event) {
             // dynamically rotates cluster to line it up with edge.
             // the cluster instantaneousAngle is defined so horizontal edges have instantaneousAngle 0 or +/-PI, vertical have +/- PI/2.
