@@ -128,7 +128,15 @@ public class WindowSaver implements AWTEventListener {
                 lowerInset=insets.bottom;
             }
         }
-        
+
+        if(x<0){
+            log.info("window x origin is <0, moving back to zero");
+            x=0;
+        }
+        if(y<lowerInset){
+            log.info("window y origin is < lowerInset, moving back to "+lowerInset);
+            y=lowerInset;
+        }
         if(x+w>sd.width||y+h>sd.height) {
             log.info("window extends over edge of screen, moving back to origin");
             x=y=0;
