@@ -605,7 +605,9 @@ public class cDVSTest20 extends AERetina implements HasIntensity {
             final String tabTitle = "ADC control";
             bgTabbedPane.addTab(tabTitle, new ParameterControlPanel(adcProxy));
             bPanel.add(bgTabbedPane, BorderLayout.CENTER);
-            bgTabbedPane.setSelectedIndex(getPrefs().getInt("cDVSTest20.bgTabbedPaneSelectedIndex", 0));
+            int tabnum=getPrefs().getInt("cDVSTest20.bgTabbedPaneSelectedIndex", 0);
+            if(tabnum>bgTabbedPane.getTabCount()-1) tabnum=0;
+            bgTabbedPane.setSelectedIndex(tabnum);
             bgTabbedPane.addMouseListener(new java.awt.event.MouseAdapter() {
 
                 @Override

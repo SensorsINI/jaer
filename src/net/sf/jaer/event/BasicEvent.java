@@ -49,7 +49,8 @@ public class BasicEvent implements EventInterface<BasicEvent> {
     }
 
     /**
-     * create an BasicEvent with a timestamp, x, y, and a variable length number of bytes types
+     * create an BasicEvent with a timestamp, x, y, and a variable length number of bytes types.
+     * TODO, currently the type and types fields are ignored.
      */
     public BasicEvent(int timestamp, short x, short y, byte type, byte... types) {
         this.timestamp = timestamp;

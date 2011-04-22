@@ -33,6 +33,8 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
     private Point lastMousePressLocation = new Point(w / 2, h / 2);
     private boolean recordingEnabled = false;
     private Trajectory trajectory = new Trajectory();
+     private float panTiltLimit=0.5f;
+
 
     class Trajectory extends ArrayList<TrajectoryPoint> {
 
@@ -161,12 +163,16 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        jButton1 = new javax.swing.JButton();
         statusLabel = new javax.swing.JLabel();
         calibrationPanel = new javax.swing.JPanel();
         jLabel5 = new javax.swing.JLabel();
         recordCB = new javax.swing.JCheckBox();
         clearBut = new javax.swing.JButton();
         loopTB = new javax.swing.JToggleButton();
+        centerBut = new javax.swing.JButton();
+
+        jButton1.setText("jButton1");
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("PanTiltAimer");
@@ -217,7 +223,7 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
         calibrationPanel.setLayout(calibrationPanelLayout);
         calibrationPanelLayout.setHorizontalGroup(
             calibrationPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 605, Short.MAX_VALUE)
+            .addGap(0, 611, Short.MAX_VALUE)
         );
         calibrationPanelLayout.setVerticalGroup(
             calibrationPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -247,43 +253,54 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
             }
         });
 
+        centerBut.setText("Center");
+        centerBut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                centerButActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
+            .addGroup(layout.createSequentialGroup()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
                         .addContainerGap()
-                        .addComponent(calibrationPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
-                        .addGap(1, 1, 1)
-                        .addComponent(statusLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 618, Short.MAX_VALUE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 270, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(recordCB)
+                        .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 195, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(recordCB)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(clearBut)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(loopTB)))
+                        .addComponent(loopTB)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(centerBut))
+                    .addGroup(layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(calibrationPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(1, 1, 1)
+                        .addComponent(statusLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 624, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(recordCB)
                     .addComponent(clearBut)
-                    .addComponent(loopTB))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(calibrationPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(loopTB)
+                        .addComponent(centerBut)))
+                .addGap(15, 15, 15)
+                .addComponent(calibrationPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addGap(18, 18, 18)
                 .addComponent(statusLabel)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
         );
 
         pack();
@@ -306,6 +323,8 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
 
     private void setPanTilt(float pan, float tilt) {
         try {
+            pan=clipPT(pan);
+            tilt=clipPT(tilt);
             lastPanTilt.x = pan;
             lastPanTilt.y = tilt;
             panTilt.setPanTiltValues(pan, tilt);
@@ -315,6 +334,10 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
         }
     }
 
+    private float clipPT(float pt){
+        if(pt>0.5f+panTiltLimit) pt=0.5f+panTiltLimit; else if(pt<.5f-panTiltLimit) pt=.5f-panTiltLimit;
+        return pt;
+    }
     public Point getMouseFromPanTilt(Point2D.Float pt) {
         return new Point((int) (calibrationPanel.getWidth() * pt.x), (int) (calibrationPanel.getHeight() * pt.y));
     }
@@ -402,9 +425,20 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
         trajectory.setPlaybackEnabled(loopTB.isSelected());
 
     }//GEN-LAST:event_loopTBActionPerformed
+
+    private void centerButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_centerButActionPerformed
+        try {
+            panTilt.setPanTiltValues(0.5f, 0.5f);
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
+    }//GEN-LAST:event_centerButActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel calibrationPanel;
+    private javax.swing.JButton centerBut;
     private javax.swing.JButton clearBut;
+    private javax.swing.JButton jButton1;
     private javax.swing.JLabel jLabel5;
     private javax.swing.JToggleButton loopTB;
     private javax.swing.JCheckBox recordCB;
@@ -444,4 +478,23 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
         recordCB.setSelected(recordingEnabled);
         support.firePropertyChange(Message.SetRecordingEnabled.name(), old, recordingEnabled);
     }
+
+
+        /**
+     * @return the panTiltLimit
+     */
+    public float getPanTiltLimit() {
+        return panTiltLimit;
+    }
+
+    /**
+     * @param panTiltLimit the panTiltLimit to set
+     */
+    public void setPanTiltLimit(float panTiltLimit) {
+        this.panTiltLimit = panTiltLimit;
+    }
+
+    
+
+
 }

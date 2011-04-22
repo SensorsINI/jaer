@@ -39,8 +39,11 @@ public class PanTiltAimer extends EventFilter2D implements  PanTiltInterface, La
    private boolean invertPan=getBoolean("invertPan",false);
    private boolean invertTilt=getBoolean("invertTilt",false);
      private boolean recordingEnabled=false;
+     private float panTiltLimit=getFloat("panTiltLimit",0.25f);
 
     Trajectory trajectory;
+
+
 
     class Trajectory extends ArrayList<TrajectoryPoint>{
         void add(long millis, float pan, float tilt){
@@ -92,6 +95,7 @@ public class PanTiltAimer extends EventFilter2D implements  PanTiltInterface, La
         panTiltHardware.setJitterEnabled(jitterEnabled);
         panTiltHardware.setPanInverted(invertPan);
         panTiltHardware.setTiltInverted(invertTilt);
+
         
         setPropertyTooltip("jitterAmplitude","Jitter of pantilt amplitude for circular motion");
         setPropertyTooltip("jitterFreqHz","Jitter frequency in Hz of circular motion");
@@ -102,6 +106,10 @@ public class PanTiltAimer extends EventFilter2D implements  PanTiltInterface, La
         setPropertyTooltip("tiltServoNumber","servo channel for tilt (0-3)");
         setPropertyTooltip("tiltInverted","flips the tilt");
         setPropertyTooltip("panInverted","flips the pan");
+        setPropertyTooltip("panTiltLimit","limits pan and tilt around 0.5 by this amount to protect hardware");
+        setPropertyTooltip("center","centers pan and tilt");
+        setPropertyTooltip("disableServos","disables servo PWM output. Servos should relax but digital servos may store last value and hold it.");
+        setPropertyTooltip("aim","show GUI for controlling pan and tilt");
     }
     
     @Override
@@ -111,6 +119,7 @@ public class PanTiltAimer extends EventFilter2D implements  PanTiltInterface, La
  
     @Override
     public void resetFilter() {
+        panTiltHardware.close();
     }
 
     @Override
@@ -126,9 +135,20 @@ public class PanTiltAimer extends EventFilter2D implements  PanTiltInterface, La
         if (gui == null) {
             gui = new PanTiltAimerGUI(panTiltHardware);
             gui.addPropertyChangeListener(this);
+            gui.setPanTiltLimit(panTiltLimit);
 
         }
         gui.setVisible(true);
+    }
+
+    public void doCenter(){
+         if(panTiltHardware!=null && panTiltHardware.getServoInterface()!=null){
+            try {
+             panTiltHardware.setPanTiltValues(0.5f, 0.5f);
+            } catch (HardwareInterfaceException ex) {
+                log.warning(ex.toString());
+            }
+        }
     }
 
     public void doDisableServos(){
@@ -308,7 +328,25 @@ public class PanTiltAimer extends EventFilter2D implements  PanTiltInterface, La
     }
 
 
+    /**
+     * @return the panTiltLimit
+     */
+    public float getPanTiltLimit() {
+        return panTiltLimit;
+    }
 
+    /**
+     * @param panTiltLimit the panTiltLimit to set
+     */
+    public void setPanTiltLimit(float panTiltLimit) {
+        if(panTiltLimit<0) panTiltLimit=0; else if(panTiltLimit>0.5f)panTiltLimit=0.5f;
+        this.panTiltLimit = panTiltLimit;
+        putFloat("panTiltLimit",panTiltLimit);
+        if(gui!=null){
+            gui.setPanTiltLimit(panTiltLimit);
+        }
+
+    }
 
 
 }
