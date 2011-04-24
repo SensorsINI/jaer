@@ -12,6 +12,9 @@ import java.awt.geom.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.media.opengl.GL;
@@ -30,7 +33,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * 
  * @author Tobi Delbruck
  */
-public class LabyrinthBallController extends EventFilter2DMouseAdaptor implements PropertyChangeListener {
+public class LabyrinthBallController extends EventFilter2DMouseAdaptor implements PropertyChangeListener, Observer {
 
     public static final String getDescription() {
         return "Low level ball controller for Labyrinth game";
@@ -39,8 +42,9 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     private boolean mouseBallControlEnabled = getBoolean("mouseBallControl", true);
     private float xTilt = 0, yTilt = 0; // convention is that xTilt>0 rolls to right, yTilt>0 rolls ball up
     // control
-    private float gainPositionError = getFloat("gainPositionError", 1);
-    private float gainDamping = getFloat("gainDamping", 1);
+    private float proportionalGain = getFloat("proportionalGain", 1);
+    private float derivativeGain = getFloat("derivativeGain", 1);
+    private float integralGain = getFloat("integralGain", 1);
     // constants
     private final float angleRadPerServoUnit = (float) (5 * Math.PI / 180 / 0.1); // angle in radians produced by each unit of servo control change
     // this is approx 5 deg per 0.1 unit change 
@@ -51,8 +55,14 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     private LabyrinthHardware labyrinthHardware;
     private LabyrinthBallTracker tracker = null;
     private FilterChain filterChain;
-    // mouse stuff
+    // errors
+    volatile Point2D.Float posError = null;
+    Point2D.Float integralError = new Point2D.Float(0, 0);
+    int lastErrorUpdateTime = 0;
+    // state stuff
     Point desiredPosition = null;
+    // history
+    Trajectory trajectory = new Trajectory();
 
     /** Constructs instance of the new 'filter' CalibratedPanTilt. The only time events are actually used
      * is during calibration. The PanTilt hardware interface is also constructed.
@@ -62,9 +72,11 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         super(chip);
 
         tracker = new LabyrinthBallTracker(chip);
+        tracker.addObserver(this);
         labyrinthHardware = new LabyrinthHardware(chip);
 
         filterChain = new FilterChain(chip);
+
         filterChain.add(labyrinthHardware);
         filterChain.add(tracker);
 
@@ -75,32 +87,47 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         setPropertyTooltip("center", "centers pan and tilt controls");
 
     }
-    volatile Point2D.Float posError = null;
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         out = getEnclosedFilterChain().filterPacket(in);
+        control(in, in.getLastTimestamp());
+
+        return out;
+    }
+
+    private void control(EventPacket in, int timestamp) {
         if (tracker.getBall() != null) {
             Cluster ball = tracker.getBall();
+            Point2D.Float pos = ball.getLocation();
+            trajectory.add(new TrajectoryPoint(ball.getLastEventTimestamp(), pos.x, pos.y));
             Point2D.Float vel = ball.getVelocityPPS();
             if (desiredPosition != null) {
-                posError = new Point2D.Float(desiredPosition.x - ball.location.x, desiredPosition.y - ball.location.y);
-                float xtilt = posError.x * getGainPositionError() - vel.x * getGainDamping();
-                float ytilt = posError.y * getGainPositionError() - vel.y * getGainDamping();
+                posError = new Point2D.Float(desiredPosition.x - pos.x, desiredPosition.y - pos.y);
+                if(lastErrorUpdateTime==0) lastErrorUpdateTime=timestamp; // initialize to avoid giant dt, will be zero on first pass
+                int dt = timestamp - lastErrorUpdateTime;
+                integralError.x += dt * posError.x*1e-6f;
+                integralError.y += dt * posError.y*1e-6f;
+                lastErrorUpdateTime = timestamp;
+                float xtilt = posError.x * proportionalGain - vel.x * derivativeGain + integralError.x * integralGain;
+                float ytilt = posError.y * proportionalGain - vel.y * derivativeGain + integralError.y * integralGain;
                 try {
                     setTilts(xtilt, ytilt);
                 } catch (HardwareInterfaceException ex) {
                     // TODO ignore for now - need to handle hardware errors in any case in servo class better
                 }
             }
-
+        } else {
+            integralError.setLocation(0, 0);
+            lastErrorUpdateTime=0;
         }
-
-        return out;
     }
 
     @Override
     public void resetFilter() {
+        integralError.setLocation(0,0);
+        lastErrorUpdateTime=0;
+        filterChain.reset();
     }
 
     @Override
@@ -121,7 +148,6 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     private float tilt2servo(float tilt) {
         return .5f + tilt;
     }
-    Trajectory trajectory;
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
@@ -150,13 +176,13 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             // draw table tilt values
             gl.glPushMatrix();
             gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
-            gl.glLineWidth(2f);
-            gl.glColor4f(.25f, .25f, 0, .3f);
+            gl.glLineWidth(4f);
+            gl.glColor4f(.25f, 0, 0, .3f);
             gl.glBegin(GL.GL_LINES);
-            float xlen=chip.getMaxSize()*xTilt;
-            float ylen=chip.getMaxSize()*yTilt;
-            gl.glVertex2f(0,0);
-            gl.glVertex2f(xlen,ylen);
+            float xlen = chip.getMaxSize() * xTilt;
+            float ylen = chip.getMaxSize() * yTilt;
+            gl.glVertex2f(0, 0);
+            gl.glVertex2f(xlen, ylen);
             gl.glEnd();
             gl.glPopMatrix();
 
@@ -165,36 +191,65 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        throw new UnsupportedOperationException("not implemented yet");
     }
 
     /**
-     * @return the gainPositionError
+     * @return the proportionalGain
      */
-    public float getGainPositionError() {
-        return gainPositionError;
+    public float getProportionalGain() {
+        return proportionalGain;
     }
 
     /**
-     * @param gainPositionError the gainPositionError to set
+     * @param proportionalGain the proportionalGain to set
      */
-    public void setGainPositionError(float gainPositionError) {
-        this.gainPositionError = gainPositionError;
-        putFloat("gainPositionError",gainPositionError);
+    public void setProportionalGain(float proportionalGain) {
+        this.proportionalGain = proportionalGain;
+        putFloat("proportionalGain", proportionalGain);
     }
 
     /**
-     * @return the gainDamping
+     * @return the derivativeGain
      */
-    public float getGainDamping() {
-        return gainDamping;
+    public float getDerivativeGain() {
+        return derivativeGain;
     }
 
     /**
-     * @param gainDamping the gainDamping to set
+     * @param derivativeGain the derivativeGain to set
      */
-    public void setGainDamping(float gainDamping) {
-        this.gainDamping = gainDamping;
-        putFloat("gainDamping",gainDamping);
+    public void setDerivativeGain(float derivativeGain) {
+        this.derivativeGain = derivativeGain;
+        putFloat("derivativeGain", derivativeGain);
+    }
+
+    /**
+     * @return the integralGain
+     */
+    public float getIntegralGain() {
+        return integralGain;
+    }
+
+    /**
+     * @param integralGain the integralGain to set
+     */
+    public void setIntegralGain(float integralGain) {
+        this.integralGain = integralGain;
+        putFloat("integralGain", integralGain);
+    }
+
+    /** Handles control for updates from the tracker.
+     * 
+     * @param o the calling filter
+     * @param arg the UpdateMessage (or other message).
+     */
+    @Override
+    public void update(Observable o, Object arg) {
+        if (arg instanceof UpdateMessage) {
+            UpdateMessage m = (UpdateMessage) arg;
+            control(m.packet, m.timestamp);
+        }
     }
 
     public enum Message {
@@ -218,9 +273,14 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         mouseEvent(e);
     }
 
-    class Trajectory extends ArrayList<TrajectoryPoint> {
+    class Trajectory extends LinkedList<TrajectoryPoint> {
+
+        final int MAX_POINTS = 1000;
 
         void add(long millis, float pan, float tilt) {
+            if (size() > MAX_POINTS) {
+                removeFirst();
+            }
             add(new TrajectoryPoint(millis, pan, tilt));
         }
     }
@@ -238,12 +298,10 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     }
 
     public void doCenter() {
-        if (labyrinthHardware != null && labyrinthHardware.getServoInterface() != null) {
-            try {
-                labyrinthHardware.setPanTiltValues(0.5f, 0.5f);
-            } catch (HardwareInterfaceException ex) {
-                log.warning(ex.toString());
-            }
+        try {
+            setTilts(0, 0);
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
         }
     }
 
@@ -260,13 +318,5 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
     public LabyrinthHardware getPanTiltHardware() {
         return labyrinthHardware;
-    }
-
-    public void setPanTiltHardware(LabyrinthHardware panTilt) {
-        this.labyrinthHardware = panTilt;
-    }
-
-    public float[] getPanTiltValues() {
-        return getPanTiltHardware().getPanTiltValues();
     }
 }

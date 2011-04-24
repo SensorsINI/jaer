@@ -8,6 +8,8 @@ package ch.unizh.ini.jaer.projects.labyrinth;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Observable;
+import java.util.Observer;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLCanvas;
@@ -26,7 +28,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  *
  * @author tobi
  */
-public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotater{
+public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotater, Observer{
 
     public static String getDescription(){ return "Ball tracker for labyrinth game";}
 
@@ -46,6 +48,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         filterChain=new FilterChain(chip);
         filterChain.add(new BackgroundActivityFilter(chip));
         filterChain.add((tracker=new RectangularClusterTracker(chip)));
+        tracker.addObserver(this);
         setEnclosedFilterChain(filterChain);
         String s=" Labyrinth Tracker";
         setPropertyTooltip(s, "startingLocation", "pixel location of starting location for tracker cluster");
@@ -58,7 +61,8 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         out=getEnclosedFilterChain().filterPacket(in);
         if(tracker.getNumClusters()>0){
-           ball=tracker.getClusters().get(0); // assumes we've set up tracker properly to get one cluster
+            Cluster c=tracker.getClusters().get(0);
+            if(c.isVisible()) ball=c;
         }else{
             ball=null;
         }
@@ -120,6 +124,14 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         this.startingLocation = startingLocation;
         putFloat("startingX",startingLocation.x);
         putFloat("startingY",startingLocation.y);
+    }
+
+    @Override
+    public void update(Observable o, Object arg) {
+        if(arg instanceof UpdateMessage){
+            UpdateMessage m=(UpdateMessage)arg;
+            callUpdateObservers(m.packet, m.timestamp); // pass on updates from tracker
+        }
     }
 
 }
