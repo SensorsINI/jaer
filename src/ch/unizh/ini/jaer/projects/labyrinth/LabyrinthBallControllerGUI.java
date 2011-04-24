@@ -27,6 +27,10 @@ import java.util.logging.Logger;
 public class LabyrinthBallControllerGUI extends javax.swing.JFrame implements ExceptionListener {
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
+    
+    // property change messages
+    public final String POSITION="position";
+    
     Logger log = Logger.getLogger("LabyrinthBallController");
     private PanTilt panTilt;
     private int w = 200, h = 200, x0 = 0, y0 = 0;
@@ -231,7 +235,7 @@ public class LabyrinthBallControllerGUI extends javax.swing.JFrame implements Ex
             .addGap(0, 327, Short.MAX_VALUE)
         );
 
-        jLabel5.setText("<html>Drag or click  mouse to aim pan tilt.<br>Use <b>r</b> to toggle recording a trajectory.</html>");
+        jLabel5.setText("<html>Drag or click  mouse to define desired ball position.<br>Use <b>r</b> to toggle recording a trajectory.</html>");
 
         recordCB.setText("Record trajectory");
         recordCB.addActionListener(new java.awt.event.ActionListener() {
@@ -363,13 +367,9 @@ public class LabyrinthBallControllerGUI extends javax.swing.JFrame implements Ex
     }//GEN-LAST:event_calibrationPanelMouseDragged
 
     private void calibrationPanelMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_calibrationPanelMousePressed
-        float pan = getPan(evt);
-        float tilt = getTilt(evt);
         lastMousePressLocation = evt.getPoint();
-        setPanTilt(pan, tilt);
-        if (panTilt.isJitterEnabled()) {
-            panTilt.stopJitter();
-        }
+        support.firePropertyChange(POSITION, lastMousePressLocation, evt.getPoint());
+        lastMousePressLocation=evt.getPoint();
     }//GEN-LAST:event_calibrationPanelMousePressed
 
     private void calibrationPanelKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_calibrationPanelKeyPressed

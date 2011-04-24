@@ -133,7 +133,7 @@
     </Container>
     <Component class="javax.swing.JLabel" name="jLabel5">
       <Properties>
-        <Property name="text" type="java.lang.String" value="&lt;html&gt;Drag or click  mouse to aim pan tilt.&lt;br&gt;Use &lt;b&gt;r&lt;/b&gt; to toggle recording a trajectory.&lt;/html&gt;"/>
+        <Property name="text" type="java.lang.String" value="&lt;html&gt;Drag or click  mouse to define desired ball position.&lt;br&gt;Use &lt;b&gt;r&lt;/b&gt; to toggle recording a trajectory.&lt;/html&gt;"/>
       </Properties>
     </Component>
     <Component class="javax.swing.JCheckBox" name="recordCB">
