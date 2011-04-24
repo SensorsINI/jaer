@@ -27,6 +27,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
@@ -48,12 +49,12 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     private float integralGain = getFloat("integralGain", 1);
     // constants
     private final float angleRadPerServoUnit = (float) (5 * Math.PI / 180 / 0.1); // angle in radians produced by each unit of servo control change
-    private final float servoUnitPerAngleRad = 1/angleRadPerServoUnit; //equiv servo unit
+    private final float servoUnitPerAngleRad = 1 / angleRadPerServoUnit; //equiv servo unit
     // this is approx 5 deg per 0.1 unit change 
     // The ball acceleration will be g (grav constant) * sin(angle) which is approx g*angle with angle in radians =g*angleRadPerServoUnit*(servo-0.5f).
     private final float metersPerPixel = 0.22f / 128;  // pixels of 128 retina per meter, assumes table fills retina vertically
     private final float gravConstantMperS2 = 9.8f; // meters per second^2
-    private final float gravConstantPixPerSec2=gravConstantMperS2*metersPerPixel; // g in pixel units
+    private final float gravConstantPixPerSec2 = gravConstantMperS2 / metersPerPixel; // g in pixel units
     // fields
     private LabyrinthHardware labyrinthHardware;
     private LabyrinthBallTracker tracker = null;
@@ -88,9 +89,10 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         String control = "Control";
         setPropertyTooltip("disableServos", "disables servos, e.g. to turn off annoying servo hum");
         setPropertyTooltip("center", "centers pan and tilt controls");
-        setPropertyTooltip("integralGain", "");
-        setPropertyTooltip("proportionalGain", "");
-        setPropertyTooltip("derivativeGain", "");
+        setPropertyTooltip("integralGain", "integral error gain: tilt(rad)=error(pixels)*integralGain(1/(pixels*sec))");
+        setPropertyTooltip("proportionalGain", "proportional error gain: tilt(rad)=error(pixels)*proportionalGain(1/pixels)");
+        setPropertyTooltip("derivativeGain", "-derivative gain: damps overshoot. tilt(rad)=-vel(pix/sec)*derivativeGain(sec/pixel)");
+        computePoles();
     }
 
     @Override
@@ -113,8 +115,8 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                     lastErrorUpdateTime = timestamp; // initialize to avoid giant dt, will be zero on first pass
                 }
                 int dt = timestamp - lastErrorUpdateTime;
-                integralError.x += dt * posError.x * 1e-6f*AEConstants.TICK_DEFAULT_US;
-                integralError.y += dt * posError.y * 1e-6f*AEConstants.TICK_DEFAULT_US;
+                integralError.x += dt * posError.x * 1e-6f * AEConstants.TICK_DEFAULT_US;
+                integralError.y += dt * posError.y * 1e-6f * AEConstants.TICK_DEFAULT_US;
                 lastErrorUpdateTime = timestamp;
                 float xtilt = posError.x * proportionalGain - vel.x * derivativeGain + integralError.x * integralGain;
                 float ytilt = posError.y * proportionalGain - vel.y * derivativeGain + integralError.y * integralGain;
@@ -153,17 +155,17 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     }
 
     private float tilt2servo(float tiltRad) {
-        return .5f + tiltRad*servoUnitPerAngleRad;
+        return .5f + tiltRad * servoUnitPerAngleRad;
     }
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        
+
         super.annotate(drawable);
         GL gl = drawable.getGL();
         if (getDesiredPosition() != null) {
             // draw desired position disk
-            gl.glColor4f(.25f, .25f, 0, .3f);
+            gl.glColor4f(0, .25f, 0, .3f);
             gl.glPushMatrix();
             gl.glTranslatef(getDesiredPosition().x, getDesiredPosition().y, 0);
             if (quad == null) {
@@ -187,12 +189,17 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             gl.glLineWidth(4f);
             gl.glColor4f(.25f, 0, 0, .3f);
             gl.glBegin(GL.GL_LINES);
-            float xlen = (float)(chip.getMaxSize() * xTilt/Math.PI);
-            float ylen = (float)(chip.getMaxSize() * yTilt/Math.PI); // length of tilt vector in units of 1 radian
+            float xlen = (float) (chip.getMaxSize() * xTilt / Math.PI);
+            float ylen = (float) (chip.getMaxSize() * yTilt / Math.PI); // length of tilt vector in units of 1 radian
             gl.glVertex2f(0, 0);
             gl.glVertex2f(xlen, ylen);
             gl.glEnd();
             gl.glPopMatrix();
+
+            // print some numbers
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(10);
+            String s = String.format("tau=%.1fms\nQ=%.2f",tau*1000,Q);
+            MultilineAnnotationTextRenderer.renderMultilineString(s);
 
         }
     }
@@ -215,6 +222,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     public void setProportionalGain(float proportionalGain) {
         this.proportionalGain = proportionalGain;
         putFloat("proportionalGain", proportionalGain);
+        computePoles();
     }
 
     /**
@@ -230,6 +238,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     public void setDerivativeGain(float derivativeGain) {
         this.derivativeGain = derivativeGain;
         putFloat("derivativeGain", derivativeGain);
+        computePoles();
     }
 
     /**
@@ -245,6 +254,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     public void setIntegralGain(float integralGain) {
         this.integralGain = integralGain;
         putFloat("integralGain", integralGain);
+        computePoles();
     }
 
     /** Handles control for updates from the tracker.
@@ -272,8 +282,16 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
      */
     public void setDesiredPosition(Point desiredPosition) {
         this.desiredPosition = desiredPosition;
-        integralError.setLocation(0,0);
-        lastErrorUpdateTime=0;
+        integralError.setLocation(0, 0);
+        lastErrorUpdateTime = 0;
+    }
+    private float tau, Q;
+
+    private void computePoles() {
+        // compute the pole locations and resulting tau and Q given PID parameters
+        // TODO doesn't include integral term yet
+        tau = (float) Math.sqrt(1 / (gravConstantPixPerSec2 * proportionalGain));
+        Q = tau * proportionalGain / derivativeGain;
     }
 
     public enum Message {
@@ -290,6 +308,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     @Override
     public void mouseClicked(MouseEvent e) {
         mouseEvent(e);
+        log.info("desired position=" + desiredPosition);
     }
 
     @Override
