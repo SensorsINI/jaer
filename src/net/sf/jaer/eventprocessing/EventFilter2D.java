@@ -142,15 +142,14 @@ abstract public class EventFilter2D extends EventFilter {
         return false;
     }
 
-    /** Observers are called with the update timestamp.
-     * @param timestamp
-     * @return true if Observers were notified.
+    /** Observers are called with the update message as the argument of the update; the observable is the EventFilter that calls the update.
+     * @param packet the event packet concerned with this update.
+     * @param timestamp the time of the update in timestamp ticks (typically us).
      */
-    public boolean callUpdateObservers(EventPacket packet, int timestamp) {
+    public void callUpdateObservers(EventPacket packet, int timestamp) {
         updateTimeInitialized = false;
         setChanged();
         notifyObservers(new UpdateMessage(this, packet, timestamp));
-        return true;
     }
 
     /** Supplied as object for update. 
