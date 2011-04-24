@@ -20,6 +20,7 @@ import java.util.logging.Logger;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
+import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -47,10 +48,12 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     private float integralGain = getFloat("integralGain", 1);
     // constants
     private final float angleRadPerServoUnit = (float) (5 * Math.PI / 180 / 0.1); // angle in radians produced by each unit of servo control change
+    private final float servoUnitPerAngleRad = 1/angleRadPerServoUnit; //equiv servo unit
     // this is approx 5 deg per 0.1 unit change 
     // The ball acceleration will be g (grav constant) * sin(angle) which is approx g*angle with angle in radians =g*angleRadPerServoUnit*(servo-0.5f).
-    private final float metersPerPixel = 0.22f / 128;  // pixels of 128 retina per meter
-    private final float gravConstant = 9.8f; // meters per second^2
+    private final float metersPerPixel = 0.22f / 128;  // pixels of 128 retina per meter, assumes table fills retina vertically
+    private final float gravConstantMperS2 = 9.8f; // meters per second^2
+    private final float gravConstantPixPerSec2=gravConstantMperS2*metersPerPixel; // g in pixel units
     // fields
     private LabyrinthHardware labyrinthHardware;
     private LabyrinthBallTracker tracker = null;
@@ -60,7 +63,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     Point2D.Float integralError = new Point2D.Float(0, 0);
     int lastErrorUpdateTime = 0;
     // state stuff
-    Point desiredPosition = null;
+    private Point desiredPosition = null;
     // history
     Trajectory trajectory = new Trajectory();
 
@@ -85,7 +88,9 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         String control = "Control";
         setPropertyTooltip("disableServos", "disables servos, e.g. to turn off annoying servo hum");
         setPropertyTooltip("center", "centers pan and tilt controls");
-
+        setPropertyTooltip("integralGain", "");
+        setPropertyTooltip("proportionalGain", "");
+        setPropertyTooltip("derivativeGain", "");
     }
 
     @Override
@@ -102,12 +107,14 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             Point2D.Float pos = ball.getLocation();
             trajectory.add(new TrajectoryPoint(ball.getLastEventTimestamp(), pos.x, pos.y));
             Point2D.Float vel = ball.getVelocityPPS();
-            if (desiredPosition != null) {
-                posError = new Point2D.Float(desiredPosition.x - pos.x, desiredPosition.y - pos.y);
-                if(lastErrorUpdateTime==0) lastErrorUpdateTime=timestamp; // initialize to avoid giant dt, will be zero on first pass
+            if (getDesiredPosition() != null) {
+                posError = new Point2D.Float(getDesiredPosition().x - pos.x, getDesiredPosition().y - pos.y);
+                if (lastErrorUpdateTime == 0) {
+                    lastErrorUpdateTime = timestamp; // initialize to avoid giant dt, will be zero on first pass
+                }
                 int dt = timestamp - lastErrorUpdateTime;
-                integralError.x += dt * posError.x*1e-6f;
-                integralError.y += dt * posError.y*1e-6f;
+                integralError.x += dt * posError.x * 1e-6f*AEConstants.TICK_DEFAULT_US;
+                integralError.y += dt * posError.y * 1e-6f*AEConstants.TICK_DEFAULT_US;
                 lastErrorUpdateTime = timestamp;
                 float xtilt = posError.x * proportionalGain - vel.x * derivativeGain + integralError.x * integralGain;
                 float ytilt = posError.y * proportionalGain - vel.y * derivativeGain + integralError.y * integralGain;
@@ -119,14 +126,14 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             }
         } else {
             integralError.setLocation(0, 0);
-            lastErrorUpdateTime=0;
+            lastErrorUpdateTime = 0;
         }
     }
 
     @Override
     public void resetFilter() {
-        integralError.setLocation(0,0);
-        lastErrorUpdateTime=0;
+        integralError.setLocation(0, 0);
+        lastErrorUpdateTime = 0;
         filterChain.reset();
     }
 
@@ -136,28 +143,29 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     }
 
     /** Sets the pan and tilt servo values
-    @param xTilt 0 to 1 value
-    @param tilt 0 to 1 value
+    @param xtiltRad in radians, positive to tilt to right towards positive x
+    @param ytiltRad in radians, positive to tilt up towards positive y
      */
-    public void setTilts(float xtilt, float ytilt) throws HardwareInterfaceException {
-        xTilt = xtilt;
-        yTilt = ytilt;
-        getPanTiltHardware().setPanTiltValues(tilt2servo(xtilt), tilt2servo(ytilt));
+    public void setTilts(float xtiltRad, float ytiltRad) throws HardwareInterfaceException {
+        xTilt = xtiltRad;
+        yTilt = ytiltRad;
+        getPanTiltHardware().setPanTiltValues(tilt2servo(xtiltRad), tilt2servo(yTilt));
     }
 
-    private float tilt2servo(float tilt) {
-        return .5f + tilt;
+    private float tilt2servo(float tiltRad) {
+        return .5f + tiltRad*servoUnitPerAngleRad;
     }
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
+        
         super.annotate(drawable);
         GL gl = drawable.getGL();
-        if (desiredPosition != null) {
+        if (getDesiredPosition() != null) {
             // draw desired position disk
             gl.glColor4f(.25f, .25f, 0, .3f);
             gl.glPushMatrix();
-            gl.glTranslatef(desiredPosition.x, desiredPosition.y, 0);
+            gl.glTranslatef(getDesiredPosition().x, getDesiredPosition().y, 0);
             if (quad == null) {
                 quad = glu.gluNewQuadric();
             }
@@ -170,7 +178,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 gl.glColor4f(.25f, .25f, 0, .3f);
                 gl.glBegin(GL.GL_LINES);
                 gl.glVertex2f(tracker.getBall().getLocation().x, tracker.getBall().getLocation().y);
-                gl.glVertex2f(desiredPosition.x, desiredPosition.y);
+                gl.glVertex2f(getDesiredPosition().x, getDesiredPosition().y);
                 gl.glEnd();
             }
             // draw table tilt values
@@ -179,8 +187,8 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             gl.glLineWidth(4f);
             gl.glColor4f(.25f, 0, 0, .3f);
             gl.glBegin(GL.GL_LINES);
-            float xlen = chip.getMaxSize() * xTilt;
-            float ylen = chip.getMaxSize() * yTilt;
+            float xlen = (float)(chip.getMaxSize() * xTilt/Math.PI);
+            float ylen = (float)(chip.getMaxSize() * yTilt/Math.PI); // length of tilt vector in units of 1 radian
             gl.glVertex2f(0, 0);
             gl.glVertex2f(xlen, ylen);
             gl.glEnd();
@@ -252,6 +260,22 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         }
     }
 
+    /**
+     * @return the desiredPosition
+     */
+    public Point getDesiredPosition() {
+        return desiredPosition;
+    }
+
+    /**
+     * @param desiredPosition the desiredPosition to set
+     */
+    public void setDesiredPosition(Point desiredPosition) {
+        this.desiredPosition = desiredPosition;
+        integralError.setLocation(0,0);
+        lastErrorUpdateTime=0;
+    }
+
     public enum Message {
 
         AbortRecording,
@@ -260,7 +284,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     }
 
     private void mouseEvent(MouseEvent e) {
-        desiredPosition = getMousePixel(e);
+        setDesiredPosition(getMousePixel(e));
     }
 
     @Override
