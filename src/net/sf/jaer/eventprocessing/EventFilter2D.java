@@ -153,12 +153,20 @@ abstract public class EventFilter2D extends EventFilter {
         return true;
     }
 
-    /** Supplied as object for update. */
+    /** Supplied as object for update. 
+     @see #maybeCallUpdateObservers
+     */
     public class UpdateMessage{
         public EventPacket packet;
         public int timestamp;
         EventFilter2D source;
 
+        /** When a filter calls for an update of listeners it supplies this object.
+         * 
+         * @param source - the source of the update
+         * @param packet - the EventPacket
+         * @param timestamp - the timestamp in us (typically) of the update 
+         */
         public UpdateMessage(EventFilter2D source, EventPacket packet, int timestamp ) {
             this.packet = packet;
             this.timestamp = timestamp;
