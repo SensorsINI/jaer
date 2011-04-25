@@ -12,8 +12,8 @@ import java.util.logging.Logger;
 import javax.media.opengl.GLException;
 
 /**
- * Holds static methods for text rendering in the annotation of an EventFilter chip output display.
- * Assumes pixel-based coordinates of gl context.
+ * Useful static methods for text rendering in the annotation of an EventFilter chip output display.
+ * Assumes pixel-based coordinates of GL context.
  *
  * @author tobi
  */
@@ -26,12 +26,32 @@ public class MultilineAnnotationTextRenderer {
     private static final float scale = .15f;
     private static final Logger log=Logger.getLogger("MultilineAnnotationTextRenderer");
 
-    /** Call to reset to origin */
+    /** Call to reset to origin. 
+     * 
+     * @param yOrigin in pixels from bottom of GLCanvas.
+     */
     public static void resetToYPositionPixels(float yOrigin){
         yshift=yOrigin;
     }
 
-    /** Renders the string with newlines ('\n') starting at last position.
+    /** Renders the string starting at last position.
+     * Embedded newlines start a new line of text which is intended slightly.
+     * Therefore multiple calls to renderMultilineString will create groups of text lines, with each
+     * group starting with a leading line followed by indented lines.
+     * E.g.
+     * 
+     * <pre>
+     *      MultilineAnnotationTextRenderer.resetToYPositionPixels(10);
+            String s = String.format("Controller dynamics:\ntau=%.1fms\nQ=%.2f",tau*1000,Q);
+            MultilineAnnotationTextRenderer.renderMultilineString(s);
+     * </pre>
+     * might render
+     * <pre>
+     * Filter parameters
+     *   tau=34ms
+     *   Q=16
+     * </pre>
+     * 
      *
      * @param s the string to render.
      */
