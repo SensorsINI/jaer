@@ -7,7 +7,6 @@ package ch.unizh.ini.jaer.projects.labyrinth;
 import com.kitfox.svg.*;
 import com.kitfox.svg.SVGUniverse;
 import com.sun.opengl.util.GLUT;
-import java.awt.Rectangle;
 import java.awt.Shape;
 import java.awt.geom.*;
 import java.io.*;
@@ -15,7 +14,6 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Vector;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
@@ -75,6 +73,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater {
         fc.setCurrentDirectory(getLastFilePrefs());  // defaults to startup runtime folder
         fc.setFileFilter(new FileFilter() {
 
+            @Override
             public boolean accept(File f) {
                 return f.isDirectory()
                         || f.getName().toLowerCase().endsWith(".svg");
@@ -91,6 +90,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater {
 
         SwingUtilities.invokeLater(new Runnable() {
 
+            @Override
             public void run() {
                 fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
                 fc.setSelectedFile(new File(getString("lastFile", System.getProperty("user.dir"))));
@@ -188,7 +188,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater {
             }
         }
     }
-
+ 
     private File getLastFilePrefs() {
         return new File(getString("lastFile", System.getProperty("user.dir")));
     }
