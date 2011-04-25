@@ -1192,6 +1192,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
         public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT = 10;
         private int numNonMonotonicTimeExceptionsPrinted = 0;
+        private int resetTimestampWarningCount=0;
         int cycleCounter = 0;
         volatile boolean timestampsReset = false; // used to tell processData that another thread has reset timestamps
         final int BAD_WRAP_PRINT_INTERVAL = 100; // only print a warning every this many to avoid slowing down critical process
@@ -1211,6 +1212,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
          * are frequent thread context switches that can greatly slow down rendering loops.
          */
         private int fifoSize = prefs.getInt("CypressFX2.AEReader.fifoSize", CYPRESS_FIFO_SIZE); // 512;
+        private final int RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT = 10;
+        private final int RESET_TIMESTAMPS_WARNING_INTERVAL = 100000;
         CypressFX2 monitor = null;
 
         public AEReader(CypressFX2 m) throws HardwareInterfaceException {
@@ -1238,7 +1241,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             return "AEReader for " + CypressFX2.this;
         }
 
-        /** Subclsses must override this method to process the raw data to write to the raw event packet buffers.
+        /** Subclasses must override this method to process the raw data to write to the raw event packet buffers.
         @param buf the raw byte buffers
          */
         protected void translateEvents(UsbIoBuf buf) {
@@ -1256,7 +1259,14 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         /** Resets the timestamp unwrap value, resets the USBIO pipe, and resets the AEPacketRawPool.
          */
         synchronized public void resetTimestamps() {
-            log.info(CypressFX2.this + ": wrapAdd=" + wrapAdd + ", zeroing it");
+            if (resetTimestampWarningCount < RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT || resetTimestampWarningCount % RESET_TIMESTAMPS_WARNING_INTERVAL == 0) {
+                log.info(CypressFX2.this + ": wrapAdd=" + wrapAdd + ", zeroing it");
+            }
+            if (resetTimestampWarningCount == RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT) {
+                log.warning("will only print reset timestamps message every " + RESET_TIMESTAMPS_WARNING_INTERVAL + " times now\nCould it be that you are trying to inject sync events using the DVS128 IN pin?\nIf so, select the  \"Enable sync events output\"  option in the DVS128 menu");
+            }
+            resetTimestampWarningCount++;
+
             wrapAdd = WRAP_START;
             timestampsReset = true; // will inform reader thread that timestamps are reset
         }

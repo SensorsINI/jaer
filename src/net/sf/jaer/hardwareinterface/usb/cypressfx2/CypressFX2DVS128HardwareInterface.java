@@ -32,7 +32,8 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
     private static Preferences prefs=Preferences.userNodeForPackage(CypressFX2DVS128HardwareInterface.class);
     private boolean syncEventEnabled=prefs.getBoolean("CypressFX2DVS128HardwareInterface.syncEventEnabled", false);
 
-    /** SYNC events are detected when this bitmask is detected in the input event stream.
+
+    /** SYNC events are detected when this bit mask is detected in the input event stream.
          @see HasSyncEventOutput
          */
     public static final int SYNC_EVENT_BITMASK = 0x8000;
@@ -96,6 +97,9 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
     public class RetinaAEReader extends CypressFX2.AEReader{
         private int printedSyncEventWarningCount=0; // only print this many sync events
+        private int resetTimestampWarningCount=0;
+    private final int RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT=10;
+    private final int RESET_TIMESTAMPS_WARNING_INTERVAL=100000;
 
 
         /** Constructs a new reader for the interface.
@@ -153,7 +157,13 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                     } else if  ((aeBuffer[i+3]&0x40)==0x40  ) { // timestamp bit 14 is one -> wrapAdd reset
                         // this firmware version uses reset events to reset timestamps
                         this.resetTimestamps();
-                         log.info(this + ".translateEvents got reset event from hardware, timestamp " + (0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8)));
+                        if (resetTimestampWarningCount < RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT || resetTimestampWarningCount % RESET_TIMESTAMPS_WARNING_INTERVAL == 0) {
+                            log.info(this + ".translateEvents got reset event from hardware, timestamp " + (0xffff & ((short) aeBuffer[i] & 0xff | ((short) aeBuffer[i + 1] & 0xff) << 8)));
+                        }
+                        if (resetTimestampWarningCount == RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT) {
+                            log.warning("will only print reset timestamps message every " + RESET_TIMESTAMPS_WARNING_INTERVAL + " times now\nCould it be that you are trying to inject sync events using the DVS128 IN pin?\nIf so, select the \"Enable sync events output\" option in the DVS128 menu");
+                        }
+                        resetTimestampWarningCount++;
                     } else if ((eventCounter>aeBufferSize-1) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
                         buffer.overrunOccuredFlag=true;
                     } else {
