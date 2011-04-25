@@ -164,9 +164,11 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater {
         gl.glColor4f(0,0,.2f,0.3f);
         gl.glLineWidth(1);
         // scale and translate to match bounds of all shapes
-        float s=(float)(chip.getSizeX()/bounds.getWidth());
-        gl.glScalef(s, s,s);
-        gl.glTranslated(-bounds.getMinX(), -bounds.getMinY(), 0);
+        // drawing is e.g. in inches
+        float s=(float)(chip.getSizeX()/bounds.getWidth());  // we'll scale up to pixels, and flip y while we're at it since drawing starts in UL
+        gl.glScalef(s, -s,s);
+        // now we'll translate so that minx in drawing is at left, and top of drawing is at bottom
+        gl.glTranslated(-bounds.getMinX(), -bounds.getMaxY(), 0);
         gl.glBegin(GL.GL_LINES);
         for(Line2D.Float l:lines){
             gl.glVertex2f(l.x1,l.y1);
