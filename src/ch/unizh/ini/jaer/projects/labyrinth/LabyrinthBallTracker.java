@@ -47,6 +47,8 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         super(chip);
         filterChain = new FilterChain(chip);
         filterChain.add(new BackgroundActivityFilter(chip));
+        filterChain.add(new CircularConvolutionFilter(chip));
+//        filterChain.add(new SubSamplingBandpassFilter(chip)); // TODO preferences should save enabled state of filters
         filterChain.add((tracker = new RectangularClusterTracker(chip)));
         tracker.addObserver(this);
         setEnclosedFilterChain(filterChain);
