@@ -35,14 +35,22 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater {
     public static String getDescription() {
         return "Handles SVG maps of Labyrinth game";
     }
-    SVGUniverse svgUniverse = new SVGUniverse();
-    SVGDiagram svgDiagram = null;
-    ArrayList<Ellipse2D.Float> holes = new ArrayList();
-    ArrayList<Line2D.Float> lines = new ArrayList();
-    ArrayList<ArrayList<Point2D.Float>> paths = new ArrayList();
+    // svg stuff
+    ArrayList<Ellipse2D.Float> holesSVG = new ArrayList();
+    ArrayList<Line2D.Float> linesSVG = new ArrayList();
+    ArrayList<ArrayList<Point2D.Float>> pathsSVG = new ArrayList();
+    ArrayList<Point2D.Float> ballPathSVG = null;
+    Rectangle2D.Float outlineSVG = null;
+    Rectangle2D boundsSVG = null;
+    // chip space stuff, in retina coordinates
     ArrayList<Point2D.Float> ballPath = null;
-    Rectangle2D.Float outline = null;
-    Rectangle2D bounds = null;
+    
+    // properties
+    private boolean displayMap = getBoolean("displayMap", true);
+    private float rotationDegCCW = getFloat("rotationDegCCW", 0);
+    private float scale = getFloat("scale", 1);
+    private float transXPixels = getFloat("transXPixels", 0);
+    private float transYPixels = getFloat("transYPixels", 0);
 
     public LabyrinthMap(AEChip chip) {
         super(chip);
@@ -53,6 +61,11 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater {
         } catch (Exception ex) {
             log.warning("couldn't load map information from file " + f + ", caught " + ex + "; you are missing the SVG file describing the Labyrinth maze or it is corrupted");
         }
+        setPropertyTooltip("displayMap", "");  // TODO
+        setPropertyTooltip("rotationDegCCW", "");
+        setPropertyTooltip("scale", "");
+        setPropertyTooltip("transXPixels", "");
+        setPropertyTooltip("transYPixels", "");
     }
 
     @Override
@@ -66,6 +79,12 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater {
 
     @Override
     public void initFilter() {
+    }
+
+    private void computeTransforms() {
+        if(ballPath!=null){
+            
+        }
     }
 
     public void doLoadMap() {
@@ -113,13 +132,15 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater {
 
     private void loadMapFromFile(File file) throws MalformedURLException {
         log.info("loading map file " + file);
+        SVGUniverse svgUniverse = new SVGUniverse();
+        SVGDiagram svgDiagram = null;
         svgUniverse.setVerbose(true);
         URI svgURI = svgUniverse.loadSVG(file.toURI().toURL());
 
         svgDiagram = svgUniverse.getDiagram(svgURI);
         SVGRoot root = svgDiagram.getRoot();
         loadChildren(root.getChildren(null));
-        String s = String.format("map has %d holes, %d lines, %d paths, ball path has %d vertices", holes.size(), lines.size(), paths.size(), ballPath != null ? ballPath.size() : 0);
+        String s = String.format("map has %d holes, %d lines, %d paths, ball path has %d vertices", holesSVG.size(), linesSVG.size(), pathsSVG.size(), ballPathSVG != null ? ballPathSVG.size() : 0);
         log.info(s);
     }
     int longestPath = Integer.MIN_VALUE;
@@ -128,41 +149,41 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater {
         for (Object o : children) {
             if (o instanceof Circle) {
                 Circle c = (Circle) o;
-                holes.add((Ellipse2D.Float) c.getShape());
+                holesSVG.add((Ellipse2D.Float) c.getShape());
             } else if (o instanceof Line) {
                 Line l = (Line) o;
-                lines.add((Line2D.Float) l.getShape());
+                linesSVG.add((Line2D.Float) l.getShape());
             } else if (o instanceof Polyline) {
                 Polyline l = (Polyline) o;
                 Shape s = l.getShape();
                 s.getBounds2D();
-//                lines.add(l.getShape());
+//                linesSVG.add(l.getShape());
             } else if (o instanceof Rect) {
                 Rect r = (Rect) o;
-                outline = (Rectangle2D.Float) r.getShape();
-                bounds = outline.getBounds2D();
+                outlineSVG = (Rectangle2D.Float) r.getShape();
+                boundsSVG = outlineSVG.getBounds2D();
             } else if (o instanceof Path) {
                 // only the actual path of the ball should be a path, it should be a connected path
                 Path r = (Path) o;
                 GeneralPath path = (GeneralPath) r.getShape();
                 PathIterator itr = path.getPathIterator(null, 0.01);
                 ArrayList<Point2D.Float> pathList = new ArrayList();
-                Point2D.Float pathStart=null, lastPoint=null;
-                boolean closed=false;
+                Point2D.Float pathStart = null, lastPoint = null;
+                boolean closed = false;
                 while (!itr.isDone()) {
                     float[] coords = new float[6];
                     int segtype = itr.currentSegment(coords);
                     switch (segtype) {
                         case PathIterator.SEG_MOVETO:
-                            pathStart=new Point2D.Float(coords[0],coords[1]); // save start point
+                            pathStart = new Point2D.Float(coords[0], coords[1]); // save start point
                         case PathIterator.SEG_LINETO:
                         case PathIterator.SEG_QUADTO:
                         case PathIterator.SEG_CUBICTO:
-                            pathList.add((lastPoint=new Point2D.Float(coords[0], coords[1]))); // TODO store quads/cubes as well as lines
+                            pathList.add((lastPoint = new Point2D.Float(coords[0], coords[1]))); // TODO store quads/cubes as well as linesSVG
                             break;
                         case PathIterator.SEG_CLOSE:
-                            closed=true;
-                            if(pathStart!=null){
+                            closed = true;
+                            if (pathStart != null) {
                                 pathList.add(pathStart);
                             }
                             break;
@@ -171,14 +192,14 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater {
                     }
                     itr.next();
                 }
-                if(!closed && lastPoint!=null){
+                if (!closed && lastPoint != null) {
                     pathList.remove(lastPoint);
                 }
                 if (pathList.size() > longestPath) {
-                    ballPath = pathList;
-                    longestPath = ballPath.size();
+                    ballPathSVG = pathList;
+                    longestPath = ballPathSVG.size();
                 }
-                paths.add(pathList);
+                pathsSVG.add(pathList);
             } else if (o instanceof List) {
                 loadChildren((List) o);
             } else if (o instanceof Group) {
@@ -188,7 +209,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater {
             }
         }
     }
- 
+
     private File getLastFilePrefs() {
         return new File(getString("lastFile", System.getProperty("user.dir")));
     }
@@ -215,30 +236,30 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater {
         gl.glPushMatrix();
         gl.glColor4f(0, 0, .2f, 0.3f);
         gl.glLineWidth(1);
-        // scale and translate to match bounds of all shapes
+        // scale and translate to match boundsSVG of all shapes
         // drawing is e.g. in inches
-        float s = (float) (chip.getSizeX() / bounds.getWidth());  // we'll scale up to pixels, and flip y while we're at it since drawing starts in UL
+        float s = (float) (chip.getSizeX() / boundsSVG.getWidth());  // we'll scale up to pixels, and flip y while we're at it since drawing starts in UL
         gl.glScalef(s, -s, s);
         // now we'll translate so that minx in drawing is at left, and top of drawing is at bottom
-        gl.glTranslated(-bounds.getMinX(), -bounds.getMaxY(), 0);
+        gl.glTranslated(-boundsSVG.getMinX(), -boundsSVG.getMaxY(), 0);
         {
-            // draw outline
+            // draw outlineSVG
             gl.glBegin(GL.GL_LINE_LOOP);
-            gl.glVertex2f(outline.x, outline.y);
-            gl.glVertex2f(outline.x + outline.width, outline.y);
-            gl.glVertex2f(outline.x + outline.width, outline.y + outline.height);
-            gl.glVertex2f(outline.x, outline.y + outline.height);
+            gl.glVertex2f(outlineSVG.x, outlineSVG.y);
+            gl.glVertex2f(outlineSVG.x + outlineSVG.width, outlineSVG.y);
+            gl.glVertex2f(outlineSVG.x + outlineSVG.width, outlineSVG.y + outlineSVG.height);
+            gl.glVertex2f(outlineSVG.x, outlineSVG.y + outlineSVG.height);
             gl.glEnd();
 
             // draw maze walls
             gl.glBegin(GL.GL_LINES);
-            for (Line2D.Float l : lines) {
+            for (Line2D.Float l : linesSVG) {
                 gl.glVertex2f(l.x1, l.y1);
                 gl.glVertex2f(l.x2, l.y2);
             }
             gl.glEnd();
-            for (ArrayList<Point2D.Float> p : paths) {
-                if (p == ballPath) {
+            for (ArrayList<Point2D.Float> p : pathsSVG) {
+                if (p == ballPathSVG) {
                     continue;
                 }
                 gl.glBegin(GL.GL_LINE_STRIP);
@@ -248,11 +269,11 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater {
                 gl.glEnd();
             }
         }
-        // draw holes
+        // draw holesSVG
         {
             glu.gluQuadricDrawStyle(holeQuad, GLU.GLU_LINE);
             gl.glColor4f(.1f, .1f, .1f, .3f);
-            for (Ellipse2D.Float e : holes) { // ellipse has UL corner as x,y location (here LL corner)
+            for (Ellipse2D.Float e : holesSVG) { // ellipse has UL corner as x,y location (here LL corner)
                 gl.glPushMatrix();
                 gl.glTranslatef(e.x + e.width / 2, e.y + e.height / 2, 0);
                 glu.gluDisk(holeQuad, 0, e.width / 2, 16, 1);
@@ -262,10 +283,10 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater {
         }
         // draw path
         {
-            if (ballPath != null) {
+            if (ballPathSVG != null) {
                 gl.glColor4f(.1f, .1f, .1f, .3f);
-                 gl.glBegin(GL.GL_LINE_STRIP);
-                for (Point2D.Float l : ballPath) {
+                gl.glBegin(GL.GL_LINE_STRIP);
+                for (Point2D.Float l : ballPathSVG) {
                     gl.glVertex2f(l.x, l.y);
                 }
                 gl.glEnd();
