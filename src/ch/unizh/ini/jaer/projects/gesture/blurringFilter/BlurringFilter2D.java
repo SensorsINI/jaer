@@ -2094,8 +2094,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
 
     /**
-     * returns adaptationParamDelta
-     * @return
+     * @return adaptationParamDelta
      */
     public float getAdaptationParamDelta() {
         return adaptationParamDelta;

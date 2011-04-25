@@ -613,7 +613,7 @@ public class SlotcarTrack implements java.io.Serializable {
 
     /**
      * Returns the position and orientation of the spline at the given position
-     * @param T Spline parameter
+     * @param t Spline parameter
      * @param pos Point in which to store the position
      * @param orient Point in which to store the orientation vector
      * @return 0 if successful, -1 if not.

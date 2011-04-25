@@ -513,7 +513,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         }
         
         public void bufErrorHandler(UsbIoBuf usbIoBuf) {
-            log.warning(UsbIo.errorText(usbIoBuf.Status));
+            log.warning(UsbIo.errorText(usbIoBuf.Status)); // TODO set a flag or close the device to allow reopen try, needs caller to get HardwareInterfaceException
         }
         
         public void onThreadExit() {
@@ -523,7 +523,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
 
     /** Checks if servo is not open and opens it
      * 
-     * @return
+     * @return true if it is there and device is open
      */
     protected boolean checkServoCommandThread(){
         try {

@@ -66,7 +66,7 @@ public class ClassChooserDialog extends javax.swing.JDialog {
 
     /** Returns the panel used to show options for filtering the shown classes. Any components can be added to this panel.
      *
-     * @return
+     * @return the panel
      */
     public JPanel getFilterTypeOptionsPanel() {
         return chooserPanel.getFilterTypeOptionsPanel();

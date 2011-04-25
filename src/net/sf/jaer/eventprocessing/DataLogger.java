@@ -312,7 +312,7 @@ public class DataLogger extends EventFilter2D {
     }
 
     /**
-     * @param lastFolderName the lastFolderName to set
+     * @param loggingFolder the lastFolderName to set
      */
     public void setLoggingFolder(String loggingFolder) {
         String old = loggingFolder;

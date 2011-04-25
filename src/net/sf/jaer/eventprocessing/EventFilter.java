@@ -682,6 +682,7 @@ public abstract class EventFilter extends Observable {
      *
      * @param key the property name, e.g. "tauMs"
      * @param value the value to be stored
+     * @return long value
      */
     public long getLong(String key, long def) {
         return prefs.getLong(prefsKeyHeader() + key, def);
@@ -691,7 +692,7 @@ public abstract class EventFilter extends Observable {
      *
      * @param key the property name, e.g. "tauMs".
      * @param def the default value if there is no preference already stored.
-     * @return
+     * @return int value
      */
     public int getInt(String key, int def) {
         return prefs.getInt(prefsKeyHeader() + key, def);
@@ -711,7 +712,7 @@ public abstract class EventFilter extends Observable {
      *
      * @param key the property name, e.g. "tauMs".
      * @param def the default value if there is no preference already stored.
-     * @return
+     * @return double value
      */
     public double getDouble(String key, double def) {
         return prefs.getDouble(prefsKeyHeader() + key, def);
@@ -721,7 +722,7 @@ public abstract class EventFilter extends Observable {
      *
      * @param key the property name, e.g. "tauMs".
      * @param def the default value if there is no preference already stored.
-     * @return
+     * @return byte[] in preferences
      */
     public byte[] getByteArray(String key, byte[] def) {
         return prefs.getByteArray(prefsKeyHeader() + key, def);
@@ -731,7 +732,7 @@ public abstract class EventFilter extends Observable {
      *
      * @param key the property name, e.g. "tauMs".
      * @param def the default value if there is no preference already stored.
-     * @return
+     * @return boolean value
      */
     public boolean getBoolean(String key, boolean def) {
         return prefs.getBoolean(prefsKeyHeader() + key, def);
@@ -741,7 +742,7 @@ public abstract class EventFilter extends Observable {
      *
      * @param key the property name, e.g. "tauMs".
      * @param def the default value if there is no preference already stored.
-     * @return
+     * @return string value
      */
     public String getString(String key, String def) {
         return prefs.get(prefsKeyHeader() + key, def);

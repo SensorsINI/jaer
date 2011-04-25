@@ -55,7 +55,7 @@ public class SlotcarSoundEffects implements SoundPlayerInterface {
 
     /** Creates new SlotcarSoundEffects labeled number i, using sampled sound stored as preference for this number.
      *
-     * @param i an index, used to look up the preferred sound file.
+     * @param soundNumber an index, used to look up the preferred sound file.
      * @throws IOException
      * @throws LineUnavailableException
      * @throws UnsupportedAudioFileException

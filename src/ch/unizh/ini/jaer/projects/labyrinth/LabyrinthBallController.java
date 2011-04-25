@@ -48,11 +48,11 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     private float derivativeGain = getFloat("derivativeGain", 1);
     private float integralGain = getFloat("integralGain", 1);
     // constants
-    private final float angleRadPerServoUnit = (float) (5 * Math.PI / 180 / 0.1); // angle in radians produced by each unit of servo control change
-    private final float servoUnitPerAngleRad = 1 / angleRadPerServoUnit; //equiv servo unit
+    private final float angleRadPerServoUnit = (float) (5 * Math.PI / 180 / 0.1); // TODO estimated angle in radians produced by each unit of servo control change
+    private final float servoUnitPerAngleRad = 1 / angleRadPerServoUnit; //  equiv servo unit
     // this is approx 5 deg per 0.1 unit change 
     // The ball acceleration will be g (grav constant) * sin(angle) which is approx g*angle with angle in radians =g*angleRadPerServoUnit*(servo-0.5f).
-    private final float metersPerPixel = 0.22f / 128;  // pixels of 128 retina per meter, assumes table fills retina vertically
+    private final float metersPerPixel = 0.22f / 128;  // TODO estimated pixels of 128 retina per meter, assumes table fills retina vertically
     private final float gravConstantMperS2 = 9.8f; // meters per second^2
     private final float gravConstantPixPerSec2 = gravConstantMperS2 / metersPerPixel; // g in pixel units
     // fields
@@ -196,9 +196,10 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             gl.glEnd();
             gl.glPopMatrix();
 
-            // print some numbers
-            MultilineAnnotationTextRenderer.resetToYPositionPixels(10);
-            String s = String.format("tau=%.1fms\nQ=%.2f",tau*1000,Q);
+            // print some stuff
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY());
+            MultilineAnnotationTextRenderer.renderMultilineString("Click/drag to set desired position\nCtl-click to hint ball location");
+            String s = String.format("Controller dynamics:\ntau=%.1fms\nQ=%.2f", tau * 1000, Q);
             MultilineAnnotationTextRenderer.renderMultilineString(s);
 
         }
@@ -294,6 +295,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         Q = tau * proportionalGain / derivativeGain;
     }
 
+ 
     public enum Message {
 
         AbortRecording,
@@ -301,19 +303,30 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         SetRecordingEnabled
     }
 
-    private void mouseEvent(MouseEvent e) {
-        setDesiredPosition(getMousePixel(e));
+    private void setBallLocationFromMouseEvent(MouseEvent e) {
+        Point p=getMousePixel(e);
+        Point2D.Float pf=new Point2D.Float(p.x,p.y);
+        tracker.setBallLocation(pf);
     }
 
-    @Override
-    public void mouseClicked(MouseEvent e) {
-        mouseEvent(e);
+    
+    private void setDesiredPositionFromMouseEvent(MouseEvent e) {
+        setDesiredPosition(getMousePixel(e));
         log.info("desired position=" + desiredPosition);
     }
 
     @Override
+    public void mouseClicked(MouseEvent e) {
+        if (e.isControlDown()) {
+            setBallLocationFromMouseEvent(e);
+        } else {
+            setDesiredPositionFromMouseEvent(e);
+        }
+    }
+
+    @Override
     public void mouseDragged(MouseEvent e) {
-        mouseEvent(e);
+        setDesiredPositionFromMouseEvent(e);
     }
 
     class Trajectory extends LinkedList<TrajectoryPoint> {

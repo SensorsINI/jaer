@@ -117,7 +117,6 @@ setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for a
  * @author  tobi
  * @see net.sf.jaer.eventprocessing.Class#setPropertyTooltip(java.lang.String, java.lang.String)
  *@see net.sf.jaer.eventprocessing.Class#setPropertyTooltip(java.lang.String, java.lang.String, java.lang.String)
- * @see net.sf.jaer.eventprocessing.Class
  */
 public class ParameterControlPanel extends javax.swing.JPanel implements PropertyChangeListener {
 
