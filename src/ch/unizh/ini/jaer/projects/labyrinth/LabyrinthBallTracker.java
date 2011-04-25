@@ -33,9 +33,13 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     public static String getDescription() {
         return "Ball tracker for labyrinth game";
     }
+    // filters and filter chain
     FilterChain filterChain;
     private RectangularClusterTracker.Cluster ball = null;
     RectangularClusterTracker tracker;
+    LabyrinthMap map;
+    
+    // starting ball location on reset
     private Point2D.Float startingLocation = new Point2D.Float(getFloat("startingX", 50), getFloat("startingY", 100));
     // private fields, not properties
     BasicEvent startingEvent = new BasicEvent();
@@ -46,6 +50,8 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     public LabyrinthBallTracker(AEChip chip) {
         super(chip);
         filterChain = new FilterChain(chip);
+        map=new LabyrinthMap(chip);
+        filterChain.add(map);
         filterChain.add(new BackgroundActivityFilter(chip));
         filterChain.add(new CircularConvolutionFilter(chip));
 //        filterChain.add(new SubSamplingBandpassFilter(chip)); // TODO preferences should save enabled state of filters

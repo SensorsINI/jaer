@@ -58,6 +58,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     // fields
     private LabyrinthHardware labyrinthHardware;
     private LabyrinthBallTracker tracker = null;
+    // filter chain
     private FilterChain filterChain;
     // errors
     volatile Point2D.Float posError = null;
