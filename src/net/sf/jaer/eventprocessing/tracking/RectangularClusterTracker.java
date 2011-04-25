@@ -105,11 +105,15 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     private final float averageVelocityMixingFactor = 0.001f; // average velocities of all clusters mixed with this factor to produce this "prior" on initial cluster velocityPPT
     private boolean showClusterMass = getBoolean("showClusterMass", false);
     private boolean filterEventsEnabled = getBoolean("filterEventsEnabled", false); // enables filtering events so that output events only belong to clustera and point to the clusters.
-    protected float velocityTauMs = getFloat("velocityTauMs", 10);
+    protected float velocityTauMs = getFloat("velocityTauMs", 100);
+    protected float frictionTauMs = getFloat("frictionTauMs", Float.NaN);
     private int maxNumClusters = getInt("maxNumClusters", 10);
     private boolean surroundInhibitionEnabled = getBoolean("surroundInhibitionEnabled", false);
     private boolean dontMergeEver = getBoolean("dontMergeEver", false);
     private boolean angleFollowsVelocity = getBoolean("angleFollowsVelocity", false);
+    private boolean showPaths=getBoolean("showPaths",true);
+
+
 
     public enum ClusterLoggingMethod {
 
@@ -135,11 +139,12 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         setPropertyTooltip(movement, "mixingFactor", "how much cluster is moved towards an event, as a fraction of the distance from the cluster to the event");
         setPropertyTooltip(movement, "velocityPoints", "the number of recent path points (one per packet of events) to use for velocity vector regression");
         setPropertyTooltip(movement, "velocityTauMs", "lowpass filter time constant in ms for velocity updates; effectively limits acceleration");
+        setPropertyTooltip(movement, "frictionTauMs", "velocities decay towards zero with this time constant to mimic friction; set to NaN to disable friction");
         setPropertyTooltip(sizing, "surround", "the radius is expanded by this ratio to define events that pull radius of cluster");
         setPropertyTooltip(sizing, "dynamicSizeEnabled", "size varies dynamically depending on cluster events");
         setPropertyTooltip(sizing, "dynamicAspectRatioEnabled", "aspect ratio of cluster depends on events");
         setPropertyTooltip(sizing, "dynamicAngleEnabled", "angle of cluster depends on events, otherwise angle is zero");
-        setPropertyTooltip(disp, "pathsEnabled", "draw paths of clusters over some window");
+        setPropertyTooltip(movement, "pathsEnabled", "draw paths of clusters over some window");
         setPropertyTooltip(disp, "pathLength", "paths are at most this many packets long");
         setPropertyTooltip(disp, "colorClustersDifferentlyEnabled", "each cluster gets assigned a random color, otherwise color indicates ages");
         setPropertyTooltip(update, "useOnePolarityOnlyEnabled", "use only one event polarity");
@@ -149,6 +154,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         setPropertyTooltip(sizing, "clusterSize", "size (starting) in fraction of chip max size");
         setPropertyTooltip(update, "growMergedSizeEnabled", "enabling makes merged clusters take on sum of sizes, otherwise they take on size of older cluster");
         setPropertyTooltip(movement, "useVelocity", "uses measured cluster velocity to predict future position; vectors are scaled " + String.format("%.1f pix/pix/s", VELOCITY_VECTOR_SCALING / AEConstants.TICK_DEFAULT_US * 1e-6));
+        setPropertyTooltip(disp, "showPaths", "shows the stored path points of each cluster");
         setPropertyTooltip(disp, "classifierEnabled", "colors clusters based on single size metric");
         setPropertyTooltip(disp, "classifierThreshold", "the boundary for cluster size classification in fractions of chip max dimension");
         setPropertyTooltip(disp, "showAllClusters", "shows all clusters, not just those with sufficient support");
@@ -555,7 +561,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //    ArrayList<Cluster> pruneList=new ArrayList<Cluster>(1);
     protected LinkedList<Cluster> pruneList = new LinkedList<Cluster>();
 
-    /** Encapulates the nearest Cluster and the distance to it
+    /** Encapsulates the nearest Cluster and the distance to it
      * 
      */
     private class ClusterAndDistance {
@@ -1248,15 +1254,17 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 drawBox(gl, x, y, sx, sy, getAngle());
             }
 
-            gl.glPointSize(PATH_POINT_SIZE);
-            gl.glBegin(GL.GL_POINTS);
-            {
-                List<ClusterPathPoint> points = getPath();
-                for (Point2D.Float p : points) {
-                    gl.glVertex2f(p.x, p.y);
+            if (isShowPaths()) {
+                gl.glPointSize(PATH_POINT_SIZE);
+                gl.glBegin(GL.GL_POINTS);
+                {
+                    List<ClusterPathPoint> points = getPath();
+                    for (Point2D.Float p : points) {
+                        gl.glVertex2f(p.x, p.y);
+                    }
                 }
+                gl.glEnd();
             }
-            gl.glEnd();
 
             // now draw velocityPPT vector
             if (showClusterVelocity) {
@@ -1719,11 +1727,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             if (numEvents < thresholdEventsForVisibleCluster) {
                 ret = false;
             }
-            if (pathsEnabled) {
-                double speed = Math.sqrt(velocityPPT.x * velocityPPT.x + velocityPPT.y * velocityPPT.y) * 1e6 / AEConstants.TICK_DEFAULT_US; // speed is in pixels/sec
-                if (speed < thresholdVelocityForVisibleCluster) {
-                    ret = false;
-                }
+            double speed = Math.sqrt(velocityPPT.x * velocityPPT.x + velocityPPT.y * velocityPPT.y) * 1e6 / AEConstants.TICK_DEFAULT_US; // speed is in pixels/sec
+            if (speed < thresholdVelocityForVisibleCluster) {
+                ret = false;
             }
             hasObtainedSupport = ret;
             if (ret) {
@@ -1795,7 +1801,16 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                     float vy = (c2.y - c1.y) / dt;
                     velocityPPT.x = vxFilter.filter(vx, lastEventTimestamp);
                     velocityPPT.y = vyFilter.filter(vy, lastEventTimestamp);
-                    c2.velocityPPT = new Point2D.Float(velocityPPT.x, velocityPPT.y);
+                    if(!Float.isNaN(frictionTauMs)){
+                        float factor=(float)Math.exp(-dt/(frictionTauMs*1000));
+                         velocityPPT.x=velocityPPT.x*factor;
+                         velocityPPT.y=velocityPPT.y*factor;
+                    }
+                    if (c2.velocityPPT == null) {
+                        c2.velocityPPT = new Point2D.Float(velocityPPT.x, velocityPPT.y);
+                    } else {
+                        c2.velocityPPT.setLocation(velocityPPT.x, velocityPPT.y); // = new Point2D.Float(velocityPPT.x, velocityPPT.y);
+                    }
 //                    float m1=1-velocityMixingFactor;
 //                    velocityPPT.x=m1*velocityPPT.x+velocityMixingFactor*vx;
 //                    velocityPPT.y=m1*velocityPPT.y+velocityMixingFactor*vy;
@@ -2873,6 +2888,17 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
 
     }
+    
+    public float getFrictionTauMs() {
+        return frictionTauMs;
+    }
+
+    synchronized public void setFrictionTauMs(float frictionTauMs) {
+        this.frictionTauMs = frictionTauMs;
+        putFloat("frictionTauMs", frictionTauMs);
+    }
+    
+    
 
     /** @see #setVelocityPoints(int)
      *
@@ -3024,6 +3050,21 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         putBoolean("showClusterMass", showClusterMass);
     }
 
+        /**
+     * @return the showPaths
+     */
+    public boolean isShowPaths() {
+        return showPaths;
+    }
+
+    /**
+     * @param showPaths the showPaths to set
+     */
+    public void setShowPaths(boolean showPaths) {
+        this.showPaths = showPaths;
+        putBoolean("showPaths",showPaths);
+    }
+    
     /**
      * @return the clusterLoggingMethod
      */
