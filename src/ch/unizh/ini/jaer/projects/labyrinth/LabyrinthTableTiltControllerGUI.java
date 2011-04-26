@@ -9,7 +9,6 @@ import ch.unizh.ini.jaer.hardware.pantilt.*;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimer.Message;
 import java.awt.Toolkit;
 import java.util.ArrayList;
-import java.util.logging.Level;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.ExceptionListener;
 import java.awt.Dimension;
@@ -24,7 +23,7 @@ import java.util.logging.Logger;
  * Tests ball controller by displaying a GUI that allows manual control of ball position under feedback control.
  * @author  tobi
  */
-public class LabyrinthBallControllerGUI extends javax.swing.JFrame implements ExceptionListener {
+public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implements ExceptionListener {
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     
@@ -141,7 +140,7 @@ public class LabyrinthBallControllerGUI extends javax.swing.JFrame implements Ex
      * 
      * @param pt the pan tilt unit
      */
-    public LabyrinthBallControllerGUI(PanTilt pt) {
+    public LabyrinthTableTiltControllerGUI(PanTilt pt) {
         panTilt = pt;
         initComponents();
         calibrationPanel.setPreferredSize(new Dimension(w, h));
@@ -235,7 +234,7 @@ public class LabyrinthBallControllerGUI extends javax.swing.JFrame implements Ex
             .addGap(0, 327, Short.MAX_VALUE)
         );
 
-        jLabel5.setText("<html>Drag or click  mouse to define desired ball position.<br>Use <b>r</b> to toggle recording a trajectory.</html>");
+        jLabel5.setText("<html>Drag or click  mouse to control table tilt.<br>Use <b>r</b> to toggle recording a tilt temporal trajectory.</html>");
 
         recordCB.setText("Record trajectory");
         recordCB.addActionListener(new java.awt.event.ActionListener() {

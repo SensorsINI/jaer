@@ -4,26 +4,20 @@
  */
 package ch.unizh.ini.jaer.projects.labyrinth;
 
-import ch.unizh.ini.jaer.hardware.pantilt.*;
-import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.geom.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
@@ -41,7 +35,6 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         return "Low level ball controller for Labyrinth game";
     }
     // properties
-    private boolean mouseBallControlEnabled = getBoolean("mouseBallControl", true);
     private float xTilt = 0, yTilt = 0; // convention is that xTilt>0 rolls to right, yTilt>0 rolls ball up
     // control
     private float proportionalGain = getFloat("proportionalGain", 1);
@@ -115,10 +108,13 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 if (lastErrorUpdateTime == 0) {
                     lastErrorUpdateTime = timestamp; // initialize to avoid giant dt, will be zero on first pass
                 }
-                int dt = timestamp - lastErrorUpdateTime;
-                integralError.x += dt * posError.x * 1e-6f * AEConstants.TICK_DEFAULT_US;
-                integralError.y += dt * posError.y * 1e-6f * AEConstants.TICK_DEFAULT_US;
-                lastErrorUpdateTime = timestamp;
+                // anti windup control
+                if (Math.abs(integralError.x * integralGain) < 20 * Math.PI / 180 && Math.abs(integralError.y * integralGain) < 20 * Math.PI / 180) {
+                    int dt = timestamp - lastErrorUpdateTime;
+                    integralError.x += dt * posError.x * 1e-6f * AEConstants.TICK_DEFAULT_US;
+                    integralError.y += dt * posError.y * 1e-6f * AEConstants.TICK_DEFAULT_US;
+                    lastErrorUpdateTime = timestamp;
+                }
                 float xtilt = posError.x * proportionalGain - vel.x * derivativeGain + integralError.x * integralGain;
                 float ytilt = posError.y * proportionalGain - vel.y * derivativeGain + integralError.y * integralGain;
                 try {
@@ -296,7 +292,6 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         Q = tau * proportionalGain / derivativeGain;
     }
 
- 
     public enum Message {
 
         AbortRecording,
@@ -305,12 +300,11 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     }
 
     private void setBallLocationFromMouseEvent(MouseEvent e) {
-        Point p=getMousePixel(e);
-        Point2D.Float pf=new Point2D.Float(p.x,p.y);
+        Point p = getMousePixel(e);
+        Point2D.Float pf = new Point2D.Float(p.x, p.y);
         tracker.setBallLocation(pf);
     }
 
-    
     private void setDesiredPositionFromMouseEvent(MouseEvent e) {
         setDesiredPosition(getMousePixel(e));
         log.info("desired position=" + desiredPosition);
@@ -354,7 +348,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         }
     }
 
-    public void doCenter() {
+    public void centerTilts() {
         try {
             setTilts(0, 0);
         } catch (HardwareInterfaceException ex) {
@@ -362,7 +356,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         }
     }
 
-    public void doDisableServos() {
+    public void disableServos() {
         if (labyrinthHardware != null && labyrinthHardware.getServoInterface() != null) {
             try {
                 labyrinthHardware.stopJitter();
@@ -375,5 +369,9 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
     public LabyrinthHardware getPanTiltHardware() {
         return labyrinthHardware;
+    }
+
+    public void controlTilts() {
+        labyrinthHardware.doControlTilts();
     }
 }

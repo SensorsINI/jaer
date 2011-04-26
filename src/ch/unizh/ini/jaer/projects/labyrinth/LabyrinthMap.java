@@ -186,6 +186,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
             for (Point2D.Float v : path) {
                 wall.add(transform(tsrt, v));
             }
+            walls.add(wall);
         }
 
         // outline

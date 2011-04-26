@@ -23,7 +23,7 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
 
     public static String getDescription(){ return "Low level hardware interface for Labyrinth game";}
     private PanTilt panTiltHardware;
-    private LabyrinthBallControllerGUI gui;
+    private LabyrinthTableTiltControllerGUI gui;
     private boolean jitterEnabled=getBoolean("jitterEnabled",false);
     private float jitterFreqHz=prefs().getFloat("jitterFreqHz",1);
     private float jitterAmplitude=prefs().getFloat("jitterAmplitude",.02f);
@@ -53,7 +53,7 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
         panTiltHardware.setTiltInverted(invertTilt);
 
         String servo="Servos", control="Control";
-        setPropertyTooltip("aim","shows GUI for aiming pan-tilt directly");
+        setPropertyTooltip("controlTilts","shows GUI for controlling table tilts with mouse");
         setPropertyTooltip("disableServos","disables servos, e.g. to turn off annoying servo hum");
         setPropertyTooltip("center","centers pan and tilt controls");
         
@@ -86,12 +86,11 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
     /** Invokes the calibration GUI. Calibration values are stored persistently as preferences. 
      * Built automatically into filter parameter panel as an action.
      */
-    public void doAim() {
+    public void doControlTilts() {
         if (gui == null) {
-            gui = new LabyrinthBallControllerGUI(panTiltHardware);
+            gui = new LabyrinthTableTiltControllerGUI(panTiltHardware);
             gui.addPropertyChangeListener(this);
             gui.setPanTiltLimit(panTiltLimit);
-
         }
         gui.setVisible(true);
     }
