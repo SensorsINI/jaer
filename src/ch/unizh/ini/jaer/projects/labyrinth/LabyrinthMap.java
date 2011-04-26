@@ -13,6 +13,7 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
@@ -39,6 +40,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         return "Handles SVG maps of Labyrinth game";
     }
     // svg stuff
+    public static final String DEFAULT_MAP = "labyrinth-hardest.svg"; // in source tree
     ArrayList<Ellipse2D.Float> holesSVG = new ArrayList();
     ArrayList<Line2D.Float> linesSVG = new ArrayList();
     ArrayList<ArrayList<Point2D.Float>> pathsSVG = new ArrayList();
@@ -46,13 +48,18 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
     Rectangle2D.Float outlineSVG = null;
     Rectangle2D boundsSVG = null;
     // chip space stuff, in retina coordinates
-    ArrayList<Point2D.Float> ballPath = null;
+    ArrayList<Point2D.Float> ballPath = new ArrayList();
+    ArrayList<Point2D.Float> holes = new ArrayList();
+    ArrayList<Float> holeRadii = new ArrayList();
+    ArrayList<ArrayList<Point2D.Float>> walls = new ArrayList();
+    ArrayList<Point2D.Float> outline = new ArrayList();
     // properties
     private boolean displayMap = getBoolean("displayMap", true);
     private float rotationDegCCW = getFloat("rotationDegCCW", 0);
     private float scale = getFloat("scale", 1);
     private float transXPixels = getFloat("transXPixels", 0);
     private float transYPixels = getFloat("transYPixels", 0);
+    private boolean recomputeDisplayList = true;  // to flag annotation to recompute its display list
 
     public LabyrinthMap(AEChip chip) {
         super(chip);
@@ -63,11 +70,11 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         } catch (Exception ex) {
             log.warning("couldn't load map information from file " + f + ", caught " + ex + "; you are missing the SVG file describing the Labyrinth maze or it is corrupted");
         }
-        setPropertyTooltip("displayMap", "");  // TODO
-        setPropertyTooltip("rotationDegCCW", "");
-        setPropertyTooltip("scale", "");
-        setPropertyTooltip("transXPixels", "");
-        setPropertyTooltip("transYPixels", "");
+        setPropertyTooltip("displayMap", "Enables map display");  // TODO
+        setPropertyTooltip("rotationDegCCW", "rotates the map CCW in degrees");
+        setPropertyTooltip("scale", "scales the map");
+        setPropertyTooltip("transXPixels", "translates the map; positive to move it up");
+        setPropertyTooltip("transYPixels", "translates the map; positive to move to right");
         chip.addObserver(this);// to get informed about changes to chip size
     }
 
@@ -121,23 +128,20 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         pathsSVG.add(pathList);
     }
 
-    private void computeTransformsToRetinaCoordinates() {
-//      private float rotationDegCCW = getFloat("rotationDegCCW", 0);
-//    private float scale = getFloat("scale", 1);
-//    private float transXPixels = getFloat("transXPixels", 0);
-//    private float transYPixels = getFloat("transYPixels", 0);
+    // transforms all coordinates from SVG to retina space. Doesnt' change base SVG data.
+    synchronized private void computeTransformsToRetinaCoordinates() {
         if (boundsSVG == null) {
             log.warning("can't compute transforms - no SVG map data");
             return;
         }
-        float s = scale * (float) (chip.getSizeX() / boundsSVG.getWidth());  // we'll scale up to pixels, and flip y while we're at it since drawing starts in UL
-        float tx = -(float) boundsSVG.getMinX(), ty = -(float) boundsSVG.getMaxY();
-        float cos = (float) Math.cos(rotationDegCCW * Math.PI / 180);
-        float sin = (float) Math.sin(rotationDegCCW * Math.PI / 180);
+        float s = getScale() * (float) (chip.getSizeX() / boundsSVG.getWidth());  // we'll scale up to pixels, and flip y while we're at it since drawing starts in UL
+        float tx = -(float) boundsSVG.getMinX(), ty = -(float) boundsSVG.getMinY();
+        float cos = (float) Math.cos(getRotationDegCCW() * Math.PI / 180);
+        float sin = (float) Math.sin(getRotationDegCCW() * Math.PI / 180);
         // affine transform from SVG coords to pixel coords
         float[][] x = {
             {s, 0, tx},
-            {0, s, ty},
+            {0, -s, ty},
             {0, 0, 1}
         };
         // now transform according to desired rotation and translation
@@ -147,8 +151,8 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
             {0, 0, 1}
         };
         float[][] t = {
-            {1, 0, transXPixels},
-            {0, 1, transYPixels},
+            {1, 0, getTransXPixels()},
+            {0, 1, getTransYPixels()},
             {0, 0, 1}
         };
         // now compute t*r*x so that we first transform to pixel space, then rotate, then translate
@@ -157,18 +161,48 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
 
         // now transform all Point2D coordinates
         if (ballPathSVG != null) {
-            if (ballPath == null) {
-                ballPath = new ArrayList();
-            } else {
-                ballPath.clear();
-            }
+            ballPath.clear();
             for (Point2D.Float v : ballPathSVG) {
-                float[] p = {v.x, v.y, 1};
-                float[] pt = Matrix.multMatrix(trx, p);
-                Point2D.Float v2 = new Point2D.Float(pt[0], pt[1]);
-                ballPath.add(v2);
+                ballPath.add(transform(trx, v));
             }
         }
+        holes.clear();
+        holeRadii.clear();
+        for (Ellipse2D.Float e : holesSVG) {
+            Point2D.Float center = new Point2D.Float(e.x + e.width / 2, e.y + e.height / 2);
+            holes.add(transform(trx, center));
+            holeRadii.add(e.height*s/2);
+        }
+        walls.clear();
+        for (ArrayList<Point2D.Float> path : pathsSVG) {
+            ArrayList<Point2D.Float> wall = new ArrayList();
+            for (Point2D.Float v : path) {
+                wall.add(transform(trx, v));
+            }
+        }
+
+        // outline
+        outline.clear();
+        Point2D.Float p1 = transform(trx, new Point2D.Float((float) outlineSVG.getMinX(), (float) outlineSVG.getMinY()));
+        Point2D.Float p2 = transform(trx, new Point2D.Float((float) outlineSVG.getMaxX(), (float) outlineSVG.getMaxY()));
+        outline.add(transform(trx, outlineSVG.x, outlineSVG.y));
+        outline.add(transform(trx, outlineSVG.x + outlineSVG.width, outlineSVG.y));
+        outline.add(transform(trx, outlineSVG.x + outlineSVG.width, outlineSVG.y + outlineSVG.height));
+        outline.add(transform(trx, outlineSVG.x, outlineSVG.y + outlineSVG.height));
+        outline.add(transform(trx, outlineSVG.x, outlineSVG.y));
+        invalidateDisplayList();
+    }
+
+    private Point2D.Float transform(float[][] m, Point2D.Float p) {
+        float[] v = {p.x, p.y, 1};
+        float[] pt = Matrix.multMatrix(m, v);
+        return new Point2D.Float(pt[0], pt[1]);
+    }
+
+    private Point2D.Float transform(float[][] m, float x, float y) {
+        float[] v = {x, y, 1};
+        float[] pt = Matrix.multMatrix(m, v);
+        return new Point2D.Float(pt[0], pt[1]);
     }
 
     public void doLoadMap() {
@@ -237,7 +271,11 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
                 holesSVG.add((Ellipse2D.Float) c.getShape());
             } else if (o instanceof Line) {
                 Line l = (Line) o;
-                linesSVG.add((Line2D.Float) l.getShape());
+                ArrayList<Point2D.Float> pathList = new ArrayList();
+                Line2D.Float line = (Line2D.Float) l.getShape();
+                pathList.add(new Point2D.Float(line.x1, line.y1));
+                pathList.add(new Point2D.Float(line.x2, line.y2));
+                pathsSVG.add(pathList);
             } else if (o instanceof Polyline) {
                 Polyline l = (Polyline) o;
                 Shape s = l.getShape();
@@ -265,58 +303,51 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
     }
 
     private File getLastFilePrefs() {
-        return new File(getString("lastFile", System.getProperty("user.dir")));
+        String pack = this.getClass().getPackage().getName();
+        String path = "src" + File.separator + pack.replace(".", File.separator) + File.separator + DEFAULT_MAP;
+//        return new File(path);
+        return new File(getString("lastFile", path));
     }
 
     private void putLastFilePrefs(File file) {
         putString("lastFile", file.toString());
     }
-    boolean madeList = false;
     private GLU glu = new GLU();
-    private GLUT glut = new GLUT();
     private GLUquadric holeQuad = glu.gluNewQuadric();
     int listnum = 0;
 
     @Override
-    public void annotate(GLAutoDrawable drawable) {
-        if (!displayMap) {
+    synchronized public void annotate(GLAutoDrawable drawable) {
+
+        if (!isDisplayMap()) {
             return;
         }
         GL gl = drawable.getGL();
-        if (!madeList) {
+        if (recomputeDisplayList) {
+            if(listnum>0){
+                gl.glDeleteLists(listnum, 1);
+            }
             listnum = gl.glGenLists(1);
             if (listnum == 0) {
                 log.warning("cannot create display list to show the map, glGenLists returned 0");
+                return;
             }
             gl.glNewList(1, GL.GL_COMPILE_AND_EXECUTE);
             {
                 gl.glPushMatrix();
                 gl.glColor4f(0, 0, .2f, 0.3f);
                 gl.glLineWidth(1);
-                // scale and translate to match boundsSVG of all shapes
-                // drawing is e.g. in inches
-                float s = (float) (chip.getSizeX() / boundsSVG.getWidth());  // we'll scale up to pixels, and flip y while we're at it since drawing starts in UL
-                gl.glScalef(s, -s, s);
-                // now we'll translate so that minx in drawing is at left, and top of drawing is at bottom
-                gl.glTranslated(-boundsSVG.getMinX(), -boundsSVG.getMaxY(), 0);
                 {
-                    // draw outlineSVG
-                    gl.glBegin(GL.GL_LINE_LOOP);
-                    gl.glVertex2f(outlineSVG.x, outlineSVG.y);
-                    gl.glVertex2f(outlineSVG.x + outlineSVG.width, outlineSVG.y);
-                    gl.glVertex2f(outlineSVG.x + outlineSVG.width, outlineSVG.y + outlineSVG.height);
-                    gl.glVertex2f(outlineSVG.x, outlineSVG.y + outlineSVG.height);
+                    // draw outline
+                    gl.glBegin(GL.GL_LINE_STRIP);
+                    for (Point2D.Float p : outline) {
+                        gl.glVertex2f(p.x, p.y);
+                    }
                     gl.glEnd();
 
                     // draw maze walls
-                    gl.glBegin(GL.GL_LINES);
-                    for (Line2D.Float l : linesSVG) {
-                        gl.glVertex2f(l.x1, l.y1);
-                        gl.glVertex2f(l.x2, l.y2);
-                    }
-                    gl.glEnd();
-                    for (ArrayList<Point2D.Float> p : pathsSVG) {
-                        if (p == ballPathSVG) {
+                    for (ArrayList<Point2D.Float> p : walls) {
+                        if (p == ballPath) {
                             continue;
                         }
                         gl.glBegin(GL.GL_LINE_STRIP);
@@ -326,46 +357,39 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
                         gl.glEnd();
                     }
                 }
-                // draw holesSVG
+                // draw holes
                 {
                     glu.gluQuadricDrawStyle(holeQuad, GLU.GLU_LINE);
                     gl.glColor4f(.1f, .1f, .1f, .3f);
-                    for (Ellipse2D.Float e : holesSVG) { // ellipse has UL corner as x,y location (here LL corner)
+                    Iterator<Float> it=holeRadii.iterator();
+                    for (Point2D.Float e : holes) { // ellipse has UL corner as x,y location (here LL corner)
                         gl.glPushMatrix();
-                        gl.glTranslatef(e.x + e.width / 2, e.y + e.height / 2, 0);
-                        glu.gluDisk(holeQuad, 0, e.width / 2, 16, 1);
+                        gl.glTranslatef(e.x, e.y, 0);
+                        glu.gluDisk(holeQuad, 0, it.next(), 16, 1);
                         gl.glPopMatrix();
-
                     }
                 }
                 // draw path
                 {
-                    if (ballPathSVG != null) {
-                        gl.glColor4f(.1f, .1f, .1f, .3f);
-                        gl.glBegin(GL.GL_LINE_STRIP);
-                        for (Point2D.Float l : ballPathSVG) {
-                            gl.glVertex2f(l.x, l.y);
-                        }
-                        gl.glEnd();
+                    // render ball path using retina coordinates
+                    gl.glColor4f(.1f, .4f, .1f, .3f);
+                    gl.glLineWidth(3);
+                    gl.glBegin(GL.GL_LINE_STRIP);
+                    for (Point2D.Float l : ballPath) {
+                        gl.glVertex2f(l.x, l.y);
                     }
+                    gl.glEnd();
                 }
                 gl.glPopMatrix();
             }
             gl.glEndList();
             chip.getCanvas().checkGLError(gl, glu, "after making list for map");
-            madeList = true;
+            recomputeDisplayList = false;
         } else {
             gl.glCallList(listnum);
         }
 
-        // render ball path to test it using retina coordinates
-        gl.glColor4f(.1f, .4f, .1f, .3f);
-        gl.glLineWidth(3);
-        gl.glBegin(GL.GL_LINE_STRIP);
-        for (Point2D.Float l : ballPath) {
-            gl.glVertex2f(l.x, l.y);
-        }
-        gl.glEnd();
+
     }
 
     @Override
@@ -374,9 +398,94 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
             if (arg instanceof String) {
                 String s = (String) arg;
                 if (s.equals(AEChip.EVENT_SIZEY) || s.equals(AEChip.EVENT_SIZEX)) {
-                    computeTransformsToRetinaCoordinates();
+                    if (chip.getNumPixels() > 0) {
+                        computeTransformsToRetinaCoordinates(); // can only compute transform once the chip sizes are set
+                    }
                 }
             }
         }
+    }
+
+    /**
+     * @return the displayMap
+     */
+    public boolean isDisplayMap() {
+        return displayMap;
+    }
+
+    /**
+     * @param displayMap the displayMap to set
+     */
+    public void setDisplayMap(boolean displayMap) {
+        this.displayMap = displayMap;
+        putBoolean("displayMap", displayMap);
+    }
+
+    /**
+     * @return the rotationDegCCW
+     */
+    public float getRotationDegCCW() {
+        return rotationDegCCW;
+    }
+
+    /**
+     * @param rotationDegCCW the rotationDegCCW to set
+     */
+    synchronized public void setRotationDegCCW(float rotationDegCCW) {
+        this.rotationDegCCW = rotationDegCCW;
+        putFloat("rotationDegCCW", rotationDegCCW);
+        computeTransformsToRetinaCoordinates();
+    }
+
+    /**
+     * @return the scale
+     */
+    public float getScale() {
+        return scale;
+    }
+
+    /**
+     * @param scale the scale to set
+     */
+    synchronized public void setScale(float scale) {
+        this.scale = scale;
+        putFloat("scale", scale);
+        computeTransformsToRetinaCoordinates();
+    }
+
+    /**
+     * @return the transXPixels
+     */
+    public float getTransXPixels() {
+        return transXPixels;
+    }
+
+    /**
+     * @param transXPixels the transXPixels to set
+     */
+    synchronized public void setTransXPixels(float transXPixels) {
+        this.transXPixels = transXPixels;
+        putFloat("transXPixels", transXPixels);
+        computeTransformsToRetinaCoordinates();
+    }
+
+    /**
+     * @return the transYPixels
+     */
+    public float getTransYPixels() {
+        return transYPixels;
+    }
+
+    /**
+     * @param transYPixels the transYPixels to set
+     */
+    synchronized public void setTransYPixels(float transYPixels) {
+        this.transYPixels = transYPixels;
+        putFloat("transYPixels", transYPixels);
+        computeTransformsToRetinaCoordinates();
+    }
+
+    private void invalidateDisplayList() {
+        recomputeDisplayList = true;
     }
 }
