@@ -30,6 +30,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * @author Tobi Delbruck
  */
 public class LabyrinthBallController extends EventFilter2DMouseAdaptor implements PropertyChangeListener, Observer {
+    public static final float MAX_INTEGRAL_CONTROL_RAD = 20 * (float)Math.PI / 180;
 
     public static final String getDescription() {
         return "Low level ball controller for Labyrinth game";
@@ -108,12 +109,15 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 if (lastErrorUpdateTime == 0) {
                     lastErrorUpdateTime = timestamp; // initialize to avoid giant dt, will be zero on first pass
                 }
+                int dt = timestamp - lastErrorUpdateTime;
+                integralError.x += dt * posError.x * 1e-6f * AEConstants.TICK_DEFAULT_US;
+                integralError.y += dt * posError.y * 1e-6f * AEConstants.TICK_DEFAULT_US;
+                lastErrorUpdateTime = timestamp;
                 // anti windup control
-                if (Math.abs(integralError.x * integralGain) < 20 * Math.PI / 180 && Math.abs(integralError.y * integralGain) < 20 * Math.PI / 180) {
-                    int dt = timestamp - lastErrorUpdateTime;
-                    integralError.x += dt * posError.x * 1e-6f * AEConstants.TICK_DEFAULT_US;
-                    integralError.y += dt * posError.y * 1e-6f * AEConstants.TICK_DEFAULT_US;
-                    lastErrorUpdateTime = timestamp;
+                integralError.x = windupLimit(integralError.x);
+                integralError.y = windupLimit(integralError.y);
+                if (integralError.x * integralGain > MAX_INTEGRAL_CONTROL_RAD) {
+                    integralError.x = MAX_INTEGRAL_CONTROL_RAD / integralGain;
                 }
                 float xtilt = posError.x * proportionalGain - vel.x * derivativeGain + integralError.x * integralGain;
                 float ytilt = posError.y * proportionalGain - vel.y * derivativeGain + integralError.y * integralGain;
@@ -127,6 +131,13 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             integralError.setLocation(0, 0);
             lastErrorUpdateTime = 0;
         }
+    }
+
+    float windupLimit(float intErr){
+        if(Math.abs(intErr*integralGain)>MAX_INTEGRAL_CONTROL_RAD){
+            intErr=MAX_INTEGRAL_CONTROL_RAD/integralGain*Math.signum(intErr);
+        }
+        return intErr;
     }
 
     @Override
