@@ -480,7 +480,7 @@ public strictfp class Matrix {
     public final static float[][] addMatrix(float [][] a, float[][] b){
         int ra = a.length; int ca = a[0].length;
         int rb = b.length; int cb = b[0].length;
-        if(ca != cb || ra != rb){ System.err.println("Matrix dimensions do not agree"); return null;}
+        if(ca != cb || ra != rb){ log.warning("Matrix dimensions do not agree"); return null;}
         float[][] m = new float[ra][cb];
         for(int i = 0; i < ra;i++)
             for(int j = 0; j < cb; j++)
@@ -634,7 +634,7 @@ public strictfp class Matrix {
     public final static float[][] multMatrix(float[][] a, float[][] b){
         int ra = a.length; int ca = a[0].length;
         int rb = b.length; int cb = b[0].length;
-        if(ca != rb){ System.err.println("Matrix dimensions do not agree"); return null;}
+        if(ca != rb){ log.warning("Matrix dimensions do not agree"); return null;}
         float[][] m = new float[ra][cb];
         for(int i = 0; i < ra;i++)
             for(int j = 0; j < cb; j++){
@@ -646,7 +646,7 @@ public strictfp class Matrix {
     }
     public final static float[] multMatrix(float[][] a, float[] x){
         int ra = a.length; int ca = a[0].length;
-        if(ca != x.length){ System.err.println("Matrix dimensions do not agree"); return null;}
+        if(ca != x.length){ log.warning("Matrix dimensions do not agree"); return null;}
         float[] m = new float[ra];
         for(int i = 0; i < ra; i++){
             m[i] =0;
