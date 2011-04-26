@@ -6,7 +6,6 @@ package ch.unizh.ini.jaer.projects.labyrinth;
 
 import com.kitfox.svg.*;
 import com.kitfox.svg.SVGUniverse;
-import com.sun.opengl.util.GLUT;
 import java.awt.Shape;
 import java.awt.geom.*;
 import java.io.*;
@@ -135,61 +134,69 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
             return;
         }
         float s = getScale() * (float) (chip.getSizeX() / boundsSVG.getWidth());  // we'll scale up to pixels, and flip y while we're at it since drawing starts in UL
-        float tx = -(float) boundsSVG.getMinX(), ty = -(float) boundsSVG.getMinY();
+        float tx = -(float) boundsSVG.getMinX(), ty = -(float) boundsSVG.getMaxY(); // this is LL corner of bounding box in Java2d space
         float cos = (float) Math.cos(getRotationDegCCW() * Math.PI / 180);
         float sin = (float) Math.sin(getRotationDegCCW() * Math.PI / 180);
+
+        float[][] trm1={
+            {1,0,tx},
+            {0,1,ty},
+            {0,0,1}
+        };
+
         // affine transform from SVG coords to pixel coords
-        float[][] x = {
-            {s, 0, tx},
-            {0, -s, ty},
+        float[][] scm = {
+            {s, 0, 0},
+            {0, -s, 0},
             {0, 0, 1}
         };
         // now transform according to desired rotation and translation
-        float[][] r = {
+        float[][] rotm = {
             {cos, -sin, 0},
             {sin, cos, 0},
             {0, 0, 1}
         };
-        float[][] t = {
+        float[][] trm2 = {
             {1, 0, getTransXPixels()},
             {0, 1, getTransYPixels()},
             {0, 0, 1}
         };
         // now compute t*r*x so that we first transform to pixel space, then rotate, then translate
-        float[][] rx = Matrix.multMatrix(r, x);
-        float[][] trx = Matrix.multMatrix(t, rx);
+        float[][] m1 = Matrix.multMatrix(scm, trm1);
+        float[][] m2 = Matrix.multMatrix(rotm, m1);
+        float[][] tsrt = Matrix.multMatrix(trm2, m2);
 
         // now transform all Point2D coordinates
         if (ballPathSVG != null) {
             ballPath.clear();
             for (Point2D.Float v : ballPathSVG) {
-                ballPath.add(transform(trx, v));
+                ballPath.add(transform(tsrt, v));
             }
         }
         holes.clear();
         holeRadii.clear();
         for (Ellipse2D.Float e : holesSVG) {
             Point2D.Float center = new Point2D.Float(e.x + e.width / 2, e.y + e.height / 2);
-            holes.add(transform(trx, center));
+            holes.add(transform(tsrt, center));
             holeRadii.add(e.height*s/2);
         }
         walls.clear();
         for (ArrayList<Point2D.Float> path : pathsSVG) {
             ArrayList<Point2D.Float> wall = new ArrayList();
             for (Point2D.Float v : path) {
-                wall.add(transform(trx, v));
+                wall.add(transform(tsrt, v));
             }
         }
 
         // outline
         outline.clear();
-        Point2D.Float p1 = transform(trx, new Point2D.Float((float) outlineSVG.getMinX(), (float) outlineSVG.getMinY()));
-        Point2D.Float p2 = transform(trx, new Point2D.Float((float) outlineSVG.getMaxX(), (float) outlineSVG.getMaxY()));
-        outline.add(transform(trx, outlineSVG.x, outlineSVG.y));
-        outline.add(transform(trx, outlineSVG.x + outlineSVG.width, outlineSVG.y));
-        outline.add(transform(trx, outlineSVG.x + outlineSVG.width, outlineSVG.y + outlineSVG.height));
-        outline.add(transform(trx, outlineSVG.x, outlineSVG.y + outlineSVG.height));
-        outline.add(transform(trx, outlineSVG.x, outlineSVG.y));
+        Point2D.Float p1 = transform(tsrt, new Point2D.Float((float) outlineSVG.getMinX(), (float) outlineSVG.getMinY()));
+        Point2D.Float p2 = transform(tsrt, new Point2D.Float((float) outlineSVG.getMaxX(), (float) outlineSVG.getMaxY()));
+        outline.add(transform(tsrt, outlineSVG.x, outlineSVG.y));
+        outline.add(transform(tsrt, outlineSVG.x + outlineSVG.width, outlineSVG.y));
+        outline.add(transform(tsrt, outlineSVG.x + outlineSVG.width, outlineSVG.y + outlineSVG.height));
+        outline.add(transform(tsrt, outlineSVG.x, outlineSVG.y + outlineSVG.height));
+        outline.add(transform(tsrt, outlineSVG.x, outlineSVG.y));
         invalidateDisplayList();
     }
 
@@ -283,9 +290,9 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
                     GeneralPath path = (GeneralPath) s;
                     addGeneralPath(path);
                 }
-            } else if (o instanceof Rect) {
+            } else if (o instanceof Rect) { // assumes only 1 rect which is outline of map
                 Rect r = (Rect) o;
-                outlineSVG = (Rectangle2D.Float) r.getShape();
+                outlineSVG = (Rectangle2D.Float) r.getShape(); // this returned rect has x,y relative to UL of viewBox in SVG increasing down and to right (in Java2D coordinates)
                 boundsSVG = outlineSVG.getBounds2D();
             } else if (o instanceof Path) {
                 // only the actual path of the ball should be a path, it should be a connected path
