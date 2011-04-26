@@ -12,6 +12,7 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Observable;
@@ -47,11 +48,14 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
     Rectangle2D.Float outlineSVG = null;
     Rectangle2D boundsSVG = null;
     // chip space stuff, in retina coordinates
-    ArrayList<Point2D.Float> ballPath = new ArrayList();
-    ArrayList<Point2D.Float> holes = new ArrayList();
-    ArrayList<Float> holeRadii = new ArrayList();
-    ArrayList<ArrayList<Point2D.Float>> walls = new ArrayList();
-    ArrayList<Point2D.Float> outline = new ArrayList();
+    private ArrayList<Point2D.Float> ballPath = new ArrayList();
+    private ArrayList<Point2D.Float> holes = new ArrayList();
+    private ArrayList<Float> holeRadii = new ArrayList();
+    private ArrayList<ArrayList<Point2D.Float>> walls = new ArrayList();
+    private ArrayList<Point2D.Float> outline = new ArrayList();
+    
+    private ClosestPointLookupTable closestPointComputer = new ClosestPointLookupTable();
+
     // properties
     private boolean displayMap = getBoolean("displayMap", true);
     private float rotationDegCCW = getFloat("rotationDegCCW", 0);
@@ -63,6 +67,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
     public LabyrinthMap(AEChip chip) {
         super(chip);
         setPropertyTooltip("loadMap", "opens file dialog to select SVG file of map");
+        setPropertyTooltip("clearMap", "clears map data");
         File f = getLastFilePrefs();
         try {
             loadMapFromFile(f);
@@ -84,6 +89,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
 
     @Override
     public void resetFilter() {
+        invalidateDisplayList();
     }
 
     @Override
@@ -138,10 +144,10 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         float cos = (float) Math.cos(getRotationDegCCW() * Math.PI / 180);
         float sin = (float) Math.sin(getRotationDegCCW() * Math.PI / 180);
 
-        float[][] trm1={
-            {1,0,tx},
-            {0,1,ty},
-            {0,0,1}
+        float[][] trm1 = {
+            {1, 0, tx},
+            {0, 1, ty},
+            {0, 0, 1}
         };
 
         // affine transform from SVG coords to pixel coords
@@ -178,7 +184,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         for (Ellipse2D.Float e : holesSVG) {
             Point2D.Float center = new Point2D.Float(e.x + e.width / 2, e.y + e.height / 2);
             holes.add(transform(tsrt, center));
-            holeRadii.add(e.height*s/2);
+            holeRadii.add(e.height * s / 2);
         }
         walls.clear();
         for (ArrayList<Point2D.Float> path : pathsSVG) {
@@ -199,6 +205,8 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         outline.add(transform(tsrt, outlineSVG.x, outlineSVG.y + outlineSVG.height));
         outline.add(transform(tsrt, outlineSVG.x, outlineSVG.y));
         invalidateDisplayList();
+        closestPointComputer.init();
+
     }
 
     private Point2D.Float transform(float[][] m, Point2D.Float p) {
@@ -255,9 +263,25 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
             }
         });
     }
+    
+    synchronized public void doClearMap(){
+        // use to clear any map for pure mouse control on a blank area
+        holesSVG.clear();
+        pathsSVG.clear();
+        ballPathSVG.clear();
+        
+        ballPath.clear();
+        walls.clear();
+        outline.clear();
+        holes.clear();
+        holeRadii.clear();
+        closestPointComputer.init();
+        invalidateDisplayList();
+    }
 
     private void loadMapFromFile(File file) throws MalformedURLException {
         log.info("loading map file " + file);
+        doClearMap();
         SVGUniverse svgUniverse = new SVGUniverse();
         SVGDiagram svgDiagram = null;
         svgUniverse.setVerbose(true);
@@ -332,7 +356,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         }
         GL gl = drawable.getGL();
         if (recomputeDisplayList) {
-            if(listnum>0){
+            if (listnum > 0) {
                 gl.glDeleteLists(listnum, 1);
             }
             listnum = gl.glGenLists(1);
@@ -342,7 +366,6 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
             }
             gl.glNewList(1, GL.GL_COMPILE_AND_EXECUTE);
             {
-                gl.glPushMatrix();
                 gl.glColor4f(0, 0, .2f, 0.3f);
                 gl.glLineWidth(1);
                 {
@@ -369,7 +392,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
                 {
                     glu.gluQuadricDrawStyle(holeQuad, GLU.GLU_LINE);
                     gl.glColor4f(.1f, .1f, .1f, .3f);
-                    Iterator<Float> it=holeRadii.iterator();
+                    Iterator<Float> it = holeRadii.iterator();
                     for (Point2D.Float e : holes) { // ellipse has UL corner as x,y location (here LL corner)
                         gl.glPushMatrix();
                         gl.glTranslatef(e.x, e.y, 0);
@@ -388,7 +411,6 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
                     }
                     gl.glEnd();
                 }
-                gl.glPopMatrix();
             }
             gl.glEndList();
             chip.getCanvas().checkGLError(gl, glu, "after making list for map");
@@ -496,4 +518,236 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
     private void invalidateDisplayList() {
         recomputeDisplayList = true;
     }
+
+    /** Computes nearest path point using lookup from table */
+    class ClosestPointLookupTable {
+
+        private int size = 64;
+        private int[] map = new int[size * size];
+        int sx, sy;
+        float xPixPerUnit, yPixPerUnit = 1;
+        Rectangle2D.Float bounds = new Rectangle2D.Float();
+        private boolean displayClosestPointMap = false;
+
+        public ClosestPointLookupTable() {
+            init();
+        }
+
+        final void init() {
+//            if(ballPath==null || ballPath.isEmpty()) 
+            computeBounds();
+            xPixPerUnit = (float) bounds.getWidth() / size;
+            yPixPerUnit = (float) bounds.getHeight() / size;
+            Arrays.fill(map, -1);
+            for (int x = 0; x < size; x++) {
+                for (int y = 0; y < size; y++) {
+                    // for each grid entry, locate point at center of grid point, then find nearest path vertex and put in map
+                    Point2D.Float pos = new Point2D.Float(x * xPixPerUnit + xPixPerUnit / 2 + (float) bounds.getX(), y * yPixPerUnit + yPixPerUnit / 2 + (float) bounds.getY());
+                    int idx = findClosestIndex(pos, 15f, false); // TODO make tolerance larger
+                    setMapEntry(idx, x, y);
+                }
+            }
+//            if (displayClosestPointMap) {
+//                if (closestPointFrame == null) {
+//                    closestPointFrame = new JFrame("Closest Point Map");
+//                    closestPointFrame.setPreferredSize(new Dimension(200, 200));
+//
+//                    closestPointImage = ImageDisplay.createOpenGLCanvas();
+//                    closestPointImage.setFontSize(10);
+//                    closestPointImage.setSize(size, size);
+//                    closestPointImage.setxLabel("x");
+//                    closestPointImage.setyLabel("y");
+//
+//                    closestPointImage.addGLEventListener(new GLEventListener() {
+//
+//                        @Override
+//                        public void init(GLAutoDrawable drawable) {
+//                        }
+//
+//                        @Override
+//                        public void display(GLAutoDrawable drawable) {
+//                            closestPointImage.checkPixmapAllocation();
+//                            for (int x = 0; x < size; x++) {
+//                                for (int y = 0; y < size; y++) {
+//                                    int point = getMapEntry(x, y);
+//                                    if (point == -1) {
+//                                        closestPointImage.setPixmapGray(x, y, 0);
+//                                    } else {
+//                                        Color c = Color.getHSBColor((float) point / getNumPoints(), .5f, .5f);
+//                                        float[] rgb = c.getColorComponents(null);
+//                                        closestPointImage.setPixmapRGB(x, y, rgb);
+//                                        closestPointImage.drawCenteredString(x, y, Integer.toString(point));
+//                                    }
+//                                }
+//                            }
+////                            GL gl=drawable.getGL();
+////                            gl.glPushMatrix();
+////                            gl.glLineWidth(.5f);
+////                            gl.glColor3f(0,0,1);
+////                            gl.glBegin(GL.GL_LINE_LOOP);
+////                            for(Point2D.Float p:trackPoints){
+////                                gl.glVertex2f(p.x, p.y);
+////                            }
+////                            gl.glEnd();
+////                            gl.glBegin
+////                            gl.glPopMatrix();  // TODO needs coordinate transform to ImageDisplay pixels to draw track
+//                        }
+//
+//                        @Override
+//                        public void reshape(GLAutoDrawable drawable, int x, int y, int width, int height) {
+//                        }
+//
+//                        @Override
+//                        public void displayChanged(GLAutoDrawable drawable, boolean modeChanged, boolean deviceChanged) {
+//                        }
+//                    });
+//
+//
+//                    closestPointFrame.getContentPane().add(closestPointImage, BorderLayout.CENTER);
+//                    closestPointFrame.setVisible(true);
+//
+//                }
+//                closestPointImage.repaint();
+//            }
+        }
+
+        int getMapEntry(int x, int y) {
+            final int idx = x + size * y;
+            if (idx < 0 || idx >= map.length) {
+                return -1;
+            }
+            return map[idx];
+        }
+
+        void setMapEntry(int val, int x, int y) {
+            final int idx = x + size * y;
+            if (idx < 0 || idx > map.length) {
+                return;
+            }
+            map[x + size * y] = val;
+        }
+
+        int findPoint(Point2D.Float pos) {
+            int x = (int) (size * (pos.x - bounds.getX() /*- xPixPerUnit / 2*/) / bounds.getWidth());
+            int y = (int) (size * (pos.y - bounds.getY() /*- yPixPerUnit / 2*/) / bounds.getHeight());
+            return getMapEntry(x, y);
+        }
+
+        int findPoint(double x, double y) {
+            int xx = (int) (size * (x - bounds.getX() /*- xPixPerUnit / 2*/) / bounds.getWidth());
+            int yy = (int) (size * (y - bounds.getY() /*- yPixPerUnit / 2*/) / bounds.getHeight());
+            return getMapEntry(xx, yy);
+        }
+
+        private void computeBounds() {
+            final float extraFraction = .25f;
+            if (getBallPath() == null) {
+                return;
+            }
+            float minx = Float.MAX_VALUE, miny = Float.MAX_VALUE, maxx = Float.MIN_VALUE, maxy = Float.MIN_VALUE;
+            for (Point2D.Float p : getBallPath()) {
+                if (p.x < minx) {
+                    minx = p.x;
+                }
+                if (p.y < miny) {
+                    miny = p.y;
+                }
+                if (p.x > maxx) {
+                    maxx = p.x;
+                }
+                if (p.y > maxy) {
+                    maxy = p.y;
+                }
+            }
+            final float w = maxx - minx, h = maxy - miny;
+            bounds.setRect(minx - w * extraFraction, miny - h * extraFraction, w * (1 + 2 * extraFraction), h * (1 + 2 * extraFraction));
+        }
+
+        /**
+         * @return the displayClosestPointMap
+         */
+        public boolean isDisplayClosestPointMap() {
+            return displayClosestPointMap;
+        }
+
+        /**
+         * @param displayClosestPointMap the displayClosestPointMap to set
+         */
+        public void setDisplayClosestPointMap(boolean displayClosestPointMap) {
+            this.displayClosestPointMap = displayClosestPointMap;
+        }
+    }
+    private int lastFindIdx = -1;
+
+    /** Find the closest point on the path with option for local minimum distance or global minimum distance search.
+     * @param pos Point in x,y Cartesian space for which to search closest path point.
+     * @param maxDist the maximum allowed distance.
+     * @param fastLocalSearchEnabled if true, the search uses the ClosestPointLookupTable lookup and maxDist is ignored.
+     * @return Index of closest point on path or -1 if no path point is <= maxDist from pos or is not found in the ClosestPointLookupTable.
+     */
+    public int findClosestIndex(Point2D pos, float maxDist, boolean fastLocalSearchEnabled) {
+        if (pos == null) {
+            return -1;
+        }
+        int n = ballPath.size();
+        if (n == 0) {
+            return -1;
+        }
+
+        if (fastLocalSearchEnabled) {
+            lastFindIdx = closestPointComputer.findPoint(pos.getX(), pos.getY());
+            return lastFindIdx;
+        } else {
+            int idx = 0, closestIdx = -1;
+            float closestDist = Float.MAX_VALUE;
+            for (Point2D.Float p : ballPath) {
+                float d = (float) p.distance(pos);
+                if (d <= maxDist) {
+                    if (d < closestDist) {
+                        closestDist = d;
+                        closestIdx = idx;
+                    }
+                }
+                idx++;
+            }
+            return closestIdx;
+        }
+    }
+
+    /**
+     * @return the ballPath, a list of Point2D starting at the start point and ending at the end point.
+     */
+    public ArrayList<Point2D.Float> getBallPath() {
+        return ballPath;
+    }
+
+    /**
+     * @return the holes
+     */
+    public ArrayList<Point2D.Float> getHoles() {
+        return holes;
+    }
+
+    /**
+     * @return the holeRadii for the holes
+     */
+    public ArrayList<Float> getHoleRadii() {
+        return holeRadii;
+    }
+
+    /**
+     * @return the walls
+     */
+    public ArrayList<ArrayList<Point2D.Float>> getWalls() {
+        return walls;
+    }
+
+    /**
+     * @return the outline of the entire map.
+     */
+    public ArrayList<Point2D.Float> getOutline() {
+        return outline;
+    }
+    
+    
 }

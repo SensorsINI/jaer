@@ -22,6 +22,7 @@ import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
  * Specialized tracker for ball location.
@@ -38,7 +39,6 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     private RectangularClusterTracker.Cluster ball = null;
     RectangularClusterTracker tracker;
     LabyrinthMap map;
-    
     // starting ball location on reset
     private Point2D.Float startingLocation = new Point2D.Float(getFloat("startingX", 50), getFloat("startingY", 100));
     // private fields, not properties
@@ -50,7 +50,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     public LabyrinthBallTracker(AEChip chip) {
         super(chip);
         filterChain = new FilterChain(chip);
-        map=new LabyrinthMap(chip);
+        map = new LabyrinthMap(chip);
         filterChain.add(map);
         filterChain.add(new BackgroundActivityFilter(chip));
 //        filterChain.add(new CircularConvolutionFilter(chip));
@@ -117,6 +117,12 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     @Override
     public void annotate(GLAutoDrawable drawable) {
         GL gl = drawable.getGL();
+          if (glu == null) {
+            glu = new GLU();
+        }
+        if (quad == null) {
+            quad = glu.gluNewQuadric();
+        }
 
         // annotate starting ball location
         gl.glColor3f(0, 0, 1);
@@ -133,16 +139,21 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
             gl.glColor4f(.25f, .25f, .25f, .3f);
             gl.glPushMatrix();
             gl.glTranslatef(ball.location.x, ball.location.y, 0);
-            if (glu == null) {
-                glu = new GLU();
-            }
-            if (quad == null) {
-                quad = glu.gluNewQuadric();
-            }
             glu.gluQuadricDrawStyle(quad, GLU.GLU_LINE);
             glu.gluDisk(quad, 0, ball.getRadius(), 16, 1);
             gl.glPopMatrix();
+            Point2D.Float p = findNearestPathPoint();
+            if (p != null) {
+                gl.glPushMatrix();
+                gl.glTranslatef(p.x, p.y, 1);
+                gl.glColor4f(.25f, .25f, .25f, .3f);
+               glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
+                glu.gluDisk(quad, 0, 2, 8, 1);
+                gl.glPopMatrix();
+            }
         }
+
+        MultilineAnnotationTextRenderer.renderMultilineString(String.format("Ball tracker:\npoint=%d", ball == null ? -1 : map.findClosestIndex(ball.location, 10, true)));
 
     }
 
@@ -184,5 +195,27 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     public void setBallLocation(Point2D.Float pf) {
         resetFilter();
         createBall(pf);
+    }
+
+    /** returns the path index, or -1 if there is no ball or is too far away from the path.
+     * 
+     * @return 
+     */
+    public int findNearestPathIndex() {
+        if (ball == null || map == null) {
+            return -1;
+        }
+        return map.findClosestIndex(ball.location, 15, true);
+    }
+
+    public Point2D.Float findNearestPathPoint() {
+        if (map == null || ball == null) {
+            return null;
+        }
+        int ind = findNearestPathIndex();
+        if (ind == -1) {
+            return null;
+        }
+        return map.getBallPath().get(ind);
     }
 }

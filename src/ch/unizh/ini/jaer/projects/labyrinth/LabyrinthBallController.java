@@ -206,7 +206,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
             // print some stuff
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY());
-            MultilineAnnotationTextRenderer.renderMultilineString("Click/drag to set desired position\nCtl-click to hint ball location");
+            MultilineAnnotationTextRenderer.renderMultilineString("Click to hint ball location\nCtl-Click/drag to set desired ball position\nCtl-click outside chip frame to clear desired ball posiition");
             String s = String.format("Controller dynamics:\ntau=%.1fms\nQ=%.2f", tau * 1000, Q);
             MultilineAnnotationTextRenderer.renderMultilineString(s);
 
@@ -324,15 +324,19 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     @Override
     public void mouseClicked(MouseEvent e) {
         if (e.isControlDown()) {
-            setBallLocationFromMouseEvent(e);
-        } else {
             setDesiredPositionFromMouseEvent(e);
+        } else {
+            setBallLocationFromMouseEvent(e);
         }
     }
 
     @Override
     public void mouseDragged(MouseEvent e) {
-        setDesiredPositionFromMouseEvent(e);
+       if (e.isControlDown()) {
+            setDesiredPositionFromMouseEvent(e);
+        } else {
+            setBallLocationFromMouseEvent(e);
+        }
     }
 
     class Trajectory extends LinkedList<TrajectoryPoint> {
