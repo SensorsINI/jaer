@@ -26,8 +26,9 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor {
     LabyrinthBallController controller = null;
     VirtualBall ball = new VirtualBall();
     private float slowDownFactor = getFloat("slowDownFactor", 1);
-    protected float eventRate = getFloat("eventRate", 1000);
+    protected float staticEventRate = getFloat("staticEventRate", 1000);
     Random random = new Random();
+    private boolean emitTCEvents=getBoolean("emitTCEvents",true);
 
 //    public LabyrinthVirtualBall(AEChip chip) {
 //        super(chip);
@@ -38,6 +39,8 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor {
         map = controller.tracker.map;
         checkOutputPacketEventType(BasicEvent.class);
         setPropertyTooltip("slowDownFactor", "slow down real time by this factor");
+        setPropertyTooltip("staticEventRate","event rate when emitting events statically");
+        setPropertyTooltip("emitTCEvents","emit temporal contrast events on movement of virtual ball, intead of statically emitting events always");
     }
 
     @Override
@@ -75,22 +78,37 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor {
     }
 
     /**
-     * Get the value of eventRate
+     * Get the value of staticEventRate
      *
-     * @return the value of eventRate
+     * @return the value of staticEventRate
      */
-    public float getEventRate() {
-        return eventRate;
+    public float getStaticEventRate() {
+        return staticEventRate;
     }
 
     /**
-     * Set the value of eventRate
+     * Set the value of staticEventRate
      *
-     * @param eventRate new value of eventRate
+     * @param staticEventRate new value of staticEventRate
      */
-    public void setEventRate(float eventRate) {
-        this.eventRate = eventRate;
-        putFloat("eventRate", eventRate);
+    public void setStaticEventRate(float eventRate) {
+        this.staticEventRate = eventRate;
+        putFloat("staticEventRate", eventRate);
+    }
+
+    /**
+     * @return the emitTCEvents
+     */
+    public boolean isEmitTCEvents() {
+        return emitTCEvents;
+    }
+
+    /**
+     * @param emitTCEvents the emitTCEvents to set
+     */
+    public void setEmitTCEvents(boolean emitTCEvents) {
+        this.emitTCEvents = emitTCEvents;
+        putBoolean("emitTCEvents", emitTCEvents);
     }
 
     public class VirtualBall {
@@ -114,7 +132,7 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor {
                 Point2D.Float tiltsRad = controller.getTiltsRad();
                 long tNowUs = System.nanoTime() >> 10;
                 long dtUs = tNowUs - lastUpdateTimeUs;
-                if (dtUs < 0) {
+                if (dtUs < 0 || dtUs>100000) {
                     lastUpdateTimeUs = tNowUs;
                     return;
                 }
@@ -128,16 +146,26 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor {
                 posPixels.y += dy;
                 if (posPixels.x < 0) {
                     posPixels.x = 0;
+                    velPPS.x=0;
                 } else if (posPixels.x >= chip.getSizeX()) {
                     posPixels.x = chip.getSizeX() - 1;
+                    velPPS.x=0;
                 }
                 if (posPixels.y < 0) {
                     posPixels.y = 0;
+                    velPPS.y=0;
                 } else if (posPixels.y >= chip.getSizeY()) {
                     posPixels.y = chip.getSizeY() - 1;
+                    velPPS.y=0;
                 }
 
-                int n = (int) (dtSec * eventRate);
+
+                int n ;
+                if(emitTCEvents){
+                    n= (int) (dtSec * staticEventRate*Math.sqrt(dx*dx+dy*dy));
+                }else{
+                    n= (int) (dtSec * staticEventRate);
+                }
                 if (n > 10000) {
                     n = 10000;
                 }
