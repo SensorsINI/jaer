@@ -524,7 +524,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     private void drawThrottleProfile(GL gl) {
         if (getTrack() != null && getTrack().getPointList() != null && currentProfile != null) {
 
-            // Plot lines
+       chip.getCanvas().checkGLError(gl, glu, "in TrackdefineFilter.drawThrottleProfile");
+           // Plot lines
             gl.glColor4f(.5f, 0, 0, .5f);
             gl.glLineWidth(.5f);
             gl.glBegin(gl.GL_LINE_STRIP);
@@ -532,6 +533,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                 gl.glVertex2d(p.getX(), p.getY());
             }
             gl.glEnd();
+       chip.getCanvas().checkGLError(gl, glu, "in TrackdefineFilter.drawThrottleProfile");
 
             // plot throttle values and braking locations
             gl.glColor4f(.5f, 0, 0, .5f);

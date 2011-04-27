@@ -364,7 +364,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
                 log.warning("cannot create display list to show the map, glGenLists returned 0");
                 return;
             }
-            gl.glNewList(1, GL.GL_COMPILE_AND_EXECUTE);
+            gl.glNewList(listnum, GL.GL_COMPILE_AND_EXECUTE);
             {
                 gl.glColor4f(0, 0, .2f, 0.3f);
                 gl.glLineWidth(1);

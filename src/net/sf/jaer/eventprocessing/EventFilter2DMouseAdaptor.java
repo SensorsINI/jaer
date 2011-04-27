@@ -108,7 +108,14 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
     @Override
     public void setSelected(boolean yes) {
         super.setSelected(yes);
+        canvas = chip.getCanvas();
+        if (canvas == null) {
+            log.warning("null chip canvas, can't add mouse listeners");
+            return;
+        }
+        glCanvas = (GLCanvas) canvas.getCanvas();
         if (glCanvas == null) {
+            log.warning("null chip canvas GL drawable, can't add mouse listeners");
             return;
         }
         if (yes) {
