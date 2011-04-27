@@ -35,31 +35,34 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     public static final String getDescription() {
         return "Low level ball controller for Labyrinth game";
     }
-    // properties
-    private float xTilt = 0, yTilt = 0; // convention is that xTilt>0 rolls to right, yTilt>0 rolls ball up
+    private float xTiltRad=0;
+    
+    private float yTiltRad=0; // TODO limit in deg 
+    private Point2D.Float tiltsRad = new Point2D.Float(xTiltRad,yTiltRad);
+    private float tiltLimitRad = getFloat("tiltLimitRad",(float)Math.PI*5f/180);
     // control
     private float proportionalGain = getFloat("proportionalGain", 1);
     private float derivativeGain = getFloat("derivativeGain", 1);
     private float integralGain = getFloat("integralGain", 1);
     // constants
-    private final float angleRadPerServoUnit = (float) (5 * Math.PI / 180 / 0.1); // TODO estimated angle in radians produced by each unit of servo control change
-    private final float servoUnitPerAngleRad = 1 / angleRadPerServoUnit; //  equiv servo unit
+    final float angleRadPerServoUnit = (float) (5 * Math.PI / 180 / 0.1); // TODO estimated angle in radians produced by each unit of servo control change
+    final float servoUnitPerAngleRad = 1 / angleRadPerServoUnit; //  equiv servo unit
     // this is approx 5 deg per 0.1 unit change 
     // The ball acceleration will be g (grav constant) * sin(angle) which is approx g*angle with angle in radians =g*angleRadPerServoUnit*(servo-0.5f).
-    private final float metersPerPixel = 0.22f / 128;  // TODO estimated pixels of 128 retina per meter, assumes table fills retina vertically
-    private final float gravConstantMperS2 = 9.8f; // meters per second^2
-    private final float gravConstantPixPerSec2 = gravConstantMperS2 / metersPerPixel; // g in pixel units
+    final float metersPerPixel = 0.22f / 128;  // TODO estimated pixels of 128 retina per meter, assumes table fills retina vertically
+    final float gravConstantMperS2 = 9.8f; // meters per second^2
+    final float gravConstantPixPerSec2 = gravConstantMperS2 / metersPerPixel; // g in pixel units
     // fields
-    private LabyrinthHardware labyrinthHardware;
-    private LabyrinthBallTracker tracker = null;
+    LabyrinthHardware labyrinthHardware;
+    LabyrinthBallTracker tracker = null;
     // filter chain
-    private FilterChain filterChain;
+    FilterChain filterChain;
     // errors
     volatile Point2D.Float posError = null;
     Point2D.Float integralError = new Point2D.Float(0, 0);
     int lastErrorUpdateTime = 0;
     // state stuff
-    private Point desiredPosition = null;
+    Point desiredPosition = null;
     // history
     Trajectory trajectory = new Trajectory();
 
@@ -81,7 +84,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
         setEnclosedFilterChain(filterChain);
 
-        String control = "Control";
+//        String control = "Control";
         setPropertyTooltip("disableServos", "disables servos, e.g. to turn off annoying servo hum");
         setPropertyTooltip("center", "centers pan and tilt controls");
         setPropertyTooltip("integralGain", "integral error gain: tilt(rad)=error(pixels)*integralGain(1/(pixels*sec))");
@@ -152,14 +155,21 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         resetFilter();
     }
 
-    /** Sets the pan and tilt servo values
+    /** Sets the pan and tilt servo values, clipped to limits, and sets internal values.
     @param xtiltRad in radians, positive to tilt to right towards positive x
     @param ytiltRad in radians, positive to tilt up towards positive y
      */
     public void setTilts(float xtiltRad, float ytiltRad) throws HardwareInterfaceException {
-        xTilt = xtiltRad;
-        yTilt = ytiltRad;
-        getPanTiltHardware().setPanTiltValues(tilt2servo(xtiltRad), tilt2servo(yTilt));
+        this.xTiltRad = clipTilt(xtiltRad);
+        this.yTiltRad = clipTilt(ytiltRad);
+        tiltsRad.setLocation(this.xTiltRad, this.yTiltRad);
+        getPanTiltHardware().setPanTiltValues(tilt2servo(this.xTiltRad), tilt2servo(this.yTiltRad));
+    }
+    
+    private float clipTilt(float tilt){
+        if(tilt>getTiltLimitRad()) return getTiltLimitRad();
+        if(tilt<-getTiltLimitRad()) return -getTiltLimitRad();
+        return tilt;
     }
 
     private float tilt2servo(float tiltRad) {
@@ -197,8 +207,8 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             gl.glLineWidth(4f);
             gl.glColor4f(.25f, 0, 0, .3f);
             gl.glBegin(GL.GL_LINES);
-            float xlen = (float) (chip.getMaxSize() * xTilt / Math.PI);
-            float ylen = (float) (chip.getMaxSize() * yTilt / Math.PI); // length of tilt vector in units of 1 radian
+            float xlen = (float) (chip.getMaxSize() * getxTiltRad() / Math.PI);
+            float ylen = (float) (chip.getMaxSize() * getyTiltRad() / Math.PI); // length of tilt vector in units of 1 radian
             gl.glVertex2f(0, 0);
             gl.glVertex2f(xlen, ylen);
             gl.glEnd();
@@ -301,6 +311,41 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         // TODO doesn't include integral term yet
         tau = (float) Math.sqrt(1 / (gravConstantPixPerSec2 * proportionalGain));
         Q = tau * proportionalGain / derivativeGain;
+    }
+
+    /**
+     * @return the xTiltRad
+     */
+    public float getxTiltRad() {
+        return xTiltRad;
+    }
+
+    /**
+     * @return the yTiltRad
+     */
+    public float getyTiltRad() {
+        return yTiltRad;
+    }
+
+    /**
+     * @return the tilts
+     */
+    public Point2D.Float getTiltsRad() {
+        return tiltsRad;
+    }
+
+    /**
+     * @return the tiltLimitRad
+     */
+    public float getTiltLimitRad() {
+        return tiltLimitRad;
+    }
+
+    /**
+     * @param tiltLimitRad the tiltLimitRad to set
+     */
+    public void setTiltLimitRad(float tiltLimitRad) {
+        this.tiltLimitRad = tiltLimitRad;
     }
 
     public enum Message {

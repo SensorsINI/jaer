@@ -36,7 +36,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     }
     // filters and filter chain
     FilterChain filterChain;
-    private RectangularClusterTracker.Cluster ball = null;
+    RectangularClusterTracker.Cluster ball = null;
     RectangularClusterTracker tracker;
     LabyrinthMap map;
     // starting ball location on reset

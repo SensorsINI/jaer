@@ -19,15 +19,19 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor {
         return "Top level labyinth game class";
     }
     LabyrinthBallController controller;
+    LabyrinthVirtualBall virtualBall=null;
 //    LabyrinthMap map;
     FilterChain filterChain;
 
     public LabyrinthGame(AEChip chip) {
         super(chip);
+        controller = new LabyrinthBallController(chip);
+        virtualBall=new LabyrinthVirtualBall(chip,this);
         filterChain = new FilterChain(chip);
 
 //        filterChain.add(map=new LabyrinthMap(chip));
-        filterChain.add(controller = new LabyrinthBallController(chip));
+        filterChain.add(virtualBall);
+        filterChain.add(controller);
         setEnclosedFilterChain(filterChain);
     }
 
@@ -58,7 +62,11 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor {
         controller.controlTilts();
     }
 
-
-
+    
+    @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes);
+        virtualBall.setFilterEnabled(false); // don't enable by default
+    }
 
 }
