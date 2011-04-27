@@ -196,23 +196,25 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
                     bg = 10000;
                 }
 
-                float smalldt = dtUs / (n + bg);
-                float frac = (float) n / (n + bg);
+                if (n + bg > 0) {
+                    float smalldt = dtUs / (n + bg);
+                    float frac = (float) n / (n + bg);
 
-                OutputEventIterator i = out.outputIterator();
-                for (int k = 0; k < n + bg; k++) {
-                    BasicEvent e = i.nextOutput();
-                    float r = random.nextFloat();
-                    if (r < frac) {
-                        e.x = (short) Math.floor(posPixels.x);
-                        e.y = (short) Math.floor(posPixels.y);
-                        e.x = jitter(e.x, sx);
-                        e.y = jitter(e.y, sy);
-                    } else {
-                        e.x = (short) random.nextInt(sx);
-                        e.y = (short) random.nextInt(sy);
+                    OutputEventIterator i = out.outputIterator();
+                    for (int k = 0; k < n + bg; k++) {
+                        BasicEvent e = i.nextOutput();
+                        float r = random.nextFloat();
+                        if (r < frac) {
+                            e.x = (short) Math.floor(posPixels.x);
+                            e.y = (short) Math.floor(posPixels.y);
+                            e.x = jitter(e.x, sx);
+                            e.y = jitter(e.y, sy);
+                        } else {
+                            e.x = (short) random.nextInt(sx);
+                            e.y = (short) random.nextInt(sy);
+                        }
+                        e.timestamp = (int) (lastUpdateTimeUs + (long) (k * smalldt));
                     }
-                    e.timestamp = (int) (lastUpdateTimeUs + (long) (k * smalldt));
                 }
 
                 lastUpdateTimeUs = tNowUs;
