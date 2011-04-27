@@ -5,6 +5,8 @@
 package ch.unizh.ini.jaer.projects.labyrinth;
 
 import java.awt.geom.Point2D;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.Random;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
@@ -17,7 +19,7 @@ import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
  *  A virtual ball that generates events and model physics of ball movement.
  * @author Tobi
  */
-public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor {
+public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements Observer {
 
     public static final String getDescription() {
         return "Virtual ball for labyrinth game";
@@ -28,7 +30,8 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor {
     private float slowDownFactor = getFloat("slowDownFactor", 1);
     protected float staticEventRate = getFloat("staticEventRate", 1000);
     Random random = new Random();
-    private boolean emitTCEvents=getBoolean("emitTCEvents",true);
+    private boolean emitTCEvents = getBoolean("emitTCEvents", true);
+    private float backgroundEventRate = getFloat("backgroundEventRate", 10000);
 
 //    public LabyrinthVirtualBall(AEChip chip) {
 //        super(chip);
@@ -39,8 +42,9 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor {
         map = controller.tracker.map;
         checkOutputPacketEventType(BasicEvent.class);
         setPropertyTooltip("slowDownFactor", "slow down real time by this factor");
-        setPropertyTooltip("staticEventRate","event rate when emitting events statically");
-        setPropertyTooltip("emitTCEvents","emit temporal contrast events on movement of virtual ball, intead of statically emitting events always");
+        setPropertyTooltip("staticEventRate", "event rate when emitting events statically");
+        setPropertyTooltip("emitTCEvents", "emit temporal contrast events on movement of virtual ball, intead of statically emitting events always");
+        chip.addObserver(this);
     }
 
     @Override
@@ -111,6 +115,20 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor {
         putBoolean("emitTCEvents", emitTCEvents);
     }
 
+    @Override
+    public void update(Observable o, Object arg) {
+        if (o instanceof AEChip) {
+            if (arg instanceof String) {
+                String s = (String) arg;
+                if (s.equals(AEChip.EVENT_SIZEY) || s.equals(AEChip.EVENT_SIZEX)) {
+                    if (chip.getNumPixels() > 0) {
+                        ball.reset();
+                    }
+                }
+            }
+        }
+    }
+
     public class VirtualBall {
 
         public Point2D.Float posPixels = new Point2D.Float();
@@ -132,7 +150,7 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor {
                 Point2D.Float tiltsRad = controller.getTiltsRad();
                 long tNowUs = System.nanoTime() >> 10;
                 long dtUs = tNowUs - lastUpdateTimeUs;
-                if (dtUs < 0 || dtUs>100000) {
+                if (dtUs < 0 || dtUs > 100000) {
                     lastUpdateTimeUs = tNowUs;
                     return;
                 }
@@ -146,38 +164,57 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor {
                 posPixels.y += dy;
                 if (posPixels.x < 0) {
                     posPixels.x = 0;
-                    velPPS.x=0;
+                    velPPS.x = 0;
                 } else if (posPixels.x >= chip.getSizeX()) {
                     posPixels.x = chip.getSizeX() - 1;
-                    velPPS.x=0;
+                    velPPS.x = 0;
                 }
                 if (posPixels.y < 0) {
                     posPixels.y = 0;
-                    velPPS.y=0;
+                    velPPS.y = 0;
                 } else if (posPixels.y >= chip.getSizeY()) {
                     posPixels.y = chip.getSizeY() - 1;
-                    velPPS.y=0;
+                    velPPS.y = 0;
                 }
 
 
-                int n ;
-                if(emitTCEvents){
-                    n= (int) (dtSec * staticEventRate*Math.sqrt(dx*dx+dy*dy));
-                }else{
-                    n= (int) (dtSec * staticEventRate);
+                int sx = chip.getSizeX(), sy = chip.getSizeY();
+                int n;
+                if (emitTCEvents) {
+                    n = (int) (dtSec * staticEventRate * velPPS.distance(0, 0));
+                } else {
+                    n = (int) (dtSec * staticEventRate);
                 }
                 if (n > 10000) {
                     n = 10000;
                 }
-                OutputEventIterator i = out.outputIterator();
-                for (int k = 0; k < n; k++) {
-                    BasicEvent e = i.nextOutput();
-                    e.x = (short) Math.floor(posPixels.x);
-                    e.y = (short) Math.floor(posPixels.y);
-                    e.x = jitter(e.x, chip.getSizeX());
-                    e.y = jitter(e.y, chip.getSizeX());
-                    e.timestamp = (int) tNowUs;
+                int bg = 0;
+                if (backgroundEventRate > 1) {
+                    bg = (int) (dtSec * backgroundEventRate);
                 }
+                if (bg > 10000) {
+                    bg = 10000;
+                }
+
+                float smalldt = dtUs / (n + bg);
+                float frac = (float) n / (n + bg);
+
+                OutputEventIterator i = out.outputIterator();
+                for (int k = 0; k < n + bg; k++) {
+                    BasicEvent e = i.nextOutput();
+                    float r = random.nextFloat();
+                    if (r < frac) {
+                        e.x = (short) Math.floor(posPixels.x);
+                        e.y = (short) Math.floor(posPixels.y);
+                        e.x = jitter(e.x, sx);
+                        e.y = jitter(e.y, sy);
+                    } else {
+                        e.x = (short) random.nextInt(sx);
+                        e.y = (short) random.nextInt(sy);
+                    }
+                    e.timestamp = (int) (lastUpdateTimeUs + (long) (k * smalldt));
+                }
+
                 lastUpdateTimeUs = tNowUs;
 
             } else {
@@ -202,5 +239,20 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor {
             j = lim - 1;
         }
         return (short) j;
+    }
+
+    /**
+     * @return the backgroundEventRate
+     */
+    public float getBackgroundEventRate() {
+        return backgroundEventRate;
+    }
+
+    /**
+     * @param backgroundEventRate the backgroundEventRate to set
+     */
+    public void setBackgroundEventRate(float backgroundEventRate) {
+        this.backgroundEventRate = backgroundEventRate;
+        putFloat("backgroundEventRate", backgroundEventRate);
     }
 }

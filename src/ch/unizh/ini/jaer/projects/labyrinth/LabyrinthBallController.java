@@ -358,6 +358,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
     private void setBallLocationFromMouseEvent(MouseEvent e) {
         Point p = getMousePixel(e);
+        if(p==null) return;
         Point2D.Float pf = new Point2D.Float(p.x, p.y);
         tracker.setBallLocation(pf);
     }

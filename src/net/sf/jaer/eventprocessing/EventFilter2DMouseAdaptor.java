@@ -21,6 +21,7 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
 
     private GLCanvas glCanvas;
     private ChipCanvas canvas;
+    private final float CURSOR_SIZE_CHIP_PIXELS = 7;
 
     public EventFilter2DMouseAdaptor(AEChip chip) {
         super(chip);
@@ -40,9 +41,13 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
     public void annotate(GLAutoDrawable drawable) {
         GL gl = drawable.getGL();
         canvas = chip.getCanvas();
-        if(canvas==null) return;
+        if (canvas == null) {
+            return;
+        }
         glCanvas = (GLCanvas) canvas.getCanvas();
-        if(glCanvas==null) return;
+        if (glCanvas == null) {
+            return;
+        }
         if (isSelected()) {
             Point mp = glCanvas.getMousePosition();
             Point p = canvas.getPixelFromPoint(mp);
@@ -66,14 +71,29 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
                     hasBlend = false;
                 }
             }
-            gl.glColor4f(.25f, .25f, 0, .3f);
+            gl.glColor4f(1f, 1f, 1f, 1);
+            gl.glLineWidth(3f);
             gl.glPushMatrix();
             gl.glTranslatef(p.x, p.y, 0);
-            if (quad == null) {
-                quad = glu.gluNewQuadric();
-            }
-            glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
-            glu.gluDisk(quad, 0, 3, 32, 1);
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex2f(0, -CURSOR_SIZE_CHIP_PIXELS / 2);
+            gl.glVertex2f(0, +CURSOR_SIZE_CHIP_PIXELS / 2);
+            gl.glVertex2f(-CURSOR_SIZE_CHIP_PIXELS / 2, 0);
+            gl.glVertex2f(+CURSOR_SIZE_CHIP_PIXELS / 2, 0);
+            gl.glEnd();
+            gl.glTranslatef(.5f, -.5f, 0);
+            gl.glColor4f(0, 0, 0, 1);
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex2f(0, -CURSOR_SIZE_CHIP_PIXELS / 2);
+            gl.glVertex2f(0, +CURSOR_SIZE_CHIP_PIXELS / 2);
+            gl.glVertex2f(-CURSOR_SIZE_CHIP_PIXELS / 2, 0);
+            gl.glVertex2f(+CURSOR_SIZE_CHIP_PIXELS / 2, 0);
+            gl.glEnd();
+//            if (quad == null) {
+//                quad = glu.gluNewQuadric();
+//            }
+//            glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
+//            glu.gluDisk(quad, 0, 3, 32, 1);
             gl.glPopMatrix();
         }
 
