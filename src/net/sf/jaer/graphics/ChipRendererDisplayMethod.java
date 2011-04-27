@@ -121,7 +121,7 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
 //        gl.glDisable(GL.GL_MINMAX);
         getChipCanvas().checkGLError(gl, glu, "after rendering histogram rectangles");
         // outline frame
-        gl.glColor4f(0, 0, 1f, 0f);
+        gl.glColor3f(0, 0, 1f);
         gl.glLineWidth(1f);
         {
             gl.glBegin(GL.GL_LINE_LOOP);
