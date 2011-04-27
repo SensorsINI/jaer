@@ -23,22 +23,19 @@ import java.util.logging.Logger;
  * Tests ball controller by displaying a GUI that allows manual control of ball position under feedback control.
  * @author  tobi
  */
-public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implements ExceptionListener {
+public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame {
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
-    
     // property change messages
-    public final String POSITION="position";
-    
+    public final String POSITION = "position";
     Logger log = Logger.getLogger("LabyrinthBallController");
-    private PanTilt panTilt;
+    private LabyrinthBallController panTilt;
     private int w = 200, h = 200, x0 = 0, y0 = 0;
-    private Point2D.Float lastPanTilt = new Point2D.Float(0.5f, 0.5f);
+    private Point2D.Float lastPanTilt = new Point2D.Float(0, 0);
     private Point lastMousePressLocation = new Point(w / 2, h / 2);
     private boolean recordingEnabled = false;
     private Trajectory trajectory = new Trajectory();
-     private float panTiltLimit=0.5f;
-
+    private float panTiltLimit = 0.5f;
 
     class Trajectory extends ArrayList<TrajectoryPoint> {
 
@@ -46,10 +43,12 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
         TrajectoryPlayer player = null;
 
         void add(float pan, float tilt, int x, int y) {
-            if(isEmpty()) start();
-            long now=System.currentTimeMillis();
+            if (isEmpty()) {
+                start();
+            }
+            long now = System.currentTimeMillis();
             add(new TrajectoryPoint(now - lastTime, pan, tilt, x, y));
-            lastTime=now;
+            lastTime = now;
         }
 
         void start() {
@@ -57,8 +56,8 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
         }
 
         @Override
-        public void clear(){
-            if(player!=null){
+        public void clear() {
+            if (player != null) {
                 player.cancel();
             }
             super.clear();
@@ -140,11 +139,10 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
      * 
      * @param pt the pan tilt unit
      */
-    public LabyrinthTableTiltControllerGUI(PanTilt pt) {
+    public LabyrinthTableTiltControllerGUI(LabyrinthBallController pt) {
         panTilt = pt;
         initComponents();
         calibrationPanel.setPreferredSize(new Dimension(w, h));
-        HardwareInterfaceException.addExceptionListener(this);
         calibrationPanel.requestFocusInWindow();
         pack();
     }
@@ -153,8 +151,8 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
     public void paint(Graphics g) {
         final int r = 6;
         super.paint(g);
-        float[] ptvals = panTilt.getPanTiltValues();
-        float p = ptvals[0], t = ptvals[1];
+        Point2D.Float ptvals = panTilt.getTiltsRad();
+        float p = ptvals.x, t = ptvals.y;
 
         trajectory.paint();
     }
@@ -187,7 +185,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
             }
         });
 
-        statusLabel.setText("exception status");
+        statusLabel.setText("status");
         statusLabel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
 
         calibrationPanel.setBackground(new java.awt.Color(255, 255, 255));
@@ -231,7 +229,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
         );
         calibrationPanelLayout.setVerticalGroup(
             calibrationPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 327, Short.MAX_VALUE)
+            .addGap(0, 313, Short.MAX_VALUE)
         );
 
         jLabel5.setText("<html>Drag or click  mouse to control table tilt.<br>Use <b>r</b> to toggle recording a tilt temporal trajectory.</html>");
@@ -310,38 +308,30 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private float getPan(MouseEvent evt) {
-        int x = evt.getX();
-        float pan = (float) x / w;
-//        log.info("computed pan="+pan);
-        return pan;
+    float scaleEvt(float x, float w) {
+        float y = panTilt.getTiltLimitRad() * (2 * ((float) x / w - .5f));
+        return y;
+    }
 
+    private float getPan(MouseEvent evt) {
+        return scaleEvt(evt.getX(), calibrationPanel.getWidth());
     }
 
     private float getTilt(MouseEvent evt) {
-        int y = evt.getY();
-        float tilt = 1 - (float) (h - y) / h;
-//        log.info("computed tilt="+tilt);
-        return tilt;
+        return scaleEvt(calibrationPanel.getHeight()-evt.getY(), calibrationPanel.getHeight());
     }
 
     private void setPanTilt(float pan, float tilt) {
         try {
-            pan=clipPT(pan);
-            tilt=clipPT(tilt);
             lastPanTilt.x = pan;
             lastPanTilt.y = tilt;
-            panTilt.setPanTiltValues(pan, tilt);
             statusLabel.setText(String.format("%.3f, %.3f", pan, tilt));
+            panTilt.setTilts(pan, tilt);
         } catch (HardwareInterfaceException e) {
-            log.warning(e.toString());
+//            log.warning(e.toString());
         }
     }
 
-    private float clipPT(float pt){
-        if(pt>0.5f+panTiltLimit) pt=0.5f+panTiltLimit; else if(pt<.5f-panTiltLimit) pt=.5f-panTiltLimit;
-        return pt;
-    }
     public Point getMouseFromPanTilt(Point2D.Float pt) {
         return new Point((int) (calibrationPanel.getWidth() * pt.x), (int) (calibrationPanel.getHeight() * pt.y));
     }
@@ -368,7 +358,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
     private void calibrationPanelMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_calibrationPanelMousePressed
         lastMousePressLocation = evt.getPoint();
         support.firePropertyChange(POSITION, lastMousePressLocation, evt.getPoint());
-        lastMousePressLocation=evt.getPoint();
+        lastMousePressLocation = evt.getPoint();
     }//GEN-LAST:event_calibrationPanelMousePressed
 
     private void calibrationPanelKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_calibrationPanelKeyPressed
@@ -393,13 +383,9 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
         float tilt = getTilt(evt);
         lastMousePressLocation = evt.getPoint();
         setPanTilt(pan, tilt);
-        if (panTilt.isJitterEnabled()) {
-            panTilt.startJitter();
-        }
     }//GEN-LAST:event_calibrationPanelMouseReleased
 
     private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
-        panTilt.stopJitter();
     }//GEN-LAST:event_formWindowClosed
 
     private void calibrationPanelMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_calibrationPanelMouseEntered
@@ -427,13 +413,8 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
     }//GEN-LAST:event_loopTBActionPerformed
 
     private void centerButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_centerButActionPerformed
-        try {
-            panTilt.setPanTiltValues(0.5f, 0.5f);
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
+        panTilt.centerTilts();
     }//GEN-LAST:event_centerButActionPerformed
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel calibrationPanel;
     private javax.swing.JButton centerBut;
@@ -444,10 +425,6 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
     private javax.swing.JCheckBox recordCB;
     private javax.swing.JLabel statusLabel;
     // End of variables declaration//GEN-END:variables
-
-    public void exceptionOccurred(Exception x, Object source) {
-        statusLabel.setText(x.getMessage());
-    }
 
     /** Property change events are fired to return events 
      * 
@@ -479,8 +456,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
         support.firePropertyChange(Message.SetRecordingEnabled.name(), old, recordingEnabled);
     }
 
-
-        /**
+    /**
      * @return the panTiltLimit
      */
     public float getPanTiltLimit() {
@@ -493,8 +469,4 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
     public void setPanTiltLimit(float panTiltLimit) {
         this.panTiltLimit = panTiltLimit;
     }
-
-    
-
-
 }

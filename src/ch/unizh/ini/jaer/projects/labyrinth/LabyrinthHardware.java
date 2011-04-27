@@ -23,7 +23,6 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
 
     public static String getDescription(){ return "Low level hardware interface for Labyrinth game";}
     private PanTilt panTiltHardware;
-    private LabyrinthTableTiltControllerGUI gui;
     private boolean jitterEnabled=getBoolean("jitterEnabled",false);
     private float jitterFreqHz=prefs().getFloat("jitterFreqHz",1);
     private float jitterAmplitude=prefs().getFloat("jitterAmplitude",.02f);
@@ -87,12 +86,7 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
      * Built automatically into filter parameter panel as an action.
      */
     public void doControlTilts() {
-        if (gui == null) {
-            gui = new LabyrinthTableTiltControllerGUI(panTiltHardware);
-            gui.addPropertyChangeListener(this);
-            gui.setPanTiltLimit(panTiltLimit);
-        }
-        gui.setVisible(true);
+
     }
 
     public void doCenter(){
@@ -309,10 +303,6 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
         if(panTiltLimit<0) panTiltLimit=0; else if(panTiltLimit>0.5f)panTiltLimit=0.5f;
         this.panTiltLimit = panTiltLimit;
         putFloat("panTiltLimit",panTiltLimit);
-        if(gui!=null){
-            gui.setPanTiltLimit(panTiltLimit);
-        }
-
     }
 
     @Override

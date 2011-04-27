@@ -65,6 +65,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     Point desiredPosition = null;
     // history
     Trajectory trajectory = new Trajectory();
+    private LabyrinthTableTiltControllerGUI gui;
 
     /** Constructs instance of the new 'filter' CalibratedPanTilt. The only time events are actually used
      * is during calibration. The PanTilt hardware interface is also constructed.
@@ -432,6 +433,11 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     }
 
     public void controlTilts() {
-        labyrinthHardware.doControlTilts();
+        if (gui == null) {
+            gui = new LabyrinthTableTiltControllerGUI(this);
+            gui.addPropertyChangeListener(this);
+            gui.setPanTiltLimit(tiltLimitRad);
+        }
+        gui.setVisible(true);
     }
 }

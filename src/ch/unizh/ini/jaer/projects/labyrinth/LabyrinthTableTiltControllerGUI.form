@@ -88,7 +88,7 @@
   <SubComponents>
     <Component class="javax.swing.JLabel" name="statusLabel">
       <Properties>
-        <Property name="text" type="java.lang.String" value="exception status"/>
+        <Property name="text" type="java.lang.String" value="status"/>
         <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
           <Border info="org.netbeans.modules.form.compat2.border.LineBorderInfo">
             <LineBorder/>
@@ -126,7 +126,7 @@
         </DimensionLayout>
         <DimensionLayout dim="1">
           <Group type="103" groupAlignment="0" attributes="0">
-              <EmptySpace min="0" pref="327" max="32767" attributes="0"/>
+              <EmptySpace min="0" pref="313" max="32767" attributes="0"/>
           </Group>
         </DimensionLayout>
       </Layout>
