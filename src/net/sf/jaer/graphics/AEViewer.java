@@ -2018,6 +2018,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     class StatusClearerThread extends Thread{
         long endTime;
 
+        public StatusClearerThread() {
+            super("AEViewerStatusClearerThread");
+        }
+
         public void renew (){
 //            System.out.println("renewing status change");
             endTime = System.currentTimeMillis() + STATUS_DURATION;
