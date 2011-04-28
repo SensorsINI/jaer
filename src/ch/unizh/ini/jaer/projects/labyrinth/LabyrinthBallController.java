@@ -62,10 +62,11 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     Point2D.Float integralError = new Point2D.Float(0, 0);
     int lastErrorUpdateTime = 0;
     // state stuff
-    Point desiredPosition = null;
+    Point2D.Float desiredPosition = null, target=null;
     // history
     Trajectory trajectory = new Trajectory();
     private LabyrinthTableTiltControllerGUI gui;
+    boolean navigateMaze=getBoolean("navigateMaze", true);
 
     /** Constructs instance of the new 'filter' CalibratedPanTilt. The only time events are actually used
      * is during calibration. The PanTilt hardware interface is also constructed.
@@ -91,6 +92,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         setPropertyTooltip("integralGain", "integral error gain: tilt(rad)=error(pixels)*integralGain(1/(pixels*sec))");
         setPropertyTooltip("proportionalGain", "proportional error gain: tilt(rad)=error(pixels)*proportionalGain(1/pixels)");
         setPropertyTooltip("derivativeGain", "-derivative gain: damps overshoot. tilt(rad)=-vel(pix/sec)*derivativeGain(sec/pixel)");
+        setPropertyTooltip("navigateMaze", "follow the path in the maze");
         computePoles();
     }
 
@@ -108,8 +110,9 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             Point2D.Float pos = ball.getLocation();
             trajectory.add(new TrajectoryPoint(ball.getLastEventTimestamp(), pos.x, pos.y));
             Point2D.Float vel = ball.getVelocityPPS();
-            if (getDesiredPosition() != null) {
-                posError = new Point2D.Float(getDesiredPosition().x - pos.x, getDesiredPosition().y - pos.y);
+            target=desiredPosition!=null?desiredPosition:tracker.findNextPathPoint();
+            if (target != null) {
+                posError = new Point2D.Float(target.x - pos.x, target.y - pos.y);
                 if (lastErrorUpdateTime == 0) {
                     lastErrorUpdateTime = timestamp; // initialize to avoid giant dt, will be zero on first pass
                 }
@@ -182,11 +185,11 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
         super.annotate(drawable);
         GL gl = drawable.getGL();
-        if (getDesiredPosition() != null) {
+        if (target != null) {
             // draw desired position disk
             gl.glColor4f(0, .25f, 0, .3f);
             gl.glPushMatrix();
-            gl.glTranslatef(getDesiredPosition().x, getDesiredPosition().y, 0);
+            gl.glTranslatef(target.x, target.y, 0);
             if (quad == null) {
                 quad = glu.gluNewQuadric();
             }
@@ -199,7 +202,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 gl.glColor4f(.25f, .25f, 0, .3f);
                 gl.glBegin(GL.GL_LINES);
                 gl.glVertex2f(tracker.getBall().getLocation().x, tracker.getBall().getLocation().y);
-                gl.glVertex2f(getDesiredPosition().x, getDesiredPosition().y);
+                gl.glVertex2f(target.x, target.y);
                 gl.glEnd();
             }
             // draw table tilt values
@@ -293,14 +296,14 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     /**
      * @return the desiredPosition
      */
-    public Point getDesiredPosition() {
+    public Point2D.Float getDesiredPosition() {
         return desiredPosition;
     }
 
     /**
      * @param desiredPosition the desiredPosition to set
      */
-    public void setDesiredPosition(Point desiredPosition) {
+    public void setDesiredPosition(Point2D.Float desiredPosition) {
         this.desiredPosition = desiredPosition;
         integralError.setLocation(0, 0);
         lastErrorUpdateTime = 0;
@@ -356,16 +359,19 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         SetRecordingEnabled
     }
 
-    private void setBallLocationFromMouseEvent(MouseEvent e) {
+    synchronized private void setBallLocationFromMouseEvent(MouseEvent e) {
         Point p = getMousePixel(e);
         if(p==null) return;
         Point2D.Float pf = new Point2D.Float(p.x, p.y);
         tracker.setBallLocation(pf);
     }
 
-    private void setDesiredPositionFromMouseEvent(MouseEvent e) {
-        setDesiredPosition(getMousePixel(e));
-        log.info("desired position=" + desiredPosition);
+    synchronized private void setDesiredPositionFromMouseEvent(MouseEvent e) {
+        Point p=getMousePixel(e);
+        if(p==null) desiredPosition=null;
+        desiredPosition.x=p.x;
+        desiredPosition.y=p.y;
+//        log.info("desired position from mouse=" + desiredPosition);
     }
 
     @Override

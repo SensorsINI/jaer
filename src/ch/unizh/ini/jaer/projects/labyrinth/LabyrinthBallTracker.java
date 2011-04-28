@@ -117,7 +117,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     @Override
     public void annotate(GLAutoDrawable drawable) {
         GL gl = drawable.getGL();
-          if (glu == null) {
+        if (glu == null) {
             glu = new GLU();
         }
         if (quad == null) {
@@ -146,8 +146,8 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
             if (p != null) {
                 gl.glPushMatrix();
                 gl.glTranslatef(p.x, p.y, 1);
-                gl.glColor4f(.25f, .25f, .25f, .3f);
-               glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
+                gl.glColor4f(.7f, .25f, 0f, .5f);
+                glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
                 glu.gluDisk(quad, 0, 2, 8, 1);
                 gl.glPopMatrix();
             }
@@ -217,5 +217,16 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
             return null;
         }
         return map.getBallPath().get(ind);
+    }
+
+    public Point2D.Float findNextPathPoint() {
+        int ind = findNearestPathIndex();
+        if (ind == -1) {
+            return null;
+        }
+        if (ind == map.getBallPath().size() - 1) {
+            return map.getBallPath().get(ind);
+        }
+        return map.getBallPath().get(ind + 1);
     }
 }

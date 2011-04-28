@@ -58,6 +58,7 @@ public class MultilineAnnotationTextRenderer {
      public static void renderMultilineString(String s) {
         if ( renderer == null ){
             renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,24),true,true);
+            renderer.setColor(1, 1, 1, 1);
         }
         String[] lines = s.split("\n");
         if (lines == null) {

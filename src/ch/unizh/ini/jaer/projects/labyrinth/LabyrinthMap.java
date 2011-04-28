@@ -44,7 +44,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
     ArrayList<Ellipse2D.Float> holesSVG = new ArrayList();
     ArrayList<Line2D.Float> linesSVG = new ArrayList();
     ArrayList<ArrayList<Point2D.Float>> pathsSVG = new ArrayList();
-    ArrayList<Point2D.Float> ballPathSVG = null;
+    ArrayList<Point2D.Float> ballPathSVG = new ArrayList();
     Rectangle2D.Float outlineSVG = null;
     Rectangle2D boundsSVG = null;
     // chip space stuff, in retina coordinates

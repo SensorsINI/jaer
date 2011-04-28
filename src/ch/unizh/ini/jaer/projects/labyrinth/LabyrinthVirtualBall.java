@@ -226,7 +226,11 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
         }
 
         private void reset() {
-            posPixels.setLocation(chip.getSizeX() / 2, chip.getSizeY() / 2);
+            if (controller != null) {
+                posPixels.setLocation(controller.tracker.getStartingLocation());
+            } else {
+                posPixels.setLocation(chip.getSizeX() / 2, chip.getSizeY() / 2);
+            }
             velPPS.setLocation(0, 0);
             ball.lastUpdateTimeUs = System.nanoTime() >> 10;
         }
