@@ -97,7 +97,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
     }
 
     private void addGeneralPath(GeneralPath path) {
-        PathIterator itr = path.getPathIterator(null, 0.01);
+        PathIterator itr = path.getPathIterator(null, 0.1);
         ArrayList<Point2D.Float> pathList = new ArrayList();
         Point2D.Float pathStart = null, lastPoint = null;
         boolean closed = false;
@@ -406,6 +406,12 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
                     gl.glColor4f(.1f, .4f, .1f, .3f);
                     gl.glLineWidth(3);
                     gl.glBegin(GL.GL_LINE_STRIP);
+                    for (Point2D.Float l : ballPath) {
+                        gl.glVertex2f(l.x, l.y);
+                    }
+                    gl.glEnd();
+                    gl.glPointSize(9);
+                    gl.glBegin(GL.GL_POINTS);
                     for (Point2D.Float l : ballPath) {
                         gl.glVertex2f(l.x, l.y);
                     }
