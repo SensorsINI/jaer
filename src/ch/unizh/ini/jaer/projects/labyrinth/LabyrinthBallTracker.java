@@ -63,7 +63,18 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         if (chip.getCanvas() != null && chip.getCanvas().getCanvas() != null) {
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
         }
-    }
+        setPropertyTooltip("clusterSize", "size (starting) in fraction of chip max size");
+        setPropertyTooltip("mixingFactor", "how much cluster is moved towards an event, as a fraction of the distance from the cluster to the event");
+        setPropertyTooltip("velocityPoints", "the number of recent path points (one per packet of events) to use for velocity vector regression");
+        setPropertyTooltip("velocityTauMs", "lowpass filter time constant in ms for velocity updates; effectively limits acceleration");
+        setPropertyTooltip("frictionTauMs", "velocities decay towards zero with this time constant to mimic friction; set to NaN to disable friction");
+        setPropertyTooltip("clearMap", "clears the map; use for bare table");
+        setPropertyTooltip("loadMap","loads a map from an SVG file");
+        setPropertyTooltip("controlTilts", "shows a GUI to directly control table tilts with mouse");
+        setPropertyTooltip("centerTilts","centers the table tilts");
+        setPropertyTooltip("disableServos","disables the servo motors by turning off the PWM control signals; digital servos may not relax however becuase they remember the previous settings");
+         setPropertyTooltip( "maxNumClusters", "Sets the maximum potential number of clusters");
+   }
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -155,6 +166,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
 
         MultilineAnnotationTextRenderer.renderMultilineString(String.format("Ball tracker:\npoint=%d", ball == null ? -1 : map.findClosestIndex(ball.location, 10, true)));
 
+        chip.getCanvas().checkGLError(gl, glu, "after tracker annotations");
     }
 
     /**
@@ -207,6 +219,11 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         }
         return map.findClosestIndex(ball.location, 15, true);
     }
+    
+    public int getNumPathVertices(){
+        if(map==null || map.getBallPath()==null) return 0;
+        return map.getBallPath().size();
+    }
 
     public Point2D.Float findNearestPathPoint() {
         if (map == null || ball == null) {
@@ -228,5 +245,103 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
             return map.getBallPath().get(ind);
         }
         return map.getBallPath().get(ind + 1);
+    }
+
+    public float getVelocityTauMs() {
+        return tracker.getVelocityTauMs();
+    }
+
+    public int getNumClusters() {
+        return tracker.getNumClusters();
+    }
+
+    public float getMixingFactor() {
+        return tracker.getMixingFactor();
+    }
+
+    public float getMinMixingFactor() {
+        return tracker.getMinMixingFactor();
+    }
+
+    public final int getMaxNumClusters() {
+        return tracker.getMaxNumClusters();
+    }
+
+    public synchronized void setVelocityTauMs(float velocityTauMs) {
+        tracker.setVelocityTauMs(velocityTauMs);
+    }
+
+    public void setMaxNumClusters(int maxNumClusters) {
+        tracker.setMaxNumClusters(maxNumClusters);
+    }
+
+    public synchronized void setFrictionTauMs(float frictionTauMs) {
+        tracker.setFrictionTauMs(frictionTauMs);
+    }
+
+
+    public int getMinMaxNumClusters() {
+        return tracker.getMinMaxNumClusters();
+    }
+
+    public float getMinClusterSize() {
+        return tracker.getMinClusterSize();
+    }
+
+
+    public float getMaxMixingFactor() {
+        return tracker.getMaxMixingFactor();
+    }
+
+    public int getMaxMaxNumClusters() {
+        return tracker.getMaxMaxNumClusters();
+    }
+
+    public float getMaxClusterSize() {
+        return tracker.getMaxClusterSize();
+    }
+
+    public final float getClusterSize() {
+        return tracker.getClusterSize();
+    }
+
+    public synchronized void setClusterSize(float clusterSize) {
+        tracker.setClusterSize(clusterSize);
+    }
+    
+    
+
+    public void doLoadMap() {
+        map.doLoadMap();
+    }
+
+    public synchronized void doClearMap() {
+        map.doClearMap();
+    }
+    
+    public boolean isAtMazeStart(){
+        if(ball==null) return false;
+        if(findNearestPathIndex()==0) {
+            return true;
+        }
+        return false;
+    }
+    
+    public boolean isAtMazeEnd(){
+        if(ball==null) return false;
+        if(findNearestPathIndex()==getNumPathVertices()-1) {
+            return true;
+        }
+        return false;
+    }
+    
+    public boolean isLostTracking(){
+         return ball==null;
+    }
+    
+    public boolean isPathNotFound(){
+        if(ball==null) return true;
+        if(findNearestPathIndex()==-1) return true;
+        return false;
     }
 }

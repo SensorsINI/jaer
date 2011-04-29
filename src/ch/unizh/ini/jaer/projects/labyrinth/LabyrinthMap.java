@@ -88,7 +88,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
     }
 
     @Override
-    public void resetFilter() {
+    synchronized public void resetFilter() {
         invalidateDisplayList();
     }
 
@@ -276,10 +276,11 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         holes.clear();
         holeRadii.clear();
         closestPointComputer.init();
+        longestPath=Integer.MIN_VALUE;
         invalidateDisplayList();
     }
 
-    private void loadMapFromFile(File file) throws MalformedURLException {
+    synchronized private void loadMapFromFile(File file) throws MalformedURLException {
         log.info("loading map file " + file);
         doClearMap();
         SVGUniverse svgUniverse = new SVGUniverse();
@@ -452,7 +453,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
     /**
      * @param displayMap the displayMap to set
      */
-    public void setDisplayMap(boolean displayMap) {
+    synchronized public void setDisplayMap(boolean displayMap) {
         this.displayMap = displayMap;
         putBoolean("displayMap", displayMap);
     }
@@ -691,7 +692,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
      * @param fastLocalSearchEnabled if true, the search uses the ClosestPointLookupTable lookup and maxDist is ignored.
      * @return Index of closest point on path or -1 if no path point is <= maxDist from pos or is not found in the ClosestPointLookupTable.
      */
-    public int findClosestIndex(Point2D pos, float maxDist, boolean fastLocalSearchEnabled) {
+    synchronized public int findClosestIndex(Point2D pos, float maxDist, boolean fastLocalSearchEnabled) {
         if (pos == null) {
             return -1;
         }

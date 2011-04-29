@@ -8,6 +8,8 @@ import java.awt.geom.Point2D;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Random;
+import javax.media.opengl.GL;
+import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -32,6 +34,8 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
     Random random = new Random();
     private boolean emitTCEvents = getBoolean("emitTCEvents", true);
     private float backgroundEventRate = getFloat("backgroundEventRate", 10000);
+    private float slewRateLimitRadPerSec = getFloat("slewRateLimitRadPerSec", (20f / .1f / 57f));
+    Point2D.Float tiltsRadDelayed = new Point2D.Float();
 
 //    public LabyrinthVirtualBall(AEChip chip) {
 //        super(chip);
@@ -42,8 +46,10 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
         map = controller.tracker.map;
         checkOutputPacketEventType(BasicEvent.class);
         setPropertyTooltip("slowDownFactor", "slow down real time by this factor");
+        setPropertyTooltip("backgroundEventRate", "event rate of all pixels randomly in background");
         setPropertyTooltip("staticEventRate", "event rate when emitting events statically");
         setPropertyTooltip("emitTCEvents", "emit temporal contrast events on movement of virtual ball, intead of statically emitting events always");
+        setPropertyTooltip("slewRateLimitRadPerSec", "slew rate limit of tilt control in radians of table tilt per second");
         chip.addObserver(this);
     }
 
@@ -148,6 +154,7 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
             if (initialized) {
 
                 Point2D.Float tiltsRad = controller.getTiltsRad();
+
                 long tNowUs = System.nanoTime() >> 10;
                 long dtUs = tNowUs - lastUpdateTimeUs;
                 if (dtUs < 0 || dtUs > 100000) {
@@ -155,9 +162,21 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
                     return;
                 }
                 float dtSec = AEConstants.TICK_DEFAULT_US * 1e-6f * dtUs * slowDownFactor;
+                // update internal tilt values that model slew rate limit of servos
+
+                if (tiltsRad.distance(tiltsRadDelayed) > dtSec * slewRateLimitRadPerSec) {
+                    float slew = dtSec * slewRateLimitRadPerSec;
+                    tiltsRadDelayed.x += slew * Math.signum(tiltsRad.x - tiltsRadDelayed.x);
+                    tiltsRadDelayed.y += slew * Math.signum(tiltsRad.y - tiltsRadDelayed.y);
+                } else {
+                    tiltsRadDelayed.setLocation(tiltsRad);
+                }
+
+
+
                 float gfac = dtSec * controller.gravConstantPixPerSec2;
-                velPPS.x += tiltsRad.x * gfac;
-                velPPS.y += tiltsRad.y * gfac;
+                velPPS.x += tiltsRadDelayed.x * gfac;
+                velPPS.y += tiltsRadDelayed.y * gfac;
                 float dx = velPPS.x * dtSec;
                 float dy = velPPS.y * dtSec;
                 posPixels.x += dx;
@@ -261,4 +280,89 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
         this.backgroundEventRate = backgroundEventRate;
         putFloat("backgroundEventRate", backgroundEventRate);
     }
+
+    /**
+     * @return the slewRateLimitRadPerMs
+     */
+    public float getSlewRateLimitRadPerSec() {
+        return slewRateLimitRadPerSec;
+    }
+
+    /**
+     * @param slewRateLimitRadPerSec the slewRateLimitRadPerMs to set
+     */
+    public void setSlewRateLimitRadPerSec(float slewRateLimitRadPerSec) {
+        this.slewRateLimitRadPerSec = slewRateLimitRadPerSec;
+        putFloat("slewRateLimitRadPerSec", slewRateLimitRadPerSec);
+    }
+
+    @Override
+    public void annotate(GLAutoDrawable drawable) {
+        super.annotate(drawable);
+          GL gl = drawable.getGL();
+        // draw slew-rate limited tilt values
+        final float size = .1f;
+        float sx = chip.getSizeX(), sy = chip.getSizeY();
+        {
+            gl.glPushMatrix();
+
+            gl.glTranslatef(-sx * size * 1.1f, .1f*sy, 0); // move outside chip array to lower left
+            gl.glScalef(sx * size, sx * size, sx * size); // scale everything so that when we draw 1 unit we cover this size*sx pixels
+
+            chip.getCanvas().checkGLError(gl, glu, "in control box  controller annotations");
+            gl.glLineWidth(3f);
+            gl.glColor3f(1, 1, 1);
+
+            {
+                gl.glBegin(GL.GL_LINE_LOOP);
+                gl.glVertex2f(0, 0);
+                gl.glVertex2f(1, 0);
+                gl.glVertex2f(1, 1);
+                gl.glVertex2f(0, 1);
+                gl.glEnd();
+            }
+            gl.glPointSize(4f);
+            {
+                gl.glBegin(GL.GL_POINTS);
+                gl.glVertex2f(.5f, .5f);
+                gl.glEnd();
+            }
+            chip.getCanvas().checkGLError(gl, glu, "drawing tilt box");
+            // draw tilt vector
+            float xlen = tiltsRadDelayed.x / controller.getTiltLimitRad() / 2;
+            float ylen = tiltsRadDelayed.y / controller.getTiltLimitRad()  / 2;
+            gl.glLineWidth(4f);
+            if (Math.abs(xlen) < .5f && Math.abs(ylen) < .5f) {
+                gl.glColor4f(0, 1, 0, 1);
+            } else {
+                gl.glColor4f(1, 0, 0, 1);
+            }
+            gl.glPointSize(4f);
+            {
+                gl.glTranslatef(.5f, .5f, 0);
+                gl.glBegin(GL.GL_POINTS);
+                gl.glVertex2f(0, 0);
+                gl.glEnd();
+            }
+            gl.glLineWidth(4);
+            {
+                gl.glBegin(GL.GL_LINES);
+                gl.glVertex2f(0, 0);
+                gl.glVertex2f(xlen, ylen);
+                gl.glEnd();
+            }
+            chip.getCanvas().checkGLError(gl, glu, "drawing tilt box");
+
+            gl.glPopMatrix();
+        }
+        // draw virtual ball 
+        gl.glPointSize(44);
+        gl.glColor4f(0,0,.5f,.5f);
+        gl.glBegin(GL.GL_POINTS);
+        gl.glVertex2f(ball.posPixels.x,ball.posPixels.y);
+        gl.glEnd();
+
+        chip.getCanvas().checkGLError(gl, glu, "after virtual ball annotations");
+    }
+    
 }

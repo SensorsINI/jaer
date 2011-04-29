@@ -82,14 +82,7 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
     }
 
 
-    /** Invokes the calibration GUI. Calibration values are stored persistently as preferences. 
-     * Built automatically into filter parameter panel as an action.
-     */
-    public void doControlTilts() {
-
-    }
-
-    public void doCenter(){
+    synchronized public void doCenter(){
          if(panTiltHardware!=null && panTiltHardware.getServoInterface()!=null){
             try {
              panTiltHardware.setPanTiltValues(0.5f, 0.5f);
@@ -99,7 +92,7 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
         }
     }
 
-    public void doDisableServos(){
+    synchronized public void doDisableServos(){
         if(panTiltHardware!=null && panTiltHardware.getServoInterface()!=null){
             try {
              panTiltHardware.stopJitter();
@@ -174,12 +167,12 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
     }
 
     @Override
-    public void startJitter() {
+    synchronized public void startJitter() {
         getPanTiltHardware().startJitter();
     }
 
     @Override
-    public void stopJitter() {
+    synchronized public void stopJitter() {
         getPanTiltHardware().stopJitter();
     }
 
@@ -188,7 +181,7 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
      @param tilt 0 to 1 value
      */
     @Override
-    public void setPanTiltValues(float pan, float tilt) throws HardwareInterfaceException {
+    synchronized public void setPanTiltValues(float pan, float tilt) throws HardwareInterfaceException {
         float[] old=getPanTiltHardware().getPanTiltValues();
         getPanTiltHardware().setPanTiltValues(pan, tilt);
         getSupport().firePropertyChange("panValue", old[0], panValue);
@@ -243,7 +236,7 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
     /**
      * @param jitterEnabled the jitterEnabled to set
      */
-    public void setJitterEnabled(boolean jitterEnabled) {
+    synchronized public void setJitterEnabled(boolean jitterEnabled) {
         this.jitterEnabled = jitterEnabled;
         putBoolean("jitterEnabled", jitterEnabled);
         panTiltHardware.setJitterEnabled(jitterEnabled);

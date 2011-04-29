@@ -7,12 +7,14 @@ package ch.unizh.ini.jaer.projects.labyrinth;
 
 import ch.unizh.ini.jaer.hardware.pantilt.*;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimer.Message;
+import java.awt.Color;
 import java.awt.Toolkit;
 import java.util.ArrayList;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.ExceptionListener;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.event.*;
 import java.awt.geom.*;
@@ -37,103 +39,6 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame {
     private Trajectory trajectory = new Trajectory();
     private float panTiltLimit = 0.5f;
 
-    class Trajectory extends ArrayList<TrajectoryPoint> {
-
-        long lastTime;
-        TrajectoryPlayer player = null;
-
-        void add(float pan, float tilt, int x, int y) {
-            if (isEmpty()) {
-                start();
-            }
-            long now = System.currentTimeMillis();
-            add(new TrajectoryPoint(now - lastTime, pan, tilt, x, y));
-            lastTime = now;
-        }
-
-        void start() {
-            lastTime = System.currentTimeMillis();
-        }
-
-        @Override
-        public void clear() {
-            if (player != null) {
-                player.cancel();
-            }
-            super.clear();
-        }
-
-        private void setPlaybackEnabled(boolean selected) {
-            if (selected) {
-                if (player != null) {
-                    player.cancel();
-                }
-                player = new TrajectoryPlayer();
-                player.start();
-            } else {
-                if (player != null) {
-                    player.cancel();
-                }
-            }
-        }
-
-        private void paint() {
-            if (isEmpty()) {
-                return;
-            }
-            int n = size();
-            int[] x = new int[n], y = new int[n];
-            for (int i = 0; i < n; i++) {
-                x[i] = get(i).x;
-                y[i] = get(i).y;
-            }
-            calibrationPanel.getGraphics().drawPolyline(x, y, n);
-        }
-
-        class TrajectoryPlayer extends Thread {
-
-            boolean cancelMe = false;
-
-            void cancel() {
-                cancelMe = true;
-                synchronized (this) {
-                    interrupt();
-                }
-            }
-
-            @Override
-            public void run() {
-                while (!cancelMe) {
-                    for (TrajectoryPoint p : Trajectory.this) {
-                        if (cancelMe) {
-                            break;
-                        }
-                        setPanTilt(p.pan, p.tilt);
-                        try {
-                            Thread.sleep(p.timeMillis);
-                        } catch (InterruptedException ex) {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    class TrajectoryPoint {
-
-        long timeMillis;
-        float pan, tilt;
-        int x, y;
-
-        public TrajectoryPoint(long timeMillis, float pan, float tilt, int x, int y) {
-            this.timeMillis = timeMillis;
-            this.pan = pan;
-            this.tilt = tilt;
-            this.x = x;
-            this.y = y;
-        }
-    }
 
     /** Make the GUI.
      * 
@@ -151,8 +56,22 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame {
     public void paint(Graphics g) {
         final int r = 6;
         super.paint(g);
+        
+        // paint cross hairs to show center
+        Graphics2D g2=(Graphics2D)calibrationPanel.getGraphics();
+        int w=calibrationPanel.getWidth(), h=calibrationPanel.getHeight();
+        g2.setColor(Color.gray);
+        g2.drawLine(w/2, 0, w/2, h);
+        g2.drawLine(0, h/2, w, h/2);
+        
+        
+        // TODO paint current set value
+        
         Point2D.Float ptvals = panTilt.getTiltsRad();
         float p = ptvals.x, t = ptvals.y;
+        
+        
+        
 
         trajectory.paint();
     }
@@ -177,7 +96,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame {
         jButton1.setText("jButton1");
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
-        setTitle("PanTiltAimer");
+        setTitle("LabyrinthTableTiltControlller");
         setCursor(new java.awt.Cursor(java.awt.Cursor.CROSSHAIR_CURSOR));
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosed(java.awt.event.WindowEvent evt) {
@@ -225,16 +144,17 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame {
         calibrationPanel.setLayout(calibrationPanelLayout);
         calibrationPanelLayout.setHorizontalGroup(
             calibrationPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 611, Short.MAX_VALUE)
+            .addGap(0, 380, Short.MAX_VALUE)
         );
         calibrationPanelLayout.setVerticalGroup(
             calibrationPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 313, Short.MAX_VALUE)
+            .addGap(0, 283, Short.MAX_VALUE)
         );
 
         jLabel5.setText("<html>Drag or click  mouse to control table tilt.<br>Use <b>r</b> to toggle recording a tilt temporal trajectory.</html>");
 
         recordCB.setText("Record trajectory");
+        recordCB.setEnabled(false);
         recordCB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 recordCBActionPerformed(evt);
@@ -242,6 +162,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame {
         });
 
         clearBut.setText("Clear trajectory");
+        clearBut.setEnabled(false);
         clearBut.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 clearButActionPerformed(evt);
@@ -249,6 +170,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame {
         });
 
         loopTB.setText("Loop trajectory");
+        loopTB.setEnabled(false);
         loopTB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 loopTBActionPerformed(evt);
@@ -267,42 +189,46 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame {
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
+                .addGap(10, 10, 10)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(calibrationPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(statusLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 384, Short.MAX_VALUE)
                     .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 195, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(centerBut)
+                            .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 195, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(recordCB)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(clearBut)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(loopTB)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(centerBut))
-                    .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(calibrationPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(1, 1, 1)
-                        .addComponent(statusLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 624, Short.MAX_VALUE)))
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(recordCB, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(clearBut, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(loopTB, javax.swing.GroupLayout.Alignment.TRAILING))))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(recordCB)
-                    .addComponent(clearBut)
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(loopTB)
-                        .addComponent(centerBut)))
-                .addGap(15, 15, 15)
-                .addComponent(calibrationPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(14, 14, 14)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(50, 50, 50))
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(centerBut)
+                                .addGap(18, 18, 18))))
+                    .addGroup(layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(recordCB)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(clearBut)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(loopTB)))
+                .addGap(18, 18, 18)
+                .addComponent(calibrationPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(18, 18, 18)
                 .addComponent(statusLabel)
-                .addContainerGap())
+                .addContainerGap(29, Short.MAX_VALUE))
         );
 
         pack();
@@ -469,4 +395,103 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame {
     public void setPanTiltLimit(float panTiltLimit) {
         this.panTiltLimit = panTiltLimit;
     }
+
+    class Trajectory extends ArrayList<TrajectoryPoint> {
+
+        long lastTime;
+        TrajectoryPlayer player = null;
+
+        void add(float pan, float tilt, int x, int y) {
+            if (isEmpty()) {
+                start();
+            }
+            long now = System.currentTimeMillis();
+            add(new TrajectoryPoint(now - lastTime, pan, tilt, x, y));
+            lastTime = now;
+        }
+
+        void start() {
+            lastTime = System.currentTimeMillis();
+        }
+
+        @Override
+        public void clear() {
+            if (player != null) {
+                player.cancel();
+            }
+            super.clear();
+        }
+
+        private void setPlaybackEnabled(boolean selected) {
+            if (selected) {
+                if (player != null) {
+                    player.cancel();
+                }
+                player = new TrajectoryPlayer();
+                player.start();
+            } else {
+                if (player != null) {
+                    player.cancel();
+                }
+            }
+        }
+
+        private void paint() {
+            if (isEmpty()) {
+                return;
+            }
+            int n = size();
+            int[] x = new int[n], y = new int[n];
+            for (int i = 0; i < n; i++) {
+                x[i] = get(i).x;
+                y[i] = get(i).y;
+            }
+            calibrationPanel.getGraphics().drawPolyline(x, y, n);
+        }
+
+        class TrajectoryPlayer extends Thread {
+
+            boolean cancelMe = false;
+
+            void cancel() {
+                cancelMe = true;
+                synchronized (this) {
+                    interrupt();
+                }
+            }
+
+            @Override
+            public void run() {
+                while (!cancelMe) {
+                    for (TrajectoryPoint p : Trajectory.this) {
+                        if (cancelMe) {
+                            break;
+                        }
+                        setPanTilt(p.pan, p.tilt);
+                        try {
+                            Thread.sleep(p.timeMillis);
+                        } catch (InterruptedException ex) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    class TrajectoryPoint {
+
+        long timeMillis;
+        float pan, tilt;
+        int x, y;
+
+        public TrajectoryPoint(long timeMillis, float pan, float tilt, int x, int y) {
+            this.timeMillis = timeMillis;
+            this.pan = pan;
+            this.tilt = tilt;
+            this.x = x;
+            this.y = y;
+        }
+    }
+
 }
