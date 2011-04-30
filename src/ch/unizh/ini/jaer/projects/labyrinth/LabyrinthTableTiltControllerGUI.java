@@ -25,30 +25,31 @@ import java.util.logging.Logger;
  * Tests ball controller by displaying a GUI that allows manual control of ball position under feedback control.
  * @author  tobi
  */
-public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame {
+public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implements PropertyChangeListener {
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     // property change messages
     public final String POSITION = "position";
     Logger log = Logger.getLogger("LabyrinthBallController");
-    private LabyrinthBallController panTilt;
+    private LabyrinthBallController controller;
     private int w = 200, h = 200, x0 = 0, y0 = 0;
     private Point2D.Float lastPanTilt = new Point2D.Float(0, 0);
     private Point lastMousePressLocation = new Point(w / 2, h / 2);
     private boolean recordingEnabled = false;
     private Trajectory trajectory = new Trajectory();
     private float panTiltLimit = 0.5f;
-
+    Point2D.Float currentPanTiltRad = new Point2D.Float(0, 0);
 
     /** Make the GUI.
      * 
-     * @param pt the pan tilt unit
+     * @param controller the pan tilt unit
      */
-    public LabyrinthTableTiltControllerGUI(LabyrinthBallController pt) {
-        panTilt = pt;
+    public LabyrinthTableTiltControllerGUI(LabyrinthBallController controller) {
+        this.controller = controller;
         initComponents();
         calibrationPanel.setPreferredSize(new Dimension(w, h));
         calibrationPanel.requestFocusInWindow();
+        controller.getSupport().addPropertyChangeListener(this);
         pack();
     }
 
@@ -56,22 +57,18 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame {
     public void paint(Graphics g) {
         final int r = 6;
         super.paint(g);
-        
+
         // paint cross hairs to show center
-        Graphics2D g2=(Graphics2D)calibrationPanel.getGraphics();
-        int w=calibrationPanel.getWidth(), h=calibrationPanel.getHeight();
+        Graphics2D g2 = (Graphics2D) calibrationPanel.getGraphics();
+        int w = calibrationPanel.getWidth(), h = calibrationPanel.getHeight();
         g2.setColor(Color.gray);
-        g2.drawLine(w/2, 0, w/2, h);
-        g2.drawLine(0, h/2, w, h/2);
-        
-        
-        // TODO paint current set value
-        
-        Point2D.Float ptvals = panTilt.getTiltsRad();
-        float p = ptvals.x, t = ptvals.y;
-        
-        
-        
+        g2.drawLine(w / 2, 0, w / 2, h);
+        g2.drawLine(0, h / 2, w, h / 2);
+        g2.setColor(Color.red) ;
+        float x=w/2+w/2*currentPanTiltRad.x/controller.getTiltLimitRad();
+        float y=h/2+h/2*(-currentPanTiltRad.y/controller.getTiltLimitRad());
+        final int s=20;
+        g2.drawOval((int)x-s/2, (int)y-s/2, s, s);
 
         trajectory.paint();
     }
@@ -235,7 +232,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     float scaleEvt(float x, float w) {
-        float y = panTilt.getTiltLimitRad() * (2 * ((float) x / w - .5f));
+        float y = controller.getTiltLimitRad() * (2 * ((float) x / w - .5f));
         return y;
     }
 
@@ -244,7 +241,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame {
     }
 
     private float getTilt(MouseEvent evt) {
-        return scaleEvt(calibrationPanel.getHeight()-evt.getY(), calibrationPanel.getHeight());
+        return scaleEvt(calibrationPanel.getHeight() - evt.getY(), calibrationPanel.getHeight());
     }
 
     private void setPanTilt(float pan, float tilt) {
@@ -252,7 +249,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame {
             lastPanTilt.x = pan;
             lastPanTilt.y = tilt;
             statusLabel.setText(String.format("%.3f, %.3f", pan, tilt));
-            panTilt.setTilts(pan, tilt);
+            controller.setTilts(pan, tilt);
         } catch (HardwareInterfaceException e) {
 //            log.warning(e.toString());
         }
@@ -339,7 +336,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame {
     }//GEN-LAST:event_loopTBActionPerformed
 
     private void centerButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_centerButActionPerformed
-        panTilt.centerTilts();
+        controller.centerTilts();
     }//GEN-LAST:event_centerButActionPerformed
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel calibrationPanel;
@@ -494,4 +491,17 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame {
         }
     }
 
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if(evt.getSource() instanceof LabyrinthHardware){
+            if(evt.getPropertyName()==LabyrinthHardware.PANTILT_CHANGE){
+                currentPanTiltRad=(Point2D.Float)evt.getNewValue();
+                repaint();
+            }
+        }
+    }
+    
+    public void setPanTiltChange(){
+        // void method to avoid complaints caused by property change on value change from FilterPanel
+    }
 }

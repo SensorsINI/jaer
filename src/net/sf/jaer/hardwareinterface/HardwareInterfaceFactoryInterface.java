@@ -10,6 +10,8 @@
 
 package net.sf.jaer.hardwareinterface;
 
+import java.util.Collection;
+
 
 
 /**
@@ -39,6 +41,12 @@ public interface HardwareInterfaceFactoryInterface  {
      */
     public HardwareInterface getInterface(int n) throws HardwareInterfaceException ;
     
+//    /** Returns a Collection of enumerated HardwareInterfaces.
+//     *
+//     * @return the Collection.
+//     * @throws HardwareInterfaceException
+//     */
+//    public Collection<HardwareInterface> getInterfaceList() throws HardwareInterfaceException;
     
 //    /** Returns the first available interface for a particular Chip. The factory can use the Chip to determine
 //     * which class to manufacture for a particular HardwareInterface.

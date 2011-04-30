@@ -9,6 +9,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.*;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
+import net.sf.jaer.eventprocessing.filter.RotateFilter;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
@@ -34,7 +35,7 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor  {
         virtualBall=new LabyrinthVirtualBall(chip,this);
         filterChain = new FilterChain(chip);
 
-//        filterChain.add(map=new LabyrinthMap(chip));
+        filterChain.add(new RotateFilter(chip));
         filterChain.add(virtualBall);
         filterChain.add(controller);
         setEnclosedFilterChain(filterChain);

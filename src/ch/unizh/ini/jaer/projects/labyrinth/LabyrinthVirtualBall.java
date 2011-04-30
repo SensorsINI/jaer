@@ -10,6 +10,7 @@ import java.util.Observer;
 import java.util.Random;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import javax.media.opengl.glu.GLUquadric;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -36,7 +37,9 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
     private float backgroundEventRate = getFloat("backgroundEventRate", 10000);
     private float slewRateLimitRadPerSec = getFloat("slewRateLimitRadPerSec", (20f / .1f / 57f));
     Point2D.Float tiltsRadDelayed = new Point2D.Float();
-
+    GLUquadric sphereQuad;
+    
+    
 //    public LabyrinthVirtualBall(AEChip chip) {
 //        super(chip);
 //    }
@@ -139,7 +142,7 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
 
         public Point2D.Float posPixels = new Point2D.Float();
         public Point2D.Float velPPS = new Point2D.Float(0, 0);
-        public float radiusPixels = 3;
+        public float radiusPixels = 2f;
         long lastUpdateTimeUs = 0;
         boolean initialized = false;
 
@@ -253,6 +256,21 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
             velPPS.setLocation(0, 0);
             ball.lastUpdateTimeUs = System.nanoTime() >> 10;
         }
+
+        private void render(GL gl) {
+            gl.glPushMatrix();
+            gl.glColor4f(1f, 1f, 1f, .25f);
+//            gl.glLightf(chip.getSizeX()/2, chip.getSizeY()/2, chip.getMaxSize()*4);
+//            gl.glEnable(GL.GL_LIGHT0);
+            gl.glTranslatef(posPixels.x, posPixels.y, radiusPixels);
+            if (sphereQuad == null) {
+                sphereQuad = glu.gluNewQuadric();
+            }
+            if (sphereQuad != null) {
+                glu.gluSphere(sphereQuad, 6, 16, 16);
+            }
+            gl.glPopMatrix();
+        }
     }
 
     short jitter(int k, int lim) {
@@ -299,45 +317,38 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
-          GL gl = drawable.getGL();
+        GL gl = drawable.getGL();
         // draw slew-rate limited tilt values
         final float size = .1f;
         float sx = chip.getSizeX(), sy = chip.getSizeY();
         {
             gl.glPushMatrix();
 
-            gl.glTranslatef(-sx * size * 1.1f, .1f*sy, 0); // move outside chip array to lower left
+            gl.glTranslatef(-sx * size * 1.1f, .1f * sy, 0); // move outside chip array to lower left
             gl.glScalef(sx * size, sx * size, sx * size); // scale everything so that when we draw 1 unit we cover this size*sx pixels
 
-            chip.getCanvas().checkGLError(gl, glu, "in control box  controller annotations");
             gl.glLineWidth(3f);
             gl.glColor3f(1, 1, 1);
 
             {
-                gl.glBegin(GL.GL_LINE_LOOP);
+                gl.glBegin(GL.GL_LINE_LOOP); // frame of slew-rate limited modelled controller output
                 gl.glVertex2f(0, 0);
                 gl.glVertex2f(1, 0);
                 gl.glVertex2f(1, 1);
                 gl.glVertex2f(0, 1);
                 gl.glEnd();
             }
-            gl.glPointSize(4f);
-            {
-                gl.glBegin(GL.GL_POINTS);
-                gl.glVertex2f(.5f, .5f);
-                gl.glEnd();
-            }
-            chip.getCanvas().checkGLError(gl, glu, "drawing tilt box");
+
             // draw tilt vector
             float xlen = tiltsRadDelayed.x / controller.getTiltLimitRad() / 2;
-            float ylen = tiltsRadDelayed.y / controller.getTiltLimitRad()  / 2;
+            float ylen = tiltsRadDelayed.y / controller.getTiltLimitRad() / 2;
             gl.glLineWidth(4f);
             if (Math.abs(xlen) < .5f && Math.abs(ylen) < .5f) {
                 gl.glColor4f(0, 1, 0, 1);
             } else {
                 gl.glColor4f(1, 0, 0, 1);
             }
-            gl.glPointSize(4f);
+            gl.glPointSize(6f);
             {
                 gl.glTranslatef(.5f, .5f, 0);
                 gl.glBegin(GL.GL_POINTS);
@@ -348,21 +359,21 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
             {
                 gl.glBegin(GL.GL_LINES);
                 gl.glVertex2f(0, 0);
-                gl.glVertex2f(xlen, ylen);
+                gl.glVertex2f(xlen, ylen);  // vector showing slew-rate limited controller output
                 gl.glEnd();
             }
-            chip.getCanvas().checkGLError(gl, glu, "drawing tilt box");
 
             gl.glPopMatrix();
         }
         // draw virtual ball 
-        gl.glPointSize(44);
-        gl.glColor4f(0,0,.5f,.5f);
-        gl.glBegin(GL.GL_POINTS);
-        gl.glVertex2f(ball.posPixels.x,ball.posPixels.y);
-        gl.glEnd();
+//        gl.glPointSize(44);
+//        gl.glColor4f(0,0,.5f,.5f);
+//        gl.glBegin(GL.GL_POINTS);
+//        gl.glVertex2f(ball.posPixels.x,ball.posPixels.y);
+//        gl.glEnd();
 
         chip.getCanvas().checkGLError(gl, glu, "after virtual ball annotations");
+        ball.render(gl);
     }
-    
+
 }

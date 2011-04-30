@@ -1184,6 +1184,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
     }
 
+    private boolean printedSetterWarning=false;
+    
     /** Called when a filter calls firePropertyChange. The PropertyChangeEvent should send the bound property name and the old and new values.
     The GUI control is then updated by this method.
     @param propertyChangeEvent contains the property that has changed, e.g. it would be called from an EventFilter 
@@ -1208,7 +1210,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                            " newValue=" + propertyChangeEvent.getNewValue());
                     HasSetter setter = setterMap.get(propertyChangeEvent.getPropertyName());
                     if (setter == null) {
-                        log.warning("null setter for property named " + propertyChangeEvent.getPropertyName());
+                        if (!printedSetterWarning) {
+                            log.warning("in filter " + getFilter() + " there is no setter for property change from property named " + propertyChangeEvent.getPropertyName());
+                            printedSetterWarning = true;
+                        }
                     } else {
                         setter.set(propertyChangeEvent.getNewValue());
                     }

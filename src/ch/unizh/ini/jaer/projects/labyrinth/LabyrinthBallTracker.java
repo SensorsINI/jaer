@@ -50,6 +50,8 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     public LabyrinthBallTracker(AEChip chip) {
         super(chip);
         filterChain = new FilterChain(chip);
+        filterChain.add(new XYTypeFilter(chip));
+        filterChain.add(new net.sf.jaer.eventprocessing.filter.DepressingSynapseFilter(chip));
         map = new LabyrinthMap(chip);
         filterChain.add(map);
         filterChain.add(new BackgroundActivityFilter(chip));
@@ -267,7 +269,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         return tracker.getMaxNumClusters();
     }
 
-    public synchronized void setVelocityTauMs(float velocityTauMs) {
+    public void setVelocityTauMs(float velocityTauMs) {
         tracker.setVelocityTauMs(velocityTauMs);
     }
 
@@ -275,7 +277,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         tracker.setMaxNumClusters(maxNumClusters);
     }
 
-    public synchronized void setFrictionTauMs(float frictionTauMs) {
+    public void setFrictionTauMs(float frictionTauMs) {
         tracker.setFrictionTauMs(frictionTauMs);
     }
 
@@ -305,7 +307,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         return tracker.getClusterSize();
     }
 
-    public synchronized void setClusterSize(float clusterSize) {
+    public void setClusterSize(float clusterSize) {
         tracker.setClusterSize(clusterSize);
     }
     
@@ -344,4 +346,6 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         if(findNearestPathIndex()==-1) return true;
         return false;
     }
+    
+ 
 }

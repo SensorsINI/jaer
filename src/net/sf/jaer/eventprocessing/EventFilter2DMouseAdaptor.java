@@ -119,6 +119,8 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
             return;
         }
         if (yes) {
+            glCanvas.removeMouseListener(this);
+            glCanvas.removeMouseMotionListener(this);
             glCanvas.addMouseListener(this);
             glCanvas.addMouseMotionListener(this);
 

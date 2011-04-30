@@ -6,8 +6,11 @@ package ch.unizh.ini.jaer.projects.labyrinth;
 
 import ch.unizh.ini.jaer.hardware.pantilt.*;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
+import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -15,26 +18,33 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.ServoInterface;
 
 /**
- * This filter enables controlling the tracked labyrinth ball.
+ * The labyrinth hardware abstraction enables controlling the labyrinth table.
  * 
  * @author Tobi Delbruck
  */
-public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterface, PropertyChangeListener {
+public class LabyrinthHardware extends EventFilter2D implements PropertyChangeListener {
 
-    public static String getDescription(){ return "Low level hardware interface for Labyrinth game";}
+    public static String getDescription() {
+        return "Low level hardware interface for Labyrinth game";
+    }
     private PanTilt panTiltHardware;
-    private boolean jitterEnabled=getBoolean("jitterEnabled",false);
-    private float jitterFreqHz=prefs().getFloat("jitterFreqHz",1);
-    private float jitterAmplitude=prefs().getFloat("jitterAmplitude",.02f);
-    private float panValue=prefs().getFloat("panValue",.5f);
-   private float tiltValue=prefs().getFloat("tiltValue",.5f);
-   private int panServoNumber=getInt("panServoNumber",1);
-   private int tiltServoNumber=getInt("tiltServoNumber",2);
-   private boolean invertPan=getBoolean("invertPan",false);
-   private boolean invertTilt=getBoolean("invertTilt",false);
-     private float panTiltLimit=getFloat("panTiltLimit",0.1f);
+    private boolean jitterEnabled = getBoolean("jitterEnabled", false);
+    private float jitterFreqHz = getFloat("jitterFreqHz", 1);
+    private float jitterAmplitude = getFloat("jitterAmplitude", .02f);
+    private int panServoNumber = getInt("panServoNumber", 1);
+    private int tiltServoNumber = getInt("tiltServoNumber", 2);
+    private boolean invertPan = getBoolean("invertPan", false);
+    private boolean invertTilt = getBoolean("invertTilt", false);
+    private float panTiltLimitRad = getFloat("panTiltLimitRad", 0.1f);
+    private float panOffset = getFloat("panOffset", 0);
+    private float tiltOffset = getFloat("tiltOffset", 0);
+    // constants
+    final float angleRadPerServoUnit = (float) (5 * Math.PI / 180 / 0.1); // TODO estimated angle in radians produced by each unit of servo control change
+    final float servoUnitPerAngleRad = 1 / angleRadPerServoUnit; //  equiv servo unit
+    float panValue = 0, tiltValue = 0;
+    // this is approx 5 deg per 0.1 unit change 
+    public static final String PANTILT_CHANGE = "panTiltChange";
 
- 
     /** Constructs instance of the new 'filter' CalibratedPanTilt. The only time events are actually used
      * is during calibration. The PanTilt hardware interface is also constructed.
      * @param chip
@@ -51,27 +61,29 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
         panTiltHardware.setPanInverted(invertPan);
         panTiltHardware.setTiltInverted(invertTilt);
 
-        String servo="Servos", control="Control";
-        setPropertyTooltip("controlTilts","shows GUI for controlling table tilts with mouse");
-        setPropertyTooltip("disableServos","disables servos, e.g. to turn off annoying servo hum");
-        setPropertyTooltip("center","centers pan and tilt controls");
-        
-        setPropertyTooltip(servo,"jitterAmplitude","Jitter of pantilt amplitude for circular motion");
-        setPropertyTooltip(servo,"jitterFreqHz","Jitter frequency in Hz of circular motion");
-        setPropertyTooltip(servo,"jitterEnabled","enables servo jitter to produce microsaccadic movement");
-        setPropertyTooltip(servo,"panServoNumber","servo channel for pan (0-3)");
-        setPropertyTooltip(servo,"tiltServoNumber","servo channel for tilt (0-3)");
-        setPropertyTooltip(servo,"tiltInverted","flips the tilt");
-        setPropertyTooltip(servo,"panInverted","flips the pan");
-        setPropertyTooltip(servo,"panTiltLimit","limits pan and tilt around 0.5 by this amount to protect hardware");
+        String servo = "Servos", control = "Control";
+        setPropertyTooltip("controlTilts", "shows GUI for controlling table tilts with mouse");
+        setPropertyTooltip("disableServos", "disables servos, e.g. to turn off annoying servo hum");
+        setPropertyTooltip("center", "centers pan and tilt controls");
+
+        setPropertyTooltip(servo, "jitterAmplitude", "Jitter of pantilt amplitude for circular motion");
+        setPropertyTooltip(servo, "jitterFreqHz", "Jitter frequency in Hz of circular motion");
+        setPropertyTooltip(servo, "jitterEnabled", "enables servo jitter to produce microsaccadic movement");
+        setPropertyTooltip(servo, "panServoNumber", "servo channel for pan (0-3)");
+        setPropertyTooltip(servo, "tiltServoNumber", "servo channel for tilt (0-3)");
+        setPropertyTooltip(servo, "tiltInverted", "flips the tilt");
+        setPropertyTooltip(servo, "panInverted", "flips the pan");
+        setPropertyTooltip(servo, "panTiltLimitRad", "limits pan and tilt around 0.5 by this amount to protect hardware");
+        setPropertyTooltip(servo, "panOffset", "offset to center pan");
+        setPropertyTooltip(servo, "tiltOffset", "offset to center tilt");
     }
-    
+
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        
+
         return in; // only handles control commands, no event processing
     }
- 
+
     @Override
     public void resetFilter() {
     }
@@ -81,22 +93,21 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
         resetFilter();
     }
 
-
-    synchronized public void doCenter(){
-         if(panTiltHardware!=null && panTiltHardware.getServoInterface()!=null){
+    synchronized public void doCenter() {
+        if (panTiltHardware != null && panTiltHardware.getServoInterface() != null) {
             try {
-             panTiltHardware.setPanTiltValues(0.5f, 0.5f);
+                panTiltHardware.setPanTiltValues(0.5f, 0.5f);
             } catch (HardwareInterfaceException ex) {
                 log.warning(ex.toString());
             }
         }
     }
 
-    synchronized public void doDisableServos(){
-        if(panTiltHardware!=null && panTiltHardware.getServoInterface()!=null){
+    synchronized public void doDisableServos() {
+        if (panTiltHardware != null && panTiltHardware.getServoInterface() != null) {
             try {
-             panTiltHardware.stopJitter();
-               panTiltHardware.getServoInterface().disableAllServos();
+                panTiltHardware.stopJitter();
+                panTiltHardware.getServoInterface().disableAllServos();
             } catch (HardwareInterfaceException ex) {
                 log.warning(ex.toString());
             }
@@ -108,30 +119,30 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
     }
 
     public void setPanTiltHardware(PanTilt panTilt) {
-        this.panTiltHardware=panTilt;
+        this.panTiltHardware = panTilt;
     }
-    
-    @Override
+
     public float getJitterAmplitude() {
-        float old = panTiltHardware.getJitterAmplitude();
-        getSupport().firePropertyChange("jitterAmplitude", jitterAmplitude, old);
-        return old;
+        return jitterAmplitude;
     }
 
     /** Sets the amplitude (1/2 of peak to peak) of circular jitter of pan tilt during jittering
      * 
      * @param jitterAmplitude the amplitude
      */
-    @Override
     public void setJitterAmplitude(float jitterAmplitude) {
-        if(panTiltHardware==null) return;
+        this.jitterAmplitude=jitterAmplitude;
+        putFloat("jitterAmplitude", jitterAmplitude);
+        if (panTiltHardware == null) {
+            return;
+        }
         panTiltHardware.setJitterAmplitude(jitterAmplitude);
-        putFloat("jitterAmplitude",jitterAmplitude);
     }
 
-    @Override
     public float getJitterFreqHz() {
-        if(panTiltHardware==null) return 0;
+        if (panTiltHardware == null) {
+            return 0;
+        }
         return panTiltHardware.getJitterFreqHz();
     }
 
@@ -139,63 +150,84 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
      * 
      * @param jitterFreqHz in Hz
      */
-    @Override
     public void setJitterFreqHz(float jitterFreqHz) {
-        if(panTiltHardware==null) return;
+        if (panTiltHardware == null) {
+            return;
+        }
         panTiltHardware.setJitterFreqHz(jitterFreqHz);
-        putFloat("jitterFreqHz",jitterFreqHz);
+        putFloat("jitterFreqHz", jitterFreqHz);
     }
 
-    @Override
     public void acquire() {
         getPanTiltHardware().acquire();
     }
 
-    @Override
     public float[] getPanTiltValues() {
-        return getPanTiltHardware().getPanTiltValues();
+        return new float[]{panValue, tiltValue};
     }
 
-    @Override
     public boolean isLockOwned() {
         return getPanTiltHardware().isLockOwned();
     }
 
-    @Override
     public void release() {
         getPanTiltHardware().release();
     }
 
-    @Override
     synchronized public void startJitter() {
-        getPanTiltHardware().startJitter();
+        try {
+            setPanTiltValues(panValue, tiltValue);
+            getPanTiltHardware().startJitter();
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
+        }
     }
 
-    @Override
     synchronized public void stopJitter() {
         getPanTiltHardware().stopJitter();
     }
 
-    /** Sets the pan and tilt servo values
-     @param pan 0 to 1 value
-     @param tilt 0 to 1 value
+    /** Sets the pan and tilt servo values in radians with 0 being flat.
+     * Fires a PANTILT_CHANGE if either value changes with a Point2D.Float of the new pan and tilt values.
+    @param pan in radians
+    @param tilt in radians
      */
-    @Override
     synchronized public void setPanTiltValues(float pan, float tilt) throws HardwareInterfaceException {
-        float[] old=getPanTiltHardware().getPanTiltValues();
-        getPanTiltHardware().setPanTiltValues(pan, tilt);
-        getSupport().firePropertyChange("panValue", old[0], panValue);
-        getSupport().firePropertyChange("tiltValue",old[1], tiltValue);
-        prefs().putFloat("PanTiltAimer.panValue",pan);
-        prefs().putFloat("PanTiltAimer.tiltValue",tilt);
+//        float[] old = getPanTiltHardware().getPanTiltValues();
+        Point2D.Float old = new Point2D.Float(panValue, tiltValue);
+        panValue = clipPanTilt(pan);
+        tiltValue = clipPanTilt(tilt);
+        getSupport().firePropertyChange(PANTILT_CHANGE, old, new Point2D.Float(panValue, tiltValue));
+        getPanTiltHardware().setPanTiltValues(
+                tilt2servo(panValue) + panOffset, 
+                tilt2servo(tiltValue) + tiltOffset
+                );
     }
 
-    @Override
+    private float clipPanTilt(float in) {
+        float out = in;
+        if (out > panTiltLimitRad) {
+            out = panTiltLimitRad;
+        } else if (out < -panTiltLimitRad) {
+            out = -panTiltLimitRad;
+        }
+        return out;
+    }
+
+    private float tilt2servo(float tiltRad) {
+        if (tiltRad > panTiltLimitRad) {
+            tiltRad = panTiltLimitRad;
+        } else if (tiltRad < -panTiltLimitRad) {
+            tiltRad = panTiltLimitRad;
+        }
+        float f = .5f + tiltRad * servoUnitPerAngleRad;
+        return f;
+    }
+
     public void setServoInterface(ServoInterface servo) {
-       getPanTiltHardware().setServoInterface(servo);
+        getPanTiltHardware().setServoInterface(servo);
     }
 
-    @Override
     public ServoInterface getServoInterface() {
         return getPanTiltHardware().getServoInterface();
     }
@@ -218,7 +250,9 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
         } else {
             try {
                 panTiltHardware.stopJitter();
-                if(panTiltHardware.getServoInterface()!=null) panTiltHardware.getServoInterface().disableAllServos();
+                if (panTiltHardware.getServoInterface() != null) {
+                    panTiltHardware.getServoInterface().disableAllServos();
+                }
                 panTiltHardware.close();
             } catch (Exception ex) {
                 log.warning(ex.toString());
@@ -243,27 +277,34 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
     }
 
     public void setPanServoNumber(int panServoNumber) {
-        if(panServoNumber<0)panServoNumber=0; else if(panServoNumber>3)panServoNumber=3;
+        if (panServoNumber < 0) {
+            panServoNumber = 0;
+        } else if (panServoNumber > 3) {
+            panServoNumber = 3;
+        }
         panTiltHardware.setPanServoNumber(panServoNumber);
-        putInt("panServoNumber",panServoNumber);
+        putInt("panServoNumber", panServoNumber);
     }
 
-
     public void setTiltServoNumber(int tiltServoNumber) {
-        if(tiltServoNumber<0) tiltServoNumber=0; else if(tiltServoNumber>3) tiltServoNumber=3;
+        if (tiltServoNumber < 0) {
+            tiltServoNumber = 0;
+        } else if (tiltServoNumber > 3) {
+            tiltServoNumber = 3;
+        }
         panTiltHardware.setTiltServoNumber(tiltServoNumber);
-        putInt("tiltServoNumber",tiltServoNumber);
+        putInt("tiltServoNumber", tiltServoNumber);
     }
 
     public void setTiltInverted(boolean tiltInverted) {
         panTiltHardware.setTiltInverted(tiltInverted);
-        putBoolean("invertTilt",tiltInverted);
+        putBoolean("invertTilt", tiltInverted);
     }
 
-   public void setPanInverted(boolean panInverted) {
+    public void setPanInverted(boolean panInverted) {
         panTiltHardware.setPanInverted(panInverted);
-        putBoolean("invertPan",panInverted);
-   }
+        putBoolean("invertPan", panInverted);
+    }
 
     public boolean isTiltInverted() {
         return panTiltHardware.isTiltInverted();
@@ -281,21 +322,24 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
         return panTiltHardware.getPanServoNumber();
     }
 
-
     /**
-     * @return the panTiltLimit
+     * @return the panTiltLimitRad
      */
-    public float getPanTiltLimit() {
-        return panTiltLimit;
+    public float getPanTiltLimitRad() {
+        return panTiltLimitRad;
     }
 
     /**
-     * @param panTiltLimit the panTiltLimit to set
+     * @param panTiltLimitRad the panTiltLimitRad to set
      */
-    public void setPanTiltLimit(float panTiltLimit) {
-        if(panTiltLimit<0) panTiltLimit=0; else if(panTiltLimit>0.5f)panTiltLimit=0.5f;
-        this.panTiltLimit = panTiltLimit;
-        putFloat("panTiltLimit",panTiltLimit);
+    public void setPanTiltLimitRad(float panTiltLimitRad) {
+        if (panTiltLimitRad < 0) {
+            panTiltLimitRad = 0;
+        } else if (panTiltLimitRad > 0.5f) {
+            panTiltLimitRad = 0.5f;
+        }
+        this.panTiltLimitRad = panTiltLimitRad;
+        putFloat("panTiltLimitRad", panTiltLimitRad);
     }
 
     @Override
@@ -303,9 +347,45 @@ public class LabyrinthHardware extends EventFilter2D implements  PanTiltInterfac
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
+    /**
+     * @return the panOffset
+     */
+    public float getPanOffset() {
+        return panOffset;
+    }
 
+    /**
+     * @param panOffset the panOffset to set
+     */
+    public void setPanOffset(float panOffset) {
+        this.panOffset = panOffset;
+        putFloat("panOffset", panOffset);
+        try {
+            setPanTiltValues(panValue, tiltValue);
+        } catch (HardwareInterfaceException ex) {
+        }
+    }
 
+    /**
+     * @return the tiltOffset
+     */
+    public float getTiltOffset() {
+        return tiltOffset;
+    }
 
-  
+    /**
+     * @param tiltOffset the tiltOffset to set
+     */
+    public void setTiltOffset(float tiltOffset) {
+        this.tiltOffset = tiltOffset;
+        putFloat("tiltOffset", tiltOffset);
+        try {
+            setPanTiltValues(panValue, tiltValue);
+        } catch (HardwareInterfaceException ex) {
+        }
+    }
 
+    public void setPanTiltChange() {
+        // for FilterPanel to avoid warnings
+    }
 }

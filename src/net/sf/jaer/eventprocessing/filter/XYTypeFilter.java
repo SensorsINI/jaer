@@ -457,6 +457,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
 
     public void mouseClicked (MouseEvent e){
         Point p = canvas.getPixelFromMouseEvent(e);
+        log.info(e.getSource().toString());
         clickedPoint = p;
     }
 // already handled by setSelected below
@@ -482,7 +483,10 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
           if ( glCanvas == null ){
             return;
         }
+//          log.info("selected="+yes);
         if ( yes ){
+            glCanvas.removeMouseListener(this);
+            glCanvas.removeMouseMotionListener(this);
             glCanvas.addMouseListener(this);
             glCanvas.addMouseMotionListener(this);
 
