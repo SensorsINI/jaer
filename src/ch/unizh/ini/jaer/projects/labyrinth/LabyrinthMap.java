@@ -696,12 +696,15 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
 
         private void computeBounds() {
             
+            // bounds are computed from outline polygon
+            
             final float extraFraction = .25f;
-            if (getBallPath() == null) {
+            if (outline == null) {
+                log.warning("no outline, can't compute bounds of ClosestPointLookupTable");
                 return;
             }
             float minx = Float.MAX_VALUE, miny = Float.MAX_VALUE, maxx = Float.MIN_VALUE, maxy = Float.MIN_VALUE;
-            for (Point2D.Float p : getBallPath()) {
+            for (Point2D.Float p : outline) {
                 if (p.x < minx) {
                     minx = p.x;
                 }
