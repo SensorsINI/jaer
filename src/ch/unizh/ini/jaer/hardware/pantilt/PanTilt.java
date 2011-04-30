@@ -61,12 +61,17 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
         if(getServoInterface()!=null) getServoInterface().close();
     }
 
+    private int checkServoCount=0;
+    private int CHECK_SERVO_INTERVAL=100;
+    
     private void checkServos() throws HardwareInterfaceException {
-        if (servo == null) {
-            try {
-                servo =  (ServoInterface)ServoInterfaceFactory.instance().getFirstAvailableInterface();
-            } catch (ClassCastException cce) {
-                throw new HardwareInterfaceException("Wrong type of interface: " + cce.getMessage());
+        if (checkServoCount++ % CHECK_SERVO_INTERVAL == 0) {
+            if (servo == null) {
+                try {
+                    servo = (ServoInterface) ServoInterfaceFactory.instance().getFirstAvailableInterface();
+                } catch (ClassCastException cce) {
+                    throw new HardwareInterfaceException("Wrong type of interface: " + cce.getMessage());
+                }
             }
         }
         if (servo == null) {

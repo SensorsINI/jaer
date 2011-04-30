@@ -52,7 +52,7 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
         panTilt = pt;
         initComponents();
         calibrationPanel.setPreferredSize(new Dimension(w, h));
-        HardwareInterfaceException.addExceptionListener(this);
+//        HardwareInterfaceException.addExceptionListener(this);
         calibrationPanel.requestFocusInWindow();
         pack();
     }

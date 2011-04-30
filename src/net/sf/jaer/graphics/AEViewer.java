@@ -385,7 +385,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             statisticsLabel.removePropertyChangeListener(p);
         }
 
-        HardwareInterfaceException.addExceptionListener(this);
+//        HardwareInterfaceException.addExceptionListener(this);
         int n = menuBar.getMenuCount();
         for ( int i = 0 ; i < n ; i++ ){
             JMenu m = menuBar.getMenu(i);

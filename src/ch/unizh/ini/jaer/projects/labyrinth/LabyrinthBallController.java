@@ -42,12 +42,19 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     }
     private float xTiltRad = 0;
     private float yTiltRad = 0; // TODO limit in deg 
-    private Point2D.Float tiltsRad = new Point2D.Float(xTiltRad, yTiltRad);
-    private float tiltLimitRad = getFloat("tiltLimitRad", (float) Math.PI * 5f / 180);
+    volatile private Point2D.Float tiltsRad = new Point2D.Float(xTiltRad, yTiltRad);
     // control
     private float proportionalGain = getFloat("proportionalGain", 1);
     private float derivativeGain = getFloat("derivativeGain", 1);
     private float integralGain = getFloat("integralGain", 1);
+    // error signals
+    // errors
+    Point2D.Float pErr =  new Point2D.Float(0, 0);
+    Point2D.Float iErr = new Point2D.Float(0, 0);
+    Point2D.Float dErr=new Point2D.Float(0,0);
+    int lastErrorUpdateTime = 0;
+    boolean controllerInitialized = false;
+    
     // The ball acceleration will be g (grav constant) * sin(angle) which is approx g*angle with angle in radians =g*angleRadPerServoUnit*(servo-0.5f).
     final float metersPerPixel = 0.22f / 128;  // TODO estimated pixels of 128 retina per meter, assumes table fills retina vertically
     final float gravConstantMperS2 = 9.8f; // meters per second^2
@@ -57,11 +64,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     LabyrinthBallTracker tracker = null;
     // filter chain
     FilterChain filterChain;
-    // errors
-    volatile Point2D.Float posError = null;
-    Point2D.Float integralError = new Point2D.Float(0, 0);
-    int lastErrorUpdateTime = 0;
-    boolean controllerInitialized = false;
+
     // state stuff
     Point2D.Float desiredPosition = null, target = null; // manually selected ball position and actual target location (maybe from path following)
     // history
@@ -115,7 +118,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         if (tracker.getBall() != null) {
             Cluster ball = tracker.getBall();
             Point2D.Float pos = ball.getLocation();
-            trajectory.add(ball.getLastEventTimestamp(), pos.x, pos.y);
+//            trajectory.add(ball.getLastEventTimestamp(), pos.x, pos.y);
             Point2D.Float vel = ball.getVelocityPPS();
             if (desiredPosition != null) {
                 target = desiredPosition;
@@ -124,24 +127,24 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             }
 
             if (target != null) {
-                posError = new Point2D.Float(target.x - pos.x, target.y - pos.y);
+                pErr.setLocation(target.x - pos.x, target.y - pos.y);
+                dErr.setLocation(-vel.x,-vel.y);
                 if (!controllerInitialized) {
                     lastErrorUpdateTime = timestamp; // initialize to avoid giant dt, will be zero on first pass
                     controllerInitialized = true;
                 }
                 int dtUs = timestamp - lastErrorUpdateTime;
-                integralError.x += dtUs * posError.x * 1e-6f * AEConstants.TICK_DEFAULT_US;
-                integralError.y += dtUs * posError.y * 1e-6f * AEConstants.TICK_DEFAULT_US;
+                float dtSec=dtUs  * 1e-6f * AEConstants.TICK_DEFAULT_US;
+                iErr.x += dtSec * pErr.x ;
+                iErr.y += dtSec * pErr.y ;
                 lastErrorUpdateTime = timestamp;
                 // anti windup control
-                integralError.x = windupLimit(integralError.x);
-                integralError.y = windupLimit(integralError.y);
-                if (integralError.x * integralGain > MAX_INTEGRAL_CONTROL_RAD) {
-                    integralError.x = MAX_INTEGRAL_CONTROL_RAD / integralGain;
-                }
+                iErr.x = windupLimit(iErr.x);
+                iErr.y = windupLimit(iErr.y);
+//                System.out.println("ierr= "+iErr);
 
-                float xtilt = posError.x * proportionalGain - vel.x * derivativeGain + integralError.x * integralGain;
-                float ytilt = posError.y * proportionalGain - vel.y * derivativeGain + integralError.y * integralGain;
+                float xtilt = pErr.x * proportionalGain + dErr.x * derivativeGain *tau + iErr.x * integralGain/tau;
+                float ytilt = pErr.y * proportionalGain + dErr.y * derivativeGain *tau + iErr.y * integralGain/tau;
                 try {
                     setTilts(xtilt, ytilt);
                 } catch (HardwareInterfaceException ex) {
@@ -247,28 +250,15 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             }
             chip.getCanvas().checkGLError(gl, glu, "drawing tilt box");
             // draw tilt vector
-            float xlen = xTiltRad / tiltLimitRad / 2;
-            float ylen = yTiltRad / tiltLimitRad / 2;
+            float lim=getTiltLimitRad()/2;
+            float xlen = xTiltRad / lim;
+            float ylen = yTiltRad / lim;
             gl.glLineWidth(4f);
             if (Math.abs(xlen) < .5f && Math.abs(ylen) < .5f) {
                 gl.glColor4f(0, 1, 0, 1);
             } else {
                 gl.glColor4f(1, 0, 0, 1);
             }
-//            {
-//                gl.glPushMatrix();
-//                gl.glTranslatef(.5f, .5f, 0);
-//                gl.glRotatef(57*xTiltRad, 0, 1, 0);
-//                gl.glRotatef(57*yTiltRad, 1, 0, 0);
-//                gl.glTranslatef(-.5f, -.5f, 0);
-//                gl.glBegin(GL.GL_LINE_LOOP);
-//                gl.glVertex2f(0, 0);
-//                gl.glVertex2f(1, 0);
-//                gl.glVertex2f(1, 1);
-//                gl.glVertex2f(0, 1);
-//                gl.glEnd();
-//                gl.glPopMatrix();
-//            }
             gl.glPointSize(4f);
             {
                 gl.glTranslatef(.5f, .5f, 0);
@@ -284,17 +274,6 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 gl.glEnd();
             }
             chip.getCanvas().checkGLError(gl, glu, "drawing tilt box");
-
-//        gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
-//        gl.glLineWidth(4f);
-//        gl.glColor4f(.25f, 0, 0, .3f);
-//        gl.glBegin(GL.GL_LINES);
-//        float sc = chip.getMaxSize() / tiltLimitRad;
-//        float xlen = (float) sc * getxTiltRad();
-//        float ylen = (float) sc * getyTiltRad(); 
-//        gl.glVertex2f(0, 0);
-//        gl.glVertex2f(xlen, ylen);
-//        gl.glEnd();
             gl.glPopMatrix();
         }
 
@@ -393,7 +372,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         // compute the pole locations and resulting tau and Q given PID parameters
         // TODO doesn't include integral term yet
         tau = (float) Math.sqrt(1 / (gravConstantPixPerSec2 * proportionalGain));
-        Q = tau * proportionalGain / derivativeGain;
+        Q =  proportionalGain / derivativeGain;
     }
 
     /**
@@ -436,7 +415,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
     private void resetControllerState() {
         controllerInitialized = false;
-        integralError.setLocation(0, 0);
+        iErr.setLocation(0, 0);
     }
 
     public enum Message {
@@ -473,17 +452,24 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     }
 
     void processMouseEvent(MouseEvent e) {
+        int left=MouseEvent.BUTTON1_DOWN_MASK;
         int middle=MouseEvent.BUTTON2_DOWN_MASK;
-        log.info("e.getModifiersEx()="+HexString.toString(e.getModifiersEx()));
-        if ((e.getModifiersEx()&middle)==middle) {
+        int right=MouseEvent.BUTTON3_DOWN_MASK;
+//        log.info("e.getModifiersEx()="+HexString.toString(e.getModifiersEx()));
+        if ((e.getModifiersEx()&(middle|right))!=0) {
             setDesiredPositionFromMouseEvent(e);
-        } else {
+        } else if((e.getModifiersEx()&left)==left){
             setBallLocationFromMouseEvent(e);
         }
     }
 
     @Override
     public void mouseClicked(MouseEvent e) {
+        processMouseEvent(e);
+    }
+    
+    @Override
+    public void mousePressed(MouseEvent e) {
         processMouseEvent(e);
     }
 
@@ -543,7 +529,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         if (gui == null || !gui.isDisplayable()) {
             gui = new LabyrinthTableTiltControllerGUI(this);
             gui.addPropertyChangeListener(this);
-            gui.setPanTiltLimit(tiltLimitRad);
+            gui.setPanTiltLimit(getTiltLimitRad());
         }
         gui.setVisible(true);
     }
@@ -560,12 +546,22 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         Runnable r = new Runnable() {
 
             public void run() {
+                boolean en=isControllerEnabled();
+                setControllerEnabled(false);
+                tracker.resetFilter();
+                centerTilts();
                 labyrinthHardware.startJitter();
                 try {
                     Thread.sleep(JIGGLE_TIME_MS);
                 } catch (InterruptedException ex) {
                 }
                 labyrinthHardware.stopJitter();
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException ex) {
+                }
+                centerTilts();
+                setControllerEnabled(en);
 
             }
         };

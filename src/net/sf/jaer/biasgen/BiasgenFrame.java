@@ -66,7 +66,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 //            e.printStackTrace();
 //        }
         initComponents();
-        HardwareInterfaceException.addExceptionListener(this);
+//        HardwareInterfaceException.addExceptionListener(this);
         fixUndoRedo();
         buildControlPanel(biasgen);
         setViewFunctionalBiasesEnabled(isViewFunctionalBiasesEnabled()); // adds it to the frame content panel - don't replace or we lose toolbar

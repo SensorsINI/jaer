@@ -493,6 +493,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        if(!isVisible()) return;
         if(evt.getSource() instanceof LabyrinthHardware){
             if(evt.getPropertyName()==LabyrinthHardware.PANTILT_CHANGE){
                 currentPanTiltRad=(Point2D.Float)evt.getNewValue();

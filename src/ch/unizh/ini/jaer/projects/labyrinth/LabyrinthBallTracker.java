@@ -71,12 +71,12 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         setPropertyTooltip("velocityTauMs", "lowpass filter time constant in ms for velocity updates; effectively limits acceleration");
         setPropertyTooltip("frictionTauMs", "velocities decay towards zero with this time constant to mimic friction; set to NaN to disable friction");
         setPropertyTooltip("clearMap", "clears the map; use for bare table");
-        setPropertyTooltip("loadMap","loads a map from an SVG file");
+        setPropertyTooltip("loadMap", "loads a map from an SVG file");
         setPropertyTooltip("controlTilts", "shows a GUI to directly control table tilts with mouse");
-        setPropertyTooltip("centerTilts","centers the table tilts");
-        setPropertyTooltip("disableServos","disables the servo motors by turning off the PWM control signals; digital servos may not relax however becuase they remember the previous settings");
-         setPropertyTooltip( "maxNumClusters", "Sets the maximum potential number of clusters");
-   }
+        setPropertyTooltip("centerTilts", "centers the table tilts");
+        setPropertyTooltip("disableServos", "disables the servo motors by turning off the PWM control signals; digital servos may not relax however becuase they remember the previous settings");
+        setPropertyTooltip("maxNumClusters", "Sets the maximum potential number of clusters");
+    }
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -84,19 +84,21 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         if (tracker.getNumClusters() > 0) {
             // find most likely ball cluster from all the clusters. This is the one with most mass.
             float max = Float.MIN_VALUE;
-            for (Cluster c : tracker.getClusters()) {
-                if (!c.isVisible()) {
-                    continue;
-                }
-                Point2D.Float l = c.getLocation();
-                final int b = 5;
-                if (l.x < -b || l.x > chip.getSizeX() + b || l.y < -b || l.y > chip.getSizeY() + b) {
-                    continue;
-                }
-                float mass = c.getMass();
-                if (mass > max) {
-                    max = mass;
-                    ball = c;
+            synchronized (tracker) {
+                for (Cluster c : tracker.getClusters()) {
+                    if (!c.isVisible()) {
+                        continue;
+                    }
+                    Point2D.Float l = c.getLocation();
+                    final int b = 5;
+                    if (l.x < -b || l.x > chip.getSizeX() + b || l.y < -b || l.y > chip.getSizeY() + b) {
+                        continue;
+                    }
+                    float mass = c.getMass();
+                    if (mass > max) {
+                        max = mass;
+                        ball = c;
+                    }
                 }
             }
         } else {
@@ -110,7 +112,8 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
 
     @Override
     public void resetFilter() {
-        createBall(startingLocation);
+        getEnclosedFilterChain().reset();
+//        createBall(startingLocation);
     }
 
     protected void createBall(Point2D.Float location) {
@@ -221,9 +224,11 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         }
         return map.findClosestIndex(ball.location, 15, true);
     }
-    
-    public int getNumPathVertices(){
-        if(map==null || map.getBallPath()==null) return 0;
+
+    public int getNumPathVertices() {
+        if (map == null || map.getBallPath() == null) {
+            return 0;
+        }
         return map.getBallPath().size();
     }
 
@@ -261,6 +266,10 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         return tracker.getMixingFactor();
     }
 
+    public void setMixingFactor(float mixingFactor) {
+        tracker.setMixingFactor(mixingFactor);
+    }
+
     public float getMinMixingFactor() {
         return tracker.getMinMixingFactor();
     }
@@ -281,7 +290,6 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         tracker.setFrictionTauMs(frictionTauMs);
     }
 
-
     public int getMinMaxNumClusters() {
         return tracker.getMinMaxNumClusters();
     }
@@ -289,7 +297,6 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     public float getMinClusterSize() {
         return tracker.getMinClusterSize();
     }
-
 
     public float getMaxMixingFactor() {
         return tracker.getMaxMixingFactor();
@@ -310,8 +317,6 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     public void setClusterSize(float clusterSize) {
         tracker.setClusterSize(clusterSize);
     }
-    
-    
 
     public void doLoadMap() {
         map.doLoadMap();
@@ -320,32 +325,38 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     public synchronized void doClearMap() {
         map.doClearMap();
     }
-    
-    public boolean isAtMazeStart(){
-        if(ball==null) return false;
-        if(findNearestPathIndex()==0) {
+
+    public boolean isAtMazeStart() {
+        if (ball == null) {
+            return false;
+        }
+        if (findNearestPathIndex() == 0) {
             return true;
         }
         return false;
     }
-    
-    public boolean isAtMazeEnd(){
-        if(ball==null) return false;
-        if(findNearestPathIndex()==getNumPathVertices()-1) {
+
+    public boolean isAtMazeEnd() {
+        if (ball == null) {
+            return false;
+        }
+        if (findNearestPathIndex() == getNumPathVertices() - 1) {
             return true;
         }
         return false;
     }
-    
-    public boolean isLostTracking(){
-         return ball==null;
+
+    public boolean isLostTracking() {
+        return ball == null;
     }
-    
-    public boolean isPathNotFound(){
-        if(ball==null) return true;
-        if(findNearestPathIndex()==-1) return true;
+
+    public boolean isPathNotFound() {
+        if (ball == null) {
+            return true;
+        }
+        if (findNearestPathIndex() == -1) {
+            return true;
+        }
         return false;
     }
-    
- 
 }

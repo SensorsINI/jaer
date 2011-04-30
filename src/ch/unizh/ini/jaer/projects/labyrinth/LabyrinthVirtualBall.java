@@ -16,6 +16,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 
 /**
@@ -36,7 +37,7 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
     private boolean emitTCEvents = getBoolean("emitTCEvents", true);
     private float backgroundEventRate = getFloat("backgroundEventRate", 10000);
     private float slewRateLimitRadPerSec = getFloat("slewRateLimitRadPerSec", (20f / .1f / 57f));
-    Point2D.Float tiltsRadDelayed = new Point2D.Float();
+    volatile Point2D.Float tiltsRadDelayed = new Point2D.Float();
     GLUquadric sphereQuad;
     
     
@@ -47,7 +48,7 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
         super(chip);
         controller = game.controller;
         map = controller.tracker.map;
-        checkOutputPacketEventType(BasicEvent.class);
+        checkOutputPacketEventType(TypedEvent.class);
         setPropertyTooltip("slowDownFactor", "slow down real time by this factor");
         setPropertyTooltip("backgroundEventRate", "event rate of all pixels randomly in background");
         setPropertyTooltip("staticEventRate", "event rate when emitting events statically");
@@ -160,20 +161,24 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
 
                 long tNowUs = System.nanoTime() >> 10;
                 long dtUs = tNowUs - lastUpdateTimeUs;
-                if (dtUs < 0 || dtUs > 100000) {
+                if (dtUs < 0 || dtUs>100000) {
                     lastUpdateTimeUs = tNowUs;
                     return;
                 }
                 float dtSec = AEConstants.TICK_DEFAULT_US * 1e-6f * dtUs * slowDownFactor;
                 // update internal tilt values that model slew rate limit of servos
 
-                if (tiltsRad.distance(tiltsRadDelayed) > dtSec * slewRateLimitRadPerSec) {
-                    float slew = dtSec * slewRateLimitRadPerSec;
-                    tiltsRadDelayed.x += slew * Math.signum(tiltsRad.x - tiltsRadDelayed.x);
-                    tiltsRadDelayed.y += slew * Math.signum(tiltsRad.y - tiltsRadDelayed.y);
-                } else {
+//                    float slew = dtSec * slewRateLimitRadPerSec;
+//                if (tiltsRad.distance(tiltsRadDelayed) > slew) {
+//                    tiltsRadDelayed.x += slew * Math.signum(tiltsRad.x - tiltsRadDelayed.x);
+//                    tiltsRadDelayed.y += slew * Math.signum(tiltsRad.y - tiltsRadDelayed.y);
+//                } else {
                     tiltsRadDelayed.setLocation(tiltsRad);
-                }
+//                }
+                
+//               float lim=controller.getTiltLimitRad();
+//               tiltsRadDelayed.x=clip(tiltsRadDelayed.x,lim);
+//               tiltsRadDelayed.y=clip(tiltsRadDelayed.y,lim);
 
 
 
@@ -222,9 +227,10 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
                     float smalldt = dtUs / (n + bg);
                     float frac = (float) n / (n + bg);
 
+                    checkOutputPacketEventType(TypedEvent.class);
                     OutputEventIterator i = out.outputIterator();
                     for (int k = 0; k < n + bg; k++) {
-                        BasicEvent e = i.nextOutput();
+                        TypedEvent e = (TypedEvent)i.nextOutput();
                         float r = random.nextFloat();
                         if (r < frac) {
                             e.x = (short) Math.floor(posPixels.x);
@@ -270,6 +276,11 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
                 glu.gluSphere(sphereQuad, 6, 16, 16);
             }
             gl.glPopMatrix();
+        }
+
+        private float clip(float x, float lim) {
+            if(x>lim)x=lim; else if(x<-lim)x=-lim;
+            return x;
         }
     }
 
@@ -340,8 +351,9 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
             }
 
             // draw tilt vector
-            float xlen = tiltsRadDelayed.x / controller.getTiltLimitRad() / 2;
-            float ylen = tiltsRadDelayed.y / controller.getTiltLimitRad() / 2;
+            float lim=controller.getTiltLimitRad() / 2;
+            float xlen = tiltsRadDelayed.x / lim;
+            float ylen = tiltsRadDelayed.y / lim;
             gl.glLineWidth(4f);
             if (Math.abs(xlen) < .5f && Math.abs(ylen) < .5f) {
                 gl.glColor4f(0, 1, 0, 1);
