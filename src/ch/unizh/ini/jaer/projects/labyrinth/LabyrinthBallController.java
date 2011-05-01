@@ -34,8 +34,7 @@ import net.sf.jaer.util.HexString;
  */
 public class LabyrinthBallController extends EventFilter2DMouseAdaptor implements PropertyChangeListener, Observer {
 
-    public static float MAX_INTEGRAL_CONTROL_RAD = 5 * (float) Math.PI / 180;
-    private long JIGGLE_TIME_MS = 2000;
+    private int jiggleTimeMs = getInt("jiggleTimeMs", 1000);
 
     public static final String getDescription() {
         return "Low level ball controller for Labyrinth game";
@@ -49,12 +48,15 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     private float integralGain = getFloat("integralGain", 1);
     // error signals
     // errors
-    Point2D.Float pErr =  new Point2D.Float(0, 0);
+    Point2D.Float pErr = new Point2D.Float(0, 0);
     Point2D.Float iErr = new Point2D.Float(0, 0);
-    Point2D.Float dErr=new Point2D.Float(0,0);
+    Point2D.Float dErr = new Point2D.Float(0, 0);
     int lastErrorUpdateTime = 0;
     boolean controllerInitialized = false;
-    
+    // components of the controller output
+    Point2D.Float pTilt = new Point2D.Float();
+    Point2D.Float iTilt = new Point2D.Float();
+    Point2D.Float dTilt = new Point2D.Float();
     // The ball acceleration will be g (grav constant) * sin(angle) which is approx g*angle with angle in radians =g*angleRadPerServoUnit*(servo-0.5f).
     final float metersPerPixel = 0.22f / 128;  // TODO estimated pixels of 128 retina per meter, assumes table fills retina vertically
     final float gravConstantMperS2 = 9.8f; // meters per second^2
@@ -64,7 +66,6 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     LabyrinthBallTracker tracker = null;
     // filter chain
     FilterChain filterChain;
-
     // state stuff
     Point2D.Float desiredPosition = null, target = null; // manually selected ball position and actual target location (maybe from path following)
     // history
@@ -100,7 +101,9 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         setPropertyTooltip("derivativeGain", "-derivative gain: damps overshoot. tilt(rad)=-vel(pix/sec)*derivativeGain(sec/pixel)");
         setPropertyTooltip("navigateMaze", "follow the path in the maze");
         setPropertyTooltip("tiltLimitRad", "limit of tilt of table in radians; 1 rad=57 deg");
-        setPropertyTooltip("jiggleTable", "jiggle the table for " + JIGGLE_TIME_MS + " ms according to the jitter settings for the LabyrinthHardware");
+        setPropertyTooltip("jiggleTable", "jiggle the table for jiggleTimeMs ms according to the jitter settings for the LabyrinthHardware");
+        setPropertyTooltip("jiggleTimeMs", "jiggle the table for jiggleTimeMs ms according to the jitter settings for the LabyrinthHardware");
+        setPropertyTooltip("controllerEnabled", "enables the controller to control table tilts based on error signal between target and ball position");
         computePoles();
     }
 
@@ -127,24 +130,30 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             }
 
             if (target != null) {
-                pErr.setLocation(target.x - pos.x, target.y - pos.y);
-                dErr.setLocation(-vel.x,-vel.y);
+                pErr.setLocation(proportionalGain * (target.x - pos.x), proportionalGain * (target.y - pos.y));
+                dErr.setLocation(-vel.x * derivativeGain * tau, -vel.y * derivativeGain * tau);
                 if (!controllerInitialized) {
                     lastErrorUpdateTime = timestamp; // initialize to avoid giant dt, will be zero on first pass
                     controllerInitialized = true;
                 }
                 int dtUs = timestamp - lastErrorUpdateTime;
-                float dtSec=dtUs  * 1e-6f * AEConstants.TICK_DEFAULT_US;
-                iErr.x += dtSec * pErr.x ;
-                iErr.y += dtSec * pErr.y ;
+                float dtSec = dtUs * 1e-6f * AEConstants.TICK_DEFAULT_US;
+                float iFac = dtSec / tau;
+                iErr.x += iFac * pErr.x;
+                iErr.y += iFac * pErr.y;
                 lastErrorUpdateTime = timestamp;
                 // anti windup control
-                iErr.x = windupLimit(iErr.x);
-                iErr.y = windupLimit(iErr.y);
+                float intLim = getTiltLimitRad();
+                iErr.x = windupLimit(iErr.x, intLim);
+                iErr.y = windupLimit(iErr.y, intLim);
 //                System.out.println("ierr= "+iErr);
 
-                float xtilt = pErr.x * proportionalGain + dErr.x * derivativeGain *tau + iErr.x * integralGain/tau;
-                float ytilt = pErr.y * proportionalGain + dErr.y * derivativeGain *tau + iErr.y * integralGain/tau;
+                pTilt.setLocation(pErr.x, pErr.y);
+                iTilt.setLocation(iErr.x, iErr.y);
+                dTilt.setLocation(dErr.x, dErr.y);
+
+                float xtilt = pErr.x + dErr.x + iErr.x;
+                float ytilt = pErr.y + dErr.y + iErr.y;
                 try {
                     setTilts(xtilt, ytilt);
                 } catch (HardwareInterfaceException ex) {
@@ -156,9 +165,11 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         }
     }
 
-    float windupLimit(float intErr) {
-        if (Math.abs(intErr * integralGain) > MAX_INTEGRAL_CONTROL_RAD) {
-            intErr = Math.signum(intErr) * MAX_INTEGRAL_CONTROL_RAD / integralGain;
+    float windupLimit(float intErr, float lim) {
+        if (intErr > lim) {
+            intErr = lim;
+        } else if (intErr < -lim) {
+            intErr = -lim;
         }
         return intErr;
     }
@@ -227,7 +238,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         {
             gl.glPushMatrix();
 
-            gl.glTranslatef(-sx * size * 1.1f, 0, 0); // move outside chip array to lower left
+            gl.glTranslatef(-sx * size * 1.1f, sy * size / 2, 0); // move outside chip array to lower left
             gl.glScalef(sx * size, sx * size, sx * size); // scale everything so that when we draw 1 unit we cover this size*sx pixels
 
             chip.getCanvas().checkGLError(gl, glu, "in control box  controller annotations");
@@ -249,10 +260,11 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 gl.glEnd();
             }
             chip.getCanvas().checkGLError(gl, glu, "drawing tilt box");
-            // draw tilt vector
-            float lim=getTiltLimitRad()/2;
-            float xlen = xTiltRad / lim;
-            float ylen = yTiltRad / lim;
+            // draw tilt box
+            float sc = getTiltLimitRad() * 2;
+            float xlen = xTiltRad / sc;
+            float ylen = yTiltRad / sc;
+
             gl.glLineWidth(4f);
             if (Math.abs(xlen) < .5f && Math.abs(ylen) < .5f) {
                 gl.glColor4f(0, 1, 0, 1);
@@ -266,11 +278,28 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 gl.glVertex2f(0, 0);
                 gl.glEnd();
             }
+            // draw tilt vector
+            float x = pTilt.x / sc;
+            float y = pTilt.y / sc;
             gl.glLineWidth(4);
             {
-                gl.glBegin(GL.GL_LINES);
+                gl.glBegin(GL.GL_LINE_STRIP);
                 gl.glVertex2f(0, 0);
-                gl.glVertex2f(xlen, ylen);
+                gl.glColor3f(1, 0, 0);
+                gl.glVertex2f(x, y);
+                gl.glColor3f(0, 1, 0);
+                x += iTilt.x / sc;
+                y += iTilt.y / sc;
+                gl.glVertex2f(x, y);
+                gl.glColor3f(0, 0, 1);
+                x += dTilt.x / sc;
+                y += dTilt.y / sc;
+                gl.glVertex2f(x, y);
+                gl.glEnd();
+                gl.glBegin(GL.GL_LINES);
+                gl.glColor3f(1, 1, 1);
+                gl.glVertex2f(0,0);
+                gl.glVertex2f(xlen,ylen);
                 gl.glEnd();
             }
             chip.getCanvas().checkGLError(gl, glu, "drawing tilt box");
@@ -372,7 +401,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         // compute the pole locations and resulting tau and Q given PID parameters
         // TODO doesn't include integral term yet
         tau = (float) Math.sqrt(1 / (gravConstantPixPerSec2 * proportionalGain));
-        Q =  proportionalGain / derivativeGain;
+        Q = proportionalGain / derivativeGain;
     }
 
     /**
@@ -452,13 +481,13 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     }
 
     void processMouseEvent(MouseEvent e) {
-        int left=MouseEvent.BUTTON1_DOWN_MASK;
-        int middle=MouseEvent.BUTTON2_DOWN_MASK;
-        int right=MouseEvent.BUTTON3_DOWN_MASK;
+        int left = MouseEvent.BUTTON1_DOWN_MASK;
+        int middle = MouseEvent.BUTTON2_DOWN_MASK;
+        int right = MouseEvent.BUTTON3_DOWN_MASK;
 //        log.info("e.getModifiersEx()="+HexString.toString(e.getModifiersEx()));
-        if ((e.getModifiersEx()&(middle|right))!=0) {
+        if ((e.getModifiersEx() & (middle | right)) != 0) {
             setDesiredPositionFromMouseEvent(e);
-        } else if((e.getModifiersEx()&left)==left){
+        } else if ((e.getModifiersEx() & left) == left) {
             setBallLocationFromMouseEvent(e);
         }
     }
@@ -467,7 +496,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     public void mouseClicked(MouseEvent e) {
         processMouseEvent(e);
     }
-    
+
     @Override
     public void mousePressed(MouseEvent e) {
         processMouseEvent(e);
@@ -546,13 +575,13 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         Runnable r = new Runnable() {
 
             public void run() {
-                boolean en=isControllerEnabled();
+                boolean en = isControllerEnabled();
                 setControllerEnabled(false);
                 tracker.resetFilter();
                 centerTilts();
                 labyrinthHardware.startJitter();
                 try {
-                    Thread.sleep(JIGGLE_TIME_MS);
+                    Thread.sleep(getJiggleTimeMs());
                 } catch (InterruptedException ex) {
                 }
                 labyrinthHardware.stopJitter();
@@ -599,5 +628,20 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     public void setControllerEnabled(boolean controllerEnabled) {
         this.controllerEnabled = controllerEnabled;
         putBoolean("controllerEnabled", controllerEnabled);
+    }
+
+    /**
+     * @return the jiggleTimeMs
+     */
+    public int getJiggleTimeMs() {
+        return jiggleTimeMs;
+    }
+
+    /**
+     * @param jiggleTimeMs the jiggleTimeMs to set
+     */
+    public void setJiggleTimeMs(int jiggleTimeMs) {
+        this.jiggleTimeMs = jiggleTimeMs;
+        putInt("jiggleTimeMs", jiggleTimeMs);
     }
 }
