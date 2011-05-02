@@ -1092,6 +1092,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
         //}
         panTiltControl.setWaitPeriod(Integer.parseInt(txtWaitPeriod.getText()));
         if (panTiltControl.isConnected() == false) {
+            //it first tries to connect to the 'original', serial PTU unit - if this does not work, it tries to connect to a USB unit and if this also fails it prints the error report.
             try {
                 panTiltControl.connect((String) this.cbxComPort.getSelectedItem());
             } catch (Exception e1) {
