@@ -25,7 +25,7 @@ import java.io.*;
  *
  * @author tobi
  */
-public class TestchipARCsPixelTestArray extends AERetina implements Serializable {
+public class TestchipARCsPixelTestArray extends AETemporalConstastRetina implements Serializable {
     
     
     /** Creates a new instance of Tmpdiff128. No biasgen is constructed for this constructor, because there is no hardware interface defined. */

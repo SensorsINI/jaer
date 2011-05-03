@@ -37,7 +37,7 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
  *
  * @author tobi
  */
-public class DVS128andCochleaAMS1b extends AERetina implements Serializable, Observer {
+public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements Serializable, Observer {
 
     private JMenu dvs128Menu = null;
     private JMenuItem arrayResetMenuItem = null, syncEnabledMenuItem = null;

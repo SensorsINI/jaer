@@ -47,7 +47,7 @@ import net.sf.jaer.util.RemoteControlled;
  *
  * @author tobi
  */
-public class cDVSTest20 extends AERetina implements HasIntensity {
+public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity {
 
     public static String getDescription() {
         return "cDVSTest color Dynamic Vision Test chip";

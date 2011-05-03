@@ -19,7 +19,7 @@ import java.io.*;
  *
  * @author tobi
  */
-public class TestchipARCSLineSensor extends AERetina implements Serializable  {
+public class TestchipARCSLineSensor extends AETemporalConstastRetina implements Serializable  {
     
     /** Creates a new instance of Tmpdiff128 */
     public TestchipARCSLineSensor() {

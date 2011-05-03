@@ -22,10 +22,12 @@ public class ThresholdLearner extends EventFilter2D implements Observer {
 
     float[] thresholds;
     int[][][] lastEventTimes;
+    VariableThresholdRenderer thresholdRenderer;
 
     public ThresholdLearner(AEChip chip) {
         super(chip);
-        //TODO load thresholds
+        thresholdRenderer=new VariableThresholdRenderer(chip);
+        chip.setRenderer(thresholdRenderer);
     }
 
     @Override

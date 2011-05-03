@@ -40,7 +40,7 @@ import net.sf.jaer.util.HexString;
  *
  * @author tobi
  */
-public class DVS128 extends AERetina implements Serializable, Observer {
+public class DVS128 extends AETemporalConstastRetina implements Serializable, Observer {
 
     private JMenu dvs128Menu = null;
     private JMenuItem arrayResetMenuItem = null, syncEnabledMenuItem = null;

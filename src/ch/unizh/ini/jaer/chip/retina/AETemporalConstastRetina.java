@@ -1,5 +1,5 @@
 /*
- * AERetina.java
+ * AETemporalConstastRetina.java
  *
  * Created on January 26, 2006, 11:12 PM
  *
@@ -12,14 +12,14 @@ import net.sf.jaer.event.*;
 import net.sf.jaer.graphics.RetinaRenderer;
 
 /**
- * A superclass for retina chips, with renderers and event filters.
+ * A superclass for temporal contrast event-based silicon retina chips, with renderers and event filters.
  *
  * @author tobi
  */
-abstract public class AERetina extends AEChip{
+abstract public class AETemporalConstastRetina extends AEChip{
     
-    /** Creates a new instance of AERetina */
-    public AERetina() {
+    /** Creates a new instance of AETemporalConstastRetina */
+    public AETemporalConstastRetina() {
         setEventClass(PolarityEvent.class);
         // these are subclasses of ChipRenderer and ChipCanvas
         // these need to be added *before* the filters are made or the filters will not annotate the results!!!

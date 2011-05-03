@@ -36,7 +36,7 @@ import net.sf.jaer.util.RemoteControlled;
  *
  * @author tobi
  */
-public class DVS320 extends AERetina implements HasIntensity {
+public class DVS320 extends AETemporalConstastRetina implements HasIntensity {
 
     /** The computed intensity value. */
     private float intensity = 0;

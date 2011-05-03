@@ -66,6 +66,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     // fields
     LabyrinthHardware labyrinthHardware;
     LabyrinthBallTracker tracker = null;
+    HandDetector handDetector = null;
     // filter chain
     FilterChain filterChain;
     // state stuff
@@ -84,6 +85,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     public LabyrinthBallController(AEChip chip) {
         super(chip);
 
+        handDetector = new HandDetector(chip);
         tracker = new LabyrinthBallTracker(chip);
         tracker.addObserver(this);
         labyrinthHardware = new LabyrinthHardware(chip);
@@ -92,6 +94,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         filterChain = new FilterChain(chip);
 
         filterChain.add(labyrinthHardware);
+        filterChain.add(handDetector);
         filterChain.add(tracker);
 
         setEnclosedFilterChain(filterChain);
@@ -123,6 +126,9 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     }
 
     private void control(EventPacket in, int timestamp) {
+        if (handDetector.isHandDetected()) {
+            return;
+        }
         if (tracker.getBall() != null) {
             Cluster ball = tracker.getBall();
 
@@ -327,9 +333,9 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         }
 
         // print some stuff
-        StringBuilder s=new StringBuilder("Ball controller:\nLeft-Click to hint ball location\nMiddle-Click/drag to set desired ball position\nCtl-click outside chip frame to clear desired ball posiition");
+        StringBuilder s = new StringBuilder("Ball controller:\nLeft-Click to hint ball location\nMiddle-Click/drag to set desired ball position\nCtl-click outside chip frame to clear desired ball posiition");
         s.append(String.format("\nController dynamics:\ntau=%.1fms\nQ=%.2f", tau * 1000, Q));
-        s.append(isControllerEnabled()?"\nController is ENABLED":"\nController is DISABLED");
+        s.append(isControllerEnabled() ? "\nController is ENABLED" : "\nController is DISABLED");
         MultilineAnnotationTextRenderer.renderMultilineString(s.toString());
         chip.getCanvas().checkGLError(gl, glu, "after controller annotations");
     }

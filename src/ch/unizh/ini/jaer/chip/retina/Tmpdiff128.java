@@ -32,7 +32,7 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2TmpdiffRetinaHardw
  *
  * @author tobi
  */
-public class Tmpdiff128 extends AERetina implements Serializable {
+public class Tmpdiff128 extends AETemporalConstastRetina implements Serializable {
 
     /** Creates a new instance of Tmpdiff128. No biasgen is constructed for this constructor, because there is no hardware interface defined. */
     public Tmpdiff128() {

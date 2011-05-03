@@ -19,7 +19,7 @@ import java.io.*;
  *
  * @author tobi
  */
-public class Tmpdiff64 extends AERetina implements Serializable  {
+public class Tmpdiff64 extends AETemporalConstastRetina implements Serializable  {
     
     /** Creates a new instance of Tmpdiff128 */
     public Tmpdiff64() {

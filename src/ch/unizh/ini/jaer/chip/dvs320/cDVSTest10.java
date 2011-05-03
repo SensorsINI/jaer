@@ -42,7 +42,7 @@ import net.sf.jaer.util.RemoteControlled;
  *
  * @author tobi
  */
-public class cDVSTest10 extends AERetina implements HasIntensity {
+public class cDVSTest10 extends AETemporalConstastRetina implements HasIntensity {
 
     /** The computed intensity value. */
     private float intensity = 0;

@@ -19,12 +19,12 @@ import net.sf.jaer.biasgen.PotTweaker;
  */
 public class DVSFunctionalControlPanel extends javax.swing.JPanel implements PropertyChangeListener {
 
-    AERetina chip;
+    AETemporalConstastRetina chip;
     DVSTweaks biasgen;
     private static final Logger log = Logger.getLogger("DVSFunctionalControlPanel");
 
     /** Creates new form Tmpdiff128FunctionalBiasgenPanel */
-    public DVSFunctionalControlPanel(AERetina chip) {
+    public DVSFunctionalControlPanel(AETemporalConstastRetina chip) {
         initComponents();
         this.chip = chip;
         biasgen = (DVSTweaks) chip.getBiasgen();

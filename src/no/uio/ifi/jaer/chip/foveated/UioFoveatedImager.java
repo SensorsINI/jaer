@@ -32,7 +32,7 @@ import java.io.*;
  *
  * @author hansbe@ifi.uio.no
  */
-public class UioFoveatedImager extends AERetina implements Serializable {
+public class UioFoveatedImager extends AETemporalConstastRetina implements Serializable {
     
     /** Creates a new instance of UioFoveatedImager and sets up a few constants (e.g. size)*/
     public UioFoveatedImager() {

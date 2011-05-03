@@ -7,7 +7,7 @@ created 8.5.2009 for ARC ATIS chip in sardinia at capo caccio workshop on cognit
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
 
  */
-import ch.unizh.ini.jaer.chip.retina.AERetina;
+import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -41,7 +41,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * @author tobi delbruck, martin lizzenberger, chr posch
  *
  */
-public class ATIS304 extends AERetina{
+public class ATIS304 extends AETemporalConstastRetina{
     public static String getDescription (){
         return "ATIS304 304x240 Asynchronous Time Based Image Sensor";
     }
