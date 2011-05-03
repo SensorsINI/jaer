@@ -37,6 +37,13 @@ public class SiLabs_USBIO_C8051F3xxFactory implements
     
     /** driver guid (Globally unique IDs, for this USB driver instance */
     public final static String GUID  = SiLabsC8051F320_USBIO_ServoController.GUID; // tobi generated in pasadena july 2006
+
+    @Override
+    public String getGUID() {
+        return GUID;
+    }
+    
+    
     
     PnPNotify pnp=null;
     

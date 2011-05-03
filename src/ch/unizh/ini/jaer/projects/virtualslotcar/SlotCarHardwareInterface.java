@@ -43,7 +43,6 @@ public class SlotCarHardwareInterface implements HardwareInterface, ThrottleBrak
 
     /**  Set the speed and returns success.
      * @param throttle the speed to copyFrom.
-     * @return true if interface was open.
      */
     @Override
     public void setThrottle(ThrottleBrake throttle) {

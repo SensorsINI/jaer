@@ -24,6 +24,7 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor  {
     }
     LabyrinthBallController controller;
     LabyrinthVirtualBall virtualBall=null;
+    HandDetector handDetector=null;
 //    LabyrinthMap map;
     FilterChain filterChain;
     enum State {Starting, Running, Finished, LostTracking, PathNotFound};
@@ -33,10 +34,13 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor  {
         super(chip);
         controller = new LabyrinthBallController(chip);
         virtualBall=new LabyrinthVirtualBall(chip,this);
+        handDetector=new HandDetector(chip);
+        
         filterChain = new FilterChain(chip);
 
         filterChain.add(new RotateFilter(chip));
         filterChain.add(virtualBall);
+        filterChain.add(handDetector);
         filterChain.add(controller);
         setEnclosedFilterChain(filterChain);
         setPropertyTooltip("clearMap", "clears the map; use for bare table");
@@ -45,11 +49,28 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor  {
         setPropertyTooltip("centerTilts","centers the table tilts");
         setPropertyTooltip("disableServos","disables the servo motors by turning off the PWM control signals; digital servos may not relax however becuase they remember the previous settings");
         setPropertyTooltip("jiggleTable", "jiggle the table according to the jitter settings for the LabyrinthHardware");
+        setPropertyTooltip("enableControl", "enable ball controller");
+        setPropertyTooltip("disableControl", "disable ball controller");
     }
-
+    
+    long timeControllerDisabled=0;
+    boolean handDetected=false;
+    
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         out= filterChain.filterPacket(in);
+        if(handDetector.isHandDetected() ){
+            handDetected=true;
+            if(!controller.isControllerTemporarilyDisabled()){
+                timeControllerDisabled=System.currentTimeMillis();
+            }
+            controller.setControllerDisabledTemporarily(true);
+        }else{
+            if(handDetected && System.currentTimeMillis()-timeControllerDisabled>2000){
+                controller.setControllerDisabledTemporarily(false);
+                handDetected=false;
+            }
+        }
         if(controller.isLostTracking()){
             state=State.LostTracking;
         }else if(controller.isPathNotFound()){
@@ -86,6 +107,14 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor  {
         controller.controlTilts();
     }
 
+    public void doEnableControl(){
+        controller.setControllerEnabled(true);
+    }
+    
+    public void doDisableControl(){
+        controller.setControllerEnabled(false);
+    }
+            
     
     
     @Override

@@ -103,4 +103,9 @@ public class UDPInterfaceFactory implements HardwareInterfaceFactoryInterface {
         buildUdpIoList();
         return availableInterfaces.size();
     }
+
+    @Override
+    public String getGUID() {
+        return null;
+    }
 }

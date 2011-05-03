@@ -56,8 +56,6 @@ public class LowpassFilter3D extends LowpassFilter{
 	}
 
 	/**
-         * {@inheritDoc}
-         * @since 1.2
 	 */
 	public float getX() {
 	    return (float) x;

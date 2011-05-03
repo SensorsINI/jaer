@@ -228,4 +228,9 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
 //
 //        return list;
 //    }
+
+    @Override
+    public String getGUID() {
+        return null;
+    }
 }

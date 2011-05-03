@@ -12,6 +12,8 @@
 
 package net.sf.jaer.hardwareinterface.usb.silabs;
 
+import java.util.Arrays;
+import java.util.logging.Level;
 import net.sf.jaer.hardwareinterface.usb.*;
 import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.util.*;
@@ -93,6 +95,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     private float pcaClockFreqMHz=SYSCLK_MHZ/2; // runs at 6 MHz by default with timer0 reload value of 255-1
     
     private boolean fullDutyCycleModeEnabled=false;  // reset state is false;
+   volatile private String errorString=null;
 
     /**
      * Creates a new instance of SiLabsC8051F320_USBIO_ServoController using device 0 - the first
@@ -124,10 +127,12 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         this.interfaceNumber=devNumber;
     }
     
+    @Override
     public void onAdd() {
         log.info("SiLabsC8051F320_USBIO_ServoController: device added");
     }
     
+    @Override
     public void onRemove() {
         log.info("SiLabsC8051F320_USBIO_ServoController: device removed");
         close();
@@ -135,6 +140,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     
     /** Closes the device. Never throws an exception.
      */
+    @Override
     public void close(){
         if(!isOpened){
             log.warning("close(): not open");
@@ -142,8 +148,8 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         }
         
         if(servoCommandWriter!=null) {
-            log.info("disabling all servos");
-            disableAllServos();
+//            log.info("disabling all servos");
+//            disableAllServos();
             try{
                 Thread.sleep(10);
             }catch(InterruptedException e){
@@ -155,6 +161,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         if(gUsbIo!=null) gUsbIo.close();
         UsbIo.destroyDeviceList(gDevList);
         log.info("device closed");
+        errorString=null;
         isOpened=false;
         
     }
@@ -213,6 +220,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      * @see #close
      *@throws HardwareInterfaceException if there is a problem. Diagnostics are printed to stderr.
      */
+    @Override
     public void open() throws HardwareInterfaceException {
         if(!UsbIoUtilities.usbIoIsAvailable) return;
         
@@ -243,9 +251,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             UsbIo.destroyDeviceList(gDevList);
             throw new HardwareInterfaceException("getDeviceDescriptor: "+UsbIo.errorText(status));
         } else {
-            log.info("getDeviceDescriptor: Vendor ID (VID) "
-                    + HexString.toString((short)deviceDescriptor.idVendor)
-                    + " Product ID (PID) " + HexString.toString((short)deviceDescriptor.idProduct));
+            log.log(Level.INFO, "getDeviceDescriptor: Vendor ID (VID) {0} Product ID (PID) {1}", new Object[]{HexString.toString((short)deviceDescriptor.idVendor), HexString.toString((short)deviceDescriptor.idProduct)});
         }
         
         // set configuration -- must do this BEFORE downloading firmware!
@@ -259,7 +265,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         if (status != USBIO_ERR_SUCCESS) {
 //            gUsbIo.destroyDeviceList(gDevList);
             //   if (status !=0xE0001005)
-            log.warning("setting configuration: "+UsbIo.errorText(status));
+            log.log(Level.WARNING, "setting configuration: {0}", UsbIo.errorText(status));
         }
         
         // get device descriptor
@@ -268,9 +274,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             UsbIo.destroyDeviceList(gDevList);
             throw new HardwareInterfaceException("getDeviceDescriptor: "+UsbIo.errorText(status));
         } else {
-            log.info("getDeviceDescriptor: Vendor ID (VID) "
-                    + HexString.toString((short)deviceDescriptor.idVendor)
-                    + " Product ID (PID) " + HexString.toString((short)deviceDescriptor.idProduct));
+            log.log(Level.INFO, "getDeviceDescriptor: Vendor ID (VID) {0} Product ID (PID) {1}", new Object[]{HexString.toString((short)deviceDescriptor.idVendor), HexString.toString((short)deviceDescriptor.idProduct)});
         }
         
         if (deviceDescriptor.iSerialNumber!=0)
@@ -282,7 +286,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             UsbIo.destroyDeviceList(gDevList);
             throw new HardwareInterfaceException("getStringDescriptor: "+UsbIo.errorText(status));
         } else {
-            log.info("getStringDescriptor 1: " + stringDescriptor1.Str);
+            log.log(Level.INFO, "getStringDescriptor 1: {0}", stringDescriptor1.Str);
         }
         
         // get string descriptor
@@ -291,7 +295,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             UsbIo.destroyDeviceList(gDevList);
             throw new HardwareInterfaceException("getStringDescriptor: "+UsbIo.errorText(status));
         } else {
-            log.info("getStringDescriptor 2: " + stringDescriptor2.Str);
+            log.log(Level.INFO, "getStringDescriptor 2: {0}", stringDescriptor2.Str);
         }
         
         if (this.numberOfStringDescriptors==3) {
@@ -301,7 +305,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
                 UsbIo.destroyDeviceList(gDevList);
                 throw new HardwareInterfaceException("getStringDescriptor: "+UsbIo.errorText(status));
             } else {
-                log.info("getStringDescriptor 3: " + stringDescriptor3.Str);
+                log.log(Level.INFO, "getStringDescriptor 3: {0}", stringDescriptor3.Str);
             }
         }
         
@@ -398,6 +402,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     /** reports if interface is {@link #open}.
      * @return true if already open
      */
+    @Override
     public boolean isOpen() {
         return isOpened;
     }
@@ -425,15 +430,20 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             CMD_SET_PORT_DOUT=14,
             CMD_SET_PCA0MD_CPS=15;
     
+    @Override
     public int getNumServos() {
         return NUM_SERVOS;
     }
     
     
+    @Override
     public String getTypeName() {
         return "ServoController";
     }
 
+    int clearedQueueWarningCount=0;
+    final int PRINT_QUEUE_CLEARED_INTERVAL=100;
+    
     private boolean submittedCmdAfterOpen=false; // flag that is set once a command has been sent after open.
     private ServoCommand lastCmd=null;
     
@@ -448,37 +458,48 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         if(submittedCmdAfterOpen && cmd.equals(lastCmd)){
             return; // don't just duplicate command already sent since open
         }
+        if(errorString!=null){
+            log.warning(errorString);
+            close();
+            return;
+        }
         if(!servoQueue.offer(cmd)){ // if queue is full, just clear it and replace with latest command
             servoQueue.clear();
             servoQueue.offer(cmd);
             submittedCmdAfterOpen=true;
-            log.warning("cleared queue to submit latest command");
+            if(clearedQueueWarningCount++%PRINT_QUEUE_CLEARED_INTERVAL==0){
+                log.warning("cleared queue to submit latest command (only logging this warning every "+PRINT_QUEUE_CLEARED_INTERVAL+" times)"); // TODO add limited number of warnings here
+            }
         }
         lastCmd=cmd;
         Thread.yield(); // let writer thread get it and submit a write
     }
 
     /** Returns last servo values sent.These are in order of PCA outputs on the SiLabs chip, which are opposite the labeling on the board. */
+    @Override
     public float[] getLastServoValues() {
         return lastServoValues;
     }
     
     /** Returns last servo value sent (0 before sending a value) */
+    @Override
     public float getLastServoValue(int servo){
         return lastServoValues[getServo(servo)];
     }
 
+    @Override
     public void setFullDutyCycleMode (boolean yes){
         this.fullDutyCycleModeEnabled=yes;
     }
 
+    @Override
     public boolean isFullDutyCycleMode (){
         return fullDutyCycleModeEnabled;
     }
     
     /** This thread actually talks to the hardware */
     private class ServoCommandWriter extends UsbIoWriter{
-        
+         
         // overridden to change priority
         @Override
         public void startThread(int MaxIoErrorCount) {
@@ -495,6 +516,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         
         /** waits and takes commands from the queue and submits them to the device.
          */
+        @Override
         public void processBuffer(UsbIoBuf servoBuf){
             ServoCommand cmd=null;
             servoBuf.NumberOfBytesToTransfer=ENDPOINT_OUT_LENGTH; // must send full buffer because that is what controller expects for interrupt transfers
@@ -512,10 +534,13 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             System.arraycopy(cmd.bytes,0,servoBuf.BufferMem,0,cmd.bytes.length);
         }
         
+        @Override
         public void bufErrorHandler(UsbIoBuf usbIoBuf) {
-            log.warning(UsbIo.errorText(usbIoBuf.Status)); // TODO set a flag or close the device to allow reopen try, needs caller to get HardwareInterfaceException
+            errorString=UsbIo.errorText(usbIoBuf.Status);
+            log.warning(errorString); // TODO set a flag or close the device to allow reopen try, needs caller to get HardwareInterfaceException
         }
         
+        @Override
         public void onThreadExit() {
             log.info("servo command writer done");
         }
@@ -596,12 +621,12 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     public float setServoPWMFrequencyHz(float freq){
         checkServoCommandThread();
         if(freq<=0) {
-            log.warning("freq="+freq+" is not a valid value");
+            log.log(Level.WARNING, "freq={0} is not a valid value", freq);
             return 0;
         }
         int n=Math.round(SYSCLK_MHZ*1e6f/65536f/freq); // we get about 2 here with freq=90Hz
         if(n==0) {
-            log.warning("freq="+freq+" too high, setting max possible of 183Hz");
+            log.log(Level.WARNING, "freq={0} too high, setting max possible of 183Hz", freq);
             n=1;
         }
         float freqActual=SYSCLK_MHZ*1e6f/65536/n; // n=1, we get 183Hz
@@ -628,6 +653,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      * @param servo the servo motor, 0 based
      * @param value the value from 0 to 1. Values out of these bounds are clipped. Special value -1f turns off the servos.
      */
+    @Override
     public void setServoValue(int servo, float value){
         checkServoCommandThread();
         // the message consists of
@@ -646,6 +672,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         lastServoValues[getServo(servo)]=value;
     }
     
+    @Override
     public void disableAllServos() {
         checkServoCommandThread();
         ServoCommand cmd=new ServoCommand();
@@ -657,6 +684,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     /** sends a servo value to disable the servo
      * @param servo the servo number, 0 based
      */
+    @Override
     public void disableServo(int servo) {
         checkServoCommandThread();
         ServoCommand cmd=new ServoCommand();
@@ -670,6 +698,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      * @param values array of value, must have length of number of servos. 
      * Order of values is order given by getServo(i), where i is the labeled output on the servo board.
      */
+    @Override
     public void setAllServoValues(float[] values)  {
         if(values==null || values.length!=getNumServos()) throw new IllegalArgumentException("wrong number of servo values, need "+getNumServos());
         checkServoCommandThread();
@@ -690,6 +719,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
       * This port is presently set to open-drain mode on all bits.
      * @param portValue the bits to set
      */
+    @Override
     public void setPort2(int portValue) {
         checkServoCommandThread();
         ServoCommand cmd=new ServoCommand();
@@ -766,6 +796,13 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             }
             return true;
         }
+
+        @Override
+        public int hashCode() {
+            int hash = 3;
+            hash = 29 * hash + Arrays.hashCode(this.bytes);
+            return hash;
+        }
     }
     
     
@@ -775,6 +812,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      */
     public static void main(String args[]) {
         java.awt.EventQueue.invokeLater(new Runnable() {
+            @Override
             public void run() {
                 new ServoTest().setVisible(true);
             }

@@ -434,6 +434,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
 
 
+        HardwareInterfaceFactory.instance().buildInterfaceList(); // once only to start
+        buildInterfaceMenu();
         buildDeviceMenu();
         // we need to do this after building device menu so that proper menu item radio button can be selected
         cleanup(); // close sockets if they are open
@@ -558,6 +560,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void openHardwareIfNonambiguous (){
         // TODO doesn't open an AEMonitor if there is a ServoInterface plugged in.
         // Should check to see if there is only 1 AEMonitorInterface, but this check is not possible currently without opening the interface.
+        HardwareInterfaceFactory.instance().buildInterfaceList();
         if ( jaerViewer != null && jaerViewer.getViewers().size() == 1 && chip.getHardwareInterface() == null && HardwareInterfaceFactory.instance().getNumInterfacesAvailable() == 1 ){
             HardwareInterface hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
             //UDP interfaces should only be opened if the chip is a NetworkChip
@@ -1066,7 +1069,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         interfaceMenu.removeAll();
 
         //create a list of available hardware interfaces
-        int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+        int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable(); // TODO this rebuilds the entire list of hardware 
+        StringBuilder sb=new StringBuilder("adding menu items for ").append(Integer.toString(n)).append(" interfaces");
         boolean choseOneButton = false;
         JRadioButtonMenuItem interfaceButton = null;
         for ( int i = 0 ; i < n ; i++ ){
@@ -1074,7 +1078,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if ( hw == null ){
                 continue;
             } // in case it disappeared
-            if((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip)) || (UDPInterface.class.isInstance(hw) && NetworkChip.class.isInstance(chip))){
+            if((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip)) 
+                    || (UDPInterface.class.isInstance(hw) && NetworkChip.class.isInstance(chip))){
                 interfaceButton = new JRadioButtonMenuItem(hw.toString());
                 interfaceButton.putClientProperty("HardwareInterfaceNumber",new Integer(i));
                 interfaceMenu.add(interfaceButton);
@@ -1096,20 +1101,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                     }
                 });
-                HardwareInterface chipInterface = chip.getHardwareInterface();
-    //            if (chipInterface != null) {
-    ////                log.info("chip.getHardwareInterface="+chip.getHardwareInterface());
-    //            }
-    //            if (hw != null) {
-    ////                log.info("hw="+hw);
-    //            }
-                //check if device in menu is already one assigned to this chip, by String comparison. Checking by object doesn't work because
-                // new device objects are created by HardwareInterfaceFactory's'
-                if ( chipInterface != null && hw != null && chipInterface.toString().equals(hw.toString()) ){
-                    interfaceButton.setSelected(true);
-                    choseOneButton = true;
+                if (chip != null) {
+                    HardwareInterface chipInterface = chip.getHardwareInterface();
+                    //            if (chipInterface != null) {
+                    ////                log.info("chip.getHardwareInterface="+chip.getHardwareInterface());
+                    //            }
+                    //            if (hw != null) {
+                    ////                log.info("hw="+hw);
+                    //            }
+                    //check if device in menu is already one assigned to this chip, by String comparison. Checking by object doesn't work because
+                    // new device objects are created by HardwareInterfaceFactory's'
+                    if (chipInterface != null && hw != null && chipInterface.toString().equals(hw.toString())) {
+                        interfaceButton.setSelected(true);
+                        choseOneButton = true;
+                    }
                 }
     //            if(chip!=null && chip.getHardwareInterface()==hw) b.setSelected(true);
+                sb.append("\n").append(hw.toString());
             }
         }
         // make a 'none' item (only there is no interface)
@@ -1130,6 +1138,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             interfaceMenu.add(new JSeparator());
             noneInterfaceButton.setSelected(true);
         }
+        log.info(sb.toString());
     }
 
     void fixBiasgenControls (){

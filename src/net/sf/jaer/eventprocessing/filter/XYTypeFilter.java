@@ -110,6 +110,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
             in = enclosedFilter.filterPacket(in);
         }
         int i;
+        if(!(typeEnabled||xEnabled||yEnabled)) return in;// optimized when filter not enabled
 
         int n = in.getSize();
         if ( n == 0 ){

@@ -141,6 +141,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private java.util.ArrayList<JComponent> controls = new ArrayList<JComponent>();
     private HashMap<String, Container> groupContainerMap = new HashMap();
     private JPanel inheritedPanel = null;
+    private float DEFAULT_REAL_VALUE=0.01f; // value jumped to from zero on key or wheel up
 
     /** Creates new form FilterPanel */
     public FilterPanel() {
@@ -1084,7 +1085,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         try {
                             nval = initValue;
                             if (nval == 0) {
-                                nval = .1f;
+                                nval = DEFAULT_REAL_VALUE;
                             } else {
                                 nval = (initValue * floatFactor);
                             }
@@ -1101,7 +1102,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         try {
                             nval = initValue;
                             if (nval == 0) {
-                                nval = .1f;
+                                nval = DEFAULT_REAL_VALUE;
                             } else {
                                 nval = (initValue / floatFactor);
                             }
@@ -1137,7 +1138,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             try {
                                 nval = initValue;
                                 if (nval == 0) {
-                                    nval = .1f;
+                                    nval = DEFAULT_REAL_VALUE;
                                 } else {
                                     nval = (initValue * wheelFactor);
                                 }
@@ -1154,7 +1155,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             try {
                                 nval = initValue;
                                 if (nval == 0) {
-                                    nval = .1f;
+                                    nval = DEFAULT_REAL_VALUE;
                                 } else {
                                     nval = (initValue / wheelFactor);
                                 }

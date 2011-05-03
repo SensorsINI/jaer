@@ -59,4 +59,9 @@ public class USBAERatcFactory implements HardwareInterfaceFactoryInterface{
         return u;
     }
 
+    @Override
+    public String getGUID() {
+        return "{ff646f80-8def-11d2-9449-00105a075f6b}";
+    }
+
 }

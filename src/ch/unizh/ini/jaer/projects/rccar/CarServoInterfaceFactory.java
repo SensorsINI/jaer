@@ -155,6 +155,11 @@ public class CarServoInterfaceFactory implements
         }
         UsbIo.destroyDeviceList(gDevList); // we got number of devices, done with list
     }
+
+    @Override
+    public String getGUID() {
+        return GUID;
+    }
     
     
 }

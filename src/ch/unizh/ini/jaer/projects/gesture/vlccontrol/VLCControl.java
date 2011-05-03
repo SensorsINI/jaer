@@ -166,8 +166,8 @@ public class VLCControl extends TelnetClient implements Runnable, TelnetNotifica
     }
 
     /** Sends a string, and returns the response from VLC. This is an expensive thread-creating blocking call that should not be used in time-critical code.
-     * @param s
-     * @return
+     * @param s the query
+     * @return response from VLC
      * @throws IOException
      */
     public String query(String s) throws IOException {

@@ -724,7 +724,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     }
 
     /** Given AE, returns first (thus oldest) cluster that event is within.
-     * The radius of the cluster here depends on whether {@link #setdynamicSizeEnabled scaling} is enabled.
+     * The radius of the cluster here depends on whether {@link #setDynamicSizeEnabled(boolean)  scaling} is enabled.
      * @param event the event
      * @return cluster that contains event within the cluster's radius, modfied by aspect ratio. null is returned if no cluster is close enough.
      */

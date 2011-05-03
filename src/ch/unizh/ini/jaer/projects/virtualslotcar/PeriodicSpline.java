@@ -473,7 +473,7 @@ public class PeriodicSpline implements java.io.Serializable {
 
     /**
      * Gets the smooth spline position at the parameter value if the spline segment is known.
-     * @param t Spline parameter
+     * @param T Spline parameter
      * @param idx Index of the spline segment in which T lies.
      * @return Point on 2D spline curve
      */
@@ -484,7 +484,7 @@ public class PeriodicSpline implements java.io.Serializable {
 
     /**
      * Gets the smooth spline position at the parameter value
-     * @param t Spline parameter
+     * @param T Spline parameter
      * @return Point on 2D spline curve
      */
     public Point2D.Float getPosition(float T) {

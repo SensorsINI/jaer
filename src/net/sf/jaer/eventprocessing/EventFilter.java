@@ -684,7 +684,7 @@ public abstract class EventFilter extends Observable {
     /** Puts a preference.
      *
      * @param key the property name, e.g. "tauMs"
-     * @param value the value to be stored
+     * @param def the value to be stored
      * @return long value
      */
     public long getLong(String key, long def) {
@@ -705,7 +705,7 @@ public abstract class EventFilter extends Observable {
      *
      * @param key the property name, e.g. "tauMs".
      * @param def the default value if there is no preference already stored.
-     * @return
+     * @return float value
      */
     public float getFloat(String key, float def) {
         return prefs.getFloat(prefsKeyHeader() + key, def);

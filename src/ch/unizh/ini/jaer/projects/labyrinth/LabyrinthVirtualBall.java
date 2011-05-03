@@ -254,11 +254,7 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
         }
 
         private void reset() {
-            if (controller != null) {
-                posPixels.setLocation(controller.tracker.getStartingLocation());
-            } else {
-                posPixels.setLocation(chip.getSizeX() / 2, chip.getSizeY() / 2);
-            }
+           posPixels.setLocation(chip.getSizeX()/2,chip.getSizeY()/2);
             velPPS.setLocation(0, 0);
             ball.lastUpdateTimeUs = System.nanoTime() >> 10;
         }
@@ -335,7 +331,7 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
         {
             gl.glPushMatrix();
 
-            gl.glTranslatef(-sx * size * 1.1f, .1f * sy, 0); // move outside chip array to lower left
+            gl.glTranslatef(-sx * size * 1.1f, .7f * sy, 0); // move outside chip array to lower left
             gl.glScalef(sx * size, sx * size, sx * size); // scale everything so that when we draw 1 unit we cover this size*sx pixels
 
             gl.glLineWidth(3f);

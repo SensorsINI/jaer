@@ -178,8 +178,6 @@ public class PcaTrackingFilter extends EventFilter2D implements FrameAnnotater {
      <p>
      Fires a PropertyChangeEvent "scale_stddev"
 
-     * @see #getDt
-     * @param dt delay in us
      */
     public void setRing_buffer_length(final int ring_buffer_length) {
 

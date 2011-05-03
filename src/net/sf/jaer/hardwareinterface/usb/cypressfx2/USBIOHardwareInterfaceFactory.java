@@ -66,6 +66,13 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
     
     /** driver guid (Globally unique ID, for this USB driver instance */
     public final static String GUID = CypressFX2.GUID; // see guid.txt at root of CypressFX2USB2
+
+    @Override
+    public String getGUID() {
+        return GUID;
+    }
+    
+    
     /** the UsbIo interface to the device. This is assigned when this particular instance is opened, after enumerating all devices */
     private UsbIo gUsbIo = null;
     private long gDevList; // 'handle' (an integer) to an internal device list static to UsbIo

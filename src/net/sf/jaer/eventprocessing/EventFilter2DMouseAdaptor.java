@@ -173,5 +173,6 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
 
     @Override
     public void mouseMoved(MouseEvent e) {
+        chip.getCanvas().repaint(100);
     }
 }

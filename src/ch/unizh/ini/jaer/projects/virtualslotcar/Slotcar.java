@@ -54,7 +54,6 @@ public class Slotcar implements Runnable, ThrottleBrakeInterface {
 
     /**
      * Creates a new Slotcar object with a pointer to OpenGL context and the track
-     * @param gl OpenGL context to draw on
      * @param theTrack The race track on which to drive
      */
     public Slotcar(SlotcarTrack theTrack) {

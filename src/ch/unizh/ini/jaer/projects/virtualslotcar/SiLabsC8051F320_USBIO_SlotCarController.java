@@ -525,7 +525,7 @@ public class SiLabsC8051F320_USBIO_SlotCarController implements UsbIoErrorCodes,
 
     /** Checks if servo is not open and opens it
      * 
-     * @return
+     * @return true if open
      */
     protected boolean checkUsbCommandThread(){
         try {
@@ -568,7 +568,7 @@ public class SiLabsC8051F320_USBIO_SlotCarController implements UsbIoErrorCodes,
     /** Sets the brake bits on the hardware. The bits are right aligned so that bit0 is brake for channel 0 and bit3 is brake for channel 3.
      * Other bits are masked out.
      *
-     * @param bits
+     * @param brake true to activate brake
      */
     public void setBrake(int brake){
         checkUsbCommandThread();

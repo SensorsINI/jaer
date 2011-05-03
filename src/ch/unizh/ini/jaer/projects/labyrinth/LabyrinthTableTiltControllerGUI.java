@@ -189,7 +189,6 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
                 .addGap(10, 10, 10)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(calibrationPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(statusLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 384, Short.MAX_VALUE)
                     .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(centerBut)
@@ -198,7 +197,8 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(recordCB, javax.swing.GroupLayout.Alignment.TRAILING)
                             .addComponent(clearBut, javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(loopTB, javax.swing.GroupLayout.Alignment.TRAILING))))
+                            .addComponent(loopTB, javax.swing.GroupLayout.Alignment.TRAILING)))
+                    .addComponent(statusLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 280, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -211,9 +211,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
                             .addGroup(layout.createSequentialGroup()
                                 .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addGap(50, 50, 50))
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(centerBut)
-                                .addGap(18, 18, 18))))
+                            .addComponent(centerBut)))
                     .addGroup(layout.createSequentialGroup()
                         .addContainerGap()
                         .addComponent(recordCB)
@@ -225,7 +223,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
                 .addComponent(calibrationPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(18, 18, 18)
                 .addComponent(statusLabel)
-                .addContainerGap(29, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         pack();
@@ -280,6 +278,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
 
     private void calibrationPanelMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_calibrationPanelMousePressed
         lastMousePressLocation = evt.getPoint();
+        controller.setControllerDisabledTemporarily(true);
         support.firePropertyChange(POSITION, lastMousePressLocation, evt.getPoint());
         lastMousePressLocation = evt.getPoint();
     }//GEN-LAST:event_calibrationPanelMousePressed
@@ -306,9 +305,12 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
         float tilt = getTilt(evt);
         lastMousePressLocation = evt.getPoint();
         setPanTilt(pan, tilt);
+      controller.setControllerDisabledTemporarily(false);
+
     }//GEN-LAST:event_calibrationPanelMouseReleased
 
     private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
+        controller.setControllerDisabledTemporarily(false);
     }//GEN-LAST:event_formWindowClosed
 
     private void calibrationPanelMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_calibrationPanelMouseEntered
@@ -318,6 +320,8 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
 
     private void calibrationPanelMouseExited(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_calibrationPanelMouseExited
         setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+                controller.setControllerDisabledTemporarily(false);
+
     }//GEN-LAST:event_calibrationPanelMouseExited
 
     private void clearButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearButActionPerformed

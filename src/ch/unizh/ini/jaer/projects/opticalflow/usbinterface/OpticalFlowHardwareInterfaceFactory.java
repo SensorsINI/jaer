@@ -18,7 +18,8 @@ import de.thesycon.usbio.structs.*;
 import java.util.*;
 
 /**
- *
+ * Makes OpticalFlowHardwareInterface's.
+ * 
  * @author tobi
  */
 public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotifyInterface, HardwareInterfaceFactoryInterface {
@@ -114,6 +115,16 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
             }
         }
         UsbIo.destroyDeviceList(gDevList); // we got number of devices, done with list
+    }
+
+    
+    public Collection<HardwareInterface> getInterfaceList() throws HardwareInterfaceException {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public String getGUID() {
+        return GUID;
     }
 
 }

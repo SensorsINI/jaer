@@ -41,6 +41,11 @@ public interface HardwareInterfaceFactoryInterface  {
      */
     public HardwareInterface getInterface(int n) throws HardwareInterfaceException ;
     
+    /** Returns the windows GUID for the interface, e.g. "{2013DFAA-ED13-4775-9967-8C3FEC412E2C}". 
+     * @return the String GUID or null if it is not relevant for the class.
+     */
+    public String getGUID();
+    
 //    /** Returns a Collection of enumerated HardwareInterfaces.
 //     *
 //     * @return the Collection.

@@ -46,6 +46,8 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     private float proportionalGain = getFloat("proportionalGain", 1);
     private float derivativeGain = getFloat("derivativeGain", 1);
     private float integralGain = getFloat("integralGain", 1);
+    // controller delay
+    private float controllerDelayMs = getFloat("controllerDelayMs", 0);
     // error signals
     // errors
     Point2D.Float pErr = new Point2D.Float(0, 0);
@@ -54,9 +56,9 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     int lastErrorUpdateTime = 0;
     boolean controllerInitialized = false;
     // components of the controller output
-    Point2D.Float pTilt = new Point2D.Float();
-    Point2D.Float iTilt = new Point2D.Float();
-    Point2D.Float dTilt = new Point2D.Float();
+//    Point2D.Float pTilt = new Point2D.Float();
+//    Point2D.Float iTilt = new Point2D.Float();
+//    Point2D.Float dTilt = new Point2D.Float();
     // The ball acceleration will be g (grav constant) * sin(angle) which is approx g*angle with angle in radians =g*angleRadPerServoUnit*(servo-0.5f).
     final float metersPerPixel = 0.22f / 128;  // TODO estimated pixels of 128 retina per meter, assumes table fills retina vertically
     final float gravConstantMperS2 = 9.8f; // meters per second^2
@@ -71,8 +73,9 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     // history
     Trajectory trajectory = new Trajectory();
     private LabyrinthTableTiltControllerGUI gui;
-    boolean navigateMaze = getBoolean("navigateMaze", true);
+//    boolean navigateMaze = getBoolean("navigateMaze", true);
     private boolean controllerEnabled = getBoolean("controllerEnabled", true);
+    protected boolean integralControlUsesPropDerivErrors = getBoolean("integralControlUsesPropDerivErrors", true);
 
     /** Constructs instance of the new 'filter' CalibratedPanTilt. The only time events are actually used
      * is during calibration. The PanTilt hardware interface is also constructed.
@@ -99,20 +102,22 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         setPropertyTooltip("integralGain", "integral error gain: tilt(rad)=error(pixels)*integralGain(1/(pixels*sec))");
         setPropertyTooltip("proportionalGain", "proportional error gain: tilt(rad)=error(pixels)*proportionalGain(1/pixels)");
         setPropertyTooltip("derivativeGain", "-derivative gain: damps overshoot. tilt(rad)=-vel(pix/sec)*derivativeGain(sec/pixel)");
-        setPropertyTooltip("navigateMaze", "follow the path in the maze");
+//        setPropertyTooltip("navigateMaze", "follow the path in the maze");
         setPropertyTooltip("tiltLimitRad", "limit of tilt of table in radians; 1 rad=57 deg");
         setPropertyTooltip("jiggleTable", "jiggle the table for jiggleTimeMs ms according to the jitter settings for the LabyrinthHardware");
         setPropertyTooltip("jiggleTimeMs", "jiggle the table for jiggleTimeMs ms according to the jitter settings for the LabyrinthHardware");
         setPropertyTooltip("controllerEnabled", "enables the controller to control table tilts based on error signal between target and ball position");
+        setPropertyTooltip("integralControlUsesPropDerivErrors", "the integral error integrates both position and velocity terms, not just position error");
+        setPropertyTooltip("controllerDelayMs", "controller delay in ms; control is computed on position this many ms ahead of current position");
         computePoles();
     }
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         out = getEnclosedFilterChain().filterPacket(in);
-        if (controllerEnabled) {
-            control(in, in.getLastTimestamp());
-        }
+//        if (controllerEnabled) {
+//            control(in, in.getLastTimestamp());
+//        } // control is called from callback via update from tracker
 
         return out;
     }
@@ -120,27 +125,33 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     private void control(EventPacket in, int timestamp) {
         if (tracker.getBall() != null) {
             Cluster ball = tracker.getBall();
-            Point2D.Float pos = ball.getLocation();
-//            trajectory.add(ball.getLastEventTimestamp(), pos.x, pos.y);
-            Point2D.Float vel = ball.getVelocityPPS();
-            if (desiredPosition != null) {
-                target = desiredPosition;
-            } else {
-                target = tracker.findNextPathPoint();
-            }
+
+            findTarget();
 
             if (target != null) {
-                pErr.setLocation(proportionalGain * (target.x - pos.x), proportionalGain * (target.y - pos.y));
-                dErr.setLocation(-vel.x * derivativeGain * tau, -vel.y * derivativeGain * tau);
+                Point2D.Float futurePos = ball.getLocation();
+                Point2D.Float velPPS = tracker.getBallVelocity();
+                if (controllerDelayMs > 0) {
+                    float delSec = 1e-3f * controllerDelayMs;
+                    futurePos.setLocation(futurePos.x + velPPS.x * delSec, futurePos.y + velPPS.y * delSec);
+                }
+                pErr.setLocation(proportionalGain * (target.x - futurePos.x), proportionalGain * (target.y - futurePos.y));
+
+                dErr.setLocation(-velPPS.x * derivativeGain * tau, -velPPS.y * derivativeGain * tau);
                 if (!controllerInitialized) {
                     lastErrorUpdateTime = timestamp; // initialize to avoid giant dt, will be zero on first pass
                     controllerInitialized = true;
                 }
                 int dtUs = timestamp - lastErrorUpdateTime;
                 float dtSec = dtUs * 1e-6f * AEConstants.TICK_DEFAULT_US;
-                float iFac = dtSec / tau;
-                iErr.x += iFac * pErr.x;
-                iErr.y += iFac * pErr.y;
+                float iFac = integralGain * dtSec / tau;
+                if (integralControlUsesPropDerivErrors) {
+                    iErr.x += iFac * (pErr.x + dErr.x / derivativeGain);
+                    iErr.y += iFac * (pErr.y + dErr.y / derivativeGain);
+                } else {
+                    iErr.x += iFac * pErr.x;
+                    iErr.y += iFac * pErr.y;
+                }
                 lastErrorUpdateTime = timestamp;
                 // anti windup control
                 float intLim = getTiltLimitRad();
@@ -148,9 +159,9 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 iErr.y = windupLimit(iErr.y, intLim);
 //                System.out.println("ierr= "+iErr);
 
-                pTilt.setLocation(pErr.x, pErr.y);
-                iTilt.setLocation(iErr.x, iErr.y);
-                dTilt.setLocation(dErr.x, dErr.y);
+//                pTilt.setLocation(pErr.x, pErr.y);
+//                iTilt.setLocation(iErr.x, iErr.y);
+//                dTilt.setLocation(dErr.x, dErr.y);
 
                 float xtilt = pErr.x + dErr.x + iErr.x;
                 float ytilt = pErr.y + dErr.y + iErr.y;
@@ -162,6 +173,14 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             }
         } else {
             resetControllerState();
+        }
+    }
+
+    private void findTarget() {
+        if (desiredPosition != null) {
+            target = desiredPosition;
+        } else {
+            target = tracker.findNextPathPoint();
         }
     }
 
@@ -190,10 +209,10 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     @param ytiltRad in radians, positive to tilt up towards positive y
      */
     public void setTilts(float xtiltRad, float ytiltRad) throws HardwareInterfaceException {
-        this.xTiltRad = clipPanTilts(xtiltRad);
-        this.yTiltRad = clipPanTilts(ytiltRad);
+        this.xTiltRad = clipPanTilts((xtiltRad));
+        this.yTiltRad = clipPanTilts((ytiltRad));
         tiltsRad.setLocation(this.xTiltRad, this.yTiltRad);
-        getPanTiltHardware().setPanTiltValues(this.xTiltRad, this.yTiltRad);
+        labyrinthHardware.setPanTiltValues(this.xTiltRad, this.yTiltRad);
     }
 
     private float clipPanTilts(float tilt) {
@@ -210,9 +229,10 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
         super.annotate(drawable);
         GL gl = drawable.getGL();
+        findTarget();
         if (target != null) {
             // draw desired position disk
-            gl.glColor4f(0, .25f, 0, .3f);
+            gl.glColor4f(0, .25f, 0, .6f);
             gl.glPushMatrix();
             gl.glTranslatef(target.x, target.y, 0);
             if (quad == null) {
@@ -238,7 +258,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         {
             gl.glPushMatrix();
 
-            gl.glTranslatef(-sx * size * 1.1f, sy * size / 2, 0); // move outside chip array to lower left
+            gl.glTranslatef(-sx * size * 1.1f, sy / 2, 0); // move outside chip array to lower left
             gl.glScalef(sx * size, sx * size, sx * size); // scale everything so that when we draw 1 unit we cover this size*sx pixels
 
             chip.getCanvas().checkGLError(gl, glu, "in control box  controller annotations");
@@ -279,8 +299,8 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 gl.glEnd();
             }
             // draw tilt vector
-            float x = pTilt.x / sc;
-            float y = pTilt.y / sc;
+            float x = pErr.x / sc;
+            float y = pErr.y / sc;
             gl.glLineWidth(4);
             {
                 gl.glBegin(GL.GL_LINE_STRIP);
@@ -288,18 +308,18 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 gl.glColor3f(1, 0, 0);
                 gl.glVertex2f(x, y);
                 gl.glColor3f(0, 1, 0);
-                x += iTilt.x / sc;
-                y += iTilt.y / sc;
+                x += iErr.x / sc;
+                y += iErr.y / sc;
                 gl.glVertex2f(x, y);
                 gl.glColor3f(0, 0, 1);
-                x += dTilt.x / sc;
-                y += dTilt.y / sc;
+                x += dErr.x / sc;
+                y += dErr.y / sc;
                 gl.glVertex2f(x, y);
                 gl.glEnd();
                 gl.glBegin(GL.GL_LINES);
                 gl.glColor3f(1, 1, 1);
-                gl.glVertex2f(0,0);
-                gl.glVertex2f(xlen,ylen);
+                gl.glVertex2f(0, 0);
+                gl.glVertex2f(xlen, ylen);
                 gl.glEnd();
             }
             chip.getCanvas().checkGLError(gl, glu, "drawing tilt box");
@@ -307,9 +327,10 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         }
 
         // print some stuff
-        MultilineAnnotationTextRenderer.renderMultilineString("Left-Click to hint ball location\nMiddle-Click/drag to set desired ball position\nCtl-click outside chip frame to clear desired ball posiition");
-        String s = String.format("Controller dynamics:\ntau=%.1fms\nQ=%.2f", tau * 1000, Q);
-        MultilineAnnotationTextRenderer.renderMultilineString(s);
+        StringBuilder s=new StringBuilder("Ball controller:\nLeft-Click to hint ball location\nMiddle-Click/drag to set desired ball position\nCtl-click outside chip frame to clear desired ball posiition");
+        s.append(String.format("\nController dynamics:\ntau=%.1fms\nQ=%.2f", tau * 1000, Q));
+        s.append(isControllerEnabled()?"\nController is ENABLED":"\nController is DISABLED");
+        MultilineAnnotationTextRenderer.renderMultilineString(s.toString());
         chip.getCanvas().checkGLError(gl, glu, "after controller annotations");
     }
 
@@ -375,7 +396,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     public void update(Observable o, Object arg) {
         if (arg instanceof UpdateMessage) {
             UpdateMessage m = (UpdateMessage) arg;
-            if (controllerEnabled) {
+            if (isControllerEnabled()) {
                 control(m.packet, m.timestamp);
             }
         }
@@ -619,15 +640,29 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
      * @return the controllerEnabled
      */
     public boolean isControllerEnabled() {
-        return controllerEnabled;
+        return controllerEnabled && !temporarilyDisabled;
     }
 
     /**
      * @param controllerEnabled the controllerEnabled to set
      */
     public void setControllerEnabled(boolean controllerEnabled) {
+        boolean old = this.controllerEnabled;
         this.controllerEnabled = controllerEnabled;
         putBoolean("controllerEnabled", controllerEnabled);
+        getSupport().firePropertyChange("controllerEnabled", old, this.controllerEnabled);
+    }
+    private boolean temporarilyDisabled = false;
+
+    /**
+     * @param disabled the controllerEnabled to set. This method does not store a preference value.
+     */
+    public void setControllerDisabledTemporarily(boolean disabled) {
+        this.temporarilyDisabled = disabled;
+    }
+
+    public boolean isControllerTemporarilyDisabled() {
+        return temporarilyDisabled;
     }
 
     /**
@@ -641,7 +676,50 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
      * @param jiggleTimeMs the jiggleTimeMs to set
      */
     public void setJiggleTimeMs(int jiggleTimeMs) {
+        int old = this.jiggleTimeMs;
         this.jiggleTimeMs = jiggleTimeMs;
         putInt("jiggleTimeMs", jiggleTimeMs);
+        getSupport().firePropertyChange("jiggleTimeMs", old, this.jiggleTimeMs);
+    }
+
+    /**
+     * Get the value of integralControlUsesPropDerivErrors
+     *
+     * @return the value of integralControlUsesPropDerivErrors
+     */
+    public boolean isIntegralControlUsesPropDerivErrors() {
+        return integralControlUsesPropDerivErrors;
+    }
+
+    /**
+     * Set the value of integralControlUsesPropDerivErrors
+     *
+     * @param integralControlUsesPropDerivErrors new value of integralControlUsesPropDerivErrors
+     */
+    public void setIntegralControlUsesPropDerivErrors(boolean integralControlUsesPropDerivErrors) {
+        this.integralControlUsesPropDerivErrors = integralControlUsesPropDerivErrors;
+        iErr.setLocation(0, 0); // reset error signal
+        putBoolean("integralControlUsesPropDerivErrors", integralControlUsesPropDerivErrors);
+    }
+
+    /**
+     * @return the controllerDelayMs
+     */
+    public float getControllerDelayMs() {
+        return controllerDelayMs;
+    }
+
+    /**
+     * @param controllerDelayMs the controllerDelayMs to set
+     */
+    public void setControllerDelayMs(float controllerDelayMs) {
+        if (controllerDelayMs < 0) {
+            controllerDelayMs = 0;
+        } else if (controllerDelayMs > 200) {
+            controllerDelayMs = 200;
+        }
+        this.controllerDelayMs = controllerDelayMs;
+        putFloat("controllerDelayMs", controllerDelayMs);
+
     }
 }

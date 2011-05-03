@@ -26,14 +26,14 @@ public class EventRateEstimator extends EventFilter2D {
 
     private LowpassFilter filter=new LowpassFilter();
     private int prevLastT=0;
-    private float maxRate=getPrefs().getFloat("EventRateEstimator.maxRate",10e6f);
+    private float maxRate=getFloat("maxRate",10e6f);
     private float filteredRate=0, instantaneousRate=0;
-    private float eventRateTauMs = getPrefs().getFloat("EventRateEstimator.eventRateTauMs", 10);
+    private float eventRateTauMs = getFloat("eventRateTauMs", 100);
     boolean initialized=false;
 
     public EventRateEstimator (AEChip chip){
         super(chip);
-        filter.setTauMs(100);
+        filter.setTauMs(eventRateTauMs);
         setPropertyTooltip("eventRateTauMs","lowpass filter time constant in ms for measuring event rate");
         setPropertyTooltip("maxRate","maximum estimated rate, which is used for zero ISIs between packets");
     }

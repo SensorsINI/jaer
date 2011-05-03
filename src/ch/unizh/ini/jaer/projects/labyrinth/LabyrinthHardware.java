@@ -39,8 +39,8 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
     private float panOffset = getFloat("panOffset", 0);
     private float tiltOffset = getFloat("tiltOffset", 0);
     // constants
-    final float angleRadPerServoUnit = (float) (5 * Math.PI / 180 / 0.1); // TODO estimated angle in radians produced by each unit of servo control change
-    final float servoUnitPerAngleRad = 1 / angleRadPerServoUnit; //  equiv servo unit
+    final float servoArmAngleRadPerServoUnit = (float) (120f*Math.PI / 180); // TODO estimated angle in radians produced by each unit of servo control change
+    final float servoUnitPerServoArmAngleRad = 1 / servoArmAngleRadPerServoUnit; //  equiv servo unit
     float panValue = 0, tiltValue = 0;
     // this is approx 5 deg per 0.1 unit change 
     public static final String PANTILT_CHANGE = "panTiltChange";
@@ -94,12 +94,10 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
     }
 
     synchronized public void doCenter() {
-        if (panTiltHardware != null && panTiltHardware.getServoInterface() != null) {
-            try {
-                panTiltHardware.setPanTiltValues(0.5f, 0.5f);
-            } catch (HardwareInterfaceException ex) {
-                log.warning(ex.toString());
-            }
+        try {
+            setPanTiltValues(0, 0);
+        } catch (HardwareInterfaceException ex) {
+            log.warning(ex.toString());
         }
     }
 
@@ -214,14 +212,33 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
         return out;
     }
 
+    /** Input is desired table tilt in radians, output is actual servo interface value 0-1 range.
+     * Tilt is clipped to +/- panTiltLimitRad.
+     * 
+     * @param tiltRad in radians from 0 for flat
+     * @return servo value.
+     */
     private float tilt2servo(float tiltRad) {
         if (tiltRad > panTiltLimitRad) {
             tiltRad = panTiltLimitRad;
         } else if (tiltRad < -panTiltLimitRad) {
             tiltRad = panTiltLimitRad;
         }
-        float f = .5f + tiltRad * servoUnitPerAngleRad;
+        float f = .5f + knob2arm(tiltRad * servoUnitPerServoArmAngleRad);
+//        System.out.println("tiltDeg="+(tiltRad*180f/3.14f)+" servo="+(f-.5f));
         return f;
+    }
+    
+    /** converts from desired angle of table knob to needed servo arm angle value, based
+     * on geometry of arm connected by rod to table knob and fact that servo turns 120 deg when servo
+     * software value ranges from 0 to 1.
+     * @param knob
+     * @return servo value ranging over 
+     */
+    private float knob2arm(float knob){
+     final float SERVO_ARM_KNOB_RADIUS_RATIO=2f/1f; // affects the actual angle produced.
+       float arm=(float)Math.asin(SERVO_ARM_KNOB_RADIUS_RATIO*knob);
+        return arm;
     }
 
     public void setServoInterface(ServoInterface servo) {
