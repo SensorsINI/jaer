@@ -4,6 +4,7 @@
  */
 package ch.unizh.ini.jaer.hardware.pantilt;
 
+import java.util.logging.Level;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.ServoInterface;
 import net.sf.jaer.hardwareinterface.usb.ServoInterfaceFactory;
@@ -79,6 +80,8 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
         }
         if (!servo.isOpen()) {
             servo.open();
+            float pwmFreq=servo.setServoPWMFrequencyHz(180);
+            log.log(Level.INFO, "opened servo interface and set PWM frequency to {0}", pwmFreq);
         }
     }
     

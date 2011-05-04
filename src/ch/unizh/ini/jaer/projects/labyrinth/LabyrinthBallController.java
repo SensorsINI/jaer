@@ -131,6 +131,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     }
     private Point2D.Float futurePosErrPix = new Point2D.Float();
     private Point2D.Float derivErrorPPS = new Point2D.Float();
+    private Point2D.Float futurePos = new Point2D.Float();
 
     private void control(EventPacket in, int timestamp) {
         if (handDetector.isHandDetected()) {
@@ -142,7 +143,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             target = nav.findTarget();
 
             if (target != null) {
-                Point2D.Float futurePos = ball.getLocation();
+                futurePos.setLocation(ball.getLocation());
                 Point2D.Float velPPS = tracker.getBallVelocity();
                 // future position of ball is given by ball velocity times delay
                 if (controllerDelayMs > 0) {
@@ -779,46 +780,49 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
     class PathNavigator {
 
-        long timeReachedNextPathPointMs, timeNow;
-        PathPoint currenPathPoint, lastPathPoint, nextPathPoint=null;
+        long timeReachedNextPathPointMs, timeNowMs, timeSinceReachedMs;
+        PathPoint currenPathPoint, nextPathPoint = null;
 //        float fractionToNextPoint = 1;
 //        float edgeTraversalTimeMs = 200;
 //        NavigatorState state = NavigatorState.ReachingNext;
 
         public PathNavigator() {
-            timeNow=System.currentTimeMillis();
-            timeReachedNextPathPointMs=timeNow;
-        }
-        
-        public String toString(){
-            return String.format("%3d -> %3d -> %3d (%4dms here)",
-                    lastPathPoint==null?-1:lastPathPoint.index, 
-                    currenPathPoint==null?-1:currenPathPoint.index, 
-                    nextPathPoint==null? -1:nextPathPoint.index, 
-                    timeNow-timeReachedNextPathPointMs);
+            timeNowMs = System.currentTimeMillis();
+            timeReachedNextPathPointMs = timeNowMs;
         }
 
-        
+        public String toString() {
+            return String.format("%3d -> %3d (%4dms here)",
+                    currenPathPoint == null ? -1 : currenPathPoint.index,
+                    nextPathPoint == null ? -1 : nextPathPoint.index,
+                    timeNowMs - timeReachedNextPathPointMs);
+        }
+
         Point2D.Float findTarget() {
             if (mousePosition != null) {
                 return mousePosition;
             } else {
-                if(nextPathPoint==null){
-                    nextPathPoint=tracker.findNextPathPoint();
+                if (nextPathPoint == null) {
+                    nextPathPoint = tracker.findNextPathPoint();
                 }
-                timeNow = System.currentTimeMillis();
+                timeNowMs = System.currentTimeMillis();
                 currenPathPoint = tracker.findNearestPathPoint();
                 if (currenPathPoint == null) {
                     return nextPathPoint;
                 }
-                if (currenPathPoint.equals(nextPathPoint)) {
-                    if (nextPathPoint != null && timeNow - timeReachedNextPathPointMs > getDwellTimePathPointMs()) {
-                    timeReachedNextPathPointMs = timeNow;
-//                    log.log(Level.INFO, "next path point is {0}", nextPathPoint);
-                        nextPathPoint = nextPathPoint.next();
+                if (currenPathPoint.equals(nextPathPoint)) { // we reached next point
+                    timeSinceReachedMs = timeNowMs - timeReachedNextPathPointMs;
+                    if (nextPathPoint != null && timeSinceReachedMs > getDwellTimePathPointMs()) {
+                        timeReachedNextPathPointMs = timeNowMs; // we've been at next point long enough, so reset time now that we reached it
+//                      log.log(Level.INFO, "next path point is {0}", nextPathPoint);
+//                        nextPathPoint = nextPathPoint.next(); // and select next point
+                        nextPathPoint = nextPathPoint.next(); // and select next point
+                    } else {
+                        float fraction = (float) timeSinceReachedMs / getDwellTimePathPointMs();
+                        Point2D.Float target = currenPathPoint.getPointFractionToNext(fraction);
+                        return target;
                     }
                 }
-                lastPathPoint = currenPathPoint;
                 return nextPathPoint;
             }
         }

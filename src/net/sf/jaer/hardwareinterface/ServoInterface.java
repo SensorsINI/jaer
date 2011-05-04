@@ -62,4 +62,19 @@ public interface ServoInterface extends HardwareInterface {
      * @return true if full duty cycle mode, false if standard servo mode.
      */
     public boolean isFullDutyCycleMode();
+
+    /**
+     * Attempts to set the PWM frequency. Most analog hobby servos accept from 50-100Hz
+     * and digital hobby servos can accept up to 250Hz, although this information is usually not specified
+     * in the product information.
+     * The SiLabsUSB board can drive servos at 180, 90, 60 or 45 Hz. The frequency is based on the
+     * overflow time for a 16 bit counter that is clocked by overflow of an automatically reloaded counter/timer that is clocked
+     * by the system clock of 12 MHz. With a timer reload of 1 (requiring 2 cycles to overflow), the 16 bit counter is clocked
+     * at 6 MHz, leading to a frequency of 91 Hz.
+     * <p>
+     * The default frequency is 91Hz.
+     * @param freq the desired frequency in Hz. The actual value is returned.
+     * @return the actual value or 0 if there is an error.
+     */
+    float setServoPWMFrequencyHz(float freq);
 }

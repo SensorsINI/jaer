@@ -65,6 +65,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
 
         public int index = -1;
         public TrackPointType type = TrackPointType.Normal;
+        public float fractionToNext=0;
 
         public PathPoint(float x, float y, int index) {
             super(x, y);
@@ -81,6 +82,18 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
             } else {
                 return ballPath.get(index + 1);
             }
+        }
+        
+        /** Computes a new Point2D some fraction of the way to the next point
+         * 
+         * @param fraction 0 to give this point, 1 to give next point
+         * @return new point in between.
+         */
+        public Point2D.Float getPointFractionToNext(float fraction){
+            PathPoint next=next();
+            float b=1-fraction;
+            Point2D.Float ret=new Point2D.Float(b*x+fraction*next.x,b*y+fraction*next.y);
+            return ret;
         }
 
         @Override
