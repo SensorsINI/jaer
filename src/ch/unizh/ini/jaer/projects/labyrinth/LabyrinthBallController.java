@@ -812,12 +812,12 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                     return nextPathPoint;
                 }
                 if (currenPathPoint.equals(nextPathPoint)) {
+                    if (nextPathPoint != null && timeNow - timeReachedNextPathPointMs > getDwellTimePathPointMs()) {
                     timeReachedNextPathPointMs = timeNow;
-                }
-                if (nextPathPoint!=null && timeNow - timeReachedNextPathPointMs > getDwellTimePathPointMs()) {
 //                    log.log(Level.INFO, "next path point is {0}", nextPathPoint);
-                    nextPathPoint = nextPathPoint.next();
-                } 
+                        nextPathPoint = nextPathPoint.next();
+                    }
+                }
                 lastPathPoint = currenPathPoint;
                 return nextPathPoint;
             }
