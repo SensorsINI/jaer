@@ -4,6 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.labyrinth;
 
+import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap.PathPoint;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,13 +42,13 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     RectangularClusterTracker tracker;
     LabyrinthMap map;
     // filtering
-    protected int velocityMedianFilterNumSamples = getInt("velocityMedianFilterNumSamples",3);
-   // private fields, not properties
+    protected int velocityMedianFilterNumSamples = getInt("velocityMedianFilterNumSamples", 3);
+    // private fields, not properties
     BasicEvent startingEvent = new BasicEvent();
     int lastTimestamp = 0;
     GLCanvas glCanvas = null;
     private ChipCanvas canvas;
-    private float[] compArray=new float[4];
+    private float[] compArray = new float[4];
 
     public LabyrinthBallTracker(AEChip chip) {
         super(chip);
@@ -77,7 +78,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         setPropertyTooltip("centerTilts", "centers the table tilts");
         setPropertyTooltip("disableServos", "disables the servo motors by turning off the PWM control signals; digital servos may not relax however becuase they remember the previous settings");
         setPropertyTooltip("maxNumClusters", "Sets the maximum potential number of clusters");
-        setPropertyTooltip("velocityMedianFilterNumSamples","number of velocity samples to median filter for ball velocity");
+        setPropertyTooltip("velocityMedianFilterNumSamples", "number of velocity samples to median filter for ball velocity");
     }
 
     @Override
@@ -114,7 +115,9 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
 
     @Override
     public void resetFilter() {
-        getEnclosedFilterChain().reset();
+            velxfilter.setInternalValue(0);
+            velyfilter.setInternalValue(0);
+            getEnclosedFilterChain().reset();
 //        createBall(startingLocation);
     }
 
@@ -151,14 +154,16 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
             glu.gluQuadricDrawStyle(quad, GLU.GLU_LINE);
             gl.glLineWidth(2f);
 //            glu.gluDisk(quad, 0, ball.getAverageEventDistance(), 16, 1);
-            float rad=ball.getMass()/tracker.getThresholdEventsForVisibleCluster();
-            if(rad>ball.getRadius()) rad=ball.getRadius();
-            glu.gluDisk(quad, 0, rad , 16, 1);
+            float rad = ball.getMass() / tracker.getThresholdEventsForVisibleCluster();
+            if (rad > ball.getRadius()) {
+                rad = ball.getRadius();
+            }
+            glu.gluDisk(quad, 0, rad, 16, 1);
             gl.glLineWidth(6f);
             gl.glBegin(GL.GL_LINE_STRIP);
             gl.glVertex2f(0, 0); // draw median-filtered velocity vector
-            float f=tracker.getVelocityVectorScaling();
-            gl.glVertex2f(velxfilter.getValue()*f, velyfilter.getValue()*f);
+            float f = tracker.getVelocityVectorScaling();
+            gl.glVertex2f(velxfilter.getValue() * f, velyfilter.getValue() * f);
             gl.glEnd();
             gl.glPopMatrix();
             Point2D.Float p = findNearestPathPoint();
@@ -183,22 +188,22 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     public RectangularClusterTracker.Cluster getBall() {
         return ball;
     }
-    
-    int velocityMedianFilterLengthSamples=getInt("velocityMedianFilterLengthSamples",9);
-    
-    MedianLowpassFilter velxfilter=new MedianLowpassFilter(velocityMedianFilterLengthSamples);
-    MedianLowpassFilter velyfilter=new MedianLowpassFilter(velocityMedianFilterLengthSamples);
-    Point2D.Float ballVel=new Point2D.Float();
-    
-    public Point2D.Float getBallVelocity(){
-        if(ball==null) return null;
-        Point2D.Float vel=ball.getVelocityPPS();
-        ballVel.setLocation(velxfilter.filter(vel.x),velyfilter.filter(vel.y));
+    int velocityMedianFilterLengthSamples = getInt("velocityMedianFilterLengthSamples", 9);
+    MedianLowpassFilter velxfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);
+    MedianLowpassFilter velyfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);
+    Point2D.Float ballVel = new Point2D.Float();
+
+    public Point2D.Float getBallVelocity() {
+        if (ball == null) {
+            velxfilter.setInternalValue(0);
+            velyfilter.setInternalValue(0);
+            return null;
+        }
+        Point2D.Float vel = ball.getVelocityPPS();
+        ballVel.setLocation(velxfilter.filter(vel.x), velyfilter.filter(vel.y));
 //        System.out.println(vel.x+"\t\t"+velxfilter.getValue());
         return ballVel;
     }
-
- 
 
     @Override
     public void update(Observable o, Object arg) {
@@ -222,39 +227,23 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
      * @return 
      */
     public int findNearestPathIndex() {
-        if (ball == null || map == null) {
-            return -1;
-        }
-        return map.findClosestIndex(ball.location, 15, true);
+        return map.findNearestPathIndex(ball.location);
     }
 
     public int getNumPathVertices() {
-        if (map == null || map.getBallPath() == null) {
-            return 0;
-        }
-        return map.getBallPath().size();
+        return map.getNumPathVertices();
     }
 
-    public Point2D.Float findNearestPathPoint() {
-        if (map == null || ball == null) {
-            return null;
-        }
-        int ind = findNearestPathIndex();
-        if (ind == -1) {
-            return null;
-        }
-        return map.getBallPath().get(ind);
+    public PathPoint findNearestPathPoint() {
+        return map.findNearestPathPoint(ball.location);
     }
 
-    public Point2D.Float findNextPathPoint() {
-        int ind = findNearestPathIndex();
-        if (ind == -1) {
-            return null;
-        }
-        if (ind == map.getBallPath().size() - 1) {
-            return map.getBallPath().get(ind);
-        }
-        return map.getBallPath().get(ind + 1);
+    public PathPoint findNextPathPoint() {
+        return map.findNextPathPoint(ball.location);
+    }
+    
+    PathPoint findNextPathPoint(PathPoint currenPathPoint) {
+        return currenPathPoint.next();
     }
 
     public float getVelocityTauMs() {
@@ -363,7 +352,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         return false;
     }
 
-   /**
+    /**
      * Get the value of velocityMedianFilterNumSamples
      *
      * @return the value of velocityMedianFilterNumSamples
@@ -378,10 +367,16 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
      * @param velocityMedianFilterNumSamples new value of velocityMedianFilterNumSamples
      */
     public void setVelocityMedianFilterNumSamples(int velocityMedianFilterNumSamples) {
-        int old=this.velocityMedianFilterNumSamples;
+        int old = this.velocityMedianFilterNumSamples;
 //        if(velocityMedianFilterNumSamples%2==0) velocityMedianFilterNumSamples++;
         this.velocityMedianFilterNumSamples = velocityMedianFilterNumSamples;
-        putInt("velocityMedianFilterNumSamples",velocityMedianFilterNumSamples);
-        getSupport().firePropertyChange("velocityMedianFilterNumSamples",old, velocityMedianFilterNumSamples);
+        velxfilter.setLength(velocityMedianFilterNumSamples);
+        velyfilter.setLength(velocityMedianFilterNumSamples);
+        putInt("velocityMedianFilterNumSamples", velocityMedianFilterNumSamples);
+        getSupport().firePropertyChange("velocityMedianFilterNumSamples", old, velocityMedianFilterNumSamples);
     }
+
+  
+
+ 
 }

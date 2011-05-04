@@ -315,7 +315,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
 
     private void calibrationPanelMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_calibrationPanelMouseEntered
         setCursor(new java.awt.Cursor(java.awt.Cursor.CROSSHAIR_CURSOR));
-        calibrationPanel.requestFocus();
+//        calibrationPanel.requestFocus();
     }//GEN-LAST:event_calibrationPanelMouseEntered
 
     private void calibrationPanelMouseExited(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_calibrationPanelMouseExited

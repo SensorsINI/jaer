@@ -49,37 +49,61 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
     Rectangle2D.Float outlineSVG = null;
     Rectangle2D boundsSVG = null;
     // chip space stuff, in retina coordinates
-    private LinkedList<TrackPoint> ballPath = new LinkedList();
+    private LinkedList<PathPoint> ballPath = new LinkedList();
     private ArrayList<Point2D.Float> holes = new ArrayList();
     private ArrayList<Float> holeRadii = new ArrayList();
     private ArrayList<ArrayList<Point2D.Float>> walls = new ArrayList();
     private ArrayList<Point2D.Float> outline = new ArrayList();
     private ClosestPointLookupTable closestPointComputer = new ClosestPointLookupTable();
 
-    public class TrackPoint extends Point2D.Float {
-
-        public int index = -1;
-        public TrackPointType type = TrackPointType.Normal;
-
-        public TrackPoint(float x, float y) {
-            super(x, y);
-        }
-
-        public TrackPoint(Point2D.Float p) {
-            super(p.x, p.y);
-        }
-    }
-
     enum TrackPointType {
 
         Normal, Start, End
     };
+
+    public class PathPoint extends Point2D.Float {
+
+        public int index = -1;
+        public TrackPointType type = TrackPointType.Normal;
+
+        public PathPoint(float x, float y, int index) {
+            super(x, y);
+            this.index = index;
+        }
+
+        public PathPoint(Point2D.Float p, int index) {
+            this(p.x, p.y, index);
+        }
+
+        public PathPoint next() {
+            if (index == getNumPathVertices() - 1) {
+                return loopEnabled ? ballPath.getFirst() : ballPath.getLast();
+            } else {
+                return ballPath.get(index + 1);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return super.toString() + " index=" + index + " type=" + type.toString();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof PathPoint) {
+                PathPoint p2d = (PathPoint) obj;
+                return p2d.index == this.index;
+            }
+            return super.equals(obj);
+        }
+    }
     // properties
     private boolean displayMap = getBoolean("displayMap", true);
     private float rotationDegCCW = getFloat("rotationDegCCW", 0);
     private float scale = getFloat("scale", 1);
     private float transXPixels = getFloat("transXPixels", 0);
     private float transYPixels = getFloat("transYPixels", 0);
+    private boolean loopEnabled = getBoolean("loopEnabled", true);
     private boolean recomputeDisplayList = true;  // to flag annotation to recompute its display list
 
     public LabyrinthMap(AEChip chip) {
@@ -97,6 +121,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         setPropertyTooltip("scale", "scales the map");
         setPropertyTooltip("transXPixels", "translates the map; positive to move it up");
         setPropertyTooltip("transYPixels", "translates the map; positive to move to right");
+        setPropertyTooltip("loopEnabled", "loops path instead of just finishing");
         chip.addObserver(this);// to get informed about changes to chip size
     }
 
@@ -195,8 +220,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
             ballPath.clear();
             int idx = 0;
             for (Point2D.Float v : ballPathSVG) {
-                TrackPoint p = new TrackPoint(transform(tsrt, v));
-                p.index = idx;
+                PathPoint p = new PathPoint(transform(tsrt, v), idx);
                 if (idx == 0) {
                     p.type = TrackPointType.Start;
                 } else if (idx == ballPathSVG.size() - 1) {
@@ -205,6 +229,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
                     p.type = TrackPointType.Normal;
                 }
                 ballPath.add(p);
+                idx++;
             }
         }
         holes.clear();
@@ -364,7 +389,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
                 addGeneralPath(path);
                 sb.append("\n Path ").append(r);
 
-           } else if (o instanceof Polygon) {
+            } else if (o instanceof Polygon) {
                 // only the actual path of the ball should be a path, it should be a connected path
                 Polygon r = (Polygon) o;
                 GeneralPath path = (GeneralPath) r.getShape();
@@ -695,9 +720,9 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         }
 
         private void computeBounds() {
-            
+
             // bounds are computed from outline polygon
-            
+
             final float extraFraction = .25f;
             if (outline == null) {
                 log.warning("no outline, can't compute bounds of ClosestPointLookupTable");
@@ -773,10 +798,54 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         }
     }
 
+//    public Point2D.Float find
+    /** returns the path index, or -1 if there is no ball or is too far away from the path.
+     * 
+     * @return 
+     */
+    public int findNearestPathIndex(Point2D point) {
+        return findClosestIndex(point, 15, true);
+    }
+
+    public int getNumPathVertices() {
+        return getBallPath().size();
+    }
+
+    public PathPoint findNearestPathPoint(Point2D point) {
+        if (point == null) {
+            return null;
+        }
+        int ind = findNearestPathIndex(point);
+        if (ind == -1) {
+            return null;
+        }
+        return getBallPath().get(ind);
+    }
+
+    public PathPoint findNextPathPoint(Point2D point) {
+        if (point == null) {
+            return null;
+        }
+        int ind = findNearestPathIndex(point);
+        if (ind == -1) {
+            return null;
+        }
+        if (!isLoopEnabled()) {
+            if (ind == getNumPathVertices() - 1) {
+                return getBallPath().get(ind);
+            }
+        } else {
+            if (ind == getNumPathVertices() - 1) {
+                return getBallPath().get(0);
+            }
+        }
+        return getBallPath().get(ind + 1);
+    }
+
     /**
      * @return the ballPath, a list of Point2D starting at the start point and ending at the end point.
      */
-    public LinkedList<TrackPoint> getBallPath() {
+    public LinkedList<PathPoint> getBallPath() {
         return ballPath;
     }
 
@@ -806,5 +875,20 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
      */
     public ArrayList<Point2D.Float> getOutline() {
         return outline;
+    }
+
+    /**
+     * @return the loopEnabled
+     */
+    public boolean isLoopEnabled() {
+        return loopEnabled;
+    }
+
+    /**
+     * @param loopEnabled the loopEnabled to set
+     */
+    public void setLoopEnabled(boolean loopEnabled) {
+        this.loopEnabled = loopEnabled;
+        putBoolean("loopEnabled", loopEnabled);
     }
 }

@@ -22,28 +22,22 @@ public class HandDetector extends EventRateEstimator implements FrameAnnotater {
     TextRenderer renderer;
     boolean handDetected = false;
     long lastTimeHandDetected = 0;
-    int timeoutMs = getInt("timeoutMs", 2000);
-
-    enum State {
-
-        NoHand, HandNow, TimeoutAfterHand
-    };
-    State state = State.NoHand;
-
+    private int timeoutMs = getInt("timeoutMs", 2000);
+  
     public HandDetector(AEChip chip) {
         super(chip);
-        setPropertyTooltip("thresholdKEPS", "threshold avg event rate in kilo event per second to count as hand detection");
+        setPropertyTooltip("handEventRateThresholdKEPS", "threshold avg event rate in kilo event per second to count as hand detection");
+        setPropertyTooltip("timeoutMs", "hand is held detected for this time in ms after threshold is crossed");
     }
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         super.filterPacket(in);
-        boolean detectedNow = (handDetected = getFilteredEventRate() * 1e-3f > handEventRateThresholdKEPS);
+        boolean detectedNow = (getFilteredEventRate() * 1e-3f > handEventRateThresholdKEPS);
         if (detectedNow) {
             handDetected = true;
             lastTimeHandDetected = System.currentTimeMillis();
-        }
-        if (handDetected && !detectedNow && (System.currentTimeMillis() - lastTimeHandDetected) > timeoutMs) {
+        }else if (handDetected && !detectedNow && (System.currentTimeMillis() - lastTimeHandDetected) > getTimeoutMs()) {
             handDetected = false;
         }
         return in;
@@ -79,7 +73,7 @@ public class HandDetector extends EventRateEstimator implements FrameAnnotater {
             renderer = new TextRenderer(new Font("SansSerif", Font.BOLD, 24));
         }
         GL gl = drawable.getGL();
-        if (handDetected && renderer != null) {
+        if (isHandDetected() && renderer != null) {
             renderer.beginRendering(chip.getSizeX(), chip.getSizeY());
             gl.glColor4f(1, 1, 0, .7f);
             renderer.draw("Hand!", 5, chip.getSizeY() / 2);
@@ -89,4 +83,19 @@ public class HandDetector extends EventRateEstimator implements FrameAnnotater {
             gl.glRectf(0, -3, chip.getSizeX() * getFilteredEventRate() / handEventRateThresholdKEPS * 1e-3f, -1);
         }
     }
+    
+      /**
+     * @return the timeoutMs
+     */
+    public int getTimeoutMs() {
+        return timeoutMs;
+    }
+
+    /**
+     * @param timeoutMs the timeoutMs to set
+     */
+    public void setTimeoutMs(int timeoutMs) {
+        this.timeoutMs = timeoutMs;
+    }
+
 }

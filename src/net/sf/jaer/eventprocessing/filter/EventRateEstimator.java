@@ -89,7 +89,7 @@ public class EventRateEstimator extends EventFilter2D {
         }
         this.eventRateTauMs = eventRateTauMs;
         filter.setTauMs(eventRateTauMs);
-        getPrefs().putFloat("EventRateEstimator.eventRateTauMs", eventRateTauMs);
+        putFloat("eventRateTauMs", eventRateTauMs);
     }
 
     /** Returns last instantaneous rate, which is the rate of events from the last packet that was filtered that had a rate.
@@ -120,7 +120,7 @@ public class EventRateEstimator extends EventFilter2D {
      */
     public void setMaxRate (float maxRate){
         this.maxRate = maxRate;
-        getPrefs().putFloat("EventRateEstimator.maxRate",maxRate);
+        putFloat("maxRate",maxRate);
     }
 
 

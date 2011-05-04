@@ -337,6 +337,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         }
         
         servoCommandWriter.startThread(3);
+        setServoPWMFrequencyHz(180); // tobi hack in CapoCaccia FIXME to put in interface
         isOpened=true;
         submittedCmdAfterOpen=false;
     }

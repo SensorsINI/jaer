@@ -24,16 +24,15 @@ public class MedianLowpassFilter {
     /** Fired when sample length property is changed */
     public static final String PROP_SAMPLES = "samples";
     private int pointer = 0;
-    private float[] samples=new float[length];
+    private float[] samples = new float[length];
 
     public MedianLowpassFilter() {
     }
-   
+
     public MedianLowpassFilter(int length) {
         setLength(length);
     }
 
-    
     public MedianLowpassFilter(float median) {
         this.median = median;
         setInternalValue(median);
@@ -49,13 +48,15 @@ public class MedianLowpassFilter {
      * @param val the new value
      * @return the running median. After initialization, the value will be zero for at least length/2 samples.
      */
-    public float filter(float val) {
-        samples[pointer]=val;
+    synchronized public float filter(float val) {
+        samples[pointer] = val;
         pointer++;
-        if(pointer>=length) pointer=0;
+        if (pointer >= length) {
+            pointer = 0;
+        }
         Arrays.sort(samples);
-        int midPoint=length/2;
-        median=samples[midPoint];
+        int midPoint = length / 2;
+        median = samples[midPoint];
 //        System.out.println("sample="+val+" median="+median);
         return median;
     }
@@ -81,7 +82,7 @@ public class MedianLowpassFilter {
         }
         int oldSamples = this.length;
         this.length = n;
-        samples=new float[length];
+        samples = new float[length];
         propertyChangeSupport.firePropertyChange(PROP_SAMPLES, oldSamples, samples);
     }
     private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
@@ -116,12 +117,14 @@ public class MedianLowpassFilter {
      * 
      * @param value the value to set 
      */
-    public void setInternalValue(float value) {
+    synchronized public void setInternalValue(float value) {
         allocate();
         Arrays.fill(samples, value);
     }
 
-    synchronized private void allocate() {
-        samples = new float[length];
+    private void allocate() {
+        if (samples == null || samples.length != length) {
+            samples = new float[length];
+        }
     }
 }

@@ -4,6 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.labyrinth;
 
+import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap.PathPoint;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.geom.*;
@@ -50,9 +51,9 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     private float controllerDelayMs = getFloat("controllerDelayMs", 0);
     // error signals
     // errors
-    Point2D.Float pErr = new Point2D.Float(0, 0);
-    Point2D.Float iErr = new Point2D.Float(0, 0);
-    Point2D.Float dErr = new Point2D.Float(0, 0);
+    Point2D.Float pControl = new Point2D.Float(0, 0);
+    Point2D.Float iControl = new Point2D.Float(0, 0);
+    Point2D.Float dControl = new Point2D.Float(0, 0);
     int lastErrorUpdateTime = 0;
     boolean controllerInitialized = false;
     // components of the controller output
@@ -70,13 +71,16 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     // filter chain
     FilterChain filterChain;
     // state stuff
-    Point2D.Float desiredPosition = null, target = null; // manually selected ball position and actual target location (maybe from path following)
+    Point2D.Float mousePosition = null, target = null; // manually selected ball position and actual target location (maybe from path following)
     // history
     Trajectory trajectory = new Trajectory();
     private LabyrinthTableTiltControllerGUI gui;
 //    boolean navigateMaze = getBoolean("navigateMaze", true);
     private boolean controllerEnabled = getBoolean("controllerEnabled", true);
     protected boolean integralControlUsesPropDerivErrors = getBoolean("integralControlUsesPropDerivErrors", true);
+    // path navigation
+    PathNavigator nav = new PathNavigator();
+    private float dwellTimePathPointMs = getFloat("dwellTimePathPointMs", 100);
 
     /** Constructs instance of the new 'filter' CalibratedPanTilt. The only time events are actually used
      * is during calibration. The PanTilt hardware interface is also constructed.
@@ -112,6 +116,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         setPropertyTooltip("controllerEnabled", "enables the controller to control table tilts based on error signal between target and ball position");
         setPropertyTooltip("integralControlUsesPropDerivErrors", "the integral error integrates both position and velocity terms, not just position error");
         setPropertyTooltip("controllerDelayMs", "controller delay in ms; control is computed on position this many ms ahead of current position");
+        setPropertyTooltip("dwellTimePathPointMs", "time that ball should dwell at a path point before aiming for next one");
         computePoles();
     }
 
@@ -124,6 +129,8 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
         return out;
     }
+    private Point2D.Float futurePosErrPix = new Point2D.Float();
+    private Point2D.Float derivErrorPPS = new Point2D.Float();
 
     private void control(EventPacket in, int timestamp) {
         if (handDetector.isHandDetected()) {
@@ -132,18 +139,39 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         if (tracker.getBall() != null) {
             Cluster ball = tracker.getBall();
 
-            findTarget();
+            target = nav.findTarget();
 
             if (target != null) {
                 Point2D.Float futurePos = ball.getLocation();
                 Point2D.Float velPPS = tracker.getBallVelocity();
+                // future position of ball is given by ball velocity times delay
                 if (controllerDelayMs > 0) {
                     float delSec = 1e-3f * controllerDelayMs;
                     futurePos.setLocation(futurePos.x + velPPS.x * delSec, futurePos.y + velPPS.y * delSec);
                 }
-                pErr.setLocation(proportionalGain * (target.x - futurePos.x), proportionalGain * (target.y - futurePos.y));
 
-                dErr.setLocation(-velPPS.x * derivativeGain * tau, -velPPS.y * derivativeGain * tau);
+                futurePosErrPix.setLocation(target.x - futurePos.x, target.y - futurePos.y); // vector pointing towards target from future position
+
+                pControl.setLocation(proportionalGain * futurePosErrPix.x, proportionalGain * futurePosErrPix.y); // towards target
+
+                // derivative error is vector rate of change of position error which is related to ball velocity by projection of ball
+                // velocity onto position error vector, not just velocity
+
+//                float dotVelPos=velPPS.x*futurePosErrPix.x+velPPS.y*futurePosErrPix.y; // positive if vel in direction of vector connecting from future pos to target
+//                float futurePosErrLength=(float)futurePosErrPix.distance(0,0); // length of future pos error vector
+//                if(futurePosErrLength<1e-1f){
+//                    futurePosErrLength=1e-1f;
+//                }
+//                
+//                float cosAngle=dotVelPos/futurePosErrLength;
+
+                // projection of ball velocity onto pos error vector
+//                derivErrorPPS.setLocation(futurePosErrPix.x*cosAngle, futurePosErrPix.y*cosAngle); // points in direction of ball motion projected onto pos error vector
+                derivErrorPPS.setLocation(velPPS.x, velPPS.y); // points in direction of ball motion 
+
+
+//                dControl.setLocation(-derivErrorPPS.x * derivativeGain * tau, -derivErrorPPS.y * derivativeGain * tau); // dControl is derivative error term of control signal. It points along line connecting predicated position in future with target.
+                dControl.setLocation(-derivErrorPPS.x * derivativeGain * tau, -derivErrorPPS.y * derivativeGain * tau);
                 if (!controllerInitialized) {
                     lastErrorUpdateTime = timestamp; // initialize to avoid giant dt, will be zero on first pass
                     controllerInitialized = true;
@@ -152,25 +180,25 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 float dtSec = dtUs * 1e-6f * AEConstants.TICK_DEFAULT_US;
                 float iFac = integralGain * dtSec / tau;
                 if (integralControlUsesPropDerivErrors) {
-                    iErr.x += iFac * (pErr.x + dErr.x / derivativeGain);
-                    iErr.y += iFac * (pErr.y + dErr.y / derivativeGain);
+                    iControl.x += iFac * (futurePosErrPix.x - derivErrorPPS.x * tau);
+                    iControl.y += iFac * (futurePosErrPix.y - derivErrorPPS.y * tau);
                 } else {
-                    iErr.x += iFac * pErr.x;
-                    iErr.y += iFac * pErr.y;
+                    iControl.x += iFac * futurePosErrPix.x;
+                    iControl.y += iFac * futurePosErrPix.y;
                 }
                 lastErrorUpdateTime = timestamp;
                 // anti windup control
                 float intLim = getTiltLimitRad();
-                iErr.x = windupLimit(iErr.x, intLim);
-                iErr.y = windupLimit(iErr.y, intLim);
-//                System.out.println("ierr= "+iErr);
+                iControl.x = windupLimit(iControl.x, intLim);
+                iControl.y = windupLimit(iControl.y, intLim);
+//                System.out.println("ierr= "+iControl);
 
-//                pTilt.setLocation(pErr.x, pErr.y);
-//                iTilt.setLocation(iErr.x, iErr.y);
-//                dTilt.setLocation(dErr.x, dErr.y);
+//                pTilt.setLocation(pControl.x, pControl.y);
+//                iTilt.setLocation(iControl.x, iControl.y);
+//                dTilt.setLocation(dControl.x, dControl.y);
 
-                float xtilt = pErr.x + dErr.x + iErr.x;
-                float ytilt = pErr.y + dErr.y + iErr.y;
+                float xtilt = pControl.x + dControl.x + iControl.x;
+                float ytilt = pControl.y + dControl.y + iControl.y;
                 try {
                     setTilts(xtilt, ytilt);
                 } catch (HardwareInterfaceException ex) {
@@ -182,14 +210,13 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         }
     }
 
-    private void findTarget() {
-        if (desiredPosition != null) {
-            target = desiredPosition;
-        } else {
-            target = tracker.findNextPathPoint();
-        }
-    }
-
+//    private void findTarget() {
+//        if (mousePosition != null) {
+//            target = mousePosition;
+//        } else {
+//            target = tracker.findNextPathPoint();
+//        }
+//    }
     float windupLimit(float intErr, float lim) {
         if (intErr > lim) {
             intErr = lim;
@@ -235,7 +262,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
         super.annotate(drawable);
         GL gl = drawable.getGL();
-        findTarget();
+//        findTarget();
         if (target != null) {
             // draw desired position disk
             gl.glColor4f(0, .25f, 0, .6f);
@@ -305,8 +332,8 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 gl.glEnd();
             }
             // draw tilt vector
-            float x = pErr.x / sc;
-            float y = pErr.y / sc;
+            float x = pControl.x / sc;
+            float y = pControl.y / sc;
             gl.glLineWidth(4);
             {
                 gl.glBegin(GL.GL_LINE_STRIP);
@@ -314,12 +341,12 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 gl.glColor3f(1, 0, 0);
                 gl.glVertex2f(x, y);
                 gl.glColor3f(0, 1, 0);
-                x += iErr.x / sc;
-                y += iErr.y / sc;
+                x += iControl.x / sc;
+                y += iControl.y / sc;
                 gl.glVertex2f(x, y);
                 gl.glColor3f(0, 0, 1);
-                x += dErr.x / sc;
-                y += dErr.y / sc;
+                x += dControl.x / sc;
+                y += dControl.y / sc;
                 gl.glVertex2f(x, y);
                 gl.glEnd();
                 gl.glBegin(GL.GL_LINES);
@@ -336,6 +363,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         StringBuilder s = new StringBuilder("Ball controller:\nLeft-Click to hint ball location\nMiddle-Click/drag to set desired ball position\nCtl-click outside chip frame to clear desired ball posiition");
         s.append(String.format("\nController dynamics:\ntau=%.1fms\nQ=%.2f", tau * 1000, Q));
         s.append(isControllerEnabled() ? "\nController is ENABLED" : "\nController is DISABLED");
+        s.append("\n").append(nav.toString());
         MultilineAnnotationTextRenderer.renderMultilineString(s.toString());
         chip.getCanvas().checkGLError(gl, glu, "after controller annotations");
     }
@@ -407,21 +435,20 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             }
         }
     }
-
-    /**
-     * @return the desiredPosition
-     */
-    private Point2D.Float getDesiredPosition() {
-        return desiredPosition;
-    }
-
-    /**
-     * @param desiredPosition the desiredPosition to set
-     */
-    private void setDesiredPosition(Point2D.Float desiredPosition) {
-        this.desiredPosition = desiredPosition;
-        resetControllerState();
-    }
+//    /**
+//     * @return the mousePosition
+//     */
+//    private Point2D.Float getDesiredPosition() {
+//        return mousePosition;
+//    }
+//
+//    /**
+//     * @param mousePosition the mousePosition to set
+//     */
+//    private void setDesiredPosition(Point2D.Float desiredPosition) {
+//        this.mousePosition = desiredPosition;
+//        resetControllerState();
+//    }
     private float tau, Q;
 
     private void computePoles() {
@@ -471,7 +498,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
     private void resetControllerState() {
         controllerInitialized = false;
-        iErr.setLocation(0, 0);
+        iControl.setLocation(0, 0);
     }
 
     public enum Message {
@@ -493,18 +520,18 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     synchronized private void setDesiredPositionFromMouseEvent(MouseEvent e) {
         Point p = getMousePixel(e);
         if (p == null) {
-            desiredPosition = null;
+            mousePosition = null;
             resetControllerState();
             return;
         }
-        if (desiredPosition == null) {
-            desiredPosition = new Point2D.Float(p.x, p.y);
+        if (mousePosition == null) {
+            mousePosition = new Point2D.Float(p.x, p.y);
         } else {
-            desiredPosition.x = p.x;
-            desiredPosition.y = p.y;
+            mousePosition.x = p.x;
+            mousePosition.y = p.y;
         }
         resetControllerState();
-//        log.info("desired position from mouse=" + desiredPosition);
+//        log.info("desired position from mouse=" + mousePosition);
     }
 
     void processMouseEvent(MouseEvent e) {
@@ -601,6 +628,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     public void doJiggleTable() {
         Runnable r = new Runnable() {
 
+            @Override
             public void run() {
                 boolean en = isControllerEnabled();
                 setControllerEnabled(false);
@@ -704,7 +732,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
      */
     public void setIntegralControlUsesPropDerivErrors(boolean integralControlUsesPropDerivErrors) {
         this.integralControlUsesPropDerivErrors = integralControlUsesPropDerivErrors;
-        iErr.setLocation(0, 0); // reset error signal
+        iControl.setLocation(0, 0); // reset error signal
         putBoolean("integralControlUsesPropDerivErrors", integralControlUsesPropDerivErrors);
     }
 
@@ -727,5 +755,72 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         this.controllerDelayMs = controllerDelayMs;
         putFloat("controllerDelayMs", controllerDelayMs);
 
+    }
+
+    /**
+     * @return the dwellTimePathPointMs
+     */
+    public float getDwellTimePathPointMs() {
+        return dwellTimePathPointMs;
+    }
+
+    /**
+     * @param dwellTimePathPointMs the dwellTimePathPointMs to set
+     */
+    public void setDwellTimePathPointMs(float dwellTimePathPointMs) {
+        this.dwellTimePathPointMs = dwellTimePathPointMs;
+        putFloat("dwellTimePathPointMs", dwellTimePathPointMs);
+    }
+
+    enum NavigatorState {
+
+        ReachingNext, Settling
+    };
+
+    class PathNavigator {
+
+        long timeReachedNextPathPointMs, timeNow;
+        PathPoint currenPathPoint, lastPathPoint, nextPathPoint=null;
+//        float fractionToNextPoint = 1;
+//        float edgeTraversalTimeMs = 200;
+//        NavigatorState state = NavigatorState.ReachingNext;
+
+        public PathNavigator() {
+            timeNow=System.currentTimeMillis();
+            timeReachedNextPathPointMs=timeNow;
+        }
+        
+        public String toString(){
+            return String.format("%3d -> %3d -> %3d (%4dms here)",
+                    lastPathPoint==null?-1:lastPathPoint.index, 
+                    currenPathPoint==null?-1:currenPathPoint.index, 
+                    nextPathPoint==null? -1:nextPathPoint.index, 
+                    timeNow-timeReachedNextPathPointMs);
+        }
+
+        
+        Point2D.Float findTarget() {
+            if (mousePosition != null) {
+                return mousePosition;
+            } else {
+                if(nextPathPoint==null){
+                    nextPathPoint=tracker.findNextPathPoint();
+                }
+                timeNow = System.currentTimeMillis();
+                currenPathPoint = tracker.findNearestPathPoint();
+                if (currenPathPoint == null) {
+                    return nextPathPoint;
+                }
+                if (currenPathPoint.equals(nextPathPoint)) {
+                    timeReachedNextPathPointMs = timeNow;
+                }
+                if (nextPathPoint!=null && timeNow - timeReachedNextPathPointMs > getDwellTimePathPointMs()) {
+//                    log.log(Level.INFO, "next path point is {0}", nextPathPoint);
+                    nextPathPoint = nextPathPoint.next();
+                } 
+                lastPathPoint = currenPathPoint;
+                return nextPathPoint;
+            }
+        }
     }
 }
