@@ -104,16 +104,19 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
     public SiLabsC8051F320_USBIO_CarServoController() {
     }
     
+    @Override
     public void onAdd() {
         log.info("SiLabsC8051F320_USBIO_ServoController: device added");
     }
     
+    @Override
     public void onRemove() {
         log.info("SiLabsC8051F320_USBIO_ServoController: device removed");
     }
     
     /** Closes the device. Never throws an exception.
      */
+    @Override
     synchronized public void close(){
         if(!isOpened){
 //            log.warning("close(): not open");
@@ -419,6 +422,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
     /** reports if interface is {@link #open}.
      * @return true if already open
      */
+    @Override
     public boolean isOpen() {
         return isOpened;
     }
@@ -568,6 +572,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
      @param servo the servo motor, 0 based
      @param value the value from 0 to 1. Values out of these bounds are clipped. Special value -1f turns off the servos.
      */
+    @Override
     public void setServoValue(final int servo, final float value) {
         checkServoCommandThread();
         // the message consists of
@@ -600,6 +605,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
     /** sends a servo value to disable the servo
      @param servo the servo number, 0 based
      */
+    @Override
     public void disableServo(final int servo) throws HardwareInterfaceException{
         checkServoCommandThread();
         ServoCommand cmd=new ServoCommand();
@@ -612,6 +618,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
     /** sets all servos to values in one transfer
      @param values array of value, must have length of number of servos
      */
+    @Override
     public void setAllServoValues(final float[] values) throws HardwareInterfaceException {
         if(values==null || values.length!=getNumServos()) throw new IllegalArgumentException("wrong number of servo values, need "+getNumServos());
         checkServoCommandThread();
@@ -627,10 +634,12 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
         submitCommand(cmd);
     }
 
+    @Override
     public void setFullDutyCycleMode (boolean yes){
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
+    @Override
     public boolean isFullDutyCycleMode (){
         throw new UnsupportedOperationException("Not supported yet.");
     }
@@ -661,6 +670,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
             interrupt();
         }
         
+        @Override
         public void run(){
             ServoCommand cmd=null;
             while(stop==false){
@@ -733,6 +743,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
             interrupt();
         }
         
+        @Override
         public void run(){
             int status;
             UsbIoBuf buffer=new UsbIoBuf(ENDPOINT_IN_LENGTH); // size of EP1
@@ -908,14 +919,17 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
         log.info("set radioTimeoutMs="+radioTimeoutMs+" corresponding to main loop cycle count of "+t);
    }
 
+    @Override
     public float[] getLastServoValues() {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
+    @Override
     public float getLastServoValue(int servo) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
+    @Override
     public void setPort2(int portValue) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
