@@ -55,6 +55,14 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
     private ArrayList<ArrayList<Point2D.Float>> walls = new ArrayList();
     private ArrayList<Point2D.Float> outline = new ArrayList();
     private ClosestPointLookupTable closestPointComputer = new ClosestPointLookupTable();
+    private Rectangle2D.Float boundingBox=new Rectangle2D.Float();
+
+    /**
+     * @return the boundingBox
+     */
+    public Rectangle2D.Float getBoundingBox() {
+        return boundingBox;
+    }
 
     enum TrackPointType {
 
@@ -273,6 +281,13 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         outline.add(transform(tsrt, outlineSVG.x + outlineSVG.width, outlineSVG.y + outlineSVG.height));
         outline.add(transform(tsrt, outlineSVG.x, outlineSVG.y + outlineSVG.height));
         outline.add(transform(tsrt, outlineSVG.x, outlineSVG.y));
+        
+        float minx=Float.POSITIVE_INFINITY, miny=Float.POSITIVE_INFINITY, maxx=Float.NEGATIVE_INFINITY, maxy=Float.NEGATIVE_INFINITY;
+        for(Point2D.Float p:outline){
+            if(p.x>maxx) maxx=p.x; else if(p.x<minx) minx=p.x;
+            if(p.y>maxy) maxy=p.y; else if(p.y<miny) miny=p.y;
+        }
+        getBoundingBox().setFrame(minx, miny, maxx-minx, maxy-miny);
         invalidateDisplayList();
         closestPointComputer.init();
 

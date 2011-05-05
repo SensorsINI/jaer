@@ -9,6 +9,8 @@ import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.Random;
+import java.util.TimerTask;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.chip.AEChip;
@@ -39,7 +41,7 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
     private float panOffset = getFloat("panOffset", 0);
     private float tiltOffset = getFloat("tiltOffset", 0);
     // constants
-    final float servoArmAngleRadPerServoUnit = (float) (120f*Math.PI / 180); // TODO estimated angle in radians produced by each unit of servo control change
+    final float servoArmAngleRadPerServoUnit = (float) (120f * Math.PI / 180); // TODO estimated angle in radians produced by each unit of servo control change
     final float servoUnitPerServoArmAngleRad = 1 / servoArmAngleRadPerServoUnit; //  equiv servo unit
     float panValue = 0, tiltValue = 0;
     // this is approx 5 deg per 0.1 unit change 
@@ -129,7 +131,7 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
      * @param jitterAmplitude the amplitude
      */
     public void setJitterAmplitude(float jitterAmplitude) {
-        this.jitterAmplitude=jitterAmplitude;
+        this.jitterAmplitude = jitterAmplitude;
         putFloat("jitterAmplitude", jitterAmplitude);
         if (panTiltHardware == null) {
             return;
@@ -173,16 +175,18 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
     }
 
     synchronized public void startJitter() {
-        try {
-            setPanTiltValues(panValue, tiltValue);
-            getPanTiltHardware().startJitter();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
+        if (timer != null) {
+            stopJitter(); //  running, must stop to get new position correct
         }
+        timer = new java.util.Timer();
+        timer.scheduleAtFixedRate(new JittererTask(getPanTiltValues()), 0, 20); // 40 ms delay
     }
 
     synchronized public void stopJitter() {
-        getPanTiltHardware().stopJitter();
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
+        }
     }
 
     /** Sets the pan and tilt servo values in radians with 0 being flat.
@@ -197,9 +201,8 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
         tiltValue = clipPanTilt(tilt);
         getSupport().firePropertyChange(PANTILT_CHANGE, old, new Point2D.Float(panValue, tiltValue));
         getPanTiltHardware().setPanTiltValues(
-                tilt2servo(panValue) + panOffset, 
-                tilt2servo(tiltValue) + tiltOffset
-                );
+                tilt2servo(panValue) + panOffset,
+                tilt2servo(tiltValue) + tiltOffset);
     }
 
     private float clipPanTilt(float in) {
@@ -228,16 +231,16 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
 //        System.out.println("tiltDeg="+(tiltRad*180f/3.14f)+" servo="+(f-.5f));
         return f;
     }
-    
+
     /** converts from desired angle of table knob to needed servo arm angle value, based
      * on geometry of arm connected by rod to table knob and fact that servo turns 120 deg when servo
      * software value ranges from 0 to 1.
      * @param knob
      * @return servo value ranging over 
      */
-    private float knob2arm(float knob){
-     final float SERVO_ARM_KNOB_RADIUS_RATIO=2f/1f; // affects the actual angle produced.
-       float arm=(float)Math.asin(SERVO_ARM_KNOB_RADIUS_RATIO*knob);
+    private float knob2arm(float knob) {
+        final float SERVO_ARM_KNOB_RADIUS_RATIO = 2f / 1f; // affects the actual angle produced.
+        float arm = (float) Math.asin(SERVO_ARM_KNOB_RADIUS_RATIO * knob);
         return arm;
     }
 
@@ -276,6 +279,7 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
             }
         }
     }
+    java.util.Timer timer;
 
     /**
      * @return the jitterEnabled
@@ -291,6 +295,33 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
         this.jitterEnabled = jitterEnabled;
         putBoolean("jitterEnabled", jitterEnabled);
         panTiltHardware.setJitterEnabled(jitterEnabled);
+    }
+
+    private class JittererTask extends TimerTask {
+
+        int delayMs = 1000;
+        float low = 0;
+        float high = 1;
+        Random r = new Random();
+        float[] pantiltvalues;
+        long startTime = System.currentTimeMillis();
+
+        JittererTask(float[] ptv) {
+            super();
+            pantiltvalues = ptv;
+        }
+
+        @Override
+        public void run() {
+            long t = System.currentTimeMillis() - startTime;
+            double phase = Math.PI * 2 * (double) t / 1000 * jitterFreqHz;
+            float dx = (float) (jitterAmplitude * Math.sin(phase));
+            float dy = (float) (jitterAmplitude * Math.cos(phase));
+            try {
+                setPanTiltValues(pantiltvalues[0] + dx, pantiltvalues[1] + dy);
+            } catch (HardwareInterfaceException ex) {
+            }
+        }
     }
 
     public void setPanServoNumber(int panServoNumber) {

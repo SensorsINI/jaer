@@ -40,9 +40,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     public static final String getDescription() {
         return "Low level ball controller for Labyrinth game";
     }
-    private float xTiltRad = 0;
-    private float yTiltRad = 0; // TODO limit in deg 
-    volatile private Point2D.Float tiltsRad = new Point2D.Float(xTiltRad, yTiltRad);
+    volatile private Point2D.Float tiltsRad = new Point2D.Float(0, 0);
     // control
     private float proportionalGain = getFloat("proportionalGain", 1);
     private float derivativeGain = getFloat("derivativeGain", 1);
@@ -243,10 +241,10 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     @param ytiltRad in radians, positive to tilt up towards positive y
      */
     public void setTilts(float xtiltRad, float ytiltRad) throws HardwareInterfaceException {
-        this.xTiltRad = clipPanTilts((xtiltRad));
-        this.yTiltRad = clipPanTilts((ytiltRad));
-        tiltsRad.setLocation(this.xTiltRad, this.yTiltRad);
-        labyrinthHardware.setPanTiltValues(this.xTiltRad, this.yTiltRad);
+        float xTiltRad = clipPanTilts((xtiltRad));
+        float yTiltRad = clipPanTilts((ytiltRad));
+        tiltsRad.setLocation(xTiltRad, yTiltRad);
+        labyrinthHardware.setPanTiltValues(tiltsRad.x, tiltsRad.y);
     }
 
     private float clipPanTilts(float tilt) {
@@ -316,8 +314,8 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             chip.getCanvas().checkGLError(gl, glu, "drawing tilt box");
             // draw tilt box
             float sc = getTiltLimitRad() * 2;
-            float xlen = xTiltRad / sc;
-            float ylen = yTiltRad / sc;
+            float xlen = tiltsRad.x / sc;
+            float ylen = tiltsRad.y / sc;
 
             gl.glLineWidth(4f);
             if (Math.abs(xlen) < .5f && Math.abs(ylen) < .5f) {
@@ -371,6 +369,11 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        if (evt.getSource() instanceof LabyrinthHardware) {
+            if (evt.getPropertyName() == LabyrinthHardware.PANTILT_CHANGE) {
+                tiltsRad.setLocation((Point2D.Float) evt.getNewValue());
+            }
+        }
         getSupport().firePropertyChange(evt);
     }
 
@@ -419,6 +422,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     public void setIntegralGain(float integralGain) {
         this.integralGain = integralGain;
         putFloat("integralGain", integralGain);
+        iControl.setLocation(0, 0);
         computePoles();
     }
 
@@ -463,14 +467,14 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
      * @return the xTiltRad
      */
     public float getxTiltRad() {
-        return xTiltRad;
+        return tiltsRad.x;
     }
 
     /**
      * @return the yTiltRad
      */
     public float getyTiltRad() {
-        return yTiltRad;
+        return tiltsRad.y;
     }
 
     /**
@@ -500,6 +504,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     private void resetControllerState() {
         controllerInitialized = false;
         iControl.setLocation(0, 0);
+//        centerTilts();
     }
 
     public enum Message {
@@ -781,10 +786,8 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     class PathNavigator {
 
         long timeReachedNextPathPointMs, timeNowMs, timeSinceReachedMs;
-        PathPoint currenPathPoint, nextPathPoint = null;
-//        float fractionToNextPoint = 1;
-//        float edgeTraversalTimeMs = 200;
-//        NavigatorState state = NavigatorState.ReachingNext;
+        PathPoint currenPathPoint, nextPathPoint = null, previousPathPoint = null;
+        float fractionToNextPoint = 0;
 
         public PathNavigator() {
             timeNowMs = System.currentTimeMillis();
@@ -811,19 +814,19 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                     return nextPathPoint;
                 }
                 if (currenPathPoint.equals(nextPathPoint)) { // we reached next point
-                    timeSinceReachedMs = timeNowMs - timeReachedNextPathPointMs;
-                    if (nextPathPoint != null && timeSinceReachedMs > getDwellTimePathPointMs()) {
-                        timeReachedNextPathPointMs = timeNowMs; // we've been at next point long enough, so reset time now that we reached it
-//                      log.log(Level.INFO, "next path point is {0}", nextPathPoint);
-//                        nextPathPoint = nextPathPoint.next(); // and select next point
-                        nextPathPoint = nextPathPoint.next(); // and select next point
-                    } else {
-                        float fraction = (float) timeSinceReachedMs / getDwellTimePathPointMs();
-                        Point2D.Float target = currenPathPoint.getPointFractionToNext(fraction);
-                        return target;
-                    }
+                    previousPathPoint = currenPathPoint; // set previous one
+                    nextPathPoint = nextPathPoint.next(); // and select next point
+                    timeReachedNextPathPointMs = timeNowMs; // set time that we reached this one
                 }
-                return nextPathPoint;
+                if(previousPathPoint==null){
+                    previousPathPoint=currenPathPoint;
+                }
+                
+                timeSinceReachedMs = timeNowMs - timeReachedNextPathPointMs;  // at all times that we have a target, compute time since we reached previous point
+                fractionToNextPoint = (float) timeSinceReachedMs / getDwellTimePathPointMs(); // compute fraction of time we allocate to each segment
+                if(fractionToNextPoint>1) fractionToNextPoint=1;
+                Point2D.Float target = previousPathPoint.getPointFractionToNext(fractionToNextPoint); // so return a point part way to next point to aim for
+                return target;
             }
         }
     }

@@ -31,9 +31,9 @@ import java.util.logging.Logger;
  * @author tobi
  */
 public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes, PnPNotifyInterface, ServoInterface {
-    Logger log=Logger.getLogger("SiLabsC8051F320_USBIO_ServoController");
+    static final Logger log=Logger.getLogger("SiLabsC8051F320_USBIO_ServoController");
     
-    /** driver guid (Globally unique ID, for this USB driver instance */
+    /** driver GUID (Globally unique ID, for this USB driver instance */
     public final static String GUID  = "{06A57244-C56B-4edb-892B-2ADABFB35E0B}"; // tobi generated in pasadena july 2006
     
     static public final short VID=(short)0x0547;
@@ -632,6 +632,11 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
     }
 
     public boolean isFullDutyCycleMode (){
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public float setServoPWMFrequencyHz(float freq) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
     
