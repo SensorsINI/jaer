@@ -20,6 +20,7 @@ import javax.swing.BoxLayout;
 import javax.swing.border.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.util.EngineeringFormat;
 
 /**
@@ -1244,6 +1245,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      */
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
+        bindingGroup = new org.jdesktop.beansbinding.BindingGroup();
 
         jPanel1 = new javax.swing.JPanel();
         enabledCheckBox = new javax.swing.JCheckBox();
@@ -1256,7 +1258,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         jPanel1.setPreferredSize(new java.awt.Dimension(100, 23));
         jPanel1.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 2, 2));
 
-        enabledCheckBox.setFont(new java.awt.Font("Tahoma", 0, 9));
+        enabledCheckBox.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
         enabledCheckBox.setToolTipText("Enable or disable the filter");
         enabledCheckBox.setMargin(new java.awt.Insets(1, 1, 1, 1));
         enabledCheckBox.addActionListener(new java.awt.event.ActionListener() {
@@ -1266,8 +1268,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         });
         jPanel1.add(enabledCheckBox);
 
-        resetButton.setFont(new java.awt.Font("Tahoma", 0, 9));
-        resetButton.setText("R");
+        resetButton.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
+        resetButton.setText("Reset");
         resetButton.setToolTipText("Resets the filter");
         resetButton.setMargin(new java.awt.Insets(1, 5, 1, 5));
         resetButton.addActionListener(new java.awt.event.ActionListener() {
@@ -1277,18 +1279,19 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         });
         jPanel1.add(resetButton);
 
-        showControlsToggleButton.setFont(new java.awt.Font("Tahoma", 0, 9));
-        showControlsToggleButton.setText("P");
+        showControlsToggleButton.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
+        showControlsToggleButton.setText("Controls");
         showControlsToggleButton.setToolTipText("Show filter parameters, hides other filters. Click again to see all filters.");
         showControlsToggleButton.setMargin(new java.awt.Insets(1, 5, 1, 5));
-        showControlsToggleButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                showControlsToggleButtonActionPerformed(evt);
-            }
-        });
+
+        org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${controlsVisible}"), showControlsToggleButton, org.jdesktop.beansbinding.BeanProperty.create("selected"));
+        bindingGroup.addBinding(binding);
+
         jPanel1.add(showControlsToggleButton);
 
         add(jPanel1);
+
+        bindingGroup.bind();
     }// </editor-fold>//GEN-END:initComponents
     boolean controlsVisible = false;
 
@@ -1334,7 +1337,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         if (c instanceof Window) {
             ((Window) c).pack();
         }
-
+        if(!getFilter().isEnclosed()){ // store last selected top level filter
+            if (visible) {
+                getFilter().getChip().getPrefs().put(FilterFrame.LAST_FILTER_SELECTED_KEY, getFilter().getClass().toString());
+            } else {
+                getFilter().getChip().getPrefs().put(FilterFrame.LAST_FILTER_SELECTED_KEY, "");
+            }
+        }
     }
 
     private void setBorderActive(final boolean yes) {
@@ -1361,10 +1370,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     public void setFilter(EventFilter filter) {
         this.filter = filter;
     }
-
-    private void showControlsToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showControlsToggleButtonActionPerformed
-        toggleControlsVisible();
-    }//GEN-LAST:event_showControlsToggleButtonActionPerformed
 
     private void enabledCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_enabledCheckBoxActionPerformed
         boolean yes = enabledCheckBox.isSelected();
@@ -1395,6 +1400,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private javax.swing.JPanel jPanel1;
     private javax.swing.JButton resetButton;
     private javax.swing.JToggleButton showControlsToggleButton;
+    private org.jdesktop.beansbinding.BindingGroup bindingGroup;
     // End of variables declaration//GEN-END:variables
 
     private class SliderParams {
@@ -1557,4 +1563,20 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         }
     }
+    
+//    public class ShowControlsAction extends AbstractAction{
+//
+//        public ShowControlsAction() {
+//            super("Show controls");
+//            putValue(SELECTED_KEY, "Hide controls");
+//            putValue(SHORT_DESCRIPTION,"Toggles visibility of controls of this EventFilter");
+//            
+//        }
+//
+//        @Override
+//        public void actionPerformed(ActionEvent e) {
+//            setControlsVisible(enabled);
+//        }
+//        
+//    }
 }

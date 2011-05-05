@@ -36,6 +36,8 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
     private boolean restoreFilterEnabledStateEnabled;
     private String defaultFolder = "";
     EngineeringFormat engFmt=new EngineeringFormat();
+    /** Key for preferences of last selected filter; used to reselect this filter on startup. */
+    public static final String LAST_FILTER_SELECTED_KEY="FilterFrame.lastFilterSelected";
 
     /** Creates new form FilterFrame */
     public FilterFrame(AEChip chip) {
@@ -106,6 +108,16 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
         }
 //        log.info("defaultFolder="+defaultFolder);
         updateIntervalField.setText(engFmt.format(filterChain.getUpdateIntervalMs()));
+        
+        String lastFilter = chip.getPrefs().get(LAST_FILTER_SELECTED_KEY, null);
+        if (lastFilter != null) {
+            for (FilterPanel f:filterPanels) {
+                if(f.getFilter().getClass().toString().equals(lastFilter)){
+                    log.info("making settings visible for last filter "+f.getFilter());
+                    f.setControlsVisible(true);
+                }
+            }
+        }
     }
 
     private void setSetTimeLimitMenuItem() {
