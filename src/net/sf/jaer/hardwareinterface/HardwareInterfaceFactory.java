@@ -7,7 +7,6 @@
  * the Source Creation and Management node. Right-click the template and choose
  * Open. You can then make changes to the template in the Source Editor.
  */
-
 package net.sf.jaer.hardwareinterface;
 
 import de.thesycon.usbio.PnPNotify;
@@ -15,6 +14,7 @@ import de.thesycon.usbio.PnPNotifyInterface;
 import java.util.*;
 import java.lang.reflect.*;
 import java.util.logging.Logger;
+import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
 
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.USBIOHardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.linux.HardwareInterfaceFactoryLinux;
@@ -30,96 +30,100 @@ import net.sf.jaer.hardwareinterface.udp.*;
  *
  * @author tobi
  */
-public class HardwareInterfaceFactory extends HashSet<Class> implements HardwareInterfaceFactoryInterface, PnPNotifyInterface{
-    
-    HashSet<Class> factoryHashSet =new HashSet<Class>();
+public class HardwareInterfaceFactory extends HashSet<Class> implements HardwareInterfaceFactoryInterface, PnPNotifyInterface {
+
+    HashSet<Class> factoryHashSet = new HashSet<Class>();
     volatile private ArrayList<HardwareInterface> interfaceList = new ArrayList<HardwareInterface>();
-    private PnPNotify pnp=new PnPNotify();
-    static final Logger log=Logger.getLogger("HardwareInterfaceFactory") ;
-    
+    private PnPNotify pnp = null; //new PnPNotify();
+    static final Logger log = Logger.getLogger("HardwareInterfaceFactory");
     // these are devices that can be enumerated and opened
     // TODO fix to used scanned classpath as in filter menu or chip classes
-    static Class[] factories={
+    static Class[] factories = {
         //CypressFX2TmpdiffRetinaFactory.class, 
         SiLabs_USBIO_C8051F3xxFactory.class,
         USBIOHardwareInterfaceFactory.class,
         HardwareInterfaceFactoryLinux.class,
-	USBAERatcFactory.class,
+        USBAERatcFactory.class,
         UDPInterfaceFactory.class
-        //  CypressFX2MonitorSequencerFactory.class  // this removed because all CypressFX2 devices are found by their common GUID now at the same time
+    //  CypressFX2MonitorSequencerFactory.class  // this removed because all CypressFX2 devices are found by their common GUID now at the same time
     }; // raphael: added my class so i can still test before having refactored
-    
-    private static HardwareInterfaceFactory instance=new HardwareInterfaceFactory();
-    
+    private static HardwareInterfaceFactory instance = new HardwareInterfaceFactory();
+
     /** Creates a new instance of HardwareInterfaceFactory, private because this is a singleton factory class */
     private HardwareInterfaceFactory() {
-        pnp.enablePnPNotification(SiLabs_USBIO_C8051F3xxFactory.GUID);
-        pnp.enablePnPNotification(USBIOHardwareInterfaceFactory.GUID);
+        if (UsbIoUtilities.usbIoIsAvailable) {
+            pnp = new PnPNotify(this);
+            pnp.enablePnPNotification(SiLabs_USBIO_C8051F3xxFactory.GUID);
+            pnp.enablePnPNotification(USBIOHardwareInterfaceFactory.GUID);
+        }
+
     }
-    
+
     /** Use this instance to access the methods, e.g. <code>HardwareInterfaceFactory.instance().getNumInterfacesAvailable()</code>.
-     @return the singleton instance.
+    @return the singleton instance.
      */
     public static HardwareInterfaceFactory instance() {
         return instance;
     }
-    
-    
+
     /** Explicitly searches all interface types to build a list of available hardware interfaces. This method is expensive.
      * @see #getNumInterfacesAvailable() 
      */
-    synchronized public void buildInterfaceList(){
+    synchronized public void buildInterfaceList() {
         interfaceList.clear();
         HardwareInterface u;
 //        System.out.println("****** HardwareInterfaceFactory.building interface list");
-        for(int i=0;i<factories.length;i++){
-            try{
-                Method m=((factories[i]).getMethod("instance")); // get singleton instance of factory
-                HardwareInterfaceFactoryInterface inst=(HardwareInterfaceFactoryInterface)m.invoke(factories[i]);
-                int num=inst.getNumInterfacesAvailable(); // ask it how many devices are out there
+        for (int i = 0; i < factories.length; i++) {
+            try {
+                Method m = ((factories[i]).getMethod("instance")); // get singleton instance of factory
+                HardwareInterfaceFactoryInterface inst = (HardwareInterfaceFactoryInterface) m.invoke(factories[i]);
+                int num = inst.getNumInterfacesAvailable(); // ask it how many devices are out there
 //                if(num>0) System.out.println("interface "+inst+" has "+num+" devices available"); // TODO comment
-                for(int j=0;j<num;j++){
-                    u=inst.getInterface(j); // for each one, construct the HardwareInterface and put it in a list
+                for (int j = 0; j < num; j++) {
+                    u = inst.getInterface(j); // for each one, construct the HardwareInterface and put it in a list
                     interfaceList.add(u);
 //                    System.out.println("HardwareInterfaceFactory.buildInterfaceList: added "+u);// TODO comment
                 }
-            }catch(NoSuchMethodException e){
+            } catch (NoSuchMethodException e) {
                 e.printStackTrace();
-            }catch(IllegalAccessException e3){
+            } catch (IllegalAccessException e3) {
                 e3.printStackTrace();
-            }catch(InvocationTargetException e4){
+            } catch (InvocationTargetException e4) {
                 e4.printStackTrace();
-            }catch(HardwareInterfaceException e5){
+            } catch (HardwareInterfaceException e5) {
                 e5.printStackTrace();
             }
         }
     }
-    
+
     /** Says how many total of all types of hardware are available, assuming that {@link #buildInterfaceList() } has been called earlier.
      * 
-     @return number of devices
+    @return number of devices
      * @see #buildInterfaceList() 
      */
     @Override
-    synchronized public int getNumInterfacesAvailable(){
+    synchronized public int getNumInterfacesAvailable() {
 //        buildInterfaceList(); // removed to make this call much cheaper
         return interfaceList.size();
     }
-    
+
     /** @return first available interface, starting with CypressFX2 and then going to SiLabsC8051F320 */
     @Override
-    synchronized public HardwareInterface getFirstAvailableInterface(){
+    synchronized public HardwareInterface getFirstAvailableInterface() {
         return getInterface(0);
     }
-    
+
     /** build list of devices and return the n'th one, 0 based */
     @Override
     synchronized public HardwareInterface getInterface(int n) {
 //        buildInterfaceList();
-        if(interfaceList==null || interfaceList.isEmpty()) return null;
-        if(n>interfaceList.size()-1) return null;
-        else {
-            HardwareInterface hw=interfaceList.get(n);
+        if (interfaceList == null || interfaceList.isEmpty()) {
+            return null;
+        }
+        if (n > interfaceList.size() - 1) {
+            return null;
+        } else {
+            HardwareInterface hw = interfaceList.get(n);
 //            System.out.println("HardwareInterfaceFactory.getInterace("+n+")="+hw);
             return hw;
         }
@@ -131,7 +135,6 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
 //    public HardwareInterface getFirstAvailableInterfaceForChip(Chip chip) {
 //        throw new UnsupportedOperationException("Not supported yet.");
 //    }
-            
     // TODO maybe use the following mechanism for factories to add themselves
 //    /** Adds a factory to the list of factory classes. Subclasse can use this to add themselves.
 //     
@@ -140,7 +143,6 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
 //    public static void addFactory(Class<HardwareInterfaceFactory> factoryClass){
 //        factoryHashSet.add(factoryClass);
 //    }
-
     @Override
     public String getGUID() {
         return null;
@@ -157,5 +159,4 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
         log.info("USBIO device removed, rebuilding interface list");
         buildInterfaceList();
     }
-    
 }
