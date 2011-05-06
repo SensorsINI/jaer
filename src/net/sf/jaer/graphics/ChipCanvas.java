@@ -1113,14 +1113,14 @@ public class ChipCanvas implements GLEventListener, Observer {
             setZoomEnabled(false);
             zoomFactor = 1;
             getZoom().setStartPoint(new Point(0, 0));
-            getZoom().setEndPoint(new Point(getChip().getSizeX(), getChip().getSizeY()));
-            if (!System.getProperty("os.name").contains("Mac")) {//crashes on mac os x 10.5
-                GL g = drawable.getGL();
-                g.glMatrixMode(GL.GL_PROJECTION);
-                g.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-                g.glOrtho(-getBorderSpacePixels(), drawable.getWidth() + getBorderSpacePixels(), -getBorderSpacePixels(), drawable.getHeight() + getBorderSpacePixels(), ZCLIP, -ZCLIP);
-                g.glMatrixMode(GL.GL_MODELVIEW);
-            }
+//            getZoom().setEndPoint(new Point(getChip().getSizeX(), getChip().getSizeY()));
+//            if (!System.getProperty("os.name").contains("Mac")) {//crashes on mac os x 10.5
+//                GL g = drawable.getGL();
+//                g.glMatrixMode(GL.GL_PROJECTION);
+//                g.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
+//                g.glOrtho(-getBorderSpacePixels(), drawable.getWidth() + getBorderSpacePixels(), -getBorderSpacePixels(), drawable.getHeight() + getBorderSpacePixels(), ZCLIP, -ZCLIP);
+//                g.glMatrixMode(GL.GL_MODELVIEW);
+//            }
         }
 
         private void zoomcenter() {
