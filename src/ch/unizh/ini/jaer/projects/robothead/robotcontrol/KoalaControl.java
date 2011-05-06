@@ -217,7 +217,7 @@ public class KoalaControl {
                     }
                 }
             }
-            else{                               // längere Fahrtzeit, mache im speed-Mode
+            else{                               // lÃ¤ngere Fahrtzeit, mache im speed-Mode
                 while(SemaphorRS232){}
                 SemaphorRS232 = true;
                 if(toGo>=0) tester.setMotorSpeeds(speed,speed);

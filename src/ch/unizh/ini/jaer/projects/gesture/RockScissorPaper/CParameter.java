@@ -18,7 +18,7 @@ public class CParameter {
     //static int GridFilterXBin = 10;
     //static int GridFilterYBin = 10;
     //static double GridFilterThreshold = 0.1;
-    //static boolean GridFilterAdaptiveInterval = true;//true이면 threshold는 0.01정도
+    //static boolean GridFilterAdaptiveInterval = true;
 
     static int YDistFilterBin = 5;
     static EBaseAxis DistAxis= EBaseAxis.XY;

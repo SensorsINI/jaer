@@ -121,9 +121,9 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private float maxDeltaT = 0.1f;
     
     // Paths of the text files
-    private String routeFromBlenderPath = "C:/Documents and Settings/rritz/Desktop/Temporäre Dateien/blender-2.45-windows/test.txt";
+    private String routeFromBlenderPath = "C:/Documents and Settings/rritz/Desktop/TemporÃ¤re Dateien/blender-2.45-windows/test.txt";
     //private String observerMatrizesPath = "Regler/LQR-Regler/Controller";
-    private String observerMatrizesPath = "C:/Documents and Settings/rritz/Eigene Dateien/ETH Zürich/Bachelorarbeit/Dynamisches Modell des RC Monstertrucks/Regler/LQR-Regler/Controller";
+    private String observerMatrizesPath = "C:/Documents and Settings/rritz/Eigene Dateien/ETH ZÃ¼rich/Bachelorarbeit/Dynamisches Modell des RC Monstertrucks/Regler/LQR-Regler/Controller";
 
     /** Creates a new instance of FancyDriver */
     public FancyDriver(AEChip chip) {

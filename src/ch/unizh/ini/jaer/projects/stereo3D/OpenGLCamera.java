@@ -67,8 +67,8 @@ public class OpenGLCamera {
     }
 
    public void rotate(float angleX, float angleY) {
-        float newAngleX = (orientation.getX() + angleX) % 360.0f;    //modulo 360° (1 turn), angles are expressed in degrees here
-        float newAngleY = (orientation.getY() + angleY) % 360.0f;    //modulo 360° (1 turn), angles are expressed in degrees here
+        float newAngleX = (orientation.getX() + angleX) % 360.0f;    //modulo 360Â° (1 turn), angles are expressed in degrees here
+        float newAngleY = (orientation.getY() + angleY) % 360.0f;    //modulo 360Â° (1 turn), angles are expressed in degrees here
 
         orientation.setX(newAngleX);
         orientation.setY(newAngleY);
@@ -77,8 +77,8 @@ public class OpenGLCamera {
 
 
     public void rotateAround(float angleX, float angleY) {
-        float newAngleX = (orientation.getX() + angleX) % 360.0f;    //modulo 360° (1 turn), angles are expressed in degrees here
-        float newAngleY = (orientation.getY() + angleY) % 360.0f;    //modulo 360° (1 turn), angles are expressed in degrees here
+        float newAngleX = (orientation.getX() + angleX) % 360.0f;    //modulo 360Â° (1 turn), angles are expressed in degrees here
+        float newAngleY = (orientation.getY() + angleY) % 360.0f;    //modulo 360Â° (1 turn), angles are expressed in degrees here
 
         orientation.setX(newAngleX);
         orientation.setY(newAngleY);
@@ -155,7 +155,7 @@ public Vector3f toVectorInFixedSystem1(float dx, float dy, float dz, float angle
     if(dx == 0.0f & dy == 0.0f && dz == 0.0f)
          return new Vector3f();
 
-    //Convert to Radian : 360° = 2PI
+    //Convert to Radian : 360Â° = 2PI
     double xRot = Math.toRadians(angleX);    //Math.toRadians is toRadians in Java 1.5 (static import)
     double yRot = Math.toRadians(angleY);
 
@@ -180,7 +180,7 @@ public Vector3f toVectorInFixedSystem2(float dx, float dy, float dz)
     if(dx == 0.0f & dy == 0.0f && dz == 0.0f)
          return new Vector3f();
 
-    //Convert to Radian : 360° = 2PI
+    //Convert to Radian : 360Â° = 2PI
     double xRot = Math.toRadians(orientation.getX());
     double yRot = Math.toRadians(orientation.getY());    //Math.toRadians is toRadians in Java 1.5 (static import)
 

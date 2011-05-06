@@ -29,7 +29,7 @@ import java.util.Observer;
  * To create the orientation vector for each event the receptive (width*height) field is investigated and the
  * normalized orientation vectors to each past event in the receptive field that satisfies a certain actuality 
  * (dt) is divided by the time past between the two events.
- * If two events are of different polarity (data index 3) the orientation is roatated by 90° - this is because the contrast gradient
+ * If two events are of different polarity (data index 3) the orientation is roatated by 90Â° - this is because the contrast gradient
  * is perpendicular to an edge.
  * To simplify calculation all vectors have an positive y-component.
  * The orientation History takes account of the past orientaions of the events and of the neighbors.
@@ -196,11 +196,11 @@ import java.util.Observer;
                             //if they are of a different polarity, the values have to be rotated
                             if(useOppositePolarity){
                                 if (w<0){
-                                    //different polarity - left side --> 90° CW
+                                    //different polarity - left side --> 90Â° CW
                                     xx = h;
                                     yy = -w;
                                 } else {
-                                    //different polarity - right side --> 90° CCW
+                                    //different polarity - right side --> 90Â° CCW
                                     xx = -h;
                                     yy = w;
                                 }

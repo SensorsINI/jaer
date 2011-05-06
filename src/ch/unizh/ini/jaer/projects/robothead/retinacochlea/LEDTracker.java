@@ -101,7 +101,7 @@ public class LEDTracker extends EventFilter2D implements Observer, FrameAnnotate
         }
         //LED=oneCluster;
             
-        // location.x = Höhe und y = Winkel bzw. horizontale Komponente, die ich betrachten muss...
+        // location.x = HÃ¶he und y = Winkel bzw. horizontale Komponente, die ich betrachten muss...
         
         return in;
         

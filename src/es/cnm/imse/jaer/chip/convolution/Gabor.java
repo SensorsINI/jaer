@@ -31,7 +31,7 @@ Each module processes a 64x64 input space, and adds 4 extra bits to its output e
 the filter. Thus, output events from the 3x3 Gabors form a 192x192 pixel space.
  *
  *
- * @author Carlos Zamarreño Ramos zamarreno@imse-cnm.csic.es, Bernabe Linares-Barranco
+ * @author Carlos ZamarreÃ±o Ramos zamarreno@imse-cnm.csic.es, Bernabe Linares-Barranco
  */
 public class Gabor extends AEChip implements Serializable {
 
