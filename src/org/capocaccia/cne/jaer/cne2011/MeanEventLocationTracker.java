@@ -9,6 +9,7 @@ import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
@@ -22,7 +23,7 @@ public class MeanEventLocationTracker extends EventFilter2D implements FrameAnno
     
     float xmean, ymean;
     private float mixingRate=getFloat("mixingRate", 0.01f);
-
+private float radiusOfTransmission=getFloat("radiusOfTransmission",10);
     
     public MeanEventLocationTracker(AEChip chip) {
         super(chip);
@@ -35,7 +36,20 @@ public class MeanEventLocationTracker extends EventFilter2D implements FrameAnno
             xmean=(1-getMixingRate())*xmean+o.x*getMixingRate();
             ymean=(1-getMixingRate())*ymean+o.y*getMixingRate();
         }
-        return in;
+        checkOutputPacketEventType(in);
+        float maxsq=radiusOfTransmission*radiusOfTransmission;
+        OutputEventIterator itr=out.outputIterator();
+          for(BasicEvent e:in){
+              float dx=e.x-xmean;
+              float dy=e.y-ymean;
+              float sq=dx*dx+dy*dy;
+              if(sq<maxsq){
+                  BasicEvent outEvent=itr.nextOutput();
+                  outEvent.copyFrom(e);
+              }
+        }     
+        
+        return out;
     }
 
     @Override
@@ -68,6 +82,21 @@ public class MeanEventLocationTracker extends EventFilter2D implements FrameAnno
     public void setMixingRate(float mixingRate) {
         this.mixingRate = mixingRate;
         putFloat("mixingRate",mixingRate);
+    }
+
+    /**
+     * @return the radiusOfTransmission
+     */
+    public float getRadiusOfTransmission() {
+        return radiusOfTransmission;
+    }
+
+    /**
+     * @param radiusOfTransmission the radiusOfTransmission to set
+     */
+    public void setRadiusOfTransmission(float radiusOfTransmission) {
+        this.radiusOfTransmission = radiusOfTransmission;
+        putFloat("radiusOfTransmission",radiusOfTransmission);
     }
     
 }
