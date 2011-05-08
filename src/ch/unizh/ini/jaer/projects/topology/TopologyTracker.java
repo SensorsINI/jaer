@@ -38,6 +38,7 @@ import java.util.Vector;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import net.sf.jaer.Description;
 
 /**
  * Learns neighborhood pixel topology based on event timing. When this filter runs, it starts with random
@@ -46,13 +47,11 @@ import javax.swing.SwingUtilities;
  * 
  * @author Matthias Schrag, Kynan Eng, Tobi Delbruck
  */
+@Description("Learns a topological mapping from input events using neighbor correlation")
 public class TopologyTracker extends EventFilter2D implements Observer {
 
     TopologyTrackerControl resetButton = null;
 
-    public static String getDescription() {
-        return "Learns a topological mapping from input events using neighbor correlation";
-    }
     protected static final int DEFAULT_NEIGHBORHOOD_SIZE = 4;
     protected static final int DEFAULT_MAX_SQUARED_NEIGHBORHOOD_DISTANCE = 1;
     protected static final float DEFAULT_LEARNING_WINDOW_CENTER = 5.0f; // 5 ms per default

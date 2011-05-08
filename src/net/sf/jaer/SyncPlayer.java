@@ -377,15 +377,16 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                 return null;
             }
 //                log.info(Thread.currentThread()+" starting wait on barrier "+barrier+", number threads already waiting="+barrier.getNumberWaiting());
-            int awaitVal = barrier.await(SYNC_PLAYER_TIMEOUT_SEC,TimeUnit.SECONDS);
+//            int awaitVal = barrier.await(SYNC_PLAYER_TIMEOUT_SEC,TimeUnit.SECONDS);
+            int awaitVal = barrier.await(); // SYNC_PLAYER_TIMEOUT_SEC,TimeUnit.SECONDS);
         } catch ( InterruptedException e ){
             log.warning(Thread.currentThread() + " interrupted");
         } catch ( BrokenBarrierException ignore ){
-        } catch ( TimeoutException e ){
-            if ( !isPaused() ){
-                log.warning(e + ": stopping playback for all viewers");
-                stopPlayback();
-            }
+//        } catch ( TimeoutException e ){
+//            if ( !isPaused() ){
+//                log.warning(e + ": stopping playback for all viewers");
+//                stopPlayback();
+//            }
         }
         return ae;
     }

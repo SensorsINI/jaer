@@ -6,6 +6,7 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -25,12 +26,8 @@ import net.sf.jaer.util.TobiLogger;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
+@Description("Slot car racer project, Telluride 2010")
 public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
-
-
-    public static String getDescription() {
-        return "Slot car racer project, Telluride 2010";
-    }
     private boolean overrideThrottle = prefs().getBoolean("SlotCarRacer.overrideThrottle", true);
     private float overriddenThrottleSetting = prefs().getFloat("SlotCarRacer.overriddenThrottleSetting", 0);
     private float maxThrottle = prefs().getFloat("SlotCarRacer.maxThrottle", 1);

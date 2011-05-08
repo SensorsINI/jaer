@@ -12,6 +12,7 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
+import net.sf.jaer.Description;
 /**
  * An AE filter that filters out boring repetitive events.
  *It does this by maintaining an internal map of boring cells (x,y,type). These are boring because they are repetitive. An event is
@@ -31,10 +32,8 @@ Fires PropertyChangeEvent for the following
  *
  * @author tobi
  */
+@Description("Filters out (or in) repetitious (boring) events")
 public class RepetitiousFilter extends EventFilter2D implements Observer{
-    public static String getDescription (){
-        return "Filters out (or in) repetitious (boring) events";
-    }
 
     /** factor different than previous dt for this cell to pass through filter */
     private int ratioShorter = getPrefs().getInt("RepetitiousFilter.ratioShorter",2);

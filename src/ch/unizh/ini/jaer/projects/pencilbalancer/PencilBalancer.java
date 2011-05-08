@@ -19,16 +19,15 @@ import java.util.Observable;
 import java.util.Observer;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 /**
  * Uses a pair of DVS cameras to control an XY table to balance a pencil.
  * 
  * @author jc
  * 
  */
+@Description("Pencil balancing robot which uses a pair of DVS128 and a USBServoController")
 public class PencilBalancer extends EventFilter2D implements FrameAnnotater,Observer{
-    public static String getDescription (){
-        return "Pencil balancing robot which uses a pair of DVS128 and a USBServoController";
-    }
     /* ***************************************************************************************************** */
     /* **  The follwing stuff we need to compute linetracking and desired table position ******************* */
     /* ***************************************************************************************************** */

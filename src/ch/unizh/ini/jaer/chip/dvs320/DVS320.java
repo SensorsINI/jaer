@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.Observable;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
+import net.sf.jaer.Description;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.RemoteControlCommand;
@@ -36,14 +37,11 @@ import net.sf.jaer.util.RemoteControlled;
  *
  * @author tobi
  */
+@Description("DVS320 320x240 Dynamic Vision Sensor")
 public class DVS320 extends AETemporalConstastRetina implements HasIntensity {
 
     /** The computed intensity value. */
     private float intensity = 0;
-
-    public static String getDescription() {
-        return "DVS320 320x240 Dynamic Vision Sensor";
-    }
 
     /** Creates a new instance of DVS320.  */
     public DVS320() {

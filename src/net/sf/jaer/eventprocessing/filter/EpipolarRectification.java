@@ -21,6 +21,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 
 import java.io.*;
 import java.util.*;
+import net.sf.jaer.Description;
 
 /**
  * This filter apply the epipolar correction (loading pixel correspondance tables 
@@ -33,11 +34,9 @@ import java.util.*;
  * To correct both retinae, one must use two instances of this filter
  * @author rogister
  */
+@Description("Epipolar rectification for stereoboard mounted retinae")
 public class EpipolarRectification extends EventFilter2D implements Observer  {
 
-    public static String getDescription() {
-        return "Epipolar rectification for stereoboard mounted retinae";
-    }
     protected final int RIGHT = 1;
     protected final int LEFT = 0;
     private boolean left = getPrefs().getBoolean("EpipolarRectification.left", true);
@@ -106,8 +105,6 @@ public class EpipolarRectification extends EventFilter2D implements Observer  {
             
             logLoudly = true;
         }
-        
-        resetOut();
         
         checkOutputPacketEventType(in);
         OutputEventIterator outItr = out.outputIterator();

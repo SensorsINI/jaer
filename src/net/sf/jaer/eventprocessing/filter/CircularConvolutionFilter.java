@@ -7,57 +7,107 @@
 
 package net.sf.jaer.eventprocessing.filter;
 
+import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
+import javax.media.opengl.GL;
+import net.sf.jaer.Description;
+import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
  * Computes circular convolutions by splatting out events and checking receiving pixels to see if they exceed a threshold.
  * A behavioral model of Raphael/Bernabe convolution chip, but limited in that it presently only allows positive binary kernel weights, thus
- *the output events an be triggered by lots of input activity.
+ *the output events can be triggered by lots of input activity.
  *
  * @author tobi
  */
-public class CircularConvolutionFilter extends EventFilter2D implements Observer {
-   public static String getDescription() {
-        return "Computes circular convolutions by splatting out events and checking receiving pixels to see if they exceed a threshold.";
-    }
-    
-    public boolean isGeneratingFilter(){ return true;}
-    
-    /** events must occur within this time along orientation in us to generate an event */
-//    protected int maxDtThreshold=prefs.getInt("SimpleOrientationFilter.maxDtThreshold",Integer.MAX_VALUE);
-//    protected int minDtThreshold=prefs.getInt("TypeCoincidenceFilter.minDtThreshold",10000);
+@Description("Computes circular convolutions by splatting out events and checking receiving pixels to see if they exceed a threshold")
+public class CircularConvolutionFilter extends EventFilter2D implements Observer, FrameAnnotater {
     
     static final int NUM_INPUT_CELL_TYPES=1;
+    private boolean useBalancedKernel=getBoolean("useBalancedKernel",true);
+    
     
     /** the number of cell output types */
     public final int NUM_OUTPUT_TYPES=1; // we make it big so rendering is in color
     
-    /** Creates a new instance of TypeCoincidenceFilter */
+    /** Creates a new instance of CircularConvolutionFilter */
     public CircularConvolutionFilter(AEChip chip) {
         super(chip);
         chip.addObserver(this);
         resetFilter();
         setFilterEnabled(false);
+        setPropertyTooltip("useBalancedKernel","balances kernel to zero sum with positive and negative weights");
     }
     
-    public Object getFilterState() {
-        return null;
+  synchronized public EventPacket filterPacket(EventPacket in) {
+        checkOutputPacketEventType(in);
+        int sx=chip.getSizeX()-1;
+        int sy=chip.getSizeY()-1;
+        int n=in.getSize();
+        
+        OutputEventIterator oi=out.outputIterator();
+        for(Object o:in){
+            PolarityEvent e=(PolarityEvent)o;
+            x=e.x;
+            y=e.y;
+            ts=e.timestamp; 
+            
+            for(Splatt s:splatts){
+                int xoff=x+s.x; if(xoff<0||xoff>sx) continue; //precheck array access
+                int yoff=y+s.y; if(yoff<0||yoff>sy) continue;
+                
+                float dtMs=(ts-convolutionLastEventTime[xoff][yoff])*1e-3f;
+                float vmold=convolutionVm[xoff][yoff];
+                vmold=(float)(vmold*(Math.exp(-dtMs/tauMs)));
+                float vm=vmold+s.weight;
+                convolutionVm[xoff][yoff]=vm;
+                convolutionLastEventTime[xoff][yoff]=ts;
+                if( vm>threshold ){
+                    PolarityEvent oe=(PolarityEvent)oi.nextOutput();
+                    oe.copyFrom(e);
+                    oe.x=(short)xoff;
+                    oe.y=(short)yoff;
+                    convolutionVm[xoff][yoff]=0;
+                }
+            }
+        }
+        return out;
     }
     
-    synchronized public void resetFilter() {
+  
+  synchronized public void resetFilter() {
         allocateMap();
+    }
+
+    @Override
+    public void annotate(GLAutoDrawable drawable) {
+        GL gl=drawable.getGL();
+        final int xp=-10, yp=10; // where to draw it
+        final int sz=3; // how big each one
+        for (Splatt s : splatts) {
+            if (s.weight > 0) {
+                gl.glColor3f(0, s.weight, 0);
+            } else {
+                gl.glColor3f(-s.weight,0, 0);
+            }
+            gl.glRectf(xp + (s.x-.5f) * sz, yp + (s.y-.5f) * sz, xp + (s.x + .5f) * sz, yp + (s.y + .5f) * sz);
+        }
     }
     
     final class Splatt{
         int x, y;
-        float weight;
+        float weight=1;
         Splatt(){
             x=0;
             y=0;
-            weight=1f;
+            weight=1;
+        }
+        Splatt(int x, int y){
+            this.x=x;
+            this.y=y;
         }
         Splatt(int x, int y, float w){
             this.x=x;
@@ -67,7 +117,6 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
         public String toString(){
             return "Splatt: "+x+","+y+","+String.format("%.1f",weight);
         }
-        
     }
     
     private Splatt[] splatts;
@@ -78,26 +127,65 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
     // eg, radius=0, impulse kernal=identity kernel
     // radius=1, nearest neighbors in 8 directions
     // radius=2 octagon?
+    // TODO include negative weights where there is no kernel circle to end with zero net kernel sum
     synchronized void computeSplattLookup(){
-//        log.info("computing splatt");
+        ArrayList<Splatt> list=new ArrayList<Splatt>();
         double circum=2*Math.PI*radius; // num pixels
         splattCircum=(int)circum;
-        int n=(int)Math.round(circum);
-        int xlast=-1, ylast=-1;
-        ArrayList<Splatt> list=new ArrayList<Splatt>();
-        for(int i=0;i<n;i++){
-            double theta=2*Math.PI*i/circum;
-            double x=Math.cos(theta)*radius;
-            double y=Math.sin(theta)*radius;
-            double xround=Math.round(x);
-            double yround=Math.round(y);
-            if(xlast!=xround || ylast!=yround){ // dont make multiple copies of the same splatt around the circle
-                Splatt s=new Splatt();
-                s.x=(int)xround;
-                s.y=(int)yround;
-                s.weight=1; //(float)(1-Math.sqrt((x-xround)*(x-xround)+(y-yround)*(y-yround)));
-                xlast=s.x; ylast=s.y;
-                list.add(s);
+            int xlast = -1, ylast = -1;
+            int n = (int) Math.round(circum);
+        if (radius < 3) {
+
+            switch (radius) {
+                case 0: // identity
+                    list.add(new Splatt());
+                    break;
+                case 1:
+                    list.add(new Splatt(1, 0,.25f));
+                    list.add(new Splatt(0, 1,.25f));
+                    list.add(new Splatt(-1, 0,.25f));
+                    list.add(new Splatt(0, -1,.25f));
+                    if (useBalancedKernel) {
+                        list.add(new Splatt(0, 0, -1));
+                    }
+                    break;
+                case 2:
+                    list.add(new Splatt(1, 0));
+                    list.add(new Splatt(0, 1));
+                    list.add(new Splatt(-1, 0));
+                    list.add(new Splatt(0, -1));
+                    list.add(new Splatt(1, 1));
+                    list.add(new Splatt(-1, 1));
+                    list.add(new Splatt(-1, -1));
+                    list.add(new Splatt(1, -1));
+                    if (useBalancedKernel) {
+                        list.add(new Splatt(0, 0, -8));
+                    }
+                    float f=1f/list.size();
+                    for(Splatt s:list){
+                        s.weight*=f;
+                    }
+                    
+                    break;
+                default:
+            }
+        } else {
+//        log.info("computing splatt");
+            for (int i = 0; i < n; i++) {
+                double theta = 2 * Math.PI * i / circum;
+                double x = Math.cos(theta) * radius;
+                double y = Math.sin(theta) * radius;
+                double xround = Math.round(x);
+                double yround = Math.round(y);
+                if (xlast != xround || ylast != yround) { // dont make multiple copies of the same splatt around the circle
+                    Splatt s = new Splatt();
+                    s.x = (int) xround;
+                    s.y = (int) yround;
+                    s.weight = 1; //(float)(1-Math.sqrt((x-xround)*(x-xround)+(y-yround)*(y-yround)));
+                    xlast = s.x;
+                    ylast = s.y;
+                    list.add(s);
+                }
             }
         }
 //        log.info("splatt has "+list.size()+" +1 elements");
@@ -144,7 +232,7 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
             splatts[i]=(Splatt)oa[i];
             sum+=splatts[i].weight;
         }
-//        log.info("splatt total weight = "+sum);
+        log.info("splatt total weight = "+sum);
         
     }
     
@@ -164,25 +252,10 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
         computeSplattLookup();
     }
     
-//    private int[] oriHist=new int[NUM_OUTPUT_TYPES];
-    
-//    int maxEvents=0;
-//    int index=0;
     private short x,y;
     private byte type;
     private int ts;
     
-    
-    
-//    public int getMinDtThreshold() {
-//        return this.minDtThreshold;
-//    }
-//
-//    public void setMinDtThreshold(final int minDtThreshold) {
-//        this.minDtThreshold = minDtThreshold;
-//        prefs.putInt("TypeCoincidenceFilter.minDtThreshold", minDtThreshold);
-//    }
-//
     public void initFilter() {
         resetFilter();
     }
@@ -192,7 +265,7 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
         initFilter();
     }
     
-    private int radius=getPrefs().getInt("CircularConvolutionFilter.radius",3);
+    private int radius=getInt("radius",3);
     {setPropertyTooltip("radius","radius in pixels of kernal");}
     
     public int getRadius() {
@@ -203,13 +276,12 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
         if(radius<0) radius=0; else if(radius>chip.getMaxSize()) radius=chip.getMaxSize();
         if(radius!=this.radius) {
             this.radius = radius;
-            getPrefs().putInt("CircularConvolutionFilter.radius",radius);
+            putInt("radius",radius);
             resetFilter();
         }
     }
     
-    
-    private float tauMs=getPrefs().getFloat("CircularConvolutionFilter.tauMs",10f);
+    private float tauMs=getFloat("tauMs",10f);
     {setPropertyTooltip("tauMs","time constant in ms of integrator neuron potential decay");}
     
     public float getTauMs() {
@@ -222,7 +294,7 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
         getPrefs().putFloat("CircularConvolutionFilter.tauMs",tauMs);
     }
     
-    private float threshold=getPrefs().getFloat("CircularConvolutionFilter.threshold",1f);
+    private float threshold=getFloat("threshold",1f);
     {setPropertyTooltip("threshold","threahold on ms for firing output event from integrating neuron");}
     
     public float getThreshold() {
@@ -232,52 +304,8 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
     synchronized public void setThreshold(float threshold) {
         if(threshold<0) threshold=0; else if(threshold>100) threshold=100;
         this.threshold = threshold;
-        getPrefs().putFloat("CircularConvolutionFilter.threshold",threshold);
+        putFloat("threshold",threshold);
     }
     
-   synchronized public EventPacket filterPacket(EventPacket in) {
-        if(in==null) return null;
-        if(!isFilterEnabled()) return in;
-//        if(enclosedFilter!=null) in=enclosedFilter.filter(in);
-        checkOutputPacketEventType(in);
-        int sizex=chip.getSizeX();
-        int sizey=chip.getSizeY();
-        int n=in.getSize();
-        
-        // for each event write out an event of an orientation type if there have also been events within past dt along this type's orientation of the
-        // same retina polarity
-        OutputEventIterator oi=out.outputIterator();
-        for(Object o:in){
-            PolarityEvent e=(PolarityEvent)o;
-            x=e.x;
-            y=e.y;
-            type=(byte)e.getType();
-            ts=e.timestamp;  // getString event x,y,type,timestamp
-            
-            // getString times to neighbors in 'type' at this pixel
-            
-            for(int j=0;j<splatts.length;j++){
-                Splatt s=splatts[j];
-                int xoff=x+s.x; if(xoff<0||xoff>sizex-1) continue; //precheck array access
-                int yoff=y+s.y; if(yoff<0||yoff>sizey-1) continue;
-                
-                float dtMs=(ts-convolutionLastEventTime[xoff][yoff])/1000f;
-                float vmold=convolutionVm[xoff][yoff];
-                vmold=(float)(vmold*(Math.exp(-dtMs/tauMs)));
-                float vm=vmold+s.weight;
-                convolutionVm[xoff][yoff]=vm;
-                convolutionLastEventTime[xoff][yoff]=ts;
-                if( vm>threshold ){
-                    PolarityEvent oe=(PolarityEvent)oi.nextOutput();
-                    oe.copyFrom(e);
-                    oe.x=(short)xoff;
-                    oe.y=(short)yoff;
-                    convolutionVm[xoff][yoff]=0;
-                }
-            }
-        }
-        return out;
-    }
-
-    
+ 
 }

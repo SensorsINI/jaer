@@ -8,6 +8,7 @@ import java.awt.geom.Point2D;
 import java.util.Observable;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -20,11 +21,8 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
  * 
  * @author tobi
  */
+@Description("Computes camera pose changes based on tracking many clusters of local activity")
 public class OpticalGyro extends RectangularClusterTracker implements FrameAnnotater {
-
-   public static String getDescription (){
-        return "Computes camera pose changes based on tracking many clusters of local activity";
-    }
 
    private Point2D.Float translation = new Point2D.Float(); // translation in pixels
     private LowpassFilter2d translationFilter = new LowpassFilter2d(translation);

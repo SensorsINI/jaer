@@ -14,6 +14,7 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.chip.AEChip;
 import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
+import net.sf.jaer.Description;
 import net.sf.jaer.event.*;
 import net.sf.jaer.event.BinocularEvent;
 import net.sf.jaer.event.EventPacket;
@@ -29,9 +30,9 @@ import net.sf.jaer.graphics.BinocularRenderer;
  *
  * @author tobi
  */
+@Description("A stereo pair of Tmpdiff128 retinas on a board with a single USB interface")
 public class Tmpdiff128StereoBoard extends Tmpdiff128 implements StereoChipInterface {
     
-    public static String getDescription(){ return "A stereo pair of Tmpdiff128 retinas on a board with a single USB interface";}
     /** Creates a new instance of Tmpdiff128StereoBoard */
     public Tmpdiff128StereoBoard() {
         setEventClass(BinocularEvent.class);

@@ -331,10 +331,6 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 		targetDetect = new TargetDetector(chip);
 	}
 
-	public static String getDescription() {
-		return "Local orientation by spatio-temporal correlation";
-	}
-
 	public boolean isGeneratingFilter() {
 		return true;
 	}

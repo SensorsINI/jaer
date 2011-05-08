@@ -9,11 +9,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
@@ -24,7 +22,6 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 import net.sf.jaer.eventprocessing.filter.Info;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
  * Monitors input events for sudden increases in activity. When this increase is detected, a recording is started to memory. When the buffer is full or live input activity stops for a sufficiently
@@ -36,15 +33,9 @@ import net.sf.jaer.util.filter.LowpassFilter;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
+@Description("Automatically replays input when input activity falls below a threshold for long enough.")
 public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotater {
 
-    public static String getDescription() {
-        return "Automatically replays input when input activity falls below a threshold for long enough.";
-    }
-
-    public static DevelopmentStatus getDevelopmentStatus() {
-        return DevelopmentStatus.Alpha;
-    }
     private AEOutputStream os;
     private AEInputStream is;
     private int MAX_NUM_EVENTS_DEFAULT = 1000000;

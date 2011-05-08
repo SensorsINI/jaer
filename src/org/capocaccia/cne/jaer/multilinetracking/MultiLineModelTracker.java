@@ -4,8 +4,8 @@
  */
 
 package org.capocaccia.cne.jaer.multilinetracking;
-import java.util.Observable;
 import javax.media.opengl.*;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter;
@@ -22,10 +22,8 @@ import net.sf.jaer.util.TobiLogger;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
+@Description("Continuously tracks linear features")
 public class MultiLineModelTracker extends EventFilter2D implements FrameAnnotater{
-    public static String getDescription (){
-        return "Continuously tracks linear features";
-    }
 
     public static EventFilter.DevelopmentStatus getDevelopmentStatus(){
         return EventFilter.DevelopmentStatus.Alpha;

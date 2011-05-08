@@ -24,6 +24,14 @@ abstract public class EventFilter2D extends EventFilter {
 
     /** The built-in reference to the output packet */
     protected EventPacket out = null;
+    
+    /** Returns reference to the built-in output packet.
+     * 
+     * @return the out packet. 
+     */
+    protected EventPacket getOutputPacket(){
+        return out;
+    }
 
 
     protected float currenrtUpdateIntervalMs;

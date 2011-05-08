@@ -22,6 +22,7 @@ import java.io.*;
 import java.util.Observer;
 import javax.swing.*;
 import javax.swing.JPanel;
+import net.sf.jaer.Description;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
 
@@ -37,15 +38,12 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
  *
  * @author tobi
  */
+@Description("DVS128 Dynamic Vision Sensor combined with CochleaAMS1b binaural cochlea")
 public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements Serializable, Observer {
 
     private JMenu dvs128Menu = null;
     private JMenuItem arrayResetMenuItem = null, syncEnabledMenuItem = null;
     private JMenuItem setArrayResetMenuItem = null;
-
-    public static String getDescription() {
-        return "DVS128 Dynamic Vision Sensor";
-    }
 
     static {
 //        setPreferredHardwareInterface(CypressFX2Biasgen.class); // TODO causing problems in applet

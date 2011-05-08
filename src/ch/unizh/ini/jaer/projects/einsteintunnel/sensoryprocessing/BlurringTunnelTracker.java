@@ -7,9 +7,6 @@
 package ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing;
 import ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing.BlurringTunnelFilter.NeuronGroup;
 import com.sun.opengl.util.GLUT;
-import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
@@ -21,6 +18,7 @@ import java.awt.geom.*;
 import java.net.*;
 import java.util.*;
 import javax.media.opengl.*;
+import net.sf.jaer.Description;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 
@@ -29,6 +27,7 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
  *
  * @author Jun Haeng Lee/Tobi Delbruck
  */
+@Description("Tracks people in Einstein tunnel exhibit")
 public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotater,Observer,ClusterTrackerInterface /*, PreferenceChangeListener*/{
     // TODO split out the optical gryo stuff into its own subclass
     // TODO split out the Cluster object as it's own class.
@@ -46,12 +45,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 	private DatagramSocket dsocket;
 
 	/**
-     *
-     * @return filter description
-     */
-    public static String getDescription (){
-        return "Tracks moving hands, which means it tracks two object at most";
-    }
     /**
      * The list of clusters.
      */

@@ -10,14 +10,13 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.Random;
+import net.sf.jaer.Description;
 /**
  * This filter lets through events with some fixed probablity.
  * @author tobi
  */
+@Description("Passes events probabilistically")
 public class ProbabalisticPassageFilter extends EventFilter2D{
-    public static String getDescription(){
-        return "Passes events probabilistically";
-    }
     
     private float passProb=getPrefs().getFloat("TestFilter.passProb",.5f);
     Random r=new Random();

@@ -11,6 +11,7 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
+import net.sf.jaer.Description;
 
 /**
  * Computes coincidences betweeen different types of events at the same location in its input. Intended for e.g., a corner detector that works by
@@ -18,10 +19,8 @@ import java.util.*;
  *
  * @author tobi
  */
+@Description("Only lets through events spatio-temporally correlated complementary types (e.g. corners)")
 public class TypeCoincidenceFilter extends EventFilter2D implements Observer {
-   public static String getDescription(){
-        return "Only lets through events spatio-temporally correlated complementary types (e.g. corners)";
-    }
    
    public boolean isGeneratingFilter(){ return true;}
     

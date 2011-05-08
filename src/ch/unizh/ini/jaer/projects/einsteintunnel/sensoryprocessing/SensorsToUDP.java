@@ -14,12 +14,14 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import net.sf.jaer.Description;
 
 
 /**
  *
  * @author braendch
  */
+@Description("A filter built for the Einstein tunnel that extracts information and sends it to a UDP port")
 public class SensorsToUDP extends EventFilter2D {
 
     public int csx, maxHistogramX, packetCounter;
@@ -32,9 +34,6 @@ public class SensorsToUDP extends EventFilter2D {
     public DatagramSocket socket;
     public InetAddress address;
 
-    public static String getDescription (){
-        return "A filter built for the Einstein tunnel that extracts information and sends it to a UDP port";
-    }
     public SensorsToUDP(AEChip chip) {
         super(chip);
 

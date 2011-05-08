@@ -18,6 +18,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.util.Observable;
 import javax.swing.JPanel;
+import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -41,10 +42,8 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * @author tobi delbruck, martin lizzenberger, chr posch
  *
  */
+@Description("ATIS304 304x240 Asynchronous Time Based Image Sensor")
 public class ATIS304 extends AETemporalConstastRetina{
-    public static String getDescription (){
-        return "ATIS304 304x240 Asynchronous Time Based Image Sensor";
-    }
 
     public ATIS304 (){
         setName("ATIS304");

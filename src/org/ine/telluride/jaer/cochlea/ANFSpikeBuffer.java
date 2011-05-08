@@ -4,6 +4,7 @@
  */
 
 package org.ine.telluride.jaer.cochlea;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.TypedEvent;
@@ -13,6 +14,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * 
  * @author ahs (Andrew Schwartz, MIT)
  */
+@Description("Keep a buffer of spikes on each channel/cochlea")
 public class ANFSpikeBuffer extends EventFilter2D{
     private static final int NUM_CHANS = 32;
     private int bufferSize=getPrefs().getInt("ANFSpikeBuffer.bufferSize",25);
@@ -23,10 +25,6 @@ public class ANFSpikeBuffer extends EventFilter2D{
     private boolean[][] bufferFull = null;
         
     int chan, id, ii, jj;
-    
-    public static String getDescription() {
-        return "Keep a buffer of spikes on each channel/cochlea";
-    }
     
     public ANFSpikeBuffer(AEChip chip) {
         super(chip);

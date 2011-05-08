@@ -16,21 +16,16 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.util.filter.LowpassFilter;
-import java.awt.Graphics2D;
 import java.awt.geom.*;
-import java.util.Arrays;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 //DLM additions
-import java.lang.Math;
+import net.sf.jaer.Description;
 
 
 
+@Description("Tracks a single object pose by Principle Components Analysis")
 public class PcaTrackingFilter extends EventFilter2D implements FrameAnnotater {
-    public static String getDescription(){
-        return "Tracks a single object pose by Principle Components Analysis";
-    }
 
     //Required variables for this class.
     float xsum = 0f;

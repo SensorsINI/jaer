@@ -14,10 +14,12 @@ import java.util.Observable;
 import java.util.Observer;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 /**
  * For the Goalie; filters in events from a trapezoidal region, discarding those from the edges and end of the table.
  * @author tobi/fope, telluride 2008
  */
+@Description("Filters out events outside trapezoidal table shaped region for Goalie")
 public class GoalieTableFilter extends EventFilter2D implements FrameAnnotater, Observer {
     private int x0;
     {
@@ -35,10 +37,6 @@ public class GoalieTableFilter extends EventFilter2D implements FrameAnnotater, 
     private int bottom;
     {setPropertyTooltip("bottom","bottom of trapezoid in pixels");}
     
-
-    public static String getDescription() {
-        return "Filters out events outside trapezoidal table shaped region for Goalie";
-    }
 
     public GoalieTableFilter(AEChip chip) {
         super(chip);

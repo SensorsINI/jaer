@@ -83,6 +83,7 @@ public class MedianLowpassFilter {
         int oldSamples = this.length;
         this.length = n;
         samples = new float[length];
+        pointer=0;
         propertyChangeSupport.firePropertyChange(PROP_SAMPLES, oldSamples, samples);
     }
     private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);

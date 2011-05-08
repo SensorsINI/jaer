@@ -12,6 +12,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 //import ch.unizh.ini.caviar.graphics.FrameAnnotater;
 import java.util.logging.Logger;
+import net.sf.jaer.Description;
 
 import org.ine.telluride.jaer.wowwee.RoboQuadCommands;
 import org.ine.telluride.jaer.wowwee.WowWeeRSHardwareInterface;
@@ -27,7 +28,7 @@ import javax.media.opengl.glu.GLU;
  * 
  * @author tyu (teddy yu, ucsd)
  */
-//public class CochleaPitchExtractor extends EventFilter2D implements FrameAnnotater {
+@Description("Extracts pitch from AE cochlea spike output.")
 public class CochleaPitchExtractor extends EventFilter2D {
     private static final int NUM_CHANS=32;
   
@@ -66,12 +67,6 @@ public class CochleaPitchExtractor extends EventFilter2D {
     
     int harmonicHistory = 0;
     int commandThreshold = 2;
-    
-//    private int glBins = numBins;
-
-    public static String getDescription() {
-        return "Extracts pitch from AE cochlea spike output.";
-    }
     
     public CochleaPitchExtractor(AEChip chip) {
         super(chip);

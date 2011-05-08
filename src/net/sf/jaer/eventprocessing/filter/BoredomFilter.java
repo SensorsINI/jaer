@@ -14,6 +14,7 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
+import net.sf.jaer.Description;
 
 /**
  * An AE filter that filters out high firing-rate repetitive events.
@@ -23,10 +24,8 @@ import java.util.*;
  *
  * @author tobi
  */
+@Description("Filters out events with low relative variance in activity")
 public class BoredomFilter extends EventFilter2D implements Observer {
-   public static String getDescription(){
-       return "Filters out events with low relative variance in activity";
-   }
     
     public int threshold=4;
     public int forgetInterval=30;

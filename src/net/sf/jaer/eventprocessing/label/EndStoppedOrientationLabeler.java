@@ -5,6 +5,7 @@
 package net.sf.jaer.eventprocessing.label;
 
 import java.util.Random;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OrientationEvent;
@@ -20,6 +21,7 @@ import net.sf.jaer.event.OutputEventIterator;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
+@Description("End-stopped orientation labeler")
 public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
 
     private float minActivityDifference = getPrefs().getFloat("EndStoppedOrientationLabeler.minActivityDifference", .4f);
@@ -38,10 +40,6 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
      * The two sets of offsets are for the two directions for the endstopping.
      */
     protected Dir[][] offsets0 = null, offsets1 = null;
-
-    public static String getDescription() {
-        return "End-stopped orientation labeler";
-    }
 
     public EndStoppedOrientationLabeler(AEChip chip) {
         super(chip);

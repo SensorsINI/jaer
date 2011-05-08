@@ -22,21 +22,19 @@ import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
-import java.awt.Graphics2D;
 import java.awt.geom.*;
 import java.util.Arrays;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 
 /**
  * Tracks median event location.
  *
  * @author tobi
  */
+@Description("Tracks a single object by median event location")
 public class MedianTrackingFilter extends EventFilter2D implements FrameAnnotater {
-    public static String getDescription(){
-        return "Tracks a single object by median event location";
-    }
 
     Point2D medianPoint=new Point2D.Float(),stdPoint=new Point2D.Float(),meanPoint=new Point2D.Float();
     float xmedian=0f;

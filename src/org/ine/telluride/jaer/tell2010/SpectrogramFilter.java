@@ -12,10 +12,10 @@ import java.util.*;
 import com.sun.opengl.util.GLUT;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLCanvas;
 import javax.swing.JFrame;
+import net.sf.jaer.Description;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
@@ -24,11 +24,9 @@ import net.sf.jaer.graphics.ImageDisplay;
  * Shows live cochlea spectrogram in a separate ImageDisplay window.
  * @author Andrew
  */
+@Description("Generate a spectrogram from incoming spikes")
 public final class SpectrogramFilter extends EventFilter2D implements Observer, FrameAnnotater {
 
-    public static String getDescription() {
-        return "Generate a spectrogram from incoming spikes";
-    }
     private int numChannels = getPrefs().getInt("SpectrogramFilter.numChannels", 64);
     private int binWidth = getPrefs().getInt("SpecdtrogramFilter.binWidth", 16000);
     private int numTimeBins = getPrefs().getInt("SpecdtrogramFilter.numTimeBins", 50);

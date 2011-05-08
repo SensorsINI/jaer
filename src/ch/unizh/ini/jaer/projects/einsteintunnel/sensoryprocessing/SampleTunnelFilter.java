@@ -14,14 +14,15 @@ import javax.media.opengl.glu.*;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.Graphics2D;
-import java.util.*;
 import java.util.Observable;
 import java.util.Observer;
+import net.sf.jaer.Description;
 
 /**
- *
+ *A demonstration sample for the Einstein Tunnel project on pedestrian traffic controlled LED panels
  * @author braendch
  */
+@Description("A demonstration sample for the Einstein Tunnel project on pedestrian traffic controlled LED panels")
 public class SampleTunnelFilter extends EventFilter2D implements Observer {
 
     public int csx, maxHistogramX;
@@ -30,9 +31,6 @@ public class SampleTunnelFilter extends EventFilter2D implements Observer {
     public int[] xHistogram;
     public double decayFactor = 0.9;
 
-    public static String getDescription (){
-        return "A demonstration sample for the Einstein Tunnel project on pedestrian traffic controlled LED panels";
-    }
     private boolean histogramEnabled = getPrefs().getBoolean("HistogramFilter.histogramEnabled",true);
 
     public SampleTunnelFilter(AEChip chip) {

@@ -6,6 +6,7 @@ package org.capocaccia.cne.jaer.multilinetracking;
 import java.util.Observable;
 import java.util.Observer;
 import javax.media.opengl.*;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter;
@@ -22,10 +23,8 @@ import net.sf.jaer.util.TobiLogger;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
+@Description("Tracks line in continous Hough space")
 public class SingleLineTracker extends EventFilter2D implements FrameAnnotater,Observer{
-    public static String getDescription (){
-        return "Tracks line in continous Hough space";
-    }
 
     public static EventFilter.DevelopmentStatus getDevelopmentStatus (){
         return EventFilter.DevelopmentStatus.Alpha;

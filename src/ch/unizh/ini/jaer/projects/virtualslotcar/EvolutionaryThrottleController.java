@@ -4,7 +4,6 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
-import com.sun.opengl.util.GLUT;
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.Color;
 import java.awt.Font;
@@ -31,6 +30,7 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
 import javax.media.opengl.glu.GLUquadric;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -53,11 +53,9 @@ import net.sf.jaer.util.TobiLogger;
  *
  * @author Juston, Tobi
  */
+@Description("Evolution-based slot car throttle controller")
 public class EvolutionaryThrottleController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater, MouseListener, MouseMotionListener, PropertyChangeListener {
 
-    public static String getDescription() {
-        return "Evolution-based slot car throttle controller";
-    }
     // prefs
     private int numSegmentsToBrakeBeforeCrash=getInt("numSegmentsToBrakeBeforeCrash",2);
     private int numSegmentsSpacingFromCrashToBrakingPoint=getInt("numSegmentsSpacingFromCrashToBrakingPoint",4);

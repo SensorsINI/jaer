@@ -25,6 +25,7 @@ import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
 import javax.swing.*;
+import net.sf.jaer.Description;
 
 /**
  * Tracks a single line as used for line-following navigation or for lane tracking.
@@ -43,11 +44,9 @@ packet and the resulting p,theta values are lowpass filtered to form the output.
  * @author tobi
 @see LineDetector
  */
+@Description("Tracks a single line as used for line-following navigation or for lane tracking")
 public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, LineDetector, Observer {
 
-    public static String getDescription() {
-        return "Tracks a single line as used for line-following navigation or for lane tracking";
-    }
     //    static Preferences prefs=Preferences.userNodeForPackage(HoughLineTracker.class);
 //    Line line=new Line();
     private float angleMixingFactor = getPrefs().getFloat("LineTracker.angleMixingFactor", 0.005f);

@@ -18,18 +18,17 @@ import java.awt.Graphics2D;
 import java.util.Observable;
 import java.util.Observer;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 
 /**
  * Computes motion based nearest event (in past time) in nearest neighboring pixels. Unlike DirectionSelectiveFilter, NearestEventMotionComputer uses
- the nonoriented events and is only useful for small particles where nearest neighbor makes sense. Even then for particles that are larger than one pixel it will
+ the non-oriented events and is only useful for small particles where nearest neighbor makes sense. Even then for particles that are larger than one pixel it will
  make lots of errors.
  *
  * @author tobi
  */
+@Description("Computes motion based on nearest events - for particles")
 public class NearestEventMotionComputer extends EventFilter2D implements Observer, FrameAnnotater {
-   public static String getDescription(){
-        return "Computes motion based on nearest events - for particles";
-    }
        public boolean isGeneratingFilter(){ return true;}
     
     /** event must occur within this time in us to generate a motion event */

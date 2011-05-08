@@ -9,15 +9,14 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.AEViewer;
 import java.util.*;
+import net.sf.jaer.Description;
 /**
  * Shifts the spikes according to the last evnets from a possibly-different chip's output events (which are being rendered in another AEViewer).
  * 
  * @author tobi
  */
+@Description("Shifts the spikes according to the last events from a possibly-different chip's output events (which are being rendered in another AEViewer).")
 public class ShiftByEventsFilter extends EventFilter2D {
-   public static String getDescription() {
-        return "Shifts the spikes according to the last events from a possibly-different chip's output events (which are being rendered in another AEViewer).";
-    }
    
    private int viewerNumber=0;
     {setPropertyTooltip("viewerNumber", "the AEVieer number from which events are taken to shift this viewers events by");}

@@ -4,6 +4,7 @@
  */
 
 package ch.unizh.ini.jaer.projects.yeastflow;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -17,11 +18,9 @@ import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL.
  */
+@Description("Customized RectangularClusterTracker for tracking yeast cells")
 public class YeastFlowTracker extends RectangularClusterTracker {
 
-    public static String getDescription(){
-        return "Customized RectangularClusterTracker for tracking yeast cells";
-    }
 
     public YeastFlowTracker (AEChip chip){
         super(chip);

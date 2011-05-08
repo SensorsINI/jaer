@@ -9,6 +9,7 @@
  */
 package net.sf.jaer.eventprocessing;
 
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import net.sf.jaer.chip.*;
 import java.beans.*;
@@ -17,6 +18,7 @@ import java.util.Observable;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.prefs.*;
+import net.sf.jaer.Description;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
@@ -41,6 +43,7 @@ Fires PropertyChangeEvent for the following
  * @see net.sf.jaer.eventprocessing.FilterChain FilterChain - about enclosing filters inside other filters.
  * @author tobi
  */
+@Description("Base event processing class")
 public abstract class EventFilter extends Observable {
 
     public EventProcessingPerformanceMeter perf;
@@ -532,11 +535,6 @@ public abstract class EventFilter extends Observable {
         this.enclosingFilter = enclosingFilter;
     }
 
-    /** Override this String (can be html formatted) to show it as the filter description in the GUI control FilterPanel. */
-    public static String getDescription() {
-        return null;
-    }
-
     /**
      * @return the selected
      */
@@ -749,5 +747,20 @@ public abstract class EventFilter extends Observable {
      */
     public String getString(String key, String def) {
         return prefs.get(prefsKeyHeader() + key, def);
+    }
+    
+    /** Returns Description of this filter as annotated by Description annotation. Note this method is not static and requires the EventFilter to already be constructed.
+     * The ClassChooser dialog uses the annotation to obtain class Descriptions without constructing the objects first.
+     * @return the String description or null if no description is available or any exception is thrown.
+     */
+    public String getDescription() {
+        try {
+            Class c = this.getClass();
+            Description d = (Description) c.getAnnotation(Description.class);
+            if(d==null) return null;
+            return d.toString();
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

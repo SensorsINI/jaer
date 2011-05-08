@@ -15,6 +15,7 @@ import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
+import net.sf.jaer.Description;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -25,6 +26,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  *
  * @author leah/tobidelbruck
  */
+@Description("Filters incoming events with \"bumps\" of bearing angle that come from ITDBins binaural cochlea sound localization")
 public class BearingBumpFilter extends EventFilter2D implements Observer, FrameAnnotater {
 
     private Random random = new Random();
@@ -64,9 +66,6 @@ public class BearingBumpFilter extends EventFilter2D implements Observer, FrameA
     };
     private Method method = Method.valueOf(getPrefs().get("BearingBumpFilter.method", Method.Probabilistic.toString()));
 
-    public static String getDescription() {
-        return "Filters incoming events with \"bumps\" of bearing angle that come from ITDBins binaural cochlea sound localization";
-    }
 
     public BearingBumpFilter(AEChip chip) {
         super(chip);

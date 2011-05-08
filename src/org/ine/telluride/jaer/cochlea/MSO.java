@@ -12,12 +12,14 @@ import java.awt.Graphics2D;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
+import net.sf.jaer.Description;
 
 /**
  * Calculates ITD from binaural cochlea input
  * 
  * @author ahs (Andrew Schwartz, MIT)
  */
+@Description("Computes ITD of incoming binaural signal")
 public class MSO extends EventFilter2D implements FrameAnnotater {
     private static final int NUM_CHANS=32;
     private int binWidth=getPrefs().getInt("MSO.binWidth", 100);
@@ -55,10 +57,6 @@ public class MSO extends EventFilter2D implements FrameAnnotater {
     private int numActiveChannels = NUM_CHANS;
     private float scale;
     
-    public static String getDescription() {
-        return "Computes ITD of incoming binaural signal";
-    }
-
     public MSO(AEChip chip) {
         super(chip);
         for (chan=0;chan<NUM_CHANS;chan++) {

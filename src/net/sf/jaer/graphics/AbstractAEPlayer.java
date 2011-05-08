@@ -173,6 +173,7 @@ public abstract class AbstractAEPlayer {
         }
         setTimesliceUs(getTimesliceUs() / 2);
         if ( getTimesliceUs() == 0 ){
+            log.info("tried to reduce timeslice below 1us, clipped to 1us");
             setTimesliceUs(1);
         }
         if ( Math.abs(getPacketSizeEvents()) < 1 ){

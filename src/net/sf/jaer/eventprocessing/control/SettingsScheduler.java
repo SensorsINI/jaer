@@ -8,6 +8,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -16,9 +17,9 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * Selects bias and filter settings for a chip based on a clock-based schedule, e.g. night/day/twilight
  * @author tobi
  */
+@Description("Activates filter settings based on schedule")
 public class SettingsScheduler extends EventFilter2D {
 
-    public static String getDescription(){ return "Activates filter settings based on schedule";}
     public static DevelopmentStatus getDevelopmentStatus(){ return DevelopmentStatus.Alpha;}
     
 

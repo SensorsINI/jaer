@@ -32,6 +32,7 @@ import java.util.Observer;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
+import net.sf.jaer.Description;
 
 /**
  * Controls a servo motor that swings an arm in the way of a ball rolling towards a goal box.
@@ -39,13 +40,9 @@ import javax.media.opengl.glu.*;
  *
  * @author tGoalielbruck/manuel lang
  */
+@Description("Goalie robot")
 public class Goalie extends EventFilter2D implements FrameAnnotater, Observer{
 
-    public static String getDescription() {
-        return "Controls the goalie robot";
-    }
-    
-    
     final String LOGGING_FILENAME="goalie.csv";
     private final int RELAXED_POSITION_DELAY_MS=100; // ms to getString to middle relaxed position
     private final String stateCat="State Criteria", armCat="Arm control", geomCat="Geometry", ballCat="Ball";

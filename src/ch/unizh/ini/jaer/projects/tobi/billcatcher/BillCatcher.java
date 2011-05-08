@@ -26,6 +26,7 @@ import java.awt.geom.Point2D;
 import java.util.logging.Logger;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 
 /**
  * Catches ppper money dropped between fingers. The game is that a person holds a bill and then releases it at a random moment.
@@ -34,12 +35,9 @@ import javax.media.opengl.GLAutoDrawable;
  
  * @author tobi
  */
+@Description("Catches a bill (money) when sufficient motion is detected")
 public class BillCatcher extends EventFilter2D implements FrameAnnotater {
 
-    public static String getDescription() {
-        return "Catches a bill (money) when sufficient motion is detected";
-    }
-    
     ServoInterface servo=null;
     Logger log=Logger.getLogger("BillCatcher");
     FilterChain chain=null;

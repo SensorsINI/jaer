@@ -12,12 +12,14 @@ import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
+import net.sf.jaer.Description;
 
 /**
  *  Extracts lines in Manhatten directions using LIF neurons along rows / columns.
  * 
  * @author Michael Pfeiffer, Alex Russell
  */
+@Description("Detects parallel lines via a LIF-Neuron Model")
 public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnotater {
     public final int dim_pixels=128;   // Dimensionality of the pixel array
 
@@ -144,10 +146,6 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
            }  // end if (orientation)
           } // End of cycle through receptive field
         return out; // Hope this is correct
-    }
-
-    public static String getDescription() {
-        return "Detects parallel lines via a LIF-Neuron Model";
     }
 
     final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;

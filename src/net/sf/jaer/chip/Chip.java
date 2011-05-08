@@ -18,6 +18,7 @@ import net.sf.jaer.hardwareinterface.*;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.prefs.*;
+import net.sf.jaer.Description;
 import net.sf.jaer.util.RemoteControl;
 
 /**
@@ -35,12 +36,9 @@ import net.sf.jaer.util.RemoteControl;
  * A Chip may be remote-controllable via its remote control, see getRemoteControl().
  * @author tobi
  */
+@Description("Base class for all devices/chips etc.")
 public class Chip extends Observable {
     
-     /** Override this String (can be html formatted) to show it as the Chip description in some GUI controls. */
-     public static String getDescription(){
-         return "Chip";
-     }
      
     private Preferences prefs=Preferences.userNodeForPackage(Chip.class);    
 

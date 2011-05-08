@@ -17,19 +17,16 @@ import java.awt.*;
 import java.awt.geom.*;
 import java.io.*;
 import java.util.*;
-import java.util.prefs.*;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
-import net.sf.jaer.util.TobiLogger;
+import net.sf.jaer.Description;
 /**
  * Tracks particles using a particle filter.
  *
  * @author Philipp <hafliger@ifi.uio.no>
  */
+@Description("Tracks multiple objects using a particle filter approach")
 public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Observer{
-    public static String getDescription (){
-        return "Tracks multiple objects using a particle filter approach.";
-    }
     private java.util.List<Cluster> clusters = new LinkedList<Cluster>();
     private int[][] lastCluster = new int[ 128 ][ 128 ];
     private int[][] lastEvent = new int[ 128 ][ 128 ];

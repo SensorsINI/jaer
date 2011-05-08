@@ -30,6 +30,7 @@ import java.beans.PropertyChangeListener;
 import java.util.List;
 import javax.media.opengl.glu.GLU;
 import javax.swing.SwingUtilities;
+import net.sf.jaer.Description;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 // import java.lang.reflect.InvocationTargetException;
 
@@ -58,11 +59,9 @@ point).
  * 
  * @author Michael Pfeiffer
  */
+@Description("Detects a track from incoming pixels and user input")
 public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, Observer, MouseListener, MouseMotionListener, PropertyChangeListener {
 
-    public static String getDescription() {
-        return "Detects a track from incoming pixels and user input";
-    }
     // Variables declared in XYTypeFilter
     public short x = 0, y = 0;
     public byte type = 0;

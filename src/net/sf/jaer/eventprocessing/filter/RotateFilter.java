@@ -16,6 +16,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.Observable;
 import java.util.Observer;
+import net.sf.jaer.Description;
 /**
  * Transforms the events in various ways,
 e.g. rotates the events so that x becomes y and y becomes x.
@@ -23,10 +24,8 @@ This filter acts on events in-place in the packet so it should be rather fast
 because it doesn't need to copy events, only modify them.
  * @author tobi
  */
+@Description("Rotates the addresses")
 public class RotateFilter extends EventFilter2D implements Observer{
-    public static String getDescription (){
-        return "Rotates the addresses";
-    }
     private boolean swapXY = getPrefs().getBoolean("RotateFilter.swapXY",false);
     private boolean rotate90deg = getPrefs().getBoolean("RotateFilter.rotate90deg",false);
     private boolean invertY = getPrefs().getBoolean("RotateFilter.invertY",false);

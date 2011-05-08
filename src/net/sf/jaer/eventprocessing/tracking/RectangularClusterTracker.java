@@ -10,7 +10,6 @@
 package net.sf.jaer.eventprocessing.tracking;
 
 import com.sun.opengl.util.GLUT;
-import java.util.List;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -26,6 +25,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
@@ -35,13 +35,11 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * <p>
  * @author tobi
  */
+@Description("Tracks multiple moving compact (not linear) objects")
 public class RectangularClusterTracker extends EventFilter2D implements Observer, ClusterTrackerInterface, FrameAnnotater /*, PreferenceChangeListener*/ {
     // TODO split out the Cluster object as it's own class.
     // TODO delegate worker object to update the clusters (RectangularClusterTrackerDelegate)
 
-    public static String getDescription() {
-        return "Tracks multiple moving compact (not linear) objects";
-    }
     /** The list of clusters. */
     volatile protected java.util.List<Cluster> clusters = new LinkedList<Cluster>();
     private AEChipRenderer renderer;
@@ -372,7 +370,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //            s.println("case " + c.getClusterNumber());
             s.println("case " + clusterCounter++);
             s.print("path=[");
-            List<ClusterPathPoint> path = c.getPath();
+            java.util.List<ClusterPathPoint> path = c.getPath();
             for (ClusterPathPoint p : path) {
                 s.print(p + ";");
             }
@@ -1258,7 +1256,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 gl.glPointSize(PATH_POINT_SIZE);
                 gl.glBegin(GL.GL_POINTS);
                 {
-                    List<ClusterPathPoint> points = getPath();
+                    java.util.List<ClusterPathPoint> points = getPath();
                     for (Point2D.Float p : points) {
                         gl.glVertex2f(p.x, p.y);
                     }

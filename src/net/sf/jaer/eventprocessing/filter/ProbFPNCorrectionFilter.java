@@ -20,6 +20,7 @@ import java.awt.Graphics2D;
 import java.util.*;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 /**
  * Adjust probability of transmission of event so that average rate
  * of activity is the same for all cells.
@@ -29,10 +30,8 @@ It does this by measuring average rate for each cell
 firing rate the same as the global average.
  * @author tobi
  */
+@Description("Adjusts probability of transmission of event so that average rate of activity is the same for all cells")
 public class ProbFPNCorrectionFilter extends EventFilter2D implements FrameAnnotater{
-    public static String getDescription (){
-        return "Adjust probability of transmission of event so that average rate of activity is the same for all cells.";
-    }
     float[][][] isi;
     int[][][] lastTs;
     float[] avgIsi;

@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.util.Date;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEDataFile;
@@ -22,6 +23,7 @@ import net.sf.jaer.util.DATFileFilter;
  * Logs data to disk according to various criteria.
  * @author tobi
  */
+@Description("Logs data to disk according to various criteria.")
 public class DataLogger extends EventFilter2D {
 
     private boolean loggingEnabled = false; // controlled by filterEnabled
@@ -37,10 +39,6 @@ public class DataLogger extends EventFilter2D {
     private String logFileBaseName = prefs().get("DataLogger.logFileBaseName", "");
     private int rotationNumber = 0;
     private boolean filenameTimestampEnabled = prefs().getBoolean("DataLogger.filenameTimestampEnabled", true);
-
-    public static String getDescription() {
-        return "Logs data to disk according to various criteria.";
-    }
 
     public DataLogger(AEChip chip) {
         super(chip);

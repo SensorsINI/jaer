@@ -21,6 +21,7 @@ import java.util.StringTokenizer;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
+import net.sf.jaer.Description;
 import net.sf.jaer.biasgen.Pot.Sex;
 import net.sf.jaer.biasgen.Pot.Type;
 import net.sf.jaer.graphics.DisplayMethod;
@@ -42,14 +43,11 @@ import net.sf.jaer.util.RemoteControlled;
  *
  * @author tobi
  */
+@Description("cDVSTest color Dynamic Vision Test chip")
 public class cDVSTest10 extends AETemporalConstastRetina implements HasIntensity {
 
     /** The computed intensity value. */
     private float intensity = 0;
-
-    public static String getDescription() {
-        return "cDVSTest color Dynamic Vision Test chip";
-    }
 
     /** Creates a new instance of cDVSTest10.  */
     public cDVSTest10() {

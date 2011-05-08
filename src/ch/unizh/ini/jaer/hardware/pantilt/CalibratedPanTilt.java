@@ -11,10 +11,10 @@ import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.ServoInterface;
-import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 
 /**
  * This filter enables calibrated control of a pan tilt laser pointer. CalibratedPanTilt has a method to set the pan tilt
@@ -23,6 +23,7 @@ import javax.media.opengl.GLAutoDrawable;
  * 
  * @author Tobi Delbruck
  */
+@Description("Controls a pantilt unit to aim at a calibrated visual location")
 public class CalibratedPanTilt extends EventFilter2D implements FrameAnnotater, PanTiltInterface, LaserOnOffControl {
 
     RectangularClusterTracker tracker;
@@ -50,9 +51,6 @@ public class CalibratedPanTilt extends EventFilter2D implements FrameAnnotater, 
         getPanTiltHardware().setPanTiltValues(pt[0], pt[1]);
     }
 
-    public static String getDescription() {
-        return "Controls a pantilt unit to aim at a calibrated visual location";
-    }
 
     
     @Override

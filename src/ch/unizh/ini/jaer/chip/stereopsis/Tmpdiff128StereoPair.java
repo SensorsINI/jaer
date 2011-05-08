@@ -17,6 +17,7 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
 import java.util.ArrayList;
+import net.sf.jaer.Description;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.event.*;
 import net.sf.jaer.graphics.*;
@@ -32,10 +33,8 @@ to supply StereoHardwareInterface which is a pair of Tmpdiff128 hardware interfa
  * @see net.sf.jaer.stereopsis.StereoHardwareInterface
  * @see net.sf.jaer.stereopsis.StereoBiasgenHardwareInterface
  */
+@Description("A stereo pair of Tmpdiff128 retinas (DVS128) each on it's own USB interface")
 public class Tmpdiff128StereoPair extends Tmpdiff128 implements StereoChipInterface{
-    public static String getDescription (){
-        return "A stereo pair of Tmpdiff128 retinas (DVS128) each on it's own USB interface";
-    }
     private AEChip left, right;
 
     /** Creates a new instance of Tmpdiff128StereoPair */

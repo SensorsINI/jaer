@@ -5,7 +5,6 @@ package ch.unizh.ini.jaer.chip.dvs320;
 
 import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
 import ch.unizh.ini.jaer.chip.retina.*;
-import javax.swing.JLabel;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.VDAC.VPot;
@@ -25,6 +24,7 @@ import java.util.StringTokenizer;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
+import net.sf.jaer.Description;
 import net.sf.jaer.biasgen.Pot.Sex;
 import net.sf.jaer.biasgen.Pot.Type;
 import net.sf.jaer.biasgen.VDAC.DAC;
@@ -47,11 +47,9 @@ import net.sf.jaer.util.RemoteControlled;
  *
  * @author tobi
  */
+@Description("cDVSTest color Dynamic Vision Test chip")
 public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity {
 
-    public static String getDescription() {
-        return "cDVSTest color Dynamic Vision Test chip";
-    }
     public static final int SIZEX_TOTAL = 140;
     public static final int SIZE_Y = 64;
     public static final int SIZE_Y_CDVS = 32;

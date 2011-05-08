@@ -22,8 +22,7 @@ import java.io.*;
 import java.util.*;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
-import net.sf.jaer.util.filter.LowpassFilter;
-import net.sf.jaer.util.filter.LowpassFilter2d;
+import net.sf.jaer.Description;
 
 
 /**
@@ -33,11 +32,9 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
  *
  * @author tobi
  */
+@Description("Tracks multiple moving compact (not linear) objects")
 public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnotater, Observer /*, PreferenceChangeListener*/ {
 
-    public static String getDescription() {
-        return "Tracks multiple moving compact (not linear) objects";
-    }
 //    private static Preferences prefs=Preferences.userNodeForPackage(RectangularClusterTracker.class);
 //    PreferencesEditor editor;
 //    JFrame preferencesFrame;

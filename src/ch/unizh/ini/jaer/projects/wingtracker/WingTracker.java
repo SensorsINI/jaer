@@ -20,7 +20,6 @@ import java.awt.*;
 import java.awt.event.*;
 //import ch.unizh.ini.caviar.util.PreferencesEditor;
 import java.awt.geom.*;
-import java.io.FileWriter;
 
 import java.util.*;
 import javax.media.opengl.GL;
@@ -30,8 +29,8 @@ import javax.media.opengl.GLException;
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
 
-import java.io.BufferedWriter;
 import java.io.*;
+import net.sf.jaer.Description;
 /**
   * Tracks a fruit fly wing beat in two different ways, after a initialization phase. Begin with the method track, there the events are
  * classified to the right edge and depending on the state the evaluation goes on.
@@ -49,11 +48,9 @@ import java.io.*;
  * First in the method track the events is classified in left/right wing and leading/trailing edge. There are 4 instances of the
  * inner class EKF which supports data for each wingedge. The prediction and update are methods of this inner class.
 */
+@Description("<html> Tracks a fruit fly wing beat in two different ways, after a initialization phase. <br> Begin with the method track, there the events are classified to the right edge and <br>depending on the state the evaluation goes on.o there are different states in this filter: <br>initialization: data are recorded(a hardcoded number of events in the method track() with state = Init) and then an <br>analysis is done for this data. First there is a 2-means algorithm(method kmeans) to <br>localize the 2 wings. afterwards basic geometry is used to calculate the bodyposition and the heading of the fly. <br>This is done in the method findFly().  <p>Tracking: every event changes the actual position of the correspoinding wingedge with a lowpassfilter. <br>This is done in the method track() with the state = TRACKING.  <br>Kalman: the second way to track is with a extended Kalman Filter. <br>Every event is taken as a measurement for the filter. <br>First in the method track the events is classified in left/right wing and leading/trailing edge. <br>There are 4 instances of the inner class EKF which supports data for each wingedge. <br>The prediction and update are methods of this inner class.")
 public class WingTracker extends EventFilter2D implements FrameAnnotater, Observer{//, PreferenceChangeListener {
     
-    public static String getDescription(){
-        return "<html> Tracks a fruit fly wing beat in two different ways, after a initialization phase. <br> Begin with the method track, there the events are classified to the right edge and <br>depending on the state the evaluation goes on.o there are different states in this filter: <br>initialization: data are recorded(a hardcoded number of events in the method track() with state = Init) and then an <br>analysis is done for this data. First there is a 2-means algorithm(method kmeans) to <br>localize the 2 wings. afterwards basic geometry is used to calculate the bodyposition and the heading of the fly. <br>This is done in the method findFly().  <p>Tracking: every event changes the actual position of the correspoinding wingedge with a lowpassfilter. <br>This is done in the method track() with the state = TRACKING.  <br>Kalman: the second way to track is with a extended Kalman Filter. <br>Every event is taken as a measurement for the filter. <br>First in the method track the events is classified in left/right wing and leading/trailing edge. <br>There are 4 instances of the inner class EKF which supports data for each wingedge. <br>The prediction and update are methods of this inner class.";
-    }
     AEChip chip;
     AEChipRenderer renderer;
     GLUT glut;

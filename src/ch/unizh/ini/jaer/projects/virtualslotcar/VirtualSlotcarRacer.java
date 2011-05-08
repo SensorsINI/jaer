@@ -5,11 +5,9 @@
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.Font;
-import java.awt.Rectangle;
-import java.awt.geom.Rectangle2D;
-import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JOptionPane;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -25,9 +23,9 @@ import net.sf.jaer.util.TobiLogger;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
+@Description("Slot car racer for virtual cars and tracks")
 public class VirtualSlotcarRacer extends EventFilter2D implements FrameAnnotater{
 
-    public static String getDescription(){ return "Slot car racer for virtual cars and tracks";}
     private boolean showTrackEnabled = prefs().getBoolean("VirtualSlotcarRacer.showTrack",true);
     private boolean virtualCarEnabled = prefs().getBoolean("VirtualSlotcarRacer.virtualCar",false);
 

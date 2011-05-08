@@ -15,6 +15,7 @@ import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
+import net.sf.jaer.Description;
 
 /**
  * An AE filter that outputs only events that are supported by a nearby event of the opposite polarity
@@ -28,10 +29,8 @@ import java.util.*;
 
  * @author tobi
  */
+@Description("Outputs only events that are supported by a nearby event of the opposite polarity in the neighborhood.")
 public class OnOffProximityLineFilter extends EventFilter2D implements Observer  {
-   public static String getDescription(){
-       return "Outputs only events that are supported by a nearby event of the opposite polarity in the neighborhood.";
-   }    
     final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
     
     /** the time in timestamp ticks (1us at present) that a spike

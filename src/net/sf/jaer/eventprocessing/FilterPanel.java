@@ -1344,6 +1344,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 getFilter().getChip().getPrefs().put(FilterFrame.LAST_FILTER_SELECTED_KEY, "");
             }
         }
+        showControlsToggleButton.setSelected(visible);
     }
 
     private void setBorderActive(final boolean yes) {

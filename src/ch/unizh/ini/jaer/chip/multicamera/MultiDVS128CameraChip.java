@@ -12,15 +12,14 @@
 package ch.unizh.ini.jaer.chip.multicamera;
 
 import ch.unizh.ini.jaer.chip.retina.DVS128;
-import ch.unizh.ini.jaer.chip.stereopsis.*;
 import java.util.TreeMap;
-import net.sf.jaer.event.MultiCameraEvent;
 import net.sf.jaer.stereopsis.*;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import java.util.ArrayList;
+import net.sf.jaer.Description;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.event.*;
 import net.sf.jaer.graphics.*;
@@ -37,11 +36,9 @@ to supply MultiCameraInterface which are multiple DVS128 hardware interfaces.
  * @see net.sf.jaer.stereopsis.MultiCameraInterface
  * @see net.sf.jaer.stereopsis.MultiCameraHardwareInterface
  */
+@Description("A multi DVS128 retina (DVS128) each on it's own USB interface with merged and presumably aligned fields of view")
 public class MultiDVS128CameraChip extends DVS128 implements MultiCameraInterface {
 
-    public static String getDescription() {
-        return "A multi DVS128 retina (DVS128) each on it's own USB interface with merged and presumably aligned fields of view";
-    }
     private AEChip[] cameras = new AEChip[MultiCameraEvent.NUM_CAMERAS];
 
     /** Creates a new instance of MultiDVS128CameraChip */

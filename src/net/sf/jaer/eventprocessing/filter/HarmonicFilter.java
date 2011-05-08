@@ -6,13 +6,13 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 import com.sun.opengl.util.j2d.TextRenderer;
-import java.awt.Font;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
+import net.sf.jaer.Description;
 import net.sf.jaer.graphics.FrameAnnotater;
 /**
  * An AE filter that filters out boring events caused by global flickering illumination. This filter measures the global event activity to obtain
@@ -32,10 +32,8 @@ import net.sf.jaer.graphics.FrameAnnotater;
  *
  * @author tobi
  */
+@Description("An AE filter that filters out boring events caused by global flickering illumination. This filter measures the global event activity to obtain the phase and amplitude of flicker. If the amplitude exceeds a threashold, then events around the peak activity are filtered away.")
 public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnotater{
-    public static String getDescription (){
-        return "An AE filter that filters out boring events caused by global flickering illumination. This filter measures the global event activity to obtain the phase and amplitude of flicker. If the amplitude exceeds a threashold, then events around the peak activity are filtered away.";
-    }
     private boolean printStats = prefs().getBoolean("HarmonicFilter.printStats",true);
     private float threshold = getPrefs().getFloat("HarmonicFilter.threshold",0.1f); // when value is less than this value, then we are crossing zero and don't pass events
     private float[][][] localPhases; // measures phase of pixel relative to oscillator

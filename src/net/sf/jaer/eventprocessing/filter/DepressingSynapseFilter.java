@@ -9,19 +9,16 @@ import java.awt.Font;
 import java.awt.Point;
 import java.awt.geom.Rectangle2D;
 import java.io.*;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.util.Random;
 import java.util.logging.Logger;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.eventprocessing.processortype.Filter;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
@@ -33,6 +30,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
+@Description("Filters out rapidly firing input using depressing probabalistic synapse model")
 public class DepressingSynapseFilter extends EventFilter2D implements FrameAnnotater, net.sf.jaer.eventprocessing.processortype.Filter {
 
     private static Random random = new Random();
@@ -41,10 +39,6 @@ public class DepressingSynapseFilter extends EventFilter2D implements FrameAnnot
     private float tauUs = tauMs * 1000;
     private float weight = prefs().getFloat("DepressingSynapseFilter.weight", .001f); // weight of each input spike on synapse
     private boolean showStateAtMouse = false;
-
-    public static String getDescription() {
-        return "Filters out rapidly firing input using depressing probabalistic synapse model.";
-    }
 
     public static DevelopmentStatus getDevelopementStatus() {
         return DevelopmentStatus.Beta;

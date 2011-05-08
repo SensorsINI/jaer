@@ -13,7 +13,6 @@ package ch.unizh.ini.jaer.chip.cochlea;
 
 import java.util.ArrayList;
 import java.util.prefs.PreferenceChangeEvent;
-import javax.swing.undo.UndoableEditSupport;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.IPotArray;
 import net.sf.jaer.biasgen.VDAC.DAC;
@@ -26,17 +25,16 @@ import net.sf.jaer.graphics.SpaceTimeEventDisplayMethod;
 import net.sf.jaer.hardwareinterface.*;
 import com.sun.opengl.util.GLUT;
 import java.awt.Graphics2D;
-import java.beans.PropertyChangeSupport;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Observable;
-import java.util.Observer;
 import java.util.prefs.PreferenceChangeListener;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JPanel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import net.sf.jaer.Description;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
@@ -47,9 +45,9 @@ import net.sf.jaer.util.RemoteControlled;
  * to be used when using the on-chip bias generator and the on-board DACs. Also implemements ConfigBits, Scanner, and Equalizer configuration.
  * @author tobi
  */
+@Description("Binaural AER silicon cochlea with 64 channels and 8 ganglion cells of two types per channel")
 public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
-    public static String getDescription(){ return "A binaural AER silicon cochlea with 64 channels and 8 ganglion cells of two types per channel";}
 //    // biasgen components implement this interface to send their own messages
 //    interface ConfigurationSender {
 //

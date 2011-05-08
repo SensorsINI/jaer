@@ -13,11 +13,13 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
 import java.io.IOException;
+import net.sf.jaer.Description;
 
 /**
  *
  * @author Michael Pfeiffer, Alex Russell
  */
+@Description("A spiking neuron filter for detecting the median of two parallel lines in an image")
 public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnnotater {
     public final int dim_pixels=128;   // Dimensionality of the pixel array
 
@@ -359,10 +361,6 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
     return out; // Hope this is correct
   }
 
-
-    public static String getDescription() {
-        return "A spiking neuron filter for detecting the median of two parallel lines in an image.";
-    }
 
     final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
 

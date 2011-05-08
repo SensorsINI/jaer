@@ -7,6 +7,7 @@ import ch.unizh.ini.jaer.chip.cochlea.CochleaGramDisplayMethod;
 import java.awt.Graphics2D;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.filter.RepetitiousFilter;
@@ -21,10 +22,8 @@ import net.sf.jaer.graphics.FrameAnnotater;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
+@Description("Passes onsets, which are increases of firing rate")
 public class OnsetFilter extends RepetitiousFilter implements FrameAnnotater{
-    public static String getDescription (){
-        return "Passes onsets - changes of firing rate";
-    }
 
     volatile private int dtCurrentPacket=1;
 

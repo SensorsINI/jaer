@@ -9,19 +9,16 @@ package ch.unizh.ini.jaer.chip.retina;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.event.*;
-import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.*;
 import net.sf.jaer.util.filter.*;
 import com.sun.opengl.util.*;
-import java.awt.Graphics2D;
 import java.io.*;
 import java.text.*;
 import java.util.*;
-import java.util.prefs.*;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.Description;
 
 /**
  * Controls the rate of events from the retina by controlling retina biases.
@@ -32,11 +29,9 @@ A lowpass filter smooths the rate measurements.
  *
  * @author tobi
  */
+@Description("Adaptively controls biases on DVS128 to control event rate")
 public class DVS128BiasController extends EventFilter2D implements FrameAnnotater {
 
-    public static String getDescription() {
-        return "Adaptively controls biases on DVS128 to control event rate";
-    }
     protected int rateHigh = getInt("DVS128BiasController.rateHigh", 400);
 
 //    private int rateMid=getInt("DVS128BiasController.rateMid",300);

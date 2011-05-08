@@ -19,6 +19,7 @@ import net.sf.jaer.event.*;
 import net.sf.jaer.eventio.*;
 import net.sf.jaer.graphics.*;
 import java.util.ArrayList;
+import net.sf.jaer.Description;
 
 /**
  * Describes a generic address-event chip, and includes fields for associated classes like its renderer,
@@ -28,11 +29,9 @@ need not customize the FilterChain.
  *
  * @author tobi
  */
+@Description("Address-Event Chip")
 public class AEChip extends Chip2D {
 
-    public static String getDescription() {
-        return "Address-Event chip";
-    }
     protected EventExtractor2D eventExtractor = null;
     protected AEChipRenderer renderer = null;
     protected AEFileInputStream aeInputStream = null;

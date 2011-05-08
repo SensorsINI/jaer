@@ -23,6 +23,7 @@ import java.io.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
+import net.sf.jaer.Description;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 
@@ -31,11 +32,9 @@ import net.sf.jaer.util.RemoteControlled;
  * 
  * @author Holger
  */
+@Description("Measures ITD (Interaural time difference) using a variety of methods")
 public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater, RemoteControlled {
 
-    public static String getDescription() {
-        return "Measures ITD (Interaural time difference) using a variety of methods";
-    }
     private ITDCalibrationGaussians calibration = null;
     private float averagingDecay = getPrefs().getFloat("ITDFilter.averagingDecay", 1);
     private int maxITD = getPrefs().getInt("ITDFilter.maxITD", 800);

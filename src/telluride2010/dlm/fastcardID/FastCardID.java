@@ -23,11 +23,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.util.filter.LowpassFilter;
-import java.awt.Graphics2D;
 import java.awt.geom.*;
-import java.util.Arrays;
-import java.io.IOException;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
@@ -36,19 +32,16 @@ import org.ine.telluride.jaer.tell2010.cardplayer.CardHistogram;
 import org.ine.telluride.jaer.tell2010.cardplayer.CardStatsMessageSender;
 import java.util.Arrays;
 
-import net.sf.jaer.util.networking.UDPMesssgeSender;
 import org.ine.telluride.jaer.tell2010.spinningcardclassifier.CardNamePlayer;
 
 //DLM additions
-import java.lang.Math;
 import java.io.*;
+import net.sf.jaer.Description;
 
 
 
+@Description("Tracks a single object pose by Principle Components Analysis")
 public class FastCardID extends EventFilter2D implements FrameAnnotater {
-    public static String getDescription(){
-        return "Tracks a single object pose by Principle Components Analysis";
-    }
 
     //This is just a thing that only lets the UDP send data if at least this number of events is observed.  
     

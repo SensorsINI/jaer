@@ -25,6 +25,7 @@ import javax.media.opengl.glu.GLU;
 
 import java.util.LinkedList;
 import java.util.Queue;
+import net.sf.jaer.Description;
 
 
 /**
@@ -32,11 +33,8 @@ import java.util.Queue;
  *
  * @author Stefan Sommer
  */
+@Description("Extracts Bimodal Events")
 public class BimodalExtraction extends EventFilter2D implements Observer, FrameAnnotater {
-
-    public static String getDescription() {
-        return "Extracting Bimodal Events";
-    }
 
 	// initializations & declarations
     

@@ -23,6 +23,7 @@ import java.io.*;
 import java.util.Observer;
 import javax.swing.*;
 import javax.swing.JPanel;
+import net.sf.jaer.Description;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
@@ -40,22 +41,14 @@ import net.sf.jaer.util.HexString;
  *
  * @author tobi
  */
+@Description("DVS128 Dynamic Vision Sensor")
 public class DVS128 extends AETemporalConstastRetina implements Serializable, Observer {
 
     private JMenu dvs128Menu = null;
     private JMenuItem arrayResetMenuItem = null, syncEnabledMenuItem = null;
     private JMenuItem setArrayResetMenuItem = null;
     private PropertyChangeSupport support=new PropertyChangeSupport(this);
-
  
-    public static String getDescription() {
-        return "DVS128 Dynamic Vision Sensor";
-    }
-
-    static {
-//        setPreferredHardwareInterface(CypressFX2Biasgen.class); // TODO causing problems in applet
-    }
-
     /** Creates a new instance of DVS128. No biasgen is constructed for this constructor, because there is no hardware interface defined. */
     public DVS128() {
         setName("DVS128");

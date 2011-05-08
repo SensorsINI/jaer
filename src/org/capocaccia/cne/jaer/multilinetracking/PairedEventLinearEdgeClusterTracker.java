@@ -26,6 +26,7 @@ import javax.media.opengl.GLCanvas;
 import javax.media.opengl.GLCapabilities;
 import javax.media.opengl.GLEventListener;
 import javax.media.opengl.glu.GLU;
+import net.sf.jaer.Description;
 import net.sf.jaer.eventprocessing.tracking.LIFOEventBuffer;
 import net.sf.jaer.eventprocessing.tracking.LineDetector;
 /**
@@ -37,10 +38,8 @@ import net.sf.jaer.eventprocessing.tracking.LineDetector;
  * @author tobi
 @see LineDetector
  */
+@Description("Tracks multiple lines in the scene using a cluster based method based on pairs of recent events")
 public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implements FrameAnnotater,Observer,LineDetector{
-    public static String getDescription (){
-        return "Tracks multiple lines in the scene using a cluster based method based on pairs of recent events.";
-    }
     static final double PI2 = Math.PI * 2;
 //    private static Preferences prefs=Preferences.userNodeForPackage(PairedEventLinearEdgeClusterTracker.class);
     private java.util.List<LinearFeatureModel> clusters = new ArrayList<LinearFeatureModel>();

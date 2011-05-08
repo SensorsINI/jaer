@@ -3,13 +3,9 @@
  * and open the template in the editor.
  */
 package net.sf.jaer.eventprocessing.filter;
-import com.sun.opengl.util.GLUT;
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.*;
-import java.awt.Canvas;
-import java.awt.Color;
 import java.awt.Rectangle;
-import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
@@ -21,7 +17,7 @@ import java.util.Observer;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLCanvas;
-import javax.swing.JMenu;
+import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -42,10 +38,8 @@ import net.sf.jaer.util.filter.LowpassFilter;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
+@Description("Collects and displays statistics for a selected range of pixels / cells")
 public class CellStatsProber extends EventFilter2D implements FrameAnnotater,MouseListener,MouseMotionListener,Observer{
-    public static String getDescription (){
-        return "Collects and displays statistics for a selected range of pixels / cells";
-    }
 
     public static DevelopmentStatus getDevelopementStatus (){
         return DevelopmentStatus.Beta;

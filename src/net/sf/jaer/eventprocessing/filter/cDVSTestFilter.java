@@ -15,6 +15,7 @@ import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
+import net.sf.jaer.Description;
 
 /**
  * An AE background that filters slow background activity by only passing inPacket that are
@@ -22,14 +23,9 @@ import java.util.*;
  * by a subsampling bit shift.
  * @author tobi
  */
+@Description("Counts relation of Y only events to correct events for cDVSTest chips")
 public class cDVSTestFilter extends EventFilter2D implements Observer  {
 
-    public static String getDescription() {
-        return "Counts relation of Y only events to correct events for cDVSTest chips";
-    }
-    
-   
-    
     /** the time in timestamp ticks (1us at present) that a spike
      * needs to be supported by a prior event in the neighborhood by to pass through
      */

@@ -5,6 +5,7 @@
 
 package ch.unizh.ini.jaer.projects.sensoryfusion;
 
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -13,9 +14,9 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  *
  * @author Christian
  */
+@Description("Allows localization, focussing and recognition of audiovisual objects")
 public class SensoryFusion extends EventFilter2D{
 
-    public static final String getDescription(){ return "Allows localization, focussing and recognition of audiovisual objects";}
     private FocusFixation focusFixation;
     private SoundLocalization soundLocalization;
 

@@ -6,6 +6,7 @@ package org.capocaccia.cne.jaer.cne2011;
 
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -19,11 +20,9 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * 
  * @author tobi
  */
+@Description("Example class for CNE 2011") // this annotation is used for tooltip to this class in the chooser. 
 public class MeanEventLocationTracker extends EventFilter2D implements FrameAnnotater {
 
-    public static String getDescription() {
-        return "Example for CNE 2011";
-    } // used for tip to this class in the chooser. Note it is public static so it can be accessed without constructing filter.
     float xmean, ymean;  // we'll compute these
     private float mixingRate = getFloat("mixingRate", 0.01f); // how much we mix the new value into the running means
     private float radiusOfTransmission = getFloat("radiusOfTransmission", 10); // how big around mean location we transmit events

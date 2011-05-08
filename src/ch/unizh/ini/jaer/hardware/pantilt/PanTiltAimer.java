@@ -4,29 +4,24 @@
  */
 package ch.unizh.ini.jaer.hardware.pantilt;
 
-import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.ServoInterface;
-import javax.media.opengl.GL;
-import javax.media.opengl.GLAutoDrawable;
 
 /**
  * This filter enables aiming the pantilt using a GUI and allows controlling jitter of the pantilt when not moving it.
  * 
  * @author Tobi Delbruck
  */
+@Description("Allows control of pan-tilt using a panel to aim it and parameters to control the jitter")
 public class PanTiltAimer extends EventFilter2D implements  PanTiltInterface, LaserOnOffControl, PropertyChangeListener {
 
-    public static final String getDescription(){ return "Allows control of pan-tilt using a panel to aim it and parameters to control the jitter";}
     private PanTilt panTiltHardware;
     private PanTiltAimerGUI gui;
     private boolean jitterEnabled=getBoolean("jitterEnabled",false);

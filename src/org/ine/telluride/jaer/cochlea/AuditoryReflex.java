@@ -16,6 +16,7 @@ import java.awt.Graphics2D;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
+import net.sf.jaer.Description;
 import org.ine.telluride.jaer.wowwee.RoboQuadCommands;
 import org.ine.telluride.jaer.wowwee.WowWeeRSHardwareInterface;
 
@@ -24,6 +25,7 @@ import org.ine.telluride.jaer.wowwee.WowWeeRSHardwareInterface;
  * 
  * @author ahs (Andrew Schwartz, MIT)
  */
+@Description("Computes ITD of incoming binaural signal")
 public class AuditoryReflex extends EventFilter2D implements FrameAnnotater {
     
     private boolean drawOutput=getPrefs().getBoolean("MSO.drawOutput",true);
@@ -48,10 +50,6 @@ public class AuditoryReflex extends EventFilter2D implements FrameAnnotater {
     private int startupCommandCount = 0;
     private long time, lastTime=0;
     
-    public static String getDescription() {
-        return "Computes ITD of incoming binaural signal";
-    }
-
     public AuditoryReflex(AEChip chip) {
         super(chip);
         initFilter();

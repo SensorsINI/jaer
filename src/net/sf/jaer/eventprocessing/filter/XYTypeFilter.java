@@ -16,25 +16,21 @@ import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
-import java.awt.Graphics2D;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.io.*;
 import java.io.Serializable;
 import java.util.*;
-import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.*;
-import ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing.*;
+import net.sf.jaer.Description;
 /**
  * An AE filter that filters for a range of x,y,type address. These values are persistent and can be used to filter out borders of the input or particular
  * types of input events. A rectangular region may either be passed (default) or blocked.
  *
  * @author tobi
  */
+@Description("Filters a region defined by x, y, and event type ranges")
 public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observer,MouseListener,MouseMotionListener{
-    public static String getDescription (){
-        return "Filters a region defined by x, y, and event type ranges";
-    }
     final private static float[] SELECT_COLOR = { .8f,0,0,.5f };
     private int startX = getPrefs().getInt("XYTypeFilter.startX",0);
     private int endX = getPrefs().getInt("XYTypeFilter.endX",0);

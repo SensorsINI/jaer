@@ -9,17 +9,15 @@ import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
-import java.awt.*;
-import java.awt.event.*;
-import java.io.*;
 import javax.swing.*;
-import javax.swing.event.*;
+import net.sf.jaer.Description;
 
 /**
  * Filter for displaying virtual slot car movement
  * 
  * @author Michael Pfeiffer
  */
+@Description("Display of Slot-Car Movement")
 public class SlotcarFilter extends EventFilter2D implements Observer {
 
     JFrame drawingWindow = null;
@@ -62,10 +60,6 @@ public class SlotcarFilter extends EventFilter2D implements Observer {
         return out; // Hope this is correct
    }
 
-
-    public static String getDescription() {
-        return "Display of Slot-Car Movement";
-    }
 
     final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
 

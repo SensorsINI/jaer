@@ -4,12 +4,11 @@
  */
 
 package net.sf.jaer.eventprocessing.filter;
-import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
 /**
  * Estimates event rate from the input stream.
@@ -20,9 +19,9 @@ import net.sf.jaer.util.filter.LowpassFilter;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
+@Description("Estimates event rate from the input event packets")
 public class EventRateEstimator extends EventFilter2D {
 
-    public static String getDescription(){ return "Estimates event rate from the input event packets";}
 
     private LowpassFilter filter=new LowpassFilter();
     private int prevLastT=0;

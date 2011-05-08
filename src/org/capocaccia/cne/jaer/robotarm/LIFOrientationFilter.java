@@ -9,12 +9,14 @@ import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
+import net.sf.jaer.Description;
 
 /**
  * Orientation extractor / labeler using LIF neurons.
  * 
  * @author Michael Pfeiffer, Alex Russell
  */
+@Description("Computes Orientations via a LIF-Neuron Model")
 public class LIFOrientationFilter extends EventFilter2D implements Observer {
 
     public final int dim_pixels=128;   // Dimensionality of the pixel array
@@ -159,10 +161,6 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
         return out; // Hope this is correct
    }
 
-
-    public static String getDescription() {
-        return "Computes Orientations via a LIF-Neuron Model";
-    }
 
     final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
 

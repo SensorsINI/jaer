@@ -18,6 +18,7 @@ import java.awt.geom.Point2D;
 import java.util.*;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 /**
  * Computes simple-type orientation-tuned cells.
  *A switch allows WTA mode (only max 1 event generated) or many event (any orientation that passes coincidence threshold.
@@ -30,10 +31,8 @@ import javax.media.opengl.GLAutoDrawable;
  * The filter takes either PolarityEvents or BinocularEvents to create OrientationEvents or BinocularOrientationEvents.
  * @author tobi/phess
  */
+@Description("Local orientation by spatio-temporal correlation")
 public class SimpleOrientationFilter extends EventFilter2D implements Observer,FrameAnnotater{
-    public static String getDescription (){
-        return "Local orientation by spatio-temporal correlation";
-    }
 
     public boolean isGeneratingFilter (){
         return true;

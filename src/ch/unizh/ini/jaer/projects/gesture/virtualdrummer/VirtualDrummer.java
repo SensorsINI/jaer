@@ -13,6 +13,7 @@ import java.util.Observable;
 import java.util.Observer;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JFrame;
+import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
@@ -28,10 +29,8 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * Virtual drummer. Demonstration of fast visual tracking and inference of virtual drum set capability.
  * @author Tobi Delbruck, Eric Ryu, Jun Haeng Lee
  */
+@Description("Virtual drummer demonstration")
 public class VirtualDrummer extends EventFilter2D implements FrameAnnotater,Observer{
-    public static String getDescription (){
-        return "Virtual drummer demonstration";
-    }
 
     public static DevelopmentStatus getDevelopmentStatus (){
         return DevelopmentStatus.Alpha;

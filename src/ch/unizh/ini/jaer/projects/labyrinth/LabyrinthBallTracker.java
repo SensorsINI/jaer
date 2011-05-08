@@ -6,14 +6,13 @@ package ch.unizh.ini.jaer.projects.labyrinth;
 
 import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap.PathPoint;
 import java.awt.geom.Point2D;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLCanvas;
 import javax.media.opengl.glu.*;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -31,11 +30,9 @@ import net.sf.jaer.util.filter.MedianLowpassFilter;
  *
  * @author tobi
  */
+@Description("Ball tracker for labyrinth game")
 public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotater, Observer {
 
-    public static String getDescription() {
-        return "Ball tracker for labyrinth game";
-    }
     // filters and filter chain
     FilterChain filterChain;
     RectangularClusterTracker.Cluster ball = null;

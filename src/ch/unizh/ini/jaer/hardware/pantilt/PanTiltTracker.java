@@ -14,6 +14,7 @@ import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 /**
  * Demonstrates tracking object(s) and targeting them with the pan tilt unit. A laser pointer on the pan tilt
  * can show where it is aimed. Developed for Sardinia Capo Cacia Cognitive Neuromorphic Engineering Workshop, April 2008.
@@ -21,6 +22,7 @@ import javax.media.opengl.GLAutoDrawable;
  * 
  * @author tobi, Ken Knoblauch
  */
+@Description("Trackes a single moving object with the pan tilt unit")
 public class PanTiltTracker extends EventFilter2D implements FrameAnnotater {
     RectangularClusterTracker tracker;
     CalibratedPanTilt panTilt=null;
@@ -36,9 +38,6 @@ public class PanTiltTracker extends EventFilter2D implements FrameAnnotater {
         setEnclosedFilterChain(filterChain);
     }
 
-    public static String getDescription() {
-        return "Trackes a single moving object with the pan tilt unit";
-    }
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {

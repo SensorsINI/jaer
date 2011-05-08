@@ -16,6 +16,7 @@ import java.awt.*;
 import java.awt.geom.*;
 import java.util.*;
 import javax.media.opengl.*;
+import net.sf.jaer.Description;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.util.filter.LowpassFilter;
 
@@ -24,6 +25,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
  *
  * @author Jun Haeng Lee/Tobi Delbruck
  */
+@Description("Tracks moving hands, which means it tracks two object at most")
 public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnotater,Observer,ClusterTrackerInterface /*, PreferenceChangeListener*/{
     // TODO split out the optical gryo stuff into its own subclass
     // TODO split out the Cluster object as it's own class.
@@ -31,9 +33,6 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      *
      * @return filter description
      */
-    public static String getDescription (){
-        return "Tracks moving hands, which means it tracks two object at most";
-    }
 
     /**
      * Maximum numver of clusters to track

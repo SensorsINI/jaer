@@ -23,6 +23,7 @@ import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.processortype.Application;
 
@@ -33,11 +34,9 @@ Two methods can be used 1) the global translational flow computed from Direction
  *
  * @author tobi
  */
+@Description("Compenstates global scene translation and rotation to stabilize scene.")
 public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Application {
 
-    public static String getDescription() {
-        return "Compenstates global scene translation and rotation to stabilize scene.";
-    }
 
     /** Classses that compute scene shift.
      */

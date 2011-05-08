@@ -11,9 +11,9 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Timer;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -31,11 +31,9 @@ import net.sf.jaer.util.filter.LowpassFilter;
  *
  * @author tobi
  */
+@Description("Slot car car tracker for finding closest car to track model")
 public class TwoCarTracker extends RectangularClusterTracker implements FrameAnnotater, PropertyChangeListener, CarTracker {
 
-    public static String getDescription() {
-        return "Slot car car tracker for finding closest car to track model";
-    }
     // properties
     private boolean onlyFollowTrack = getBoolean("onlyFollowTrack", true);
     private float relaxToTrackFactor = getFloat("relaxToTrackFactor", 0.05f);

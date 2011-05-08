@@ -22,6 +22,7 @@ import java.util.Observable;
 import java.util.Observer;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 /**
 Does an event-based spatio-temporal highpass filter,
 so that only small isolated objects  pass through.
@@ -38,10 +39,8 @@ surround activity.
 
  * @author tobi
  */
+@Description("Does an event-based spatio-temporal highpass filter, so that only small isolated objects  pass through. Uses a subsampled surround for very high efficiency.")
 public class SubSamplingBandpassFilter extends EventFilter2D implements Observer,FrameAnnotater{
-    public static String getDescription (){
-        return "Does an event-based spatio-temporal highpass filter, so that only small isolated objects  pass through. Uses a subsampled surround for very high efficiency.";
-    }
     public static DevelopmentStatus getDevelopmentStatus(){
         return DevelopmentStatus.Beta;
     }

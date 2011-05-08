@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
 import javax.swing.JFrame;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.BasicEvent;
@@ -26,10 +27,8 @@ import net.sf.jaer.util.chart.XYChart;
 <a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
+@Description("Computes ISI (inter spike interval) histogram")
 public class ISIHistogrammer extends EventFilter2D implements Observer{
-    public static String getDescription (){
-        return "Computes ISI (inter spike interval) histogram";
-    }
 
     /**
      * @return the bins

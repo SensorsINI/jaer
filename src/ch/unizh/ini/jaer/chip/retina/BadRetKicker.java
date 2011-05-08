@@ -6,6 +6,7 @@ package ch.unizh.ini.jaer.chip.retina;
 
 import java.util.Timer;
 import java.util.TimerTask;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -15,10 +16,9 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
  * Periodically resets pixel array to getString a recalciatrant retina going.
  * @author tobi
  */
+@Description("Resets pixel array when no events are received for some time")
 public class BadRetKicker extends EventFilter2D {
 
-    public static String getDescription(){ return "Resets pixel array when no events are received for some time";}
-    
     private int noActivityKickDelayMs = 1000;
     Timer timer = new Timer("BadRetKickerMonitor");
     KickTask kickTask=null;

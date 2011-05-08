@@ -1,5 +1,6 @@
 package ch.unizh.ini.jaer.chip.cochlea;
 
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.TypedEventExtractor;
 
@@ -8,9 +9,9 @@ import net.sf.jaer.chip.TypedEventExtractor;
  * Shih-Chii's and Andre's and Vincent's first cochleas (also for revision).
  * @author tobi
  */
+@Description("A 32 channel binaural AER cochlea")
 public class CochleaAERb extends CochleaChip  {
     
-    public static String getDescription(){ return "A 32 channel binaural AER cochlea";}
     /** Creates a new instance of Tmpdiff128 */
     public CochleaAERb() {
         setName("CochleaAERb");

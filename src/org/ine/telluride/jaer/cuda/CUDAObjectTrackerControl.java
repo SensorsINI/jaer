@@ -41,6 +41,7 @@ import javax.media.opengl.GLEventListener;
 import javax.media.opengl.GLJPanel;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
+import net.sf.jaer.Description;
 import net.sf.jaer.eventio.AEUnicastOutput;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.RefractoryFilter;
@@ -58,11 +59,9 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * 
  * @author tobi/yingxue/jay
  */
+@Description("Uses NVIDIA CUDA GPU for event-based convolution. See /clients/CUDA folder for CUDA side code")
 public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnnotater {
 
-    public static String getDescription(){
-        return "Uses NVIDIA CUDA GPU for event-based convolution. See /clients/CUDA folder for CUDA side code";
-    }
     public final int CONTROL_PORT_DEFAULT = 9998;
     AEViewer outputViewer = null;
     private int controlPort = getPrefs().getInt("CUDAObjectTrackerControl.controlPort", CONTROL_PORT_DEFAULT);

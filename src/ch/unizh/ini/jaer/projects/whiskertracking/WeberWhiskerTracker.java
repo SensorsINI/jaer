@@ -5,6 +5,7 @@
 
 package ch.unizh.ini.jaer.projects.whiskertracking;
 
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import org.ine.telluride.jaer.tell2010.pigtracker.PigTracker;
 
@@ -13,11 +14,9 @@ import org.ine.telluride.jaer.tell2010.pigtracker.PigTracker;
  *
  * @author tobi
  */
+@Description("Tracks whiskers for Weber lab - alpha state")
 public class WeberWhiskerTracker extends PigTracker{
 
-    public static String getDescription(){
-        return "Tracks whiskers for Weber lab";
-    }
     private String hostname=getString("hostname", "localhost");
     private int port=getInt("port",8883);
 
