@@ -275,7 +275,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private BiasgenFrame biasgenFrame = null;
     Biasgen biasgen = null;
     EventFilter2D filter1 = null, filter2 = null;
-    AEChipRenderer renderer = null;
+    private AEChipRenderer renderer = null;
     AEMonitorInterface aemon = null;
     private final ViewLoop viewLoop = new ViewLoop();
     FilterChain filterChain = null;
@@ -469,8 +469,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewOpenGLEnabledMenuItem.setSelected(isOpenGLRenderingEnabled());
         loggingPlaybackImmediatelyCheckBoxMenuItem.setSelected(isLoggingPlaybackImmediatelyEnabled());
         subsampleEnabledCheckBoxMenuItem.setSelected(chip.isSubSamplingEnabled());
-        acccumulateImageEnabledCheckBoxMenuItem.setSelected(renderer.isAccumulateEnabled());
-        autoscaleContrastEnabledCheckBoxMenuItem.setSelected(renderer.isAutoscaleEnabled());
+        acccumulateImageEnabledCheckBoxMenuItem.setSelected(getRenderer().isAccumulateEnabled());
+        autoscaleContrastEnabledCheckBoxMenuItem.setSelected(getRenderer().isAutoscaleEnabled());
         pauseRenderingCheckBoxMenuItem.setSelected(false);// not isPaused because aePlayer doesn't exist yet
         viewRenderBlankFramesCheckBoxMenuItem.setSelected(isRenderBlankFramesEnabled());
         logFilteredEventsCheckBoxMenuItem.setSelected(logFilteredEventsEnabled);
@@ -775,7 +775,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } else{
                 synchronized ( chip ){ // TODO handle live case -- this is not ideal thread programming - better to sync on a lock object in the run loop
                     synchronized ( extractor ){
-                        synchronized ( renderer ){
+                        synchronized ( getRenderer() ){
                             getChip().cleanup();
                             constructChip(constructor);
                         }
@@ -862,7 +862,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             renderer = chip.getRenderer();
 
             extractor.setSubsamplingEnabled(subsampleEnabledCheckBoxMenuItem.isSelected());
-            extractor.setSubsampleThresholdEventCount(renderer.getSubsampleThresholdEventCount()); // awkward connection between components here - ideally chip should contrain info about subsample limit
+            extractor.setSubsampleThresholdEventCount(getRenderer().getSubsampleThresholdEventCount()); // awkward connection between components here - ideally chip should contrain info about subsample limit
 
         } catch ( Exception e ){
             log.warning("AEViewer.constructChip exception " + e.getMessage());
@@ -1322,15 +1322,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if ( aePlayer.isChoosingFile() ){
                 return;
             } // don't render while filechooser is active
-            boolean subsamplingEnabled = renderer.isSubsamplingEnabled();
+            boolean subsamplingEnabled = getRenderer().isSubsamplingEnabled();
             if ( isPaused() ){
-                renderer.setSubsamplingEnabled(false);
+                getRenderer().setSubsamplingEnabled(false);
             }
-            if(!(renderer.isAccumulateEnabled() && isPaused())){
-                renderer.render(packet);
+            if(!(getRenderer().isAccumulateEnabled() && isPaused())){
+                getRenderer().render(packet);
             }
             if ( isPaused() ){
-                renderer.setSubsamplingEnabled(subsamplingEnabled);
+                getRenderer().setSubsamplingEnabled(subsamplingEnabled);
             }
 //            if(renderImageEnabled) {
             if ( isActiveRenderingEnabled() ){
@@ -1350,7 +1350,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } // renderEvents
 
         private EventPacket extractPacket (AEPacketRaw aeRaw){
-            boolean subsamplingEnabled = renderer.isSubsamplingEnabled();
+            boolean subsamplingEnabled = getRenderer().isSubsamplingEnabled();
             if ( isPaused() ){
                 extractor.setSubsamplingEnabled(false);
             }
@@ -1755,7 +1755,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                rerenderFlagDone=true;
             } // end of run() loop - main loop of AEViewer.ViewLoop
 
-            log.info("AEViewer.run(): stop=" + stop + " isInterrupted=" + isInterrupted());
+            log.info("AEViewer.run() ending: stop=" + stop + " isInterrupted=" + isInterrupted());
             if ( aemon != null ){
                 aemon.close();
             }
@@ -1882,7 +1882,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
 
 
-                int cs = renderer.getColorScale();
+                int cs = getRenderer().getColorScale();
 
                 String ovstring;
                 if ( overrunOccurred ){
@@ -1929,7 +1929,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                        fr.getDesiredFPS(),
                        fr.getLastDelayMs());
 
-               String colorScaleString=(renderer.isAutoscaleEnabled() ? "AS=" : "FS=")+Integer.toString(cs);
+               String colorScaleString=(getRenderer().isAutoscaleEnabled() ? "AS=" : "FS=")+Integer.toString(cs);
 
                sb.delete(0, sb.length());
                sb.append(timeSliceString).append('@').append(thisTimeString).append(numEventsString).append(ovstring).append(rateString)
@@ -3994,10 +3994,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_toggleMarkCheckBoxMenuItemActionPerformed
 
     private void subSampleSizeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_subSampleSizeMenuItemActionPerformed
-        String ans = JOptionPane.showInputDialog(this,"Enter limit to number of rendered events",renderer.getSubsampleThresholdEventCount());
+        String ans = JOptionPane.showInputDialog(this,"Enter limit to number of rendered events",getRenderer().getSubsampleThresholdEventCount());
         try{
             int n = Integer.parseInt(ans);
-            renderer.setSubsampleThresholdEventCount(n);
+            getRenderer().setSubsampleThresholdEventCount(n);
             extractor.setSubsampleThresholdEventCount(n);
         } catch ( NumberFormatException e ){
             Toolkit.getDefaultToolkit().beep();
@@ -4014,7 +4014,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void imagePanelMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_imagePanelMouseWheelMoved
         int rotation = evt.getWheelRotation();
-        renderer.setColorScale(renderer.getColorScale() + rotation);
+        getRenderer().setColorScale(getRenderer().getColorScale() + rotation);
     }//GEN-LAST:event_imagePanelMouseWheelMoved
 
     private void loggingPlaybackImmediatelyCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loggingPlaybackImmediatelyCheckBoxMenuItemActionPerformed
@@ -4050,11 +4050,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_increasePlaybackSpeedMenuItemActionPerformed
 
     private void autoscaleContrastEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_autoscaleContrastEnabledCheckBoxMenuItemActionPerformed
-        renderer.setAutoscaleEnabled(!renderer.isAutoscaleEnabled());
+        getRenderer().setAutoscaleEnabled(!getRenderer().isAutoscaleEnabled());
     }//GEN-LAST:event_autoscaleContrastEnabledCheckBoxMenuItemActionPerformed
 
     private void acccumulateImageEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_acccumulateImageEnabledCheckBoxMenuItemActionPerformed
-        renderer.setAccumulateEnabled(!renderer.isAccumulateEnabled());
+        getRenderer().setAccumulateEnabled(!getRenderer().isAccumulateEnabled());
     }//GEN-LAST:event_acccumulateImageEnabledCheckBoxMenuItemActionPerformed
 
     private void zeroTimestampsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zeroTimestampsMenuItemActionPerformed
@@ -4100,7 +4100,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void decreaseContrastMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_decreaseContrastMenuItemActionPerformed
 //        if(viewLoop.rerenderFlagDone==false) return;
 //        viewLoop.rerenderFlagDone=false;
-        renderer.setColorScale(renderer.getColorScale() + 1);
+        getRenderer().setColorScale(getRenderer().getColorScale() + 1);
 //        System.out.println("interrupting viewloop");
 //        repaint();
         interruptViewloop();
@@ -4109,14 +4109,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void increaseContrastMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_increaseContrastMenuItemActionPerformed
 //        if(viewLoop.rerenderFlagDone==false) return;
 //        viewLoop.rerenderFlagDone=false;
-        renderer.setColorScale(renderer.getColorScale() - 1);
+        getRenderer().setColorScale(getRenderer().getColorScale() - 1);
 //        System.out.println("interrupting viewloop");
         interruptViewloop();
 //        repaint();
     }//GEN-LAST:event_increaseContrastMenuItemActionPerformed
 
     private void cycleColorRenderingMethodMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cycleColorRenderingMethodMenuItemActionPerformed
-        renderer.cycleColorMode();
+        getRenderer().cycleColorMode();
     }//GEN-LAST:event_cycleColorRenderingMethodMenuItemActionPerformed
 
     private void subsampleEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_subsampleEnabledCheckBoxMenuItemActionPerformed
@@ -4827,9 +4827,9 @@ private void enableMissedEventsCheckBoxActionPerformed(java.awt.event.ActionEven
 }//GEN-LAST:event_enableMissedEventsCheckBoxActionPerformed
 
 private void calibrationStartStopActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_calibrationStartStopActionPerformed
-    if ( renderer instanceof Calibratible ){
-        ( (Calibratible)renderer ).setCalibrationInProgress(!( (Calibratible)renderer ).isCalibrationInProgress());
-        if ( ( (Calibratible)renderer ).isCalibrationInProgress() ){
+    if ( getRenderer() instanceof Calibratible ){
+        ( (Calibratible)getRenderer() ).setCalibrationInProgress(!( (Calibratible)getRenderer() ).isCalibrationInProgress());
+        if ( ( (Calibratible)getRenderer() ).isCalibrationInProgress() ){
             calibrationStartStop.setText("Stop Calibration");
         } else{
             calibrationStartStop.setText("Start Calibration");
@@ -5274,6 +5274,13 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
      */
     public RecentFiles getRecentFiles (){
         return recentFiles;
+    }
+
+    /**
+     * @return the renderer
+     */
+    protected AEChipRenderer getRenderer() {
+        return chip.getRenderer();
     }
 // AEViewer is a Swing Component and already has PropertyChangeSupport!!! 
 //    /** AEViewer supports property change events. See the class description for supported events

@@ -118,10 +118,10 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        out = getEnclosedFilterChain().filterPacket(in);
-//        if (controllerEnabled) {
-//            control(in, in.getLastTimestamp());
-//        } // control is called from callback via update from tracker
+        out = getEnclosedFilterChain().filterPacket(in);// TODO real practical problem here that if there is no retina input that survives to tracker, we get no updates here to control on
+        if (controllerEnabled) {
+            control(in, in.getLastTimestamp());
+        } // control is also called from callback via update from tracker
 
         return out;
     }

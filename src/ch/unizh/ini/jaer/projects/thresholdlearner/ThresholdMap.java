@@ -4,12 +4,11 @@
  */
 package ch.unizh.ini.jaer.projects.thresholdlearner;
 
-import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.Random;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.chip.Chip2D;
 
 /**
  * A 2d+ map of pixel thresholds. In the case of the temporal contrast DVS silicon retina, this map holds the learned pixel temporal contrast thresholds.
@@ -43,8 +42,17 @@ final public class ThresholdMap implements Observer {
         reset();
     }
     
-    public void reset(){
-        Arrays.fill(map, 1);
+    Random random=new Random();
+    
+    public void reset() {
+//        Arrays.fill(map, 1);
+        for (int i = 0; i < map.length; i++) {
+            float r = (float) random.nextGaussian();
+            r=r/3+.5f;
+            if(r<0) r=0; else if(r>1) r=1;
+
+            map[i] = r;
+        }
     }
 
     @Override

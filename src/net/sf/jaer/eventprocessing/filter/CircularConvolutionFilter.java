@@ -7,6 +7,7 @@
 
 package net.sf.jaer.eventprocessing.filter;
 
+import java.util.logging.Level;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
@@ -24,7 +25,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @author tobi
  */
 @Description("Computes circular convolutions by splatting out events and checking receiving pixels to see if they exceed a threshold")
-public class CircularConvolutionFilter extends EventFilter2D implements Observer, FrameAnnotater {
+public final class CircularConvolutionFilter extends EventFilter2D implements Observer, FrameAnnotater {
     
     static final int NUM_INPUT_CELL_TYPES=1;
     private boolean useBalancedKernel=getBoolean("useBalancedKernel",true);
@@ -42,6 +43,7 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
         setPropertyTooltip("useBalancedKernel","balances kernel to zero sum with positive and negative weights");
     }
     
+    @Override
   synchronized public EventPacket filterPacket(EventPacket in) {
         checkOutputPacketEventType(in);
         int sx=chip.getSizeX()-1;
@@ -78,6 +80,7 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
     }
     
   
+    @Override
   synchronized public void resetFilter() {
         allocateMap();
     }
@@ -114,13 +117,13 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
             this.y=y;
             this.weight=w;
         }
+        @Override
         public String toString(){
             return "Splatt: "+x+","+y+","+String.format("%.1f",weight);
         }
     }
     
     private Splatt[] splatts;
-    private int splattCircum;
     
     // computes the indices to splatt to from a source event
     // these are octagonal around a point to the neighboring pixels at a certain radius
@@ -131,9 +134,8 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
     synchronized void computeSplattLookup(){
         ArrayList<Splatt> list=new ArrayList<Splatt>();
         double circum=2*Math.PI*radius; // num pixels
-        splattCircum=(int)circum;
             int xlast = -1, ylast = -1;
-            int n = (int) Math.round(circum);
+            int n = (int) Math.ceil(circum);
         if (radius < 3) {
 
             switch (radius) {
@@ -170,13 +172,12 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
                 default:
             }
         } else {
-//        log.info("computing splatt");
             for (int i = 0; i < n; i++) {
                 double theta = 2 * Math.PI * i / circum;
-                double x = Math.cos(theta) * radius;
-                double y = Math.sin(theta) * radius;
-                double xround = Math.round(x);
-                double yround = Math.round(y);
+                double xoff = Math.cos(theta) * radius;
+                double yoff = Math.sin(theta) * radius;
+                double xround = Math.round(xoff);
+                double yround = Math.round(yoff);
                 if (xlast != xround || ylast != yround) { // dont make multiple copies of the same splatt around the circle
                     Splatt s = new Splatt();
                     s.x = (int) xround;
@@ -194,10 +195,10 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
             xlast=-1; ylast=-1;
             for(int i=0;i<n;i++){
                 double theta=2*Math.PI*i/circum;
-                double x=Math.cos(theta)*radius+1;
-                double y=Math.sin(theta)*radius+1;
-                double xround=Math.round(x);
-                double yround=Math.round(y);
+                double off=Math.cos(theta)*radius+1;
+                double yoff=Math.sin(theta)*radius+1;
+                double xround=Math.round(off);
+                double yround=Math.round(yoff);
                 if(xlast!=xround || ylast!=yround){ // dont make multiple copies of the same splatt around the circle
                     Splatt s=new Splatt();
                     s.x=(int)xround;
@@ -210,10 +211,10 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
             xlast=-1; ylast=-1;
             for(int i=0;i<n;i++){
                 double theta=2*Math.PI*i/circum;
-                double x=Math.cos(theta)*radius+-1;
-                double y=Math.sin(theta)*radius-1;
-                double xround=Math.round(x);
-                double yround=Math.round(y);
+                double xoff=Math.cos(theta)*radius+-1;
+                double yoff=Math.sin(theta)*radius-1;
+                double xround=Math.round(xoff);
+                double yround=Math.round(yoff);
                 if(xlast!=xround || ylast!=yround){ // dont make multiple copies of the same splatt around the circle
                     Splatt s=new Splatt();
                     s.x=(int)xround;
@@ -232,7 +233,7 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
             splatts[i]=(Splatt)oa[i];
             sum+=splatts[i].weight;
         }
-        log.info("splatt total weight = "+sum);
+        log.info("splatt total weight = "+sum+" num weights="+splatts.length);
         
     }
     
@@ -256,10 +257,12 @@ public class CircularConvolutionFilter extends EventFilter2D implements Observer
     private byte type;
     private int ts;
     
+    @Override
     public void initFilter() {
         resetFilter();
     }
     
+    @Override
     public void update(Observable o, Object arg) {
         if(!isFilterEnabled()) return;
         initFilter();
