@@ -189,20 +189,26 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             currentStartTimestamp = firstTimestamp;
             mostRecentTimestamp = firstTimestamp;
         } catch ( IOException e ){
-            log.warning("couldn't read first event to set starting timestamp");
+            log.warning("couldn't read first event to set starting timestamp - maybe the file is empty?");
         } catch ( NonMonotonicTimeException e2 ){
             log.warning("On AEInputStream.init() caught "+e2.toString());
         }
         log.info("initialized " + this.toString());
     }
 
+    /** Reads the next event from the stream setting no limit on how far ahead in time it is.
+     * 
+     * @return the event.
+     * @throws IOException on reading the file.
+     * @throws net.sf.jaer.eventio.AEFileInputStream.NonMonotonicTimeException if the timestamp is earlier than the one last read.
+     */
     private EventRaw readEventForwards() throws IOException, NonMonotonicTimeException{
         return readEventForwards(Integer.MAX_VALUE);
     }
     
     /** reads the next event forward, sets mostRecentTimestamp, returns null if the next timestamp is later than maxTimestamp.
      * @param maxTimestamp the latest timestamp that should be read.
-    @throws EOFException at end of file
+      @throws EOFException at end of file
      * @throws NonMonotonicTimeException
      * @throws WrappedTimeException
      */
@@ -232,14 +238,14 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 timestampOffset=ts;
             }
             ts-=timestampOffset; 
-//            // TODO fix extra event no matter what dt
-//            if (ts > maxTimestamp) {
-//                // push back event
-//                byteBuffer.position(position()-eventSizeBytes); // we haven't updated our position field yet
-//                ts=lastTs; // this is the one last read successfully 
-//                mostRecentTimestamp=ts;
-//                return null;
-//            }
+            // TODO fix extra event no matter what dt
+            if (ts > maxTimestamp) {
+                // push back event
+                position(position()-1); // we haven't updated our position field yet
+                ts=lastTs; // this is the one last read successfully 
+                mostRecentTimestamp=ts;
+                return null;
+            }
             // check for non-monotonic increasing timestamps, if we get one, reset our notion of the starting time
             if ( isWrappedTime(ts,mostRecentTimestamp,1) ){
                 throw new WrappedTimeException(ts,mostRecentTimestamp,position);
@@ -340,6 +346,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     @return a raw packet of events of a specfied number of events
     fires a property change "position" on every call, and a property change "wrappedTime" if time wraps around.
      */
+    @Override
     synchronized public AEPacketRaw readPacketByNumber (int n) throws IOException{
         if ( !firstReadCompleted ){
             fireInitPropertyChange();
@@ -402,6 +409,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      *@param dt the timestamp different in units of the timestamp (usually us)
      *@see #MAX_BUFFER_SIZE_EVENTS
      */
+    @Override
     synchronized public AEPacketRaw readPacketByTime (int dt) throws IOException{
         if ( !firstReadCompleted ){
             fireInitPropertyChange();
@@ -413,7 +421,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //            boolean lt1=endTimestamp<0, lt2=mostRecentTimestamp<0;
 //            boolean changedSign= ( (lt1 && !lt2) || (!lt1 && lt2) );
 //            if( !changedSign ){
-//                currentStartTimestamp=endTimestamp;
+                currentStartTimestamp=endTimestamp;
 //                log.info(this+" returning empty packet because mostRecentTimestamp="+mostRecentTimestamp+" is already later than endTimestamp="+endTimestamp);
 //                return new AEPacketRaw(0);
 //            }
@@ -492,12 +500,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             mostRecentTimestamp = e.getCurrentTimestamp();
             getSupport().firePropertyChange(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP,lastTimestamp, mostRecentTimestamp);
        } finally{
-            currentStartTimestamp = mostRecentTimestamp;
+//            currentStartTimestamp = mostRecentTimestamp;
         }
         packet.setNumEvents(i);
-//        if(i<1){
-//            log.info(packet.toString());
-//        }
+        if(i<1){
+            log.info(packet.toString());
+        }
         getSupport().firePropertyChange(AEInputStream.EVENT_POSITION,oldPosition,position());
 //        System.out.println("bigwrap="+bigWrap+" read "+packet.getNumEvents()+" mostRecentTimestamp="+mostRecentTimestamp+" currentStartTimestamp="+currentStartTimestamp);
         return packet;
@@ -527,6 +535,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /** gets the size of the stream in events
     @return size in events
      */
+    @Override
     public long size (){
         return ( fileSize - headerOffset ) / eventSizeBytes;
     }
@@ -534,6 +543,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /** set position in events from start of file
     @param event the number of the event, starting with 0
      */
+    @Override
     synchronized public void position (int event){
 //        if(event==size()) event=event-1;
         int newChunkNumber;
@@ -555,12 +565,14 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /** gets the current position (in events) for reading forwards, i.e., readEventForwards will read this event number.
     @return position in events.
      */
+    @Override
     synchronized public int position (){
         return this.position;
     }
 
     /**Returns the position as a fraction of the total number of events
     @return fractional position in total events*/
+    @Override
     synchronized public float getFractionalPosition (){
         return (float)position() / size();
     }
@@ -568,6 +580,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /** Sets fractional position in events
      * @param frac 0-1 float range, 0 at start, 1 at end
      */
+    @Override
     synchronized public void setFractionalPosition (float frac){
         position((int)( frac * size() ));
         try{
@@ -586,6 +599,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /** mark the current position.
      * @throws IOException if there is some error in reading the data
      */
+    @Override
     synchronized public void mark () throws IOException{
         int old=markPosition;
         markPosition = position();
@@ -612,6 +626,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     /** clear any marked position */
+    @Override
     synchronized public void unmark (){
        int old=markPosition;
          markPosition = 0;
@@ -717,6 +732,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             return lastTimestamp;
         }
 
+        @Override
         public String toString (){
             return "NonMonotonicTimeException: position=" + position + " timestamp=" + timestamp + " lastTimestamp=" + lastTimestamp + " jumps backwards by " + ( timestamp - lastTimestamp );
         }
@@ -738,13 +754,14 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             super(readTs,lastTs,position);
         }
 
+        @Override
         public String toString (){
             return "WrappedTimeException: timestamp=" + timestamp + " lastTimestamp=" + lastTimestamp + " jumps backwards by " + ( timestamp - lastTimestamp );
         }
     }
 
     // checks for wrap (if reading forwards, this timestamp <0 and previous timestamp >0)
-    private final boolean isWrappedTime (int read,int prevRead,int dt){
+    private boolean isWrappedTime (int read,int prevRead,int dt){
         if ( dt > 0 && read <= 0 && prevRead > 0 ){
             return true;
         }
@@ -876,7 +893,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             parseFileFormatVersion(s);
         }
         // we don't map yet until we know eventSize
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         sb.append("File header:");
         for ( String str:header ){
             sb.append(str);
@@ -997,10 +1014,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         }
     }
 
+    @Override
     public boolean isNonMonotonicTimeExceptionsChecked (){
         return enableTimeWrappingExceptionsChecking;
     }
 
+    @Override
     public void setNonMonotonicTimeExceptionsChecked (boolean yes){
         enableTimeWrappingExceptionsChecking = yes;
     }
