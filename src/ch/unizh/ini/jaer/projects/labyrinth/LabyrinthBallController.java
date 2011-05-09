@@ -85,7 +85,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         super(chip);
 
         handDetector = new HandDetector(chip);
-        tracker = new LabyrinthBallTracker(chip);
+        tracker = new LabyrinthBallTracker(chip,this);
         tracker.addObserver(this);
         labyrinthHardware = new LabyrinthHardware(chip);
         labyrinthHardware.getSupport().addPropertyChangeListener(this);
@@ -118,11 +118,11 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        out = getEnclosedFilterChain().filterPacket(in);// TODO real practical problem here that if there is no retina input that survives to tracker, we get no updates here to control on
         if (controllerEnabled) {
             control(in, in.getLastTimestamp());
         } // control is also called from callback via update from tracker
-
+       out = getEnclosedFilterChain().filterPacket(in);// TODO real practical problem here that if there is no retina input that survives to tracker, we get no updates here to control on
+ 
         return out;
     }
     private Point2D.Float futurePosErrPix = new Point2D.Float();
@@ -485,7 +485,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     }
 
     /**
-     * @return the tilts
+     * @return the tilts in radians, pan is x and tilt is y. pan tilts table horizontally to affect ball acceleration along x axis and tilt affects y axis acceleration.
      */
     public Point2D.Float getTiltsRad() {
         return tiltsRad;

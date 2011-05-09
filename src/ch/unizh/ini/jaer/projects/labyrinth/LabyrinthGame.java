@@ -35,7 +35,7 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor  {
          
         filterChain = new FilterChain(chip);
 
-        filterChain.add(new RotateFilter(chip));
+//        filterChain.add(new RotateFilter(chip));
         filterChain.add(virtualBall);
         filterChain.add(controller);
         setEnclosedFilterChain(filterChain);

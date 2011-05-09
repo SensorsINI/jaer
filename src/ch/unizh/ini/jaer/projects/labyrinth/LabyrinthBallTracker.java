@@ -36,7 +36,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     // filters and filter chain
     FilterChain filterChain;
     RectangularClusterTracker.Cluster ball = null;
-    RectangularClusterTracker tracker;
+    final RectangularClusterTracker tracker;
     LabyrinthMap map;
     // filtering
     protected int velocityMedianFilterNumSamples = getInt("velocityMedianFilterNumSamples", 3);
@@ -46,7 +46,14 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     GLCanvas glCanvas = null;
     private ChipCanvas canvas;
     private float[] compArray = new float[4];
+    private LabyrinthBallController controller=null; // must check if null when used
 
+    public LabyrinthBallTracker(AEChip chip, LabyrinthBallController controller) {
+        this(chip);
+        this.controller = controller;
+    }
+
+    
     public LabyrinthBallTracker(AEChip chip) {
         super(chip);
         filterChain = new FilterChain(chip);
