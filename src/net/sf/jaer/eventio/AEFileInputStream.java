@@ -395,13 +395,23 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //        return new AEPacketRaw(addr,ts);
     }
 
-    /** returns an AEPacketRaw at least dt long up to the max size of the buffer or until end-of-file.
-     *Events are read as long as the timestamp until (and including) the event whose timestamp is greater (for dt>0) than
-     * startTimestamp+dt, where startTimestamp is the currentStartTimestamp. currentStartTimestamp is incremented after the call by dt.
-     *Fires a property change "position" on each call.
-    Fires property change "wrappedTime" when time wraps from positive to negative or vice versa (when playing backwards).
+    /** Returns an AEPacketRaw at most {@code dt} long up to the max size of the buffer or until end-of-file.
+     *Events are read as long as the timestamp does not exceed {@code currentStartTimestamp+dt}. If there are no events in this period
+     * then the very last event from the previous packet is returned again.
+     * The currentStartTimestamp is incremented after the call by dt, unless there is an exception like EVENT_NON_MONOTONIC_TIMESTAMP, in which case the
+     * currentStartTimestamp is set to the most recently read timestamp {@code mostRecentTimestamp}.
      * <p>
-     *Non-monotonic timestamps cause warning messages to be printed (up to MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT) and packet
+     * The following property changes are fired:
+     * <ol>
+     * <li>Fires a property change AEInputStream.EVENT_POSITION at end of reading each packet.
+     * <li>Fires property change AEInputStream.EVENT_WRAPPED_TIME when time wraps from positive to negative or vice versa (when playing backwards).  
+     * These events are fired on "big wraps" when the 32 bit 1-us timestamp wraps around, which occurs every 
+     * 4295 seconds or 72 minutes.
+     * <li>Fires property change  AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP if a non-monotonically increasing timestamp is detected.
+     * <li>Fires property change AEInputStream.EVENT_EOF on end of the file.
+     * </ol>
+     * <p>
+     * Non-monotonic timestamps cause warning messages to be printed (up to MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT) and packet
      * reading is aborted when the non-monotonic timestamp is encountered. Normally this does not cause problems except that the packet
      * is shorter in duration that called for. But when synchronized playback is enabled it causes the different threads to desynchronize.
      * Therefore the data files should not contain non-monotonic timestamps when synchronized playback is desired.
@@ -421,7 +431,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //            boolean lt1=endTimestamp<0, lt2=mostRecentTimestamp<0;
 //            boolean changedSign= ( (lt1 && !lt2) || (!lt1 && lt2) );
 //            if( !changedSign ){
-                currentStartTimestamp=endTimestamp;
+                currentStartTimestamp=endTimestamp; // always set currentStartTimestamp to the endTimestamp unless there is some exception.
 //                log.info(this+" returning empty packet because mostRecentTimestamp="+mostRecentTimestamp+" is already later than endTimestamp="+endTimestamp);
 //                return new AEPacketRaw(0);
 //            }
@@ -503,9 +513,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //            currentStartTimestamp = mostRecentTimestamp;
         }
         packet.setNumEvents(i);
-        if(i<1){
-            log.info(packet.toString());
-        }
+//        if(i<1){
+//            log.info(packet.toString());
+//        }
         getSupport().firePropertyChange(AEInputStream.EVENT_POSITION,oldPosition,position());
 //        System.out.println("bigwrap="+bigWrap+" read "+packet.getNumEvents()+" mostRecentTimestamp="+mostRecentTimestamp+" currentStartTimestamp="+currentStartTimestamp);
         return packet;
