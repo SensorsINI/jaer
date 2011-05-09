@@ -13,13 +13,7 @@ package jp.ac.osakau.eng.eei;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.*;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.hardwareinterface.HasUpdatableFirmware;
 import de.thesycon.usbio.UsbIoBuf;
-import de.thesycon.usbio.UsbIoInterface;
-import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
-import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
-import java.util.prefs.Preferences;
-import javax.swing.JOptionPane;
 
 /**
  * The hardware interface for the IVS128. The VID is 0x04b4 and the PID is 0x1004.
@@ -28,9 +22,6 @@ import javax.swing.JOptionPane;
  */
 public class IVS128HardwareInterface extends CypressFX2 {
     
-    public final static String FIRMWARE_FILENAME_DVS128_XSVF="/net/sf/jaer/hardwareinterface/usb/cypressfx2/dvs128CPLD.xsvf";
-    private static Preferences prefs=Preferences.userNodeForPackage(IVS128HardwareInterface.class);
-
     /** Creates a new instance of CypressFX2Biasgen */
     protected IVS128HardwareInterface(int devNumber) {
         super(devNumber);
@@ -112,10 +103,6 @@ public class IVS128HardwareInterface extends CypressFX2 {
                 // write capture size
                 buffer.lastCaptureLength=eventCounter-buffer.lastCaptureIndex;
                 frameCounter++;
-                // if (NumberOfWrapEvents!=0) {
-                //System.out.println("Number of wrap events received: "+ NumberOfWrapEvents);
-                //}
-                //System.out.println("wrapAdd : "+ wrapAdd);
             } // sync on aePacketRawPool
            
         }
