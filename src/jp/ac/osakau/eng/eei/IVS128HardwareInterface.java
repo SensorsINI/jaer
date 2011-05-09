@@ -66,7 +66,11 @@ public class IVS128HardwareInterface extends CypressFX2 {
             super(cypress);
         }
         
-        /** Does the translation, timestamp unwrapping and reset. Prints a message when a SYNC event is detected.
+        /** Does the translation, timestamp reset.
+         * Event addresses are unpacked into 3 bytes of 32 bit raw address.
+         * Byte 0 (the LSB) has the cell type.
+         * Byte 1 has the x address
+         * Byte 2 has the y address.
          * @param b the raw buffer
          */
         @Override
@@ -94,7 +98,13 @@ public class IVS128HardwareInterface extends CypressFX2 {
                         buffer.overrunOccuredFlag=true;
                     } else {
                         timestamps[eventCounter]=(int)(US_PER_FRAME*frameCounter); //*TICK_US; //add in the wrap offset and convert to 1us tick
-                        addresses[eventCounter]=(int)(aeBuffer[i]&0xFF);
+                        int celltype=(aeBuffer[i]&0xFF)>>4; // cell type in upper nibble of byte
+                        if(celltype==0) continue;  // no event if no bits are set.
+                        // have event, write the x,y addresses and cell type into different bytes of the raw address.
+                        int x=i%128;
+                        int y=i/128;
+                        int rawaddr=(y<<16 | x<<8 | celltype);
+                        addresses[eventCounter]=rawaddr;
                         eventCounter++;
                         buffer.setNumEvents(eventCounter);
                     }
