@@ -85,9 +85,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
         initFilter();
         chip.addObserver(this);
         getPrefs().addPreferenceChangeListener(this);
-        kalmanFilter = new KalmanFilter(chip,this);
-        setEnclosedFilter(kalmanFilter);
-    }
+     }
     
     public void initFilter() {
         initDefaults();

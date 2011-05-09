@@ -111,7 +111,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     private boolean angleFollowsVelocity = getBoolean("angleFollowsVelocity", false);
     private boolean showPaths=getBoolean("showPaths",true);
 
-
+     private  KalmanFilter kalmanFilter;
+  
 
     public enum ClusterLoggingMethod {
 
@@ -183,6 +184,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //        setPropertyTooltip("opticalGyroTauHighpassMs", "highpass filter time constant in ms for optical gyro position, increase to forget DC value more slowly");
 //    {setPropertyTooltip("velocityMixingFactor","how much cluster velocityPPT estimate is updated by each packet (IIR filter constant)");}
 //    {setPropertyTooltip("velocityTauMs","time constant in ms for cluster velocityPPT lowpass filter");}
+
+                kalmanFilter = new KalmanFilter(chip,this);
+        setEnclosedFilter(kalmanFilter);
 
 
     }
@@ -2208,7 +2212,11 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         return this.clusters;
     }
 
-    private LinkedList<RectangularClusterTracker.Cluster> getPruneList() {
+    /** Returns the list of clusters that will be pruned because they have not received enough support (enough events in their region of interest) or because 
+     * they have been merged with other clusters. 
+     * @return the list of pruned clusters.
+     */
+    public LinkedList<RectangularClusterTracker.Cluster> getPruneList() {
         return this.pruneList;
     }
     protected static final float fullbrightnessLifetime = 1000000;

@@ -23,6 +23,7 @@ import java.io.Serializable;
 import java.util.*;
 import javax.media.opengl.*;
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 /**
  * An AE filter that filters for a range of x,y,type address. These values are persistent and can be used to filter out borders of the input or particular
  * types of input events. A rectangular region may either be passed (default) or blocked.
@@ -30,6 +31,7 @@ import net.sf.jaer.Description;
  * @author tobi
  */
 @Description("Filters a region defined by x, y, and event type ranges")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observer,MouseListener,MouseMotionListener{
     final private static float[] SELECT_COLOR = { .8f,0,0,.5f };
     private int startX = getPrefs().getInt("XYTypeFilter.startX",0);

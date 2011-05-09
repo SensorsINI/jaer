@@ -20,6 +20,7 @@ import java.util.Arrays;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Tracks median event location.
@@ -27,6 +28,7 @@ import net.sf.jaer.Description;
  * @author tobi
  */
 @Description("Tracks a single object by median event location")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class MedianTracker extends EventFilter2D implements FrameAnnotater {
       
     Point2D medianPoint=new Point2D.Float(),stdPoint=new Point2D.Float(),meanPoint=new Point2D.Float();

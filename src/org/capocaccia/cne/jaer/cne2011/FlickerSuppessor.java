@@ -7,6 +7,7 @@ package org.capocaccia.cne.jaer.cne2011;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -21,6 +22,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @author Rodolphe Héliot, Tobi Delbruck, CNE 2011
  */
 @Description("Suppresses global flicker output from DVS retina input") // this annotation is used for tooltip to this class in the chooser. 
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class FlickerSuppessor extends EventFilter2D implements FrameAnnotater {
 
     float xmean, ymean;  // we'll compute these

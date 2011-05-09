@@ -10,6 +10,7 @@
  *Copyright July 7, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 package net.sf.jaer.eventprocessing.filter;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
@@ -25,6 +26,7 @@ because it doesn't need to copy events, only modify them.
  * @author tobi
  */
 @Description("Rotates the addresses")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class RotateFilter extends EventFilter2D implements Observer{
     private boolean swapXY = getPrefs().getBoolean("RotateFilter.swapXY",false);
     private boolean rotate90deg = getPrefs().getBoolean("RotateFilter.rotate90deg",false);

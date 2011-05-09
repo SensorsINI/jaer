@@ -25,6 +25,8 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.prefs.*;
 import javax.swing.ProgressMonitor;
+import jp.ac.osakau.eng.eei.IVS128;
+import jp.ac.osakau.eng.eei.IVS128HardwareInterface;
 
 /**
  *  Devices that use the CypressFX2 and the USBIO driver, e.g. the DVS retinas, the USBAERmini2. This class should not normally be constructed but rather a subclass that overrides
@@ -97,7 +99,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     static public final short PID_USB2AERmapper = (short) 0x8900;
     static public final short DID_STEREOBOARD = (short) 0x2007;
     static public final short PID_TCVS320_RETINA = (short) 0x8702;
-    /**
+    // The yagi lab IVS
+     static public final short PID_IVS128 = (short) IVS128HardwareInterface.PID;
+   /**
      * event supplied to listeners when new events are collected. this is final because it is just a marker for the listeners that new events are available
      */
     public final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE = new PropertyChangeEvent(this, "NewEvents", null, null);
@@ -131,11 +135,11 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     // #define	VR_RAM			0xa3 // loads (uploads) external ram
     public final byte VR_RAM = (byte) 0xa3;    // this is special hw vendor request for reading and writing RAM, used for firmware download
     public static final byte VENDOR_REQUEST_FIRMWARE = (byte) 0xA0; // download/upload firmware -- builtin FX2 feature
-    final static short CONFIG_INDEX = 0;
-    final static short CONFIG_NB_OF_INTERFACES = 1;
-    final static short CONFIG_INTERFACE = 0;
-    final static short CONFIG_ALT_SETTING = 0;
-    final static int CONFIG_TRAN_SIZE = 512;
+    protected final static short CONFIG_INDEX = 0;
+    protected final static short CONFIG_NB_OF_INTERFACES = 1;
+    protected final static short CONFIG_INTERFACE = 0;
+    protected final static short CONFIG_ALT_SETTING = 0;
+    protected final static int CONFIG_TRAN_SIZE = 512;
     // following are to support realtime filtering
     // the AEPacketRaw is used only within this class. Each packet is extracted using the chip extractor object from the first filter in the
     // realTimeFilterChain to a reused EventPacket.
@@ -169,8 +173,11 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     protected AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
     private String stringDescription = "CypressFX2"; // default which is modified by opening
 
-    /** Populates the device descriptor and the string descriptors and builds the String for toString() */
-    private void populateDescriptors(UsbIo gUsbIo) {
+    /** Populates the device descriptor and the string descriptors and builds the String for toString(). 
+     * 
+     * @param gUsbIo the handle to the UsbIo object.
+     */
+    protected void populateDescriptors(UsbIo gUsbIo) {
         try {
             int status;
             // getString device descriptor
@@ -257,14 +264,14 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     /** returns the device interface number. This is the index of this device as returned by the interface factory.
      * @return interface number, 0 based
      */
-    int getInterfaceNumber() {
+    protected int getInterfaceNumber() {
         return interfaceNumber;
     }
 
     /** sets the device number to open, according to the order in the hardware interface factory.
      * @param interfaceNumber 0 based interface number
      */
-    void setInterfaceNumber(int interfaceNumber) {
+    protected void setInterfaceNumber(int interfaceNumber) {
         this.interfaceNumber = interfaceNumber;
     }
 
@@ -2718,7 +2725,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * 
      * @return true if blank
      */
-    private boolean isBlankDevice() {
+    protected boolean isBlankDevice() {
         if (deviceDescriptor.idVendor == VID_BLANK && deviceDescriptor.idProduct == PID_BLANK) {
 //            log.warning("blank CypressFX2 detected");
             return true;

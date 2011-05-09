@@ -1,19 +1,17 @@
 /*
- * CypressFX2Biasgen.java
- *
- * Created on December 1, 2005, 2:00 PM
- *
- * To change this template, choose Tools | Options and locate the template under
- * the Source Creation and Management node. Right-click the template and choose
- * Open. You can then make changes to the template in the Source Editor.
+ * Created May 2011 at CapoCaccia workshop by Tobi Delbruck and Hiro Okuno.
+ * 
  */
 
 package jp.ac.osakau.eng.eei;
 
+import de.thesycon.usbio.UsbIo;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.*;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import de.thesycon.usbio.UsbIoBuf;
+import de.thesycon.usbio.structs.USBIO_CONFIGURATION_INFO;
+import de.thesycon.usbio.structs.USBIO_SET_CONFIGURATION;
 
 /**
  * The hardware interface for the IVS128. The VID is 0x04b4 and the PID is 0x1004.
@@ -22,8 +20,11 @@ import de.thesycon.usbio.UsbIoBuf;
  */
 public class IVS128HardwareInterface extends CypressFX2 {
     
+    public static final int VID=0x04b4;
+    public static final int PID=0x1004;
+    
     /** Creates a new instance of CypressFX2Biasgen */
-    protected IVS128HardwareInterface(int devNumber) {
+    public IVS128HardwareInterface(int devNumber) {
         super(devNumber);
     }
 
@@ -117,4 +118,118 @@ public class IVS128HardwareInterface extends CypressFX2 {
            
         }
     }
+    
+      /**
+     * This method does the hard work of opening the device and making sure everything is OK.
+     *<p>
+     * This method is synchronized to prevent multiple threads from trying to open at the same time, e.g. a GUI thread and the main thread.
+     *<p>
+     * Opening the device after it has already been opened has no effect.
+     *
+     * @see #close
+     *@throws HardwareInterfaceException if there is a problem. Diagnostics are printed to stderr.
+     */
+    synchronized protected void openUsbIo() throws HardwareInterfaceException {
+
+        //device has already been UsbIo Opened by now, in factory
+
+        // opens the USBIOInterface device, configures it, binds a reader thread with buffer pool to read from the device and starts the thread reading events.
+        // we got a UsbIo object when enumerating all devices and we also made a device list. the device has already been
+        // opened from the UsbIo viewpoint, but it still needs firmware download, setting up pipes, etc.
+
+        if (isOpened) {
+//            log.warning("CypressFX2.openUsbIo(): already opened interface and setup device");
+            return;
+        }
+
+        int status;
+
+        gUsbIo = new UsbIo();
+        gDevList = UsbIo.createDeviceList(GUID);
+        status = gUsbIo.open(getInterfaceNumber(), gDevList, GUID);
+        if (status != USBIO_ERR_SUCCESS) {
+            UsbIo.destroyDeviceList(gDevList);
+            isOpened = false;
+            throw new HardwareInterfaceException("CypressFX2.openUsbIo(): can't open USB device: " + UsbIo.errorText(status));
+        }
+
+        acquireDevice();
+
+        // getString device descriptor (possibly before firmware download, when still bare cypress device or running off EEPROM firmware)
+        status = gUsbIo.getDeviceDescriptor(deviceDescriptor);
+        if (status != USBIO_ERR_SUCCESS) {
+            UsbIo.destroyDeviceList(gDevList);
+            throw new HardwareInterfaceException("CypressFX2.openUsbIo(): getDeviceDescriptor: " + UsbIo.errorText(status));
+        } else {
+//            log.info("getDeviceDescriptor: Vendor ID (VID) "
+//                    + HexString.toString((short)deviceDescriptor.idVendor)
+//                    + " Product ID (PID) " + HexString.toString((short)deviceDescriptor.idProduct));
+        }
+
+       
+
+        try {
+            unconfigureDevice(); // in case it was left configured from a terminated process
+        } catch (HardwareInterfaceException e) {
+            log.warning("CypressFX2.open(): can't unconfigure,will try simulated disconnect");
+            int cycleStatus = gUsbIo.cyclePort();
+            if (cycleStatus != USBIO_ERR_SUCCESS) {
+                throw new HardwareInterfaceException("Error cycling port: " + UsbIo.errorText(cycleStatus));
+            }
+            throw new HardwareInterfaceException("couldn't unconfigure device");
+        }
+
+        // set configuration -- must do this BEFORE downloading firmware!
+        if (deviceDescriptor.bNumConfigurations != 1) {
+            throw new HardwareInterfaceException("number of configurations=" + deviceDescriptor.bNumConfigurations + " which is not 1 like it should be");
+        }
+
+        USBIO_SET_CONFIGURATION Conf = new USBIO_SET_CONFIGURATION();
+        Conf.ConfigurationIndex = CONFIG_INDEX;
+        Conf.NbOfInterfaces = CONFIG_NB_OF_INTERFACES;
+        Conf.InterfaceList[0].InterfaceIndex = CONFIG_INTERFACE;
+        Conf.InterfaceList[0].AlternateSettingIndex = CONFIG_ALT_SETTING;
+        Conf.InterfaceList[0].MaximumTransferSize = CONFIG_TRAN_SIZE;
+        status = gUsbIo.setConfiguration(Conf);
+        if (status != USBIO_ERR_SUCCESS) {
+//            gUsbIo.destroyDeviceList(gDevList);
+            //   if (status !=0xE0001005)
+            throw new HardwareInterfaceException("setting configuration: " + UsbIo.errorText(status));
+        }
+
+        //        try{Thread.currentThread().sleep(100);} catch(InterruptedException e){}; // pause for renumeration
+
+        populateDescriptors(gUsbIo);
+
+        if (!gUsbIo.isOperatingAtHighSpeed()) {
+            log.warning("Device is not operating at USB 2.0 High Speed, performance will be limited to about 300 keps");
+        }
+
+        // getString pipe information and extract the FIFO size
+        USBIO_CONFIGURATION_INFO ConfigurationInfo = new USBIO_CONFIGURATION_INFO();
+        status = gUsbIo.getConfigurationInfo(ConfigurationInfo);
+        if (status != USBIO_ERR_SUCCESS) {
+            UsbIo.destroyDeviceList(gDevList);
+            throw new HardwareInterfaceException("getConfigurationInfo: " + UsbIo.errorText(status));
+        }
+
+        if (ConfigurationInfo.NbOfPipes == 0) {
+//            gUsbIo.cyclePort();
+            log.warning("no pipes to bind too - probably blank device");
+//            throw new HardwareInterfaceException("CypressFX2.openUsbIo(): didn't find any pipes to bind to");
+        } 
+
+        isOpened = true;
+
+    }
+    
+       /** Checks for blank cypress VID/PID. 
+     * Device deviceDescriptor must be populated before calling this method.
+     * 
+     * @return true if blank
+     */
+    protected boolean isBlankDevice() {
+       return false;// TODO need to really check this
+    }
+
 }

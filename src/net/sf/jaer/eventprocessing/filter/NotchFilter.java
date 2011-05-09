@@ -6,6 +6,7 @@ package net.sf.jaer.eventprocessing.filter;
 import java.util.Observable;
 import java.util.Observer;
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -27,6 +28,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 @Description("(Not yet working) Puts a notch at a chosen frequency.")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class NotchFilter extends EventFilter2D implements Observer{
 
     public static DevelopmentStatus getDevelopementStatus(){ return DevelopmentStatus.Alpha;}

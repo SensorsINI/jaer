@@ -8,6 +8,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Adds a refractory period to pixels so that they events only pass if there is sufficient 
@@ -18,6 +19,7 @@ import net.sf.jaer.Description;
  * @author tobi
  */
 @Description("Applies a refractory period to pixels so that they events only pass if there is sufficient time since the last event from that pixel")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class RefractoryFilter extends EventFilter2D implements Observer  {
     final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
     

@@ -16,6 +16,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.*;
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * An AE background that filters slow background activity by only passing inPacket that are
@@ -24,6 +25,7 @@ import net.sf.jaer.Description;
  * @author tobi
  */
 @Description("Filters out uncorrelated background activity")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class BackgroundActivityFilter extends EventFilter2D implements Observer  {
 
     final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;

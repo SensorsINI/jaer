@@ -35,6 +35,7 @@ import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListModel;
 import javax.swing.event.ListSelectionEvent;
+import net.sf.jaer.DevelopmentStatus;
 /**
  * A panel that finds subclasses of a class,
  * displays them in a left list,
@@ -177,6 +178,20 @@ public class ClassChooserPanel extends javax.swing.JPanel{
             super.paint(g);
         }
     }
+    
+    private DevelopmentStatus.Status getClassDevelopmentStatus(String className){
+        try{
+            Class c = Class.forName(className);
+            DevelopmentStatus.Status devStatus=null;
+            if (c.isAnnotationPresent(DevelopmentStatus.class)) {
+                DevelopmentStatus des=(DevelopmentStatus)c.getAnnotation(DevelopmentStatus.class);
+                devStatus = des.value();
+            }
+            return devStatus;
+        } catch ( Exception e ){
+            return null;
+        }      
+    }
 
     private String getClassDescription (String className){
         try{
@@ -219,7 +234,14 @@ public class ClassChooserPanel extends javax.swing.JPanel{
                 setForeground(list.getForeground());
             }
             if ( getClassDescription(s) != null ){
-                setForeground(Color.BLUE);
+                DevelopmentStatus.Status develStatus=null;
+                if((develStatus=getClassDevelopmentStatus(s))==DevelopmentStatus.Status.Experimental){
+                    setForeground(Color.ORANGE);
+                    develStatusTF.setText(develStatus.toString());
+                }else{
+                    setForeground(Color.BLUE);
+                    develStatusTF.setText("unknown");
+                }
                 setToolTipText(s + ": " + getClassDescription(s));
             } else{
                 setForeground(list.getSelectionForeground());
@@ -317,6 +339,8 @@ public class ClassChooserPanel extends javax.swing.JPanel{
         descPanel = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         descPane = new javax.swing.JTextPane();
+        jLabel1 = new javax.swing.JLabel();
+        develStatusTF = new javax.swing.JTextField();
 
         availClassPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Available classes"));
         availClassPanel.setToolTipText("If your class doesn't show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath)");
@@ -495,19 +519,33 @@ public class ClassChooserPanel extends javax.swing.JPanel{
         descPane.setEditable(false);
         jScrollPane1.setViewportView(descPane);
 
+        jLabel1.setText("Development status: ");
+
+        develStatusTF.setEditable(false);
+        develStatusTF.setToolTipText("Shows DevelopmentStatus of class as annotated with DevelopmentStatus");
+
         javax.swing.GroupLayout descPanelLayout = new javax.swing.GroupLayout(descPanel);
         descPanel.setLayout(descPanelLayout);
         descPanelLayout.setHorizontalGroup(
             descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(descPanelLayout.createSequentialGroup()
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 585, Short.MAX_VALUE)
+                .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 585, Short.MAX_VALUE)
+                    .addGroup(descPanelLayout.createSequentialGroup()
+                        .addComponent(jLabel1)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(develStatusTF, javax.swing.GroupLayout.DEFAULT_SIZE, 478, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         descPanelLayout.setVerticalGroup(
             descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(descPanelLayout.createSequentialGroup()
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 127, Short.MAX_VALUE)
-                .addContainerGap())
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel1)
+                    .addComponent(develStatusTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
@@ -553,7 +591,7 @@ public class ClassChooserPanel extends javax.swing.JPanel{
                                 .addComponent(chosenClassPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 324, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addGap(18, 18, 18)
                                 .addComponent(descPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                            .addComponent(availClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 507, Short.MAX_VALUE)))
+                            .addComponent(availClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 511, Short.MAX_VALUE)))
                     .addGroup(layout.createSequentialGroup()
                         .addGap(58, 58, 58)
                         .addComponent(moveUpButton)
@@ -676,9 +714,11 @@ private void classJListValueChanged(javax.swing.event.ListSelectionEvent evt) {/
     private javax.swing.JButton defaultsButton;
     private javax.swing.JTextPane descPane;
     private javax.swing.JPanel descPanel;
+    private javax.swing.JTextField develStatusTF;
     private javax.swing.JLabel filterLabel;
     private javax.swing.JPanel filterPanel;
     private javax.swing.JPanel filterTypeOptionsPanel;
+    private javax.swing.JLabel jLabel1;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JButton moveDownButton;

@@ -33,6 +33,7 @@ import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEConstants;
 
 /**
@@ -44,6 +45,7 @@ These features are enabled by flags of the filter.
  * @author tobi
  */
 @Description("Adds useful information annotation to the display, e.g. date/time/event rate")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class Info extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
 
     private DateFormat timeFormat = new SimpleDateFormat("k:mm:ss.S"); //DateFormat.getTimeInstance();

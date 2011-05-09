@@ -1,10 +1,10 @@
 /*
  * KalmanFilter.java
  *
- * This class provides the ClusterTracker with Kalman filtering. For each cluster instance in the ClusterTracker which is
+ * This class provides the RectangularClusterTracker with Kalman filtering. For each cluster instance in the RectangularClusterTracker which is
  *an argument of the constructor, a Kalman Filter datastructure is provided. With a mapToRoad optioin, metric of the
  *state vectors is changed from pixel in meters. The measurements used for the "update" step of the Kalman filter is the
- *positon of the supported cluster. This class has to be instancieated only once per clusterTracker. Multiple instances of
+ *positon of the supported cluster. This class has to be instancieated only once per RectangularClusterTracker. Multiple instances of
  *clusters are managed via LinkedList(to look which clusters are new and which died) and a HashMap which maps a Cluster to
  *its datastructure.
  */
@@ -23,8 +23,9 @@ import java.awt.geom.*;
 import java.util.*;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
-import net.sf.jaer.eventprocessing.tracking.ClusterTracker.Cluster;
+import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import java.io.*;
+import java.util.List;
 
 
 public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Observer{//, PreferenceChangeListener {
@@ -32,7 +33,7 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
     
 //    static Preferences prefs=Preferences.userNodeForPackage(KalmanFilter.class);
     
-    ArrayList<Cluster> clusters;
+    List<Cluster> clusters;
     AEChip chip;
     AEChipRenderer renderer;
     GLUT glut;
@@ -65,14 +66,14 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
     private int dimMeasurement; //the dimension of the measurement(here x and y =2)
     
     //The instance of the cluster tracker to getString the data(measurements)
-    private ClusterTracker clusterTracker;
-    //private float clusterSize=prefs.getFloat("ClusterTracker.clusterSize",.2f);
+    private RectangularClusterTracker tracker;
+    //private float clusterSize=prefs.getFloat("RectangularClusterTracker.clusterSize",.2f);
     
     //for doing a log file
     final String nl = System.getProperty("line.separator");
     
     /** Creates a new instance of KalmanFilter */
-    public KalmanFilter(AEChip chip, ClusterTracker clusterTracker) {
+    public KalmanFilter(AEChip chip, RectangularClusterTracker tracker) {
         super(chip);
         this.chip=chip;
         renderer=(AEChipRenderer)chip.getRenderer();
@@ -80,7 +81,7 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
         initFilter();
         chip.addObserver(this);
 //        prefs.addPreferenceChangeListener(this);
-        this.clusterTracker = clusterTracker;
+        this.tracker = tracker;
         
     }
     
@@ -90,7 +91,7 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
     public void initFilter() {
         
 //        System.out.println(clusters.toString());
-//        clusters = clusterTracker.getClusters();
+//        clusters = RectangularClusterTracker.getClusters();
 //        if(clusters != null){
 //        for(Cluster c:clusters){
 //            kalmans.putString(c,new ClusterData(c));
@@ -118,8 +119,8 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
      *@param ae A Packet of events to process
      */
     synchronized private void track(EventPacket<? extends BasicEvent> ae){
-        clusters = clusterTracker.getClusters();
-        pruneList.addAll(clusterTracker.getPruneList());
+        clusters = tracker.getClusters();
+        pruneList.addAll(tracker.getPruneList());
         iteratorNbOfEventsTillTrack+=ae.getSize();
         if(iteratorNbOfEventsTillTrack >= nbOfEventsTillTrack){
             iteratorNbOfEventsTillTrack = 0;
@@ -293,7 +294,7 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
         }
         
         
-        private float mixingFactor = clusterTracker.getMixingFactor();
+        private float mixingFactor = tracker.getMixingFactor();
         private void updateVariances(){
             if(useDynamicVariances){
                 if (processVariance > minProcessVariance)
