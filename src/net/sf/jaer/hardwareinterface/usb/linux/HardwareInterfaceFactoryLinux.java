@@ -91,14 +91,19 @@ public class HardwareInterfaceFactoryLinux implements HardwareInterfaceFactoryIn
                 showedWarning = true;
                 log.warning(e.toString() + WARNING);
                 try {
-                    SwingUtilities.invokeAndWait(new Runnable() {
-
-                        public void run() {
-                            WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(null, true, WARNING_TITLE, WARNING_LABEL);
+                    if (SwingUtilities.isEventDispatchThread()) {
+                        WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(null, true, WARNING_TITLE, WARNING_LABEL);
                             d.setVisible(true);
+                    } else {
+                        SwingUtilities.invokeAndWait(new Runnable() {
 
-                        }
-                    });
+                            public void run() {
+                                WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(null, true, WARNING_TITLE, WARNING_LABEL);
+                                d.setVisible(true);
+
+                            }
+                        });
+                    }
                 } catch (Exception ex) {
                     log.warning(ex.toString());
                 }
