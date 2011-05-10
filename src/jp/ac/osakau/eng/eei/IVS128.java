@@ -93,8 +93,6 @@ public class IVS128 extends AEChip {
             for (int i = 0; i < n; i ++) { // TODO bug here?
                 int addr = a[i];
 
-                addr = addr & 0xf0; // all event info is in upper nibble of raw address byte
-                addr = addr >> 4; // upper nibble
                 if ((addr & 0x8) != 0) {
                     TypedEvent e = (TypedEvent) outItr.nextOutput();
                     e.type = 3;

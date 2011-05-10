@@ -151,17 +151,19 @@ public class IVS128HardwareInterface extends CypressFX2 {
             log.warning("can't write to pipe: " + UsbIo.errorText(status));
             throw new HardwareInterfaceException(UsbIo.errorText(status));
         }
-        controlPipe.unbind();
+//        controlPipe.unbind();
         isOpened = true;
 
     }
 
     @Override
     protected synchronized void disableINEndpoint() {
+        inEndpointEnabled=false; // TODO implement something to really stop and start data here
     }
 
     @Override
     protected synchronized void enableINEndpoint() throws HardwareInterfaceException {
+        inEndpointEnabled=true;
     }
 
     @Override
@@ -255,7 +257,7 @@ public class IVS128HardwareInterface extends CypressFX2 {
                         buffer.overrunOccuredFlag = true;
                     } else {
                         timestamps[eventCounter] = (int) (US_PER_FRAME * frameCounter); //*TICK_US; //add in the wrap offset and convert to 1us tick
-                        int celltype = (aeBuffer[i] & 0xFF) >> 4; // cell type in upper nibble of byte
+                        int celltype = (aeBuffer[i] & 0xF0) >> 4; // cell type in upper nibble of byte
                         if (celltype == 0) {
                             continue;  // no event if no bits are set.
                         }                        // have event, write the x,y addresses and cell type into different bytes of the raw address.
@@ -283,7 +285,7 @@ public class IVS128HardwareInterface extends CypressFX2 {
      * @return true if blank
      */
     protected boolean isBlankDevice() {
-        return false;// TODO need to really check this
+        return false;// TODO need to really check if device is blank, but we shouldn't have a blank device with the PID 1004 anyhow
     }
 
 }
