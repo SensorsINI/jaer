@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 
-package ch.unizh.ini.jaer.projects.labyrinthkalman;
+package ch.unizh.ini.jaer.projects.labyrinth;
 
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.*;
