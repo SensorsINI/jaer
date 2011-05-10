@@ -27,14 +27,22 @@ public class IVS128 extends AEChip {
         setNumCellTypes(4);
         setEventExtractor(new Extractor(this));
         setEventClass(TypedEvent.class);
+        setName("IVS128");
     }
+
+    @Override
+    public void setSubSamplingEnabled(boolean subSamplingEnabled) {
+        log.warning("setting subsampling has no effect on this chip");
+    }
+    
+    
 
     /** the event extractor for IVS128. IVS128 has four cell types in its events. It also has analog retina output not handled yet here.
      * 
      */
     public class Extractor extends RetinaExtractor {
 
-        final short XMASK = 0xfe, XSHIFT = 1, YMASK = 0x7f00, YSHIFT = 8;
+        final short XMASK = 0xfe, XSHIFT = 8, YMASK = 0x7f00, YSHIFT = 16;
 
         public Extractor(IVS128 chip) {
             super(chip);
@@ -55,7 +63,6 @@ public class IVS128 extends AEChip {
             extractPacket(in, out);
             return out;
         }
-        private int printedSyncBitWarningCount = 3;
 
         /**
          * Extracts the meaning of the raw events. This form is used to supply an output packet. This method is used for real time
@@ -79,17 +86,11 @@ public class IVS128 extends AEChip {
             }
             int n = in.getNumEvents(); //addresses.length;
 
-            int skipBy = 1;
-            if (isSubSamplingEnabled()) {
-                while (n / skipBy > getSubsampleThresholdEventCount()) {
-                    skipBy++;
-                }
-            }
             int sxm = sizeX - 1;
             int[] a = in.getAddresses();
             int[] timestamps = in.getTimestamps();
             OutputEventIterator outItr = out.outputIterator();
-            for (int i = 0; i < n; i += skipBy) { // TODO bug here?
+            for (int i = 0; i < n; i ++) { // TODO bug here?
                 int addr = a[i];
 
                 addr = addr & 0xf0; // all event info is in upper nibble of raw address byte

@@ -27,7 +27,7 @@ import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_DVS128;
  * Manufactures USBIO-driver-based hardware interface; these are mostly CypressFX2-based but also include
  * recent SiLabs boards. This class is used in
 HardwareInterfaceFactory or it can be directly accessed.
- * The appropriate device class is contructed based on the device PID; all devices share the common Thesycon VID owned by jAER.
+ * The appropriate device class is constructed based on the device PID; all devices share the common Thesycon VID owned by jAER.
  * All device here use a common GUID and device driver.
  *
  * @author tobi/raphael
