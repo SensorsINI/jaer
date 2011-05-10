@@ -255,20 +255,13 @@ public class HoughCircleTracker extends EventFilter2D implements FrameAnnotater,
 		this.threshold = threshold;
 	}
 
-	public void annotate(float[][][] frame) {
-	}
-
-	public void annotate(Graphics2D g) {
-	}
-
 	@Override
 	public void annotate(GLAutoDrawable drawable) {
 
-		if(!isFilterEnabled())
-			return;
-		if(drawable == null)
-			return;
-		if(accumulatorArray == null || maxValue == null || maxCoordinate == null)
+		cameraY=chip.getSizeY();
+                cameraX=chip.getSizeX();
+
+                if(accumulatorArray == null || maxValue == null || maxCoordinate == null)
 			return;
 
 		GL gl=drawable.getGL();
@@ -282,7 +275,7 @@ public class HoughCircleTracker extends EventFilter2D implements FrameAnnotater,
 				float red   = (float)accumulatorArray[x][y]/maxValue[0];
 				float green = 1.0f - red;
 
-				gl.glColor4f(red,green,0.0f,.1f);
+				gl.glColor4f(red,green,0.0f,.3f);
 				gl.glRectf(
 						(float)x-0.5f,
 						(float)y-0.5f,
@@ -297,6 +290,7 @@ public class HoughCircleTracker extends EventFilter2D implements FrameAnnotater,
 		gl.glLineWidth(4);
 		for(int j = 0; j<nrMax; j++)
 		{
+                    if(maxCoordinate[j]== null) continue;
 			gl.glRectf((float)maxCoordinate[j].x-1.0f,(float)maxCoordinate[j].y-1.0f,
 				(float)maxCoordinate[j].x+1.0f,(float)maxCoordinate[j].y+1.0f);
 //			gl.glBegin(GL.GL_LINE_LOOP);
@@ -530,12 +524,10 @@ public class HoughCircleTracker extends EventFilter2D implements FrameAnnotater,
 	}
 
 	synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+		cameraY=chip.getSizeY();
+                cameraX=chip.getSizeX();
 
-		if (!isFilterEnabled())
-			return in;
-
-
-		if (in == null || in.getSize() == 0)
+		if (in.isEmpty())
 			return in;
 
 		if(decayMode == true) {
@@ -549,8 +541,8 @@ public class HoughCircleTracker extends EventFilter2D implements FrameAnnotater,
 
 				}
 			}
-			timeStamp = in.getLastTimestamp();
 		}
+		timeStamp = in.getLastTimestamp();
 
 
 		maxValue = new float[nrMax];
@@ -560,20 +552,13 @@ public class HoughCircleTracker extends EventFilter2D implements FrameAnnotater,
 			maxCoordinate[i] = new Coordinate(0.0f,0.0f);
 			
 		}
-
 		for (BasicEvent event : in) {
 
-			float weight;
-
-			try {
+			float weight=1;
+                        if(event instanceof WeightedEvent){
 				WeightedEvent weightedEvent = (WeightedEvent)event;
 				weight = weightedEvent.weight;
-			} catch (ClassCastException e) {
-				weight = 1.0f;
-			}
-
-			if (event.x < 0 || event.x > chip.getSizeX() - 1 || event.y < 0 || event.y > chip.getSizeY() - 1)
-				continue;
+                        }
 
 			// save event in history
 			eventHistory[bufferIndex] = new Coordinate(event.x, event.y);
