@@ -177,8 +177,7 @@ public class IVS128HardwareInterface extends CypressFX2 {
         b[31] = (byte) 47; 
         
         buf.setNumberOfBytesToTransfer(32);
-        controlPipe.writeSync(buf); // starts transfers to host
-        status = controlPipe.setPipeParameters(pipeParams);
+        status = controlPipe.writeSync(buf); // starts transfers to host
         if (status != USBIO_ERR_SUCCESS) {
             log.warning("can't write to pipe: " + UsbIo.errorText(status));
             throw new HardwareInterfaceException(UsbIo.errorText(status));
