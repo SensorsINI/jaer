@@ -185,8 +185,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //    {setPropertyTooltip("velocityMixingFactor","how much cluster velocityPPT estimate is updated by each packet (IIR filter constant)");}
 //    {setPropertyTooltip("velocityTauMs","time constant in ms for cluster velocityPPT lowpass filter");}
 
-                kalmanFilter = new KalmanFilter(chip,this);
-        setEnclosedFilter(kalmanFilter);
+//                kalmanFilter = new KalmanFilter(chip,this);
+//        setEnclosedFilter(kalmanFilter);
 
 
     }
