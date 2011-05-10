@@ -18,8 +18,8 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  * Top level labyrinth robot class.
  * @author tobi
  */
-@Description("Top level labyinth game class")
-public class LabyrinthGame extends EventFilter2DMouseAdaptor  {
+@Description("Top level labyinth game class with Kalman Tracking")
+public class LabyrinthGameKalman extends EventFilter2DMouseAdaptor  {
 
     LabyrinthBallController controller;
     LabyrinthVirtualBall virtualBall=null;
@@ -28,7 +28,7 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor  {
     enum State {Starting, Running, Finished, LostTracking, PathNotFound};
     State state=State.Starting;
 
-   public LabyrinthGame(AEChip chip) {
+   public LabyrinthGameKalman(AEChip chip) {
         super(chip);
         controller = new LabyrinthBallController(chip);
         virtualBall=new LabyrinthVirtualBall(chip,this);

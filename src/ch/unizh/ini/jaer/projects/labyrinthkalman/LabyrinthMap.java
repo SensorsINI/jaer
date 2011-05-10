@@ -369,14 +369,18 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         SVGUniverse svgUniverse = new SVGUniverse();
         SVGDiagram svgDiagram = null;
         svgUniverse.setVerbose(true);
-        URI svgURI = svgUniverse.loadSVG(file.toURI().toURL());
+        try {
+            URI svgURI = svgUniverse.loadSVG(file.toURI().toURL());
 
-        svgDiagram = svgUniverse.getDiagram(svgURI);
-        SVGRoot root = svgDiagram.getRoot();
-        loadChildren(root.getChildren(null));
-        String s = String.format("map has %d holes, %d lines, %d paths, ball path has %d vertices", holesSVG.size(), linesSVG.size(), pathsSVG.size(), ballPathSVG != null ? ballPathSVG.size() : 0);
-        log.info(s);
-        computeTransformsToRetinaCoordinates();
+            svgDiagram = svgUniverse.getDiagram(svgURI);
+            SVGRoot root = svgDiagram.getRoot();
+            loadChildren(root.getChildren(null));
+            String s = String.format("map has %d holes, %d lines, %d paths, ball path has %d vertices", holesSVG.size(), linesSVG.size(), pathsSVG.size(), ballPathSVG != null ? ballPathSVG.size() : 0);
+            log.info(s);
+            computeTransformsToRetinaCoordinates();
+        } catch (IOException e) {
+            log.warning(e.toString());
+        }
     }
     int longestPath = Integer.MIN_VALUE;
 

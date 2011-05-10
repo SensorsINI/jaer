@@ -20,7 +20,6 @@ import net.sf.jaer.eventprocessing.tracking.HoughCircleTracker;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.MedianLowpassFilter;
-import org.capocaccia.cne.jaer.cne2011.KalmanFilter;
 
 /**
  * Specialized tracker for ball location.
@@ -44,24 +43,16 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     private LabyrinthBallController controller=null; // must check if null when used
 
     public LabyrinthBallTracker(AEChip chip, LabyrinthBallController controller) {
-        this(chip);
-        this.controller = controller;
-    }
-
-    
-    public LabyrinthBallTracker(AEChip chip) {
-
         super(chip);
-
+        this.controller = controller;
         map = new LabyrinthMap(chip);
-        kalmanFilter = new KalmanFilter(chip);
+        kalmanFilter = new KalmanFilter(chip,controller);
 
         filterChain = new FilterChain(chip);
         filterChain.add(map);
         filterChain.add(new HoughCircleTracker(chip));
         filterChain.add(kalmanFilter);
-
-        setEnclosedFilterChain(filterChain);
+       setEnclosedFilterChain(filterChain);
         String s = " Labyrinth Tracker";
         if (chip.getCanvas() != null && chip.getCanvas().getCanvas() != null) {
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
@@ -72,8 +63,10 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         setPropertyTooltip("controlTilts", "shows a GUI to directly control table tilts with mouse");
         setPropertyTooltip("centerTilts", "centers the table tilts");
         setPropertyTooltip("disableServos", "disables the servo motors by turning off the PWM control signals; digital servos may not relax however becuase they remember the previous settings");
+
     }
 
+    
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
 
@@ -88,8 +81,8 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
 
     @Override
     public void resetFilter() {
-            velxfilter.setInternalValue(0);
-            velyfilter.setInternalValue(0);
+//            velxfilter.setInternalValue(0);
+//            velyfilter.setInternalValue(0);
             getEnclosedFilterChain().reset();
 //        createBall(startingLocation);
     }
@@ -104,9 +97,9 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     public void annotate(GLAutoDrawable drawable) {
     }
 
-    int velocityMedianFilterLengthSamples = getInt("velocityMedianFilterLengthSamples", 9);
-    MedianLowpassFilter velxfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);
-    MedianLowpassFilter velyfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);
+//    int velocityMedianFilterLengthSamples = getInt("velocityMedianFilterLengthSamples", 1);
+//    MedianLowpassFilter velxfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);
+//    MedianLowpassFilter velyfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);
     Point2D.Float ballVel = new Point2D.Float();
 
     public Point2D.Float getBallPosition() {
@@ -119,9 +112,9 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     public Point2D.Float getBallVelocity() {
         
         Point2D.Float vel = kalmanFilter.getBallVelocity();
-        ballVel.setLocation(velxfilter.filter(vel.x), velyfilter.filter(vel.y));
+//        ballVel.setLocation(velxfilter.filter(vel.x), velyfilter.filter(vel.y));
 //        System.out.println(vel.x+"\t\t"+velxfilter.getValue());
-        return ballVel;
+        return vel;
     }
 
     @Override

@@ -44,7 +44,7 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
 //    public LabyrinthVirtualBall(AEChip chip) {
 //        super(chip);
 //    }
-    public LabyrinthVirtualBall(AEChip chip, LabyrinthGame game) {
+    public LabyrinthVirtualBall(AEChip chip, LabyrinthGameKalman game) {
         super(chip);
         controller = game.controller;
         map = controller.tracker.map;
