@@ -133,12 +133,12 @@ public class ChipCanvas implements GLEventListener, Observer {
         // design capabilities of opengl canvas
         GLCapabilities caps = new GLCapabilities();
 
-        caps.setDoubleBuffered(true);
-        caps.setHardwareAccelerated(true);
-        caps.setAlphaBits(8);
-        caps.setRedBits(8);
-        caps.setGreenBits(8);
-        caps.setBlueBits(8);
+       caps.setAlphaBits(8);
+/*       caps.setDoubleBuffered(true);
+       caps.setHardwareAccelerated(true);
+       caps.setRedBits(8);
+       caps.setGreenBits(8);
+       caps.setBlueBits(8); */
 
         glu = new GLU();
 
