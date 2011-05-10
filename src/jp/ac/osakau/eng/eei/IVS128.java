@@ -42,7 +42,7 @@ public class IVS128 extends AEChip {
      */
     public class Extractor extends RetinaExtractor {
 
-        final short XMASK = 0xfe, XSHIFT = 8, YMASK = 0x7f00, YSHIFT = 16;
+        final short XMASK = 0x7f, XSHIFT = 8, YMASK = 0x7f00, YSHIFT = 16;
 
         public Extractor(IVS128 chip) {
             super(chip);
@@ -86,7 +86,6 @@ public class IVS128 extends AEChip {
             }
             int n = in.getNumEvents(); //addresses.length;
 
-            int sxm = sizeX - 1;
             int[] a = in.getAddresses();
             int[] timestamps = in.getTimestamps();
             OutputEventIterator outItr = out.outputIterator();
@@ -96,7 +95,7 @@ public class IVS128 extends AEChip {
                 if ((addr & 0x8) != 0) {
                     TypedEvent e = (TypedEvent) outItr.nextOutput();
                     e.type = 3;
-                    e.x = (short) (sxm - ((short) ((addr & XMASK) >>> XSHIFT)));
+                    e.x = (short) ((addr & XMASK) >>> XSHIFT);
                     e.y = (short) ((addr & YMASK) >>> YSHIFT);
                     e.timestamp = (timestamps[i]);
 
@@ -104,7 +103,7 @@ public class IVS128 extends AEChip {
                 if ((addr & 0x4) != 0) {
                     TypedEvent e = (TypedEvent) outItr.nextOutput();
                     e.type = (byte) (2);
-                    e.x = (short) (sxm - ((short) ((addr & XMASK) >>> XSHIFT)));
+                    e.x = (short) ((addr & XMASK) >>> XSHIFT);
                     e.y = (short) ((addr & YMASK) >>> YSHIFT);
                     e.timestamp = (timestamps[i]);
 
@@ -112,7 +111,7 @@ public class IVS128 extends AEChip {
                 if ((addr & 0x8) != 0) {
                     TypedEvent e = (TypedEvent) outItr.nextOutput();
                     e.type = (byte) (1);
-                    e.x = (short) (sxm - ((short) ((addr & XMASK) >>> XSHIFT)));
+                    e.x = (short) ((addr & XMASK) >>> XSHIFT);
                     e.y = (short) ((addr & YMASK) >>> YSHIFT);
                     e.timestamp = (timestamps[i]);
 
@@ -120,7 +119,7 @@ public class IVS128 extends AEChip {
                 if ((addr & 0x8) != 0) {
                     TypedEvent e = (TypedEvent) outItr.nextOutput();
                     e.type = (byte) (1 - addr & 1);
-                    e.x = (short) (sxm - ((short) ((addr & XMASK) >>> XSHIFT)));
+                    e.x = (short) ((addr & XMASK) >>> XSHIFT);
                     e.y = (short) ((addr & YMASK) >>> YSHIFT);
                     e.timestamp = (timestamps[i]);
 

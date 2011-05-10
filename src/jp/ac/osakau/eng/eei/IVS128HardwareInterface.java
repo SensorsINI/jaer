@@ -129,7 +129,7 @@ public class IVS128HardwareInterface extends CypressFX2 {
 
         controlPipe = new UsbIoPipe();
 
-        status = controlPipe.bind(getInterfaceNumber(), (byte) 0x02, gDevList, GUID);
+        status = controlPipe.bind(getInterfaceNumber(), (byte) 0x02, gDevList, GUID); // OUT endpoint
         if (status != USBIO_ERR_SUCCESS) {
             log.warning("error binding to pipe for EP2 for controlling device: " + UsbIo.errorText(status));
             throw new HardwareInterfaceException(UsbIo.errorText(status));
@@ -142,8 +142,8 @@ public class IVS128HardwareInterface extends CypressFX2 {
             throw new HardwareInterfaceException(UsbIo.errorText(status));
         }
         USBIO_DATA_BUFFER buf = new USBIO_DATA_BUFFER(64);
-        byte[] b=buf.Buffer();
-        b[0]=0;
+        byte[] b = buf.Buffer();
+        b[0] = 0;
         buf.setNumberOfBytesToTransfer(1);
         controlPipe.writeSync(buf); // starts transfers to host
         status = controlPipe.setPipeParameters(pipeParams);
@@ -158,12 +158,12 @@ public class IVS128HardwareInterface extends CypressFX2 {
 
     @Override
     protected synchronized void disableINEndpoint() {
-        inEndpointEnabled=false; // TODO implement something to really stop and start data here
+        inEndpointEnabled = false; // TODO implement something to really stop and start data here
     }
 
     @Override
     protected synchronized void enableINEndpoint() throws HardwareInterfaceException {
-        inEndpointEnabled=true;
+        inEndpointEnabled = true;
     }
 
     @Override
@@ -246,34 +246,43 @@ public class IVS128HardwareInterface extends CypressFX2 {
                 buffer.lastCaptureIndex = eventCounter;
                 //  each pixel sent uses 4 bits to mark transient on, transient off, sustained on, sustained off as follows
                 // 
-                int pos = aeBuffer[0] & 0xff; // position of 33 in frame
-                int xxx = aeBuffer[1] & 0xff;
-                int frameNumber = (aeBuffer[2] & 0xff); // 0-255 frame counter
-                int numDataSent = (aeBuffer[3] & 0xff); // 
 
-                for (int i = 4; i < bytesSent; i++) {
+                int nblocks = bytesSent / 512;
+                for (int bl = 0; bl < nblocks; bl++) {
+                    
+                    int start=bl*512, end=start+512;
+                    int pos = aeBuffer[start] & 0xff; // position of 33 in frame
 
-                    if ((eventCounter > aeBufferSize - 1) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
-                        buffer.overrunOccuredFlag = true;
-                    } else {
-                        timestamps[eventCounter] = (int) (US_PER_FRAME * frameCounter); //*TICK_US; //add in the wrap offset and convert to 1us tick
-                        int celltype = (aeBuffer[i] & 0xF0) >> 4; // cell type in upper nibble of byte
-                        if (celltype == 0) {
-                            continue;  // no event if no bits are set.
-                        }                        // have event, write the x,y addresses and cell type into different bytes of the raw address.
-                        // each packet has 508 data
-                        int x = i % 128; // TODO 
-                        int y = i / 128;
-                        int rawaddr = (y << 16 | x << 8 | celltype);
-                        addresses[eventCounter] = rawaddr;
-                        eventCounter++;
-                        buffer.setNumEvents(eventCounter);
+                    int xxx = aeBuffer[start+1] & 0xff;
+                    int frameNumber = (aeBuffer[start+2] & 0xff); // 0-255 frame counter
+                    int numDataSent = (aeBuffer[start+3] & 0xff); // 
+
+                    for (int i = start+4; i < end; i++) {
+
+                        if ((eventCounter > aeBufferSize - 1) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
+                            buffer.overrunOccuredFlag = true;
+                        } else {
+                            timestamps[eventCounter] = (int) (US_PER_FRAME * frameCounter); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                            int celltype = (aeBuffer[i] & 0xF0) >> 4; // cell type in upper nibble of byte
+                            if (celltype == 0) {
+                                continue;  // no event if no bits are set.
+                            }                        // have event, write the x,y addresses and cell type into different bytes of the raw address.
+                            // each packet has 508 data
+                            int x = i % 128; // TODO 
+                            int y = i / 128;
+                            int rawaddr = (y << 16 | x << 8 | celltype);
+                            addresses[eventCounter] = rawaddr;
+                            eventCounter++;
+                            buffer.setNumEvents(eventCounter);
+                        }
+                    } // end for
+
+                    if (pos == 0) {
+                        frameCounter++;
                     }
-                } // end for
-
+                }
                 // write capture size
                 buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
-                frameCounter++;
             } // sync on aePacketRawPool
 
         }
@@ -287,5 +296,4 @@ public class IVS128HardwareInterface extends CypressFX2 {
     protected boolean isBlankDevice() {
         return false;// TODO need to really check if device is blank, but we shouldn't have a blank device with the PID 1004 anyhow
     }
-
 }
