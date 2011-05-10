@@ -11,7 +11,6 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.event.TypedEvent;
 
 /**
  * The intelligent vision sensor from the Yagi lab at Osaka University.
@@ -26,7 +25,7 @@ public class IVS128 extends AEChip {
         setSizeY(128);
         setNumCellTypes(4);
         setEventExtractor(new Extractor(this));
-        setEventClass(TypedEvent.class);
+        setEventClass(IVS128Event.class);
         setName("IVS128");
     }
 
@@ -47,7 +46,7 @@ public class IVS128 extends AEChip {
         public Extractor(IVS128 chip) {
             super(chip);
             setNumCellTypes(4);
-            setEventClass(TypedEvent.class);
+            setEventClass(IVS128Event.class);
         }
 
         /** extracts the meaning of the raw events.
@@ -58,7 +57,7 @@ public class IVS128 extends AEChip {
         @Override
         synchronized public EventPacket extractPacket(AEPacketRaw in) {
             if (out == null) {
-                out = new EventPacket<TypedEvent>(chip.getEventClass());
+                out = new EventPacket<IVS128Event>(chip.getEventClass());
             } else {
                 out.clear();
             }
@@ -95,7 +94,7 @@ public class IVS128 extends AEChip {
                 int addr = a[i];
 
                 if ((addr & 0x8) != 0) {
-                    TypedEvent e = (TypedEvent) outItr.nextOutput();
+                    IVS128Event e = (IVS128Event) outItr.nextOutput();
                     e.type = (byte) 3;
                     e.x = (short) ((addr >>> XSHIFT) & 0x7F);
                     e.y = (short) ((addr >>> YSHIFT) & 0x7F);
@@ -103,7 +102,7 @@ public class IVS128 extends AEChip {
 
                 }
                 if ((addr & 0x4) != 0) {
-                    TypedEvent e = (TypedEvent) outItr.nextOutput();
+                    IVS128Event e = (IVS128Event) outItr.nextOutput();
                     e.type = (byte) 2;
                     e.x = (short) ((addr >>> XSHIFT) & 0x7F);
                     e.y = (short) ((addr >>> YSHIFT) & 0x7F);
@@ -111,7 +110,7 @@ public class IVS128 extends AEChip {
 
                 }
                 if ((addr & 0x2) != 0) {
-                    TypedEvent e = (TypedEvent) outItr.nextOutput();
+                    IVS128Event e = (IVS128Event) outItr.nextOutput();
                     e.type = (byte) 1;
                     e.x = (short) ((addr >>> XSHIFT) & 0x7F);
                     e.y = (short) ((addr >>> YSHIFT) & 0x7F);
@@ -119,7 +118,7 @@ public class IVS128 extends AEChip {
 
                 }
                 if ((addr & 0x1) != 0) {
-                    TypedEvent e = (TypedEvent) outItr.nextOutput();
+                    IVS128Event e = (IVS128Event) outItr.nextOutput();
                     e.type = (byte) (1 - addr & 1);
                     e.x = (short) ((addr >>> XSHIFT) & 0x7F);
                     e.y = (short) ((addr >>> YSHIFT) & 0x7F);
