@@ -1240,7 +1240,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             numBuffers = monitor.aeReaderNumBuffers;
 
             int status;
-            status = bind(monitor.getInterfaceNumber(), AE_MONITOR_ENDPOINT_ADDRESS, gDevList, GUID); // device has already been opened so we don't need all the params
+            status = bind(monitor.getInterfaceNumber(), (byte)0x86, gDevList, GUID); // device has already been opened so we don't need all the params
             if (status != USBIO_ERR_SUCCESS) {
                 throw new HardwareInterfaceException("can't bind pipe: " + UsbIo.errorText(status));
             }
@@ -1520,6 +1520,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //            chip.getEventExtractor().reconstructRawPacket(realTimePacket);
         }
 
+        @Override
         public PropertyChangeSupport getReaderSupport() {
             return support;
         }
@@ -1537,6 +1538,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     }
 
     /** @return the size of the double buffer raw packet for AEs */
+    @Override
     public int getAEBufferSize() {
         return aeBufferSize; // aePacketRawPool.writeBuffer().getCapacity();
     }
@@ -1557,10 +1559,12 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         allocateAEBuffers();
     }
 
+    @Override
     public void onAdd() {
         log.info("USBAEMonitor.onAdd(): device added");
     }
 
+    @Override
     public void onRemove() {
         log.info("USBAEMonitor.onRemove(): device removed");
     }
@@ -1569,6 +1573,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * device and starts or stops the AEReader
      * @param enable boolean to enable or disable event acquisition
      */
+    @Override
     public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
 //        log.info("setting event acquisition="+enable);
         setInEndpointEnabled(enable);
@@ -1579,10 +1584,12 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
     }
 
+    @Override
     public boolean isEventAcquisitionEnabled() {
         return isInEndpointEnabled();
     }
 
+    @Override
     public String getTypeName() {
         return "CypressFX2";
     }
