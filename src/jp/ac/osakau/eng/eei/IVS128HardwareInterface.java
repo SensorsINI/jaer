@@ -143,8 +143,40 @@ public class IVS128HardwareInterface extends CypressFX2 {
         }
         USBIO_DATA_BUFFER buf = new USBIO_DATA_BUFFER(64);
         byte[] b = buf.Buffer();
-        b[0] = 0;
-        buf.setNumberOfBytesToTransfer(1);
+        b[0] = (byte) 150;
+        b[1] = (byte) 0;
+        b[2] = (byte) 150;
+        b[3] = (byte) 140;
+        b[4] = (byte) 230;
+        b[5] = (byte) 35;
+        b[6] = (byte) 75;
+        b[7] = (byte) 0;
+        b[8] = (byte) 0;
+        b[9] = (byte) 224;
+        b[10] = (byte) 0;
+        b[11] = (byte) 178;
+        b[12] = (byte) 178;
+        b[13] = (byte) 100;
+        b[14] = (byte) 100;
+        b[15] = (byte) 150;
+        b[16] = (byte) 100;
+        b[17] = (byte) 0;
+        b[18] = (byte) 0;
+        b[19] = (byte) 0;
+        b[20] = (byte) 0;
+        b[21] = (byte) 0;
+        b[22] = (byte) 50;
+        b[23] = (byte) 190;
+        b[24] = (byte) 80;
+        b[25] = (byte) 120;
+        b[26] = (byte) 95;
+        b[27] = (byte) 59;
+        b[28] = (byte) 56;
+        b[29] = (byte) 46;
+        b[30] = (byte) 202;
+        b[31] = (byte) 47; 
+        
+        buf.setNumberOfBytesToTransfer(32);
         controlPipe.writeSync(buf); // starts transfers to host
         status = controlPipe.setPipeParameters(pipeParams);
         if (status != USBIO_ERR_SUCCESS) {
@@ -268,8 +300,8 @@ public class IVS128HardwareInterface extends CypressFX2 {
                                 continue;  // no event if no bits are set.
                             }                        // have event, write the x,y addresses and cell type into different bytes of the raw address.
                             // each packet has 508 data
-                            int x = i % 128; // TODO 
-                            int y = i / 128;
+                            int x = ((508 * pos) + (i - 4)) % 128; // TODO 
+                            int y = ((508 * pos) + (i - 4)) / 128;
                             int rawaddr = (y << 16 | x << 8 | celltype);
                             addresses[eventCounter] = rawaddr;
                             eventCounter++;

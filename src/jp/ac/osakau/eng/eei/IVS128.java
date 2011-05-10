@@ -42,10 +42,12 @@ public class IVS128 extends AEChip {
      */
     public class Extractor extends RetinaExtractor {
 
-        final short XMASK = 0x7f, XSHIFT = 8, YMASK = 0x7f00, YSHIFT = 16;
+        final short XSHIFT = 8, YSHIFT = 16;
 
         public Extractor(IVS128 chip) {
             super(chip);
+            setNumCellTypes(4);
+            setEventClass(TypedEvent.class);
         }
 
         /** extracts the meaning of the raw events.
@@ -56,7 +58,7 @@ public class IVS128 extends AEChip {
         @Override
         synchronized public EventPacket extractPacket(AEPacketRaw in) {
             if (out == null) {
-                out = new EventPacket<PolarityEvent>(chip.getEventClass());
+                out = new EventPacket<TypedEvent>(chip.getEventClass());
             } else {
                 out.clear();
             }
@@ -94,33 +96,33 @@ public class IVS128 extends AEChip {
 
                 if ((addr & 0x8) != 0) {
                     TypedEvent e = (TypedEvent) outItr.nextOutput();
-                    e.type = 3;
-                    e.x = (short) ((addr & XMASK) >>> XSHIFT);
-                    e.y = (short) ((addr & YMASK) >>> YSHIFT);
+                    e.type = (byte) 3;
+                    e.x = (short) ((addr >>> XSHIFT) & 0x7F);
+                    e.y = (short) ((addr >>> YSHIFT) & 0x7F);
                     e.timestamp = (timestamps[i]);
 
                 }
                 if ((addr & 0x4) != 0) {
                     TypedEvent e = (TypedEvent) outItr.nextOutput();
-                    e.type = (byte) (2);
-                    e.x = (short) ((addr & XMASK) >>> XSHIFT);
-                    e.y = (short) ((addr & YMASK) >>> YSHIFT);
+                    e.type = (byte) 2;
+                    e.x = (short) ((addr >>> XSHIFT) & 0x7F);
+                    e.y = (short) ((addr >>> YSHIFT) & 0x7F);
                     e.timestamp = (timestamps[i]);
 
                 }
-                if ((addr & 0x8) != 0) {
+                if ((addr & 0x2) != 0) {
                     TypedEvent e = (TypedEvent) outItr.nextOutput();
-                    e.type = (byte) (1);
-                    e.x = (short) ((addr & XMASK) >>> XSHIFT);
-                    e.y = (short) ((addr & YMASK) >>> YSHIFT);
+                    e.type = (byte) 1;
+                    e.x = (short) ((addr >>> XSHIFT) & 0x7F);
+                    e.y = (short) ((addr >>> YSHIFT) & 0x7F);
                     e.timestamp = (timestamps[i]);
 
                 }
-                if ((addr & 0x8) != 0) {
+                if ((addr & 0x1) != 0) {
                     TypedEvent e = (TypedEvent) outItr.nextOutput();
                     e.type = (byte) (1 - addr & 1);
-                    e.x = (short) ((addr & XMASK) >>> XSHIFT);
-                    e.y = (short) ((addr & YMASK) >>> YSHIFT);
+                    e.x = (short) ((addr >>> XSHIFT) & 0x7F);
+                    e.y = (short) ((addr >>> YSHIFT) & 0x7F);
                     e.timestamp = (timestamps[i]);
 
                 }
