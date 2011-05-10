@@ -13,11 +13,10 @@ import java.beans.PropertyChangeListener;
 import java.util.LinkedList;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
+import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
@@ -26,20 +25,17 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.util.HexString;
 
 /**
  * This filter enables controlling the tracked labyrinth ball.
  * 
  * @author Tobi Delbruck
  */
+@Description("Low level ball controller for Labyrinth game")
 public class LabyrinthBallController extends EventFilter2DMouseAdaptor implements PropertyChangeListener, Observer {
 
     private int jiggleTimeMs = getInt("jiggleTimeMs", 1000);
 
-    public static final String getDescription() {
-        return "Low level ball controller for Labyrinth game";
-    }
     volatile private Point2D.Float tiltsRad = new Point2D.Float(0, 0);
     // control
     private float proportionalGain = getFloat("proportionalGain", 1);
@@ -79,6 +75,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     // path navigation
     PathNavigator nav = new PathNavigator();
     private float dwellTimePathPointMs = getFloat("dwellTimePathPointMs", 100);
+    private int timeToTriggerJiggleAfterBallLostMs=getInt("timeToTriggerJiggleAfterBallLostMs",3000);
 
     /** Constructs instance of the new 'filter' CalibratedPanTilt. The only time events are actually used
      * is during calibration. The PanTilt hardware interface is also constructed.
@@ -88,7 +85,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         super(chip);
 
         handDetector = new HandDetector(chip);
-        tracker = new LabyrinthBallTracker(chip);
+        tracker = new LabyrinthBallTracker(chip,this);
         tracker.addObserver(this);
         labyrinthHardware = new LabyrinthHardware(chip);
         labyrinthHardware.getSupport().addPropertyChangeListener(this);
@@ -115,21 +112,23 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         setPropertyTooltip("integralControlUsesPropDerivErrors", "the integral error integrates both position and velocity terms, not just position error");
         setPropertyTooltip("controllerDelayMs", "controller delay in ms; control is computed on position this many ms ahead of current position");
         setPropertyTooltip("dwellTimePathPointMs", "time that ball should dwell at a path point before aiming for next one");
+        setPropertyTooltip("timeToTriggerJiggleAfterBallLostMs", "time to wait after ball is lost to trigger a jiggle");
         computePoles();
     }
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        out = getEnclosedFilterChain().filterPacket(in);
-//        if (controllerEnabled) {
-//            control(in, in.getLastTimestamp());
-//        } // control is called from callback via update from tracker
-
+        if (controllerEnabled) {
+            control(in, in.getLastTimestamp());
+        } // control is also called from callback via update from tracker
+       out = getEnclosedFilterChain().filterPacket(in);// TODO real practical problem here that if there is no retina input that survives to tracker, we get no updates here to control on
+ 
         return out;
     }
     private Point2D.Float futurePosErrPix = new Point2D.Float();
     private Point2D.Float derivErrorPPS = new Point2D.Float();
     private Point2D.Float futurePos = new Point2D.Float();
+    long lastTimeBallDetected=0;
 
     private void control(EventPacket in, int timestamp) {
         if (handDetector.isHandDetected()) {
@@ -275,8 +274,8 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             gl.glVertex2f(tracker.getBallPosition().x, tracker.getBallPosition().y);
             gl.glVertex2f(target.x, target.y);
             gl.glEnd();
+            
         }
-
         // draw table tilt values
         final float size = .1f;
         float sx = chip.getSizeX(), sy = chip.getSizeY();
@@ -472,7 +471,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     }
 
     /**
-     * @return the tilts
+     * @return the tilts in radians, pan is x and tilt is y. pan tilts table horizontally to affect ball acceleration along x axis and tilt affects y axis acceleration.
      */
     public Point2D.Float getTiltsRad() {
         return tiltsRad;
@@ -770,6 +769,21 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     public void setDwellTimePathPointMs(float dwellTimePathPointMs) {
         this.dwellTimePathPointMs = dwellTimePathPointMs;
         putFloat("dwellTimePathPointMs", dwellTimePathPointMs);
+    }
+
+    /**
+     * @return the timeToTriggerJiggleAfterBallLostMs
+     */
+    public int getTimeToTriggerJiggleAfterBallLostMs() {
+        return timeToTriggerJiggleAfterBallLostMs;
+    }
+
+    /**
+     * @param timeToTriggerJiggleAfterBallLostMs the timeToTriggerJiggleAfterBallLostMs to set
+     */
+    public void setTimeToTriggerJiggleAfterBallLostMs(int timeToTriggerJiggleAfterBallLostMs) {
+        this.timeToTriggerJiggleAfterBallLostMs = timeToTriggerJiggleAfterBallLostMs;
+        putInt("timeToTriggerJiggleAfterBallLostMs",timeToTriggerJiggleAfterBallLostMs);
     }
 
     enum NavigatorState {

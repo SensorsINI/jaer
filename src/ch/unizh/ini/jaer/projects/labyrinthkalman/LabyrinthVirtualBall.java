@@ -8,14 +8,12 @@ import java.awt.geom.Point2D;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Random;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLUquadric;
+import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
@@ -26,11 +24,9 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  *  A virtual ball that generates events and model physics of ball movement.
  * @author Tobi
  */
+@Description("Virtual ball for labyrinth game")
 public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements Observer {
 
-    public static final String getDescription() {
-        return "Virtual ball for labyrinth game";
-    }
     LabyrinthMap map = null;
     LabyrinthBallController controller = null;
     VirtualBall ball = new VirtualBall();

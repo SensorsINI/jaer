@@ -11,6 +11,7 @@ import java.util.Observer;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLCanvas;
 import javax.media.opengl.glu.*;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -26,11 +27,8 @@ import org.capocaccia.cne.jaer.cne2011.KalmanFilter;
  *
  * @author tobi
  */
+@Description("Ball tracker for labyrinth game")
 public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotater, Observer {
-
-    public static String getDescription() {
-        return "Ball tracker for labyrinth game";
-    }
 
     // filters and filter chain
     FilterChain filterChain;
@@ -43,7 +41,14 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     GLCanvas glCanvas = null;
     private ChipCanvas canvas;
     private float[] compArray = new float[4];
+    private LabyrinthBallController controller=null; // must check if null when used
 
+    public LabyrinthBallTracker(AEChip chip, LabyrinthBallController controller) {
+        this(chip);
+        this.controller = controller;
+    }
+
+    
     public LabyrinthBallTracker(AEChip chip) {
 
         super(chip);

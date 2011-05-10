@@ -4,6 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.labyrinthkalman;
 
+import net.sf.jaer.Description;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
@@ -17,11 +18,9 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  * Top level labyrinth robot class.
  * @author tobi
  */
+@Description("Top level labyinth game class")
 public class LabyrinthGame extends EventFilter2DMouseAdaptor  {
 
-    public static String getDescription() {
-        return "Top level labyinth game class";
-    }
     LabyrinthBallController controller;
     LabyrinthVirtualBall virtualBall=null;
     LabyrinthMap map;
@@ -29,14 +28,14 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor  {
     enum State {Starting, Running, Finished, LostTracking, PathNotFound};
     State state=State.Starting;
 
-    public LabyrinthGame(AEChip chip) {
+   public LabyrinthGame(AEChip chip) {
         super(chip);
         controller = new LabyrinthBallController(chip);
         virtualBall=new LabyrinthVirtualBall(chip,this);
          
         filterChain = new FilterChain(chip);
 
-        filterChain.add(new RotateFilter(chip));
+//        filterChain.add(new RotateFilter(chip));
         filterChain.add(virtualBall);
         filterChain.add(controller);
         setEnclosedFilterChain(filterChain);

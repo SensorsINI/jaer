@@ -24,6 +24,7 @@ import javax.media.opengl.glu.GLU;
 import javax.media.opengl.glu.GLUquadric;
 import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.*;
@@ -35,11 +36,9 @@ import net.sf.jaer.util.Matrix;
  * 
  * @author Tobi
  */
+@Description("Handles SVG maps of Labyrinth game")
 public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Observer {
 
-    public static String getDescription() {
-        return "Handles SVG maps of Labyrinth game";
-    }
     // svg stuff
     public static final String DEFAULT_MAP = "labyrinth-hardest.svg"; // in source tree
     ArrayList<Ellipse2D.Float> holesSVG = new ArrayList();

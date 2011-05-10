@@ -4,15 +4,13 @@
  */
 package ch.unizh.ini.jaer.projects.labyrinthkalman;
 
-import ch.unizh.ini.jaer.hardware.pantilt.*;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Random;
 import java.util.TimerTask;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -24,11 +22,9 @@ import net.sf.jaer.hardwareinterface.ServoInterface;
  * 
  * @author Tobi Delbruck
  */
+@Description("Low level hardware interface for Labyrinth game")
 public class LabyrinthHardware extends EventFilter2D implements PropertyChangeListener {
 
-    public static String getDescription() {
-        return "Low level hardware interface for Labyrinth game";
-    }
     private PanTilt panTiltHardware;
     private boolean jitterEnabled = getBoolean("jitterEnabled", false);
     private float jitterFreqHz = getFloat("jitterFreqHz", 1);
@@ -140,10 +136,7 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
     }
 
     public float getJitterFreqHz() {
-        if (panTiltHardware == null) {
-            return 0;
-        }
-        return panTiltHardware.getJitterFreqHz();
+        return jitterFreqHz;
     }
 
     /** The frequency of the jitter
@@ -151,10 +144,7 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
      * @param jitterFreqHz in Hz
      */
     public void setJitterFreqHz(float jitterFreqHz) {
-        if (panTiltHardware == null) {
-            return;
-        }
-        panTiltHardware.setJitterFreqHz(jitterFreqHz);
+        this.jitterFreqHz=jitterFreqHz;
         putFloat("jitterFreqHz", jitterFreqHz);
     }
 
