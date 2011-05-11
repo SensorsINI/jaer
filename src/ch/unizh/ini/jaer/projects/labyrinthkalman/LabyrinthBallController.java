@@ -4,7 +4,11 @@
  */
 package ch.unizh.ini.jaer.projects.labyrinthkalman;
 
-import ch.unizh.ini.jaer.projects.labyrinthkalman.LabyrinthMap.PathPoint;
+import ch.unizh.ini.jaer.projects.labyrinth.HandDetector;
+import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthBallControllerInterface;
+import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthHardware;
+import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap.PathPoint;
+import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthTableTiltControllerGUI;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.geom.*;
@@ -22,7 +26,6 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
@@ -32,7 +35,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * @author Tobi Delbruck
  */
 @Description("Low level ball controller for Labyrinth game")
-public class LabyrinthBallController extends EventFilter2DMouseAdaptor implements PropertyChangeListener, Observer {
+public class LabyrinthBallController extends EventFilter2DMouseAdaptor implements PropertyChangeListener, Observer, LabyrinthBallControllerInterface {
 
     private int jiggleTimeMs = getInt("jiggleTimeMs", 1000);
 

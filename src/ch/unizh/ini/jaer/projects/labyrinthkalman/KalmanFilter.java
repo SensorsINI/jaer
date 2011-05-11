@@ -5,20 +5,21 @@
 
 package ch.unizh.ini.jaer.projects.labyrinthkalman;
 
-import ch.unizh.ini.jaer.projects.labyrinthkalman.LabyrinthBallController;
 import java.awt.geom.Point2D;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.*;
 
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- *
+ * The specialized Kalman filter for ball tracking in the labyrinth game.
  * @author Eero
  */
+@Description("specialized Kalman filter for ball tracking in the labyrinth game")
 public class KalmanFilter extends EventFilter2D implements FrameAnnotater {
 
     /* Kalman filter parameters:*/
@@ -61,6 +62,9 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater {
     public KalmanFilter(AEChip chip, LabyrinthBallController controller) {
         super(chip);
         this.controller=controller;
+        setPropertyTooltip("processSigma","???"); // TODO
+        setPropertyTooltip("measurementThreshold","???");
+        setPropertyTooltip("measurementSigma","???");
         At = new double[6][6];
         AtT = new double[6][6];
         Bt = new double[6][2];

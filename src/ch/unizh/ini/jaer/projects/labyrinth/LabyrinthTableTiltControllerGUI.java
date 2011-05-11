@@ -31,7 +31,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
     // property change messages
     public final String POSITION = "position";
     Logger log = Logger.getLogger("LabyrinthBallController");
-    private LabyrinthBallController controller;
+    private LabyrinthBallControllerInterface controller;
     private int w = 200, h = 200, x0 = 0, y0 = 0;
     private Point2D.Float lastPanTilt = new Point2D.Float(0, 0);
     private Point lastMousePressLocation = new Point(w / 2, h / 2);
@@ -44,7 +44,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
      * 
      * @param controller the pan tilt unit
      */
-    public LabyrinthTableTiltControllerGUI(LabyrinthBallController controller) {
+    public LabyrinthTableTiltControllerGUI(LabyrinthBallControllerInterface controller) {
         this.controller = controller;
         initComponents();
         calibrationPanel.setPreferredSize(new Dimension(w, h));

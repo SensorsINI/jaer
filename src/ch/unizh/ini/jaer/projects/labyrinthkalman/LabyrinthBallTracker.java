@@ -4,7 +4,8 @@
  */
 package ch.unizh.ini.jaer.projects.labyrinthkalman;
 
-import ch.unizh.ini.jaer.projects.labyrinthkalman.LabyrinthMap.PathPoint;
+import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap;
+import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap.PathPoint;
 import java.awt.geom.Point2D;
 import java.util.Observable;
 import java.util.Observer;
@@ -19,7 +20,6 @@ import net.sf.jaer.eventprocessing.*;
 import net.sf.jaer.eventprocessing.tracking.HoughCircleTracker;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.util.filter.MedianLowpassFilter;
 
 /**
  * Specialized tracker for ball location.

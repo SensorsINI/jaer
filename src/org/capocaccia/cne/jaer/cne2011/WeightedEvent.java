@@ -8,7 +8,7 @@ import net.sf.jaer.event.PolarityEvent;
  */
 
 /**
- * An event with a weight.
+ * An event with a real value weight.
  * @author Jan Funke
  */
 public class WeightedEvent extends PolarityEvent {

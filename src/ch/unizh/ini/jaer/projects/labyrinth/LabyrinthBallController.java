@@ -32,7 +32,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * @author Tobi Delbruck
  */
 @Description("Low level ball controller for Labyrinth game")
-public class LabyrinthBallController extends EventFilter2DMouseAdaptor implements PropertyChangeListener, Observer {
+public class LabyrinthBallController extends EventFilter2DMouseAdaptor implements PropertyChangeListener, Observer, LabyrinthBallControllerInterface {
 
     private int jiggleTimeMs = getInt("jiggleTimeMs", 1000);
 
@@ -119,7 +119,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (controllerEnabled) {
-            control(in, in.getLastTimestamp());
+            control(in, timeUs()); //in.getLastTimestamp()
         } // control is also called from callback via update from tracker
        out = getEnclosedFilterChain().filterPacket(in);// TODO real practical problem here that if there is no retina input that survives to tracker, we get no updates here to control on
  
@@ -236,6 +236,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     public void resetFilter() {
         resetControllerState();
         filterChain.reset();
+        nav.reset();
     }
 
     @Override
@@ -247,6 +248,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     @param xtiltRad in radians, positive to tilt to right towards positive x
     @param ytiltRad in radians, positive to tilt up towards positive y
      */
+    @Override
     public void setTilts(float xtiltRad, float ytiltRad) throws HardwareInterfaceException {
         float xTiltRad = clipPanTilts((xtiltRad));
         float yTiltRad = clipPanTilts((ytiltRad));
@@ -440,12 +442,16 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
      */
     @Override
     public void update(Observable o, Object arg) {
-        if (arg instanceof UpdateMessage) {
-            UpdateMessage m = (UpdateMessage) arg;
-            if (isControllerEnabled()) {
-                control(m.packet, m.timestamp);
-            }
-        }
+//        if (arg instanceof UpdateMessage) {
+//            UpdateMessage m = (UpdateMessage) arg;
+//            if (isControllerEnabled()) {
+//                control(m.packet, timeUs());
+//            }
+//        }
+    }
+    
+    int timeUs(){
+        return (int)(System.nanoTime()>>10);
     }
 //    /**
 //     * @return the mousePosition
@@ -598,6 +604,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         }
     }
 
+    @Override
     public void centerTilts() {
         try {
             setTilts(0, 0);
@@ -606,6 +613,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         }
     }
 
+    @Override
     public void disableServos() {
         if (labyrinthHardware != null && labyrinthHardware.getServoInterface() != null) {
             try {
@@ -621,6 +629,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         return labyrinthHardware;
     }
 
+    @Override
     public void controlTilts() {
         if (gui == null || !gui.isDisplayable()) {
             gui = new LabyrinthTableTiltControllerGUI(this);
@@ -638,13 +647,18 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         tracker.doClearMap();
     }
 
+    volatile boolean jiggleRunning=false;
+    
+    @Override
     public void doJiggleTable() {
         Runnable r = new Runnable() {
 
             @Override
             public void run() {
-                boolean en = isControllerEnabled();
-                setControllerEnabled(false);
+                if(jiggleRunning) return;
+                jiggleRunning=true;
+                log.info("starting jiggle");
+                setControllerDisabledTemporarily(true);
                 tracker.resetFilter();
                 centerTilts();
                 labyrinthHardware.startJitter();
@@ -658,8 +672,8 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 } catch (InterruptedException ex) {
                 }
                 centerTilts();
-                setControllerEnabled(en);
-
+                setControllerDisabledTemporarily(false);
+                jiggleRunning=false;
             }
         };
         Thread T = new Thread(r);
@@ -823,7 +837,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                     timeNowMs - timeReachedNextPathPointMs);
         }
 
-        Point2D.Float findTarget() {
+        synchronized Point2D.Float findTarget() {
             if (mousePosition != null) {
                 return mousePosition;
             } else {
@@ -850,6 +864,12 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 Point2D.Float target = previousPathPoint.getPointFractionToNext(fractionToNextPoint); // so return a point part way to next point to aim for
                 return target;
             }
+        }
+
+        synchronized private void reset() {
+            currenPathPoint=null;
+            nextPathPoint=null;
+            previousPathPoint=null;
         }
     }
 }

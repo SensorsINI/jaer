@@ -4,6 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.labyrinthkalman;
 
+import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap;
 import java.awt.geom.Point2D;
 import java.util.Observable;
 import java.util.Observer;

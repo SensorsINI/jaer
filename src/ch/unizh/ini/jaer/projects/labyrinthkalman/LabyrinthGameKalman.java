@@ -4,14 +4,13 @@
  */
 package ch.unizh.ini.jaer.projects.labyrinthkalman;
 
+import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap;
 import net.sf.jaer.Description;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.*;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
-import net.sf.jaer.eventprocessing.filter.RotateFilter;
-import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
