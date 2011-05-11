@@ -1,4 +1,4 @@
-package org.capocaccia.cne.jaer.cne2011;
+package ch.unizh.ini.jaer.projects.labyrinthkalman;
 
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.PolarityEvent;

@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 
-package org.capocaccia.cne.jaer.cne2011;
+package ch.unizh.ini.jaer.projects.labyrinthkalman;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.*;

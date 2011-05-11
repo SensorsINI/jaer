@@ -22,7 +22,7 @@ import java.awt.event.*;
 
 import javax.swing.*;
 import net.sf.jaer.Description;
-import org.capocaccia.cne.jaer.cne2011.WeightedEvent;
+import ch.unizh.ini.jaer.projects.labyrinthkalman.WeightedEvent;
 
 /**
  * A simple circle tracker based on a hough transform that correctly tracks the maximum even when it's location changes out from under us.
