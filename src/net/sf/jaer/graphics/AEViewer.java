@@ -1139,6 +1139,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             noneInterfaceButton.setSelected(true);
         }
         log.info(sb.toString());
+        
+        // TODO add menu items for things that cannot be easily enumerated like serial port devices, e.g. where enumeration is very expensive because
+       // you need to probe each possible com port
+        
     }
 
     void fixBiasgenControls (){
