@@ -192,7 +192,6 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater {
 
             double distance = mahalanobis(meas);
 
-//            System.out.println(distance);
             if (distance < minDistance) {
                 minDistance = distance;
                 bestMeas[0][0] = meas[0][0];
