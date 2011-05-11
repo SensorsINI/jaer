@@ -440,7 +440,6 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
     private File getLastFilePrefs() {
         String pack = this.getClass().getPackage().getName();
         String path = "src" + File.separator + pack.replace(".", File.separator) + File.separator + DEFAULT_MAP;
-//        return new File(path);
         return new File(getString("lastFile", path));
     }
 
