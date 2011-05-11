@@ -110,7 +110,7 @@ final public class ThresholdMap implements Observer {
         WordCount wCounter = new WordCount();     // count lines and words to determine array size!
         wCounter.count(file.getPath().toString());
 
-        if(wCounter.numWords!=length()){
+        if(wCounter.numWords!=length()/2){
             throw new IOException("number of words in file ("+wCounter.numWords+") does not match required number of elements in map ("+length()+")");
         }
         rowNumb = wCounter.numLines;
@@ -120,7 +120,7 @@ final public class ThresholdMap implements Observer {
         bufRdr = new BufferedReader(new FileReader(file));
         String line = null;
 
-        int row = sy;
+        int row = sy-1;
         int col = 0;
 
         //read each line of text file

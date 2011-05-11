@@ -61,7 +61,7 @@ public class ThresholdLearner extends EventFilter2D implements Observer {
         final int sx = chip.getSizeX();
         for (BasicEvent be : in) {
             PolarityEvent pe = (PolarityEvent) be;
-            lastEventTimes[pe.x][pe.y][pe.type] = pe.timestamp;
+//            lastEventTimes[pe.x][pe.y][pe.type] = pe.timestamp;
             TemporalContrastEvent tce = (TemporalContrastEvent) outItr.nextOutput();
             tce.copyFrom(pe);
             tce.contrast = map.getThreshold(pe.x, pe.y, pe.type);
