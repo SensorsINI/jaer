@@ -168,7 +168,7 @@ public class IVS128HardwareInterface extends CypressFX2 {
         b[22] = (byte) 50;
         b[23] = (byte) 190;
         b[24] = (byte) 80;
-        b[25] = (byte) 120;
+        b[25] = (byte) 110;
         b[26] = (byte) 95;
         b[27] = (byte) 59;
         b[28] = (byte) 56;
@@ -281,26 +281,33 @@ public class IVS128HardwareInterface extends CypressFX2 {
                 int nblocks = bytesSent / 512;
                 for (int bl = 0; bl < nblocks; bl++) {
                     
-                    int start=bl*512, end=start+512;
+                    int start=bl*512;
                     int pos = aeBuffer[start] & 0xff; // position of 33 in frame
+                    int iDataLength;
 
                     int xxx = aeBuffer[start+1] & 0xff;
-                    int frameNumber = (aeBuffer[start+2] & 0xff); // 0-255 frame counter
-                    int numDataSent = (aeBuffer[start+3] & 0xff); // 
+                    int iNumOfFrame = (aeBuffer[start+2] & 0xff); // 0-255 frame counter
+                    int iNumOfImage = (aeBuffer[start+3] & 0xff); // 
 
-                    for (int i = start+4; i < end; i++) {
+                    if(pos == 32){
+                        iDataLength = 132;
+                    } else {
+                        iDataLength = 512;
+                    }
+                    
+                    for (int i = 4; i < iDataLength; i++) {
 
                         if ((eventCounter > aeBufferSize - 1) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
                             buffer.overrunOccuredFlag = true;
                         } else {
                             timestamps[eventCounter] = (int) (US_PER_FRAME * frameCounter); //*TICK_US; //add in the wrap offset and convert to 1us tick
-                            int celltype = (aeBuffer[i] & 0xF0) >> 4; // cell type in upper nibble of byte
+                            int celltype = (aeBuffer[start + i] & 0xF0) >> 4; // cell type in upper nibble of byte
                             if (celltype == 0) {
                                 continue;  // no event if no bits are set.
                             }                        // have event, write the x,y addresses and cell type into different bytes of the raw address.
                             // each packet has 508 data
                             int x = ((508 * pos) + (i - 4)) % 128; // TODO 
-                            int y = ((508 * pos) + (i - 4)) / 128;
+                            int y = 127 - ((508 * pos) + (i - 4)) / 128;
                             int rawaddr = (y << 16 | x << 8 | celltype);
                             addresses[eventCounter] = rawaddr;
                             eventCounter++;
