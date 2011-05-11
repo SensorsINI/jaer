@@ -61,14 +61,15 @@ public class HoughCircleTracker extends EventFilter2D implements FrameAnnotater,
 	DrawPanel gazePanel;
 
 	// parameters
-	private float radius = getPrefs().getFloat("HoughCircleTracker.radius", 12.5f);
-	private int bufferLength = getPrefs().getInt("HoughCircleTracker.bufferLength", 200);
-	private int threshold = getPrefs().getInt("HoughCircleTracker.threshold", 30);
+	private float   radius	 = getPrefs().getFloat("HoughCircleTracker.radius", 0.8f);
+	private int     bufferLength   = getPrefs().getInt("HoughCircleTracker.bufferLength", 4000);
+	private int     threshold      = getPrefs().getInt("HoughCircleTracker.threshold", 15);
 	private boolean logDataEnabled = false;
-	private float decay = getPrefs().getFloat("HoughCircleTracker.decay", 1.0f);
-	private int nrMax = getPrefs().getInt("HoughCircleTracker.nrMax", 4);
-	private boolean decayMode = getPrefs().getBoolean("HoughCricleTracker.decayMode", true);
-	private boolean drawHough = getPrefs().getBoolean("HoughCircleTracker.drawHough", false);
+	private float   decay	  = getPrefs().getFloat("HoughCircleTracker.decay", 1.0f);
+	private int     nrMax	  = getPrefs().getInt("HoughCircleTracker.nrMax", 1);
+	private boolean decayMode      = getPrefs().getBoolean("HoughCricleTracker.decayMode", true);
+	private boolean drawHough      = getPrefs().getBoolean("HoughCircleTracker.drawHough", false);
+	private boolean locDepression  = getPrefs().getBoolean("HoughCirclreTracker.locDepression", true);
 
 
 	public HoughCircleTracker(AEChip chip) {
@@ -165,8 +166,18 @@ public class HoughCircleTracker extends EventFilter2D implements FrameAnnotater,
 		initFilter();
 	}
 
+        public boolean getLocDepression(){
+	    return locDepression;
+	}
+
+	synchronized public void setLocDepression(boolean locDepression){
+		getPrefs().putBoolean("HoughCircleTracker.locDepression",locDepression);
+		if(locDepression != this.locDepression) resetFilter();
+		this.locDepression = locDepression;
+	}
+
 	public boolean getDecayMode(){
-		return decayMode;
+	    return decayMode;
 	}
 
 	synchronized public void setDecayMode(boolean decayMode){
@@ -481,22 +492,22 @@ public class HoughCircleTracker extends EventFilter2D implements FrameAnnotater,
 	  if (x-locMaxRad < 0 || x+locMaxRad > chip.getSizeX()-1
 		  || y-locMaxRad < 0 || y+locMaxRad > chip.getSizeY()-1)
 			return false;
-	  if(accumulatorArray[x][y]<accumulatorArray[x][y+i])
-		  return false;
-	  if(accumulatorArray[x][y]<accumulatorArray[x][y-i])
-		  return false;
-	  if(accumulatorArray[x][y]<accumulatorArray[x+i][y])
-		  return false;
-	  if(accumulatorArray[x][y]<accumulatorArray[x-i][y])
-		  return false;
-	  if(accumulatorArray[x][y]<accumulatorArray[x+i][y-i])
-		  return false;
-	  if(accumulatorArray[x][y]<accumulatorArray[x-i][y+i])
-		  return false;
-	  if(accumulatorArray[x][y]<accumulatorArray[x+i][y+i])
-		  return false;
-	  if(accumulatorArray[x][y]<accumulatorArray[x-i][y-i])
-		  return false;
+	  if(accumulatorArray[x][y]<accumulatorArray[x][y+1])
+	      return false;
+	  if(accumulatorArray[x][y]<accumulatorArray[x][y-1])
+	      return false;
+	  if(accumulatorArray[x][y]<accumulatorArray[x+1][y])
+	      return false;
+	  if(accumulatorArray[x][y]<accumulatorArray[x-1][y])
+	      return false;
+	  if(accumulatorArray[x][y]<accumulatorArray[x+1][y-1])
+	      return false;
+	  if(accumulatorArray[x][y]<accumulatorArray[x-1][y+1])
+	      return false;
+	  if(accumulatorArray[x][y]<accumulatorArray[x+1][y+1])
+	      return false;
+	  if(accumulatorArray[x][y]<accumulatorArray[x-1][y-1])
+	      return false;
 	  
 	  
 	  return true;
@@ -601,14 +612,31 @@ public class HoughCircleTracker extends EventFilter2D implements FrameAnnotater,
 				  }
 			}
 		
-		}
+	        }
 
 		OutputEventIterator itr = out.outputIterator();
 		for(int i = 0; i<nrMax; i++)
 		{
-			int x = (int)maxCoordinate[i].x;
-			int y = (int)maxCoordinate[i].y;
+		    int x = (int)maxCoordinate[i].x;
+		    int y = (int)maxCoordinate[i].y;
+
+		    if(locDepression == true)
+		    {
+			if(x-1 > 0 && x+1 < chip.getSizeX()-1
+			    && y-1 > 0 && y+1 < chip.getSizeY()-1)
+			{
 			accumulatorArray[x][y] *= 0.01f;
+			accumulatorArray[x][y+1] *= 0.1f;
+			accumulatorArray[x][y-1] *= 0.1f;
+			accumulatorArray[x+1][y] *= 0.1f;
+			accumulatorArray[x-1][y] *= 0.1f;
+			accumulatorArray[x+1][y+1] *= 0.1f;
+			accumulatorArray[x-1][y+1] *= 0.1f;
+			accumulatorArray[x-1][y-1] *= 0.1f;
+			accumulatorArray[x-1][y-1] *= 0.1f;
+			}
+
+		    }
 		
 			BasicEvent outEvent = itr.nextOutput();
 			outEvent.x = (short)maxCoordinate[i].x;

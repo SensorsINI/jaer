@@ -5,6 +5,7 @@
 
 package ch.unizh.ini.jaer.projects.labyrinthkalman;
 
+import java.io.FileNotFoundException;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.*;
 
@@ -12,6 +13,15 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
+
+import java.io.FileReader;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.util.Scanner;
+import java.util.Locale;
 
 /**
  *
@@ -27,26 +37,115 @@ public class DepressionMap extends EventFilter2D implements FrameAnnotater {
 	private boolean learnMap = false;
 	private boolean showMap  = false;
 
+        private String FilePath = getString("DepressionMap.FilePath", "KalmanDepression.map");
+        //private File absolutePath = new File("/home/lorenz/capo/Kalman.map");
+
+
 	public DepressionMap(AEChip chip) {
 
 		super(chip);
 		resetFilter();
 	}
 
+        synchronized public void doLoadMap() throws FileNotFoundException{
+                System.out.println("Loading...");
+
+                getFilePath();
+                System.out.println(FilePath);
+                Scanner s = null;
+                double sum = 0;
+                try {
+                        s = new Scanner(
+                        new BufferedReader(new FileReader(FilePath)));
+
+                        for (int x = 0; x < cameraX; x++)
+				for (int y = 0; y < cameraY; y++)
+					map[x][y] = s.nextDouble();
+
+                    }
+                catch(Exception e){
+                        System.err.println ("Error loading file");
+                    }
+                finally {
+                        s.close();
+                    }
+        }
+
 	@Override
 	final public void resetFilter()
 	{
-		cameraX = chip.getSizeX();
+                File f = new File(FilePath);
+                cameraX = chip.getSizeX();
 		cameraY = chip.getSizeY();
 
 		map = new double[cameraX][cameraY];
+                
+                System.out.println("f.exists:"+f.exists());
+                if(f.exists())
+                {
+                    getFilePath();
+                    System.out.println(FilePath);
+                    Scanner s = null;
+                    double sum = 0;
+                    try {
+                            s = new Scanner(
+                             new BufferedReader(new FileReader(FilePath)));
+
+                            for (int x = 0; x < cameraX; x++)
+				for (int y = 0; y < cameraY; y++)
+					map[x][y] = s.nextDouble();
+
+                        }
+                    catch(Exception e){
+                            System.err.println ("Error loading file");
+                        }
+                    finally {
+                            s.close();
+                        }
+                    
+                }
+
+                else
+                {
+
 		for (int x = 0; x < cameraX; x++)
 			for (int y = 0; y < cameraY; y++)
 				map[x][y] = 1.0;
+                }
 		maxMap = 0.0;
 
-		System.out.println("DepressionMap reseted.");
+		System.out.println("DepressionMap reset");
 	}
+
+        synchronized public void doSaveMap(){
+                System.out.println("Saving...");
+                
+                getFilePath();
+                System.out.println(FilePath);
+
+                FileOutputStream out;
+                PrintStream p;
+
+                try
+                {
+                        out = new FileOutputStream(FilePath);
+
+                        // Connect print stream to the output stream
+                        p = new PrintStream( out );
+                        for(int x = 0; x<cameraX; x++)
+                            for(int y = 0; y<cameraY; y++)
+                            {
+                                 p.println ((double)map[x][y]);
+                            }
+                        p.close();
+                }
+                catch (Exception e)
+                {
+                     System.err.println ("Error writing to file");
+                }
+
+
+        }
 
 	@Override
 	public void initFilter() {
@@ -67,7 +166,19 @@ public class DepressionMap extends EventFilter2D implements FrameAnnotater {
 
 	public boolean getLearnMap() {
 		return learnMap;
+
 	}
+        
+        public void setFilePath(String FilePath) {
+                
+            this.FilePath = FilePath;
+            //resetFilter();
+        }
+
+        public String getFilePath() {
+                return FilePath;
+        }
+
 
 	public void setShowMap(boolean showMap) {
 		this.showMap = showMap;
@@ -85,6 +196,9 @@ public class DepressionMap extends EventFilter2D implements FrameAnnotater {
 
 		if (in == null || in.getSize() == 0)
 			return in;
+
+                if(map == null)
+                    return in;
 
                 checkOutputPacketEventType(WeightedEvent.class);
                 OutputEventIterator itr = out.outputIterator();
@@ -133,7 +247,7 @@ public class DepressionMap extends EventFilter2D implements FrameAnnotater {
 				float green = (float)map[x][y]/(float)(learnMap ? maxMap : 1.0f);
 				float red   = 1.0f - green;
 
-				gl.glColor4f(red,green,0.0f,.1f);
+				gl.glColor4f(red,green,0.0f,.9f);
 				gl.glRectf(
 						(float)x-0.5f,
 						(float)y-0.5f,

@@ -168,7 +168,23 @@ public final class PixelExhaustion extends EventFilter2D implements Observer{
                         short y = event.y;
 
                         //increase exhaustion
+
                         exhaustion[x][y] += 1.0;
+                        if(exhaustion[x][y] > 2.0) exhaustion[x][y] *=5;
+
+                        if(x-1 > 0 && x+1 < chip.getSizeX()-1
+                            && y-1 > 0 && y+1 < chip.getSizeY()-1)
+                        {
+                        exhaustion[x][y] += 1;
+                        exhaustion[x][y+1] += 1;
+                        exhaustion[x][y-1] += 1;
+                        exhaustion[x+1][y] += 1;
+                        exhaustion[x-1][y] += 1;
+                        exhaustion[x+1][y+1] += 1;
+                        exhaustion[x-1][y+1] += 1;
+                        exhaustion[x-1][y-1] += 1;
+                        exhaustion[x-1][y-1] += 1;
+                        }
 
                         //large exhaustion has low probability to pass the filter
                         double random = Math.random();
