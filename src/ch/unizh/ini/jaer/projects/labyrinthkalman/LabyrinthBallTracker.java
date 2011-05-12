@@ -96,7 +96,13 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     @Override
     public void annotate(GLAutoDrawable drawable) {
     }
+    
+    public boolean positionEstimateValid()
+    {
+    	return kalmanFilter.positionEstimateValid();
+    }
 
+    
 //    int velocityMedianFilterLengthSamples = getInt("velocityMedianFilterLengthSamples", 1);
 //    MedianLowpassFilter velxfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);
 //    MedianLowpassFilter velyfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);

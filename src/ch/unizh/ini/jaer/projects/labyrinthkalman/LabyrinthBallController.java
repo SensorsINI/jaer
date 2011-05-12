@@ -140,7 +140,8 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
         target = nav.findTarget();
 
-        if (target != null) {
+        if (target != null && tracker.positionEstimateValid() )
+        {
             futurePos.setLocation(tracker.getBallPosition());
             Point2D.Float velPPS = tracker.getBallVelocity();
             // future position of ball is given by ball velocity times delay
