@@ -123,9 +123,9 @@ public class FlickerSuppressorStatistical extends EventFilter2D implements Frame
      */
     @Override
     public void resetFilter() {
-       setSpatialVarianceThresh(48.0f);
-       setTemporalVarianceThresh(50000.0f);
-       setPacketEnergyThresh(1000);
+     //  setSpatialVarianceThresh(48.0f);
+     //  setTemporalVarianceThresh(50000.0f);
+     //  setPacketEnergyThresh(1000);
     }
 
     @Override

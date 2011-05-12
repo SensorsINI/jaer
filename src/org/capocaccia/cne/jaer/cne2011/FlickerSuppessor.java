@@ -103,12 +103,12 @@ public class FlickerSuppessor extends EventFilter2D implements FrameAnnotater {
     public void annotate(GLAutoDrawable drawable) { // called after events are rendered
         GL gl = drawable.getGL(); // get the openGL context
         gl.glColor4f(1, 0, 0, .3f); // choose RGB color and alpha<1 so we can see through the square
-        for (int cptx=0; cptx< Nb_xblocks; cptx++) {
+     /*   for (int cptx=0; cptx< Nb_xblocks; cptx++) {
             for (int cpty=0; cpty< Nb_yblocks; cpty++) {
                 if (macro_pixels_count[cptx][cpty]>= MB_threshold)
                 gl.glRectf((cptx)*xblock_size, (cpty)*yblock_size,(cptx+1)*xblock_size -1, (cpty+1)*yblock_size-1); // draw a rectangle over suppressed macroblocks
             }
-        }
+        }*/
         
     }
 
