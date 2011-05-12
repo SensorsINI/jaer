@@ -32,7 +32,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     // filters and filter chain
     FilterChain filterChain;
     LabyrinthMap map;
-    KalmanFilter kalmanFilter;
+    KalmanEventFilter kalmanFilter;
 
     // private fields, not properties
     BasicEvent startingEvent = new BasicEvent();
@@ -46,7 +46,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         super(chip);
         this.controller = controller;
         map = new LabyrinthMap(chip);
-        kalmanFilter = new KalmanFilter(chip,controller);
+        kalmanFilter = new KalmanEventFilter(chip,controller);
 
         filterChain = new FilterChain(chip);
         filterChain.add(map);
