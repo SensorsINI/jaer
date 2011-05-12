@@ -33,6 +33,7 @@ public class KalmanEventFilter extends EventFilter2D implements FrameAnnotater {
 	
     // the timestamp of the most recent received event
     private int t = -1;
+    private boolean tIsInitialised;
 
     // parameters
     private double measurementSigma = getDouble("measurementSigma", 3.0);
@@ -52,11 +53,7 @@ public class KalmanEventFilter extends EventFilter2D implements FrameAnnotater {
         this.controller=controller;
         
         filters = new ArrayList< LabyrinthBallKalmanFilter >();
-        filters.add( new LabyrinthBallKalmanFilter() );
-        currentBestFilter = filters.get(0);
         lastUpdates = new ArrayList< boolean[] >();
-        lastUpdates.add( new boolean[ nLastUpdates ] );
-        lastUpdateIndex = 0;
 
         setPropertyTooltip("processSigma","standard deviation of acceleration noise [px/s^2]");
         setPropertyTooltip("measurementThreshold","maximum mahalanobis distance to accept a measurement for update");
@@ -111,12 +108,17 @@ public class KalmanEventFilter extends EventFilter2D implements FrameAnnotater {
     @Override
     final public void resetFilter()
     {
-    	for ( LabyrinthBallKalmanFilter filter : filters )
-    	{
-	       	filter.setMeasurementSigma( measurementSigma );
-	    	filter.setProcessSigma( processSigma );
-	    	filter.resetFilter();
-    	}
+        tIsInitialised = false;
+        filters.clear();
+        lastUpdates.clear();
+        LabyrinthBallKalmanFilter filter = new LabyrinthBallKalmanFilter();
+        filter.setMeasurementSigma( measurementSigma );
+	filter.setProcessSigma( processSigma );
+	filter.resetFilter();
+        filters.add( filter );
+        currentBestFilter = filter;
+        lastUpdates.add( new boolean[ nLastUpdates ] );
+        lastUpdateIndex = 0;
     }
 
     @Override
@@ -138,14 +140,15 @@ public class KalmanEventFilter extends EventFilter2D implements FrameAnnotater {
 
 		// prediction for all filters
 		int timestamp = in.getFirstTimestamp();
-		if ( t >= 0 )
-		{
-			double dt = ( double ) ( timestamp - t ) / 1000000.0;
-			for ( LabyrinthBallKalmanFilter filter : filters )
-			{
-				filter.predict( act, dt );
-			}
-		}
+                if ( tIsInitialised )
+                {
+                    double dt = ( double ) ( timestamp - t ) / 1000000.0;
+                    for ( LabyrinthBallKalmanFilter filter : filters )
+                    {
+                            filter.predict( act, dt );
+                    }
+                }
+                tIsInitialised = true;
 		t = timestamp;
 
 		for ( int i = 0; i < filters.size(); ++i )
@@ -350,4 +353,21 @@ public class KalmanEventFilter extends EventFilter2D implements FrameAnnotater {
         position.setLocation(mu[2], mu[3]);
         return position;
     }
+
+	public void accelerationChanged( double dax, double day, int timestamp )
+	{
+		// prediction for all filters
+		final double[] act = new double[] { dax, day };
+                if ( tIsInitialised )
+                {
+                    double dt = ( double ) ( timestamp - t ) / 1000000.0;
+                    System.out.println( "act = " + act[0] + " " + act[1] + " dt = " + dt );
+                    for ( LabyrinthBallKalmanFilter filter : filters )
+                    {
+                            filter.predict( act, dt );
+                    }
+                }
+                tIsInitialised = true;
+		t = timestamp;
+	}
 }

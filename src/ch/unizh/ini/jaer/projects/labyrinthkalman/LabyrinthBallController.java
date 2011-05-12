@@ -233,6 +233,11 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         resetFilter();
     }
 
+    private double tiltToAcceleration( float tilt )
+    {
+    	return gravConstantPixPerSec2 * Math.sin( tilt );
+    }
+    
     /** Sets the pan and tilt servo values, clipped to limits, and sets internal values.
     @param xtiltRad in radians, positive to tilt to right towards positive x
     @param ytiltRad in radians, positive to tilt up towards positive y
@@ -240,7 +245,10 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     public void setTilts(float xtiltRad, float ytiltRad) throws HardwareInterfaceException {
         float xTiltRad = clipPanTilts((xtiltRad));
         float yTiltRad = clipPanTilts((ytiltRad));
+        double dax = tiltToAcceleration( xTiltRad ) - tiltToAcceleration( tiltsRad.x );
+        double day = tiltToAcceleration( yTiltRad ) - tiltToAcceleration( tiltsRad.y );
         tiltsRad.setLocation(xTiltRad, yTiltRad);
+        tracker.accelerationChanged( dax, day, lastErrorUpdateTime );
         labyrinthHardware.setPanTiltValues(tiltsRad.x, tiltsRad.y);
     }
 

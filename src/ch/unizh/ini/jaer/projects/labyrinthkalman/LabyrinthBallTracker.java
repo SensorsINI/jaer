@@ -190,4 +190,10 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         }
         return false;
     }
+
+
+	public void accelerationChanged( double dax, double day, int timestamp )
+	{
+		kalmanFilter.accelerationChanged( dax, day, timestamp );
+	}
 }
