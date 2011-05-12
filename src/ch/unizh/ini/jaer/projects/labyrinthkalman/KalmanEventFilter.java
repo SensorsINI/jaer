@@ -13,7 +13,6 @@ import net.sf.jaer.event.*;
 
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
-import javax.vecmath.Color3f;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -243,7 +242,7 @@ public class KalmanEventFilter extends EventFilter2D implements FrameAnnotater {
         return annotationEnabled;
     }
     
-    protected static void paintCovarianceEllipse( double[] pos, double[][] cov, final double nsigmas, Color3f color, GL gl )
+    protected static void paintCovarianceEllipse( double[] pos, double[][] cov, final double nsigmas, float[] color, GL gl )
     {
         final int no_points_ellipse = 12;
 
@@ -261,7 +260,7 @@ public class KalmanEventFilter extends EventFilter2D implements FrameAnnotater {
         gl.glRotated(theta, 0, 0, 1);
         gl.glScaled(scale1, scale2, 1);
 
-        gl.glColor3f( color.x, color.y, color.z );
+        gl.glColor3f( color[0], color[1], color[2] );
         gl.glLineWidth(2);    	
 
         gl.glBegin(GL.GL_LINE_LOOP);
@@ -273,7 +272,7 @@ public class KalmanEventFilter extends EventFilter2D implements FrameAnnotater {
         gl.glPopMatrix();
     }
     
-    protected static void paintKalmanFilterState( final LabyrinthBallKalmanFilter filter, GL gl, Color3f covColor, Color3f speedColor )
+    protected static void paintKalmanFilterState( final LabyrinthBallKalmanFilter filter, GL gl, float[] covColor, float[] speedColor )
     {
         final double[] mu = filter.getMu();
         final double[][] Sigma = filter.getSigma();
@@ -283,7 +282,7 @@ public class KalmanEventFilter extends EventFilter2D implements FrameAnnotater {
         double velx = mu[2] * 0.1;
         double vely = mu[3] * 0.1;
 
-        gl.glColor3f( speedColor.x, speedColor.y, speedColor.z );
+        gl.glColor3f( speedColor[0], speedColor[1], speedColor[2] );
         gl.glLineWidth(2);
 
         gl.glPushMatrix();
@@ -312,10 +311,10 @@ public class KalmanEventFilter extends EventFilter2D implements FrameAnnotater {
             return;
 
         GL gl=drawable.getGL();
-        Color3f covColor = new Color3f(1,1,1);
-        Color3f speedColor = new Color3f(1,1,1);
-        Color3f bestCovColor = new Color3f(1,1,0);
-        Color3f bestSpeedColor = new Color3f(1,0,0);
+        float[] covColor = new float[]{1,1,1};
+        float[] speedColor = new float[]{1,1,1};
+        float[] bestCovColor = new float[]{1,1,0};
+        float[] bestSpeedColor = new float[]{1,0,0};
         for ( LabyrinthBallKalmanFilter filter : filters )
         {
         	if ( filter == currentBestFilter )
