@@ -743,6 +743,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen implements  ADC
         private int lasty = 0;
         private int currentts = 0;
         private int lastts = 0;
+        int yonlycount=0;
 
         @Override
         protected void translateEvents(UsbIoBuf b) {
@@ -810,7 +811,8 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen implements  ADC
                                             addresses[eventCounter] = (lasty << cDVSTest20.YSHIFT) + (cDVSTest20.SIZEX_TOTAL - 1 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
                                             timestamps[eventCounter] = lastts; //*TICK_US; //add in the wrap offset and convert to 1us tick
                                             eventCounter++;
-//                                        //log.warning("received at least two Y addresses consecutively");
+                                            System.out.println(yonlycount+ " Y addresses consecutively recieved");
+                                            yonlycount++;
                                         }
                                         if ((buf[i] & IntensityMask) != 0) { // intensity spike
                                             // log.info("received intensity bit");
