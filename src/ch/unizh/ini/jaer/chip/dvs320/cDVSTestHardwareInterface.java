@@ -811,7 +811,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen implements  ADC
                                             addresses[eventCounter] = (lasty << cDVSTest20.YSHIFT) + (cDVSTest20.SIZEX_TOTAL - 1 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
                                             timestamps[eventCounter] = lastts; //*TICK_US; //add in the wrap offset and convert to 1us tick
                                             eventCounter++;
-                                            System.out.println(yonlycount+ " Y addresses consecutively recieved");
+                                            System.out.println(yonlycount+ " Y addresses consecutively recieved in cDVSTestHardwareInterface");
                                             yonlycount++;
                                         }
                                         if ((buf[i] & IntensityMask) != 0) { // intensity spike
