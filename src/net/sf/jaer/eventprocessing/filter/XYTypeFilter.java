@@ -542,7 +542,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
 
 				byte[] b = prefs().getByteArray("XYTypeFilter.multiSelection", null);
 				if (b == null) {
-					log.info("no MultiSelection save in preferences, can't load it");
+//					log.info("no MultiSelection saved in preferences, can't load it");
 					return;
 				}
 				ByteArrayInputStream bis = new ByteArrayInputStream(b);
