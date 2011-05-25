@@ -91,7 +91,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
 
     public SiLabsC8051F320_USBIO_DVS128(int interfaceNumber) {
         this.interfaceNumber = interfaceNumber;
-        if (UsbIoUtilities.usbIoIsAvailable) {
+        if (UsbIoUtilities.isLibraryLoaded()) {
             pnp = new PnPNotify(this);
             pnp.enablePnPNotification(GUID);
         }
@@ -303,7 +303,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
     }
 
     public void open() throws HardwareInterfaceException {
-        if (!UsbIoUtilities.usbIoIsAvailable) {
+        if (!UsbIoUtilities.isLibraryLoaded()) {
             return;        //device has already been UsbIo Opened by now, in factory
             // opens the USBIOInterface device, configures it, binds a reader thread with buffer pool to read from the device and starts the thread reading events.
             // we got a UsbIo object when enumerating all devices and we also made a device list. the device has already been

@@ -103,7 +103,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      */
     public SiLabsC8051F320_USBIO_ServoController() {
         interfaceNumber=0;
-        if(UsbIoUtilities.usbIoIsAvailable){
+        if(UsbIoUtilities.isLibraryLoaded()){
             pnp=new PnPNotify(this);
             pnp.enablePnPNotification(GUID);
         }
@@ -222,7 +222,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      */
     @Override
     public void open() throws HardwareInterfaceException {
-        if(!UsbIoUtilities.usbIoIsAvailable) return;
+        if(!UsbIoUtilities.isLibraryLoaded()) return;
         
         //device has already been UsbIo Opened by now, in factory
         

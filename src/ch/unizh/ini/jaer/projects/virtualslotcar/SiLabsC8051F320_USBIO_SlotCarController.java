@@ -100,7 +100,7 @@ public class SiLabsC8051F320_USBIO_SlotCarController implements UsbIoErrorCodes,
      */
     public SiLabsC8051F320_USBIO_SlotCarController() {
         interfaceNumber=0;
-        if(UsbIoUtilities.usbIoIsAvailable){
+        if(UsbIoUtilities.isLibraryLoaded()){
             pnp=new PnPNotify(this);
             pnp.enablePnPNotification(GUID);
         }
@@ -214,7 +214,7 @@ public class SiLabsC8051F320_USBIO_SlotCarController implements UsbIoErrorCodes,
      *@throws HardwareInterfaceException if there is a problem. Diagnostics are printed to stderr.
      */
     public void open() throws HardwareInterfaceException {
-        if(!UsbIoUtilities.usbIoIsAvailable) return;
+        if(!UsbIoUtilities.isLibraryLoaded()) return;
         
         //device has already been UsbIo Opened by now, in factory
         

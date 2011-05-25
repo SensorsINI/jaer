@@ -50,7 +50,7 @@ public class CarServoInterfaceFactory implements
      singleton.
      */
     private CarServoInterfaceFactory() {
-        if(UsbIoUtilities.usbIoIsAvailable){
+        if(UsbIoUtilities.isLibraryLoaded()){
             pnp=new PnPNotify(this);
             pnp.enablePnPNotification(GUID);
             buildUsbIoList();
@@ -81,12 +81,12 @@ public class CarServoInterfaceFactory implements
     }
     
     public HardwareInterface getFirstAvailableInterface() throws HardwareInterfaceException {
-        if(!UsbIoUtilities.usbIoIsAvailable) return null;
+        if(!UsbIoUtilities.isLibraryLoaded()) return null;
         return getInterface(0);
     }
     
     public HardwareInterface getInterface(int n) throws HardwareInterfaceException {
-        if(!UsbIoUtilities.usbIoIsAvailable) return null;
+        if(!UsbIoUtilities.isLibraryLoaded()) return null;
         int numAvailable=getNumInterfacesAvailable();
         if(n>numAvailable-1){
             System.err.println("only "+numAvailable+" interfaces available but you asked for number "+n);
@@ -127,7 +127,7 @@ public class CarServoInterfaceFactory implements
     
     void buildUsbIoList(){
         usbioList=new ArrayList<UsbIo>();
-        if(!UsbIoUtilities.usbIoIsAvailable) return;
+        if(!UsbIoUtilities.isLibraryLoaded()) return;
         final int MAXDEVS=8;
         UsbIo dev;
         gDevList=UsbIo.createDeviceList(GUID);

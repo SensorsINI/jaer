@@ -255,7 +255,7 @@ public class USBAERatc implements USBInterface,  HardwareInterface{
     /** @return number of devices that are connected */
     int getNumDevices() throws InterruptedException{
         if(!libLoaded) return 0;
-        if(!UsbIoUtilities.usbIoIsAvailable) {
+        if(!UsbIoUtilities.isLibraryLoaded()) {
             //log.info("Usb Io not available.");
             return 0;
         }

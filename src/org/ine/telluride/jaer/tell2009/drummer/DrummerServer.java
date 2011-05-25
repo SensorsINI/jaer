@@ -92,7 +92,7 @@ public class DrummerServer extends javax.swing.JFrame implements RemoteControlle
         initComponents();
         highPosSlider.setMaximum(MAX_SLIDER);
         lowPosSlider.setMaximum(MAX_SLIDER);
-        if ( UsbIoUtilities.usbIoIsAvailable ){
+        if ( UsbIoUtilities.isLibraryLoaded() ){
             pnp = new PnPNotify(this);
             pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
         }

@@ -15,12 +15,48 @@ package cl.eye;
 //import processing.core.*;
 
 import java.util.logging.Logger;
+import net.sf.jaer.aemonitor.AEListener;
+import net.sf.jaer.aemonitor.AEMonitorInterface;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
-/** See <a href="http://codelaboratories.com/research/view/cl-eye-muticamera-api">CodeLaboratories DL Eye Multicam C++ API</a> for the native API
+/** Interface to Code Laboratories driver to Playstation Eye (PS Eye) camera.
+ * See <a href="http://codelaboratories.com/research/view/cl-eye-muticamera-api">CodeLaboratories DL Eye Multicam C++ API</a> for the native API
  * 
  * @author CodeLaboratories / jaer adaptation by tobi
  */
-public class CLCamera {
+public class CLCamera implements HardwareInterface {
+
+    final static Logger log = Logger.getLogger("CLEye");
+    /** Set true if library was loaded successfully. */
+    private static boolean libraryLoaded = false;
+    private final static String DLLNAME = "CLEyeMulticam";
+    private int cameraIndex = 0; // index of camera to open
+
+    // static methods
+    static {
+        if (!isLibraryLoaded() && System.getProperty("os.name").startsWith("Windows")) {
+            try {
+                synchronized (CLCamera.class) { // prevent multiple access in class initializers like hardwareInterfaceFactory and SubClassFinder
+                    log.info("loading library " + System.mapLibraryName(DLLNAME));
+                    System.loadLibrary(DLLNAME);
+                    setLibraryLoaded(true);
+                }
+                log.info("CLEyeMulticam.dll loaded");
+            } catch (UnsatisfiedLinkError e1) {
+                String lp = null;
+                try {
+                    lp = System.getProperty("java.library.path");
+                } catch (Exception e) {
+                    log.warning("caught " + e + " when trying to call System.getProperty(\"java.library.path\")");
+                }
+                log.warning("could not find the " + DLLNAME + " DLL; check native library path which is currently " + lp);
+                setLibraryLoaded(false);
+            }
+        }
+    }
     // camera color mode
     public static int CLEYE_MONO_PROCESSED = 0;
     public static int CLEYE_COLOR_PROCESSED = 1;
@@ -71,49 +107,19 @@ public class CLCamera {
     native static int CLEyeGetCameraParameter(int cameraInstance, int param);
 
     native static boolean CLEyeCameraGetFrame(int cameraInstance, int[] imgData, int waitTimeout);
-    private int cameraInstance = 0;
-//    private PApplet parent;
-    private static boolean libraryLoaded = false;
-    private static String dllpathx32 = "CLEyeMulticam";
-//    private static String dllpathx32 = "C://Program Files//Code Laboratories//CL-Eye Platform SDK//Bin//CLEyeMulticam.dll";
-//    private static String dllpathx64 = "C://Program Files (x86)//Code Laboratories//CL-Eye Platform SDK//Bin//CLEyeMulticam.dll";
-    static Logger log = Logger.getLogger("CLEye");
 
-    // static methods
-    static {
-        if (System.getProperty("os.name").startsWith("Windows")) {
-            try {
-                System.loadLibrary(dllpathx32);
-                libraryLoaded = true;
-                log.info("CLEyeMulticam.dll loaded");
-            } catch (UnsatisfiedLinkError e1) {
-                log.warning("could not find the CLEyeMulticam.dll; check native library path");
-            }
-        }
-    }
-
-    /** Returns true if dll is loaded
-     * 
-     * @return true if successful
+    /**
+     * @return the libraryLoaded
      */
-    public static boolean isLibraryLoaded() {
+    synchronized public static boolean isLibraryLoaded() {
         return libraryLoaded;
     }
 
-    /** Loads DLL from a custom path
-     * 
-     * @param libraryPath full path to DLL including DLL name
+    /**
+     * @param aLibraryLoaded the libraryLoaded to set
      */
-    public static void loadLibrary(String libraryPath) {
-        if (libraryLoaded) {
-            return;
-        }
-        try {
-            System.load(libraryPath);
-            log.info("CLEyeMulticam.dll loaded");
-        } catch (UnsatisfiedLinkError e1) {
-            log.warning("(3) Could not find the CLEyeMulticam.dll (Custom Path)");
-        }
+    synchronized public static void setLibraryLoaded(boolean aLibraryLoaded) {
+        libraryLoaded = aLibraryLoaded;
     }
 
     public static int cameraCount() {
@@ -123,24 +129,34 @@ public class CLCamera {
     public static String cameraUUID(int index) {
         return CLEyeGetCameraUUID(index);
     }
-    // public methods
-//    public CLCamera(PApplet parent)
-//    {
-//        this.parent = parent;
-//        parent.registerDispose(this);
-//    }
+    private int cameraInstance = 0;
+    private boolean isOpened = false;
 
-    public void dispose() {
+    /** Constructs instance for first camera
+     * 
+     */
+    public CLCamera() {
+    }
+
+    /** Constructs instance to open the cameraIndex camera
+     * 
+     * @param cameraIndex 0 based index of cameras.
+     */
+    CLCamera(int cameraIndex) {
+        this.cameraIndex = cameraIndex;
+    }
+
+    private void dispose() {
         stopCamera();
         destroyCamera();
     }
 
-    public boolean createCamera(int cameraIndex, int mode, int resolution, int framerate) {
+    private boolean createCamera(int cameraIndex, int mode, int resolution, int framerate) {
         cameraInstance = CLEyeCreateCamera(cameraIndex, mode, resolution, framerate);
         return cameraInstance != 0;
     }
 
-    public boolean destroyCamera() {
+    private boolean destroyCamera() {
         return CLEyeDestroyCamera(cameraInstance);
     }
 
@@ -152,6 +168,10 @@ public class CLCamera {
         return CLEyeCameraStart(cameraInstance);
     }
 
+    /** Stops the camera
+     * 
+     * @return true if successful
+     */
     public boolean stopCamera() {
         return CLEyeCameraStop(cameraInstance);
     }
@@ -161,9 +181,10 @@ public class CLCamera {
      * @param imgData
      * @param waitTimeout in ms
      * @return true if successful
+     * @throws HardwareInterfaceException if there is an error
      */
-    public boolean getCameraFrame(int[] imgData, int waitTimeout) {
-        return CLEyeCameraGetFrame(cameraInstance, imgData, waitTimeout);
+    public void getCameraFrame(int[] imgData, int waitTimeout) throws HardwareInterfaceException{
+        if(!CLEyeCameraGetFrame(cameraInstance, imgData, waitTimeout)) throw new HardwareInterfaceException("capturing frame");
     }
 
     public boolean setCameraParam(int param, int val) {
@@ -174,38 +195,40 @@ public class CLCamera {
         return CLEyeGetCameraParameter(cameraInstance, param);
     }
 
-    public static void main(String[] args) {
-        if (!isLibraryLoaded()) {
-            log.warning("no native libraries found, install CL Eye SDK and driver and make sure paths here are correct");
-            return;
-        }
-        int camCount = 0;
-        if ((camCount = CLCamera.cameraCount()) == 0) {
-            log.warning("no cameras found");
-            return;
-        }
-        log.info(camCount + " CLEye cameras found");
-        CLCamera cam = new CLCamera();
-        boolean gotCam = cam.createCamera(0, CLEYE_MONO_RAW, CLEYE_QVGA, 60);
-        if (!gotCam) {
-            log.warning("couldn't get camera");
-            return;
-        }
-        if (!cam.startCamera()) {
-            log.warning("couldn't start camera");
-            return;
-        }
-        int[] imgData = new int[640*480];
-        while (true) {
-            if (!cam.getCameraFrame(imgData, 100)) {
-                log.warning("couldn't get frame");
-                return;
-            }
-            int pixCount=0;
-            for(int i:imgData){
-                if(i!=0)pixCount++;
-            }
-            log.info("got frame with "+pixCount+" nonzero pixels");
-        }
+    @Override
+    public String getTypeName() {
+        return "CLEye PS Eye camera";
     }
+
+    @Override
+    public void close() {
+        isOpened = false;
+        dispose();
+    }
+
+    /** Opens the cameraIndex camera with some default settings
+     * 
+     * @throws HardwareInterfaceException 
+     */
+    @Override
+    public void open() throws HardwareInterfaceException {
+        if (isOpened) {
+            return;
+        }
+        boolean gotCam = createCamera(cameraIndex, CLEYE_MONO_RAW, CLEYE_QVGA, 60);
+        if (!gotCam) {
+            throw new HardwareInterfaceException("couldn't get camera");
+        }
+        if (!startCamera()) {
+            throw new HardwareInterfaceException("couldn't start camera");
+        }
+        isOpened = true;
+    }
+
+    @Override
+    public boolean isOpen() {
+        return isOpened;
+    }
+
+
 }

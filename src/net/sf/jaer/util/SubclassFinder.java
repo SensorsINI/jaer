@@ -25,7 +25,7 @@ import java.util.logging.Logger;
  */
 public class SubclassFinder {
     
-    static Logger log=Logger.getLogger("SubclassFinder");
+    final static Logger log=Logger.getLogger("SubclassFinder");
     
     /** Creates a new instance of SubclassFinder */
     private SubclassFinder() {
@@ -69,7 +69,7 @@ public class SubclassFinder {
             List<String> allClasses=ListClasses.listClasses();  // expensive, must search all classpath and make big string array list
             int n=".class".length();
             Class c=null;
-            if(allClasses.size()==0){
+            if(allClasses.isEmpty()){
                 log.warning("List of subclasses of "+superClassName+" is empty, is there something wrong with your classpath. Do you have \"compile on save\" turned on? (This option can break the SubclassFinder).");
             }
             for (String s:allClasses) {

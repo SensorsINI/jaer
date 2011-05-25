@@ -35,14 +35,14 @@ HardwareInterfaceFactory or it can be directly accessed.
  */
 public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotifyInterface, HardwareInterfaceFactoryInterface {
 
-    static Logger log = Logger.getLogger("USBIOHardwareInterfaceFactory");
+    final static Logger log = Logger.getLogger("USBIOHardwareInterfaceFactory");
 //    int status;
     PnPNotify pnp = null;    //static instance, by which this class can be accessed
     private static USBIOHardwareInterfaceFactory instance = new USBIOHardwareInterfaceFactory();
     static boolean firstUse = true;
 
     USBIOHardwareInterfaceFactory() {
-        if (UsbIoUtilities.usbIoIsAvailable) {
+        if (UsbIoUtilities.isLibraryLoaded()) {
             pnp = new PnPNotify(this);
             pnp.enablePnPNotification(GUID);
 //            buildUsbIoList();
@@ -85,7 +85,7 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
 
     synchronized void buildUsbIoList() {
         usbioList = new ArrayList<UsbIo>();
-        if (!UsbIoUtilities.usbIoIsAvailable) {
+        if (!UsbIoUtilities.isLibraryLoaded()) {
             return;
             /* from USBIO reference manual for C++ method Open
             Comments

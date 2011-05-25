@@ -9,6 +9,7 @@
  */
 package net.sf.jaer.hardwareinterface;
 
+import cl.eye.CLEyeHardwareInterfaceFactory;
 import de.thesycon.usbio.PnPNotify;
 import de.thesycon.usbio.PnPNotifyInterface;
 import java.util.*;
@@ -44,19 +45,19 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
         USBIOHardwareInterfaceFactory.class,
         HardwareInterfaceFactoryLinux.class,
         USBAERatcFactory.class,
-        UDPInterfaceFactory.class
+        UDPInterfaceFactory.class,
+        CLEyeHardwareInterfaceFactory.class
     //  CypressFX2MonitorSequencerFactory.class  // this removed because all CypressFX2 devices are found by their common GUID now at the same time
     }; // raphael: added my class so i can still test before having refactored
     private static HardwareInterfaceFactory instance = new HardwareInterfaceFactory();
 
     /** Creates a new instance of HardwareInterfaceFactory, private because this is a singleton factory class */
     private HardwareInterfaceFactory() {
-        if (UsbIoUtilities.usbIoIsAvailable) {
+        if (UsbIoUtilities.isLibraryLoaded()) {
             pnp = new PnPNotify(this);
             pnp.enablePnPNotification(SiLabs_USBIO_C8051F3xxFactory.GUID);
             pnp.enablePnPNotification(USBIOHardwareInterfaceFactory.GUID);
         }
-
     }
 
     /** Use this instance to access the methods, e.g. <code>HardwareInterfaceFactory.instance().getNumInterfacesAvailable()</code>.

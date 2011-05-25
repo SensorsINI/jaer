@@ -55,7 +55,7 @@ public class ServoInterfaceFactory implements
      singleton.
      */
     private ServoInterfaceFactory() {
-        if(UsbIoUtilities.usbIoIsAvailable){
+        if(UsbIoUtilities.isLibraryLoaded()){
             pnp=new PnPNotify(this);
             pnp.enablePnPNotification(GUID);
             buildUsbIoList();
@@ -132,7 +132,7 @@ public class ServoInterfaceFactory implements
     
     void buildUsbIoList(){
         usbioList=new ArrayList<UsbIo>();
-        if(!UsbIoUtilities.usbIoIsAvailable) return;
+        if(!UsbIoUtilities.isLibraryLoaded()) return;
         final int MAXDEVS=8;
         UsbIo dev;
         gDevList=UsbIo.createDeviceList(GUID);

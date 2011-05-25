@@ -43,7 +43,7 @@ public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,
     public ServoTest (){
         initComponents();
         liveSlidersEnabled = liveSlidersCheckBox.isSelected();
-        if ( UsbIoUtilities.usbIoIsAvailable ){
+        if ( UsbIoUtilities.isLibraryLoaded() ){
             pnp = new PnPNotify(this);
             pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
             pnp.enablePnPNotification(SiLabsC8051F320_USBIO_CarServoController.GUID);

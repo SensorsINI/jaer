@@ -164,7 +164,7 @@ public class ToradexOakG3AxisAccelerationSensor extends UsbIoReader implements H
     }
 
     public void open() throws HardwareInterfaceException {
-        if (!UsbIoUtilities.usbIoIsAvailable) {
+        if (!UsbIoUtilities.isLibraryLoaded()) {
             return;
         }
         if(isOpen()) {

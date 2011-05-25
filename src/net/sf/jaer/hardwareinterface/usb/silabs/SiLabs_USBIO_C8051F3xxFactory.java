@@ -58,7 +58,7 @@ public class SiLabs_USBIO_C8051F3xxFactory implements
      singleton.
      */
     private SiLabs_USBIO_C8051F3xxFactory() {
-        if(UsbIoUtilities.usbIoIsAvailable){
+        if(UsbIoUtilities.isLibraryLoaded()){
             pnp=new PnPNotify(this);
             pnp.enablePnPNotification(GUID);
             buildUsbIoList();
@@ -135,7 +135,7 @@ public class SiLabs_USBIO_C8051F3xxFactory implements
     
     void buildUsbIoList(){
         usbioList=new ArrayList<UsbIo>();
-        if(!UsbIoUtilities.usbIoIsAvailable) return;
+        if(!UsbIoUtilities.isLibraryLoaded()) return;
         final int MAXDEVS=8;
         UsbIo dev;
         gDevList=UsbIo.createDeviceList(GUID);
