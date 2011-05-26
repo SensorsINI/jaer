@@ -4,6 +4,7 @@
  */
 package cl.eye;
 
+import java.beans.PropertyChangeSupport;
 import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -17,6 +18,13 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  */
 public class CLRetinaHardwareInterface extends CLCamera implements AEMonitorInterface{
 
+    private int frameCounter=0;
+   protected AEChip chip=null;
+   protected PropertyChangeSupport support=new PropertyChangeSupport(this);
+    AEPacketRaw packet=new AEPacketRaw(320*240);
+    int[] frameBuffer=packet.getAddresses();
+    int[] timestamps=packet.getTimestamps();
+     
     public CLRetinaHardwareInterface(int cameraIndex) {
         super(cameraIndex);
     }
@@ -27,32 +35,35 @@ public class CLRetinaHardwareInterface extends CLCamera implements AEMonitorInte
     
     @Override
     public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        getCameraFrame(frameBuffer, 100);
+        packet.setNumEvents(320*240);
+        timestamps[0]=frameCounter;
+        return packet;
     }
 
     @Override
     public int getNumEventsAcquired() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        if(packet==null) return 0; else return packet.getNumEvents();
     }
 
     @Override
     public AEPacketRaw getEvents() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return packet;
     }
 
     @Override
     public void resetTimestamps() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        frameCounter=0;
     }
 
     @Override
     public boolean overrunOccurred() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return false;
     }
 
     @Override
     public int getAEBufferSize() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return 0;
     }
 
     @Override
@@ -62,46 +73,47 @@ public class CLRetinaHardwareInterface extends CLCamera implements AEMonitorInte
 
     @Override
     public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        if(enable) startCamera(); else stopCamera();
     }
 
     @Override
     public boolean isEventAcquisitionEnabled() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return cameraStarted;
     }
 
-    @Override
+     @Override
     public void addAEListener(AEListener listener) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        support.addPropertyChangeListener(listener);
     }
 
     @Override
     public void removeAEListener(AEListener listener) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        support.removePropertyChangeListener(listener);
     }
 
     @Override
     public int getMaxCapacity() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return 0;
     }
 
     @Override
     public int getEstimatedEventRate() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return 0;
     }
 
     @Override
     public int getTimestampTickUs() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return 1;
     }
 
+    
     @Override
     public void setChip(AEChip chip) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        this.chip=chip;
     }
 
     @Override
     public AEChip getChip() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return chip;
     }
 }

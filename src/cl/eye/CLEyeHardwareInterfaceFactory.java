@@ -9,6 +9,7 @@ import java.util.logging.Logger;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
+import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
 
 /**
  * Constructs CLEye hardware interfaces.
@@ -74,6 +75,13 @@ public class CLEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryIn
      */
     public static void main(String[] args) {
         try {
+            if(!UsbIoUtilities.isLibraryLoaded()){
+                log.warning("no USBIO libraries found");
+            }
+            if(!CLCamera.isLibraryLoaded()) {
+                log.warning("no library found");
+                return;
+            }
             int camCount = 0;
             if ((camCount = CLCamera.cameraCount()) == 0) {
                 log.warning("no cameras found");

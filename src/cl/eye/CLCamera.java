@@ -14,6 +14,7 @@
 package cl.eye;
 //import processing.core.*;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
@@ -29,7 +30,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  */
 public class CLCamera implements HardwareInterface {
 
-    final static Logger log = Logger.getLogger("CLEye");
+    protected final static Logger log = Logger.getLogger("CLEye");
     /** Set true if library was loaded successfully. */
     private static boolean libraryLoaded = false;
     private final static String DLLNAME = "CLEyeMulticam";
@@ -40,11 +41,15 @@ public class CLCamera implements HardwareInterface {
         if (!isLibraryLoaded() && System.getProperty("os.name").startsWith("Windows")) {
             try {
                 synchronized (CLCamera.class) { // prevent multiple access in class initializers like hardwareInterfaceFactory and SubClassFinder
-                    log.info("loading library " + System.mapLibraryName(DLLNAME));
+//                    log.info("loading library " + System.mapLibraryName(DLLNAME));
+//                    try {
+//                        Thread.sleep(200);
+//                    } catch (InterruptedException ex) {
+//                    }
                     System.loadLibrary(DLLNAME);
                     setLibraryLoaded(true);
                 }
-                log.info("CLEyeMulticam.dll loaded");
+                log.info("CLEyeMulticam available");
             } catch (UnsatisfiedLinkError e1) {
                 String lp = null;
                 try {
@@ -52,7 +57,7 @@ public class CLCamera implements HardwareInterface {
                 } catch (Exception e) {
                     log.warning("caught " + e + " when trying to call System.getProperty(\"java.library.path\")");
                 }
-                log.warning("could not find the " + DLLNAME + " DLL; check native library path which is currently " + lp);
+                log.warning("could not load the " + DLLNAME + " DLL; check native library path which is currently " + lp);
                 setLibraryLoaded(false);
             }
         }
@@ -157,23 +162,31 @@ public class CLCamera implements HardwareInterface {
     }
 
     private boolean destroyCamera() {
+        if(cameraInstance==0) return true;
         return CLEyeDestroyCamera(cameraInstance);
     }
 
+    protected boolean cameraStarted=false;
+    
     /** Starts the camera
      * 
-     * @return true if successful 
+     * @return true if successful or if already started
      */
     public boolean startCamera() {
-        return CLEyeCameraStart(cameraInstance);
+        if(cameraStarted) return true;
+        cameraStarted= CLEyeCameraStart(cameraInstance);
+        return cameraStarted;
     }
 
     /** Stops the camera
      * 
-     * @return true if successful
+     * @return true if successful or if not started
      */
     public boolean stopCamera() {
-        return CLEyeCameraStop(cameraInstance);
+        if(!cameraStarted) return true;
+        boolean stopped=CLEyeCameraStop(cameraInstance);
+        cameraStarted=false;
+        return stopped;
     }
 
     /** Gets frame data
