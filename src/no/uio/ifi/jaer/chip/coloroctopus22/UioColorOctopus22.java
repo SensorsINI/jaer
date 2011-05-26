@@ -1,9 +1,12 @@
 /*
- * UioStaticBioVis.java
+ * UioColorOctopus22.java
  *
- * Created on 13. november 2007, 13:12
+ * Created on May 2011
  *
- * Describes the StaticBioVis Chip by Jenny Anna Maria Olsson
+ * Describes a Octopus Color Retina
+ *
+ * Authors: Juan A. Lenero and Philipp Häfliger
+ *
  */
 
 package no.uio.ifi.jaer.chip.coloroctopus22;
@@ -14,16 +17,8 @@ import net.sf.jaer.chip.TypedEventExtractor;
 import net.sf.jaer.event.*;
 import net.sf.jaer.graphics.*;
 
-/**
- * The chip is a 92x92 pixels imager which converts illumination into a 
- * frequency of events.
- *
- * The class uses UioCameraRenderer to display frames with Gray-Levels on a 
- * black background and UioStaticBioVisDisplayMethod to generate an image of 
- * the pixel output.
- *
- * @author Jenny Anna Maria Olsson (jaolsson@ifi.uio.no)
- */
+
+
 public class UioColorOctopus22 extends AEChip {
     
     /** Creates a new instance of UioStaticBioVis */
@@ -47,14 +42,26 @@ public class UioColorOctopus22 extends AEChip {
         public Extractor(AEChip chip){
             super(chip);
             setEventClass(TypedEvent.class);
-            setXmask((short)0x007c); // mask this part for x
-            setXshift((byte)2); //
-            setYmask((short)0x1f00);
-            setYshift((byte)8);
-            setTypemask((short)0x3);
+            setXmask((short)0x003e); // mask this part for x
+            setXshift((byte)1);
+            setYmask((short)0x3e00);
+            setYshift((byte)9);
+            setTypemask((short)0x0101);
             setTypeshift((byte)0);
             setFlipx(true);
+           }
+
+        //In our particular case, the two color bits are not consequtive. We have to
+        //modify the function getTypeFromAddress to get the two color bits.
+
+      @Override public byte getTypeFromAddress(int addr){
+
+        if ((((addr>>>8)&0x0001)==0)&&((addr&0x0001)==0)) return (byte) 1;//RG
+        if ((((addr>>>8)&0x0001)==1)&&((addr&0x0001)==0)) return (byte) 3;//GB
+        if ((((addr>>>8)&0x0001)==1)&&((addr&0x0001)==1)) return (byte) 2;//B
+        else return (byte) 0;
         }
     }
-    
+
+
 }
