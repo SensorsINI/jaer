@@ -228,7 +228,7 @@ public class CLCamera implements HardwareInterface {
         if (isOpened) {
             return;
         }
-        boolean gotCam = createCamera(cameraIndex, CLEYE_MONO_RAW, CLEYE_QVGA, 60);
+        boolean gotCam = createCamera(cameraIndex, CLEYE_MONO_PROCESSED, CLEYE_QVGA, 60);
         if (!gotCam) {
             throw new HardwareInterfaceException("couldn't get camera");
         }

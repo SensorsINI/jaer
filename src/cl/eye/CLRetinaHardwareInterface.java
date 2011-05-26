@@ -38,6 +38,7 @@ public class CLRetinaHardwareInterface extends CLCamera implements AEMonitorInte
         getCameraFrame(frameBuffer, 100);
         packet.setNumEvents(320*240);
         timestamps[0]=frameCounter;
+        frameCounter++;
         return packet;
     }
 

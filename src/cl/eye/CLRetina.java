@@ -12,6 +12,7 @@ import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.chip.TypedEventExtractor;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
 
 /**
  * A behavioral model of an AE retina using the code laboratories interface to a PS eye camera.
@@ -21,6 +22,9 @@ import net.sf.jaer.event.EventPacket;
 @Description("AE retina using the PS eye camera")
 public class CLRetina extends AEChip{
 
+    private int[] lastEventPixelValues=new int[320*240];
+    int n=320*240;
+    
     public CLRetina() {
         setSizeX(320);
         setSizeY(240);
@@ -35,7 +39,22 @@ public class CLRetina extends AEChip{
 
         @Override
         public synchronized void extractPacket(AEPacketRaw in, EventPacket out) {
-            super.extractPacket(in, out);
+            int[] pixVals=in.getAddresses();
+            int ts=in.getTimestamps()[0];
+            OutputEventIterator itr=out.outputIterator();
+            int sx=getSizeX(), sy=getSizeY(), i=0;
+            for(int x=0;x<sx;x++){
+                for(int y=0;y<sy;y++){
+                    if(pixVals[i]!=lastEventPixelValues[i]){
+                        BasicEvent e=itr.nextOutput();
+                        e.x=(short)x;
+                        e.y=(short)y;
+                        e.timestamp=ts;
+                    }
+                    lastEventPixelValues[i]=pixVals[i];
+                    i++;
+                }
+            }
         }
         
         

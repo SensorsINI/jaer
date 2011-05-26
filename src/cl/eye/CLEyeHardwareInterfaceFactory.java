@@ -91,13 +91,21 @@ public class CLEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryIn
             CLCamera cam = new CLCamera();
             cam.open();
             int[] imgData = new int[640*480];
-            for(int f=0;f<10;f++){
+            for(int f=0;f<3;f++){
                cam.getCameraFrame(imgData, 100);
                 int pixCount=0;
+                int lastval=0;
                 for(int i:imgData){
                     if(i!=0)pixCount++;
+//                    if(i!=lastval){
+//                        System.out.println("new value "+i);
+//                        lastval=i;
+//                    }
                 }
                 log.info("got frame with "+pixCount+" nonzero pixels");
+                 for(int i=0;i<10;i++){
+                     System.out.println(imgData[i]);
+                }
             }
             cam.close();
         } catch (HardwareInterfaceException ex) {
