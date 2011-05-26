@@ -63,37 +63,39 @@ public class CLCamera implements HardwareInterface {
         }
     }
     // camera color mode
-    public static int CLEYE_MONO_PROCESSED = 0;
-    public static int CLEYE_COLOR_PROCESSED = 1;
-    public static int CLEYE_MONO_RAW = 2;
-    public static int CLEYE_COLOR_RAW = 3;
-    public static int CLEYE_BAYER_RAW = 4;
+    public static final int CLEYE_MONO_PROCESSED = 0;
+    public static final int CLEYE_COLOR_PROCESSED = 1;
+    public static final int CLEYE_MONO_RAW = 2;
+    public static final int CLEYE_COLOR_RAW = 3;
+    public static final int CLEYE_BAYER_RAW = 4;
     // camera resolution
-    public static int CLEYE_QVGA = 0;
-    public static int CLEYE_VGA = 1;
+    public static final int CLEYE_QVGA = 0;
+    public static final int CLEYE_VGA = 1;
     // camera sensor parameters
-    public static int CLEYE_AUTO_GAIN = 0;  	// [0, 1]
-    public static int CLEYE_GAIN = 1;	// [0, 79]
-    public static int CLEYE_AUTO_EXPOSURE = 2;    // [0, 1]
-    public static int CLEYE_EXPOSURE = 3;    // [0, 511]
-    public static int CLEYE_AUTO_WHITEBALANCE = 4;	// [0, 1]
-    public static int CLEYE_WHITEBALANCE_RED = 5;	// [0, 255]
-    public static int CLEYE_WHITEBALANCE_GREEN = 6;   	// [0, 255]
-    public static int CLEYE_WHITEBALANCE_BLUE = 7;    // [0, 255]
+    public static final int CLEYE_AUTO_GAIN = 0;  	// [0, 1]
+    public static final int CLEYE_GAIN = 1;	// [0, 79]
+    public static final int CLEYE_AUTO_EXPOSURE = 2;    // [0, 1]
+    public static final int CLEYE_EXPOSURE = 3;    // [0, 511]
+    public static final int CLEYE_AUTO_WHITEBALANCE = 4;	// [0, 1]
+    public static final int CLEYE_WHITEBALANCE_RED = 5;	// [0, 255]
+    public static final int CLEYE_WHITEBALANCE_GREEN = 6;   	// [0, 255]
+    public static final int CLEYE_WHITEBALANCE_BLUE = 7;    // [0, 255]
     // camera linear transform parameters
-    public static int CLEYE_HFLIP = 8;    // [0, 1]
-    public static int CLEYE_VFLIP = 9;    // [0, 1]
-    public static int CLEYE_HKEYSTONE = 10;   // [-500, 500]
-    public static int CLEYE_VKEYSTONE = 11;   // [-500, 500]
-    public static int CLEYE_XOFFSET = 12;   // [-500, 500]
-    public static int CLEYE_YOFFSET = 13;   // [-500, 500]
-    public static int CLEYE_ROTATION = 14;   // [-500, 500]
-    public static int CLEYE_ZOOM = 15;   // [-500, 500]
+    public static final int CLEYE_HFLIP = 8;    // [0, 1]
+    public static final int CLEYE_VFLIP = 9;    // [0, 1]
+    public static final int CLEYE_HKEYSTONE = 10;   // [-500, 500]
+    public static final int CLEYE_VKEYSTONE = 11;   // [-500, 500]
+    public static final int CLEYE_XOFFSET = 12;   // [-500, 500]
+    public static final int CLEYE_YOFFSET = 13;   // [-500, 500]
+    public static final int CLEYE_ROTATION = 14;   // [-500, 500]
+    public static final int CLEYE_ZOOM = 15;   // [-500, 500]
     // camera non-linear transform parameters
-    public static int CLEYE_LENSCORRECTION1 = 16;	// [-500, 500]
-    public static int CLEYE_LENSCORRECTION2 = 17;	// [-500, 500]
-    public static int CLEYE_LENSCORRECTION3 = 18;	// [-500, 500]
-    public static int CLEYE_LENSBRIGHTNESS = 19;	// [-500, 500]
+    public static final int CLEYE_LENSCORRECTION1 = 16;	// [-500, 500]
+    public static final int CLEYE_LENSCORRECTION2 = 17;	// [-500, 500]
+    public static final int CLEYE_LENSCORRECTION3 = 18;	// [-500, 500]
+    public static final int CLEYE_LENSBRIGHTNESS = 19;	// [-500, 500]
+    
+    public static final int[] CLEYE_FRAME_RATES={15,30,60,75,100,125}; // TODO only QVGA now
 
     native static int CLEyeGetCameraCount();
 
@@ -162,19 +164,22 @@ public class CLCamera implements HardwareInterface {
     }
 
     private boolean destroyCamera() {
-        if(cameraInstance==0) return true;
+        if (cameraInstance == 0) {
+            return true;
+        }
         return CLEyeDestroyCamera(cameraInstance);
     }
+    protected boolean cameraStarted = false;
 
-    protected boolean cameraStarted=false;
-    
     /** Starts the camera
      * 
      * @return true if successful or if already started
      */
     public boolean startCamera() {
-        if(cameraStarted) return true;
-        cameraStarted= CLEyeCameraStart(cameraInstance);
+        if (cameraStarted) {
+            return true;
+        }
+        cameraStarted = CLEyeCameraStart(cameraInstance);
         return cameraStarted;
     }
 
@@ -183,9 +188,11 @@ public class CLCamera implements HardwareInterface {
      * @return true if successful or if not started
      */
     public boolean stopCamera() {
-        if(!cameraStarted) return true;
-        boolean stopped=CLEyeCameraStop(cameraInstance);
-        cameraStarted=false;
+        if (!cameraStarted) {
+            return true;
+        }
+        boolean stopped = CLEyeCameraStop(cameraInstance);
+        cameraStarted = false;
         return stopped;
     }
 
@@ -196,11 +203,14 @@ public class CLCamera implements HardwareInterface {
      * @return true if successful
      * @throws HardwareInterfaceException if there is an error
      */
-    public void getCameraFrame(int[] imgData, int waitTimeout) throws HardwareInterfaceException{
-        if(!CLEyeCameraGetFrame(cameraInstance, imgData, waitTimeout)) throw new HardwareInterfaceException("capturing frame");
+    public void getCameraFrame(int[] imgData, int waitTimeout) throws HardwareInterfaceException {
+        if (!CLEyeCameraGetFrame(cameraInstance, imgData, waitTimeout)) {
+            throw new HardwareInterfaceException("capturing frame");
+        }
     }
 
     public boolean setCameraParam(int param, int val) {
+        if(cameraInstance==0) return false;
         return CLEyeSetCameraParameter(cameraInstance, param, val);
     }
 
@@ -242,6 +252,69 @@ public class CLCamera implements HardwareInterface {
     public boolean isOpen() {
         return isOpened;
     }
+    
+    // http://codelaboratories.com/research/view/cl-eye-muticamera-api
 
+    public class InvalidParameterException extends Exception {
 
+        public InvalidParameterException(String message) {
+            super(message);
+        }
+    }
+    
+    public void setGain(int gain) throws HardwareInterfaceException, InvalidParameterException {
+        if (gain < 0) {
+            throw new InvalidParameterException("tried to set gain<0 (" + gain + ")");
+        }
+        if (gain > 79) {
+            throw new InvalidParameterException("tried to set gain>79 (" + gain + ")");
+        }
+        if (!setCameraParam(CLEYE_GAIN, gain)) {
+            throw new HardwareInterfaceException("setting gain to " + gain);
+        }
+    }
+
+    public int getGain() {
+        int gain = getCameraParam(CLEYE_GAIN);
+        return gain;
+    }
+
+    public void setExposure(int exp) throws HardwareInterfaceException, InvalidParameterException {
+        if (exp < 0) {
+            throw new InvalidParameterException("tried to set exposure<0 (" + exp + ")");
+        }
+        if (exp > 511) {
+            throw new InvalidParameterException("tried to set exposure>511 (" + exp + ")");
+        }
+        if (!setCameraParam(CLEYE_EXPOSURE, exp)) {
+            throw new HardwareInterfaceException("setting exposure to " + exp);
+        }
+    }
+
+    public int getExposure() {
+        int gain = getCameraParam(CLEYE_EXPOSURE);
+        return gain;
+    }
+
+    public void setAutoGain(boolean yes) throws HardwareInterfaceException {
+        if (!setCameraParam(CLEYE_AUTO_GAIN, yes ? 1 : 0)) {
+            throw new HardwareInterfaceException("setting auto gain=" + yes);
+        }
+    }
+
+    public boolean isAutoGain() {
+        return getCameraParam(CLEYE_AUTO_GAIN) != 0;
+    }
+
+    public void setAutoExposure(boolean yes) throws HardwareInterfaceException {
+        if (!setCameraParam(CLEYE_AUTO_EXPOSURE, yes ? 1 : 0)) {
+            throw new HardwareInterfaceException("setting auto exposure=" + yes);
+        }
+    }
+
+    public boolean isAutoExposure() {
+        return getCameraParam(CLEYE_AUTO_EXPOSURE) != 0;
+    }
+
+ 
 }
