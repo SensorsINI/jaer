@@ -35,8 +35,12 @@ public class CLCamera implements HardwareInterface {
     private static boolean libraryLoaded = false;
     private final static String DLLNAME = "CLEyeMulticam";
     private int cameraIndex = 0; // index of camera to open
+    private int cameraInstance = 0;
+    private boolean isOpened = false;
+    private int frameRateHz = 60;
+    private ColorMode colorMode=ColorMode.CLEYE_MONO_PROCESSED;
+   // static methods
 
-    // static methods
     static {
         if (!isLibraryLoaded() && System.getProperty("os.name").startsWith("Windows")) {
             try {
@@ -62,6 +66,19 @@ public class CLCamera implements HardwareInterface {
             }
         }
     }
+ 
+    public enum ColorMode {
+
+        CLEYE_MONO_PROCESSED(0), CLEYE_COLOR_PROCESSED(1),
+        CLEYE_MONO_RAW(2), CLEYE_COLOR_RAW(3), CLEYE_BAYER_RAW(4);
+        int code;
+
+        ColorMode(int code) {
+            this.code = code;
+        }
+    }
+  
+    
     // camera color mode
     public static final int CLEYE_MONO_PROCESSED = 0;
     public static final int CLEYE_COLOR_PROCESSED = 1;
@@ -94,8 +111,7 @@ public class CLCamera implements HardwareInterface {
     public static final int CLEYE_LENSCORRECTION2 = 17;	// [-500, 500]
     public static final int CLEYE_LENSCORRECTION3 = 18;	// [-500, 500]
     public static final int CLEYE_LENSBRIGHTNESS = 19;	// [-500, 500]
-    
-    public static final int[] CLEYE_FRAME_RATES={15,30,60,75,100,125}; // TODO only QVGA now
+    public static final int[] CLEYE_FRAME_RATES = {15, 30, 60, 75, 100, 125}; // TODO only QVGA now
 
     native static int CLEyeGetCameraCount();
 
@@ -136,8 +152,6 @@ public class CLCamera implements HardwareInterface {
     public static String cameraUUID(int index) {
         return CLEyeGetCameraUUID(index);
     }
-    private int cameraInstance = 0;
-    private boolean isOpened = false;
 
     /** Constructs instance for first camera
      * 
@@ -175,7 +189,7 @@ public class CLCamera implements HardwareInterface {
      * 
      * @return true if successful or if already started
      */
-    public boolean startCamera() {
+    synchronized public boolean startCamera() {
         if (cameraStarted) {
             return true;
         }
@@ -187,7 +201,7 @@ public class CLCamera implements HardwareInterface {
      * 
      * @return true if successful or if not started
      */
-    public boolean stopCamera() {
+    synchronized public boolean stopCamera() {
         if (!cameraStarted) {
             return true;
         }
@@ -203,14 +217,16 @@ public class CLCamera implements HardwareInterface {
      * @return true if successful
      * @throws HardwareInterfaceException if there is an error
      */
-    public void getCameraFrame(int[] imgData, int waitTimeout) throws HardwareInterfaceException {
+    synchronized public void getCameraFrame(int[] imgData, int waitTimeout) throws HardwareInterfaceException {
         if (!CLEyeCameraGetFrame(cameraInstance, imgData, waitTimeout)) {
             throw new HardwareInterfaceException("capturing frame");
         }
     }
 
-    public boolean setCameraParam(int param, int val) {
-        if(cameraInstance==0) return false;
+    synchronized public boolean setCameraParam(int param, int val) {
+        if (cameraInstance == 0) {
+            return false;
+        }
         return CLEyeSetCameraParameter(cameraInstance, param, val);
     }
 
@@ -229,7 +245,7 @@ public class CLCamera implements HardwareInterface {
         dispose();
     }
 
-    /** Opens the cameraIndex camera with some default settings
+    /** Opens the cameraIndex camera with some default settings. Set the frameRateHz before calling open().
      * 
      * @throws HardwareInterfaceException 
      */
@@ -238,7 +254,7 @@ public class CLCamera implements HardwareInterface {
         if (isOpened) {
             return;
         }
-        boolean gotCam = createCamera(cameraIndex, CLEYE_MONO_PROCESSED, CLEYE_QVGA, 60);
+        boolean gotCam = createCamera(cameraIndex, colorMode.code, CLEYE_QVGA, getFrameRateHz()); // TODO fixed settings now
         if (!gotCam) {
             throw new HardwareInterfaceException("couldn't get camera");
         }
@@ -252,17 +268,40 @@ public class CLCamera implements HardwareInterface {
     public boolean isOpen() {
         return isOpened;
     }
-    
-    // http://codelaboratories.com/research/view/cl-eye-muticamera-api
 
+    /**
+     * @return the frameRateHz
+     */
+    public int getFrameRateHz() {
+        return frameRateHz;
+    }
+
+    /**
+     * @param frameRateHz the frameRateHz to set
+     */
+    synchronized public void setFrameRateHz(int frameRateHz) throws HardwareInterfaceException {
+        int old = this.frameRateHz;
+        if (old != frameRateHz && isOpen()) {
+            close();
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException ex) {
+            }
+            open();
+            this.frameRateHz = frameRateHz;
+        }
+    }
+
+    // http://codelaboratories.com/research/view/cl-eye-muticamera-api
+    /** Thrown for invalid parameters */
     public class InvalidParameterException extends Exception {
 
         public InvalidParameterException(String message) {
             super(message);
         }
     }
-    
-    public void setGain(int gain) throws HardwareInterfaceException, InvalidParameterException {
+
+    synchronized public void setGain(int gain) throws HardwareInterfaceException, InvalidParameterException {
         if (gain < 0) {
             throw new InvalidParameterException("tried to set gain<0 (" + gain + ")");
         }
@@ -279,7 +318,7 @@ public class CLCamera implements HardwareInterface {
         return gain;
     }
 
-    public void setExposure(int exp) throws HardwareInterfaceException, InvalidParameterException {
+    synchronized public void setExposure(int exp) throws HardwareInterfaceException, InvalidParameterException {
         if (exp < 0) {
             throw new InvalidParameterException("tried to set exposure<0 (" + exp + ")");
         }
@@ -296,7 +335,7 @@ public class CLCamera implements HardwareInterface {
         return gain;
     }
 
-    public void setAutoGain(boolean yes) throws HardwareInterfaceException {
+    synchronized public void setAutoGain(boolean yes) throws HardwareInterfaceException {
         if (!setCameraParam(CLEYE_AUTO_GAIN, yes ? 1 : 0)) {
             throw new HardwareInterfaceException("setting auto gain=" + yes);
         }
@@ -306,7 +345,7 @@ public class CLCamera implements HardwareInterface {
         return getCameraParam(CLEYE_AUTO_GAIN) != 0;
     }
 
-    public void setAutoExposure(boolean yes) throws HardwareInterfaceException {
+    synchronized public void setAutoExposure(boolean yes) throws HardwareInterfaceException {
         if (!setCameraParam(CLEYE_AUTO_EXPOSURE, yes ? 1 : 0)) {
             throw new HardwareInterfaceException("setting auto exposure=" + yes);
         }
@@ -315,6 +354,4 @@ public class CLCamera implements HardwareInterface {
     public boolean isAutoExposure() {
         return getCameraParam(CLEYE_AUTO_EXPOSURE) != 0;
     }
-
- 
 }

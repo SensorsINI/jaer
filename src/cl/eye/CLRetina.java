@@ -98,22 +98,28 @@ public class CLRetina extends AEChip {
                     int lastval = lastEventPixelValues[i];
                     int diff = pixval - lastval;
                     if (diff > eventThreshold) {
-                        PolarityEvent e = (PolarityEvent) itr.nextOutput();
-                        e.x = (short) x;
-                        e.y = (short) (sy - y - 1);
-                        e.type = 1;
-                        e.timestamp = ts;
+                        int n = diff / eventThreshold;
+                        for (int j = 0; j < n; j++) {
+                            PolarityEvent e = (PolarityEvent) itr.nextOutput();
+                            e.x = (short) x;
+                            e.y = (short) (sy - y - 1);
+                            e.type = 1;
+                            e.timestamp = ts;
+                            e.setPolarity(PolarityEvent.Polarity.On);
+                        }
                         lastEventPixelValues[i] = pixval;
-                        e.setPolarity(PolarityEvent.Polarity.On);
                         lastEventPixelValues[i] = pixval;
                     } else if (diff < -eventThreshold) {
-                        PolarityEvent e = (PolarityEvent) itr.nextOutput();
-                        e.x = (short) x;
-                        e.y = (short) (sy - y - 1);
-                        e.type = 0;
-                        e.timestamp = ts;
+                        int n = -diff / eventThreshold;
+                        for (int j = 0; j < n; j++) {
+                            PolarityEvent e = (PolarityEvent) itr.nextOutput();
+                            e.x = (short) x;
+                            e.y = (short) (sy - y - 1);
+                            e.type = 0;
+                            e.timestamp = ts;
+                            e.setPolarity(PolarityEvent.Polarity.Off);
+                        }
                         lastEventPixelValues[i] = pixval;
-                        e.setPolarity(PolarityEvent.Polarity.Off);
                         lastEventPixelValues[i] = pixval;
                     }
 
@@ -172,6 +178,15 @@ public class CLRetina extends AEChip {
     public void setFrameRate(int frameRate) {
         this.frameRate = frameRate;
         getPrefs().putInt("frameRate", frameRate);
+        HardwareInterface hardwareInterface = getHardwareInterface();
+        if (hardwareInterface != null && (hardwareInterface instanceof CLRetinaHardwareInterface)) {
+            try {
+                CLRetinaHardwareInterface hw = (CLRetinaHardwareInterface) hardwareInterface;
+                hw.setFrameRateHz(frameRate);
+            } catch (Exception ex) {
+                log.warning(ex.toString());
+            }
+        }
     }
 
     /**

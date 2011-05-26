@@ -10,10 +10,9 @@
  */
 package cl.eye;
 
-import javax.swing.SpinnerNumberModel;
-
 /**
- *
+ * Controls camera and event generation parameters.
+ * 
  * @author tobi
  */
 public class CLCameraControlPanel extends javax.swing.JPanel {

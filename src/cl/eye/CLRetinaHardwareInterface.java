@@ -103,6 +103,7 @@ public class CLRetinaHardwareInterface extends CLCamera implements AEMonitorInte
         return 0;
     }
 
+    
     @Override
     public int getTimestampTickUs() {
         return 1;
