@@ -13,6 +13,7 @@ import net.sf.jaer.chip.TypedEventExtractor;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
 
 /**
  * A behavioral model of an AE retina using the code laboratories interface to a PS eye camera.
@@ -29,6 +30,7 @@ public class CLRetina extends AEChip{
         setSizeX(320);
         setSizeY(240);
         setEventExtractor(new EventExtractor(this));
+        setEventClass(PolarityEvent.class);
     }
     
     public class EventExtractor extends TypedEventExtractor<TemporalContrastEvent> {
@@ -43,15 +45,32 @@ public class CLRetina extends AEChip{
             int ts=in.getTimestamps()[0];
             OutputEventIterator itr=out.outputIterator();
             int sx=getSizeX(), sy=getSizeY(), i=0;
-            for(int x=0;x<sx;x++){
-                for(int y=0;y<sy;y++){
-                    if(pixVals[i]!=lastEventPixelValues[i]){
-                        BasicEvent e=itr.nextOutput();
+            int thr=2;
+            for(int y=0;y<sy;y++){
+                for(int x=0;x<sx;x++){
+                    int pixval=(pixVals[i]&0xff); // get gray value 0-255
+                    int lastval=lastEventPixelValues[i];
+                    int diff=pixval-lastval;
+                    if(diff>thr){
+                         PolarityEvent e=(PolarityEvent)itr.nextOutput();
                         e.x=(short)x;
-                        e.y=(short)y;
+                        e.y=(short)(sy-y-1);
+                        e.type=1;
                         e.timestamp=ts;
+                        lastEventPixelValues[i]=pixval;
+                        e.setPolarity(PolarityEvent.Polarity.On);
+                        lastEventPixelValues[i]=pixval;
+                    }else if(diff<-thr){
+                        PolarityEvent e=(PolarityEvent)itr.nextOutput();
+                        e.x=(short)x;
+                        e.y=(short)(sy-y-1);
+                        e.type=0;
+                        e.timestamp=ts;
+                        lastEventPixelValues[i]=pixval;
+                        e.setPolarity(PolarityEvent.Polarity.Off);
+                        lastEventPixelValues[i]=pixval;
                     }
-                    lastEventPixelValues[i]=pixVals[i];
+ 
                     i++;
                 }
             }

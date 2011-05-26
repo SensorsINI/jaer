@@ -19,6 +19,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 public class CLRetinaHardwareInterface extends CLCamera implements AEMonitorInterface{
 
     private int frameCounter=0;
+    private long startTimeUs=0;
    protected AEChip chip=null;
    protected PropertyChangeSupport support=new PropertyChangeSupport(this);
     AEPacketRaw packet=new AEPacketRaw(320*240);
@@ -37,7 +38,7 @@ public class CLRetinaHardwareInterface extends CLCamera implements AEMonitorInte
     public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
         getCameraFrame(frameBuffer, 100);
         packet.setNumEvents(320*240);
-        timestamps[0]=frameCounter;
+        timestamps[0]=(int)System.nanoTime()/1000;
         frameCounter++;
         return packet;
     }
