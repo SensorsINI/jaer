@@ -61,7 +61,7 @@ public class LIFNeuronJHLee {
     /**
      * refractory period
      */
-    protected float RefractoryPeriod = 0.0f;
+    protected float refractoryPeriod = 0.0f;
 
     /**
      * control parameter for refractory period
@@ -112,7 +112,12 @@ public class LIFNeuronJHLee {
     /**
      * maximum value of LIF neuron's refractory period
      */
-    protected float RefractoryPeriodMaxMs = 1.0f;
+    protected float refractoryPeriodMaxMs = 1.0f;
+
+    /**
+     * minimum level of hyper polarization (caused by ISIP)
+     */
+    protected float minHyperPolarizationLevel = 0;
 
 
 
@@ -148,7 +153,7 @@ public class LIFNeuronJHLee {
         membranePotential = 0;
         numSpikes = 0;
         lastEventTimestamp = 0;
-        RefractoryPeriod = 0;
+        refractoryPeriod = 0;
         adaptationParam = 0;
         lastAboveThresholdTimestamp = -1;
         lastSpikeTimestamp = 0;
@@ -161,7 +166,7 @@ public class LIFNeuronJHLee {
         membranePotential = 0;
         numSpikes = 0;
         lastEventTimestamp = 0;
-        RefractoryPeriod = 0;
+        refractoryPeriod = 0;
         adaptationParam = 0;
         lastAboveThresholdTimestamp = -1;
         lastSpikeTimestamp = 0;
@@ -207,10 +212,10 @@ public class LIFNeuronJHLee {
                     if(MPDecreaseArterFiringPercentTh > 0 && membranePotential >= thresholdMP){
                         // calculates refractory period
                         if(adaptationParam < adaptationParamMax){
-                            RefractoryPeriod = RefractoryPeriodMaxMs*(1.0f - (float)Math.exp((double) -adaptationParam/adaptationParamSlop));
+                            refractoryPeriod = refractoryPeriodMaxMs*(1.0f - (float)Math.exp((double) -adaptationParam/adaptationParamSlop));
 
                             // if it's not constrained by the refractory period
-                            if(lastEventTimestamp > lastSpikeTimestamp + (int)(RefractoryPeriod*1000f)){
+                            if(lastEventTimestamp > lastSpikeTimestamp + (int)(refractoryPeriod*1000f)){
                                 // fires a spike
                                 numSpikes++;
                                 // decreases MP by MPJumpAfterFiring after firing
@@ -289,8 +294,10 @@ public class LIFNeuronJHLee {
             membranePotential = 0;
         else{
             membranePotential = weight + membranePotential * (float) Math.exp(timeDiff / tauMP);
-//            if(membranePotential < 0f)
-//                membranePotential = 0f;
+            if(weight < 0){
+                if(membranePotential < minHyperPolarizationLevel)
+                    membranePotential = minHyperPolarizationLevel;
+            }
         }
     }
 
@@ -402,15 +409,15 @@ public class LIFNeuronJHLee {
      * @return
      */
     public float getRefractoryPeriod() {
-        return RefractoryPeriod;
+        return refractoryPeriod;
     }
 
     /**
      * sets the refractory period
-     * @param RefractoryPeriod
+     * @param refractoryPeriod
      */
-    public void setRefractoryPeriod(float RefractoryPeriod) {
-        this.RefractoryPeriod = RefractoryPeriod;
+    public void setRefractoryPeriod(float refractoryPeriod) {
+        this.refractoryPeriod = refractoryPeriod;
     }
 
     /**
@@ -530,16 +537,32 @@ public class LIFNeuronJHLee {
      * @return
      */
     public float getRefractoryPeriodMaxMs() {
-        return RefractoryPeriodMaxMs;
+        return refractoryPeriodMaxMs;
     }
 
     /**
      * sets RefractoryPeriodMaxMs
      * 
-     * @param RefractoryPeriodMaxMs
+     * @param refractoryPeriodMaxMs
      */
-    public void setRefractoryPeriodMaxMs(float RefractoryPeriodMaxMs) {
-        this.RefractoryPeriodMaxMs = RefractoryPeriodMaxMs;
+    public void setRefractoryPeriodMaxMs(float refractoryPeriodMaxMs) {
+        this.refractoryPeriodMaxMs = refractoryPeriodMaxMs;
+    }
+
+    /**
+     * returns minHyperPolarizationLevel
+     * @return
+     */
+    public float getMinHyperPolarizationLevel() {
+        return minHyperPolarizationLevel;
+    }
+
+    /**
+     * sets minHyperPolarizationLevel
+     * @param minHyperPolarizationLevel
+     */
+    public void setMinHyperPolarizationLevel(float minHyperPolarizationLevel) {
+        this.minHyperPolarizationLevel = minHyperPolarizationLevel;
     }
 } // End of class LIFNeuron
 

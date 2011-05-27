@@ -452,7 +452,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             numFiringNeighbors = 0;
             lastEventTimestamp = 0;
             numSpikes = 0;
-            RefractoryPeriod = 0;
+            refractoryPeriod = 0;
             adaptationParam = 0;
             lastAboveThresholdTimestamp = -1;
             lastSpikeTimestamp = 0;
@@ -2196,7 +2196,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         getPrefs().putFloat("BlurringFilter2D.RefractoryPeriodMaxMs", RefractoryPeriodMaxMs);
 
         for(LIFNeuron neuron:lifNeurons)
-            neuron.RefractoryPeriodMaxMs = RefractoryPeriodMaxMs;
+            neuron.refractoryPeriodMaxMs = RefractoryPeriodMaxMs;
     }
 
 }

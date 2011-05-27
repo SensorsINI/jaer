@@ -133,9 +133,6 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         for(int i=0; i<in.getSize(); i++){
             BinocularEvent ev = (BinocularEvent)in.getEvent(i);
 
-            // skips disordered event
-            if(ev.getTimestamp() < lastTime) continue;
-
             // updates lastTime
             lastTime = ev.getTimestamp();
 

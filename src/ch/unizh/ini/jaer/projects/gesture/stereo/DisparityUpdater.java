@@ -182,7 +182,7 @@ public class DisparityUpdater extends EventFilter2D implements FrameAnnotater, O
             for(StereoDisparity sd : clusterDisparity.values()){
                 sd.updateDisparity(msg.timestamp);
                 // if the updated disparity if not valid, replaces it with the global disparity
-                if(sd.getDisparity() == -size)
+                if(sd.getDisparity() == -size || Math.abs(sd.getDisparity() - globalDisparity.getDisparity()) > size/5)
                     sd.setDisparity(globalDisparity.getDisparity(), msg.timestamp);
             }
         } else {

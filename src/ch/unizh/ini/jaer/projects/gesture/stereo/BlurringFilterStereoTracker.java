@@ -104,7 +104,7 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
         for(Cluster cl:clusters){
             Rectangle refRect = cl.getClusterArea();
             int median = refRect.x + refRect.width/2;
-            int radius = (int) calRadius(cl);
+            int radius = (int) calRadius(cl).radius;
 
             if(!du.containsClusterSV(cl.getClusterNumber())){ // if the cluster is not registered yet, registers it
                 Rectangle area = new Rectangle(median - radius , refRect.y, 2*radius, refRect.height);
@@ -167,10 +167,10 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
     protected void updateClusterPaths(int t) {
         // update paths of clusters
         for ( Cluster c:clusters ){
-            if(!c.isDead() && c.isUpdated()){
+            if(!c.isDead() && c.isUpdated() != ClusterUpdateStatus.NOT_UPDATED){
                 c.updatePath(t, ((BlurringFilterStereo) bfilter).disparityUpdater.getDisparity(c.getClusterNumber()));
                 c.setMinimumClusterSize(getMinimumClusterSizePixels() + (int)c.getDisparity(1));
-                c.setUpdated(false);
+                c.setUpdated(ClusterUpdateStatus.NOT_UPDATED); // resets update status
             }
         }
     }
