@@ -165,14 +165,42 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
      */
     @Override
     protected void updateClusterPaths(int t) {
+        LinkedList<Cluster> matchedSCList = new LinkedList<Cluster>();
+
+        // updates paths of shadow clusters first
+        for(Cluster sc : shadowClusters){
+            if(!sc.isDead() && sc.isUpdated() != ClusterUpdateStatus.NOT_UPDATED){
+                sc.updatePath(t, ((BlurringFilterStereo) bfilter).disparityUpdater.getGlobalDisparity());
+                // reset the cluster's update status
+                sc.setUpdated(ClusterUpdateStatus.NOT_UPDATED);
+            }
+        }
+
         // update paths of clusters
         for ( Cluster c:clusters ){
+            boolean replaced = false;
+            // if the cluster is doing subthreshold tracking for a long time and the life time of a shadow cluster is long enough,
+            // replace the cluster with the shadow one.
+            for(Cluster sc : shadowClusters){
+                if(!matchedSCList.contains(sc) && c.getSubThTrackingTimeUs() > 2000000 && sc.getLifetime() > getSubThTrackingActivationTimeMs()*1000){
+                    c.setLocation(sc.location);
+                    matchedSCList.add(sc);
+                    replaced = true;
+                    break;
+                }
+            }
+
             if(!c.isDead() && c.isUpdated() != ClusterUpdateStatus.NOT_UPDATED){
-                c.updatePath(t, ((BlurringFilterStereo) bfilter).disparityUpdater.getDisparity(c.getClusterNumber()));
+                if(replaced)
+                    c.updatePath(t, ((BlurringFilterStereo) bfilter).disparityUpdater.getGlobalDisparity());
+                else
+                    c.updatePath(t, ((BlurringFilterStereo) bfilter).disparityUpdater.getDisparity(c.getClusterNumber()));
                 c.setMinimumClusterSize(getMinimumClusterSizePixels() + (int)c.getDisparity(1));
                 c.setUpdated(ClusterUpdateStatus.NOT_UPDATED); // resets update status
             }
         }
+
+        shadowClusters.removeAll(matchedSCList);
     }
 
     /**

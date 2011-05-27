@@ -249,6 +249,12 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      * Prunes out old clusters that don't have support or that should be purged for some other reason.
      */
     private void pruneClusters (){
+        for(Cluster c : clusters){
+            if(c.location.x == Float.NaN || c.location.y == Float.NaN){
+                pruneList.add(c);
+            }
+        }
+
         clusters.removeAll(pruneList);
         pruneList.clear();
     }
@@ -358,17 +364,41 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
     /** Updates cluster path lists
      *
+     * @param clusterList
      * @param t the update timestamp
      */
     protected void updateClusterPaths (int t){
+        LinkedList<Cluster> matchedSCList = new LinkedList<Cluster>();
+
+        // updates paths of shadow clusters first
+        for(Cluster sc : shadowClusters){
+            if(!sc.dead && sc.isUpdated() != ClusterUpdateStatus.NOT_UPDATED){
+                sc.updatePath(t, 0);
+                // reset the cluster's update status
+                sc.setUpdated(ClusterUpdateStatus.NOT_UPDATED);
+            }
+        }
+
         // update paths of clusters
         for ( Cluster c:clusters ){
+            // if the cluster is doing subthreshold tracking for a long time and the life time of a shadow cluster is long enough,
+            // replace the cluster with the shadow one.
+            for(Cluster sc : shadowClusters){
+                if(!matchedSCList.contains(sc) && c.getSubThTrackingTimeUs() > 2000000 && sc.getLifetime() > subThTrackingActivationTimeMs*1000){
+                    c.setLocation(sc.location);
+                    matchedSCList.add(sc);
+                    break;
+                }
+            }
+
             if(!c.dead && c.isUpdated() != ClusterUpdateStatus.NOT_UPDATED){
                 c.updatePath(t, 0);
                 // reset the cluster's update status
                 c.setUpdated(ClusterUpdateStatus.NOT_UPDATED);
             }
         }
+
+        shadowClusters.removeAll(matchedSCList);
     }
 
     /**
@@ -1990,8 +2020,6 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                 case SINGLE: // if we track only one cluster
                     if(shadowClusters.isEmpty())
                         trackLargestGroup(shadowClusters, ngCollection, 0, defaultUpdateInterval);
-                    else
-                        updateShadowClusters(1, ngCollection, msg.timestamp, 2*defaultUpdateInterval);
                     break;
                 case COUPLE:
                     if(shadowClusters.size() == 1){
@@ -2001,12 +2029,12 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                         if(!ngCollection.isEmpty())
                             trackLargestGroup(shadowClusters, ngCollection, 1, defaultUpdateInterval);
                     }
-                    updateShadowClusters(shadowClusters.size(), ngCollection, msg.timestamp, 2*defaultUpdateInterval);
                     break;
                 default:
                     break;
             }
         }
+        updateShadowClusters(ngCollection, msg.timestamp, 2*defaultUpdateInterval);
         ngCollection.clear();
 
         // updates cluster list
@@ -2014,21 +2042,19 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
     }
 
-    protected void updateShadowClusters(int numEffectiveClusters, Collection<NeuronGroup> ngCollection, int refTimestamp, int updateInterval){
+    protected void updateShadowClusters(Collection<NeuronGroup> ngCollection, int refTimestamp, int updateInterval){
         // shadow cluster
-        if(shadowClusters.isEmpty() || numEffectiveClusters < 1)
+        if(shadowClusters.isEmpty())
             return;
 
         LinkedList<Cluster> pruneSCList = new LinkedList<Cluster>();
-        LinkedList<Cluster> matchedCList = new LinkedList<Cluster>();
-        for(int i= 0 ; i<numEffectiveClusters; i++){
-            Cluster sc = shadowClusters.get(i);
+        for(Cluster sc : shadowClusters){
+            if(sc.isUpdated() == ClusterUpdateStatus.NORMAL_UPDATED)
+                continue;
+            
             // neuron group
             NeuronGroup cg = getClosestGroup(ngCollection, sc);
-            if(cg == null)
-                return;
-
-            if(!sc.doesCover(cg)) {
+            if(cg == null || !sc.doesCover(cg)) {
                 sc.increaseVitality(-updateInterval);
                 if(sc.getVitality() <= 0)
                     pruneSCList.add(sc);
@@ -2038,19 +2064,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                 sc.setUpdated(ClusterUpdateStatus.NORMAL_UPDATED);
                 ngCollection.remove(cg);
             }
-
-            // if the cluster is doing subthreshold tracking long enough and the life time of a shadow cluster is long enough,
-            // replace the cluster with the shadow one.
-            for(Cluster c:clusters){
-                if(!matchedCList.contains(c) && c.getSubThTrackingTimeUs() > 2000000 && sc.getLifetime() > subThTrackingActivationTimeMs*1000){
-                    c.setLocation(sc.location);
-                    matchedCList.add(c);
-                    pruneSCList.add(sc);
-                    break;
-                }
-            }
         }
-
         shadowClusters.removeAll(pruneSCList);
     }
 
@@ -2232,6 +2246,14 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                 Cluster c = clusters.get(i);
                 if ( showClusters && c.isVisible() ){
                     c.draw(drawable);
+//                    System.out.println(c.location);
+                }
+            }
+            for (int i=0; i<shadowClusters.size(); i++ ){
+                Cluster c = shadowClusters.get(i);
+                if ( showClusters && c.isVisible() ){
+                    c.draw(drawable);
+//                    System.out.println(c.location);
                 }
             }
         } catch ( java.util.ConcurrentModificationException e ){
