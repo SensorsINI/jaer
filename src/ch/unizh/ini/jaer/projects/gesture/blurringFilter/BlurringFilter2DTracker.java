@@ -16,7 +16,6 @@ import java.awt.*;
 import java.awt.geom.*;
 import java.util.*;
 import javax.media.opengl.*;
-import net.sf.jaer.Description;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.util.filter.LowpassFilter;
 
@@ -25,7 +24,6 @@ import net.sf.jaer.util.filter.LowpassFilter;
  *
  * @author Jun Haeng Lee/Tobi Delbruck
  */
-@Description("Tracks moving hands, which means it tracks two object at most")
 public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnotater,Observer,ClusterTrackerInterface /*, PreferenceChangeListener*/{
     // TODO split out the optical gryo stuff into its own subclass
     // TODO split out the Cluster object as it's own class.
@@ -112,6 +110,11 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      */
     protected java.util.List<Cluster> clusters = new LinkedList();
     /**
+     * The list of shadow clusters which are not used but reserved for unusual case.
+     * Subthreshold tracking is not supported for shadow clusters
+     */
+    protected java.util.List<Cluster> shadowClusters = new LinkedList();
+    /**
      * Blurring filter to getString clusters
      */
     public BlurringFilter2D bfilter;
@@ -139,8 +142,8 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     public BlurringFilter2DTracker (AEChip chip){
         super(chip);
         this.chip = chip;
-        initFilter();
         chip.addObserver(this);
+        
         final String movement = "Movement", disp = "Display", 
                      global = "Global", update = "Update", trjlimit = "Trajectory persistance",
                      subThTracking = "Subthreshold tracking", selMotionDet = "SelectMotion detection";
@@ -258,9 +261,10 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      * @param t the global timestamp of the update.
      */
     private void updateClusterList (int t){
+        pruneClusters();
+
         if(enableMerge)
             mergeClusters();
-        pruneClusters();
         updateClusterPaths(t);
     }
 
@@ -341,7 +345,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             float dy = c.distanceToY(neuronGroup);
             float aveRadius = ( c.getRadius() + neuronGroup.getOutterRadiusPixels() ) / 2.0f;
 
-            if ( !c.isUpdated() && dx < aveRadius && dy < aveRadius ){
+            if ( c.isUpdated() == ClusterUpdateStatus.NOT_UPDATED && dx < aveRadius && dy < aveRadius ){
                 if ( dx + dy < minDistance ){
                     closest = c;
                     minDistance = dx + dy;
@@ -359,11 +363,36 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     protected void updateClusterPaths (int t){
         // update paths of clusters
         for ( Cluster c:clusters ){
-            if(!c.dead && c.isUpdated()){
+            if(!c.dead && c.isUpdated() != ClusterUpdateStatus.NOT_UPDATED){
                 c.updatePath(t, 0);
-                c.setUpdated(false);
+                // reset the cluster's update status
+                c.setUpdated(ClusterUpdateStatus.NOT_UPDATED);
             }
         }
+    }
+
+    /**
+     * structure to calculate non-overlapping cluster radius
+     */
+    public class NonOverlappingRadiusOfCluster{
+        public boolean isTouchingNeighbor;
+        public Cluster neighbor;
+        public float radius;
+
+        public NonOverlappingRadiusOfCluster(){
+            isTouchingNeighbor = false;
+            neighbor = null;
+            radius = 0;
+        }
+    }
+
+    /**
+     * status of cluster update
+     */
+    public enum ClusterUpdateStatus {
+        NORMAL_UPDATED, // updated with a spiking neuron group
+        SUBTHRESHOLD_UPDATED, // updated with a subthreshold neuron group
+        NOT_UPDATED // not updated
     }
 
     /**
@@ -426,9 +455,9 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         protected int vitality = 0;
 
         /**
-         * true if the cluster is updated
+         * status of cluster update
          */
-        protected boolean updated = false;
+        protected ClusterUpdateStatus updated = ClusterUpdateStatus.NORMAL_UPDATED;
 
         /**
          *Rendered color of cluster.
@@ -587,7 +616,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                 vitality = (int)( 1000 * maximumClusterLifetimeMs );
             }
 
-            updated = true;
+            updated = ClusterUpdateStatus.NORMAL_UPDATED;
 
 //            System.out.println("Cluster_"+clusterNumber+" is created @"+firstUpdateTimestamp);
         }
@@ -727,11 +756,11 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             return velocityPPT;
         }
 
-        /** returns true if the cluster has been updated
+        /** returns the status of cluster update
          *
-         * @return true if the cluster has been updated
+         * @return 
          */
-        public boolean isUpdated (){
+        public ClusterUpdateStatus isUpdated (){
             return updated;
         }
 
@@ -739,7 +768,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          *
          * @param updated
          */
-        public void setUpdated (boolean updated){
+        public void setUpdated (ClusterUpdateStatus updated){
             this.updated = updated;
         }
 
@@ -1041,7 +1070,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         private boolean doesCover (NeuronGroup ng){
             int dt = ng.getLastEventTimestamp() - lastUpdateTimestamp;
             double deltaDist = velocityPPT.distance(0, 0)* dt;
-            double criterion = calRadius(this)*(1 + deltaDist/chip.getSizeX());
+            double criterion = calRadius(this).radius*(1 + deltaDist/chip.getSizeX());
 
             boolean ret = false;
             if(distanceTo(ng) < criterion)
@@ -1054,9 +1083,9 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * excute subthreshold tracking
          *
          * @param updateTimestamp
-         * @param radius
+         * @param no_radius
          */
-        public void doSubThTracking(int updateTimestamp, float radius){
+        public void doSubThTracking(int updateTimestamp, NonOverlappingRadiusOfCluster no_radius){
             float xpos = location.x;
             float ypos = location.y;
 
@@ -1070,7 +1099,14 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
             Point2D.Float loc = new Point2D.Float(xpos, ypos);
 
-            NeuronGroup ng = bfilter.getVirtualNeuronGroup(loc, radius, updateTimestamp);
+            NeuronGroup ng = bfilter.getVirtualNeuronGroup(loc, no_radius.radius, updateTimestamp);
+
+            // We don't have to update the cluster when a closely located neighbor cluster is attracting it
+            if(no_radius.isTouchingNeighbor  // has a neighbor in touch
+               && no_radius.neighbor.distanceTo(ng) < distanceTo(no_radius.neighbor) // is moving to the neighbor
+               && distanceTo(no_radius.neighbor) < minimumClusterSizePixels) // distance is less than the minimum value
+                return;
+
             ng.lastEventTimestamp = updateTimestamp;
 
             // if the total MP of the virtual group is lower than threshold, use current location.
@@ -1105,24 +1141,27 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             NeuronGroup closestGroup = getClosestGroup(ngCollection, this);
 
             // updates the cluster with a new group
+            if(closestGroup == null)
+                return false;
+            
             Cluster c = new Cluster(closestGroup, defaultUpdateInterval);
 
             if(getSubThTrackingTimeUs() > 1000*1000){
                 setLocation(c.location);
                 lastUpdateTimestamp = closestGroup.lastEventTimestamp;
-                setUpdated(true);
+                setUpdated(ClusterUpdateStatus.NORMAL_UPDATED);
             } else {
                 float dist = (float) getVelocityPPT().distance(0, 0)*(closestGroup.lastEventTimestamp - lastUpdateTimestamp);
                 if(distanceTo(c) < 10*dist){
                     setLocation(c.location);
                     lastUpdateTimestamp = closestGroup.lastEventTimestamp;
                     c.increaseVitality(lastUpdateTimestamp - getPath().get(getPath().size() - 2).t);
-                    setUpdated(true);
+                    setUpdated(ClusterUpdateStatus.NORMAL_UPDATED);
                 }
             }
 
             // if the closestGroup is uased for update of a cluster, remove it.
-            if(updated){
+            if(updated == ClusterUpdateStatus.NORMAL_UPDATED){
                 ngCollection.remove(closestGroup);
                 ret = true;
             }
@@ -1279,7 +1318,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                         onMoving = false;
                         stationaryTime = t;
                     } else {
-                        if(t - stationaryTime > stationaryLifeTimeMs*1000){
+                        if((t - stationaryTime > stationaryLifeTimeMs*1000)){
                             dead = true;
                         }
                     }
@@ -1336,7 +1375,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          *
          * @param color
          */
-        public void setColor (Color color){
+        public final void setColor (Color color){
             this.color = color;
         }
 
@@ -1388,7 +1427,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * 
          * @param clusterNumber
          */
-        public void setClusterNumber (int clusterNumber){
+        public final void setClusterNumber (int clusterNumber){
             this.clusterNumber = clusterNumber;
         }
 
@@ -1405,7 +1444,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * @param deltaVitality
          * @return
          */
-        public int increaseVitality (int deltaVitality){
+        public final int increaseVitality (int deltaVitality){
             if ( deltaVitality > 0 ){
                 vitality += 2 * deltaVitality;
             } else{
@@ -1546,7 +1585,11 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             /** Creates a new instance of RollingLinearRegression */
             public VelocityFitter (ArrayList<ClusterPathPoint> points,int length){
                 this.points = points;
-                this.length = length;
+                if(length < 1)
+                    this.length = 1;
+                else
+                    this.length = length;
+                
                 xlpf.setTauMs(50);
                 ylpf.setTauMs(50);
             }
@@ -1826,29 +1869,25 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         // updates clusters based on the mapping table
         int defaultUpdateInterval = (int) Math.min(msg.packet.getDurationUs(), 1000 * chip.getFilterChain().getUpdateIntervalMs());
         for ( Cluster c:clusters ){
-            int updateInterval = 0;
-            if(c.getPath().isEmpty())
+            int updateInterval = getLatestUpdateInterval(c, msg.timestamp);
+            if(updateInterval == 0)
                 updateInterval = defaultUpdateInterval;
-            else
-                updateInterval = msg.timestamp - c.getPath().get(c.getPath().size()-1).t;
-
 
             if(!c.dead){
                 NeuronGroup tmpNg = crossMapping.get(c);
 
                 // if we have a newbie, update the cluster
                 if ( tmpNg != null ){
-                    c.updateLocation(msg.timestamp, tmpNg.location, Math.max(tmpNg.getOutterRadiusPixels(), calRadius(c)));
-                    c.setUpdated(true);
-                } else{
-                    // do subthreshold tracking
+                    c.updateLocation(msg.timestamp, tmpNg.location, Math.max(tmpNg.getOutterRadiusPixels(), calRadius(c).radius));
+                    c.setUpdated(ClusterUpdateStatus.NORMAL_UPDATED);
+                } else{ // if there's no neuron group for the cluster, do subthreshold tracking
                     c.doSubThTracking(msg.timestamp, calRadius(c));
                     if(enableSubThTracking && c.isSubThTrackingOn()){
-                        c.setUpdated(true);
+                        c.setUpdated(ClusterUpdateStatus.SUBTHRESHOLD_UPDATED);
                     } else {
                         // if it's not in the subthreshold tracking mode, the cluster looses its vitality
                         c.increaseVitality(-updateInterval);
-                        c.setUpdated(false);
+                        c.setUpdated(ClusterUpdateStatus.NOT_UPDATED);
                     }
                 }
             }
@@ -1870,39 +1909,71 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         ngCollection.removeAll(ngListForPrune);
         ngListForPrune.clear();
 
-        // Creates cluster for the rest neuron groups
+        // Creates cluster for the rest neuron groups which are not located in the areas of current clusters
         if ( !ngCollection.isEmpty() ){
             switch(maxNumClusters){
                 case SINGLE: // if we track only one cluster
                     if(clusters.isEmpty()){
-                        trackLargestGroup(ngCollection, 0, defaultUpdateInterval);
+                        trackLargestGroup(clusters, ngCollection, 0, defaultUpdateInterval);
                     } else {
-                        if(!clusters.get(0).isUpdated())
-                            clusters.get(0).trackClosestGroup(ngCollection, defaultUpdateInterval);
+                        Cluster c = clusters.get(0);
+                        if(c.isUpdated() == ClusterUpdateStatus.NOT_UPDATED)
+                            c.trackClosestGroup(ngCollection, defaultUpdateInterval);
                     }
                     break;
                 case COUPLE:
-                    if(clusters.size() == 2){
-                        Cluster c1 = clusters.get(0);
-                        Cluster c2 = clusters.get(1);
-                        
-                        if(!c1.isUpdated())
-                            c1.trackClosestGroup(ngCollection, defaultUpdateInterval);
+                    switch(clusters.size()){
+                    case 2:
+                        {
+                            Cluster c1 = clusters.get(0);
+                            Cluster c2 = clusters.get(1);
 
-                        // if c1 and c2 are overlapped, splits them
-                        if(c1.distanceTo(c2) < (c1.maxRadius + c2.maxRadius)*0.5f){
-                            NeuronGroup ng1 = getClosestGroup(ngCollection, c1);
-                            NeuronGroup ng2 = getClosestGroup(ngCollection, c2);
-                            if(c1.distanceTo(ng1) < c2.distanceTo(ng2))
-                                c1.updateLocation(msg.timestamp, ng1.location, Math.max(ng1.getOutterRadiusPixels(), calRadius(c1)));
-                            else
-                                c2.updateLocation(msg.timestamp, ng2.location, Math.max(ng2.getOutterRadiusPixels(), calRadius(c2)));
+                            // finds the closest neuron group for each cluster
+                            NeuronGroup ng1 = null;
+                            if(c1.isUpdated() == ClusterUpdateStatus.NOT_UPDATED)  ng1 = getClosestGroup(ngCollection, c1);
+                            NeuronGroup ng2 = null;
+                            if(c2.isUpdated() == ClusterUpdateStatus.NOT_UPDATED)  ng2 = getClosestGroup(ngCollection, c2);
+
+                            // updates clusters
+                            if(ng1 != null){
+                                if(ng1 == ng2){ // if c1 and c2 are wanting the same group, see the distance
+                                    if(c1.distanceTo(ng1) < c2.distanceTo(ng2)){ // Must keep order, c1 first
+                                        c1.trackClosestGroup(ngCollection, defaultUpdateInterval);
+                                        c2.trackClosestGroup(ngCollection, defaultUpdateInterval);
+                                    }  else { // Must keep order, c2 first
+                                        c2.trackClosestGroup(ngCollection, defaultUpdateInterval);
+                                        c1.trackClosestGroup(ngCollection, defaultUpdateInterval);
+                                    }
+                                } else { // order is not important
+                                    c1.trackClosestGroup(ngCollection, defaultUpdateInterval);
+                                    if(ng2 != null)
+                                        c2.trackClosestGroup(ngCollection, defaultUpdateInterval);
+                                }
+                            } else {
+                                if(ng2 != null)
+                                    c2.trackClosestGroup(ngCollection, defaultUpdateInterval);
+                            }
                         }
-                    } else {
-                        if(trackLargestGroup(ngCollection, 1, defaultUpdateInterval)){
-                            if(clusters.size() < 2 && ngCollection.size() > 0)
-                                trackLargestGroup(ngCollection, 1, defaultUpdateInterval);
+                        break;
+                    case 1:
+                        {
+                           Cluster c = clusters.get(0);
+                            if(c.isUpdated() == ClusterUpdateStatus.NOT_UPDATED)
+                                c.trackClosestGroup(ngCollection, defaultUpdateInterval);
+
+                            if(ngCollection.size() > 0)
+                                trackLargestGroup(clusters, ngCollection, 1, defaultUpdateInterval);
                         }
+                        break;
+                    case 0:
+                        {
+                            if(trackLargestGroup(clusters, ngCollection, 1, defaultUpdateInterval))
+                                if(ngCollection.size() > 0)
+                                    trackLargestGroup(clusters, ngCollection, 1, defaultUpdateInterval);
+                        }
+                        break;
+                    default:
+                            break;
                     }
                     break;
                 default:
@@ -1913,6 +1984,29 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             }
         }
 
+        // if there're more group left, use it for shadow clusters
+        if(!ngCollection.isEmpty()){
+            switch(maxNumClusters){
+                case SINGLE: // if we track only one cluster
+                    if(shadowClusters.isEmpty())
+                        trackLargestGroup(shadowClusters, ngCollection, 0, defaultUpdateInterval);
+                    else
+                        updateShadowClusters(1, ngCollection, msg.timestamp);
+                    break;
+                case COUPLE:
+                    if(shadowClusters.size() == 1){
+                        trackLargestGroup(shadowClusters, ngCollection, 1, defaultUpdateInterval);
+                    } else if(shadowClusters.isEmpty()){
+                        trackLargestGroup(shadowClusters, ngCollection, 1, defaultUpdateInterval);
+                        if(!ngCollection.isEmpty())
+                            trackLargestGroup(shadowClusters, ngCollection, 1, defaultUpdateInterval);
+                    }
+                    updateShadowClusters(shadowClusters.size(), ngCollection, msg.timestamp);
+                    break;
+                default:
+                    break;
+            }
+        }
         ngCollection.clear();
 
         // updates cluster list
@@ -1920,27 +2014,80 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
     }
 
+    protected void updateShadowClusters(int numEffectiveClusters, Collection<NeuronGroup> ngCollection, int refTimestamp){
+        // shadow cluster
+        if(shadowClusters.isEmpty() || numEffectiveClusters < 1)
+            return;
+
+        LinkedList<Cluster> pruneSCList = new LinkedList<Cluster>();
+        LinkedList<Cluster> matchedCList = new LinkedList<Cluster>();
+        for(int i= 0 ; i<numEffectiveClusters; i++){
+            Cluster sc = shadowClusters.get(i);
+            // neuron group
+            NeuronGroup cg = getClosestGroup(ngCollection, sc);
+            if(cg == null)
+                return;
+
+            if(!sc.doesCover(cg)) {
+                sc.increaseVitality(-getLatestUpdateInterval(sc, refTimestamp));
+                if(sc.getVitality() <= 0)
+                    pruneSCList.add(sc);
+                continue;
+            } else {
+                sc.updateLocation(refTimestamp, cg.location, Math.max(cg.getOutterRadiusPixels(), calRadius(sc).radius));
+                sc.setUpdated(ClusterUpdateStatus.NORMAL_UPDATED);
+                ngCollection.remove(cg);
+            }
+
+            // if the cluster is doing subthreshold tracking long enough and the life time of a shadow cluster is long enough,
+            // replace the cluster with the shadow one.
+            for(Cluster c:clusters){
+                if(!matchedCList.contains(c) && c.getSubThTrackingTimeUs() > 2000000 && sc.getLifetime() > subThTrackingActivationTimeMs*1000){
+                    c.setLocation(sc.location);
+                    matchedCList.add(c);
+                    pruneSCList.add(sc);
+                    break;
+                }
+            }
+        }
+
+        shadowClusters.removeAll(pruneSCList);
+    }
+
+    protected int getLatestUpdateInterval(Cluster c, int refTimestamp){
+        int updateInterval = 0;
+        if(!c.getPath().isEmpty())
+            updateInterval = refTimestamp - c.getPath().get(c.getPath().size()-1).t;
+
+        return updateInterval;
+    }
+
     /**
-     * calculates 
+     * calculates non-overlaping radius of the cluster
      * @param c
      * @return
      */
-    protected float calRadius(Cluster c){
-        float ret = c.getRadius();
+    protected NonOverlappingRadiusOfCluster calRadius(Cluster c){
+        NonOverlappingRadiusOfCluster ret = new NonOverlappingRadiusOfCluster();
+
+        ret.radius = c.getRadius();
 
         for(Cluster cl:clusters){
             if(cl != c){
                 float radiusSum = c.maxRadius+cl.maxRadius;
                 if(c.distanceTo(cl) < radiusSum){
                     float tmpRadius = c.distanceTo(cl)*c.maxRadius/radiusSum;
-                    if(tmpRadius < ret)
-                        ret = tmpRadius;
+                    if(tmpRadius < ret.radius){
+                        ret.isTouchingNeighbor = true;
+                        ret.neighbor = cl;
+                        ret.radius = tmpRadius;
+                    }
                 }
             }
         }
 
-        if(ret < 5)
-            ret = 5;
+        if(ret.radius < 5) // minimum radius is five pixels
+            ret.radius = 5;
 
         return ret;
     }
@@ -1962,14 +2109,16 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
 
     /**
-     * tracks the largest group
+     * update one of the unupdated clusters to track the largest group
+     * if the number of clusters is equal to or smaller than refNumClusterForNewCreation, creates a new cluster to track the largest group
      *
+     * @param clusterList
      * @param ngCollection
      * @param refNumClusterForNewCreation
      * @param defaultUpdateInterval
-     * @return
+     * @return true if one of the clusters was updated or a new cluster was created
      */
-    private boolean trackLargestGroup(Collection<NeuronGroup> ngCollection, int refNumClusterForNewCreation, int defaultUpdateInterval){
+    private boolean trackLargestGroup(java.util.List<Cluster> clusterList, Collection<NeuronGroup> ngCollection, int refNumClusterForNewCreation, int defaultUpdateInterval){
         boolean ret = false;
 
         int maxSize = 0;
@@ -1983,30 +2132,33 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             }
         }
 
-        // if tere is no cluster found, find the largest group for a new cluster
-        if(clusters.size() <= refNumClusterForNewCreation){
-            clusters.add(new Cluster(maxGroup, defaultUpdateInterval));
+        // if there is no cluster found, find the largest group for a new cluster
+        if(clusterList.size() <= refNumClusterForNewCreation){
+            clusterList.add(new Cluster(maxGroup, defaultUpdateInterval));
             ngCollection.remove(maxGroup);
             ret = true;
         } else {
             // otherwise, replace the location of the cluster with that of the largest group
             Cluster cl = null;
             int pos = 0;
-            for(int i = 0; i< clusters.size(); i++){
-                if(!clusters.get(i).isUpdated()){
-                    cl = clusters.get(i);
+
+            // finds the first cluster which was not updated
+            for(int i = 0; i< clusterList.size(); i++){
+                if(clusterList.get(i).isUpdated() == ClusterUpdateStatus.NOT_UPDATED){
+                    cl = clusterList.get(i);
                     pos = i;
                     break;
                 }
             }
+            // if all clusters were updated, returns
             if(cl == null)
                 return false;
 
             // finds the closest cluster to the maxGroup
             float minDist = cl.distanceTo(maxGroup);
-            for(int i = pos+1; i< clusters.size(); i++){
-                Cluster c = clusters.get(i);
-                if(c.isUpdated()) continue; // skips updated clusters
+            for(int i = pos+1; i< clusterList.size(); i++){
+                Cluster c = clusterList.get(i);
+                if(c.isUpdated() != ClusterUpdateStatus.NOT_UPDATED) continue; // skips updated clusters
 
                 if(c.distanceTo(maxGroup) < minDist){
                     cl = c;
@@ -2017,22 +2169,22 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             // updates the cluster with a new group
             Cluster c = new Cluster(maxGroup, defaultUpdateInterval);
 
-            if(cl.getSubThTrackingTimeUs() > 1000*1000){
+            if(cl.getSubThTrackingTimeUs() > 500*1000){ // if the cluster is old enough (older than 500 ms), replaces it immediately
                 cl.setLocation(c.location);
                 cl.lastUpdateTimestamp = maxGroup.lastEventTimestamp;
-                cl.setUpdated(true);
-            } else {
+                cl.setUpdated(ClusterUpdateStatus.NORMAL_UPDATED);
+            } else { // if the cluster is young, check the correlation between the cluster and the maxGroup based on cluster's velocity
                 float dist = (float) cl.getVelocityPPT().distance(0, 0)*(maxGroup.lastEventTimestamp - cl.lastUpdateTimestamp);
                 if(cl.distanceTo(c) < 10*dist){
                     cl.setLocation(c.location);
                     cl.lastUpdateTimestamp = maxGroup.lastEventTimestamp;
                     c.increaseVitality(cl.lastUpdateTimestamp - cl.getPath().get(cl.getPath().size() - 2).t);
-                    cl.setUpdated(true);
+                    cl.setUpdated(ClusterUpdateStatus.NORMAL_UPDATED);
                 }
             }
 
             // if the maxGroup is uased for update of a cluster, remove it.
-            if(cl.updated){
+            if(cl.updated == ClusterUpdateStatus.NORMAL_UPDATED){
                 ngCollection.remove(maxGroup);
                 ret = true;
             }
