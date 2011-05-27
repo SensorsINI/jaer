@@ -2249,13 +2249,13 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 //                    System.out.println(c.location);
                 }
             }
-            for (int i=0; i<shadowClusters.size(); i++ ){
+/*            for (int i=0; i<shadowClusters.size(); i++ ){
                 Cluster c = shadowClusters.get(i);
                 if ( showClusters && c.isVisible() ){
                     c.draw(drawable);
 //                    System.out.println(c.location);
                 }
-            }
+            }*/
         } catch ( java.util.ConcurrentModificationException e ){
             // this is in case cluster list is modified by real time filter during rendering of clusters
             log.warning(e.getMessage());
