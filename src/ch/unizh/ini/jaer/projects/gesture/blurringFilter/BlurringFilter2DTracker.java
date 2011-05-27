@@ -1991,7 +1991,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                     if(shadowClusters.isEmpty())
                         trackLargestGroup(shadowClusters, ngCollection, 0, defaultUpdateInterval);
                     else
-                        updateShadowClusters(1, ngCollection, msg.timestamp);
+                        updateShadowClusters(1, ngCollection, msg.timestamp, 2*defaultUpdateInterval);
                     break;
                 case COUPLE:
                     if(shadowClusters.size() == 1){
@@ -2001,7 +2001,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                         if(!ngCollection.isEmpty())
                             trackLargestGroup(shadowClusters, ngCollection, 1, defaultUpdateInterval);
                     }
-                    updateShadowClusters(shadowClusters.size(), ngCollection, msg.timestamp);
+                    updateShadowClusters(shadowClusters.size(), ngCollection, msg.timestamp, 2*defaultUpdateInterval);
                     break;
                 default:
                     break;
@@ -2014,7 +2014,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
     }
 
-    protected void updateShadowClusters(int numEffectiveClusters, Collection<NeuronGroup> ngCollection, int refTimestamp){
+    protected void updateShadowClusters(int numEffectiveClusters, Collection<NeuronGroup> ngCollection, int refTimestamp, int updateInterval){
         // shadow cluster
         if(shadowClusters.isEmpty() || numEffectiveClusters < 1)
             return;
@@ -2029,7 +2029,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                 return;
 
             if(!sc.doesCover(cg)) {
-                sc.increaseVitality(-getLatestUpdateInterval(sc, refTimestamp));
+                sc.increaseVitality(-updateInterval);
                 if(sc.getVitality() <= 0)
                     pruneSCList.add(sc);
                 continue;
