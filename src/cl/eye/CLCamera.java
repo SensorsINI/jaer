@@ -14,8 +14,10 @@
 package cl.eye;
 //import processing.core.*;
 
+import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.prefs.Preferences;
 import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -31,15 +33,17 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 public class CLCamera implements HardwareInterface {
 
     protected final static Logger log = Logger.getLogger("CLEye");
+    protected static Preferences prefs=Preferences.userNodeForPackage(CLCamera.class);
     /** Set true if library was loaded successfully. */
     private static boolean libraryLoaded = false;
     private final static String DLLNAME = "CLEyeMulticam";
     private int cameraIndex = 0; // index of camera to open
     private int cameraInstance = 0;
     private boolean isOpened = false;
-    private int frameRateHz = 60;
-    private ColorMode colorMode=ColorMode.CLEYE_MONO_PROCESSED;
-   // static methods
+    private int frameRateHz = prefs.getInt("CLCamera.frameRateHz",60);
+    
+    private ColorMode colorMode = ColorMode.CLEYE_MONO_PROCESSED;
+    // static methods
 
     static {
         if (!isLibraryLoaded() && System.getProperty("os.name").startsWith("Windows")) {
@@ -66,7 +70,7 @@ public class CLCamera implements HardwareInterface {
             }
         }
     }
- 
+
     public enum ColorMode {
 
         CLEYE_MONO_PROCESSED(0), CLEYE_COLOR_PROCESSED(1),
@@ -77,8 +81,6 @@ public class CLCamera implements HardwareInterface {
             this.code = code;
         }
     }
-  
-    
     // camera color mode
     public static final int CLEYE_MONO_PROCESSED = 0;
     public static final int CLEYE_COLOR_PROCESSED = 1;
@@ -112,6 +114,7 @@ public class CLCamera implements HardwareInterface {
     public static final int CLEYE_LENSCORRECTION3 = 18;	// [-500, 500]
     public static final int CLEYE_LENSBRIGHTNESS = 19;	// [-500, 500]
     public static final int[] CLEYE_FRAME_RATES = {15, 30, 60, 75, 100, 125}; // TODO only QVGA now
+    static{Arrays.sort(CLEYE_FRAME_RATES);}
 
     native static int CLEyeGetCameraCount();
 
@@ -281,15 +284,28 @@ public class CLCamera implements HardwareInterface {
      */
     synchronized public void setFrameRateHz(int frameRateHz) throws HardwareInterfaceException {
         int old = this.frameRateHz;
-        if (old != frameRateHz && isOpen()) {
-            close();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException ex) {
-            }
-            open();
-            this.frameRateHz = frameRateHz;
+
+        int closest = closestRateTo(frameRateHz);
+        if (closest != frameRateHz) {
+            log.warning("returning closest allowed frame rate of " + closest + " from desired rate " + frameRateHz);
+            frameRateHz = closest;
         }
+        if (old != frameRateHz && isOpen()) {
+            log.warning("new frame rate of " + frameRateHz + " will only take effect when camera is next opened");
+        }
+        this.frameRateHz = frameRateHz;
+        prefs.putInt("CLCamera.frameRateHz", this.frameRateHz);
+    }
+
+    private int closestRateTo(int rate) {
+        int ind = Arrays.binarySearch(CLEYE_FRAME_RATES, rate);
+        if(-ind>=CLEYE_FRAME_RATES.length){
+            return CLEYE_FRAME_RATES[CLEYE_FRAME_RATES.length];
+        }
+        if (ind <0) {
+            return CLEYE_FRAME_RATES[-ind-1];
+        }
+        return CLEYE_FRAME_RATES[ind];
     }
 
     // http://codelaboratories.com/research/view/cl-eye-muticamera-api

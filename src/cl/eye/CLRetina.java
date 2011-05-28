@@ -34,7 +34,7 @@ public class CLRetina extends AEChip {
     private int[] lastEventPixelValues = new int[320 * 240];
     private int gain = getPrefs().getInt("gain", 30);
     private int exposure = getPrefs().getInt("exposure", 511);
-    private int frameRate = getPrefs().getInt("frameRate", 60);
+    private int frameRate = getPrefs().getInt("frameRate", 120);
     private boolean autoGainEnabled = getPrefs().getBoolean("autoGainEnabled", true);
     private boolean autoExposureEnabled = getPrefs().getBoolean("autoExposureEnabled", true);
     private int eventThreshold = getPrefs().getInt("eventThreshold", 4);
@@ -50,6 +50,13 @@ public class CLRetina extends AEChip {
     @Override
     public void setHardwareInterface(HardwareInterface hardwareInterface) {
         super.setHardwareInterface(hardwareInterface);
+        if (hardwareInterface != null && (hardwareInterface instanceof CLRetinaHardwareInterface)) {
+            try {
+                CLRetinaHardwareInterface hw = (CLRetinaHardwareInterface) hardwareInterface;
+            } catch (Exception ex) {
+                log.warning(ex.toString());
+            }
+        }
         sendConfiguration();
     }
 
@@ -94,7 +101,8 @@ public class CLRetina extends AEChip {
             int sx = getSizeX(), sy = getSizeY(), i = 0;
             for (int y = 0; y < sy; y++) {
                 for (int x = 0; x < sx; x++) {
-                    int pixval = (pixVals[i] & 0xff); // get gray value 0-255
+                    int s = 0;
+                    int pixval = (pixVals[i] & (0xff << s)) >>> s; // get gray value 0-255
                     int lastval = lastEventPixelValues[i];
                     int diff = pixval - lastval;
                     if (diff > eventThreshold) {

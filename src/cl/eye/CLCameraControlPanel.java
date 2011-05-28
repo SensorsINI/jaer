@@ -10,6 +10,9 @@
  */
 package cl.eye;
 
+import java.util.Vector;
+import javax.swing.DefaultComboBoxModel;
+
 /**
  * Controls camera and event generation parameters.
  * 
@@ -25,6 +28,9 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
         this.chip=chip;
         hardware=(CLRetinaHardwareInterface)chip.getHardwareInterface();
         initComponents();
+        Vector v=new Vector();
+        for(int i:CLCamera.CLEYE_FRAME_RATES){ v.add(i);}
+        fpsComboBox.setModel(new DefaultComboBoxModel(v));
     }
     
     /** This method is called from within the constructor to
@@ -43,10 +49,10 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
         expSp = new javax.swing.JSpinner();
         agCB = new javax.swing.JCheckBox();
         aeCB = new javax.swing.JCheckBox();
-        fpsSp = new javax.swing.JSpinner();
         jLabel3 = new javax.swing.JLabel();
         jLabel4 = new javax.swing.JLabel();
         thrSp = new javax.swing.JSpinner();
+        fpsComboBox = new javax.swing.JComboBox();
 
         jLabel1.setText("Gain");
 
@@ -74,11 +80,6 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
         binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.autoExposureEnabled}"), aeCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
-        fpsSp.setToolTipText("Sets CL eye frame rate");
-
-        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.frameRate}"), fpsSp, org.jdesktop.beansbinding.BeanProperty.create("value"));
-        bindingGroup.addBinding(binding);
-
         jLabel3.setText("Frame rate (Hz)");
 
         jLabel4.setText("Temporal change threshold");
@@ -87,6 +88,13 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
 
         binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.eventThreshold}"), thrSp, org.jdesktop.beansbinding.BeanProperty.create("value"));
         bindingGroup.addBinding(binding);
+
+        fpsComboBox.setToolTipText("Choose PS Eye frame rate (only takes effect on reopen)");
+        fpsComboBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                fpsComboBoxActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
@@ -100,11 +108,11 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
                     .addComponent(jLabel1)
                     .addComponent(jLabel3))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                    .addComponent(thrSp)
-                    .addComponent(fpsSp)
-                    .addComponent(expSp, javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(gainSp, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 81, Short.MAX_VALUE))
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(fpsComboBox, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(thrSp, javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(expSp)
+                    .addComponent(gainSp, javax.swing.GroupLayout.DEFAULT_SIZE, 81, Short.MAX_VALUE))
                 .addGap(18, 18, 18)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(agCB)
@@ -126,8 +134,8 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
                     .addComponent(aeCB))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(fpsSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel3))
+                    .addComponent(jLabel3)
+                    .addComponent(fpsComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel4)
@@ -137,11 +145,21 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
 
         bindingGroup.bind();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void fpsComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_fpsComboBoxActionPerformed
+        Object o=fpsComboBox.getModel().getSelectedItem();
+        if(o==null) return;
+        if(o instanceof Integer){
+            Integer i=(Integer)o;
+            chip.setFrameRate(i);
+        }
+    }//GEN-LAST:event_fpsComboBoxActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JCheckBox aeCB;
     private javax.swing.JCheckBox agCB;
     private javax.swing.JSpinner expSp;
-    private javax.swing.JSpinner fpsSp;
+    private javax.swing.JComboBox fpsComboBox;
     private javax.swing.JSpinner gainSp;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
