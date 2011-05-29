@@ -170,11 +170,7 @@ public class CLCamera implements HardwareInterface {
         this.cameraIndex = cameraIndex;
     }
 
-    private void dispose() {
-        stopCamera();
-        destroyCamera();
-    }
-
+ 
     private boolean createCamera(int cameraIndex, int mode, int resolution, int framerate) {
         cameraInstance = CLEyeCreateCamera(cameraIndex, mode, resolution, framerate);
         return cameraInstance != 0;
@@ -242,10 +238,19 @@ public class CLCamera implements HardwareInterface {
         return "CLEye PS Eye camera";
     }
 
+    private void dispose() {
+        stopCamera();
+        destroyCamera();
+    }
+
     @Override
     public void close() {
+        if(!isOpened) return;
         isOpened = false;
-        dispose();
+        boolean stopped=stopCamera();
+        if(!stopped){
+            log.warning("stopCamera returned an error");
+        }
     }
 
     /** Opens the cameraIndex camera with some default settings. Set the frameRateHz before calling open().
@@ -257,9 +262,11 @@ public class CLCamera implements HardwareInterface {
         if (isOpened) {
             return;
         }
-        boolean gotCam = createCamera(cameraIndex, colorMode.code, CLEYE_QVGA, getFrameRateHz()); // TODO fixed settings now
-        if (!gotCam) {
-            throw new HardwareInterfaceException("couldn't get camera");
+        if (cameraInstance == 0) { // only make one instance, don't destroy it on close
+            boolean gotCam = createCamera(cameraIndex, colorMode.code, CLEYE_QVGA, getFrameRateHz()); // TODO fixed settings now
+            if (!gotCam) {
+                throw new HardwareInterfaceException("couldn't get camera");
+            }
         }
         if (!startCamera()) {
             throw new HardwareInterfaceException("couldn't start camera");
