@@ -10,6 +10,7 @@
  */
 package cl.eye;
 
+import java.awt.BorderLayout;
 import java.util.Vector;
 import javax.swing.DefaultComboBoxModel;
 
@@ -21,18 +22,21 @@ import javax.swing.DefaultComboBoxModel;
 public class CLCameraControlPanel extends javax.swing.JPanel {
 
     private CLRetina chip;
-    CLRetinaHardwareInterface hardware;
-            
+    private CLRetinaHardwareInterface hardware;
+    private CLRawFramePanel rawCameraPanel;
+
     /** Creates new form CLCameraControlPanel */
     public CLCameraControlPanel(CLRetina chip) {
-        this.chip=chip;
-        hardware=(CLRetinaHardwareInterface)chip.getHardwareInterface();
+        this.chip = chip;
+        hardware = (CLRetinaHardwareInterface) chip.getHardwareInterface();
         initComponents();
-        Vector v=new Vector();
-        for(int i:CLCamera.CLEYE_FRAME_RATES){ v.add(i);}
+        Vector v = new Vector();
+        for (int i : CLCamera.CLEYE_FRAME_RATES) {
+            v.add(i);
+        }
         fpsComboBox.setModel(new DefaultComboBoxModel(v));
     }
-    
+
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -53,6 +57,8 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
         jLabel4 = new javax.swing.JLabel();
         thrSp = new javax.swing.JSpinner();
         fpsComboBox = new javax.swing.JComboBox();
+        rawInputPanel = new javax.swing.JPanel();
+        showRawInputCB = new javax.swing.JCheckBox();
 
         jLabel1.setText("Gain");
 
@@ -74,11 +80,23 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
         binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.autoGainEnabled}"), agCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
+        agCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                agCBActionPerformed(evt);
+            }
+        });
+
         aeCB.setText("Auto exposure");
         aeCB.setToolTipText("Enables automatic exposure control");
 
         binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.autoExposureEnabled}"), aeCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
+
+        aeCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                aeCBActionPerformed(evt);
+            }
+        });
 
         jLabel3.setText("Frame rate (Hz)");
 
@@ -96,28 +114,52 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
             }
         });
 
+        javax.swing.GroupLayout rawInputPanelLayout = new javax.swing.GroupLayout(rawInputPanel);
+        rawInputPanel.setLayout(rawInputPanelLayout);
+        rawInputPanelLayout.setHorizontalGroup(
+            rawInputPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 368, Short.MAX_VALUE)
+        );
+        rawInputPanelLayout.setVerticalGroup(
+            rawInputPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 288, Short.MAX_VALUE)
+        );
+
+        showRawInputCB.setText("Show raw input");
+        showRawInputCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                showRawInputCBActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGap(23, 23, 23)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jLabel4)
-                    .addComponent(jLabel2)
-                    .addComponent(jLabel1)
-                    .addComponent(jLabel3))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(fpsComboBox, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(thrSp, javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(expSp)
-                    .addComponent(gainSp, javax.swing.GroupLayout.DEFAULT_SIZE, 81, Short.MAX_VALUE))
-                .addGap(18, 18, 18)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(agCB)
-                    .addComponent(aeCB))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(23, 23, 23)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(jLabel4)
+                            .addComponent(jLabel2)
+                            .addComponent(jLabel1)
+                            .addComponent(jLabel3))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(fpsComboBox, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(thrSp, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(expSp)
+                            .addComponent(gainSp, javax.swing.GroupLayout.DEFAULT_SIZE, 81, Short.MAX_VALUE))
+                        .addGap(18, 18, 18)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(showRawInputCB)
+                            .addComponent(agCB)
+                            .addComponent(aeCB)))
+                    .addGroup(layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(rawInputPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -139,22 +181,50 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel4)
-                    .addComponent(thrSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(thrSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(showRawInputCB))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(rawInputPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap())
         );
 
         bindingGroup.bind();
     }// </editor-fold>//GEN-END:initComponents
 
     private void fpsComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_fpsComboBoxActionPerformed
-        Object o=fpsComboBox.getModel().getSelectedItem();
-        if(o==null) return;
-        if(o instanceof Integer){
-            Integer i=(Integer)o;
+        Object o = fpsComboBox.getModel().getSelectedItem();
+        if (o == null) {
+            return;
+        }
+        if (o instanceof Integer) {
+            Integer i = (Integer) o;
             chip.setFrameRate(i);
         }
     }//GEN-LAST:event_fpsComboBoxActionPerformed
 
+    private void agCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_agCBActionPerformed
+        if (agCB.isSelected() && hardware != null) {
+            gainSp.setValue(hardware.getGain());
+        }
+    }//GEN-LAST:event_agCBActionPerformed
+
+    private void aeCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_aeCBActionPerformed
+        if (aeCB.isSelected() && hardware != null) {
+            expSp.setValue(hardware.getExposure());
+        }
+    }//GEN-LAST:event_aeCBActionPerformed
+
+    private void showRawInputCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showRawInputCBActionPerformed
+        if (rawCameraPanel == null) {
+            rawCameraPanel = new CLRawFramePanel(chip);
+            rawInputPanel.add(rawCameraPanel, BorderLayout.CENTER);
+        }
+        if (showRawInputCB.isSelected()) {
+            hardware.addAEListener(rawCameraPanel);
+        } else {
+            hardware.removeAEListener(rawCameraPanel);
+        }
+    }//GEN-LAST:event_showRawInputCBActionPerformed
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JCheckBox aeCB;
     private javax.swing.JCheckBox agCB;
@@ -165,6 +235,8 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
+    private javax.swing.JPanel rawInputPanel;
+    private javax.swing.JCheckBox showRawInputCB;
     private javax.swing.JSpinner thrSp;
     private org.jdesktop.beansbinding.BindingGroup bindingGroup;
     // End of variables declaration//GEN-END:variables

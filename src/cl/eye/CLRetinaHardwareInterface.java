@@ -4,6 +4,7 @@
  */
 package cl.eye;
 
+import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeSupport;
 import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
@@ -16,16 +17,20 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * 
  * @author tobi
  */
-public class CLRetinaHardwareInterface extends CLCamera implements AEMonitorInterface{
+public class CLRetinaHardwareInterface extends CLCamera implements AEMonitorInterface {
 
-    private int frameCounter=0;
-    private long startTimeUs=System.currentTimeMillis()*1000;
-   protected AEChip chip=null;
-   protected PropertyChangeSupport support=new PropertyChangeSupport(this);
-    AEPacketRaw packet=new AEPacketRaw(320*240);
-    int[] frameBuffer=packet.getAddresses();
-    int[] timestamps=packet.getTimestamps();
-     
+    /**
+     * event supplied to listeners when new events are collected. this is final because it is just a marker for the listeners that new events are available
+     */
+    public final PropertyChangeEvent newEventPropertyChange = new PropertyChangeEvent(this, "NewEvents", null, null);
+    private int frameCounter = 0;
+    private long startTimeUs = System.currentTimeMillis() * 1000;
+    protected AEChip chip = null;
+    protected PropertyChangeSupport support = new PropertyChangeSupport(this);
+    private AEPacketRaw packet = new AEPacketRaw(320 * 240);
+    private int[] frameBuffer = packet.getAddresses();
+    private int[] timestamps = packet.getTimestamps();
+
     public CLRetinaHardwareInterface(int cameraIndex) {
         super(cameraIndex);
     }
@@ -33,30 +38,41 @@ public class CLRetinaHardwareInterface extends CLCamera implements AEMonitorInte
     /////////////////////////////////////////////////
     // this camera returns frames. 
     // We pack these frames into the AEPacketRaw and the consumer (the event extractor) interprets these to make events.
-    
     @Override
     public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
-        getCameraFrame(frameBuffer, 300);
-        packet.setNumEvents(320*240);
-        timestamps[0]=(int)(System.currentTimeMillis()*1000-startTimeUs);
-        frameCounter++;
+        getCameraFrame(frameBuffer, 300); // TODO acquire multiple frames between calls, pack into single packet and return that packet with multiple frame timestamps
+        packet.setNumEvents(320 * 240);
+        timestamps[0] = (int) (System.currentTimeMillis() * 1000 - startTimeUs);
+        frameCounter++; // TODO notify AE listeners here or in thread acquiring frames
+        support.firePropertyChange(newEventPropertyChange);
         return packet;
     }
 
     @Override
     public int getNumEventsAcquired() {
-        if(packet==null) return 0; else return packet.getNumEvents();
+        if (packet == null) {
+            return 0;
+        } else {
+            return packet.getNumEvents();
+        }
     }
 
+    /** Returns the collected event packet.
+     * 
+     * @return the packet of raw events, consisting of the pixels values.
+     */
     @Override
     public AEPacketRaw getEvents() {
         return packet;
     }
 
+    /** Resets the timestamps to the current system time in ms.
+     * 
+     */
     @Override
     public void resetTimestamps() {
-        frameCounter=0;
-        startTimeUs=System.currentTimeMillis()*1000;
+        frameCounter = 0;
+        startTimeUs = System.currentTimeMillis() * 1000;
     }
 
     @Override
@@ -74,9 +90,18 @@ public class CLRetinaHardwareInterface extends CLCamera implements AEMonitorInte
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
+    /** Starts and stops the camera.
+     * 
+     * @param enable true to run the camera
+     * @throws HardwareInterfaceException 
+     */
     @Override
     public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
-        if(enable) startCamera(); else stopCamera();
+        if (enable) {
+            startCamera();
+        } else {
+            stopCamera();
+        }
     }
 
     @Override
@@ -84,7 +109,11 @@ public class CLRetinaHardwareInterface extends CLCamera implements AEMonitorInte
         return cameraStarted;
     }
 
-     @Override
+    /** Listeners are called on every new frame of data.
+     * 
+     * @param listener 
+     */
+    @Override
     public void addAEListener(AEListener listener) {
         support.addPropertyChangeListener(listener);
     }
@@ -104,16 +133,14 @@ public class CLRetinaHardwareInterface extends CLCamera implements AEMonitorInte
         return 0;
     }
 
-    
     @Override
     public int getTimestampTickUs() {
         return 1;
     }
 
-    
     @Override
     public void setChip(AEChip chip) {
-        this.chip=chip;
+        this.chip = chip;
     }
 
     @Override

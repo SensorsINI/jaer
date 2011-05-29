@@ -42,7 +42,7 @@ public class CLCamera implements HardwareInterface {
     private boolean isOpened = false;
     private int frameRateHz = prefs.getInt("CLCamera.frameRateHz",60);
     
-    private ColorMode colorMode = ColorMode.CLEYE_MONO_PROCESSED;
+    private ColorMode colorMode = ColorMode.CLEYE_COLOR_PROCESSED; // CLEYE_MONO_PROCESSED;
     // static methods
 
     static {
@@ -243,6 +243,9 @@ public class CLCamera implements HardwareInterface {
         destroyCamera();
     }
 
+    /** Stops the camera.
+     * 
+     */
     @Override
     public void close() {
         if(!isOpened) return;
@@ -253,7 +256,7 @@ public class CLCamera implements HardwareInterface {
         }
     }
 
-    /** Opens the cameraIndex camera with some default settings. Set the frameRateHz before calling open().
+    /** Opens the cameraIndex camera with some default settings and starts the camera. Set the frameRateHz before calling open().
      * 
      * @throws HardwareInterfaceException 
      */
@@ -324,6 +327,12 @@ public class CLCamera implements HardwareInterface {
         }
     }
 
+      /** Sets the gain value.
+     * 
+     * @param gain gain value, range 0-79
+     * @throws HardwareInterfaceException if there is a hardware exception signaled by false return from driver
+     * @throws cl.eye.CLCamera.InvalidParameterException if parameter is invalid (outside range)
+     */
     synchronized public void setGain(int gain) throws HardwareInterfaceException, InvalidParameterException {
         if (gain < 0) {
             throw new InvalidParameterException("tried to set gain<0 (" + gain + ")");
@@ -336,11 +345,21 @@ public class CLCamera implements HardwareInterface {
         }
     }
 
+    /** Asks the driver for the gain value.
+     * 
+     * @return gain value 
+     */
     public int getGain() {
         int gain = getCameraParam(CLEYE_GAIN);
         return gain;
     }
 
+    /** Sets the exposure value.
+     * 
+     * @param exp exposure value, range 0-511
+     * @throws HardwareInterfaceException if there is a hardware exception signaled by false return from driver
+     * @throws cl.eye.CLCamera.InvalidParameterException if parameter is invalid (outside range)
+     */
     synchronized public void setExposure(int exp) throws HardwareInterfaceException, InvalidParameterException {
         if (exp < 0) {
             throw new InvalidParameterException("tried to set exposure<0 (" + exp + ")");
@@ -353,11 +372,20 @@ public class CLCamera implements HardwareInterface {
         }
     }
 
+   /** Asks the driver for the exposure value.
+     * 
+     * @return exposure value 
+     */
     public int getExposure() {
         int gain = getCameraParam(CLEYE_EXPOSURE);
         return gain;
     }
 
+    /** Enables auto gain
+     * 
+     * @param yes
+     * @throws HardwareInterfaceException 
+     */
     synchronized public void setAutoGain(boolean yes) throws HardwareInterfaceException {
         if (!setCameraParam(CLEYE_AUTO_GAIN, yes ? 1 : 0)) {
             throw new HardwareInterfaceException("setting auto gain=" + yes);
@@ -368,6 +396,11 @@ public class CLCamera implements HardwareInterface {
         return getCameraParam(CLEYE_AUTO_GAIN) != 0;
     }
 
+    /** Enables auto exposure
+     * 
+     * @param yes
+     * @throws HardwareInterfaceException 
+     */
     synchronized public void setAutoExposure(boolean yes) throws HardwareInterfaceException {
         if (!setCameraParam(CLEYE_AUTO_EXPOSURE, yes ? 1 : 0)) {
             throw new HardwareInterfaceException("setting auto exposure=" + yes);
