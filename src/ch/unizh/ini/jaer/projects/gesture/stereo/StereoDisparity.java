@@ -352,7 +352,7 @@ public class StereoDisparity {
             //if there is no previous data, sets the current disparity with maxXC.x
             if(preDis.getDisparity() == -size){
                 currentDisparity.setDisparity(md, timestamp, true);
-            } else {
+            } else { // if there's previous data
                 if(md == size) // not valid because the cluster is  hitting edge
                     md = preDis.disparity;
                 else if(md == -size){ // not valid because large mass difference between left and right
@@ -454,7 +454,7 @@ public class StereoDisparity {
 
         // returns size if the cluster is hitting edge
         int maxTrimmedSize =Math.max( Math.max(leftStartTrimedSize, leftEndTrimedSize), Math.max(rightStartTrimedSize, rightEndTrimedSize));
-        if(id != -1 && maxTrimmedSize > checkAreaRectangle.width/2)
+        if(id != -1 && maxTrimmedSize > checkAreaRectangle.width/3)
             return size;
 
         // calibrate the start position for scanning
