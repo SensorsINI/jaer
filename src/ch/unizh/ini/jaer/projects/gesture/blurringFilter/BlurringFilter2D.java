@@ -10,7 +10,6 @@ import ch.unizh.ini.jaer.projects.gesture.blurringFilter.LIFNeuronJHLee.ADAPTATI
 import com.sun.opengl.util.GLUT;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.geom.Point2D.Float;
 import javax.media.opengl.GL;
 import java.awt.geom.Point2D;
 import java.util.*;
@@ -561,7 +560,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         @Override
         public String toString() {
             return String.format("LIF Neuron number=%d index=(%d, %d), location = (%d, %d), membrane potential = %.2f",
-                    index,
+                    id,
                     (int) index.x, (int) index.y,
                     (int) location.x, (int) location.y,
                     getMPNow(lastTime));
@@ -573,7 +572,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          *
          * @return
          */
-        public Float getIndex() {
+        public Point2D.Float getIndex() {
             return index;
         }
 
@@ -725,7 +724,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         /**
          * Member neurons consisting of this group
          */
-        HashSet<LIFNeuron> memberNeurons = null;
+        ArrayList<LIFNeuron> memberNeurons = null;
 
 
         @Override
@@ -741,7 +740,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * Constructor of Neurongroup
          */
         public NeuronGroup() {
-            memberNeurons = new HashSet();
+            memberNeurons = new ArrayList();
             reset();
         }
 
@@ -810,15 +809,19 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                 if (lastEventTimestamp < newNeuron.getLastEventTimestamp()) {
                     leakyFactor = (float) Math.exp(((float) lastEventTimestamp - newNeuron.getLastEventTimestamp()) / MPTimeConstantUs);
                     totalMP = effectiveMP + prevMP * leakyFactor;
-                    location.x = (newNeuron.location.x * effectiveMP + location.x * prevMP * leakyFactor) / (totalMP);
-                    location.y = (newNeuron.location.y * effectiveMP + location.y * prevMP * leakyFactor) / (totalMP);
+                    if(totalMP > 0){
+                        location.x = (newNeuron.location.x * effectiveMP + location.x * prevMP * leakyFactor) / (totalMP);
+                        location.y = (newNeuron.location.y * effectiveMP + location.y * prevMP * leakyFactor) / (totalMP);
+                    }
 
                     lastEventTimestamp = newNeuron.getLastEventTimestamp();
                 } else {
                     leakyFactor = (float) Math.exp(((float) newNeuron.getLastEventTimestamp() - lastEventTimestamp) / MPTimeConstantUs);
                     totalMP = prevMP + effectiveMP * leakyFactor;
-                    location.x = (newNeuron.location.x * effectiveMP * leakyFactor + location.x * prevMP) / (totalMP);
-                    location.y = (newNeuron.location.y * effectiveMP * leakyFactor + location.y * prevMP) / (totalMP);
+                    if(totalMP > 0){
+                        location.x = (newNeuron.location.x * effectiveMP * leakyFactor + location.x * prevMP) / (totalMP);
+                        location.y = (newNeuron.location.y * effectiveMP * leakyFactor + location.y * prevMP) / (totalMP);
+                    }
                 }
             }
 
@@ -860,15 +863,19 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             if (lastEventTimestamp < targetGroup.lastEventTimestamp) {
                 leakyFactor = (float) Math.exp(((float) lastEventTimestamp - targetGroup.lastEventTimestamp) / MPTimeConstantUs);
                 totalMP = targetGroup.totalMP + totalMP * leakyFactor;
-                location.x = (targetGroup.location.x * targetGroup.totalMP + location.x * prevMP * leakyFactor) / (totalMP);
-                location.y = (targetGroup.location.y * targetGroup.totalMP + location.y * prevMP * leakyFactor) / (totalMP);
+                if(totalMP > 0){
+                    location.x = (targetGroup.location.x * targetGroup.totalMP + location.x * prevMP * leakyFactor) / (totalMP);
+                    location.y = (targetGroup.location.y * targetGroup.totalMP + location.y * prevMP * leakyFactor) / (totalMP);
+                }
 
                 lastEventTimestamp = targetGroup.lastEventTimestamp;
             } else {
                 leakyFactor = (float) Math.exp(((float) targetGroup.lastEventTimestamp - lastEventTimestamp) / MPTimeConstantUs);
                 totalMP += (targetGroup.totalMP * leakyFactor);
-                location.x = (targetGroup.location.x * targetGroup.totalMP * leakyFactor + location.x * prevMP) / (totalMP);
-                location.y = (targetGroup.location.y * targetGroup.totalMP * leakyFactor + location.y * prevMP) / (totalMP);
+                if(totalMP > 0){
+                    location.x = (targetGroup.location.x * targetGroup.totalMP * leakyFactor + location.x * prevMP) / (totalMP);
+                    location.y = (targetGroup.location.y * targetGroup.totalMP * leakyFactor + location.y * prevMP) / (totalMP);
+                }
             }
 
             if (targetGroup.minX < minX) {
@@ -907,7 +914,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          *
          * @return
          */
-        public HashSet<LIFNeuron> getMemberNeurons() {
+        public ArrayList<LIFNeuron> getMemberNeurons() {
             return memberNeurons;
         }
 
@@ -944,7 +951,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          *
          * @return
          */
-        public Float getLocation() {
+        public Point2D.Float getLocation() {
             return location;
         }
 
@@ -995,7 +1002,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @param targetLoc
          * @return
          */
-        public boolean isWithinInnerRadius(Float targetLoc) {
+        public boolean isWithinInnerRadius(Point2D.Float targetLoc) {
             boolean ret = false;
             float innerRaidus = getInnerRadiusPixels();
 
@@ -1012,7 +1019,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @param targetLoc
          * @return
          */
-        public boolean isWithinOuterRadius(Float targetLoc) {
+        public boolean isWithinOuterRadius(Point2D.Float targetLoc) {
             boolean ret = false;
             float outterRaidus = getOutterRadiusPixels();
 
@@ -1029,7 +1036,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @param targetLoc
          * @return
          */
-        public boolean isWithinAreaRadius(Float targetLoc) {
+        public boolean isWithinAreaRadius(Point2D.Float targetLoc) {
             boolean ret = false;
             float areaRaidus = getAreaRadiusPixels();
 
@@ -1040,38 +1047,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             return ret;
         }
 
-        /**
-         * checks if the group contains the given event.
-         * It checks the location of the events
-         * @param ev
-         * @return
-         */
-/*        public boolean contains(BasicEvent ev) {
-            boolean ret = false;
-
-            int subIndexX = (int) ev.getX() / halfReceptiveFieldSizePixels;
-            int subIndexY = (int) ev.getY() / halfReceptiveFieldSizePixels;
-
-            if (subIndexX >= numOfNeuronsX && subIndexY >= numOfNeuronsY) {
-                ret = false;
-            }
-
-            if (!ret && subIndexX != numOfNeuronsX && subIndexY != numOfNeuronsY) {
-                ret = firingNeurons.contains(subIndexX + subIndexY * numOfNeuronsX);
-            }
-            if (!ret && subIndexX != numOfNeuronsX && subIndexY != 0) {
-                ret = firingNeurons.contains(subIndexX + (subIndexY - 1) * numOfNeuronsX);
-            }
-            if (!ret && subIndexX != 0 && subIndexY != numOfNeuronsY) {
-                ret = firingNeurons.contains(subIndexX - 1 + subIndexY * numOfNeuronsX);
-            }
-            if (!ret && subIndexY != 0 && subIndexX != 0) {
-                ret = firingNeurons.contains(subIndexX - 1 + (subIndexY - 1) * numOfNeuronsX);
-            }
-
-            return ret;
-        }
-*/
         /**
          * returns true if the group contains neurons which locate on edges or corners.
          *
@@ -1200,12 +1175,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             LIFNeuron upNeuron, downNeuron, leftNeuron, rightNeuron;
             for(int i=0; i<lifNeurons.size(); i++){
                 LIFNeuron tmpNeuron = lifNeurons.get(i);
-//                try {
-                    // reset stale neurons
-//                    timeSinceSupport = t - tmpNeuron.lastEventTimestamp;
-//                    if (timeSinceSupport > neuronLifeTimeUs) {
-//                        tmpNeuron.reset();
-//                    }
 
                     int id = tmpNeuron.id;
 
@@ -1548,12 +1517,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                     
                     // reset numSpikes
                     tmpNeuron.numSpikes = 0;
-
-//                } catch (java.util.ConcurrentModificationException e) {
-//                    // this is in case neuron list is modified by real time filter during updating neurons
-//                    initFilter();
-//                    log.warning(e.getMessage());
-//                }
                   
             } // End of for
         } // End of if
@@ -1953,8 +1916,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             for(int x = xIndexStart; x <= xIndexEnd; x++){
                 for(int y = yIndexStart; y <= yIndexEnd; y++){
                     LIFNeuron n = lifNeurons.get(x+y*numOfNeuronsX);
-                    if(n.getMP() < 0.001f)
-                        n.membranePotential = 0.001f;
+                    if(n.getMP() < 0.1f || Float.isNaN(n.getMP()))
+                        n.membranePotential = 0.1f;
                     ng.add(n, Add_Mode.MEMBRANE_POTENTAIL_AVERAGE);
                 }
             }
