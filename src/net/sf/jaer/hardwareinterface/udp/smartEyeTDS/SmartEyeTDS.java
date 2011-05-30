@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 
-package net.sf.jaer.hardwareinterface.udp.SmartEyeTDS;
+package net.sf.jaer.hardwareinterface.udp.smartEyeTDS;
 
 import java.io.*;
 import java.net.*;
