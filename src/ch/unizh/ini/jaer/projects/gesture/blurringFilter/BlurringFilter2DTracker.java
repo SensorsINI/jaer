@@ -136,6 +136,8 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      */
     public final float VELOCITY_VECTOR_SCALING = 1e6f;
 
+    private boolean starting = true;
+
     /**
      * Creates a new instance of BlurringFilter2DTracker.
      * @param chip
@@ -144,7 +146,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         super(chip);
         this.chip = chip;
         chip.addObserver(this);
-        
+
         final String movement = "Movement", disp = "Display", 
                      global = "Global", update = "Update", trjlimit = "Trajectory persistance",
                      subThTracking = "Subthreshold tracking", selMotionDet = "SelectMotion detection";
@@ -285,6 +287,12 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     public EventPacket<?> filterPacket (EventPacket<?> in){
         if ( in == null ){
             return null;
+        }
+
+        if(starting){
+            chip.getAeViewer().zeroTimestamps();
+            starting = false;
+            return in;
         }
 
         if ( enclosedFilter != null ){
