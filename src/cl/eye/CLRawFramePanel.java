@@ -26,7 +26,7 @@ public class CLRawFramePanel extends GLJPanel implements GLEventListener, AEList
     final static Logger log = Logger.getLogger("CLCamera");
     final static GLU glu = new GLU();
     CLRetinaHardwareInterface hardware = null;
-    CLRetina chip;
+    PSEyeCLModelRetina chip;
     private boolean fillsHorizontally = false, fillsVertically = false; // filled in in the reshape method to show how chip fills drawable space
     private final double ZCLIP = 1;
 
@@ -53,7 +53,7 @@ public class CLRawFramePanel extends GLJPanel implements GLEventListener, AEList
     /** The actual borders in model space around the chip area. */
     private Borders borders = new Borders();
 
-    public CLRawFramePanel(CLRetina chip) {
+    public CLRawFramePanel(PSEyeCLModelRetina chip) {
         super();
         this.chip = chip;
         hardware = (CLRetinaHardwareInterface) chip.getHardwareInterface();

@@ -29,7 +29,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * @author tobi
  */
 @Description("AE retina using the PS eye camera")
-public class CLRetina extends AEChip {
+public class PSEyeCLModelRetina extends AEChip {
 
     private int[] lastEventPixelValues = new int[320 * 240];
     private int gain = getPrefs().getInt("gain", 30);
@@ -39,7 +39,7 @@ public class CLRetina extends AEChip {
     private boolean autoExposureEnabled = getPrefs().getBoolean("autoExposureEnabled", true);
     private int eventThreshold = getPrefs().getInt("eventThreshold", 4);
 
-    public CLRetina() {
+    public PSEyeCLModelRetina() {
         setSizeX(320);
         setSizeY(240);
         setEventExtractor(new EventExtractor(this));
@@ -83,7 +83,7 @@ public class CLRetina extends AEChip {
 
         @Override
         public JPanel buildControlPanel() {
-            return new CLCameraControlPanel(CLRetina.this);
+            return new CLCameraControlPanel(PSEyeCLModelRetina.this);
         }
     }
 
