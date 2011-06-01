@@ -12,7 +12,7 @@ import java.util.logging.*;
 
 import net.sf.jaer.eventio.*;
 import net.sf.jaer.hardwareinterface.*;
-import net.sf.jaer.hardwareinterface.udp.SmartEyeTDS.*;
+import net.sf.jaer.hardwareinterface.udp.smartEyeTDS.SmartEyeTDS;
 
 /**
  * Simple interface factory for the UDP devices.
