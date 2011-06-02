@@ -254,6 +254,11 @@ public class CLCamera implements HardwareInterface {
         if(!stopped){
             log.warning("stopCamera returned an error");
         }
+        boolean destroyed=destroyCamera();
+        if(!destroyed){
+            log.warning("destroyCamera returned an error");
+        }
+        cameraInstance=0;
     }
 
     /** Opens the cameraIndex camera with some default settings and starts the camera. Set the frameRateHz before calling open().
@@ -265,12 +270,12 @@ public class CLCamera implements HardwareInterface {
         if (isOpened) {
             return;
         }
-        if (cameraInstance == 0) { // only make one instance, don't destroy it on close
+//        if (cameraInstance == 0) { // only make one instance, don't destroy it on close
             boolean gotCam = createCamera(cameraIndex, colorMode.code, CLEYE_QVGA, getFrameRateHz()); // TODO fixed settings now
             if (!gotCam) {
                 throw new HardwareInterfaceException("couldn't get camera");
             }
-        }
+//        }
         if (!startCamera()) {
             throw new HardwareInterfaceException("couldn't start camera");
         }
