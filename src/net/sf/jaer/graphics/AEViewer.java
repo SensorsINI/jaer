@@ -571,7 +571,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             } else {
                 if(!NetworkChip.class.isInstance(chip)){
-                    log.info("opening unambiguous device");
+                    log.info("setting hardware interface for unambiguous device to "+hw.toString());
                     chip.setHardwareInterface(hw); // if blank cypress, returns bare CypressFX2
                 }
             }
@@ -4245,6 +4245,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * This methods sets the GUI components to a consistent state, using a flag to tell the slider that it has not been set by
      * a user mouse action
      */
+    @Override
     public void propertyChange (PropertyChangeEvent evt){
         if ( evt.getSource() instanceof CypressFX2.AEReader ){
             if ( evt.getPropertyName().equals("readerStarted") ){ // comes from hardware interface AEReader thread
@@ -5020,6 +5021,7 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
      * enters the operable part of the drop site for the DropTarget registered with this listener.
      * @param dtde the event.
      * */
+    @Override
     public void dragEnter (DropTargetDragEvent dtde){
         Transferable transferable = dtde.getTransferable();
         try{

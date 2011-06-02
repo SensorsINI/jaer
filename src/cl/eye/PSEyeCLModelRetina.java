@@ -6,6 +6,7 @@ package cl.eye;
 
 import ch.unizh.ini.jaer.projects.thresholdlearner.TemporalContrastEvent;
 import cl.eye.CLCamera.InvalidParameterException;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JPanel;
@@ -57,12 +58,11 @@ public class PSEyeCLModelRetina extends AEChip {
                 log.warning(ex.toString());
             }
         }
-        sendConfiguration();
     }
 
     public void sendConfiguration() {
         HardwareInterface hardwareInterface = getHardwareInterface();
-        if (hardwareInterface != null && (hardwareInterface instanceof CLRetinaHardwareInterface)) {
+        if ((hardwareInterface != null) && hardwareInterface.isOpen() && (hardwareInterface instanceof CLRetinaHardwareInterface)) {
             try {
                 CLRetinaHardwareInterface hw = (CLRetinaHardwareInterface) hardwareInterface;
                 hw.setGain(gain);
@@ -85,6 +85,15 @@ public class PSEyeCLModelRetina extends AEChip {
         public JPanel buildControlPanel() {
             return new CLCameraControlPanel(PSEyeCLModelRetina.this);
         }
+
+        @Override
+        public void open() throws HardwareInterfaceException {
+            super.open();
+            PSEyeCLModelRetina.this.sendConfiguration();
+
+        }
+        
+        
     }
 
     public class EventExtractor extends TypedEventExtractor<TemporalContrastEvent> {
@@ -95,28 +104,28 @@ public class PSEyeCLModelRetina extends AEChip {
 
         @Override
         public synchronized void extractPacket(AEPacketRaw in, EventPacket out) {
+            out.allocate(chip.getNumPixels());
             int[] pixVals = in.getAddresses();
             int ts = in.getTimestamps()[0];
             OutputEventIterator itr = out.outputIterator();
             int sx = getSizeX(), sy = getSizeY(), i = 0;
             for (int y = 0; y < sy; y++) {
                 for (int x = 0; x < sx; x++) {
-                    int s = 0;
+                    int s = 0; // color channel, which is 0,8,16?
                     int pixval = (pixVals[i] & (0xff << s)) >>> s; // get gray value 0-255
                     int lastval = lastEventPixelValues[i];
                     int diff = pixval - lastval;
-                    if (diff > eventThreshold) {
+                    if (diff > eventThreshold) { // if our gray level is sufficiently higher than the stored gray level
                         int n = diff / eventThreshold;
                         for (int j = 0; j < n; j++) {
                             PolarityEvent e = (PolarityEvent) itr.nextOutput();
                             e.x = (short) x;
-                            e.y = (short) (sy - y - 1);
-                            e.type = 1;
+                            e.y = (short) (sy - y - 1); // flip y according to jAER with 0,0 at LL
+                            e.type = 1;  // ON type
                             e.timestamp = ts;
                             e.setPolarity(PolarityEvent.Polarity.On);
                         }
-                        lastEventPixelValues[i] = pixval;
-                        lastEventPixelValues[i] = pixval;
+                        lastEventPixelValues[i]+= eventThreshold*n; // update stored gray level by events
                     } else if (diff < -eventThreshold) {
                         int n = -diff / eventThreshold;
                         for (int j = 0; j < n; j++) {
@@ -127,8 +136,7 @@ public class PSEyeCLModelRetina extends AEChip {
                             e.timestamp = ts;
                             e.setPolarity(PolarityEvent.Polarity.Off);
                         }
-                        lastEventPixelValues[i] = pixval;
-                        lastEventPixelValues[i] = pixval;
+                        lastEventPixelValues[i]-= eventThreshold*n;
                     }
 
                     i++;

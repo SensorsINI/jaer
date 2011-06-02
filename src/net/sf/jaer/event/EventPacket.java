@@ -118,6 +118,12 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         capacity=DEFAULT_INITIAL_CAPACITY;
     }
 
+    /** Populates the packet with default events from the eventConstructor.
+     * 
+     * @param startIndex 
+     * @param endIndex 
+     * @see #eventConstructor
+     */
     private void fillWithDefaultEvents(int startIndex, int endIndex) {
         try {
             for(int i=startIndex; i<endIndex; i++) {
@@ -360,6 +366,26 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         // capacity still is old capacity and we have already filled it to there with new events, now fill
         // in up to new capacity with new events
         fillWithDefaultEvents(capacity, ncapacity);
+        capacity=ncapacity;
+    }
+    
+    /** Ensures packet has room for n events. The original events are retained and the new capacity is filled with default
+     * events.
+     * 
+     * @param n capacity
+     * @see #fillWithDefaultEvents(int, int) 
+     */
+    public void allocate(int n) {
+        if(n<=capacity) return;
+        log.info("enlarging capacity of "+this+" to "+n+" events");
+        int ncapacity=n; // (capacity*3)/2+1;
+        Object oldData[]=elementData;
+        elementData=(E[]) new BasicEvent[ncapacity];
+        System.arraycopy(oldData, 0, elementData, 0, size);
+        oldData=null;
+        // capacity still is old capacity and we have already filled it to there with new events, now fill
+        // in up to new capacity with new events
+        fillWithDefaultEvents(size, ncapacity);
         capacity=ncapacity;
     }
 

@@ -469,7 +469,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
             gl.glNewList(listnum, GL.GL_COMPILE_AND_EXECUTE);
             {
                 gl.glColor4f(0, 0, .2f, 0.3f);
-                gl.glLineWidth(1);
+                gl.glLineWidth(4);
                 {
                     // draw outline
                     gl.glBegin(GL.GL_LINE_STRIP);

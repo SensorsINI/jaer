@@ -773,7 +773,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
 //        events=new AEPacketRaw(nEvents);
 //        // reuse same packet to avoid constant new'ing
-//        events.ensureCapacity(nEvents);
+//        events.allocate(nEvents);
 //        if(nEvents==0){
 ////            log.warning("got zero events from "+this);
 //            computeEstimatedEventRate(null);
