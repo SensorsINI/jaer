@@ -39,6 +39,7 @@ public class PSEyeCLModelRetina extends AEChip {
     private boolean autoGainEnabled = getPrefs().getBoolean("autoGainEnabled", true);
     private boolean autoExposureEnabled = getPrefs().getBoolean("autoExposureEnabled", true);
     private int eventThreshold = getPrefs().getInt("eventThreshold", 4);
+    private boolean initialized = false; // used to avoid writing events for all pixels of first frame of data
 
     public PSEyeCLModelRetina() {
         setSizeX(320);
@@ -92,8 +93,6 @@ public class PSEyeCLModelRetina extends AEChip {
             PSEyeCLModelRetina.this.sendConfiguration();
 
         }
-        
-        
     }
 
     public class EventExtractor extends TypedEventExtractor<TemporalContrastEvent> {
@@ -102,47 +101,55 @@ public class PSEyeCLModelRetina extends AEChip {
             super(aechip);
         }
 
+        // TODO logged events cannot be read in here since they are not complete frames anymore!
+        
         @Override
         public synchronized void extractPacket(AEPacketRaw in, EventPacket out) {
             out.allocate(chip.getNumPixels());
-            int[] pixVals = in.getAddresses();
-            int ts = in.getTimestamps()[0];
+            int[] pixVals = in.getAddresses(); // pixel RGB values stored here by hardware interface
+            int ts = in.getTimestamps()[0]; // timestamps stored here, currently only first timestamp meaningful TODO multiple frames stored here
             OutputEventIterator itr = out.outputIterator();
             int sx = getSizeX(), sy = getSizeY(), i = 0;
             for (int y = 0; y < sy; y++) {
                 for (int x = 0; x < sx; x++) {
                     int s = 0; // color channel, which is 0,8,16?
                     int pixval = (pixVals[i] & (0xff << s)) >>> s; // get gray value 0-255
-                    int lastval = lastEventPixelValues[i];
-                    int diff = pixval - lastval;
-                    if (diff > eventThreshold) { // if our gray level is sufficiently higher than the stored gray level
-                        int n = diff / eventThreshold;
-                        for (int j = 0; j < n; j++) {
-                            PolarityEvent e = (PolarityEvent) itr.nextOutput();
-                            e.x = (short) x;
-                            e.y = (short) (sy - y - 1); // flip y according to jAER with 0,0 at LL
-                            e.type = 1;  // ON type
-                            e.timestamp = ts;
-                            e.setPolarity(PolarityEvent.Polarity.On);
+                    if (!initialized) {
+                        lastEventPixelValues[i] += pixval; // update stored gray level for first frame
+
+                    } else {
+                        int lastval = lastEventPixelValues[i];
+                        int diff = pixval - lastval;
+                        if (diff > eventThreshold) { // if our gray level is sufficiently higher than the stored gray level
+                            int n = diff / eventThreshold;
+                            for (int j = 0; j < n; j++) {
+                                PolarityEvent e = (PolarityEvent) itr.nextOutput();
+                                e.x = (short) x;
+                                e.y = (short) (sy - y - 1); // flip y according to jAER with 0,0 at LL
+                                e.type = 1;  // ON type
+                                e.timestamp = ts;
+                                e.setPolarity(PolarityEvent.Polarity.On);
+                            }
+                            lastEventPixelValues[i] += eventThreshold * n; // update stored gray level by events
+                        } else if (diff < -eventThreshold) {
+                            int n = -diff / eventThreshold;
+                            for (int j = 0; j < n; j++) {
+                                PolarityEvent e = (PolarityEvent) itr.nextOutput();
+                                e.x = (short) x;
+                                e.y = (short) (sy - y - 1);
+                                e.type = 0;
+                                e.timestamp = ts;
+                                e.setPolarity(PolarityEvent.Polarity.Off);
+                            }
+                            lastEventPixelValues[i] -= eventThreshold * n;
                         }
-                        lastEventPixelValues[i]+= eventThreshold*n; // update stored gray level by events
-                    } else if (diff < -eventThreshold) {
-                        int n = -diff / eventThreshold;
-                        for (int j = 0; j < n; j++) {
-                            PolarityEvent e = (PolarityEvent) itr.nextOutput();
-                            e.x = (short) x;
-                            e.y = (short) (sy - y - 1);
-                            e.type = 0;
-                            e.timestamp = ts;
-                            e.setPolarity(PolarityEvent.Polarity.Off);
-                        }
-                        lastEventPixelValues[i]-= eventThreshold*n;
                     }
 
                     i++;
                 }
             }
-        }
+         initialized=true;
+       }
     }
 
     /**
