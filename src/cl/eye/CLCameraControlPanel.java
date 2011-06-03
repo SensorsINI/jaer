@@ -12,6 +12,7 @@ package cl.eye;
 
 import java.awt.BorderLayout;
 import java.util.Vector;
+import java.util.logging.Logger;
 import javax.swing.DefaultComboBoxModel;
 
 /**
@@ -21,6 +22,7 @@ import javax.swing.DefaultComboBoxModel;
  */
 public class CLCameraControlPanel extends javax.swing.JPanel {
 
+    private final static Logger log = Logger.getLogger("CLCamera");
     private PSEyeCLModelRetina chip;
     private CLRetinaHardwareInterface hardware;
     private CLRawFramePanel rawCameraPanel;
@@ -35,6 +37,16 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
             v.add(i);
         }
         fpsComboBox.setModel(new DefaultComboBoxModel(v));
+    }
+
+    private boolean checkHardware() {
+        try {
+            hardware = (CLRetinaHardwareInterface) chip.getHardwareInterface();
+            return true;
+        } catch (Exception e) {
+            log.warning(e.toString());
+            return false;
+        }
     }
 
     /** This method is called from within the constructor to
@@ -244,12 +256,18 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
     }//GEN-LAST:event_fpsComboBoxActionPerformed
 
     private void agCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_agCBActionPerformed
+        if (!checkHardware()) {
+            return;
+        }
         if (agCB.isSelected() && hardware != null) {
             gainSp.setValue(hardware.getGain());
         }
     }//GEN-LAST:event_agCBActionPerformed
 
     private void aeCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_aeCBActionPerformed
+        if (!checkHardware()) {
+            return;
+        }
         if (aeCB.isSelected() && hardware != null) {
             expSp.setValue(hardware.getExposure());
         }
@@ -259,6 +277,9 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
         if (rawCameraPanel == null) {
             rawCameraPanel = new CLRawFramePanel(chip);
             rawInputPanel.add(rawCameraPanel, BorderLayout.CENTER);
+        }
+        if (!checkHardware()) {
+            return;
         }
         if (showRawInputCB.isSelected()) {
             hardware.addAEListener(rawCameraPanel);
