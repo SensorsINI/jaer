@@ -40,6 +40,8 @@ public class PSEyeCLModelRetina extends AEChip {
     private boolean autoExposureEnabled = getPrefs().getBoolean("autoExposureEnabled", true);
     private int eventThreshold = getPrefs().getInt("eventThreshold", 4);
     private boolean initialized = false; // used to avoid writing events for all pixels of first frame of data
+    private boolean linearInterpolateTimeStamp = getPrefs().getBoolean("linearInterpolateTimeStamp", false);
+    private int lastEventTimeStamp;
 
     public PSEyeCLModelRetina() {
         setSizeX(320);
@@ -108,6 +110,8 @@ public class PSEyeCLModelRetina extends AEChip {
             out.allocate(chip.getNumPixels());
             int[] pixVals = in.getAddresses(); // pixel RGB values stored here by hardware interface
             int ts = in.getTimestamps()[0]; // timestamps stored here, currently only first timestamp meaningful TODO multiple frames stored here
+            int youngestIndex = 0; int maxN = 1;  // used to find youngest event for ordering
+            int eventTimeDelta = ts - lastEventTimeStamp;
             OutputEventIterator itr = out.outputIterator();
             int sx = getSizeX(), sy = getSizeY(), i = 0;
             for (int y = 0; y < sy; y++) {
@@ -122,24 +126,42 @@ public class PSEyeCLModelRetina extends AEChip {
                         int diff = pixval - lastval;
                         if (diff > eventThreshold) { // if our gray level is sufficiently higher than the stored gray level
                             int n = diff / eventThreshold;
-                            for (int j = 0; j < n; j++) {
+                            for (int j = n; 0 < j; j--) { // use down iterator as ensures latest timestamp as last event
                                 PolarityEvent e = (PolarityEvent) itr.nextOutput();
                                 e.x = (short) x;
                                 e.y = (short) (sy - y - 1); // flip y according to jAER with 0,0 at LL
                                 e.type = 1;  // ON type
-                                e.timestamp = ts;
+                                if (n > 1 && linearInterpolateTimeStamp) {
+                                    e.timestamp = ts - (j - 1) * eventTimeDelta / n;
+                                }
+                                else{
+                                    e.timestamp = ts;
+                                }
                                 e.setPolarity(PolarityEvent.Polarity.On);
+                            }
+                            if (linearInterpolateTimeStamp && n > maxN){
+                                maxN = n;
+                                youngestIndex = out.getSize();
                             }
                             lastEventPixelValues[i] += eventThreshold * n; // update stored gray level by events
                         } else if (diff < -eventThreshold) {
                             int n = -diff / eventThreshold;
-                            for (int j = 0; j < n; j++) {
+                            for (int j = n; 0 < j; j--) {
                                 PolarityEvent e = (PolarityEvent) itr.nextOutput();
                                 e.x = (short) x;
                                 e.y = (short) (sy - y - 1);
                                 e.type = 0;
-                                e.timestamp = ts;
+                                if (n > 1 && linearInterpolateTimeStamp) {
+                                    e.timestamp = ts - (j - 1) * eventTimeDelta / n;
+                                }
+                                else{
+                                    e.timestamp = ts;
+                                }
                                 e.setPolarity(PolarityEvent.Polarity.Off);
+                            }
+                            if (linearInterpolateTimeStamp && n > maxN){
+                                maxN = n;
+                                youngestIndex = out.getSize();
                             }
                             lastEventPixelValues[i] -= eventThreshold * n;
                         }
@@ -149,6 +171,17 @@ public class PSEyeCLModelRetina extends AEChip {
                 }
             }
          initialized=true;
+         lastEventTimeStamp = ts;
+         // clumsy hack to insure first event is also youngest
+         if (linearInterpolateTimeStamp && youngestIndex > 0){
+             if (youngestIndex > out.getSize()){
+                 youngestIndex = out.getSize();
+             }
+             PolarityEvent e = new PolarityEvent();
+             e.copyFrom((PolarityEvent) out.getEvent(youngestIndex));
+             ((PolarityEvent) out.getEvent(youngestIndex)).copyFrom((PolarityEvent) out.getFirstEvent());
+             ((PolarityEvent) out.getFirstEvent()).copyFrom((PolarityEvent) e);
+         }
        }
     }
 
@@ -257,5 +290,20 @@ public class PSEyeCLModelRetina extends AEChip {
     public void setEventThreshold(int eventThreshold) {
         this.eventThreshold = eventThreshold;
         getPrefs().putInt("eventThreshold", eventThreshold);
+    }
+    
+    /**
+     * @return whether using linear interpolation of TimeStamps
+     */
+    public boolean getLinearInterpolateTimeStamp() {
+        return linearInterpolateTimeStamp;
+    }
+
+    /**
+     * @param eventThreshold the eventThreshold to set
+     */
+    public void setLinearInterpolateTimeStamp(boolean linearInterpolateTimeStamp) {
+        this.linearInterpolateTimeStamp = linearInterpolateTimeStamp;
+        getPrefs().putBoolean("linearInterpolateTimeStamp", linearInterpolateTimeStamp);
     }
 }
