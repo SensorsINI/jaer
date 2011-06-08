@@ -1916,8 +1916,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             for(int x = xIndexStart; x <= xIndexEnd; x++){
                 for(int y = yIndexStart; y <= yIndexEnd; y++){
                     LIFNeuron n = lifNeurons.get(x+y*numOfNeuronsX);
-                    if(n.getMP() < 0.1f || Float.isNaN(n.getMP()))
-                        n.membranePotential = 0.1f;
+                    if(n.getMP() == 0 || Float.isNaN(n.getMP()))
+                        n.membranePotential = 0.001f;
                     ng.add(n, Add_Mode.MEMBRANE_POTENTAIL_AVERAGE);
                 }
             }
