@@ -12,6 +12,8 @@ import net.sf.jaer.eventprocessing.*;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.util.Iterator;
+import java.util.Comparator;
+import java.util.Arrays;
 import java.util.logging.Logger;
 import net.sf.jaer.aemonitor.AEConstants;
 /**
@@ -355,6 +357,29 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         }
     }
 
+    /* 
+     * Comparator for ordering events by their timestamp
+     * Order is oldest to newest.
+     * Note: this comparator imposes orderings that are inconsistent with equals.
+     */
+    final private class TimeStampComparator implements Comparator<E> {
+        public int compare(E e1, E e2) {
+            return e1.timestamp - e2.timestamp;
+        }
+    }
+    
+    final public Comparator<E> TIMESTAMP_COMPARATOR = new TimeStampComparator();
+    
+    /*
+     * Method for ordering events by ascending timestamp, i.e. oldest to newest
+     */
+    public void sortByTimeStamp() {
+        if (size == 0) {
+            return;
+        }
+        Arrays.sort(elementData, 0, size, TIMESTAMP_COMPARATOR);
+    }
+    
     /** Enlarges capacity by some factor, then copies all event references to the new packet */
     private void enlargeCapacity() {
         log.info("enlarging capacity of "+this);
