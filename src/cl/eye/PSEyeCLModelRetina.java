@@ -9,6 +9,7 @@ import cl.eye.CLCamera.InvalidParameterException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.ArrayList;
 import javax.swing.JPanel;
 import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -42,6 +43,9 @@ public class PSEyeCLModelRetina extends AEChip {
     private boolean initialized = false; // used to avoid writing events for all pixels of first frame of data
     private boolean linearInterpolateTimeStamp = getPrefs().getBoolean("linearInterpolateTimeStamp", false);
     private int lastEventTimeStamp;
+//    private PolarityEvent tempEvent = new PolarityEvent();
+    private BasicEvent tempEvent = new BasicEvent();
+    private ArrayList<Integer> discreteEventCount = new ArrayList<Integer>();
 
     public PSEyeCLModelRetina() {
         setSizeX(320);
@@ -110,9 +114,9 @@ public class PSEyeCLModelRetina extends AEChip {
             out.allocate(chip.getNumPixels());
             int[] pixVals = in.getAddresses(); // pixel RGB values stored here by hardware interface
             int ts = in.getTimestamps()[0]; // timestamps stored here, currently only first timestamp meaningful TODO multiple frames stored here
-            int youngestIndex = 0; int maxN = 1;  // used to find youngest event for ordering
             int eventTimeDelta = ts - lastEventTimeStamp;
             OutputEventIterator itr = out.outputIterator();
+            if (linearInterpolateTimeStamp) discreteEventCount.clear();
             int sx = getSizeX(), sy = getSizeY(), i = 0;
             for (int y = 0; y < sy; y++) {
                 for (int x = 0; x < sx; x++) {
@@ -126,42 +130,38 @@ public class PSEyeCLModelRetina extends AEChip {
                         int diff = pixval - lastval;
                         if (diff > eventThreshold) { // if our gray level is sufficiently higher than the stored gray level
                             int n = diff / eventThreshold;
-                            for (int j = n; 0 < j; j--) { // use down iterator as ensures latest timestamp as last event
+                            for (int j = 0; j < n; j++) { // use down iterator as ensures latest timestamp as last event
                                 PolarityEvent e = (PolarityEvent) itr.nextOutput();
                                 e.x = (short) x;
                                 e.y = (short) (sy - y - 1); // flip y according to jAER with 0,0 at LL
                                 e.type = 1;  // ON type
-                                if (n > 1 && linearInterpolateTimeStamp) {
-                                    e.timestamp = ts - (j - 1) * eventTimeDelta / n;
+                                e.setPolarity(PolarityEvent.Polarity.On);
+                                if (linearInterpolateTimeStamp) {
+                                    e.timestamp = ts - j * eventTimeDelta / n;
+                                    orderedLastSwap(out, j);
                                 }
                                 else{
                                     e.timestamp = ts;
                                 }
-                                e.setPolarity(PolarityEvent.Polarity.On);
-                            }
-                            if (linearInterpolateTimeStamp && n > maxN){
-                                maxN = n;
-                                youngestIndex = out.getSize();
+                                
                             }
                             lastEventPixelValues[i] += eventThreshold * n; // update stored gray level by events
                         } else if (diff < -eventThreshold) {
                             int n = -diff / eventThreshold;
-                            for (int j = n; 0 < j; j--) {
+                            for (int j = 0; j < n; j++) {
                                 PolarityEvent e = (PolarityEvent) itr.nextOutput();
                                 e.x = (short) x;
                                 e.y = (short) (sy - y - 1);
                                 e.type = 0;
-                                if (n > 1 && linearInterpolateTimeStamp) {
-                                    e.timestamp = ts - (j - 1) * eventTimeDelta / n;
+                                e.setPolarity(PolarityEvent.Polarity.Off);
+                                if (linearInterpolateTimeStamp) {
+                                    e.timestamp = ts - j * eventTimeDelta / n;
+                                    orderedLastSwap(out, j);
                                 }
                                 else{
                                     e.timestamp = ts;
                                 }
-                                e.setPolarity(PolarityEvent.Polarity.Off);
-                            }
-                            if (linearInterpolateTimeStamp && n > maxN){
-                                maxN = n;
-                                youngestIndex = out.getSize();
+                                
                             }
                             lastEventPixelValues[i] -= eventThreshold * n;
                         }
@@ -172,17 +172,45 @@ public class PSEyeCLModelRetina extends AEChip {
             }
          initialized=true;
          lastEventTimeStamp = ts;
-         // clumsy hack to insure first event is also youngest
-         if (linearInterpolateTimeStamp && youngestIndex > 0){
-             if (youngestIndex > out.getSize()){
-                 youngestIndex = out.getSize();
-             }
-             PolarityEvent e = new PolarityEvent();
-             e.copyFrom((PolarityEvent) out.getEvent(youngestIndex));
-             ((PolarityEvent) out.getEvent(youngestIndex)).copyFrom((PolarityEvent) out.getFirstEvent());
-             ((PolarityEvent) out.getFirstEvent()).copyFrom((PolarityEvent) e);
-         }
        }
+    }
+
+    /*
+     * Used to reorder event packet using interpolated time step.
+     * Much faster then using Arrays.sort on event packet
+     */
+    private void orderedLastSwap(EventPacket out, int timeStep) {
+        while (discreteEventCount.size() <= timeStep) {
+            discreteEventCount.add(0);
+        }
+        discreteEventCount.set(timeStep, discreteEventCount.get(timeStep) + 1);
+        if (timeStep > 0) {
+            int previousStepCount = 0;
+            for (int i = 0; i < timeStep; i++) {
+                previousStepCount += (int) discreteEventCount.get(i);
+            }
+            int size = out.getSize() - 1;
+            swap(out, size, size - previousStepCount);
+        }
+    }
+    
+    /*
+     * Exchange positions of two events in packet
+     */
+    private void swap(EventPacket out, int index1, int index2) {
+        BasicEvent[] elementData = out.getElementData();
+        tempEvent = elementData[index1];
+        elementData[index1] = elementData[index2];
+        elementData[index2] = tempEvent;
+        
+        /*  Old code - written as unsure about Java value/reference management 
+         * (i.e. didn't want to create large local copies of element data).
+        PolarityEvent e1 = (PolarityEvent) out.getEvent(index1);
+        PolarityEvent e2 = (PolarityEvent) out.getEvent(index2);
+        tempEvent.copyFrom(e1);
+        e1.copyFrom(e2);
+        e2.copyFrom(tempEvent);
+         */        
     }
 
     /**
