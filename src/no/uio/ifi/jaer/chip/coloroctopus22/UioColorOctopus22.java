@@ -5,7 +5,7 @@
  *
  * Describes a Octopus Color Retina
  *
- * Authors: Juan A. Lenero and Philipp Häfliger
+ * Authors: Juan A. Lenero and Philipp Hafliger
  *
  */
 

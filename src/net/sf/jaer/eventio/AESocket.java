@@ -32,29 +32,33 @@ import java.util.prefs.Preferences;
  EventExtractor2D inner class extractor definitions for individual device address formats.
  * @author tobi
  */
-public class AESocket{
+public class AESocket implements AESocketSettings{
     Selector selector=null;
     SocketChannel channel=null;
-    public static final int DEFAULT_RECEIVE_BUFFER_SIZE_BYTES=8192;
-    public static final int DEFAULT_SEND_BUFFER_SIZE_BYTES=8192;
-    public static final int DEFAULT_BUFFERED_STREAM_SIZE_BYTES=8192;
-    /** timeout in ms for connection attempts */
-    public static final int CONNECTION_TIMEOUT_MS=3000;
-    /** timeout in ms for read/write attempts */
-    public static final int SO_TIMEOUT=1; // 1 means we should timeout as soon as there are no more events in the datainputstream
+    private static int t0_ref = -1;
+
+
     private int receiveBufferSize=prefs.getInt("AESocket.receiveBufferSize",DEFAULT_RECEIVE_BUFFER_SIZE_BYTES);
     private int sendBufferSize=prefs.getInt("AESocket.sendBufferSize",DEFAULT_SEND_BUFFER_SIZE_BYTES);
     private int bufferedStreamSize=prefs.getInt("AESocket.bufferedStreamSize",DEFAULT_BUFFERED_STREAM_SIZE_BYTES);
     private boolean useBufferedStreams=prefs.getBoolean("AESocket.useBufferedStreams",true);
     private boolean flushPackets=prefs.getBoolean("AESocket.flushPackets",true);
+    static Preferences prefs = Preferences.userNodeForPackage(AESocket.class);
+    private boolean sequenceNumberEnabled = prefs.getBoolean("AESocket.sequenceNumberEnabled",true);
+    private boolean addressFirstEnabled = prefs.getBoolean("AESocket.addressFirstEnabled",true);
+    private float timestampMultiplier = prefs.getFloat("AESocket.timestampMultiplier", DEFAULT_TIMESTAMP_MULTIPLIER);
+    private float timestampMultiplierReciprocal = 1f / timestampMultiplier;
+    private boolean swapBytesEnabled = prefs.getBoolean("AESocket.swapBytesEnabled",false);
+    private boolean use4ByteAddrTs = prefs.getBoolean("AESocket.use4ByteAddrTs", DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP);   
+    private boolean timestampsEnabled = prefs.getBoolean("AESocket.timestampsEnabled",true);
+    private boolean localTimestampsEnabled=prefs.getBoolean("AESocket.localTimestampsEnabled", false);
+    public static boolean isiEnabled = prefs.getBoolean("AESocket.isiEnabled", DEFAULT_USE_ISI_ENABLED);
 //    private PropertyChangeSupport support=new PropertyChangeSupport(this);
     private static Logger log=Logger.getLogger("net.sf.jaer.eventio");
-    private static Preferences prefs=Preferences.userNodeForPackage(AESocket.class);
     private Socket socket;
-    public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT=10;
-//    private int numNonMonotonicTimeExceptionsPrinted=0;
-    private String hostname=prefs.get("AESocket.hostname","localhost");
-    private int portNumber=prefs.getInt("AESocket.port",AENetworkInterfaceConstants.STREAM_PORT);
+    
+    private String hostname=prefs.get("AESocket.hostname",DEFAULT_HOST);
+    private int portNumber=prefs.getInt("AESocket.port",DEFAULT_PORT);
     // mostRecentTimestamp is the last event sucessfully read
     // firstTimestamp, lastTimestamp are the first and last timestamps in the file (at least the memory mapped part of the file)
 
@@ -127,9 +131,11 @@ public class AESocket{
         this.bufferedStreamSize=sizeBytes;
         prefs.putInt("AESocket.bufferedStreamSize",sizeBytes);
     }
+    @Override
     public int getReceiveBufferSize(){
         return receiveBufferSize;
     }
+    @Override
     public int getSendBufferSize(){
         return sendBufferSize;
     }
@@ -166,20 +172,57 @@ public class AESocket{
      * @param p the packet
      * @throws IOException
      */
-    public synchronized void writePacket(AEPacketRaw p) throws IOException{
-        if(p==null) return;
+    public synchronized void writePacket(AEPacketRaw packet) throws IOException{
+        if(packet==null) return;
+
         checkDataOutputStream();
-        int n=p.getNumEvents();
+        int n=packet.getNumEvents();
         if(n==0) return;
-        int[] a=p.getAddresses();
-        int[] ts=p.getTimestamps();
+
+        int[] a=packet.getAddresses();
+        int[] ts=packet.getTimestamps();
         for(int i=0;i<n;i++){
+            if (this.isSwapBytesEnabled()){
+            dos.writeInt(swapBitOrder(normalize(ts[i])));
+            dos.writeInt(swapBitOrder(a[i]));
+            } else {
+            dos.writeInt(normalize(ts[i]));
             dos.writeInt(a[i]);
-            dos.writeInt(ts[i]);
+            }
+            
+            
         }
         if(flushPackets){
             dos.flush();
         }
+    }
+
+    private int normalize(int t){
+        int tt = 0;
+        if (t0_ref == -1) {
+            t0_ref = t;
+            tt = 0;
+            log.info("starting time at "+t0_ref);
+        } else {
+            tt = t-t0_ref;
+        }
+
+        if(this.isISIEnabled()){
+            t0_ref=t;
+            if(tt>100000){
+            log.info("warning: very large isi "+tt);
+            }
+        }
+        return tt;
+
+    }
+    private static int swapBitOrder(int value) {
+        int b1 = (value >> 0) & 0xff;
+        int b2 = (value >> 8) & 0xff;
+        int b3 = (value >> 16) & 0xff;
+        int b4 = (value >> 24) & 0xff;
+
+        return b1 << 24 | b2 << 16 | b3 << 8 | b4 << 0;
     }
 
     //    byte[] tmpBuffer=new byte[0];
@@ -208,8 +251,13 @@ public class AESocket{
     private EventRaw readEventForwards() throws IOException{
         int ts=0;
         int addr=0;
-        addr=dis.readInt();
-        ts=dis.readInt();
+        if(isSwapBytesEnabled()){
+            addr=this.swapBitOrder(dis.readInt());
+            ts=this.swapBitOrder(normalize(dis.readInt()));
+        } else {
+            addr=dis.readInt();
+            ts=normalize(dis.readInt());
+        }
         // check for non-monotonic increasing timestamps, if we get one, reset our notion of the starting time
         if(isWrappedTime(ts,mostRecentTimestamp,1)){
         //                throw new WrappedTimeException(ts,mostRecentTimestamp);
@@ -231,6 +279,86 @@ public class AESocket{
     }
     public void setMostRecentTimestamp(int mostRecentTimestamp){
         this.mostRecentTimestamp=mostRecentTimestamp;
+    }
+
+    @Override
+    public boolean isSequenceNumberEnabled() {
+        return this.sequenceNumberEnabled;
+    }
+
+    @Override
+    public void setSequenceNumberEnabled(boolean sequenceNumberEnabled) {
+        this.sequenceNumberEnabled=sequenceNumberEnabled;
+    }
+
+    @Override
+    public void setSwapBytesEnabled(boolean yes) {
+        this.swapBytesEnabled=yes;
+    }
+
+    @Override
+    public boolean isSwapBytesEnabled() {
+        return this.swapBytesEnabled;
+    }
+
+    @Override
+    public float getTimestampMultiplier() {
+        return this.timestampMultiplier;
+    }
+
+    @Override
+    public void setTimestampMultiplier(float timestampMultiplier) {
+        this.timestampMultiplier=timestampMultiplier;
+    }
+
+    @Override
+    public void set4ByteAddrTimestampEnabled(boolean yes) {
+        this.use4ByteAddrTs=yes;
+    }
+
+    @Override
+    public boolean is4ByteAddrTimestampEnabled() {
+        return this.use4ByteAddrTs;
+    }
+
+    @Override
+    public boolean isTimestampsEnabled() {
+        return this.timestampsEnabled;
+    }
+
+    @Override
+    public void setTimestampsEnabled(boolean yes) {
+        this.timestampsEnabled=yes;
+    }
+
+    @Override
+    public void setLocalTimestampEnabled(boolean yes) {
+        this.localTimestampsEnabled=yes;
+    }
+
+    @Override
+    public boolean isLocalTimestampEnabled() {
+        return this.localTimestampsEnabled;
+    }
+
+    @Override
+    public void setISIEnabled(boolean yes) {
+        this.isiEnabled=yes;
+    }
+
+    @Override
+    public boolean isISIEnabled() {
+        return this.isiEnabled;
+    }
+
+    @Override
+    public void setAddressFirstEnabled(boolean yes) {
+        this.addressFirstEnabled=yes;
+    }
+
+    @Override
+    public boolean isAddressFirstEnabled() {
+        return this.addressFirstEnabled;
     }
 
     /** class used to signal a backwards read from input stream */
@@ -281,6 +409,7 @@ public class AESocket{
         socket.close();
         dis=null;
         dos=null;
+        t0_ref=-1;
     }
     public String getHost(){
         return hostname;
@@ -316,6 +445,7 @@ public class AESocket{
     /** Connects to the socket, using the specified host and port specified in the constructor
      @throws IOException if underlying socket cannot connect
      */
+    @Override
     public void connect() throws IOException{
         // socket has already been created either elsewhere or in the default constuctor
         // we now also make a selector for it to enable checking if it is really still working
@@ -344,10 +474,14 @@ public class AESocket{
                         }
                     }
                 });
+
     }
+
+    @Override
     public boolean isUseBufferedStreams(){
         return useBufferedStreams;
     }
+    @Override
     synchronized public void setUseBufferedStreams(boolean useBufferedStreams){
         if(useBufferedStreams!=this.useBufferedStreams && (dis!=null || dos!=null)){
             dis=null; // so that buffering is enabled or disabled next time read or write happens
@@ -375,3 +509,4 @@ public class AESocket{
         return socket.isConnected();
     }
 }
+

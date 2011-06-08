@@ -25,9 +25,9 @@ import net.sf.jaer.graphics.AEViewer;
  * can be later changed.
  * <p>
 Each packet consists of (by default)
- * 
+ *
 1. a packet sequence integer (32 bits) which can be used to count missed packets
- * 
+ *
 2. AEs. Each AE is a pair int32 address, int32 timestamp.
 Timestamps are assumed to have 1us tick.
  * <p>
@@ -36,7 +36,7 @@ Timestamps are assumed to have 1us tick.
  *
  * <p>
  * The datagram socket is not connected to the receiver, i.e., connect() is not called on the socket.
- * 
+ *
  * @see #setAddressFirstEnabled
  * @see #setSequenceNumberEnabled
  */
@@ -86,7 +86,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
      * <p>
      * This Thread subclass must be started in order to receive event packets.
      * @see AENetworkInterfaceConstants
-     * 
+     *
      */
     public AEUnicastInput (){ // TODO basic problem here is that if port is unavailable, then we cannot construct and set port
         allocateBuffers();
@@ -349,7 +349,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
     }
 
     /** Interrupts the thread which is acquiring data and closes the underlying DatagramSocket.
-     * 
+     *
      */
     public void close (){
         if ( channel != null && channel.isOpen() ){
@@ -407,7 +407,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
     }
 
     /** Opens the input. Binds the port and starts the background receiver thread.
-     * 
+     *
      * @throws java.io.IOException
      */
     public void open () throws IOException{  // TODO cannot really throw exception because socket is opened in Reader
@@ -416,7 +416,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
         readingThread.start();
     }
 
-    /** 
+    /**
     @param host the hostname
      * @deprecated doesn't do anything here because we only set local port
      */
@@ -432,7 +432,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
     }
 
     /** Set the local port number for receiving events.
-     * 
+     *
      * @param port
      */
     public void setPort (int port){ // TODO all wrong
@@ -450,8 +450,8 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
     }
 
     /** If set true (default), then an int32 sequence number is the first word of the packet. Otherwise the
-     * first int32 is part of the first AE. 
-     * 
+     * first int32 is part of the first AE.
+     *
      * @param sequenceNumberEnabled default true
      */
     public void setSequenceNumberEnabled (boolean sequenceNumberEnabled){
@@ -467,7 +467,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
     /** If set true, the first int32 of each AE is the address, and the second is the timestamp. If false,
      * the first int32 is the timestamp, and the second is the address.
      * This parameter is stored as a preference.
-     * @param addressFirstEnabled default true. 
+     * @param addressFirstEnabled default true.
      */
     public void setAddressFirstEnabled (boolean addressFirstEnabled){
         this.addressFirstEnabled = addressFirstEnabled;

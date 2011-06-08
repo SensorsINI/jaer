@@ -98,17 +98,17 @@ public class ListClasses {
             
             StringTokenizer st =
                     new StringTokenizer(classpath, File.pathSeparator);
-            
+
             while (st.hasMoreTokens()) {
                 String token = st.nextToken();
-                if(debug) log.info("classpath token="+token);
+                if(true) log.info("classpath token="+token);
                 File classpathElement = new File(token);
                 classNames.addAll(classpathElement.isDirectory()
-                //? loadClassesFromDir(classpathElement.list(new CLASSFilter()))
+                //?loadClassesFromDir(classpathElement.list(new CLASSFilter()))
                 ? loadClassesFromDir(null, classpathElement, classpathElement)
-                : loadClassesFromJar(classpathElement));
+                : loadClassesFromJar(classpathElement));                              
             }
-        } catch (Exception e) {
+        } catch (Exception e) {         
             e.printStackTrace();
         }
         return classNames;
@@ -142,7 +142,6 @@ public class ListClasses {
                 }
             }
         } catch (IOException e) {
-            
             e.printStackTrace();
         }
         
@@ -161,19 +160,19 @@ public class ListClasses {
         }
         
         File[] classFiles = baseDir.listFiles(new CLASSFilter());
-        
-        for(File clazz : classFiles)
+        for(int i=0; i<classFiles.length; i++)
         {
-            classes.add(clazz.getAbsolutePath().replace(rootDir.getAbsolutePath() + File.separator, ""));
+            if (classFiles[i] != null) classes.add(classFiles[i].getAbsolutePath().replace(rootDir.getAbsolutePath() + File.separator, ""));
+            //  classes.add(clazz.getAbsolutePath());
         }
-        
+
         File[] directories = baseDir.listFiles(new DirFilter());
         
         for (File dir : directories)
         {
             classes = loadClassesFromDir(classes, rootDir, dir);
         }
-        
+       
         return classes;
     }
     

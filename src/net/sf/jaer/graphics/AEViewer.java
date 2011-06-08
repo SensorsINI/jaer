@@ -235,11 +235,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
-                openSocketInputStreamMenuItem.setText("Open socket input stream");
-                aeSocket = null;
+                openSocketInputStreamMenuItem.setText("Open remote server input stream socket...");
+                aeSocketClient = null;
             }
         }
         socketInputEnabled = false;
+    }
+
+     private void closeAESocketClient() {
+        if (aeSocketClient != null) {
+            try {
+                aeSocketClient.close();
+                log.info("closed " + aeSocketClient);
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                openSocketOutputStreamMenuItem.setText("Open remote server iutput stream socket...");
+                aeSocketClient = null;
+            }
+        }
+        socketOutputEnabled = false;
     }
 
     private void closeUnicastInput() {
@@ -255,7 +270,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /**
      * Returns the main viewer image display panel where the ChipCanvas is shown. DisplayMethod's can use this getter to add their own display controls.
-     * 
+     *
      * @return the imagePanel
      */
     public javax.swing.JPanel getImagePanel() {
@@ -327,7 +342,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     // socket connections
     private volatile AEServerSocket aeServerSocket = null; // this server socket accepts connections from clients who want events from us
     private volatile AESocket aeSocket = null; // this socket is used to getString events from a server to us
+    private volatile AESocket aeSocketClient = null; // this socket is used send events to a TCP server
     private boolean socketInputEnabled = false; // flags that we are using socket input stream
+    private boolean socketOutputEnabled = false; // flags that we are using socket input stream
     // Spread connections
     private volatile AESpreadInterface spreadInterface = null;
     private boolean spreadOutputEnabled = false, spreadInputEnabled = false;
@@ -1069,7 +1086,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         interfaceMenu.removeAll();
 
         //create a list of available hardware interfaces
-        int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable(); // TODO this rebuilds the entire list of hardware 
+        int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable(); // TODO this rebuilds the entire list of hardware
         StringBuilder sb=new StringBuilder("adding menu items for ").append(Integer.toString(n)).append(" interfaces");
         boolean choseOneButton = false;
         JRadioButtonMenuItem interfaceButton = null;
@@ -1078,7 +1095,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if ( hw == null ){
                 continue;
             } // in case it disappeared
-            if((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip)) 
+            if((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip))
                     || (UDPInterface.class.isInstance(hw) && NetworkChip.class.isInstance(chip))){
                 interfaceButton = new JRadioButtonMenuItem(hw.toString());
                 interfaceButton.putClientProperty("HardwareInterfaceNumber",new Integer(i));
@@ -1139,10 +1156,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             noneInterfaceButton.setSelected(true);
         }
         log.info(sb.toString());
-        
+
         // TODO add menu items for things that cannot be easily enumerated like serial port devices, e.g. where enumeration is very expensive because
        // you need to probe each possible com port
-        
+
     }
 
     void fixBiasgenControls (){
@@ -1370,7 +1387,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         volatile boolean stop = false;
 
         /** Sets the stop flag so that the ViewLoop exits the run method on the next iteration.
-         * 
+         *
          */
         public void stopThread (){
             stop = true;
@@ -1479,7 +1496,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         case PLAYBACK:
 //                            Thread thisThread=Thread.currentThread();
 //                            System.out.println("thread "+thisThread+" getting events for renderCount="+renderCount);
-                            aeRaw = getAePlayer().getNextPacket(aePlayer); 
+                            aeRaw = getAePlayer().getNextPacket(aePlayer);
                             getAePlayer().adjustTimesliceForRealtimePlayback();
 //                            System.out.println("."); System.out.flush();
                             break;
@@ -1521,6 +1538,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     }
                                 }
                             }
+
+
+
                             if ( spreadInputEnabled ){
                                 try{
                                     aeRaw = spreadInterface.readPacket();
@@ -1637,6 +1657,42 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 e2.printStackTrace();
                             } finally{
                                 getAeServerSocket().setSocket(null);
+                            }
+                        }
+                    }
+
+                    if (socketOutputEnabled) {
+                        if (getAeSocketClient() == null) {
+                            log.warning("null socketInputStream, going to WAITING state");
+                            setPlayMode(PlayMode.WAITING);
+                            socketOutputEnabled = false;
+                        } else {
+                            try {
+                                if (!isLogFilteredEventsEnabled()) {
+                                    getAeSocketClient().writePacket(aeRaw);
+                                } else {
+                                    // send the reconstructed packet after filtering
+                                    AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
+                                    getAeSocketClient().writePacket(aeRawRecon);
+                                }
+                                 // reads a packet if there is data available // TODO should throw interrupted excpetion
+                            } catch (IOException e) {
+                                if (stop) {
+                                    break;
+                                }
+                                log.warning(e.toString() + ": closing and reconnecting...");
+                                try {
+                                    getAeSocketClient().close();
+                                    aeSocketClient = new AESocket(); // uses last values stored in preferences
+                                    aeSocketClient.connect();
+                                    log.info("connected " + aeSocketClient);
+                                } catch (IOException ex3) {
+                                    log.warning(ex3 + ": failed reconnection, sleeping 1 s before trying again");
+                                    try {
+                                        Thread.sleep(1000);
+                                    } catch (InterruptedException ex2) {
+                                    }
+                                }
                             }
                         }
                     }
@@ -1838,7 +1894,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             lastTimeExpansionFactor = getFrameRater().getAverageFPS() * dtMs / 1000f;
             return lastTimeExpansionFactor;
         }
-        
+
 //        private String statLabel = null;
         private StringBuilder sb=new StringBuilder(100);
 
@@ -2100,7 +2156,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return rate;
     }// computes and executes appropriate delayForDesiredFPS to try to maintain constant rendering rate
     /** Measure actual rendering frame rate and creates appropriate frame delay.
-     * 
+     *
      */
     public class FrameRater{
         final int MAX_FPS = 120;
@@ -2174,7 +2230,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             {
                 return; // clear the interrupt flag here to make sure we don't just pass through with no one clearing the flag
             }
-            
+
             delayMs = (int) Math.round(desiredPeriodMs - (float) lastdt / 1000000);
             if ( delayMs < 0 ){
                 delayMs = 1;
@@ -2269,6 +2325,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         networkSeparator = new javax.swing.JSeparator();
         remoteMenu = new javax.swing.JMenu();
         openSocketInputStreamMenuItem = new javax.swing.JMenuItem();
+        openSocketOutputStreamMenuItem = new javax.swing.JMenuItem();
         reopenSocketInputStreamMenuItem = new javax.swing.JMenuItem();
         serverSocketOptionsMenuItem = new javax.swing.JMenuItem();
         jSeparator15 = new javax.swing.JSeparator();
@@ -2453,7 +2510,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jPanel1.setLayout(new java.awt.BorderLayout());
 
         statusTextField.setEditable(false);
-        statusTextField.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
+        statusTextField.setFont(new java.awt.Font("Tahoma", 0, 10));
         statusTextField.setToolTipText("Status messages show here");
         statusTextField.setFocusable(false);
         jPanel1.add(statusTextField, java.awt.BorderLayout.CENTER);
@@ -2617,6 +2674,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         remoteMenu.add(openSocketInputStreamMenuItem);
+
+        openSocketOutputStreamMenuItem.setText("Open remote server output stream socket...");
+        openSocketOutputStreamMenuItem.setToolTipText("Opens a remote connection for stream (TCP) packets of  events ");
+        openSocketOutputStreamMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                openSocketOutputStreamMenuItemActionPerformed(evt);
+            }
+        });
+        remoteMenu.add(openSocketOutputStreamMenuItem);
 
         reopenSocketInputStreamMenuItem.setMnemonic('l');
         reopenSocketInputStreamMenuItem.setText("Reopen last or preferred stream socket input stream");
@@ -3128,12 +3194,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         interfaceMenu.setText("Interface");
         interfaceMenu.setToolTipText("Select the HW interface to use");
         interfaceMenu.addMenuListener(new javax.swing.event.MenuListener() {
-            public void menuCanceled(javax.swing.event.MenuEvent evt) {
+            public void menuSelected(javax.swing.event.MenuEvent evt) {
+                interfaceMenuMenuSelected(evt);
             }
             public void menuDeselected(javax.swing.event.MenuEvent evt) {
             }
-            public void menuSelected(javax.swing.event.MenuEvent evt) {
-                interfaceMenuMenuSelected(evt);
+            public void menuCanceled(javax.swing.event.MenuEvent evt) {
             }
         });
         interfaceMenu.addActionListener(new java.awt.event.ActionListener() {
@@ -3573,10 +3639,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } else{
             try{
                 aeSocket = new AESocket();
-                AESocketOkCancelDialog dlg = new AESocketOkCancelDialog(this,true,aeSocket);
+                AESocketDialog dlg = new AESocketDialog(this,true,aeSocket);
                 dlg.setVisible(true);
                 int ret = dlg.getReturnStatus();
-                if ( ret != AESocketOkCancelDialog.RET_OK ){
+                if ( ret != AESocketDialog.RET_OK ){
                     return;
                 }
                 aeSocket.connect();
@@ -3616,6 +3682,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            openSocketInputStreamMenuItem.setText("Open socket input stream");
 //        }
     }//GEN-LAST:event_openSocketInputStreamMenuItemActionPerformed
+
 
     private void logFilteredEventsCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_logFilteredEventsCheckBoxMenuItemActionPerformed
         setLogFilteredEventsEnabled(logFilteredEventsCheckBoxMenuItem.isSelected());
@@ -4971,6 +5038,32 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
 
 }//GEN-LAST:event_openBlockingQueueInputMenuItemActionPerformed
 
+private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openSocketOutputStreamMenuItemActionPerformed
+    // TODO add your handling code here:
+    if (socketOutputEnabled) {
+        closeAESocketClient();
+        setPlayMode(PlayMode.WAITING);
+        } else{
+            try{
+                aeSocketClient = new AESocket();
+                AESocketDialog dlg = new AESocketDialog(this,true,aeSocketClient);
+                dlg.setVisible(true);
+                int ret = dlg.getReturnStatus();
+                if ( ret != AESocketDialog.RET_OK ){
+                    return;
+                }
+                aeSocketClient.connect();
+
+                openSocketOutputStreamMenuItem.setText("Close socket output stream from " + aeSocketClient.getHost() + ":" + aeSocketClient.getPort());
+                log.info("opened socket output stream " + aeSocketClient);
+                socketOutputEnabled = true;
+            } catch ( Exception e ){
+                log.warning(e.toString());
+                JOptionPane.showMessageDialog(this,"<html>Couldn't open AESocket output stream: <br>" + e.toString() + "</html>");
+            }
+        }
+}//GEN-LAST:event_openSocketOutputStreamMenuItemActionPerformed
+
     public int getFrameRate (){
         return frameRater.getDesiredFPS();
     }
@@ -5230,8 +5323,8 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
         return null;
     }
 
-    /** Adds (or replaces existing) JMenu to AEViewer, just before the Help menu. 
-     * 
+    /** Adds (or replaces existing) JMenu to AEViewer, just before the Help menu.
+     *
      * @param menu the menu
      */
     public void setMenuItem(JMenu menu) {
@@ -5275,6 +5368,10 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
         return aeSocket;
     }
 
+    public AESocket getAeSocketClient (){
+        return aeSocketClient;
+    }
+
     /** gets the RecentFiles handler for use, e.g. in storing sychronized logging index files
     @return refernce to RecentFiles object
      */
@@ -5288,7 +5385,7 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
     protected AEChipRenderer getRenderer() {
         return chip.getRenderer();
     }
-// AEViewer is a Swing Component and already has PropertyChangeSupport!!! 
+// AEViewer is a Swing Component and already has PropertyChangeSupport!!!
 //    /** AEViewer supports property change events. See the class description for supported events
 //    @return the support
 //     */
@@ -5388,6 +5485,7 @@ private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.Action
     private javax.swing.JMenuItem openMenuItem;
     private javax.swing.JCheckBoxMenuItem openMulticastInputMenuItem;
     private javax.swing.JMenuItem openSocketInputStreamMenuItem;
+    private javax.swing.JMenuItem openSocketOutputStreamMenuItem;
     private javax.swing.JMenuItem openUnicastInputMenuItem;
     private javax.swing.JMenuItem pasteMenuItem;
     private javax.swing.JCheckBoxMenuItem pauseRenderingCheckBoxMenuItem;

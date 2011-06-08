@@ -147,6 +147,15 @@
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="openSocketInputStreamMenuItemActionPerformed"/>
                   </Events>
                 </MenuItem>
+                <MenuItem class="javax.swing.JMenuItem" name="openSocketOutputStreamMenuItem">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Open remote server output stream socket..."/>
+                    <Property name="toolTipText" type="java.lang.String" value="Opens a remote connection for stream (TCP) packets of  events "/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="openSocketOutputStreamMenuItemActionPerformed"/>
+                  </Events>
+                </MenuItem>
                 <MenuItem class="javax.swing.JMenuItem" name="reopenSocketInputStreamMenuItem">
                   <Properties>
                     <Property name="mnemonic" type="int" value="108"/>
