@@ -11,6 +11,11 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
 
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import java.awt.image.BufferedImage;
+import java.awt.image.WritableRaster;
+import java.awt.Graphics;
 /**
  * Constructs CLEye hardware interfaces.
  * 
@@ -73,7 +78,25 @@ public class CLEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryIn
      * 
      * @param args ignored
      */
-    public static void main(String[] args) {
+    
+    public static class ImagePanel extends JPanel {
+        BufferedImage image;
+        
+        public ImagePanel(BufferedImage image) {
+            this.image = image;
+        }
+        
+        
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            // Draw image centered.
+
+            g.drawImage(image, 0, 0, this);
+        }
+    }
+    
+    public static void main(String[] args) {  
         try {
             if(!UsbIoUtilities.isLibraryLoaded()){
                 log.warning("no USBIO libraries found");
@@ -90,21 +113,32 @@ public class CLEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryIn
             log.info(camCount + " CLEye cameras found");
             CLCamera cam = new CLCamera();
             cam.open();
-            int[] imgData = new int[640*480];
-            for(int f=0;f<3;f++){
-               cam.getCameraFrame(imgData, 100);
-                int pixCount=0;
-                int lastval=0;
-                for(int i:imgData){
-                    if(i!=0)pixCount++;
-//                    if(i!=lastval){
-//                        System.out.println("new value "+i);
-//                        lastval=i;
-//                    }
-                }
-                log.info("got frame with "+pixCount+" nonzero pixels");
-                 for(int i=0;i<10;i++){
-                     System.out.println(imgData[i]);
+            
+            BufferedImage image = new BufferedImage(320, 240, BufferedImage.TYPE_INT_RGB);
+            WritableRaster raster = (WritableRaster) image.getData();
+
+            JFrame frame = new JFrame("PSEYE");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setSize(320,240);
+            ImagePanel contentPane = new ImagePanel(image);
+            contentPane.setOpaque(true);
+            frame.setContentPane(contentPane);
+
+            //Display the window.
+             frame.setVisible(true);
+            
+            int[] imgData = new int[320*240];
+            for(int f=0;f<3000;f++){
+                cam.getCameraFrame(imgData, 100);
+                raster.setDataElements(0, 0, 320, 240, imgData);
+                image.setData(raster);
+                frame.repaint();
+                for(int i=640;i<650;i++){
+                    int R = (imgData[i] & (0xff << 0)) >>> 0;
+                    int G = (imgData[i] & (0xff << 8)) >>> 8;
+                    int B = (imgData[i] & (0xff << 16)) >>> 16;
+                    int O = (imgData[i] & (0xff << 24)) >>> 24;
+                    log.info(R+", "+G+", "+B+", "+O);
                 }
             }
             cam.close();
