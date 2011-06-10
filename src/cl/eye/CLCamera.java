@@ -42,7 +42,7 @@ public class CLCamera implements HardwareInterface {
     private boolean isOpened = false;
     private int frameRateHz = prefs.getInt("CLCamera.frameRateHz",60);
     
-    private ColorMode colorMode = ColorMode.CLEYE_COLOR_PROCESSED; // CLEYE_MONO_PROCESSED;
+    private ColorMode colorMode = ColorMode.CLEYE_MONO_PROCESSED; // CLEYE_MONO_PROCESSED;
     // static methods
 
     static {
