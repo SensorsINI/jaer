@@ -25,17 +25,20 @@ import java.lang.Math.*;
  */
 public class MotionDataMDC2D extends MotionData {
 
-    /** Bits set in contents show what data has actually be acquired in this buffer.
-     */
-    private int contents=0;
+    // these additional bits are used in frame-descriptor and in setCaptureMode
+    // see unpackData() somewhere in the hardware interface and setCaptureMode
+    // in Chip2DMotion and the hardware interfaces
+    public static final int LMC1=BIT5,
+                            LMC2=BIT6,
+                            ON_CHIP_ADC=BIT7;
 
     // data from the lmc channels of the MDC2D chip
     private float[][] lmc1;
     private float[][] lmc2;
-
+    
     private int channel; //the channel used for calculations in the MotionAlgorithms
 
-    private int globalScaleFactor =10; //this is an arbituary scale factor that compensates for historical differences in the display method for global vector
+    public static int globalScaleFactor =10; //this is an arbituary scale factor that compensates for historical differences in the display method for global vector
 
     private int numLocalToAverageForGlobal; //the number of pixel which have meaningful output. Some noise reduction methods set local motion values to zero if for example the neighbors dont show a similar response. When averaging these 0 schuold not be counted for normalization reasons.
     /** Creates a new instance of MotionData */
@@ -49,7 +52,8 @@ public class MotionDataMDC2D extends MotionData {
 
     public static float thresh=0;
     public static float match =0;
-
+    public static int   temporalAveragesNum= 5;
+    
     /* Method override */
     @Override
     protected void fillPh(){
@@ -69,13 +73,15 @@ public class MotionDataMDC2D extends MotionData {
 //                this.localUxUy_spatialAverage();
                 this.localUxUy_temporalAverage(3); //temporal average over (num)) frames for local Motion
                 this.globalUxUy_averageLocal(); // average the local motion to get the global one
-                this.globalUxUy_temporalAverage(2); //averages global motion over (num) frames
+//                this.globalUxUy_temporalAverage(2); //averages global motion over (num) frames
+                this.globalUxUy_temporalAverage(temporalAveragesNum); //averages global motion over (num) frames
                 break;
             case MDC2D.SRINIVASAN: // Srinivasan method
                 this.setUx(zero()); //make local motion zero. It is not computed
                 this.setUy(zero());
                 this.calculateMotion_srinivasan(); //global motion according to srinivasan
-                this.globalUxUy_temporalAverage(5); //averages global motion over (num) frames
+//                this.globalUxUy_temporalAverage(5); //averages global motion over (num) frames
+                this.globalUxUy_temporalAverage(temporalAveragesNum); //averages global motion over (num) frames
                 break;
             case MDC2D.LOCAL_SRINIVASAN:
                 this.setUx(zero()); //some points are filled later
@@ -83,18 +89,21 @@ public class MotionDataMDC2D extends MotionData {
                 this.calculateMotion_localSrinivasan(4); // calculate the local motion of (int)*(int) sections of the frame
                 this.localUxUy_temporalAverage(3); //average local motion over time for (num) frames
                 this.globalUxUy_averageLocal(); //get global motion
-                this.globalUxUy_temporalAverage(5); //averages global motion over (num) frames
+//                this.globalUxUy_temporalAverage(5); //averages global motion over (num) frames
+                this.globalUxUy_temporalAverage(temporalAveragesNum); //averages global motion over (num) frames
                 break;
             case MDC2D.TIME_OF_TRAVEL:
                 float thresholdContrast=thresh/100; // the miminum contrast between two pixels to be recognized by the algorithm
                 float matchContrast=match/100; //the maximum allowed difference in contrast between two frames to recognize it as the same feature
                 this.calculateMotion_timeOfTravel_absValue(thresholdContrast,matchContrast); //calculate the local motion with a time to travel algorithm
                 this.globalUxUy_averageLocal(); //get global motion
-                this.globalUxUy_temporalAverage(5); //averages global motion over (num) frames
+//                this.globalUxUy_temporalAverage(5); //averages global motion over (num) frames
+                this.globalUxUy_temporalAverage(temporalAveragesNum); //averages global motion over (num) frames
                 break;
             case MDC2D.RANDOM://random
                 this.calculateMotion_random(); //sets the localU randomly
-                this.localUxUy_temporalAverage(3); //average local motion over time for (num) frames
+//                this.localUxUy_temporalAverage(3); //average local motion over time for (num) frames
+                this.globalUxUy_temporalAverage(temporalAveragesNum); //averages global motion over (num) frames
                 this.globalUxUy_averageLocal();
                 break;
         }
@@ -191,8 +200,8 @@ public class MotionDataMDC2D extends MotionData {
         float b1=0,  b2=0;
         float f1, f2, f3, f4;
         try{
-            for(int x=2; x< chip.NUM_COLUMNS-2;x++){ //leave out border pixel
-                for(int y=2; y< chip.NUM_ROWS-2; y++){ //leave out border pixel
+            for(int x=1; x< chip.NUM_COLUMNS-1;x++){ //leave out border pixel
+                for(int y=1; y< chip.NUM_ROWS-1; y++){ //leave out border pixel
                     f1=past[y][x+1];
                     f2=past[y][x-1];
                     f3=past[y+1][x];
@@ -850,7 +859,12 @@ public class MotionDataMDC2D extends MotionData {
 
     @Override
     protected void updateContents(){
-        setContents(0x7F); //everything except bit7
+//        setContents(0x7F);
+//        if(true)return;
+        // add the calculated contents...
+        setContents( getContents()
+                     | MotionData.GLOBAL_X | MotionData.GLOBAL_Y
+                     | MotionData.UX | MotionData.UY );
     }
 
     //returns a 2D array of the picture size filled with 0s

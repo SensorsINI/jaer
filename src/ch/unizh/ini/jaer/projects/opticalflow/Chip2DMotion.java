@@ -6,9 +6,12 @@
 package ch.unizh.ini.jaer.projects.opticalflow;
 
 import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.MotionChipInterface;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.sf.jaer.biasgen.VDAC.DAC;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.graphics.ChipCanvas;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
  * Abstract class for motion chips. Provides some static variables methods for 
@@ -24,8 +27,6 @@ public  abstract class Chip2DMotion extends Chip2D {
     public static int NUM_COLUMNS;
     public static int NUM_MOTION_PIXELS;
     public static DAC dac;
-    /** A "magic byte" marking the start of each frame */
-    public static final byte FRAME_START_MARKER = (byte)0xac;
     /** the data to get for the chip */
     public int acquisitionMode;
     /** can be used to hold reference to last motion data */
@@ -58,13 +59,17 @@ public  abstract class Chip2DMotion extends Chip2D {
     public void setCaptureMode(int acquisitionMode) {
         this.acquisitionMode = acquisitionMode;
         if (hardwareInterface != null && hardwareInterface.isOpen()) {
-            ((MotionChipInterface) hardwareInterface).setCaptureMode(acquisitionMode);
+            try {
+                ((MotionChipInterface) hardwareInterface).setCaptureMode(acquisitionMode);
+            } catch (HardwareInterfaceException ex) {
+                log.warning("cannot set capture mode : " + ex);
+            }
         }
     }
 
     
 
-
+    
     /**
      * Converts 10 bits signed ADC output value to a float ranged 0-1.
      * 0 represents most negative value, .5 is zero value, 1 is most positive value.

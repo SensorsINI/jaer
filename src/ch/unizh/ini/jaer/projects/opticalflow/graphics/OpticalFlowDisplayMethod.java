@@ -22,6 +22,12 @@ import javax.media.opengl.GLAutoDrawable;
  
  *
  * @author tobi
+ * 
+ * 
+ * changes by andstein
+ * <ul>
+ * <li>added a second global motion vector (in red)</li>
+ * </ul>
  */
 public class OpticalFlowDisplayMethod extends DisplayMethod {
     
@@ -43,6 +49,7 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
     private boolean photoDisplayEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.photoDisplayEnabled",true),
             localDisplayEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.localDisplayEnabled",true),
             globalDisplayEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.globalDisplayEnabled",true),
+            globalDisplay2Enabled=prefs.getBoolean("OpticalFlowDisplayMethod.globalDisplay2Enabled",true),
             localMotionColorsEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.localMotionColorsEnabled",true);
 
     private int rawChannelToDisplay=0;
@@ -63,7 +70,7 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
     float[] xvec=null, yvec=null;
     
     public void display(GLAutoDrawable drawable) {
-        float gx=0, gy=0;
+        float gx=0, gy=0, gx2=0, gy2=0;
         super.setupGL(drawable);
         GL gl=drawable.getGL();
         float x=0,y=0,p=0; // drawn motion and photo values
@@ -88,6 +95,7 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
         motionData=(MotionData)chip.getLastData(); // relies on capture or file input in MotionViewer or elsewhere to fill this field
         
         boolean hasGlobal=isGlobalDisplayEnabled() ; // global is just avg of local vectors
+        boolean hasGlobal2=isGlobalDisplay2Enabled() ; // global is just avg of local vectors
         boolean hasPhoto=isPhotoDisplayEnabled() && motionData.hasPhoto(); // marks display of photo
         boolean hasLocal=(isLocalMotionColorsEnabled()||isLocalDisplayEnabled()) && motionData.hasLocalX()&&motionData.hasLocalY(); // marks to show any local motion
         
@@ -142,6 +150,8 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
         // get the global X and Y from motionData and rescale
         gx=motionData.getGlobalX()*globalMotionGain*GAIN_FACTOR*MOTION_VECTOR_FACTOR;
         gy=motionData.getGlobalY()*globalMotionGain*GAIN_FACTOR*MOTION_VECTOR_FACTOR;
+        gx2=motionData.getGlobalX2()*globalMotionGain*GAIN_FACTOR*MOTION_VECTOR_FACTOR;
+        gy2=motionData.getGlobalY2()*globalMotionGain*GAIN_FACTOR*MOTION_VECTOR_FACTOR;
         
         // now draw motion vector arrows on top of pixel colors
         if(hasLocal && isLocalDisplayEnabled()){
@@ -163,6 +173,15 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
             gl.glBegin(GL.GL_LINES);
             gl.glVertex3f(nCols/2+.5f,nRows/2+.5f,1); // put at z=1 to draw above pixels
             gl.glVertex3f(nCols/2+.5f+gx,nRows/2+.5f+gy,1);
+            gl.glEnd();
+        }
+        // global2 vector
+        if(hasGlobal2){
+            gl.glColor3f(1,0,0);
+            gl.glLineWidth(2f);
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex3f(nCols/2+.5f,nRows/2+.5f,1); // put at z=1 to draw above pixels
+            gl.glVertex3f(nCols/2+.5f+gx2,nRows/2+.5f+gy2,1);
             gl.glEnd();
         }
         gl.glPopMatrix();
@@ -258,9 +277,18 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
         return globalDisplayEnabled;
     }
     
+    public boolean isGlobalDisplay2Enabled() {
+        return globalDisplay2Enabled;
+    }
+    
     public void setGlobalDisplayEnabled(boolean globalDisplayEnabled) {
         this.globalDisplayEnabled = globalDisplayEnabled;
         prefs.putBoolean("OpticalFlowDisplayMethod.globalDisplayEnabled",globalDisplayEnabled);
+    }
+    
+    public void setGlobalDisplay2Enabled(boolean globalDisplay2Enabled) {
+        this.globalDisplay2Enabled = globalDisplay2Enabled;
+        prefs.putBoolean("OpticalFlowDisplayMethod.globalDisplay2Enabled",globalDisplayEnabled);
     }
     
     public float getVectorLengthScale() {

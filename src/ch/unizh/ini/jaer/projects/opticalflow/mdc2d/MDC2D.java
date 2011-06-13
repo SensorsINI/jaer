@@ -30,6 +30,12 @@ import net.sf.jaer.util.RemoteControlled;
  * Describes the MDC2D chip from Shih-Chii Liu and Alan Stocker
  *
  * @author reto
+ * 
+ * changes by andstein for compatability with new hardware interfaces
+ * <ul>
+ * <li>removed some hardware specific method calls into the respective
+ *     HardwareInterace</li>
+ * </ul>
  */
 public class MDC2D extends Chip2DMotion {
 
@@ -44,8 +50,6 @@ public class MDC2D extends Chip2DMotion {
  
     private static int selectedMotionMethodIndex; // only provides a number. To set and interpret the number has to be done in the MotionData class
     private static int rawChannelUsedByMotionMethod;
-    private byte controlRegisterOnChipBiasGen=0x1;
-
 
     
     /** Creates a new instance of MDC2D */
@@ -55,7 +59,7 @@ public class MDC2D extends Chip2DMotion {
         NUM_ROWS=20;
         NUM_COLUMNS=20;
         NUM_MOTION_PIXELS=NUM_COLUMNS*NUM_ROWS;
-        acquisitionMode=MotionData.PHOTO|MotionData.BIT5|MotionData.BIT6|MotionData.BIT7;
+        acquisitionMode=MotionData.PHOTO|MotionDataMDC2D.LMC1|MotionDataMDC2D.LMC2|MotionDataMDC2D.ON_CHIP_ADC;
         dac=new DAC(16,12,0,5,VDD);
         setBiasgen(new MDC2DBiasgen(this, dac));
         setSizeX(NUM_COLUMNS);
@@ -68,6 +72,7 @@ public class MDC2D extends Chip2DMotion {
 
 
     // Returns a empty MotionData MDC2D Object
+    @Override
     public MotionData getEmptyMotionData(){
         return new MotionDataMDC2D(this);
     }
@@ -88,7 +93,7 @@ public class MDC2D extends Chip2DMotion {
         return rawChannelUsedByMotionMethod;
     }
 
-        /**
+    /**
      * Converts 10 bits single ended ADC output value to a float ranged 0-1.
      * 0 represents GND, 1 is most positive value (VDD).
      * @param value the 10 bit value.
@@ -156,7 +161,9 @@ public class MDC2D extends Chip2DMotion {
    }
 
 
-
+        public PotArray getIPotArray() {
+            return ipots;
+        }
 
         public Iterator getShiftRegisterIterator(){
             return ((IPotArray)ipots).getShiftRegisterIterator();
@@ -194,7 +201,7 @@ public class MDC2D extends Chip2DMotion {
             }else{
                 pd=0;
             }
-            ((SiLabsC8051F320_OpticalFlowHardwareInterface)hardwareInterface).sendVendorRequest(((SiLabsC8051F320_OpticalFlowHardwareInterface)hardwareInterface).VENDOR_REQUEST_SET_POWERDOWN_STATE, (short)pd, (short)0);
+            hardwareInterface.setPowerDown(powerDown);
         }
 
 
@@ -212,46 +219,16 @@ public class MDC2D extends Chip2DMotion {
             if (this.hardwareInterface == null) {
                 return;
             }
-            try {
-                if (observable instanceof IPot || observable instanceof BufferIPot) { // must send all IPot values and set the select to the ipot shift register, this is done by the cypress
 
-                    if(potValues==null){
-                        potValues=new int[38];
-                        for(int i=0;i<potValues.length;i++){
-                            potValues[i]=-1; // init values to value that will generate a vendor request for it automatically.
-                        }
-                    }
-                    for(short i=0;i<ipots.getNumPots();i++){
-                        IPot ipot=(IPot)ipots.getPotByNumber(i);
-                        int chan=ipot.getShiftRegisterNumber();
-                        if(potValues[chan]!=ipot.getBitValue()){
-                            // new value or not sent yet, send it
-                            potValues[chan]=ipot.getBitValue();
-                            byte[] bin =ipot.getBinaryRepresentation();
-
-                            byte request=((SiLabsC8051F320_OpticalFlowHardwareInterface)hardwareInterface).VENDOR_REQUEST_SEND_ONCHIP_BIAS;
-                            short value = (short)(((chan<<8)&0xFF00)| ((bin[0])&0x00FF));
-                            short index = (short)(((bin[1]<<8)&0xFF00) | (bin[2]&0x00FF));
-                            try{
-                                ((SiLabsC8051F320_OpticalFlowHardwareInterface)hardwareInterface).sendVendorRequest(request, value,index);//value, index);
-                            }catch(HardwareInterfaceException e){
-                                 System.out.println(e);
-                            }
-                            log.info("sent pot value "+ipot.getBitValue()+" for channel "+chan);
-                        }
-                    }
-                } else if (observable instanceof VPot) {
-                    // There are 2 16-bit AD5391 DACs daisy chained; we need to send data for both
-                    // to change one of them. We can send all zero bytes to the one we're not changing and it will not affect any channel
-                    // on that DAC. We also take responsibility to formatting all the bytes here so that they can just be piped out
-                    // surrounded by nSync low during the 48 bit write on the controller.
-                    this.hardwareInterface.sendConfiguration(this);
+            // "economised" BufferIPot (what's that for anyway??)
+            if (observable instanceof VPot || observable instanceof IPot) {
+                try {
+                    hardwareInterface.sendConfiguration(this);
+                } catch (HardwareInterfaceException ex) {
+                    log.warning("could not send configuration : " + ex);
                 }
-                else {
-                    super.update(observable, object);  // super (Biasgen) handles others, e.g. maasterbias
-                }
-            } catch (HardwareInterfaceException e) {
-                log.warning(e.toString());
+            } else {
+                super.update(observable, object);  // super (Biasgen) handles others, e.g. maasterbias
             }
         }
 

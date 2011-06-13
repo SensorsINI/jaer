@@ -18,8 +18,8 @@ import net.sf.jaer.util.*;
 import net.sf.jaer.util.browser.*;
 import ch.unizh.ini.jaer.projects.opticalflow.io.*;
 import ch.unizh.ini.jaer.projects.opticalflow.io.MotionOutputStream;
+import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.MotionChipInterface;
 import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.OpticalFlowHardwareInterfaceFactory;
-import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.SiLabsC8051F320_OpticalFlowHardwareInterface;
 import com.sun.java.swing.plaf.windows.*;
 import java.awt.*;
 import java.awt.datatransfer.*;
@@ -59,7 +59,8 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
     BiasgenFrame biasgenFrame=null;
     Biasgen biasgen=null;
     Chip2DRenderer renderer=null;
-    public static SiLabsC8051F320_OpticalFlowHardwareInterface hardware=null;
+    public static MotionChipInterface hardware=null;
+    public int hardwareInterfaceNum=-1; // references to OpticalFlowHardwareInterfaceFactory.getInterface(n)
     public ViewLoop viewLoop=null;
     RecentFiles recentFiles=null;
     File lastFile=null;
@@ -395,6 +396,19 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
 //            biasesToggleButton.setSelected(vis);
 //        }
     }
+
+    public boolean hardwareIsOpen() {
+        return hardware!=null && hardware.isOpen();
+    }
+
+    void closeHardware(){
+        if (!hardwareIsOpen()) {
+            log.info("hardware already closed.");
+            return;
+        }
+        hardware.close();
+        hardware= null;
+    }
     
     // opens the AE interface and handles stereo mode if two identical AERetina interfaces
     void openHardware(){
@@ -402,8 +416,12 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
             playMode=PlayMode.LIVE; // in case (like StereoHardwareInterface) where device can be open but not by MotionViewer
             return;
         }
+        if (hardwareInterfaceNum<0) {
+            log.warning("cannot open hardware because hardwareInterfaceNum not set (via OpticalFlowDisplayControlPanel");
+            return;
+        }
         try{
-            hardware=(SiLabsC8051F320_OpticalFlowHardwareInterface)OpticalFlowHardwareInterfaceFactory.instance().getFirstAvailableInterface();
+            hardware= (MotionChipInterface) OpticalFlowHardwareInterfaceFactory.instance().getInterface(hardwareInterfaceNum);
             hardware.setChip(chip);
             chip.setHardwareInterface(hardware);
             hardware.open();
@@ -2129,7 +2147,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         return chipMenu;
     }
 
-    public SiLabsC8051F320_OpticalFlowHardwareInterface getHardware(){
+    public MotionChipInterface getHardware(){
         return this.hardware;
     }
     

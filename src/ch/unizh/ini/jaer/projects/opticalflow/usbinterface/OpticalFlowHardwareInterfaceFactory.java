@@ -21,6 +21,13 @@ import java.util.*;
  * Makes OpticalFlowHardwareInterface's.
  * 
  * @author tobi
+ * 
+ * changes by andstein
+ * <ul>
+ * <li>added the new <cdoe>dsPIC33F_COM_ConfigurationPanel</code></li>
+ * <li>added error message in <code>buildUsbIoList</code> that can arise when
+ *     different driver version is used</li>
+ * </ul>
  */
 public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotifyInterface, HardwareInterfaceFactoryInterface {
     
@@ -34,7 +41,8 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
     private long gDevList; // 'handle' (an integer) to an internal device list static to UsbIo
     
     ArrayList<UsbIo> usbioList=null;
-
+    // interfaces are cached to re-use allocated ressources
+    HardwareInterface cache[];
 
 
     /** private constructor for this singleton class.*/
@@ -42,6 +50,13 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
         pnp=new PnPNotify(this);
         pnp.enablePnPNotification(GUID);
         buildUsbIoList();
+        emptyCache();
+    }
+
+    private void emptyCache() {
+        cache= new HardwareInterface[getNumInterfacesAvailable()];
+        for(int i=0; i< getNumInterfacesAvailable(); i++)
+            cache[i]= null;
     }
 
     /** @return singleton instance */
@@ -49,29 +64,43 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
         return instance;
     }
 
-
     public int getNumInterfacesAvailable() {
         if(usbioList==null) return 0;
-        else return usbioList.size();
+        else return usbioList.size() +1;
     }
 
     public HardwareInterface getFirstAvailableInterface() throws HardwareInterfaceException {
         if(getNumInterfacesAvailable()==0) throw new HardwareInterfaceException("no interfaces available");
-        return new SiLabsC8051F320_OpticalFlowHardwareInterface(0);
+        return getInterface(0);
     }
 
+    private HardwareInterface createInterface(int n) throws HardwareInterfaceException {
+        // we may have any number of SiLabsC8051F320_OpticalFlowHardwareInterface
+        if(n<getNumInterfacesAvailable()-1)
+            return new SiLabsC8051F320_OpticalFlowHardwareInterface(n);
+        // the last hardware interface is by definition the dsPIC33F_COM_OpticalFlowHardwareInterface
+        // (that may not be connected; error issued on opening)
+        return new dsPIC33F_COM_OpticalFlowHardwareInterface();
+    }
 
     public HardwareInterface getInterface(int n) throws HardwareInterfaceException {
-        if(getNumInterfacesAvailable()<n+1) throw new HardwareInterfaceException("asked for interface "+n+" but only "+getNumInterfacesAvailable()+" interfaces are available");
-        return new SiLabsC8051F320_OpticalFlowHardwareInterface(n);
+        if(n>=getNumInterfacesAvailable())
+            throw new HardwareInterfaceException("asked for interface "+n+" but only "+getNumInterfacesAvailable()+" interfaces are available");
+
+        if (cache[n] == null)
+            cache[n]= createInterface(n);
+
+        return cache[n];
     }
 
     public void onAdd() {
         buildUsbIoList();
+        emptyCache();
     }
 
     public void onRemove() {
         buildUsbIoList();
+        emptyCache();
     }
     
     void buildUsbIoList(){
@@ -96,11 +125,14 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
         for(int i=0;i<MAXDEVS;i++){
             dev=new UsbIo();
             int status=dev.open(i, gDevList, GUID);
-            
+
             if(status==USBIO_ERR_NO_SUCH_DEVICE_INSTANCE) {
                 numDevs=i;
                 break;
-            }else{
+            }else if (status != USBIO_ERR_SUCCESS) {
+                // various errors such as USBIO_ERR_VERSION_MISMATCH
+                System.err.println("OpticalFlowHardwareInterfaceFactory.openUsbIo(): open: "+UsbIo.errorText(status));
+            } else {
                 //        System.out.println("CypressFX2.openUsbIo(): UsbIo opened the device");
                 // get device descriptor (possibly before firmware download, when still bare cypress device or running off EEPROM firmware)
                 USB_DEVICE_DESCRIPTOR deviceDescriptor=new USB_DEVICE_DESCRIPTOR();

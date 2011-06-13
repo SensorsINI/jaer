@@ -12,6 +12,7 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.usbinterface;
 
+import javax.swing.JPanel;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.VDAC.*;
@@ -19,6 +20,7 @@ import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.util.*;
 import ch.unizh.ini.jaer.projects.opticalflow.*;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D;
+import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MotionDataMDC2D;
 import ch.unizh.ini.jaer.projects.opticalflow.motion18.Motion18;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.PnPNotifyInterface;
@@ -31,10 +33,19 @@ import java.util.logging.Logger;
  * Servo motor controller using USBIO driver access to SiLabsC8051F320 device.
  *
  * @author tobi
+ * 
+ * changelog by andstein
+ *   - moved various hardware specific parts from other code into this class
+ * 
+ * TODO
+ *   - when the hardware interface is closed, it cannot be properly reopened
+ *     because the MotionReader-thread cannot be reset in the open() method
  */
 public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipInterface, UsbIoErrorCodes, PnPNotifyInterface {
     Logger log=Logger.getLogger("SiLabsC8051F320_USBIO_ServoController");
-    // servo command bytes recognized by microcontroller
+
+    /** A "magic byte" marking the start of each frame */
+    public static final byte FRAME_START_MARKER = (byte)0xac;
     
     static final int MAX_POTS=64;
     
@@ -82,13 +93,12 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
 //    MotionUsbThread motionUsbThread = null;
     private MotionReader reader=null; // the async reader thread that gets data from the device
     
-    private int[] potValues=null; // cache of pot values used for checking which ones to send
+    private int[] vpotValues=null; // cache of pot values used for checking which ones to send
+    private int[] ipotValues=null; // cache of pot values used for checking which ones to send
     
     private static final long DATA_TIMEOUT_MS=50000; // timeout for getting data from device
     private static final int MOTION_BUFFER_LENGTH=1<<14; // Size of UsbioBuf buffers. Make bigger to optimize?
     
-    private int captureMode;
-
     private Chip2DMotion chip=new MDC2D();
 
     private MotionData lastbuffer;
@@ -102,14 +112,17 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
      */
     public SiLabsC8051F320_OpticalFlowHardwareInterface(int n) {
         interfaceNumber=n;
-        captureMode=chip.getCaptureMode();
+    }
+
+    private void generateMotionData() {
+        initialEmptyBuffer = chip.getEmptyMotionData(); // the buffer to start capturing into
+        initialFullBuffer = chip.getEmptyMotionData();    // the buffer to render/process first
+        currentBuffer=initialFullBuffer;
     }
 
     public void setChip(Chip2DMotion chip){
         this.chip=chip;
-        initialEmptyBuffer = chip.getEmptyMotionData(); // the buffer to start capturing into
-        initialFullBuffer = chip.getEmptyMotionData();    // the buffer to render/process first
-        currentBuffer=initialFullBuffer;
+        generateMotionData();
     }
     
 //    public void startMotionUsbThread() {
@@ -133,8 +146,16 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
             log.warning("close(): not open");
             return;
         }
-        
-        if(reader!=null) reader.abortPipe();
+
+        //TODO the thread is not properly stopped -> the interface cannot
+        //     be re-opened once it's closed withtout restarting the application
+        if(reader!=null) {
+//            reader.abortPipe();
+            reader.shutdownThread();
+            reader.unbind();
+            reader.close();
+            reader= null;
+        }
         
 //        if(motionUsbThread!=null) {
 //            motionUsbThread.stopThread();
@@ -247,6 +268,28 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
                     + " Product ID (PID) " + HexString.toString((short)deviceDescriptor.idProduct));
         }
         
+        // unconfigure device in case it was still configured from a prior terminated process
+//        gUsbIo.unconfigureDevice();
+        try {
+            int status2;
+    //        System.out.println("CypressFX2RetinaBiasgen.unconfigureDevice()");
+            status2 = gUsbIo.unconfigureDevice();
+            if (status2 != USBIO_ERR_SUCCESS) {
+                UsbIo.destroyDeviceList(gDevList);
+                //System.out.println("unconfigureDevice: "+UsbIo.errorText(status2));
+                //            throw new USBAEMonitorException("getStringDescriptor: "+gUsbIo.errorText(status2));
+                throw new HardwareInterfaceException("unconfigureDevice: " + UsbIo.errorText(status2));
+            //            System.out.println("getConfigurationInfo ok");
+            }
+        } catch (HardwareInterfaceException e) {
+            log.warning("can't unconfigure,will try simulated disconnect");
+            int cycleStatus = gUsbIo.cyclePort();
+            if (cycleStatus != USBIO_ERR_SUCCESS) {
+                throw new HardwareInterfaceException("Error cycling port: " + UsbIo.errorText(cycleStatus));
+            }
+            throw new HardwareInterfaceException("couldn't unconfigure device");
+        }
+        
         // set configuration -- must do this BEFORE downloading firmware!
         USBIO_SET_CONFIGURATION Conf = new USBIO_SET_CONFIGURATION();
         Conf.ConfigurationIndex = CONFIG_INDEX;
@@ -266,10 +309,13 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
         
        isOpened=true;
 
-       reader=new MotionReader();
-        reader.startThread(3); // start with 3 errors allowed
-//       openPipes();
-        
+       if (reader==null) {
+           reader=new MotionReader();
+            reader.startThread(3); // start with 3 errors allowed
+        } else {
+           log.warning("MotionReader was still running !");
+           reader.resetPipe();
+        }
      }
     
     
@@ -398,7 +444,40 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
     MotionData initialEmptyBuffer=chip.getEmptyMotionData(); // the buffer to start capturing into
     MotionData initialFullBuffer=chip.getEmptyMotionData();    // the buffer to render/process first
     MotionData currentBuffer=initialFullBuffer;
-    
+
+    @Override
+    public JPanel getConfigPanel() {
+        return null;
+    }
+
+    @Override
+    public int getRawDataIndex(int bit)
+    {
+        switch(bit)
+        {
+            case MotionDataMDC2D.PHOTO:         return 0;
+            case MotionDataMDC2D.LMC1:          return 1;
+            case MotionDataMDC2D.LMC2:          return 2;
+            case MotionDataMDC2D.ON_CHIP_ADC:   return 3;
+
+            default: return -1;
+        }
+    }
+
+    @Override
+    public void setChannel(int bit, boolean onChip) throws HardwareInterfaceException {
+        // since we always send LMC1+LMC2+PHOTO we only need to set the
+        // on-chip-ADC channel if on-chip-ADC values are wanted
+        
+        if (onChip && bit == MotionDataMDC2D.PHOTO)
+            sendVendorRequest(VENDOR_REQUEST_SET_DATA_TO_SEND,(short)0x0d,(short)0); // 1101b
+        if (onChip && bit == MotionDataMDC2D.LMC1)
+            sendVendorRequest(VENDOR_REQUEST_SET_DATA_TO_SEND,(short)0x0b,(short)0); // 1011b
+        if (onChip && bit == MotionDataMDC2D.LMC2)
+            sendVendorRequest(VENDOR_REQUEST_SET_DATA_TO_SEND,(short)0x07,(short)0); // 0111b
+    }
+
+
     /**
      * This reader reads data from the motion chip
      */
@@ -486,7 +565,7 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
             byte packetDescriptor = usbBuf.BufferMem[1];
             
             try{
-                if( usbBuf.BufferMem[0] != Chip2DMotion.FRAME_START_MARKER) {
+                if( usbBuf.BufferMem[0] != FRAME_START_MARKER) {
                     log.warning("Frame start marker does not match, unpacking failed");
                     return;
                 }
@@ -565,7 +644,8 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
         @Override
         public void bufErrorHandler(UsbIoBuf usbIoBuf) {
             log.warning("bufferError: "+UsbIo.errorText(usbIoBuf.Status));
-            SiLabsC8051F320_OpticalFlowHardwareInterface.this.close();
+// prevent deadlock
+//            SiLabsC8051F320_OpticalFlowHardwareInterface.this.close();
         }
         
         @Override
@@ -575,7 +655,8 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
             }catch(HardwareInterfaceException e){
                 log.warning(e.getMessage());
             }
-            if(isOpen()) close(); // these call the UsbIo methods, not the containing class methods - TODO check if this is OK
+// prevent deadlock
+//            if(isOpen()) close(); // these call the UsbIo methods, not the containing class methods - TODO check if this is OK
         }
         
         void requestData(){
@@ -615,48 +696,94 @@ public class SiLabsC8051F320_OpticalFlowHardwareInterface implements MotionChipI
      */
     @Override
     public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
+        
         PotArray potArray=biasgen.getPotArray();
-        if(potValues==null){
-            potValues=new int[MAX_POTS];
-            for(int i=0;i<potValues.length;i++){
-                potValues[i]=-1; // init values to value that will generate a vendor request for it automatically.
+        if(vpotValues==null){
+            vpotValues=new int[MAX_POTS];
+            for(int i=0;i<vpotValues.length;i++){
+                vpotValues[i]=-1; // init values to value that will generate a vendor request for it automatically.
             }
         }
+        
         for(short i=0;i<biasgen.getNumPots();i++){
             VPot vpot=(VPot)potArray.getPotByNumber(i);
             int chan=vpot.getChannel(); // DAC channel for pot
-            if(potValues[chan]!=vpot.getBitValue()){
+            if(vpotValues[chan]!=vpot.getBitValue()){
                 // new value or not sent yet, send it
                 sendVendorRequest(VENDOR_REQUEST_SEND_BIAS, (short)vpot.getBitValue(), (short)chan);
-                potValues[chan]=vpot.getBitValue();
-                log.info("sent pot value "+vpot.getBitValue()+" for channel "+chan);
+                vpotValues[chan]=vpot.getBitValue();
+                log.info("set VPot value "+vpot.getBitValue()+" ("+vpot.getPhysicalValue()+vpot.getPhysicalValueUnits()+") for channel "+chan);
             }
         }           
+
+        if(ipotValues==null){
+            ipotValues=new int[38];
+            for(int i=0;i<ipotValues.length;i++){
+                ipotValues[i]=-1; // init values to value that will generate a vendor request for it automatically.
+            }
+        }
+
+        PotArray ipots= ((MDC2D.MDC2DBiasgen) biasgen).getIPotArray();
+        for(short i=0;i<ipots.getNumPots();i++){
+            IPot ipot=(IPot)ipots.getPotByNumber(i);
+            int chan=ipot.getShiftRegisterNumber();
+            if(ipotValues[chan]!=ipot.getBitValue()){
+                // new value or not sent yet, send it
+                ipotValues[chan]=ipot.getBitValue();
+                byte[] bin =ipot.getBinaryRepresentation();
+
+                byte request= VENDOR_REQUEST_SEND_ONCHIP_BIAS;
+                short value = (short)(((chan<<8)&0xFF00)| ((bin[0])&0x00FF));
+                short index = (short)(((bin[1]<<8)&0xFF00) | (bin[2]&0x00FF));
+                sendVendorRequest(request, value,index);//value, index);
+                log.info("set IPot value "+ipot.getBitValue()+" ("+ipot.getPhysicalValue()+ipot.getPhysicalValueUnits()+") into SR pos "+chan);
+            }
+        }
     }
     
     @Override
     public void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         log.warning("not implemented yet");
     }
-    
-    /** sets the data to be captured in each frame. The mode bits defined for the chip, e.g. Motion18, define which data will
-     be requested. The returned MotionData will signify which data it has.
-     @param mode the mode
-     @see ch.unizh.ini.jaer.projects.opticalflow.chip.Motion18
-     */
+
+
     @Override
-    public void setCaptureMode(int mode) {
-        this.captureMode=mode;
+    public void setCaptureMode(int mode) throws HardwareInterfaceException {
+
+        generateMotionData();
+        
+        /*
         if(!isOpen()) {
             log.warning("device not open");
             return;
         }
-        try{
+
+        // we can only provide certain capture modes -> reset capture mode in
+        // chip since it will define number of arrays in MotionData !!
+        int oldMode= mode;
+        mode &= MotionDataMDC2D.PHOTO | MotionDataMDC2D.LMC1 | MotionDataMDC2D.LMC2 | MotionDataMDC2D.ON_CHIP_ADC;
+        mode |= MotionDataMDC2D.PHOTO | MotionDataMDC2D.LMC1 | MotionDataMDC2D.LMC2;
+
+        // it sends all data in any case
+        try {
             sendVendorRequest(VENDOR_REQUEST_SET_DATA_TO_SEND,(short)captureMode,(short)0);
-        }catch(HardwareInterfaceException e){
-            log.warning(e.getMessage());
+        } catch (HardwareInterfaceException ex) {
+            log.warning("could not set captureMode : " + ex);
         }
+
+        if ((mode & MotionDataMDC2D.ON_CHIP_ADC) != 0)
+        {
+            if ((mode & MotionDataMDC2D.PHOTO) != 0)
+                sendVendorRequest(VENDOR_REQUEST_SET_DATA_TO_SEND,(short)0x0d,(short)0); // 1101b
+            if ((mode & MotionDataMDC2D.LMC1) != 0)
+                sendVendorRequest(VENDOR_REQUEST_SET_DATA_TO_SEND,(short)0x0b,(short)0); // 1011b
+            if ((mode & MotionDataMDC2D.LMC2) != 0)
+                sendVendorRequest(VENDOR_REQUEST_SET_DATA_TO_SEND,(short)0x07,(short)0); // 0111b
+        }
+        this.captureMode=mode;
+         */
     }
+
 
     @Override
     public byte[] formatConfigurationBytes(Biasgen biasgen) {

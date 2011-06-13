@@ -17,7 +17,15 @@ import java.util.Random;
 
 /**
  * Packs data returned from optical flow sensor.
- 
+ * 
+ * some changes by andstein
+ * <ul>
+ * <li>added a second global-x/y for comparison between software/hardware
+ *     calculated values</li>
+ * <li>added boolean filledIn that can be used by child classes to prevent
+ *     MotionViewer from filling in motion values a 2nd time</li>
+ * </ul>
+ * 
  * @author tobi
  */
 public abstract class MotionData implements Cloneable{
@@ -49,7 +57,11 @@ public abstract class MotionData implements Cloneable{
     protected float [][][] rawDataPixel; //Array containing the raw data [channel][posX][posY]
     protected float [] rawDataGlobal;
 
-
+    //HACK to prevent calculation of motion data in MotionViewer when data
+    // is already replaced in another thread...
+    // is unset to false in setSequenceNumber() and set after collectMotionInfo()
+    protected boolean filledIn= false;
+    
 
     /* Motion data is basically represented as receptor outputs, local and global
      * motion in x and y direction. Those are used by the standard display methods.
@@ -61,6 +73,9 @@ public abstract class MotionData implements Cloneable{
     protected float globalX; // global velocity x, centered on 0
     protected float globalY; // global velocity x, centered on 0
     protected float minph, maxph, minux, maxux, minuy, maxuy;
+    // these are used for comparison purposes
+    protected float globalX2; // global velocity x, centered on 0
+    protected float globalY2; // global velocity x, centered on 0
 
     // a Chip2DMotion object of the current chip type
     public Chip2DMotion chip;
@@ -84,6 +99,7 @@ public abstract class MotionData implements Cloneable{
     /** Constructor to be called by non abstract subclasses */
     public MotionData(Chip2DMotion chip) {
         globalX=0; globalY=0;
+        globalX2=0; globalY2=0;
         this.chip = chip;
         contents=chip.getCaptureMode();
         rawDataPixel = new float[this.getNumLocalChannels()][chip.getSizeX()][chip.getSizeY()];
@@ -112,13 +128,19 @@ public abstract class MotionData implements Cloneable{
     /* fills the compulsory motion data for display (ph, ux, uy, globalX, globalY
      * minph, maxph, minux, maxux, minuy, maxuy. This method takes care that all
      * computations on the raw data are done.
+     * 
+     * this method does NOT DO ANYTHING unless you called setSequenceNumber()
+     * (or directly setFilledIn(false)) before !
      */
     public final void collectMotionInfo(){
-        fillPh(); //write the photoreceptor data
-        fillUxUy(); //write the local and global motion data
-        fillMinMax(); //calculate min and max of data
-        fillAdditional(); //do additional computations
-        updateContents();
+        if (filledIn == false) {
+            fillPh(); //write the photoreceptor data
+            fillUxUy(); //write the local and global motion data
+            fillMinMax(); //calculate min and max of data
+            fillAdditional(); //do additional computations
+            updateContents();
+            setFilledIn(true);
+        }
     }
     
 
@@ -232,7 +254,7 @@ public abstract class MotionData implements Cloneable{
     }
 
 
-
+    
     public boolean hasGlobalX(){
         return (contents&GLOBAL_X)!=0;
     }
@@ -266,7 +288,10 @@ public abstract class MotionData implements Cloneable{
     }
 
    final   public void setSequenceNumber(int sequenceNumber) {
-        this.sequenceNumber = sequenceNumber;
+       if (sequenceNumber != this.sequenceNumber) {
+            this.sequenceNumber = sequenceNumber;
+            setFilledIn(false);
+       }
     }
 
    final   public void setGlobalX(float globalX) {
@@ -320,6 +345,22 @@ public abstract class MotionData implements Cloneable{
     public void setTimeCapturedMs(long timeCapturedMs) {
         this.timeCapturedMs = timeCapturedMs;
     }
+    
+    public float getGlobalX2() {
+        return globalX2;
+    }
+
+    public float getGlobalY2() {
+        return globalY2;
+    }
+
+    public void setGlobalX2(float globalX2) {
+        this.globalX2 = globalX2;
+    }
+
+    public void setGlobalY2(float globalY2) {
+        this.globalY2 = globalY2;
+    }
 
     /* shifts pastMotionData array by one position. The oldest data fall out. At
      * position 0 the most recent data is inserted
@@ -355,6 +396,9 @@ public abstract class MotionData implements Cloneable{
         return channelData;
     }
 
+    public void setFilledIn(boolean filledIn) {
+        this.filledIn = filledIn;
+    }
 
 
    //returns an array with random numbers between -1 and 1
