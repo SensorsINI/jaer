@@ -34,8 +34,8 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
     private Point2D.Float velocityPPt = new Point2D.Float();
     private int averageClusterAge = 0; // weighted average cluster age
     private SmallAngleTransformFinder smallAngleTransformFinder = new SmallAngleTransformFinder();
-    private float opticalGyroTauLowpassMs = getPrefs().getFloat("OpticalGyro.opticalGyroTauLowpassMs", 100);
-    private boolean opticalGyroRotationEnabled = getPrefs().getBoolean("OpticalGyro.opticalGyroRotationEnabled", false);
+    private float opticalGyroTauLowpassMs = getFloat("opticalGyroTauLowpassMs", 100);
+    private boolean opticalGyroRotationEnabled = getBoolean("opticalGyroRotationEnabled", false);
 
     public OpticalGyro(AEChip chip) {
         super(chip);
@@ -115,7 +115,7 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
 //                Matrix.multiply(transform,p0,p1);
 //                e.x=(short)Math.round(p1[0]);
 //                e.y=(short)Math.round(p1[1]);
-            } else {
+        } else {
             int time = averageClusterAge;
             e.x += (int) gainTranslation * translation.x + time * velocityPPt.x * gainVelocity;
             e.y += (int) gainTranslation * translation.y + time * velocityPPt.y * gainVelocity;
@@ -138,7 +138,7 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
      * transform all spikes or use the pantilt to getString events to
      * come out as close as possible to where all the clusters started.
 
-     * @param t the time of the upate in timestamp ticks (us).
+     * @param t the time of the update in timestamp ticks (us).
      */
     private void update(int t) {
         // update optical gyro value
@@ -331,7 +331,7 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
      */
     public void setOpticalGyroRotationEnabled(boolean opticalGyroRotationEnabled) {
         this.opticalGyroRotationEnabled = opticalGyroRotationEnabled;
-        getPrefs().putBoolean("OpticalGyro.opticalGyroRotationEnabled", opticalGyroRotationEnabled);
+        putBoolean("opticalGyroRotationEnabled", opticalGyroRotationEnabled);
     }
 
     /** Returns the rotation instantaneousAngle in radians, >0 for CCW rotation, computed from the OpticalGyro.
@@ -363,18 +363,16 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
      */
     public void setOpticalGyroTauLowpassMs(float opticalGyroTauLowpassMs) {
         this.opticalGyroTauLowpassMs = opticalGyroTauLowpassMs;
-        getPrefs().putFloat("OpticalGyro.opticalGyroTauLowpassMs", opticalGyroTauLowpassMs);
+        putFloat("opticalGyroTauLowpassMs", opticalGyroTauLowpassMs);
         translationFilter.setTauMs(opticalGyroTauLowpassMs);
         rotationFilter.setTauMs(opticalGyroTauLowpassMs);
     }
 
     @Override
-    public void update(Observable o, Object arg) {
+    public void update(Observable o, Object arg) { // called by enclosed tracker
         super.update(o, arg);
-        update(((UpdateMessage)arg).timestamp); // update gryo every time the cluster locations are updated
+        if (arg instanceof UpdateMessage) {
+            update(((UpdateMessage) arg).timestamp); // update gryo every time the cluster locations are updated
+        }
     }
-
-
-
-
 }

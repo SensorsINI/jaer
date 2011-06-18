@@ -1733,11 +1733,11 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             if (speed < thresholdVelocityForVisibleCluster) {
                 ret = false;
             }
-            hasObtainedSupport = ret;
-            if (ret) {
+            if (!hasObtainedSupport && ret) {
                 birthLocation.x = location.x;
                 birthLocation.y = location.y;  // reset location of birth to presumably less noisy current location.
             }
+            hasObtainedSupport = ret;
             return ret;
         }
 

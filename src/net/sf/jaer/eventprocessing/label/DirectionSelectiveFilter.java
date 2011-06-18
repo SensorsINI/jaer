@@ -495,7 +495,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     private Point2D.Float translationVector=new Point2D.Float();
     
-    /** Returns the 2-vector of global translational average motion 
+    /** Returns the 2-vector of global translational average motion.
      @return translational motion in pixels per second, as computed and filtered by Translation 
      */
     public Point2D.Float getTranslationVector(){

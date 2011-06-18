@@ -127,9 +127,10 @@ abstract public class EventFilter2D extends EventFilter {
     private boolean updateTimeInitialized = false;// to initialize time for cluster list update
     private int lastUpdateTimeUs=0;
 
-    /** Checks for passage of interval of at least updateIntervalMs since the last update and notifies Observers if time has passed.
-     * Observers are called with the update timestamp.
-     * @param timestamp
+    /** Checks for passage of interval of at least updateIntervalMs since the last update and 
+     * notifies Observers if time has passed.
+     * Observers are called with an UpdateMessage formed from the current packet and the current timestamp.
+     * @param timestamp the timestamp to be checked. If this timestamp is greater than the nextUpdateTime (or has gone backwards, to handle rewinds), then the UpdateMessage is sent.
      * @return true if Observers were notified.
      */
     public boolean maybeCallUpdateObservers(EventPacket packet, int timestamp) {
@@ -164,8 +165,11 @@ abstract public class EventFilter2D extends EventFilter {
      @see #maybeCallUpdateObservers
      */
     public class UpdateMessage{
+        /** The packet that needs the update. */
         public EventPacket packet;
+        /** The timestamp of this update.*/
         public int timestamp;
+        /** The source EventFilter2D. */
         EventFilter2D source;
 
         /** When a filter calls for an update of listeners it supplies this object.

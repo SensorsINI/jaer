@@ -21,6 +21,10 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.filter.*;
 import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Observable;
+import java.util.Observer;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.Description;
@@ -28,59 +32,83 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.processortype.Application;
 
 /**
- * This "optical Steadicam" tries to compensate global image motion by using global motion metrics to redirect output events and (optionally) also
+ * This "optical Steadicam" tries to compensate global image motion by using global motion metrics to 
+ * redirect output events and (optionally) also
 a mechanical pantilt unit, shifting them according to motion of input.
-Two methods can be used 1) the global translational flow computed from DirectionSelectiveFilter, or 2) the optical gyro outputs from OpticalGyro.
+Two methods can be used 1) the global translational flow computed from DirectionSelectiveFilter, 
+ * or 2) the optical gyro outputs from OpticalGyro.
  *
  * @author tobi
  */
-@Description("Compenstates global scene translation and rotation to stabilize scene.")
-public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Application {
+@Description("Compenstates global scene translation and rotation to stabilize scene like a SteadiCam.")
+public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Application, Observer {
 
-
-    /** Classses that compute scene shift.
+    /** Classes that compute scene shift and maybe rotation around the center of the scene.
      */
     public enum PositionComputer {
 
         OpticalGyro, DirectionSelectiveFilter
     };
-    private PositionComputer positionComputer = PositionComputer.valueOf(getPrefs().get("SceneStabilizer.positionComputer", "OpticalGyro"));
-    private float gainTranslation = getPrefs().getFloat("SceneStabilizer.gainTranslation", 1f);
-    private float gainVelocity = getPrefs().getFloat("SceneStabilizer.gainVelocity", 1);
-    private float gainPanTiltServos = getPrefs().getFloat("SceneStabilizer.gainPanTiltServos", 1);
+    private PositionComputer positionComputer = null; //PositionComputer.valueOf(get("positionComputer", "OpticalGyro"));
+    private float gainTranslation = getFloat("gainTranslation", 1f);
+    private float gainVelocity = getFloat("gainVelocity", 1);
+    private float gainPanTiltServos = getFloat("gainPanTiltServos", 1);
     private DirectionSelectiveFilter dirFilter; // used when using optical flow
-    private OpticalGyro clusterTracker; // used when tracking features
-    private boolean feedforwardEnabled = getPrefs().getBoolean("SceneStabilizer.feedforwardEnabled", false);
-    private boolean panTiltEnabled = getPrefs().getBoolean("SceneStabilizer.panTiltEnabled", false);
-    private boolean electronicStabilizationEnabled = getPrefs().getBoolean("SceneStabilizer.electronicStabilizationEnabled", true);
+    private OpticalGyro opticalGyro; // used when tracking features
+    private boolean feedforwardEnabled = getBoolean("feedforwardEnabled", false);
+    private boolean panTiltEnabled = getBoolean("panTiltEnabled", false);
+    private boolean electronicStabilizationEnabled = getBoolean("electronicStabilizationEnabled", true);
     private Point2D.Float translation = new Point2D.Float();
     private HighpassFilter filterX = new HighpassFilter(), filterY = new HighpassFilter(), filterRotation = new HighpassFilter();
     private boolean flipContrast = false;
     private float rotation = 0;
     private final int SHIFT_LIMIT = 30;
-    private float cornerFreqHz = getPrefs().getFloat("SceneStabilizer.cornerFreqHz", 0.1f);
+    private float cornerFreqHz = getFloat("cornerFreqHz", 0.1f);
     boolean evenMotion = true;
     private EventPacket ffPacket = null;
     private FilterChain filterChain;
-    private boolean annotateEnclosedEnabled = getPrefs().getBoolean("SceneStabilizer.annotateEnclosedEnabled", true);
+    private boolean annotateEnclosedEnabled = getBoolean("annotateEnclosedEnabled", true);
     private PanTilt panTilt = null;
+    ArrayList<TransformAtTime> transformList = new ArrayList(); // holds list of transforms over update times commputed by enclosed filter update callbacks
+
+    private class TransformAtTime {
+
+        Point2D.Float translation;
+        int timetamp;
+        float rotation;
+
+        public TransformAtTime(int timetamp, Point2D.Float translation, float rotation) {
+            this.translation = translation;
+            this.timetamp = timetamp;
+            this.rotation = rotation;
+        }
+    }
 
     /** Creates a new instance of SceneStabilizer */
     public SceneStabilizer(AEChip chip) {
         super(chip);
         filterChain = new FilterChain(chip);
 
+        // if dirFilter is used to compute transform, opticalGyro is still used to transform the events
         dirFilter = new DirectionSelectiveFilter(chip);
-        clusterTracker = new OpticalGyro(chip);
         dirFilter.setAnnotationEnabled(false);
-
+        dirFilter.addObserver(this);
         filterChain.add(dirFilter);
 
-        clusterTracker = new OpticalGyro(chip);
-        clusterTracker.setAnnotationEnabled(false); // annotation of cluster drawn in unshifted space and hard to see, clutters view.
+        opticalGyro = new OpticalGyro(chip);
+        opticalGyro.setAnnotationEnabled(false); // annotation of cluster drawn in unshifted space and hard to see, clutters view.
+        opticalGyro.addObserver(this);
+        filterChain.add(opticalGyro);
 
-        filterChain.add(clusterTracker);
         setEnclosedFilterChain(filterChain);
+
+        try {
+            positionComputer = PositionComputer.valueOf(getString("positionComputer", "OpticalGyro"));
+        } catch (IllegalArgumentException e) {
+            log.warning("bad preference " + getString("positionComputer", "OpticalGyro") + " for preferred PositionComputer, choosing default OpticalGyro");
+            positionComputer = PositionComputer.OpticalGyro;
+            putString("positionComputer", "OpticalGyro");
+        }
 
         setPositionComputer(positionComputer); // init filter enabled states
         initFilter(); // init filters for motion compensation
@@ -96,47 +124,42 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
         setPropertyTooltip("annotateEnclosedEnabled", "showing tracking or motion filter output annotation of output, for setting up parameters of enclosed filters");
     }
 
+    @Override
     public EventPacket filterPacket(EventPacket in) {
-        if (in == null) {
-            return null;
-        }
-        if (!filterEnabled) {
-            return in;
-        }
         checkOutputPacketEventType(in);
+        transformList.clear(); // empty list of transforms to be applied
 //        int lastTimeStamp=in.getLastTimestamp();
-        if (feedforwardEnabled && isElectronicStabilizationEnabled()) {
-            if (ffPacket == null) {
-                ffPacket = new EventPacket(in.getEventClass());
-            }
-            int sx = chip.getSizeX(), sy = chip.getSizeY();
-            int dx = Math.round(translation.x), dy = Math.round(translation.y); // TODO wrong transform, leaves out rotation
-            OutputEventIterator oi = ffPacket.outputIterator();
-            for (Object o : in) {
-                PolarityEvent e = (PolarityEvent) o;
-                int x = (e.x + dx);
-                if (x < 0 | x >= sx) {
-                    continue;
-                }
-                int y = (e.y + dy);
-                if (y < 0 || y >= sy) {
-                    continue;
-                }
-                PolarityEvent oe = (PolarityEvent) oi.nextOutput();
-                oe.copyFrom(e);
-            }
-            in = ffPacket;
-        }
-        getEnclosedFilterChain().filterPacket(in);
+//        if (feedforwardEnabled && isElectronicStabilizationEnabled()) {
+//            if (ffPacket == null) {
+//                ffPacket = new EventPacket(in.getEventClass());
+//            }
+//            int sx = chip.getSizeX(), sy = chip.getSizeY();
+//            int dx = Math.round(translation.x), dy = Math.round(translation.y); // TODO wrong transform, leaves out rotation
+//            OutputEventIterator oi = ffPacket.outputIterator();
+//            for (Object o : in) {
+//                PolarityEvent e = (PolarityEvent) o;
+//                int x = (e.x + dx);
+//                if (x < 0 | x >= sx) {
+//                    continue;
+//                }
+//                int y = (e.y + dy);
+//                if (y < 0 || y >= sy) {
+//                    continue;
+//                }
+//                PolarityEvent oe = (PolarityEvent) oi.nextOutput();
+//                oe.copyFrom(e);
+//            }
+//            in = ffPacket;
+//        }
+        getEnclosedFilterChain().filterPacket(in); // issues callbacks to us periodically via update based on 
 //        switch(positionComputer){
 //            case DirectionSelectiveFilter:
 //                dir=enclosedFilter.filterPacket(in);
 //                break;
 //            case OpticalGyro:
-//                dir=clusterTracker.filterPacket(in);
+//                dir=opticalGyro.filterPacket(in);
 //        }
 
-        computeTransform(in);
 
         if (isElectronicStabilizationEnabled()) {
 //            int dx=Math.round(translation.x), dy=Math.round(translation.y);
@@ -146,10 +169,20 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
             int n = in.getSize();
             short nx, ny;
             OutputEventIterator outItr = out.outputIterator();
-            // TODO compute evenMotion boolean from clusterTracker
+            // TODO compute evenMotion boolean from opticalGyro
+            TransformAtTime transform = null;
+            Iterator<TransformAtTime> transformItr = transformList.iterator();
+            if (transformItr.hasNext()) {
+                transform = transformItr.next();
+            }
             for (Object o : in) {
                 PolarityEvent ev = (PolarityEvent) o;
-                clusterTracker.transformEvent(ev, gainTranslation, gainVelocity);
+                if (transform != null && ev.timestamp > transform.timetamp) {
+                    if (transformItr.hasNext()) {
+                        transform = transformItr.next();
+                    }
+                }
+                transformEvent(ev, transform);
 
                 if (ev.x > sizex || ev.x < 0 || ev.y > sizey || ev.y < 0) {
                     continue;
@@ -187,40 +220,57 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
         }
     }
 
+    public void transformEvent(BasicEvent e, TransformAtTime transform) {
+        if (transform == null) {
+            return;
+        }
+        int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2; // TODO slow
+        float cosAngle = (float) Math.cos(transform.rotation), sinAngle = (float) Math.sin(transform.rotation); // TODO slow
+        e.x -= sx2;
+        e.y -= sy2;
+        e.x = (short) (cosAngle * e.x - sinAngle * e.y + transform.translation.x);
+        e.y = (short) (sinAngle * e.x + cosAngle * e.y + transform.translation.y);
+        e.x += sx2;
+        e.y += sy2;
+    }
+
     /** Using DirectionSelectiveFilter, the transform is computed by pure
     integration of the motion signal followed by a highpass filter to remove long term DC offsets.
      * <p>
     Using OpticalGyro, the transform is computed by the optical gyro which tracks clusters and measures
     scene translation (and possibly rotation) from a consensus of the tracked clusters.
-
+    
     @param in the input event packet.
      */
-    private void computeTransform(EventPacket in) {
+    private void computeTransform(UpdateMessage msg) {
         float shiftx = 0, shifty = 0;
+        float rot = 0;
+        Point2D.Float trans = new Point2D.Float();
         switch (positionComputer) {
             case DirectionSelectiveFilter:
-                Point2D.Float f = dirFilter.getTranslationVector(); // this is 'instantaneous' motion signal (as filtered by DirectionSelectiveFilter)
-                int t = in.getLastTimestamp();
-                float dtSec = in.getDurationUs() * 1e-6f; // duration of this slice
+                Point2D.Float f = dirFilter.getTranslationVector(); // this is 'instantaneous' motion vector in PPS units (as filtered by DirectionSelectiveFilter)
+                int t = msg.timestamp;
+                int dtUs = (t - msg.packet.getFirstTimestamp()); // duration of this slice
                 if (Math.abs(f.x) > Math.abs(f.y)) {
                     evenMotion = f.x > 0; // used to flip contrast
                 } else {
                     evenMotion = f.y > 0;
                 }
-                shiftx += -(float) (gainTranslation * f.x * dtSec); // this is integrated shift
-                shifty += -(float) (gainTranslation * f.y * dtSec);
-                translation.x = (filterX.filter(shiftx, t)); // these are highpass filtered shifts
-                translation.y = (filterY.filter(shifty, t));
+                shiftx += -(float) (gainTranslation * f.x * dtUs * 1e-6f); // this is integrated shift
+                shifty += -(float) (gainTranslation * f.y * dtUs * 1e-6f);
+                trans.x = (filterX.filter(shiftx, t)); // these are highpass filtered shifts
+                trans.y = (filterY.filter(shifty, t));
                 break;
             case OpticalGyro:
-//                Point2D.Float trans=clusterTracker.getOpticalGyroTranslation();
-//                Point2D.Float velPPS=clusterTracker.getOpticalGyro().getVelocityPPT();
-//                int deltaTime=clusterTracker.getOpticalGyro().getAverageClusterAge();
+//                Point2D.Float trans=opticalGyro.getOpticalGyroTranslation();
+//                Point2D.Float velPPS=opticalGyro.getOpticalGyro().getVelocityPPT();
+//                int deltaTime=opticalGyro.getOpticalGyro().getAverageClusterAge();
 //                translation.x=filterX.filter(-trans.x,in.getLastTimestamp())+gainVelocity*velPPS.x*deltaTime/1e6f/AEConstants.TICK_DEFAULT_US;
 //                translation.y = filterY.filter(-trans.y,in.getLastTimestamp()) + gainVelocity * velPPS.y * deltaTime / 1e6f / AEConstants.TICK_DEFAULT_US; // shift is negative of gyro value.
-                translation = clusterTracker.getOpticalGyroTranslation();
-                rotation = clusterTracker.getOpticalGyroRotation();
+                trans.setLocation(opticalGyro.getOpticalGyroTranslation());
+                rot = opticalGyro.getOpticalGyroRotation();
         }
+        transformList.add(new TransformAtTime(msg.timestamp, trans, rot));
     }
 
     float limit(float nsx) {
@@ -232,6 +282,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
         return nsx;
     }
 
+    @Override
     public void annotate(GLAutoDrawable drawable) {
         if (!isFilterEnabled()) {
             return;
@@ -243,13 +294,13 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
 
         if (annotateEnclosedEnabled) { // show motion or feature tracking output, transformed accordingly
             if (!isElectronicStabilizationEnabled()) {
-                clusterTracker.annotate(drawable); // using mechanical
+                opticalGyro.annotate(drawable); // using mechanical
             } else { // transform cluster tracker annotation to draw on top of transformed scene
                 gl.glPushMatrix();
                 gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
                 gl.glRotatef((float) (rotation * 180 / Math.PI), 0, 0, 1);
                 gl.glTranslatef(translation.x - chip.getSizeX() / 2, translation.y - chip.getSizeY() / 2, 0);
-                clusterTracker.annotate(drawable);
+                opticalGyro.annotate(drawable);
                 gl.glPopMatrix();
             }
         }
@@ -314,7 +365,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
             gain = 100;
         }
         this.gainTranslation = gain;
-        getPrefs().putFloat("SceneStabilizer.gainTranslation", gain);
+        putFloat("gainTranslation", gain);
     }
 
     /**
@@ -329,7 +380,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
      */
     public void setGainVelocity(float gainVelocity) {
         this.gainVelocity = gainVelocity;
-        getPrefs().putFloat("SceneStabilizer.gainVelocity", gainVelocity);
+        putFloat("gainVelocity", gainVelocity);
     }
 
     public void setCornerFreqHz(float freq) {
@@ -337,7 +388,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
         filterX.set3dBFreqHz(freq);
         filterY.set3dBFreqHz(freq);
         filterRotation.set3dBFreqHz(freq);
-        getPrefs().putFloat("SceneStabilizer.cornerFreqHz", freq);
+        putFloat("cornerFreqHz", freq);
     }
 
     public float getCornerFreqHz() {
@@ -348,9 +399,10 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
         return null;
     }
 
+    @Override
     public void resetFilter() {
         dirFilter.resetFilter();
-        clusterTracker.resetFilter();
+        opticalGyro.resetFilter();
         setCornerFreqHz(cornerFreqHz);
         filterX.setInternalValue(0);
         filterY.setInternalValue(0);
@@ -367,6 +419,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
         }
     }
 
+    @Override
     public void initFilter() {
         panTilt = new PanTilt();
         resetFilter();
@@ -394,7 +447,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
      */
     public void setFeedforwardEnabled(boolean feedforwardEnabled) {
         this.feedforwardEnabled = feedforwardEnabled;
-        getPrefs().putBoolean("SceneStabilizer.feedforwardEnabled", feedforwardEnabled);
+        putBoolean("feedforwardEnabled", feedforwardEnabled);
     }
 
 //    public boolean isRotationEnabled(){
@@ -403,7 +456,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
 //
 //    public void setRotationEnabled(boolean rotationEnabled){
 //        this.rotationEnabled=rotationEnabled;
-//        getPrefs().putBoolean("SceneStabilizer.rotationEnabled",rotationEnabled);
+//        putBoolean("rotationEnabled",rotationEnabled);
 //    }
     /** Method used to compute shift.
      * @return the positionComputer
@@ -418,14 +471,14 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
      */
     synchronized public void setPositionComputer(PositionComputer positionComputer) {
         this.positionComputer = positionComputer;
-        getPrefs().put("SceneStabilizer.positionComputer", positionComputer.toString());
+        putString("positionComputer", positionComputer.toString());
         switch (positionComputer) {
             case DirectionSelectiveFilter:
                 dirFilter.setFilterEnabled(true);
-                clusterTracker.setFilterEnabled(false);
+                opticalGyro.setFilterEnabled(false);
                 break;
             case OpticalGyro:
-                clusterTracker.setFilterEnabled(true);
+                opticalGyro.setFilterEnabled(true);
                 dirFilter.setFilterEnabled(false);
         }
     }
@@ -456,7 +509,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
      */
     public void setAnnotateEnclosedEnabled(boolean annotateEnclosedEnabled) {
         this.annotateEnclosedEnabled = annotateEnclosedEnabled;
-        getPrefs().putBoolean("SceneStabilizer.annotateEnclosedEnabled", annotateEnclosedEnabled);
+        putBoolean("annotateEnclosedEnabled", annotateEnclosedEnabled);
     }
 
     /**
@@ -467,12 +520,12 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
     }
 
     /** Enables use of pan/tilt servo controller for camera for mechanical stabilization.
-
+    
      * @param panTiltEnabled the panTiltEnabled to set
      */
     public void setPanTiltEnabled(boolean panTiltEnabled) {
         this.panTiltEnabled = panTiltEnabled;
-        getPrefs().putBoolean("SceneStabilizer.panTiltEnabled", panTiltEnabled);
+        putBoolean("panTiltEnabled", panTiltEnabled);
         if (!panTiltEnabled) {
             try {
                 panTilt.setPanTiltValues(.5f, .5f);
@@ -496,7 +549,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
      */
     public void setElectronicStabilizationEnabled(boolean electronicStabilizationEnabled) {
         this.electronicStabilizationEnabled = electronicStabilizationEnabled;
-        getPrefs().putBoolean("SceneStabilizer.electronicStabilizationEnabled", electronicStabilizationEnabled);
+        putBoolean("electronicStabilizationEnabled", electronicStabilizationEnabled);
     }
 
     /**
@@ -511,6 +564,14 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
      */
     public void setGainPanTiltServos(float gainPanTiltServos) {
         this.gainPanTiltServos = gainPanTiltServos;
-        getPrefs().putFloat("SceneStabilizer.gainPanTiltServos", gainPanTiltServos);
+        putFloat("gainPanTiltServos", gainPanTiltServos);
+    }
+
+    @Override
+    public void update(Observable o, Object arg) { // called by enclosed tracker
+        if (arg instanceof UpdateMessage) {
+            UpdateMessage msg = (UpdateMessage) arg;
+            computeTransform(msg); // gets the transform from the enclosed filter
+        }
     }
 }

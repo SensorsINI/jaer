@@ -1481,6 +1481,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 }
                                 setPlayMode(PlayMode.WAITING);
                                 log.warning("while acquiring data caught " + e.toString());
+                                if(aemon!=null) aemon.close(); // TODO check if this is OK -tobi
 //                                e.printStackTrace();
                                 nullifyHardware();
 

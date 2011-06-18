@@ -20,7 +20,7 @@ import net.sf.jaer.aemonitor.AEConstants;
  * A packet of events that is used for rendering and event processing.
 For efficiency, these packets are designed to be re-used;
 they should be allocated rarely and allowed to grow in size. If a packet capacity needs to be
-increased a substantial peformance hit will occur e.g. 1 ms per resizing or initial allocation.
+increased a substantial performance hit will occur e.g. 1 ms per resizing or initial allocation.
 <p>
 The EventPacket is prefilled with Events that have default values. One constructor lets
 you fill the EventPacket with a subclass of BasicEvent. This prefilling avoids
@@ -35,7 +35,7 @@ but this event will still be referenced in the original packet
 and can change.
 <p>
 Generally in event processing, you will iterate over an input packet to produce an output packet.
-You iterate over an exsiting EventPacket that has input data using the iterator().
+You iterate over an existing EventPacket that has input data using the iterator().
 This lets you access the events in the input packet.
 <p>
 When you want to write these events to an existing output packet,
@@ -43,7 +43,7 @@ then you need to use the target event's copyFrom(Event e) method
 that copies all the fields in the
 source packet to the target packet. This lets you copy data such as
 timestamp, x,y location to a target event. You can then fill in the target event's extended
-type infomation.
+type information.
 <p>
 When you iterate over an input packet to write to a target packet,
 you obtain the target event to write your results to by using the target packet's
