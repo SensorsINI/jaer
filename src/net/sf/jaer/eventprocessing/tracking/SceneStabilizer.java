@@ -74,14 +74,21 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
     private class TransformAtTime {
 
         Point2D.Float translation;
-        int timetamp;
+        int timestamp;
         float rotation;
 
         public TransformAtTime(int timetamp, Point2D.Float translation, float rotation) {
             this.translation = translation;
-            this.timetamp = timetamp;
+            this.timestamp = timetamp;
             this.rotation = rotation;
         }
+
+        @Override
+        public String toString() {
+            return String.format("timestamp=%.1f ms translation=(%.1f,%.1f) rotation=%.1f",(float)timestamp/1000, translation.x, translation.y, rotation);
+        }
+        
+        
     }
 
     /** Creates a new instance of SceneStabilizer */
@@ -174,12 +181,14 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
             Iterator<TransformAtTime> transformItr = transformList.iterator();
             if (transformItr.hasNext()) {
                 transform = transformItr.next();
+//                System.out.println(transform.toString());
             }
             for (Object o : in) {
                 PolarityEvent ev = (PolarityEvent) o;
-                if (transform != null && ev.timestamp > transform.timetamp) {
+                if (transform != null && ev.timestamp > transform.timestamp) {
                     if (transformItr.hasNext()) {
                         transform = transformItr.next();
+//                        System.out.println(transform.toString());
                     }
                 }
                 transformEvent(ev, transform);
