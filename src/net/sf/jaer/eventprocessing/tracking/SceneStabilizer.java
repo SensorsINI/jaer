@@ -70,25 +70,27 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
     private boolean annotateEnclosedEnabled = getBoolean("annotateEnclosedEnabled", true);
     private PanTilt panTilt = null;
     ArrayList<TransformAtTime> transformList = new ArrayList(); // holds list of transforms over update times commputed by enclosed filter update callbacks
+    int sx2, sy2;
 
     private class TransformAtTime {
 
         Point2D.Float translation;
         int timestamp;
         float rotation;
+        float cosAngle, sinAngle;
 
         public TransformAtTime(int timetamp, Point2D.Float translation, float rotation) {
             this.translation = translation;
             this.timestamp = timetamp;
             this.rotation = rotation;
+            cosAngle = (float) Math.cos(rotation);
+            sinAngle = (float) Math.sin(rotation);
         }
 
         @Override
         public String toString() {
-            return String.format("timestamp=%.1f ms translation=(%.1f,%.1f) rotation=%.1f",(float)timestamp/1000, translation.x, translation.y, rotation);
+            return String.format("timestamp=%.1f ms translation=(%.1f,%.1f) rotation=%.1f", (float) timestamp / 1000, translation.x, translation.y, rotation);
         }
-        
-        
     }
 
     /** Creates a new instance of SceneStabilizer */
@@ -133,6 +135,8 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
 
     @Override
     public EventPacket filterPacket(EventPacket in) {
+        sx2 = chip.getSizeX() / 2;
+        sy2 = chip.getSizeY() / 2;
         checkOutputPacketEventType(in);
         transformList.clear(); // empty list of transforms to be applied
 //        int lastTimeStamp=in.getLastTimestamp();
@@ -233,12 +237,10 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
         if (transform == null) {
             return;
         }
-        int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2; // TODO slow
-        float cosAngle = (float) Math.cos(transform.rotation), sinAngle = (float) Math.sin(transform.rotation); // TODO slow
         e.x -= sx2;
         e.y -= sy2;
-        e.x = (short) (cosAngle * e.x - sinAngle * e.y + transform.translation.x);
-        e.y = (short) (sinAngle * e.x + cosAngle * e.y + transform.translation.y);
+        e.x = (short) (transform.cosAngle * e.x - transform.sinAngle * e.y + transform.translation.x);
+        e.y = (short) (transform.sinAngle * e.x + transform.cosAngle * e.y + transform.translation.y);
         e.x += sx2;
         e.y += sy2;
     }
@@ -475,7 +477,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
     }
 
     /**
-    Chooses how the current position of the scene is compuated.
+    Chooses how the current position of the scene is computed.
      * @param positionComputer the positionComputer to set
      */
     synchronized public void setPositionComputer(PositionComputer positionComputer) {
