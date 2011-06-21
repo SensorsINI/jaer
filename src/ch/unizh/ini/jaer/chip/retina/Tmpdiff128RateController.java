@@ -23,6 +23,7 @@ import java.util.*;
 import java.util.prefs.*;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
@@ -34,6 +35,7 @@ A lowpass filter smooths the rate measurements.
  *
  * @author tobi
  */
+@Description("Controls the rate of events from the Tmpdiff128 retina by controlling retina biases")
 public class Tmpdiff128RateController extends EventFilter2D implements FrameAnnotater {
 
     protected Preferences prefs = Preferences.userNodeForPackage(this.getClass());
