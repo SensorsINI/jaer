@@ -382,7 +382,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 // now bind player control panel to SyncPlayer and bind jaer sync player to player control panel.
                 playerControls.addPropertyChangeListener(jaerViewer.getSyncPlayer());
                 jaerViewer.getSyncPlayer().getSupport().addPropertyChangeListener(playerControls);
-                playerControls.setAePlayer(jaerViewer.getSyncPlayer());
+                if ( jaerViewer.isSyncEnabled() ) playerControls.setAePlayer(jaerViewer.getSyncPlayer());
             }
         }
         validate();
