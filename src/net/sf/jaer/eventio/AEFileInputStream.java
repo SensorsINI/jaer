@@ -372,6 +372,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                     count++;
                     addr[i] = ev.address;
                     ts[i] = ev.timestamp;
+                    currentStartTimestamp = ts[i];
                 }
             } else{ // backwards
                 n = -n;
@@ -380,6 +381,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                     count++;
                     addr[i] = ev.address;
                     ts[i] = ev.timestamp;
+                    currentStartTimestamp = ts[i];
                 }
             }
         } catch ( WrappedTimeException e ){
