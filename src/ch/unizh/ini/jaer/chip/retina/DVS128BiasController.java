@@ -19,6 +19,8 @@ import java.util.*;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.Description;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 
 /**
  * Controls the rate of events from the retina by controlling retina biases.
@@ -32,17 +34,16 @@ A lowpass filter smooths the rate measurements.
 @Description("Adaptively controls biases on DVS128 to control event rate")
 public class DVS128BiasController extends EventFilter2D implements FrameAnnotater {
 
-    protected int rateHigh = getInt("DVS128BiasController.rateHigh", 400);
+    protected int rateHigh = getInt("rateHigh", 400);
 
-//    private int rateMid=getInt("DVS128BiasController.rateMid",300);
-    private int rateLow = getInt("DVS128BiasController.rateLow", 100);
-    private int rateHysteresis = getInt("DVS128BiasController.rateHysteresis", 50);
-    private float hysteresisFactor = getFloat("DVS128BiasController.hysteresisFactor", 1.3f);
-    private float rateFilter3dBFreqHz = getFloat("DVS128BiasController.rateFilter3dBFreqHz", 1);
-    private final static int MIN_CMD_INTERVAL_MS = 100;
+//    private int rateMid=getInt("rateMid",300);
+    private int rateLow = getInt("rateLow", 100);
+    private int rateHysteresis = getInt("rateHysteresis", 50);
+    private float hysteresisFactor = getFloat("hysteresisFactor", 1.3f);
+    private int minCommandIntervalMs = getInt("minCommandIntervalMs",300);
     private long lastCommandTime = 0; // limits use of status messages that control biases
-    private float tweakStepAmount = getFloat("DVS128BiasController.tweakStepAmount", .001f);
-
+    private float tweakStepAmount = getFloat("tweakStepAmount", .001f);
+    private EventRateEstimator rateEstimator;
  
     enum State {
 
@@ -58,11 +59,9 @@ public class DVS128BiasController extends EventFilter2D implements FrameAnnotate
         }
     };
     State state = State.INITIAL, lastState = State.INITIAL;
-    float lastrate = 0;
-    LowpassFilter filter = new LowpassFilter();
     Writer logWriter;
     private boolean writeLogEnabled = false;
-    int lastt = 0;
+    long timeNowMs = 0;
 
     /**
      * Creates a new instance of DVS128BiasController
@@ -72,13 +71,17 @@ public class DVS128BiasController extends EventFilter2D implements FrameAnnotate
         if (!(chip instanceof DVS128)) {
             log.warning(chip + " is not of type DVS128");
         }
-        filter.set3dBFreqHz(rateFilter3dBFreqHz);
+        rateEstimator=new EventRateEstimator(chip);
+        FilterChain chain=new FilterChain(chip);
+        chain.add(rateEstimator);
+        setEnclosedFilterChain(chain);
+        
         setPropertyTooltip("rateLow", "event rate in keps for LOW state");
         setPropertyTooltip("rateHigh", "event rate in keps for HIGH state");
         setPropertyTooltip("rateHysteresis", "hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");
-        setPropertyTooltip("rateFilter3dBFreqHz", "3dB freq in Hz for event rate lowpass filter");
         setPropertyTooltip("hysteresisFactor", "hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");
-        setPropertyTooltip("tweakStepAmount", "amount to tweak by each step");
+        setPropertyTooltip("tweakStepAmount", "amount to tweak bias by each step");
+        setPropertyTooltip("minCommandIntervalMs", "min time in ms between changing biases");
     }
 
     public Object getFilterState() {
@@ -114,7 +117,7 @@ public class DVS128BiasController extends EventFilter2D implements FrameAnnotate
 
     synchronized public void setRateHigh(int upperThreshKEPS) {
         this.rateHigh = upperThreshKEPS;
-        putInt("DVS128BiasController.rateHigh", upperThreshKEPS);
+        putInt("rateHigh", upperThreshKEPS);
     }
 
     public int getRateLow() {
@@ -123,30 +126,27 @@ public class DVS128BiasController extends EventFilter2D implements FrameAnnotate
 
     synchronized public void setRateLow(int lowerThreshKEPS) {
         this.rateLow = lowerThreshKEPS;
-        putInt("DVS128BiasController.rateLow", lowerThreshKEPS);
+        putInt("rateLow", lowerThreshKEPS);
     }
 
     synchronized public EventPacket filterPacket(EventPacket in) {
-        if (!isFilterEnabled()) {
-            return in;
-        }
         // TODO reenable check for LIVE mode here
 //        if (chip.getAeViewer().getPlayMode() != AEViewer.PlayMode.LIVE) {
 //            return in;  // don't servo on recorded data!
 //        }
-        float r = in.getEventRateHz() / 1e3f;
+        getEnclosedFilterChain().filterPacket(in);
+        
+        float r = rateEstimator.getFilteredEventRate() * 1e-3f;
 
-        lastt = (int) (System.currentTimeMillis() * 1000);
-        float lpRate = filter.filter(r, lastt);
-
-        setState(lpRate);
+ 
+        setState(r);
         setBiases();
         if (writeLogEnabled) {
             if (logWriter == null) {
                 logWriter = openLoggingOutputFile();
             }
             try {
-                logWriter.write(in.getLastTimestamp() + " " + r + " " + lpRate + " " + state.ordinal() + "\n");
+                logWriter.write(in.getLastTimestamp() + " " + r + " " + state.ordinal() + "\n");
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -180,10 +180,12 @@ public class DVS128BiasController extends EventFilter2D implements FrameAnnotate
     }
 
     void setBiases() {
-        long dt=lastt - lastCommandTime;
-        if (dt>0 && dt < MIN_CMD_INTERVAL_MS) {
+        timeNowMs = System.currentTimeMillis();
+       long dt=timeNowMs - lastCommandTime;
+        if (dt>0 && dt < getMinCommandIntervalMs()) {
             return; // don't saturate setup packet bandwidth and stall on blocking USB writes
         }
+        lastCommandTime=timeNowMs;
         DVS128.Biasgen biasgen = (DVS128.Biasgen) getChip().getBiasgen();
         if (biasgen == null) {
             log.warning("null biasgen, not doing anything");
@@ -201,22 +203,7 @@ public class DVS128BiasController extends EventFilter2D implements FrameAnnotate
                 break;
             default:
         }
-
-    }
-
-    public float getRateFilter3dBFreqHz() {
-        return rateFilter3dBFreqHz;
-    }
-
-    synchronized public void setRateFilter3dBFreqHz(float rateFilter3dBFreqHz) {
-        if (rateFilter3dBFreqHz < .01) {
-            rateFilter3dBFreqHz = 0.01f;
-        } else if (rateFilter3dBFreqHz > 20) {
-            rateFilter3dBFreqHz = 20;
-        }
-        this.rateFilter3dBFreqHz = rateFilter3dBFreqHz;
-        putFloat("DVS128BiasController.rateFilter3dBFreqHz", rateFilter3dBFreqHz);
-        filter.set3dBFreqHz(rateFilter3dBFreqHz);
+        System.out.println("bw="+bw);
 
     }
 
@@ -234,7 +221,7 @@ public class DVS128BiasController extends EventFilter2D implements FrameAnnotate
             h = 5;
         }
         this.hysteresisFactor = h;
-        putFloat("DVS128BiasController.hysteresisFactor", hysteresisFactor);
+        putFloat("hysteresisFactor", hysteresisFactor);
     }
 
    /**
@@ -249,7 +236,7 @@ public class DVS128BiasController extends EventFilter2D implements FrameAnnotate
      */
     public void setTweakStepAmount(float tweakStepAmount) {
         this.tweakStepAmount = tweakStepAmount;
-        putFloat("DVS128BiasController.tweakStepAmount", tweakStepAmount);
+        putFloat("tweakStepAmount", tweakStepAmount);
     }
 
 
@@ -277,7 +264,7 @@ public class DVS128BiasController extends EventFilter2D implements FrameAnnotate
             writer = new FileWriter(loggingFile);
             log.info("starting logging bias control at " + dateString);
             writer.write("# time rate lpRate state\n");
-            writer.write(String.format("# rateLow=%f rateHigh=%f hysteresisFactor=%f, 3dbCornerFreqHz=%f\n", rateLow, rateHigh, hysteresisFactor, rateFilter3dBFreqHz));
+            writer.write(String.format("# rateLow=%f rateHigh=%f hysteresisFactor=%f\n", rateLow, rateHigh, hysteresisFactor));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -295,7 +282,7 @@ public class DVS128BiasController extends EventFilter2D implements FrameAnnotate
         final GLUT glut = new GLUT();
         gl.glColor3f(1, 1, 1); // must set color before raster position (raster position is like glVertex)
         gl.glRasterPos3f(0, 0, 0);
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("lpRate=%s, state=%s", fmt.format(filter.getValue()), state.toString()));
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("lpRate=%s, state=%s", fmt.format(rateEstimator.getFilteredEventRate()), state.toString()));
         gl.glPopMatrix();
     }
 
@@ -305,5 +292,20 @@ public class DVS128BiasController extends EventFilter2D implements FrameAnnotate
 
     public void setWriteLogEnabled(boolean writeLogEnabled) {
         this.writeLogEnabled = writeLogEnabled;
+    }
+
+    /**
+     * @return the minCommandIntervalMs
+     */
+    public int getMinCommandIntervalMs() {
+        return minCommandIntervalMs;
+    }
+
+    /**
+     * @param minCommandIntervalMs the minCommandIntervalMs to set
+     */
+    public void setMinCommandIntervalMs(int minCommandIntervalMs) {
+        this.minCommandIntervalMs = minCommandIntervalMs;
+        putInt("minCommandIntervalMs",minCommandIntervalMs);
     }
 }
