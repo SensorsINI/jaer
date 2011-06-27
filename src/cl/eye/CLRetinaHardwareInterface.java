@@ -34,6 +34,10 @@ public class CLRetinaHardwareInterface extends CLCamera implements AEMonitorInte
     public CLRetinaHardwareInterface(int cameraIndex) {
         super(cameraIndex);
     }
+        
+    public CLRetinaHardwareInterface(int cameraIndex, CLCamera.CameraMode cameraMode) {
+        super(cameraIndex, cameraMode);
+    }
 
     /////////////////////////////////////////////////
     // this camera returns frames. 
