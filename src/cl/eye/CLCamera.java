@@ -40,9 +40,13 @@ public class CLCamera implements HardwareInterface {
     private int cameraIndex = 0; // index of camera to open
     private int cameraInstance = 0;
     private boolean isOpened = false;
+    /* removed by mlk as frameRate incorporated into mode
     private int frameRateHz = prefs.getInt("CLCamera.frameRateHz",60);
+     * 
+     */
     
-    private ColorMode colorMode = ColorMode.CLEYE_MONO_PROCESSED; // CLEYE_MONO_PROCESSED;
+    public  final static int numModes = CameraMode.values().length;
+    private CameraMode cameraMode = CameraMode.QVGA_MONO_60; // default camera mode
     // static methods
 
     static {
@@ -71,14 +75,29 @@ public class CLCamera implements HardwareInterface {
         }
     }
 
-    public enum ColorMode {
+    // Possible camera modes
+    public enum CameraMode {
+        QVGA_MONO_15(CLEYE_QVGA, CLEYE_MONO_PROCESSED, 15),
+        QVGA_MONO_30(CLEYE_QVGA, CLEYE_MONO_PROCESSED, 30),
+        QVGA_MONO_60(CLEYE_QVGA, CLEYE_MONO_PROCESSED, 60),
+        QVGA_MONO_75(CLEYE_QVGA, CLEYE_MONO_PROCESSED, 75),
+        QVGA_MONO_100(CLEYE_QVGA, CLEYE_MONO_PROCESSED, 100),
+        QVGA_MONO_125(CLEYE_QVGA, CLEYE_MONO_PROCESSED, 125),
+        QVGA_COLOR_15(CLEYE_QVGA, CLEYE_COLOR_PROCESSED, 15),
+        QVGA_COLOR_30(CLEYE_QVGA, CLEYE_COLOR_PROCESSED, 30),
+        QVGA_COLOR_60(CLEYE_QVGA, CLEYE_COLOR_PROCESSED, 60),
+        QVGA_COLOR_75(CLEYE_QVGA, CLEYE_COLOR_PROCESSED, 75),
+        QVGA_COLOR_100(CLEYE_QVGA, CLEYE_COLOR_PROCESSED, 100),
+        QVGA_COLOR_125(CLEYE_QVGA, CLEYE_COLOR_PROCESSED, 125);
+        
+        int resolution;
+        int color;
+        int frameRateHz;
 
-        CLEYE_MONO_PROCESSED(0), CLEYE_COLOR_PROCESSED(1),
-        CLEYE_MONO_RAW(2), CLEYE_COLOR_RAW(3), CLEYE_BAYER_RAW(4);
-        int code;
-
-        ColorMode(int code) {
-            this.code = code;
+        CameraMode(int resolution, int color, int frameRateHz) {
+            this.resolution = resolution;
+            this.color = color;
+            this.frameRateHz = frameRateHz;
         }
     }
     // camera color mode
@@ -122,7 +141,7 @@ public class CLCamera implements HardwareInterface {
 
     native static int CLEyeCreateCamera(int cameraIndex, int mode, int resolution, int framerate);
 
-    native static boolean CLEyeDestroyCamera(int cameraIndex);
+    native static boolean CLEyeDestroyCamera(int cameraInstance);
 
     native static boolean CLEyeCameraStart(int cameraInstance);
 
@@ -169,19 +188,22 @@ public class CLCamera implements HardwareInterface {
     CLCamera(int cameraIndex) {
         this.cameraIndex = cameraIndex;
     }
+    
+    CLCamera(int cameraIndex, CameraMode cameraMode) {
+        this.cameraIndex = cameraIndex;
+        this.cameraMode = cameraMode;
+    }
 
- 
-    private boolean createCamera(int cameraIndex, int mode, int resolution, int framerate) {
+    synchronized private boolean createCamera(int cameraIndex, int mode, int resolution, int framerate) {
         cameraInstance = CLEyeCreateCamera(cameraIndex, mode, resolution, framerate);
         return cameraInstance != 0;
     }
 
-    private boolean destroyCamera() {
-        if (cameraInstance == 0) {
-            return true;
-        }
-        return CLEyeDestroyCamera(cameraInstance);
+    synchronized private boolean destroyCamera() {
+        if (this.cameraInstance == 0) return true;
+        return CLEyeDestroyCamera(this.cameraInstance);
     }
+    
     protected boolean cameraStarted = false;
 
     /** Starts the camera
@@ -217,7 +239,11 @@ public class CLCamera implements HardwareInterface {
      * @throws HardwareInterfaceException if there is an error
      */
     synchronized public void getCameraFrame(int[] imgData, int waitTimeout) throws HardwareInterfaceException {
-        if (!CLEyeCameraGetFrame(cameraInstance, imgData, waitTimeout)) {
+        if (!cameraStarted || !CLEyeCameraGetFrame(cameraInstance, imgData, waitTimeout)) {
+            try {
+                // Added to give external thread time to catch up as cannot synchronize directly
+                Thread.sleep(500);
+            } catch (InterruptedException e) {}
             throw new HardwareInterfaceException("capturing frame");
         }
     }
@@ -238,7 +264,7 @@ public class CLCamera implements HardwareInterface {
         return "CLEye PS Eye camera";
     }
 
-    private void dispose() {
+    synchronized private void dispose() {
         stopCamera();
         destroyCamera();
     }
@@ -247,7 +273,7 @@ public class CLCamera implements HardwareInterface {
      * 
      */
     @Override
-    public void close() {
+    synchronized public void close() {
         if(!isOpened) return;
         isOpened = false;
         boolean stopped=stopCamera();
@@ -266,12 +292,16 @@ public class CLCamera implements HardwareInterface {
      * @throws HardwareInterfaceException 
      */
     @Override
-    public void open() throws HardwareInterfaceException {
+    synchronized public void open() throws HardwareInterfaceException {
         if (isOpened) {
             return;
         }
 //        if (cameraInstance == 0) { // only make one instance, don't destroy it on close
+            /* removed by mlk as settings included in mode
             boolean gotCam = createCamera(cameraIndex, colorMode.code, CLEYE_QVGA, getFrameRateHz()); // TODO fixed settings now
+            */
+            boolean gotCam = createCamera(cameraIndex, this.cameraMode.color, this.cameraMode.resolution, 
+                    this.cameraMode.frameRateHz);
             if (!gotCam) {
                 throw new HardwareInterfaceException("couldn't get camera");
             }
@@ -287,16 +317,35 @@ public class CLCamera implements HardwareInterface {
         return isOpened;
     }
 
+    public CameraMode getCameraMode() {
+        return this.cameraMode;
+    }
+    
+    synchronized public void setCameraMode(CameraMode cameraMode) {
+        this.cameraMode = cameraMode;
+    }
+    
+    synchronized public void setCameraMode(int cameraModeIndex) {
+        if (cameraModeIndex < 0 || cameraModeIndex >= numModes) {
+            log.warning("Invalid Mode index " + cameraModeIndex + " leaving mode unchanged.");
+        }
+        else this.cameraMode = CameraMode.values()[cameraModeIndex];
+    }
+    
     /**
      * @return the frameRateHz
      */
+    /* removed by mlk as frameRate incorporated into mode
     public int getFrameRateHz() {
         return frameRateHz;
     }
+     * 
+     */
 
     /**
      * @param frameRateHz the frameRateHz to set
      */
+    /* removed by mlk as frameRate incorporated into mode
     synchronized public void setFrameRateHz(int frameRateHz) throws HardwareInterfaceException {
         int old = this.frameRateHz;
 
@@ -322,6 +371,8 @@ public class CLCamera implements HardwareInterface {
         }
         return CLEYE_FRAME_RATES[ind];
     }
+     * 
+     */
 
     // http://codelaboratories.com/research/view/cl-eye-muticamera-api
     /** Thrown for invalid parameters */
