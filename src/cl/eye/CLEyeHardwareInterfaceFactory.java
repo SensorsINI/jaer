@@ -24,8 +24,15 @@ import java.awt.Graphics;
 public class CLEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryInterface{
     final static Logger log=Logger.getLogger("CLEye");
     private static CLEyeHardwareInterfaceFactory instance = new CLEyeHardwareInterfaceFactory(); // singleton
+    private HardwareInterface[] interfaces;
     
    private CLEyeHardwareInterfaceFactory(){
+       if(CLCamera.isLibraryLoaded()) {
+           this.interfaces = new HardwareInterface[CLCamera.cameraCount()];
+           for ( int i = 0; i < this.interfaces.length; i++ ) {
+               this.interfaces[i] = new CLRetinaHardwareInterface(i);
+           }
+       }
     }
     
     /** @return singleton instance used to construct CLCameras. */
@@ -37,8 +44,7 @@ public class CLEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryIn
     
     @Override
     public int getNumInterfacesAvailable() {
-        if(!CLCamera.isLibraryLoaded()) return 0;
-        return CLCamera.cameraCount();
+        return this.interfaces.length;
     }
 
     /** Returns the first camera
@@ -48,10 +54,7 @@ public class CLEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryIn
      */
     @Override
     public HardwareInterface getFirstAvailableInterface() throws HardwareInterfaceException {
-         if(!CLCamera.isLibraryLoaded()) return null;
-       if(getNumInterfacesAvailable()==0) return null;
-        CLCamera cam=new CLRetinaHardwareInterface(0);
-        return cam;
+        return getInterface(0);
     }
 
     /** Returns the n'th camera (0 based) 
@@ -62,10 +65,9 @@ public class CLEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryIn
      */
     @Override
     public HardwareInterface getInterface(int n) throws HardwareInterfaceException {
-         if(!CLCamera.isLibraryLoaded()) return null;
-        if(getNumInterfacesAvailable()<n+1) return null;
-        CLCamera cam=new CLRetinaHardwareInterface(n);
-        return cam;
+        if(!CLCamera.isLibraryLoaded()) return null;
+        if(getNumInterfacesAvailable() == 0 || getNumInterfacesAvailable() < n + 1) return null;
+        return (CLCamera) this.interfaces[n];
     }
 
     @Override
@@ -79,24 +81,24 @@ public class CLEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryIn
      * @param args ignored
      */
     
-    public static class ImagePanel extends JPanel {
-        BufferedImage image;
-        
-        public ImagePanel(BufferedImage image) {
-            this.image = image;
-        }
-        
-        
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            // Draw image centered.
-
-            g.drawImage(image, 0, 0, this);
-        }
-    }
-    
     public static void main(String[] args) {  
+        class ImagePanel extends JPanel {
+            BufferedImage image;
+            
+            public ImagePanel(BufferedImage image) {
+                this.image = image;
+            }
+            
+        
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                // Draw image centered.
+                
+                g.drawImage(image, 0, 0, this);
+            }
+        }
+        
         try {
             if(!UsbIoUtilities.isLibraryLoaded()){
                 log.warning("no USBIO libraries found");
@@ -128,18 +130,18 @@ public class CLEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryIn
              frame.setVisible(true);
             
             int[] imgData = new int[320*240];
-            for(int f=0;f<3000;f++){
+            for(int f=0;f<9000;f++){
                 cam.getCameraFrame(imgData, 100);
+                // filter to test colour channels
+                int RMASK = 0xff0000;
+                int GMASK = 0x00ff00;
+                int BMASK = 0x0000ff;
+                for (int i=0;i<imgData.length;i++) {
+                    imgData[i] = imgData[i] & RMASK;
+                }
                 raster.setDataElements(0, 0, 320, 240, imgData);
                 image.setData(raster);
                 frame.repaint();
-                for(int i=640;i<650;i++){
-                    int R = (imgData[i] & (0xff << 0)) >>> 0;
-                    int G = (imgData[i] & (0xff << 8)) >>> 8;
-                    int B = (imgData[i] & (0xff << 16)) >>> 16;
-                    int O = (imgData[i] & (0xff << 24)) >>> 24;
-                    log.info(R+", "+G+", "+B+", "+O);
-                }
             }
             cam.close();
         } catch (HardwareInterfaceException ex) {
