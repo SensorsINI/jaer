@@ -48,6 +48,7 @@ import javax.imageio.*;
 import javax.swing.*;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import spread.*;
+import cl.eye.*;
 /**
  * This is the main jAER interface to the user. The main event loop "ViewLoop" is here; see ViewLoop.run(). AEViewer shows AE chip live view and allows for controlling view and recording and playing back events from files and network connections.
 <p>
@@ -1095,7 +1096,46 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if ( hw == null ){
                 continue;
             } // in case it disappeared
-            if((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip))
+            if (CLRetinaHardwareInterface.class.isInstance(hw)) {
+                int numModes = ((CLRetinaHardwareInterface) hw).numModes;
+                CLCamera.CameraMode currentMode = ((CLRetinaHardwareInterface) hw).getCameraMode();
+                JMenu hwSubMenu = new JMenu(hw.toString());
+                ButtonGroup sbg = new ButtonGroup();
+                for ( int j = 0; j < numModes ; j++ ) {
+                    CLCamera.CameraMode cameraMode = CLCamera.CameraMode.values()[j];
+                    interfaceButton = new JRadioButtonMenuItem(cameraMode.toString());
+                    interfaceButton.putClientProperty("HardwareInterfaceNumber",new Integer(i));
+                    interfaceButton.putClientProperty("CameraModeNumber",new Integer(j));
+                    hwSubMenu.add(interfaceButton);
+                    sbg.add(interfaceButton);
+                    interfaceButton.addActionListener(new ActionListener(){
+                        public void actionPerformed (ActionEvent evt){
+                            JRadioButtonMenuItem comp = (JRadioButtonMenuItem)evt.getSource();
+                            int interfaceNumber = (Integer)comp.getClientProperty("HardwareInterfaceNumber");
+                            int modeNumber = (Integer)comp.getClientProperty("CameraModeNumber");
+                            if ( chip.getHardwareInterface() != null && chip.getHardwareInterface().isOpen() ){
+                                log.info("closing "+chip.getHardwareInterface().toString());
+                                chip.getHardwareInterface().close();
+                            }
+                            HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(interfaceNumber);
+                            log.info("selected interface " + evt.getActionCommand() + " with HardwareInterface number" + interfaceNumber + " which is " + hw);
+                            ((CLRetinaHardwareInterface) hw).setCameraMode(modeNumber);
+                            chip.setHardwareInterface(hw);
+                            try {
+                                hw.open();
+                            } catch ( Exception e ){
+                                log.warning(e.getMessage());
+                            }
+                        }
+                    });
+                    if (i == 0 && currentMode == cameraMode) {
+                        interfaceButton.setSelected(true);
+                    }
+                }
+                interfaceMenu.add(hwSubMenu);
+                choseOneButton = true;
+            }
+            else if((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip))
                     || (UDPInterface.class.isInstance(hw) && NetworkChip.class.isInstance(chip))){
                 interfaceButton = new JRadioButtonMenuItem(hw.toString());
                 interfaceButton.putClientProperty("HardwareInterfaceNumber",new Integer(i));
