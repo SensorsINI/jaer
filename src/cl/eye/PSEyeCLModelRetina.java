@@ -36,7 +36,9 @@ public class PSEyeCLModelRetina extends AEChip {
     private int[] lastEventPixelValues = new int[320 * 240];
     private int gain = getPrefs().getInt("gain", 30);
     private int exposure = getPrefs().getInt("exposure", 511);
+    /* added into CLCamera.cameraMode
     private int frameRate = getPrefs().getInt("frameRate", 120);
+     */
     private boolean autoGainEnabled = getPrefs().getBoolean("autoGainEnabled", true);
     private boolean autoExposureEnabled = getPrefs().getBoolean("autoExposureEnabled", true);
     private int eventThreshold = getPrefs().getInt("eventThreshold", 4);
@@ -46,6 +48,7 @@ public class PSEyeCLModelRetina extends AEChip {
 //    private PolarityEvent tempEvent = new PolarityEvent();
     private BasicEvent tempEvent = new BasicEvent();
     private ArrayList<Integer> discreteEventCount = new ArrayList<Integer>();
+    private boolean colorMode = false;
 
     public PSEyeCLModelRetina() {
         setSizeX(320);
@@ -61,6 +64,7 @@ public class PSEyeCLModelRetina extends AEChip {
         if (hardwareInterface != null && (hardwareInterface instanceof CLRetinaHardwareInterface)) {
             try {
                 CLRetinaHardwareInterface hw = (CLRetinaHardwareInterface) hardwareInterface;
+                colorMode = (hw.getCameraMode().color == CLCamera.CLEYE_COLOR_PROCESSED);
             } catch (Exception ex) {
                 log.warning(ex.toString());
             }
@@ -117,20 +121,27 @@ public class PSEyeCLModelRetina extends AEChip {
             int eventTimeDelta = ts - lastEventTimeStamp;
             OutputEventIterator itr = out.outputIterator();
             if (linearInterpolateTimeStamp) discreteEventCount.clear();
-            int sx = getSizeX(), sy = getSizeY(), i = 0;
+            int sx = getSizeX(), sy = getSizeY(), i = 0, j = 0;
+            int pixval = 0, n = 0, diff = 0, lastval = 0;
+            float pixR = 0, pixB = 0;
             for (int y = 0; y < sy; y++) {
                 for (int x = 0; x < sx; x++) {
-                    int s = 0; // color channel, which is 0,8,16?
-                    int pixval = (pixVals[i] & (0xff << s)) >>> s; // get gray value 0-255
+                    if (colorMode) {
+                        pixR = (float) ((pixVals[i] >> 4) & 0xff);
+                        pixB = (float) (pixVals[i] & 0xff);
+                        pixval = 255;
+                        if (pixR > 0 || pixB > 0) 
+                            pixval = (int) (255 - 510 * (pixR * pixB) / (pixR * pixR + pixB * pixB));
+                    } else pixval = pixVals[i] & 0xff; // get gray value 0-255
                     if (!initialized) {
                         lastEventPixelValues[i] += pixval; // update stored gray level for first frame
 
                     } else {
-                        int lastval = lastEventPixelValues[i];
-                        int diff = pixval - lastval;
+                        lastval = lastEventPixelValues[i];
+                        diff = pixval - lastval;
                         if (diff > eventThreshold) { // if our gray level is sufficiently higher than the stored gray level
-                            int n = diff / eventThreshold;
-                            for (int j = 0; j < n; j++) { // use down iterator as ensures latest timestamp as last event
+                            n = diff / eventThreshold;
+                            for (j = 0; j < n; j++) { // use down iterator as ensures latest timestamp as last event
                                 PolarityEvent e = (PolarityEvent) itr.nextOutput();
                                 e.x = (short) x;
                                 e.y = (short) (sy - y - 1); // flip y according to jAER with 0,0 at LL
@@ -147,8 +158,8 @@ public class PSEyeCLModelRetina extends AEChip {
                             }
                             lastEventPixelValues[i] += eventThreshold * n; // update stored gray level by events
                         } else if (diff < -eventThreshold) {
-                            int n = -diff / eventThreshold;
-                            for (int j = 0; j < n; j++) {
+                            n = -diff / eventThreshold;
+                            for (j = 0; j < n; j++) {
                                 PolarityEvent e = (PolarityEvent) itr.nextOutput();
                                 e.x = (short) x;
                                 e.y = (short) (sy - y - 1);
@@ -252,13 +263,16 @@ public class PSEyeCLModelRetina extends AEChip {
     /**
      * @return the frameRate
      */
+    /* removed by mlk as not runtime changable
     public int getFrameRate() {
         return frameRate;
     }
+     */
 
     /**
      * @param frameRate the frameRate to set
      */
+    /* removed by mlk as not runtime changable
     public void setFrameRate(int frameRate) {
         this.frameRate = frameRate;
         getPrefs().putInt("frameRate", frameRate);
@@ -272,6 +286,7 @@ public class PSEyeCLModelRetina extends AEChip {
             }
         }
     }
+     */
 
     /**
      * @return the autoGainEnabled
