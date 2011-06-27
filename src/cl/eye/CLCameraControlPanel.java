@@ -11,7 +11,6 @@
 package cl.eye;
 
 import java.awt.BorderLayout;
-import java.util.Vector;
 import java.util.logging.Logger;
 import javax.swing.DefaultComboBoxModel;
 
@@ -32,11 +31,6 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
         this.chip = chip;
         hardware = (CLRetinaHardwareInterface) chip.getHardwareInterface();
         initComponents();
-        Vector v = new Vector();
-        for (int i : CLCamera.CLEYE_FRAME_RATES) {
-            v.add(i);
-        }
-        fpsComboBox.setModel(new DefaultComboBoxModel(v));
     }
 
     private boolean checkHardware() {
@@ -63,8 +57,6 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
         jPanel1 = new javax.swing.JPanel();
         showRawInputCB = new javax.swing.JCheckBox();
         expSp = new javax.swing.JSpinner();
-        jLabel3 = new javax.swing.JLabel();
-        fpsComboBox = new javax.swing.JComboBox();
         jLabel2 = new javax.swing.JLabel();
         gainSp = new javax.swing.JSpinner();
         jLabel1 = new javax.swing.JLabel();
@@ -91,15 +83,6 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
 
         org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.exposure}"), expSp, org.jdesktop.beansbinding.BeanProperty.create("value"));
         bindingGroup.addBinding(binding);
-
-        jLabel3.setText("Frame rate (Hz)");
-
-        fpsComboBox.setToolTipText("Choose PS Eye frame rate (only takes effect on reopen)");
-        fpsComboBox.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                fpsComboBoxActionPerformed(evt);
-            }
-        });
 
         jLabel2.setText("Exposure");
 
@@ -139,21 +122,14 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
+                .addGap(6, 6, 6)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(jLabel1)
+                    .addComponent(jLabel2))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addComponent(jLabel3)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(fpsComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addGap(6, 6, 6)
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jLabel1)
-                            .addComponent(jLabel2))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(gainSp, javax.swing.GroupLayout.DEFAULT_SIZE, 122, Short.MAX_VALUE)
-                            .addComponent(expSp, javax.swing.GroupLayout.DEFAULT_SIZE, 122, Short.MAX_VALUE))))
+                    .addComponent(gainSp, javax.swing.GroupLayout.DEFAULT_SIZE, 132, Short.MAX_VALUE)
+                    .addComponent(expSp, javax.swing.GroupLayout.DEFAULT_SIZE, 132, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(agCB)
@@ -179,11 +155,7 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
                             .addComponent(expSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(jLabel2))))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(jLabel3)
-                        .addComponent(fpsComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(showRawInputCB))
+                .addComponent(showRawInputCB)
                 .addGap(35, 35, 35))
         );
 
@@ -264,16 +236,12 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
         bindingGroup.bind();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void fpsComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_fpsComboBoxActionPerformed
-        Object o = fpsComboBox.getModel().getSelectedItem();
-        if (o == null) {
+    private void itsCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_itsCBActionPerformed
+        if (!checkHardware()) {
             return;
         }
-        if (o instanceof Integer) {
-            Integer i = (Integer) o;
-            chip.setFrameRate(i);
-        }
-    }//GEN-LAST:event_fpsComboBoxActionPerformed
+        chip.setLinearInterpolateTimeStamp(itsCB.isSelected());
+    }//GEN-LAST:event_itsCBActionPerformed
 
     private void agCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_agCBActionPerformed
         if (!checkHardware()) {
@@ -282,7 +250,7 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
         if (agCB.isSelected() && hardware != null) {
             gainSp.setValue(hardware.getGain());
         }
-    }//GEN-LAST:event_agCBActionPerformed
+}//GEN-LAST:event_agCBActionPerformed
 
     private void aeCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_aeCBActionPerformed
         if (!checkHardware()) {
@@ -291,7 +259,7 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
         if (aeCB.isSelected() && hardware != null) {
             expSp.setValue(hardware.getExposure());
         }
-    }//GEN-LAST:event_aeCBActionPerformed
+}//GEN-LAST:event_aeCBActionPerformed
 
     private void showRawInputCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showRawInputCBActionPerformed
         if (rawCameraPanel == null) {
@@ -306,25 +274,16 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
         } else {
             hardware.removeAEListener(rawCameraPanel);
         }
-    }//GEN-LAST:event_showRawInputCBActionPerformed
-
-    private void itsCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_itsCBActionPerformed
-        if (!checkHardware()) {
-            return;
-        }
-        chip.setLinearInterpolateTimeStamp(itsCB.isSelected());
-    }//GEN-LAST:event_itsCBActionPerformed
+}//GEN-LAST:event_showRawInputCBActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JCheckBox aeCB;
     private javax.swing.JCheckBox agCB;
     private javax.swing.JSpinner expSp;
-    private javax.swing.JComboBox fpsComboBox;
     private javax.swing.JSpinner gainSp;
     private javax.swing.JCheckBox itsCB;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
