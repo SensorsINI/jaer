@@ -29,15 +29,12 @@ import javax.swing.*;
 public class JAERViewer{
     static Preferences prefs;
     static Logger log;
-    /** Can be used to globallhy display data */
+    /** Can be used to globally display data */
     static public JAERDataViewer globalDataViewer = new JAERDataViewer("Global data viewer");
 
     /**
-     * @return the chipClassNames
+     * @return the cached chipClassNames
      */
-    public static List<String> getChipClassNames (){
-        return chipClassNames;
-    }
     private ArrayList<AEViewer> viewers = new ArrayList<AEViewer>();
     private boolean syncEnabled = prefs.getBoolean("JAERViewer.syncEnabled",true);
     ArrayList<AbstractButton> syncEnableButtons = new ArrayList<AbstractButton>(); // list of all viewer sync enable buttons, used here to change boolean state because this is not property of Action that buttons understand
@@ -51,7 +48,6 @@ public class JAERViewer{
 //    private String aeChipClassName=prefs.get("JAERViewer.aeChipClassName",Tmpdiff128.class.getName());
     private WindowSaver windowSaver; // TODO: encapsulate
     private boolean playBack = false;
-    private static List<String> chipClassNames; // cache expensive search for all AEChip classes
     //some time variables for timing across threads
     static public long globalTime1, globalTime2, globalTime3;
     private SyncPlayer syncPlayer = new SyncPlayer(null,this); // TODO ugly, create here and then recreate later
@@ -133,25 +129,6 @@ public class JAERViewer{
         prefs = Preferences.userNodeForPackage(JAERViewer.class);
         log = Logger.getLogger("JAERViewer");
 
-        // cache expensive search for all AEChip classes
-        // seems to cause problems with multiple threads access the same class initializers during startup - tobi // TODO
-
-//        if ( System.getProperty("os.name").startsWith("Windows") ){
-//            Runnable runnable = new Runnable(){
-//                public void run (){
-//                    try{
-//                        Thread.sleep(5000); // wait while starting up to speed startup
-//                    } catch ( InterruptedException ex ){
-//                        Logger.getLogger(JAERViewer.class.getName()).log(Level.SEVERE,null,ex);
-//                    }
-//                    chipClassNames = SubclassFinder.findSubclassesOf(AEChip.class.getName());
-//                }
-//            };
-//            Thread t = new Thread(runnable);
-//            t.setName("subclassFinder");
-//            t.setPriority(Thread.MIN_PRIORITY);
-//            t.start();
-//
 //            String exepath = System.getProperty("exepath");
 //            if ( exepath != null ){
 //                System.out.println("exepath (set from JSmooth launcher) = " + exepath);
