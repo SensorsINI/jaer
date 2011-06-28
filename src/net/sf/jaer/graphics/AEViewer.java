@@ -2331,6 +2331,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
+        bindingGroup = new org.jdesktop.beansbinding.BindingGroup();
 
         jProgressBar1 = new javax.swing.JProgressBar();
         renderModeButtonGroup = new javax.swing.ButtonGroup();
@@ -3072,11 +3073,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         pauseRenderingCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_SPACE, 0));
         pauseRenderingCheckBoxMenuItem.setText("Paused");
-        pauseRenderingCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                pauseRenderingCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
+
+        org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${paused}"), pauseRenderingCheckBoxMenuItem, org.jdesktop.beansbinding.BeanProperty.create("selected"));
+        bindingGroup.addBinding(binding);
+
         viewMenu.add(pauseRenderingCheckBoxMenuItem);
 
         viewSingleStepMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PERIOD, 0));
@@ -3235,12 +3235,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         interfaceMenu.setText("Interface");
         interfaceMenu.setToolTipText("Select the HW interface to use");
         interfaceMenu.addMenuListener(new javax.swing.event.MenuListener() {
-            public void menuSelected(javax.swing.event.MenuEvent evt) {
-                interfaceMenuMenuSelected(evt);
+            public void menuCanceled(javax.swing.event.MenuEvent evt) {
             }
             public void menuDeselected(javax.swing.event.MenuEvent evt) {
             }
-            public void menuCanceled(javax.swing.event.MenuEvent evt) {
+            public void menuSelected(javax.swing.event.MenuEvent evt) {
+                interfaceMenuMenuSelected(evt);
             }
         });
         interfaceMenu.addActionListener(new java.awt.event.ActionListener() {
@@ -3479,6 +3479,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         menuBar.add(helpMenu);
 
         setJMenuBar(menuBar);
+
+        bindingGroup.bind();
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
@@ -4178,14 +4180,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             zeroTimestamps();
         }
     }//GEN-LAST:event_zeroTimestampsMenuItemActionPerformed
-
-    private void pauseRenderingCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pauseRenderingCheckBoxMenuItemActionPerformed
-        setPaused(!isPaused());
-        if ( !isPaused() ){
-//            viewLoop.singleStepEnabled=false;
-//            System.out.println("pauseRenderingCheckBoxMenuItemActionPerformed: set singleStepEnabled=false");
-        }
-    }//GEN-LAST:event_pauseRenderingCheckBoxMenuItemActionPerformed
 
     private void decreaseFrameRateMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_decreaseFrameRateMenuItemActionPerformed
 //            case KeyEvent.VK_LEFT: // slower
@@ -5114,6 +5108,7 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
     }
 
     public boolean isPaused (){
+        if(jaerViewer==null) return false; // not yet initialized
         return jaerViewer.getSyncPlayer().isPaused();
     }
 
@@ -5569,5 +5564,6 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
     private javax.swing.JMenuItem zoomCenterMenuItem;
     private javax.swing.JMenuItem zoomInMenuItem;
     private javax.swing.JMenuItem zoomOutMenuItem;
+    private org.jdesktop.beansbinding.BindingGroup bindingGroup;
     // End of variables declaration//GEN-END:variables
 }

@@ -1,6 +1,6 @@
 <?xml version="1.1" encoding="UTF-8" ?>
 
-<Form version="1.2" maxVersion="1.2" type="org.netbeans.modules.form.forminfo.JFrameFormInfo">
+<Form version="1.5" maxVersion="1.7" type="org.netbeans.modules.form.forminfo.JFrameFormInfo">
   <NonVisualComponents>
     <Component class="javax.swing.JProgressBar" name="jProgressBar1">
     </Component>
@@ -573,9 +573,9 @@
                 </Property>
                 <Property name="text" type="java.lang.String" value="Paused"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="pauseRenderingCheckBoxMenuItemActionPerformed"/>
-              </Events>
+              <BindingProperties>
+                <BindingProperty name="selected" source="Form" sourcePath="${paused}" target="pauseRenderingCheckBoxMenuItem" targetPath="selected" updateStrategy="0" immediately="false"/>
+              </BindingProperties>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="viewSingleStepMenuItem">
               <Properties>

@@ -19,6 +19,7 @@ import java.util.logging.Logger;
 
 /**
  * Finds subclasses of a given class name in classes on the loaded classpath.
+ * Classes are cached in a HashMap to reduce cost of subsequent lookups.
  * <p>
  * See http://www.javaworld.com/javaworld/javatips/jw-javatip113.html?page=2
  * @author tobi

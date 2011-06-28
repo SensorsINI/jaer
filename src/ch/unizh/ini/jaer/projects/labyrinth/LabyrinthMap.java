@@ -368,7 +368,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         doClearMap();
         SVGUniverse svgUniverse = new SVGUniverse();
         SVGDiagram svgDiagram = null;
-        svgUniverse.setVerbose(true);
+        svgUniverse.setVerbose(false); // set true to see parsing debug info
         URI svgURI = svgUniverse.loadSVG(file.toURI().toURL());
 
         svgDiagram = svgUniverse.getDiagram(svgURI);
