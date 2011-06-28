@@ -64,7 +64,7 @@ public class JAERWindowUtilities {
                 GraphicsConfiguration[] gc = gd.getConfigurations();
                 if(gc!=null && gc.length>0){
                     Insets insets=Toolkit.getDefaultToolkit().getScreenInsets(gc[0]);
-                    lowerInset=insets.bottom;
+                    lowerInset=insets.bottom*2; // TODO tobi had to make bigger to handle FilterPanel resize
                 }
             }
 //        if(x+w>sd.width || y+h>sd.height) {
@@ -73,7 +73,7 @@ public class JAERWindowUtilities {
 //        }
             if(h>sd.height-lowerInset) {
                 log.info("window height ("+h+") is bigger than screen height minus WINDOWS_TASK_BAR_HEIGHT ("+(sd.height-WINDOWS_TASK_BAR_HEIGHT)+"), resizing height");
-                h=sd.height-lowerInset;
+                h=sd.height- lowerInset;
                 resize=true;
             }
             if(w>sd.width) {
@@ -83,13 +83,14 @@ public class JAERWindowUtilities {
             }
             
 //        frame.setLocation(x,y); // don't move it, just contrain size
-            if(resize){
-                frame.setSize(new Dimension(w,h));
+            if (resize) {
+                frame.setSize(new Dimension(w, h));
             }
-            frame.validate();        }catch(IllegalComponentStateException e){
-                log.warning(e.toString()+": not constraining window size to screen");
-                return;
-            }
+            frame.validate();
+        } catch (IllegalComponentStateException e) {
+            log.warning(e.toString() + ": not constraining window size to screen");
+            return;
+        }
         
     }
     

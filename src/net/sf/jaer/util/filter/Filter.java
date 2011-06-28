@@ -44,10 +44,11 @@ public abstract class Filter{
         return tauMs;
     }
     
-    /** @param tauMs the time constant in ms 
+    /** @param tauMs the time constant in ms. Value is clipped to 0 minimum. If tauMs=0
+     * filter computes instantaneous value on each update.
      */
     public void setTauMs(float tauMs) {
-        if(tauMs<1) tauMs=1;
+        if(tauMs<0) tauMs=0;
         this.tauMs = tauMs;
 //        System.out.println("tauMs="+tauMs);
     }

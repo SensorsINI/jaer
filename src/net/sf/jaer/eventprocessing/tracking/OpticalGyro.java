@@ -24,7 +24,7 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
 @Description("Computes camera pose changes based on tracking many clusters of local activity")
 public class OpticalGyro extends RectangularClusterTracker implements FrameAnnotater {
 
-   private Point2D.Float translation = new Point2D.Float(); // translation in pixels
+    private Point2D.Float translation = new Point2D.Float(); // translation in pixels
     private LowpassFilter2d translationFilter = new LowpassFilter2d(translation);
     private float rotationAngle = 0, cosAngle = 1, sinAngle = 0; // transform angle in radians
     private LowpassFilter rotationFilter = new LowpassFilter();
@@ -36,6 +36,7 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
     private SmallAngleTransformFinder smallAngleTransformFinder = new SmallAngleTransformFinder();
     private float opticalGyroTauLowpassMs = getFloat("opticalGyroTauLowpassMs", 100);
     private boolean opticalGyroRotationEnabled = getBoolean("opticalGyroRotationEnabled", false);
+    int sx2 = 0, sy2 = 0;
 
     public OpticalGyro(AEChip chip) {
         super(chip);
@@ -44,6 +45,7 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
         setPropertyTooltip(optgy, "opticalGyroTauLowpassMs", "lowpass filter time constant in ms for optical gyro position, increase to smooth values");
         setPropertyTooltip(optgy, "opticalGyroEnabled", "enables global cluster movement reporting");
         setPropertyTooltip(optgy, "opticalGyroRotationEnabled", "false computes just translation, true computes linear transform tranalation plus rotation");
+        translationFilter.setTauMs(opticalGyroTauLowpassMs);
     }
 
     @Override
@@ -57,32 +59,33 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
      * @param gl the OpenGL context.
      */
     private void glAnnotate(GL gl) {
-            int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
+        // this whole annotation is translated by the enclosing filter SceneStabilizer so that 
+        // clusters appear on top of tracked features.
+        int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
 
-            // draw translation
-            {
-                gl.glPushMatrix();
-                gl.glTranslatef(-translation.x + sx2, -translation.y + sy2, 0);
-                gl.glRotatef((float) (-rotationAngle * 180 / Math.PI), 0, 0, 1);
+        // draw translation
+        gl.glPushMatrix();
+            gl.glTranslatef(-translation.x + sx2, -translation.y + sy2, 0);
+            gl.glRotatef((float) (-rotationAngle * 180 / Math.PI), 0, 0, 1);
+//        gl.glTranslatef(sx2, sy2, 0);
+        // draw translation
+        gl.glLineWidth(2f);
+        gl.glColor3f(0, 1, 1);
+        gl.glBegin(GL.GL_LINES);
+        gl.glVertex2f(-sx2, 0);
+        gl.glVertex2f(sx2, 0);
+        gl.glVertex2f(0, -sy2);
+        gl.glVertex2f(0, sy2);
+        gl.glEnd();
+        gl.glPopMatrix();
 
-                gl.glLineWidth(2f);
-                gl.glColor3f(1, 0, 0);
-                gl.glBegin(GL.GL_LINES);
-                gl.glVertex2f(-sx2, 0);
-                gl.glVertex2f(sx2, 0);
-                gl.glVertex2f(0, -sy2);
-                gl.glVertex2f(0, sy2);
-                gl.glEnd();
-                gl.glPopMatrix();
-            }
-
-            if (isUseVelocity()) {
-                gl.glBegin(GL.GL_LINES);
-                float x = velocityPPt.x / 10 + sx2, y = velocityPPt.y / 10 + sy2;
-                gl.glVertex2f(sx2, sy2);
-                gl.glVertex2f(x, y);
-                gl.glEnd();
-            }
+        if (isUseVelocity()) {
+            gl.glBegin(GL.GL_LINES);
+            float x = velocityPPt.x / 10 + sx2, y = velocityPPt.y / 10 + sy2;
+            gl.glVertex2f(sx2, sy2);
+            gl.glVertex2f(x, y);
+            gl.glEnd();
+        }
     }
 
     @Override
@@ -137,57 +140,70 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
      * again to where they started. What do we use as our reference then?  We choose to try to
      * transform all spikes or use the pantilt to getString events to
      * come out as close as possible to where all the clusters started.
-
+    
      * @param t the time of the update in timestamp ticks (us).
      */
     private void update(int t) {
         // update optical gyro value
-            if (!isOpticalGyroRotationEnabled()) {
-                int nn = getNumVisibleClusters();
-                if (nn == 0) {
-                    return; // no visible clusters
-                    }
-                int weightSum = 0;
-
-                int ageSum = 0;
-                nn = 0;
-                // find cluster shifts and weight of each cluster, count visible clusters
-                // the clusters are born at different times. therefore find the shift of each cluster as though
-                // it had lived as long as the oldest cluster. then average all the clusters weighted by the number of events
-                // collected by each cluster.
-                Cluster oldestCluster = null;
-                float avgxloc = 0, avgyloc = 0, avgxvel = 0, avgyvel = 0;
-                for (Cluster c : clusters) {
-                    if (c.isVisible()) {
-                        int weight = c.getNumEvents();
-                        weightSum += weight;
-                        avgxloc += (c.getLocation().x - c.getBirthLocation().x) * weight;
-                        avgyloc += (c.getLocation().y - c.getBirthLocation().y) * weight;
-                        avgxvel += c.getVelocityPPT().x * weight;
-                        avgyvel += c.getVelocityPPT().y * weight;
-                        ageSum += c.getLifetime() * weight;
-                        nn++;
-                        if (oldestCluster == null || c.getBirthTime() < oldestCluster.getBirthTime()) {
-                            oldestCluster = c;
-                        }
-                    }
-                }
-                averageClusterAge = ageSum / weightSum;
-
-                // compute weighted-mean scene shift, but only if there is at least 1 visible cluster
-
-                if (nn > 0) {
-                    avgxloc /= weightSum;
-                    avgyloc /= weightSum;
-                    velocityPPt.x = avgxvel / weightSum;
-                    velocityPPt.y = avgyvel / weightSum;
-                    avgyvel /= weightSum;
-                    smallAngleTransformFinder.filterTransform(-avgxloc, -avgyloc, 0, t);
-                }
-            } else { // using general transformEvent rather than weighted sum of cluster movements
-                smallAngleTransformFinder.update(t);
+        if (!isOpticalGyroRotationEnabled()) {
+            int nn = getNumVisibleClusters();
+            if (nn == 0) {
+                return; // no visible clusters
             }
 
+            // find cluster shifts and weight of each cluster, count visible clusters
+            // the clusters are born at different times. 
+            // therefore find the shift of each cluster as though
+            // it had lived as long as the oldest cluster. 
+            // then average all the clusters weighted by the number of events
+            // collected by each cluster.
+            int weightSum = 0;
+            int ageSum = 0;
+            nn = 0;
+            Cluster oldestCluster = null;
+            float avgxloc = 0, avgyloc = 0, avgxvel = 0, avgyvel = 0;
+            for (Cluster c : clusters) {
+                if (c.isVisible()) {
+                    float weight = c.getMassNow(t);
+                    weightSum += weight;
+                    avgxloc += (c.getLocation().x - c.getBirthLocation().x) * weight;
+                    avgyloc += (c.getLocation().y - c.getBirthLocation().y) * weight;
+                    avgxvel += c.getVelocityPPT().x * weight;
+                    avgyvel += c.getVelocityPPT().y * weight;
+                    ageSum += c.getLifetime() * weight;
+                    nn++;
+                    if (oldestCluster == null || c.getBirthTime() < oldestCluster.getBirthTime()) {
+                        oldestCluster = c;
+                    }
+                }
+            }
+            if (weightSum == 0) {
+                return;
+            }
+            averageClusterAge = ageSum / weightSum;
+
+            // compute weighted-mean scene shift, but only if there is at least 1 visible cluster
+
+            if (nn > 0) {
+                avgxloc /= weightSum;
+                avgyloc /= weightSum;
+                velocityPPt.x = avgxvel / weightSum;
+                velocityPPt.y = avgyvel / weightSum;
+                avgyvel /= weightSum;
+                smallAngleTransformFinder.filterTransform(-avgxloc, -avgyloc, 0, t);
+            }
+//            System.out.println(String.format("x,y= %.1f , %.1f ",avgxloc,avgyloc));
+        } else { // using general transformEvent rather than weighted sum of cluster movements
+            smallAngleTransformFinder.update(t);
+        }
+
+    }
+
+    /**
+     * @return the velocityPPt of the transform, computed from weighted average cluster velocities
+     */
+    public Point2D.Float getVelocityPPt() {
+        return velocityPPt;
     }
 
     /**
@@ -343,7 +359,7 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
     }
 
     /** Returns the current location of the optical gyro filter translation
-
+    
     @return a Point2D.Float with x,y, values that show the present position of the gyro output. Returns null if the optical gyro is disabled.
      */
     public Point2D.Float getOpticalGyroTranslation() {

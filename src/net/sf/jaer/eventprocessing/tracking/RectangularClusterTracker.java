@@ -159,10 +159,10 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         setPropertyTooltip(disp, "showAllClusters", "shows all clusters, not just those with sufficient support");
         setPropertyTooltip(movement, "useNearestCluster", "event goes to nearest cluster, not to first (usually oldest) cluster containing it");
         setPropertyTooltip(lifetime, "clusterLifetimeIncreasesWithAge", "older clusters can live longer (up to clusterLifetimeWithoutSupportUs) without support, good for objects that stop (like walking flies)");
-        setPropertyTooltip(lifetime, "clusterLifetimeWithoutSupportUs", "how long a cluster lives on without any events (us)");
+        setPropertyTooltip(lifetime, "clusterLifetimeWithoutSupportUs", "how quickly cluster \"mass\" decays between events (us)");
         setPropertyTooltip(movement, "predictiveVelocityFactor", "how much cluster position leads position based on estimated velocity");
         setPropertyTooltip(sizing, "highwayPerspectiveEnabled", "Cluster size depends on perspective location; mouse click defines horizon");
-        setPropertyTooltip(lifetime, "thresholdEventsForVisibleCluster", "Cluster needs this many events to be visible");
+        setPropertyTooltip(lifetime, "thresholdEventsForVisibleCluster", "Cluster needs this \"mass\" to be visible. Mass increments with each event and decays with e-folding time constant of clusterLifetimeWithoutSupportUs. Use \"showAllClusters\" to diagnose fleeting clusters.");
         setPropertyTooltip(lifetime, "thresholdVelocityForVisibleCluster", "cluster must have at least this velocity in pixels/sec to become visible");
         setPropertyTooltip(global, "maxNumClusters", "Sets the maximum potential number of clusters");
         setPropertyTooltip(update, "velAngDiffDegToNotMerge", "relative angle in degrees of cluster velocity vectors to not merge overlapping clusters");

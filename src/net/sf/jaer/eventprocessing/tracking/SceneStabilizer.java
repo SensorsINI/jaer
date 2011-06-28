@@ -263,7 +263,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
                 int t = msg.timestamp;
                 int dtUs = (t - msg.packet.getFirstTimestamp()); // duration of this slice
                 if (Math.abs(f.x) > Math.abs(f.y)) {
-                    evenMotion = f.x > 0; // used to flip contrast
+                    evenMotion = f.x > 0; // used to flip contrast 
                 } else {
                     evenMotion = f.y > 0;
                 }
@@ -280,6 +280,12 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
 //                translation.y = filterY.filter(-trans.y,in.getLastTimestamp()) + gainVelocity * velPPS.y * deltaTime / 1e6f / AEConstants.TICK_DEFAULT_US; // shift is negative of gyro value.
                 trans.setLocation(opticalGyro.getOpticalGyroTranslation());
                 rot = opticalGyro.getOpticalGyroRotation();
+                Point2D.Float v = opticalGyro.getVelocityPPt();
+                if (Math.abs(v.x) > Math.abs(v.y)) {
+                    evenMotion = v.x > 0; // used to flip contrast 
+                } else {
+                    evenMotion = v.y > 0;
+                }
         }
         transformList.add(new TransformAtTime(msg.timestamp, trans, rot));
     }
@@ -295,9 +301,6 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        if (!isFilterEnabled()) {
-            return;
-        }
         GL gl = drawable.getGL();
         if (gl == null) {
             return;
@@ -309,13 +312,19 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
             } else { // transform cluster tracker annotation to draw on top of transformed scene
                 gl.glPushMatrix();
                 gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
+                // use most recent optical gyro transform
+                if (!transformList.isEmpty()) {
+                    TransformAtTime t = transformList.get(transformList.size() - 1);
+                    rotation = t.rotation;
+                    translation = t.translation;
+                }
                 gl.glRotatef((float) (rotation * 180 / Math.PI), 0, 0, 1);
                 gl.glTranslatef(translation.x - chip.getSizeX() / 2, translation.y - chip.getSizeY() / 2, 0);
                 opticalGyro.annotate(drawable);
                 gl.glPopMatrix();
             }
         }
-        if (isElectronicStabilizationEnabled()) { // draw translation frame
+        if (!transformList.isEmpty() && isElectronicStabilizationEnabled()) { // draw translation frame
 //            gl.glPushMatrix();
 //            gl.glColor3f(1,0,0);
 //            gl.glTranslatef(chip.getSizeX()/2,chip.getSizeY()/2,0);
@@ -326,18 +335,23 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
 //            gl.glEnd();
 //            gl.glPopMatrix();
 
+            TransformAtTime transform = transformList.get(transformList.size() - 1);
+            float rotation = transform.rotation;
+            Point2D.Float translation = transform.translation;
 
+            final int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
             gl.glPushMatrix(); // go back to origin
             gl.glLineWidth(.3f);
             gl.glColor3f(1, 0, 0);
-            gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
+            gl.glTranslatef(sx2, sy2, 0);
+
             gl.glRotatef((float) (rotation * 180 / Math.PI), 0, 0, 1);
-            gl.glTranslatef(translation.x - chip.getSizeX() / 2, translation.y - chip.getSizeY() / 2, 0);
+            gl.glTranslatef(translation.x - sx2, translation.y - sy2, 0);
             gl.glBegin(GL.GL_LINE_LOOP); // draw box of translation
             gl.glVertex2f(0, 0);
-            gl.glVertex2f(chip.getSizeX(), 0);
-            gl.glVertex2f(chip.getSizeX(), chip.getSizeY());
-            gl.glVertex2f(0, chip.getSizeY());
+            gl.glVertex2f(sx2 * 2, 0);
+            gl.glVertex2f(sx2 * 2, sy2 * 2);
+            gl.glVertex2f(0, sy2 * 2);
             gl.glEnd();
             gl.glPopMatrix();
 
@@ -357,12 +371,6 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
 
             gl.glPopMatrix();
         }
-    }
-
-    public void annotate(Graphics2D g) {
-    }
-
-    public void annotate(float[][][] frame) {
     }
 
     public float getGainTranslation() {

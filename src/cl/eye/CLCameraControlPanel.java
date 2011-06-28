@@ -270,9 +270,9 @@ public class CLCameraControlPanel extends javax.swing.JPanel {
             return;
         }
         if (showRawInputCB.isSelected()) {
-            hardware.addAEListener(rawCameraPanel);
+            ((CLRetinaHardwareInterface)chip.getHardwareInterface()).addAEListener(rawCameraPanel);
         } else {
-            hardware.removeAEListener(rawCameraPanel);
+            ((CLRetinaHardwareInterface)chip.getHardwareInterface()).removeAEListener(rawCameraPanel);
         }
 }//GEN-LAST:event_showRawInputCBActionPerformed
 
