@@ -44,6 +44,7 @@ public class CLEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryIn
     
     @Override
     public int getNumInterfacesAvailable() {
+        if(interfaces==null) return 0;
         return this.interfaces.length;
     }
 
