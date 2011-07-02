@@ -222,17 +222,17 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
                 }
                 if (posPixels.x < ll.x) {
                     posPixels.x = ll.x;
-                    velPPS.x = 0;
+                    velPPS.x = -velPPS.x;
                 } else if (posPixels.x >= ur.x) {
                     posPixels.x = ur.x;
-                    velPPS.x = 0;
+                    velPPS.x = -velPPS.x ;
                 }
                 if (posPixels.y < ll.y) {
                     posPixels.y = ll.y;
-                    velPPS.y = 0;
+                    velPPS.y = -velPPS.y;
                 } else if (posPixels.y >= ur.y) {
                     posPixels.y = ur.y;
-                    velPPS.y = 0;
+                    velPPS.y = -velPPS.y;
                 }
 
 
