@@ -16,8 +16,12 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- * Example filter used in Capo Caccia Neuromorphic Cognition Workshop 2011.  This filter computes a running mean event location and only transmits events within some chosen radius of the mean.
- * It also draws a rectangle over the mean location.
+ * Example filter used in Capo Caccia Neuromorphic Cognition Workshop 2011.  
+ * This filter computes a running mean event location and only transmits 
+ * events within some chosen radius of the mean.
+ * It also draws a rectangle over the mean location and optionally 
+ * only transmits events that are within a desired radius of the mean
+ * location.
  * 
  * @author tobi
  */
@@ -31,8 +35,15 @@ public class MeanEventLocationTracker extends EventFilter2D implements FrameAnno
 
     public MeanEventLocationTracker(AEChip chip) {
         super(chip);
+        setPropertyTooltip("mixingRate", "rate that mean location is updated in events. 1 means instantaneous and 0 freezes values");
+        setPropertyTooltip("radiusOfTransmission","radius in pixels around the mean that events are tranmitted out");
     }
 
+    /** The main filtering method. It computes the mean location using an event-driven update of location and then
+     * filters out events that are outside this location by more than the radius.
+     * @param in input packet
+     * @return output packet
+     */
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         for (BasicEvent o : in) { // iterate over all events in input packet
@@ -68,7 +79,7 @@ public class MeanEventLocationTracker extends EventFilter2D implements FrameAnno
     public void initFilter() {
     }
 
-    /** Called after events are rendered
+    /** Called after events are rendered. Here we just render something to show the mean location.
      * 
      * @param drawable the open GL surface. 
      */
