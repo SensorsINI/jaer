@@ -10,7 +10,8 @@ import java.beans.VetoableChangeSupport;
 import java.util.Arrays;
 
 /**
- * A running median filter for scalar signals
+ * A running median filter for scalar signals. The output value is the middle value of a running list of input samples.
+ * A single <code>length</code> parameter determines the window size.
  * 
  * @author tobi
  */
@@ -74,7 +75,7 @@ public class MedianLowpassFilter {
     /**
      * Set the value of length of median filter in samples. The latency is half the length.
      *
-     * @param n new value of length
+     * @param n new value of length.  Clipped to 1 sample.
      */
     synchronized public void setLength(int n) {
         if (n < 1) {
