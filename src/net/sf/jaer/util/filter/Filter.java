@@ -65,7 +65,8 @@ public abstract class Filter{
     /** @return 3dB freq in Hz 
      */
     public float get3dBFreqHz(){
-        return PI2/1000/getTauMs();
+        float freq=1000/(PI2*getTauMs());
+        return freq;
     }
     
     /** Sets the internal value for initializing the filter
