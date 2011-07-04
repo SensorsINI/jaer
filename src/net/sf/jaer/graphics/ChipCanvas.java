@@ -9,6 +9,9 @@
 package net.sf.jaer.graphics;
 
 import java.awt.Font;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
 import java.awt.geom.Rectangle2D;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -130,6 +133,22 @@ public class ChipCanvas implements GLEventListener, Observer {
             throw err;
         }
 
+       GraphicsEnvironment ge=GraphicsEnvironment.getLocalGraphicsEnvironment();
+        GraphicsDevice[] gs=ge.getScreenDevices(); // TODO it could be that remote session doesn't show screen that used to be used. Should check that we are not offscreen. Otherwise registy edit is required to show window!
+
+        if(gs!=null&&gs.length>0) {
+            if(gs.length>1){
+                log.info("There are "+gs.length+" GraphicsDevice's found; using first one which is "+gs[0].getIDstring());
+            }
+            GraphicsDevice gd=gs[0];
+            GraphicsConfiguration[] gc=gd.getConfigurations();
+            if(gc!=null&&gc.length>0) {
+                if(gc.length>1){
+                    log.info("There are "+gc.length+" GraphicsConfiguration's found; using first one which is "+gc[0].toString());
+                }
+            }
+        }
+        
         // design capabilities of opengl canvas
         GLCapabilities caps = new GLCapabilities();
 
@@ -144,7 +163,16 @@ public class ChipCanvas implements GLEventListener, Observer {
 
         // make the canvas
         try {
-            drawable = new GLCanvas(caps);
+            drawable = new GLCanvas(); // was new GLCanvas(caps);  // but this causes an exception in GLDrawableFactory in linux running with hardware accelerated OpenGL -tobi
+     
+        /* got following under VirtualBox Ubuntu guest running on tobi's W510 Win7x64SP1 machine
+INFO: OpenGL implementation is: com.sun.opengl.impl.GLImpl
+GL_VENDOR: Humper
+GL_RENDERER: Chromium
+GL_VERSION: 2.1 Chromium 1.9
+OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
+             */
+        
         } catch (UnsatisfiedLinkError e) {
             e.printStackTrace();
             System.err.println("java.libary.path=" + System.getProperty("java.library.path"));
