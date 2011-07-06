@@ -26,7 +26,7 @@ public class MedianTrackerTell2011 extends EventFilter2D implements FrameAnnotat
      * 
      */
     private int filterLength = getInt("filterLength", 50);
-    private int maxdist=10;
+    private int maxdist=getInt("maxdist",10);
     private int[] xs, ys;
     private int ptr = 0;
     private int[] x2, y2;
@@ -37,6 +37,7 @@ public class MedianTrackerTell2011 extends EventFilter2D implements FrameAnnotat
         allocMem();
         // add this string tooltip to FilterPanel GUI control for filterLength
         setPropertyTooltip("filterLength", "length of median filter; median is middle value of x and y address of the filterLength last addresses");
+        setPropertyTooltip("maxdist", "max distance from median to transmit events out");
     }
 
     void allocMem() {
@@ -138,5 +139,6 @@ public class MedianTrackerTell2011 extends EventFilter2D implements FrameAnnotat
      */
     public void setMaxdist(int maxdist) {
         this.maxdist = maxdist;
+        putInt("maxdist",maxdist);
     }
 }
