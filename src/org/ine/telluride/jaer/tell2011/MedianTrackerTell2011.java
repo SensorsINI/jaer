@@ -11,6 +11,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
@@ -25,6 +26,7 @@ public class MedianTrackerTell2011 extends EventFilter2D implements FrameAnnotat
      * 
      */
     private int filterLength = getInt("filterLength", 50);
+    private int maxdist=10;
     private int[] xs, ys;
     private int ptr = 0;
     private int[] x2, y2;
@@ -52,6 +54,8 @@ public class MedianTrackerTell2011 extends EventFilter2D implements FrameAnnotat
      */
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+        checkOutputPacketEventType(in);
+        OutputEventIterator oi=out.outputIterator();
         for (BasicEvent e : in) { // iterate over all input events
             xs[ptr] = e.x;  // store the incoming event's x and y address in our ring buffer
             ys[ptr] = e.y;
@@ -69,7 +73,13 @@ public class MedianTrackerTell2011 extends EventFilter2D implements FrameAnnotat
         xmed = x2[filterLength / 2]; // these are median values
         ymed = y2[filterLength / 2];
 //        System.out.println("xmed="+xmed+" ymed="+ymed);
-        return in;
+       for (BasicEvent e : in) { // iterate over all input events
+            if(Math.abs(e.x-xmed)+Math.abs(e.y-ymed)<getMaxdist()){
+                BasicEvent oe=oi.nextOutput();
+                oe.copyFrom(e);
+            }
+        }
+       return out;
     }
 
     /** Called when "Reset" button is pushed or logged data is rewound
@@ -114,5 +124,19 @@ public class MedianTrackerTell2011 extends EventFilter2D implements FrameAnnotat
         gl.glVertex2f(xmed+D/2, ymed+D/2);
         gl.glVertex2f(xmed-D/2, ymed+D/2);
         gl.glEnd(); // make sure you stop the line loop
+    }
+
+    /**
+     * @return the maxdist
+     */
+    public int getMaxdist() {
+        return maxdist;
+    }
+
+    /**
+     * @param maxdist the maxdist to set
+     */
+    public void setMaxdist(int maxdist) {
+        this.maxdist = maxdist;
     }
 }
