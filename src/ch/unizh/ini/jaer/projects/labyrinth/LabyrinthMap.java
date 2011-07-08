@@ -32,7 +32,8 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.Matrix;
 
 /**
- *  Loads SVG file describing a board and displays it in the annotate method.
+ *  Loads SVG file describing a board and displays it in the annotate method and provides methods for finding nearest path points
+ * on the maze and the bounding box of the maze.
  * 
  * @author Tobi
  */

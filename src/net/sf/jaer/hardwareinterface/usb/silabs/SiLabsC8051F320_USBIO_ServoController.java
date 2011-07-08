@@ -496,7 +496,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     public boolean isFullDutyCycleMode (){
         return fullDutyCycleModeEnabled;
     }
-    
+
     /** This thread actually talks to the hardware */
     private class ServoCommandWriter extends UsbIoWriter{
          

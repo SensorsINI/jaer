@@ -21,14 +21,15 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- *
+ * Talks to serial port, e.g. for FTDI USB interfaces.
+ * 
  * @author andstein
  */
 public class HyperTerminal extends javax.swing.JFrame
     implements SerialPortEventListener {
 
     //public final static String portName= "/dev/ttyUSB0";
-    public final static String portName= "COM12";
+    public final static String portName= "COM5";
     private SerialPort port= null;
     private InputStreamReader isr= null;
     private OutputStream os= null;

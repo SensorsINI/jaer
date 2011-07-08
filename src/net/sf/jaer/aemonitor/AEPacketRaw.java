@@ -27,7 +27,6 @@ These AEPacketRaw are used only for device events (raw events). For processed ev
  */
 public class AEPacketRaw extends AEPacket {
 
-
     /** The index of the start of the last packet captured from a device, used for processing data on acquisition.
      * The hardware interface class is responsible for setting this value.  After a capture of data, lastCaptureLength points to the start
     of this capture. A real time processor need not process the entire buffer but only starting from this lastCaptureIndex.
@@ -69,10 +68,10 @@ public class AEPacketRaw extends AEPacket {
      *@param size capacity in events
      */
     public AEPacketRaw(int size) {
-        if(size>MAX_PACKET_SIZE_EVENTS){
-            log.warning("allocating arrays of size "+size+" which is larger than MAX_PACKET_SIZE_EVENTS="+MAX_PACKET_SIZE_EVENTS+" in size");
-        }else{
-            log.info("allocatiing size="+size+" arrays");
+        if (size > MAX_PACKET_SIZE_EVENTS) {
+            log.warning("allocating arrays of size " + size + " which is larger than MAX_PACKET_SIZE_EVENTS=" + MAX_PACKET_SIZE_EVENTS + " in size");
+        } else {
+            log.info("allocatiing size=" + size + " arrays");
         }
         allocateArrays(size);
     }
@@ -101,7 +100,7 @@ public class AEPacketRaw extends AEPacket {
      *
      * The timestamps will be probably not be ordered monotonically after this concatenation!
      * And unless the sources are identified by unique addresses, the sources of the events will be lost.
-    *
+     *
      * @param collection to copy from.
      */
     public AEPacketRaw(Collection<AEPacketRaw> collection) {
@@ -113,14 +112,13 @@ public class AEPacketRaw extends AEPacket {
         //setNumEvents(n);
         int counter = 0;
         for (AEPacketRaw packet : collection) {
-            try{
-            int ne=packet.getNumEvents();
-            System.arraycopy(packet.getAddresses(), 0, getAddresses(), counter, ne);
-            System.arraycopy(packet.getTimestamps(), 0, getTimestamps(), counter,ne);
-            counter += ne;
-            }
-            catch(ArrayIndexOutOfBoundsException e) {
-                log.warning("caught "+e.toString()+"when constructing new RawPacket from Collection.");
+            try {
+                int ne = packet.getNumEvents();
+                System.arraycopy(packet.getAddresses(), 0, getAddresses(), counter, ne);
+                System.arraycopy(packet.getTimestamps(), 0, getTimestamps(), counter, ne);
+                counter += ne;
+            } catch (ArrayIndexOutOfBoundsException e) {
+                log.warning("caught " + e.toString() + "when constructing new RawPacket from Collection.");
                 continue;
             }
         }
@@ -207,5 +205,13 @@ public class AEPacketRaw extends AEPacket {
         System.arraycopy(srcAddr, 0, destAddr, 0, n);
         dest.setNumEvents(n);
         return dest;
+    }
+
+    public String toString() {
+        if (getNumEvents() == 0) {
+            return super.toString();
+        } else {
+            return super.toString() + String.format(" tstart=%d tend=%d", timestamps[0], timestamps[numEvents - 1]);
+        }
     }
 }
