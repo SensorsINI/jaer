@@ -28,13 +28,14 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
 @Description("Computes temporally and spatially smoothed optical flow using DirectionSelectiveFilter")
 public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer, FrameAnnotater {
 
-    DirectionSelectiveFilter dirFilter;
-    int sx = 0, sy = 0;
-    LowpassFilter2d[][] vels;
-    int[][] lastSentTimestamps;
+    private DirectionSelectiveFilter dirFilter;
+    private int sx = 0, sy = 0;
+    private LowpassFilter2d[][] vels;
+    private int[][] lastSentTimestamps;
     private int subSampleBy = getInt("subSampleBy", 2);
     private float tauMs = getFloat("tauMs", 100);
     private int refractoryPeriodUs = getInt("refractoryPeriodUs", 1000);
+    private boolean showRawInputEnabled = getBoolean("showRawInputEnabled", false);
 
     public SmoothOpticalFlowLabeler(AEChip chip) {
         super(chip);
@@ -45,8 +46,10 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
         setEnclosedFilterChain(chain);
         chip.addObserver(this);
         setPropertyTooltip("subSampleBy", "compute flow on this subsampled grid; 0 means no subsampling");
-        setPropertyTooltip("tauMs","lowpass temporal filter time contant in ms");
-        setPropertyTooltip("refractoryPeriodUs","time between successive events in us that can be output from a single subsampled address");
+        setPropertyTooltip("tauMs", "lowpass temporal filter time contant in ms");
+        setPropertyTooltip("refractoryPeriodUs", "time between successive events in us that can be output from a single subsampled address");
+        setPropertyTooltip("showRawInputEnabled", "instead of returning direction selective events, return the raw input but annotate graphics with motion vectors");
+        setPropertyTooltip("ppsScale", "scaling of motion vectors in pixels/sec to retina pixels");
     }
 
     @Override
@@ -57,6 +60,10 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
         // an event if refractory period has passed
         int s = 1 << subSampleBy - 1;
         OutputEventIterator outItr = out.outputIterator();
+        if (dirOut.getEventClass() != MotionOrientationEvent.class) {
+            log.warning("input events are " + dirOut.getEventClass() + ", but they need to be MotionOrientationEvent's");
+            return in;
+        }
         for (Object o : dirOut) {
             MotionOrientationEvent e = (MotionOrientationEvent) o;
             int x = e.x >>> subSampleBy, y = e.y >>> subSampleBy;
@@ -66,13 +73,13 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
             if (e.timestamp - lastSentTimestamps[x][y] > refractoryPeriodUs || e.timestamp < lastSentTimestamps[x][y]) {
                 OpticalFlowEvent oe = (OpticalFlowEvent) outItr.nextOutput();
                 oe.copyFrom(e);
-                oe.x = (short) ((x<<subSampleBy)+s);
-                oe.y = (short) ((y<<subSampleBy)+s);
+                oe.x = (short) ((x << subSampleBy) + s);
+                oe.y = (short) ((y << subSampleBy) + s);
                 oe.optFlowVelPPS.setLocation(v);
                 lastSentTimestamps[x][y] = e.timestamp;
             }
         }
-        return out;
+        return showRawInputEnabled ? in : out;
     }
 
     public void annotate(GLAutoDrawable drawable) {
@@ -80,21 +87,25 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
         // draw individual motion vectors
         gl.glPushMatrix();
         gl.glColor3f(1, 1, 1);
-        gl.glLineWidth(1f);
-        gl.glBegin(GL.GL_LINES);
+        gl.glLineWidth(3f);
+        gl.glPointSize(8);
         float scale = getPpsScale();
         for (Object o : out) {
             OpticalFlowEvent e = (OpticalFlowEvent) o;
             drawMotionVector(gl, e, scale);
         }
-        gl.glEnd();
         gl.glPopMatrix();
     }
 
     // plots a single motion vector which is the number of pixels per second times scaling
     void drawMotionVector(GL gl, OpticalFlowEvent e, float scale) {
+        gl.glBegin(GL.GL_POINTS);
+        gl.glVertex2d(e.x, e.y);
+        gl.glEnd();
+        gl.glBegin(GL.GL_LINES);
         gl.glVertex2d(e.x, e.y);
         gl.glVertex2f(e.x + scale * e.optFlowVelPPS.x, e.y + scale * e.optFlowVelPPS.y);
+        gl.glEnd();
     }
 
     @Override
@@ -200,5 +211,14 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
     public void setRefractoryPeriodUs(int refractoryPeriodUs) {
         this.refractoryPeriodUs = refractoryPeriodUs;
         putInt("refractoryPeriodUs", refractoryPeriodUs);
+    }
+
+    public void setShowRawInputEnabled(boolean showRawInputEnabled) {
+        this.showRawInputEnabled = showRawInputEnabled;
+        putBoolean("showRawInputEnabled", showRawInputEnabled);
+    }
+
+    public boolean isShowRawInputEnabled() {
+        return showRawInputEnabled;
     }
 }
