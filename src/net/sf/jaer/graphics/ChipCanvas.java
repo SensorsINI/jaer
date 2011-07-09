@@ -133,26 +133,26 @@ public class ChipCanvas implements GLEventListener, Observer {
             throw err;
         }
 
-       GraphicsEnvironment ge=GraphicsEnvironment.getLocalGraphicsEnvironment();
-        GraphicsDevice[] gs=ge.getScreenDevices(); // TODO it could be that remote session doesn't show screen that used to be used. Should check that we are not offscreen. Otherwise registy edit is required to show window!
-
-        if(gs!=null&&gs.length>0) {
-            if(gs.length>1){
-                log.info("There are "+gs.length+" GraphicsDevice's found; using first one which is "+gs[0].getIDstring());
-            }
-            GraphicsDevice gd=gs[0];
-            GraphicsConfiguration[] gc=gd.getConfigurations();
-            if(gc!=null&&gc.length>0) {
-                if(gc.length>1){
-                    log.info("There are "+gc.length+" GraphicsConfiguration's found; using first one which is "+gc[0].toString());
-                }
-            }
-        }
-        
-        // design capabilities of opengl canvas
-        GLCapabilities caps = new GLCapabilities();
-
-       caps.setAlphaBits(8);
+//       GraphicsEnvironment ge=GraphicsEnvironment.getLocalGraphicsEnvironment();
+//        GraphicsDevice[] gs=ge.getScreenDevices(); // TODO it could be that remote session doesn't show screen that used to be used. Should check that we are not offscreen. Otherwise registy edit is required to show window!
+//
+//        if(gs!=null&&gs.length>0) {
+//            if(gs.length>1){
+//                log.info("There are "+gs.length+" GraphicsDevice's found; using first one which is "+gs[0].getIDstring());
+//            }
+//            GraphicsDevice gd=gs[0];
+//            GraphicsConfiguration[] gc=gd.getConfigurations(); // TODO this call takes >10s on windows 7 x64 w510 lenovo with nvidia graphics!
+//            if(gc!=null&&gc.length>0) {
+//                if(gc.length>1){
+//                    log.info("There are "+gc.length+" GraphicsConfiguration's found; using first one which is "+gc[0].toString());
+//                }
+//            }
+//        }
+//        
+//        // design capabilities of opengl canvas
+//        GLCapabilities caps = new GLCapabilities();
+//
+//       caps.setAlphaBits(8);
 /*       caps.setDoubleBuffered(true);
        caps.setHardwareAccelerated(true);
        caps.setRedBits(8);
