@@ -336,6 +336,7 @@ public class HWP_UART implements HardwareInterface {
 
                     outputStream = serialPort.getOutputStream();
                     inputStream = serialPort.getInputStream();
+                    log.info("port "+portName+" opened with baudRate="+baudRate);
 
                 }		// end of equals portName
             }		// end of IsSerialPort
@@ -383,10 +384,11 @@ public class HWP_UART implements HardwareInterface {
         if (isOpen()) {
             if (flowControlFlag) {
                 serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_RTSCTS_OUT | SerialPort.FLOWCONTROL_RTSCTS_IN);
-//					System.out.println("Set HW flow control on!");
+                serialPort.setRTS(true);
+                log.info("Set HW flow control on!");
             } else {
                 serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
-//					System.out.println("Set HW flow control off!");
+                log.info("Set HW flow control off!");
             }
         }
     }
@@ -409,7 +411,10 @@ public class HWP_UART implements HardwareInterface {
 
     /* ************************************************************************************** */
     public synchronized void write(byte[] b) throws IOException {
-            outputStream.write(b);
+        if (outputStream == null) {
+            throw new IOException("null output stream; port not opened?");
+        }
+        outputStream.write(b);
     }
 
     /* ************************************************************************************** */
