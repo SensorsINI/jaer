@@ -36,7 +36,12 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
     final int NSERVOS = 6;
     float[] servoValues = new float[NSERVOS];
     Head6DOF_GUI gui = null;
-    final int EYE_LEFT_PAN = 0, EYE_LEFT_TILT = 1, EYE_RIGHT_PAN = 2, EYE_RIGHT_TILT = 3, HEAD_PAN = 4, HEAD_TILT = 5;
+    final int EYE_LEFT_PAN = 0, EYE_LEFT_TILT = 1, EYE_RIGHT_PAN = 2, EYE_RIGHT_TILT = 3,
+            HEAD_PAN = 4, HEAD_TILT = 5;
+    final String CMD_RESET = "!R", CMD_CYCLE = "!C", CMD_SERVO = "!S";
+    final int TIME_UNIT_NS = 250;  // unit of time in ns for servo controller times
+    private boolean connected = false;
+    final float PAN_LIMIT = .4f, TILT_LIMIT = .4f, HEAD_LIMIT=.25f;
 
     public class GazeDirection {
 
@@ -55,13 +60,21 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
         COM1, COM2, COM3, COM4, COM5, COM6, COM7, COM8
     }
     private COM_PORT comPort = COM_PORT.valueOf(getString("comPort", COM_PORT.COM5.toString()));  // com5 chosen on tobi's virgin FTDI install
-    private int baudRate = getInt("baudRate", 4000000);
+    private int baudRate = getInt("baudRate", 460800); // 460800, RTS=true for servo board for head
     boolean servosAvailable = false;
 
     public Head6DOF_ServoController(AEChip chip) {
         super(chip);
         serialPort = new HWP_UART();
         Arrays.fill(servoValues, .5f);
+        setPropertyTooltip("connect", "connect to serial port");
+        setPropertyTooltip("disconnect", "disconnect from serial port");
+        setPropertyTooltip("comPort", "serial port for first FTDI interface");
+        setPropertyTooltip("baudRate", "baud rate; 460800 is default for the head controller");
+        setPropertyTooltip("connected", "shows connected status and can also be used to connect/disconnect");
+        setPropertyTooltip("showGUI", "shows GUI to manually control head");
+        setPropertyTooltip("reset", "sends a reset command to the controller");
+        setPropertyTooltip("centerGaze", "centers all servos");
     }
 
     @Override
@@ -83,7 +96,8 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
         }
         if (!serialPort.isOpen()) {
             try {
-                serialPort.open(getComPort().toString(), getBaudRate());
+                int ret = serialPort.open(getComPort().toString(), getBaudRate());
+                serialPort.setHardwareFlowControl(true);
             } catch (UnsupportedCommOperationException ex) {
                 log.warning(ex.toString());
                 return false;
@@ -113,39 +127,79 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
         }
     }
 
-    public void doDisconnect() {
+    public void doReset() {
         try {
-            serialPort.close();
+            serialPort.writeLn(CMD_RESET);// reset board
+            Thread.sleep(200);
+            serialPort.purgeInput();
+            log.info("reset");
         } catch (Exception ex) {
             log.warning(ex.toString());
         }
+    }
+
+    public void doDisconnect() {
+        setConnected(false);
     }
 
     public void doConnect() {
-        try {
-            serialPort.open(comPort.toString(), baudRate);
-            serialPort.writeLn("r");// reset board
-            Thread.sleep(200);
-            serialPort.writeLn("!C=40000"); // TODO ??
-            Thread.sleep(200);
-            serialPort.purgeInput();
-        } catch (Exception ex) {
-            log.warning(ex.toString());
-        }
+        setConnected(true);
     }
-    final String S = "!s "; // set command header
+
+    /**
+     * @return the connected
+     */
+    public boolean isConnected() {
+        return connected;
+    }
+
+    /**
+     * @param connected the connected to set
+     */
+    public void setConnected(boolean connected) {
+        boolean old = this.connected;
+        if (!this.connected && connected) {
+            try {
+                serialPort.open(comPort.toString(), baudRate);
+                serialPort.setHardwareFlowControl(true);
+                serialPort.writeLn(CMD_RESET);// reset board
+                Thread.sleep(200);
+                serialPort.writeLn(CMD_CYCLE + "=40000"); // sets servo cycle time to 10ms; time unit is .25us
+                Thread.sleep(200);
+                serialPort.purgeInput();
+                log.info("opened serial port " + serialPort);
+                this.connected=true;
+            } catch (Exception ex) {
+                log.warning(ex.toString());
+            }
+        } else if (!connected && this.connected) {
+            try {
+                serialPort.close();
+                log.info("disconnected serial port");
+                this.connected=false;
+            } catch (Exception ex) {
+                log.warning(ex.toString());
+            }
+
+        }
+        getSupport().firePropertyChange("connected", null, this.connected);
+    }
 
     private int float2servo(float f) {
-        return 10000 + (int) (f * 20000);
+        return 4000 + (int) (f * 4000); // sets from 4000=.25us*4000=1000us=1ms to 2ms which is range for hobby servos
     }
 
     public void setServoValue(int servo, float value) throws HardwareInterfaceException, UnsupportedEncodingException, IOException {
         servoValues[servo] = value;
-        serialPort.writeLn(String.format("%s %d=%d", S, servo, float2servo(value)));
+        serialPort.writeLn(String.format("%s%d=%d", CMD_SERVO, servo, float2servo(value))); // eg !S3=6000
+        serialPort.flushOutput();
+        serialPort.purgeInput();
     }
 
     public void disableServo(int servo) throws HardwareInterfaceException, UnsupportedEncodingException, IOException {
-        serialPort.writeLn(String.format("%s %d=%d", S, servo, 0));
+        serialPort.writeLn(String.format("%s%d=%d", CMD_SERVO, servo, 0)); // eg !S0=0
+        serialPort.flushOutput();
+        serialPort.purgeInput();
     }
 
     public int getNumServos() {
@@ -213,33 +267,34 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
     }
 
     void setHeadDirection(float pan, float tilt) throws HardwareInterfaceException, UnsupportedEncodingException, IOException {
+        pan=clip(pan,HEAD_LIMIT);
         setServoValue(HEAD_PAN, gaze2servo(pan));
         gazeDirection.headDirection.x = pan;
+        tilt=clip(tilt,HEAD_LIMIT);
         setServoValue(HEAD_TILT, gaze2servo(tilt));
         gazeDirection.headDirection.y = tilt;
         getSupport().firePropertyChange("gazeDirection", null, gazeDirection);
     }
-    final float PAN_LIMIT = .5f, TILT_LIMIT = .5f;
 
     float clip(float in, float limit) {
         if (in < -limit) {
             in = -limit;
-        }else if (in > limit) {
+        } else if (in > limit) {
             in = limit;
         }
         return in;
     }
 
     public void setEyeGazeDirection(float pan, float tilt) throws HardwareInterfaceException, UnsupportedEncodingException, IOException {
-        pan=clip(pan, PAN_LIMIT);
-        tilt=clip(tilt,TILT_LIMIT);
+        pan = clip(pan, PAN_LIMIT);
+        tilt = clip(tilt, TILT_LIMIT);
         setServoValue(EYE_LEFT_PAN, gaze2servo(pan + gazeDirection.vergence));
         gazeDirection.leftEyeGazeDirection.x = pan;
         setServoValue(EYE_RIGHT_PAN, gaze2servo(pan - gazeDirection.vergence));
         gazeDirection.rightEyeGazeDirection.x = pan;
-        setServoValue(EYE_LEFT_TILT, gaze2servo(tilt));
+        setServoValue(EYE_LEFT_TILT, gaze2servo(tilt)); // servo is flipped over
         gazeDirection.leftEyeGazeDirection.y = tilt;
-        setServoValue(EYE_RIGHT_TILT, gaze2servo(tilt));
+        setServoValue(EYE_RIGHT_TILT, gaze2servo(-tilt));
         gazeDirection.rightEyeGazeDirection.y = tilt;
         gazeDirection.gazeDirection.setLocation(pan, tilt);
         getSupport().firePropertyChange("gazeDirection", null, gazeDirection);
@@ -247,7 +302,7 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
     final float VERGENCE_LIMIT = .2f;
 
     public void setVergence(float vergence) throws HardwareInterfaceException, UnsupportedEncodingException, IOException {
-        vergence=clip(vergence,VERGENCE_LIMIT);
+        vergence = clip(vergence, VERGENCE_LIMIT);
         gazeDirection.vergence = vergence;
         getSupport().firePropertyChange("gazeDirection", null, gazeDirection);
         setEyeGazeDirection(gazeDirection.gazeDirection.x, gazeDirection.gazeDirection.y);
