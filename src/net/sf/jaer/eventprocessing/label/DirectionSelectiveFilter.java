@@ -62,7 +62,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     private boolean speedControlEnabled=getPrefs().getBoolean("DirectionSelectiveFilter.speedControlEnabled", true);
     {setPropertyTooltip("speedControlEnabled","enables filtering of excess speeds");}
-    private float speedMixingFactor=getPrefs().getFloat("DirectionSelectiveFilter.speedMixingFactor",.05f);
+    private float speedMixingFactor=getPrefs().getFloat("DirectionSelectiveFilter.speedMixingFactor",.001f);
     {setPropertyTooltip("speedMixingFactor","speeds computed are mixed with old values with this factor");}
     private int excessSpeedRejectFactor=getPrefs().getInt("DirectionSelectiveFilter.excessSpeedRejectFactor",3);
     {setPropertyTooltip("excessSpeedRejectFactor","local speeds this factor higher than average are rejected as non-physical");}
@@ -322,7 +322,9 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
                     if(dt<maxDtThreshold && dt>minDtThreshold){
                         float speed=1e6f*(float)dist/dt;
                         avgSpeed=(1-speedMixingFactor)*avgSpeed+speedMixingFactor*speed;
-                        if(speedControlEnabled && speed>avgSpeed*excessSpeedRejectFactor) continue; // don't store event if speed too high compared to average
+                        if(speedControlEnabled && speed>avgSpeed*excessSpeedRejectFactor) {
+                            continue;
+                        } // don't store event if speed too high compared to average
                         MotionOrientationEvent eout=(MotionOrientationEvent)outItr.nextOutput();
                         eout.copyFrom((OrientationEvent)ein);
                         eout.direction=outType;
@@ -385,7 +387,9 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
                     if(n1>0 || n2>0){
                         speed=1e6f*speed;
                         avgSpeed=(1-speedMixingFactor)*avgSpeed+speedMixingFactor*speed;
-                        if(speedControlEnabled && speed>avgSpeed*excessSpeedRejectFactor) continue; // don't output event if speed too high compared to average
+                        if(speedControlEnabled && speed>avgSpeed*excessSpeedRejectFactor) {
+                            continue;
+                        } // don't output event if speed too high compared to average
                         MotionOrientationEvent eout=(MotionOrientationEvent)outItr.nextOutput();
                         eout.copyFrom((OrientationEvent)ein);
                         eout.direction=outType;
