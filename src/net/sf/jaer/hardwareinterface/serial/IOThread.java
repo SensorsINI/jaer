@@ -97,7 +97,7 @@ public class IOThread extends Thread {
                     pixelP = (c & 0x80) >> 7;
                     inputProcessingIndex = 0;
 
-                    // TOBI: HERE we have the NEW EVENT
+                    // TOBI: HERE we have the NEW EVENT  TODO
                     // processNewEvent(pixelX, pixelY, pixelP);
                     System.out.printf("new Event at %3d/%3d, Polarity %1d\n", pixelX, pixelY, pixelP);
 
