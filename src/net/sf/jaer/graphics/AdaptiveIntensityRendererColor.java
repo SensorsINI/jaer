@@ -77,25 +77,21 @@ import net.sf.jaer.event.*;
         float freq;
         int tt, dt = 0;
 
-        float x1= 0.8f;
-        float x2=3.0f;
-        float x3=2.4f;
+        float x1=1.3f; //0.7RG Scale
+        float x2=4.2f;  //3.2GB Scale
+        float x3=2.2f;  //2.2B Scale
 
-        float freqWhiteB=66.0f;//33.0f;
-        float Cb=1.0f;
-        float transductB=freqWhiteB*Cb/3;
+        float eb=0.7f;
+        float eg=0.7f;
+        float er=1f;
 
-        
+        float Cb=1/14700f;
+        float Cgb=1/4500f;
+        float Crg=1/14100f;
 
-        float freqWhiteGB=45.0f;//20.0f;
-        float Cgb=1.5f;
-        float transductG=(freqWhiteGB*Cgb-3*transductB)/2;
+        float gateing=0.3f;
 
-        
-        float freqWhiteRG=350.0f;//60.0f;
-        float Crg=1.0f;
-        float transductR=freqWhiteRG*Crg-2*transductG;
-        
+     
 
         float adaptAreaNumSpikes = 0;
         
@@ -137,7 +133,24 @@ import net.sf.jaer.event.*;
                 }
             }
         }
-        float[] p = getPixmapArray();
+        float[] p= getPixmapArray();
+        float[] E=new float [22*22*3];
+        float[] Emax=new float [22*22*3];
+        float[] E_aux=new float [22*22*3];
+    
+
+        for (int i=0; i<22*22*3;i++){
+
+           E[i]=0;
+           Emax[i]=0;
+            E_aux[i]=0;
+
+       }
+
+
+
+        
+
         //avgEventRateHz=(alpha*avgEventRateHz)+(1-alpha)*(packet.getEventRateHz()/numPixels);
         try {
             if (packet.getNumCellTypes() < 2) {
@@ -161,42 +174,49 @@ import net.sf.jaer.event.*;
                     switch (e.type) {
                         case 1:// RG
                         {
-                            //freq=350.0f;
-                           //Philipp's Code
-                            //freqMatrix[e.x][e.y][0] = ((freq*Crg - freqMatrix[e.x][e.y][1]*transductG)/(transductG+ transductR));
-                            //p[ind + 0] = freqMatrix[e.x][e.y][0]*GUIscale;
 
-                            p[ind + 0] = freq*x1*GUIscale;
-                            //My code
-                            //p[ind + 0] = ((freq*Crg - p[ind + 1]*transductG)/(transductG+ transductR));
-                           // p[ind + 0] = (a - p[ind + 1])*transductR;
+                            //p[ind + 0] = freq*x1*GUIscale;
+                           
+                            E[ind+0]=(freq*Crg-E[ind+1]*eb)/er;
+                            Emax[ind+0]=Math.max(E[ind+2],E[ind+1]);
+                            Emax[ind+0]=Math.max(Emax[ind+0],E[ind+0]);
 
+                                                       
+                            E_aux[ind+0]=E[ind+0]/Emax[ind+0];
+                            E_aux[ind+0]=(E_aux[ind+0]-gateing)/(1-gateing);
+                            p[ind+0]=GUIscale*Math.max(E[ind+0],0);
+
+                           
                             break;
                         }
                         case 2:// GB
                         {
-                           //freq=45.0f;
-                            //Philipp's Code
-                           //freqMatrix[e.x][e.y][1] = ((freq*Cgb  - freqMatrix[e.x][e.y][2]*transductB)/(transductB+transductG) - freqMatrix[e.x][e.y][0]);
-                          // p[ind + 1] = freqMatrix[e.x][e.y][1]*GUIscale;
-                           p[ind + 1] = (freq*x2-p[ind+0]*x1/x2)*GUIscale;
-                             //My Code
-                           //p[ind + 1] = ((freq*Cgb  - p[ind + 2]*transductB)/(transductB+transductG) - p[ind+0]);
-                           //p[ind + 1] = (a  - p[ind + 2])*transductG;
-                           //p[ind + 1]=p[ind+1]-p[ind+0]/transductG;
+                            
+                                //p[ind + 1] = (freq*x2-0*p[ind+0]*x1/x2)*GUIscale;
+                                
+                                E[ind+1]=(freq*Cgb-E[ind+2]*eb)/eg;
+                                    Emax[ind+1]=Math.max(E[ind+2],E[ind+1]);
+                                    Emax[ind+1]=Math.max(Emax[ind+1],E[ind+0]);
+                                    E_aux[ind+1]=E[ind+1]/Emax[ind+1];
+                                    E_aux[ind+1]=(E_aux[ind+1]-gateing)/(1-gateing);
+                                p[ind+1]=GUIscale*Math.max(E[ind+1],0);
+                               
+                            
                            
                             break;
                         }
                         case 3:// B
                         {
-                           //freq=66.0f;
-                            //Philipp's Code
-                           //freqMatrix[e.x][e.y][2] = (freq*Cb / transductB -freqMatrix[e.x][e.y][1] -freqMatrix[e.x][e.y][0]);
-                           //p[ind + 2] = freqMatrix[e.x][e.y][2]*GUIscale;
-                           p[ind + 2] = (freq*x3-p[ind+0]*x1/x3)*GUIscale;
-                            //My Code
-                           //p[ind + 2] = (freq*Cb / transductB -p[ind+1] -p[ind+0]);
-                           //p[ind + 2] = a * transductB -p[ind+1]/transductB -p[ind+0]/transductB;
+                          
+                           //p[ind + 2] = (freq*x3-p[ind+0]*x1/x3)*GUIscale;
+                           
+                           E[ind+2]=freq*Cb/eb;
+                                Emax[ind+2]=Math.max(E[ind+2],E[ind+1]);
+                                Emax[ind+2]=Math.max(Emax[ind+2],E[ind+0]);
+                                E_aux[ind+2]=E[ind+2]/Emax[ind+2];
+                                E_aux[ind+2]=(E_aux[ind+2]-gateing)/(1-gateing);
+                           p[ind+2]=GUIscale*Math.max(E[ind+2],0);
+                          
                             break;
                         }
                         default:
