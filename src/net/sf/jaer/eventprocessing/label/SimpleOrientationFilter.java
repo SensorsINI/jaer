@@ -583,6 +583,11 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
 
             }
         }
+        final int ORI_SHIFT = 16; // will shift our orientation value this many bits in raw address
+        for (Object o : out) {
+            OrientationEvent e = (OrientationEvent) o;
+            e.address = e.address | (e.orientation << ORI_SHIFT);
+        }
         return out;
     }
 
