@@ -202,6 +202,10 @@ public class ITDBins {
         return ITD;
     }
 
+    /** Returns the ITD in us of peak of histogram
+     * 
+     * @return the ITD in us; can be positive or negative up to masITD.
+     */
     public int getITDMax() {
         ITDConfidence = 0;
         int max = 0;
