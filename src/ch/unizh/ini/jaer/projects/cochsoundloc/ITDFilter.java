@@ -24,6 +24,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.Description;
+import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 
@@ -68,6 +69,10 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private int numOfCochleaChannels = getPrefs().getInt("ITDFilter.numOfCochleaChannels", 32);
     private boolean useCalibration = getPrefs().getBoolean("ITDFilter.useCalibration", false);
     private String calibrationFilePath = getPrefs().get("ITDFilter.calibrationFilePath", null);
+    private boolean beamFormingEnabled=getBoolean("beamFormingEnabled", false);
+    private int beamFormingRangeUs=getInt("beamFormingRangeUs",100);
+    private float beamFormingITDUs=getFloat("beamFormingITDUs",Float.NaN);
+    
     private double[] frequencyWeights;
     private double[] ridgeWeights;
     ITDFrame frame;
@@ -81,7 +86,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     //private int[][] AbsoluteLastTimestamp;
     Iterator iterator;
     private float lastWeight = 1f;
-    private int avgITD;
+    /** filled in with measured best ITD according to selected method (max, median, mean) */
+    private int bestITD; 
     private float avgITDConfidence = 0;
     private float ILD;
     EngineeringFormat fmt = new EngineeringFormat();
@@ -259,6 +265,35 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     }
 
+    /**
+     * Returns the overall best ITD. See {@link #getITDBins()} to access the histogram data and statistics.
+     * Filled in with measured best ITD according to selected method (max, median, mean)
+     * 
+     * @return the avgITD in us
+     * @see #getNumOfBins() 
+     * @see #getMaxITD() 
+     */
+    public int getBestITD() {
+        return bestITD;
+    }
+
+
+    /**
+     * Returns the overall confidence measure of the average ITD.
+     * 
+     * @return the avgITDConfidence
+     */
+    public float getAvgITDConfidence() {
+        return avgITDConfidence;
+    }
+
+    /**
+     * @param avgITDConfidence the avgITDConfidence to set
+     */
+    public void setAvgITDConfidence(float avgITDConfidence) {
+        this.avgITDConfidence = avgITDConfidence;
+    }
+
     public enum EstimationMethod {
 
         useMedian, useMean, useMax
@@ -332,15 +367,17 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         addPropertyToGroup("ITDWeighting", "usePriorSpikeForWeight");
         addPropertyToGroup("ITDWeighting", "maxWeight");
         addPropertyToGroup("ITDWeighting", "maxWeightTime");
+        String bf="Beam Forming";
+        setPropertyTooltip(bf, "beamFormingEnabled","filters out events that are not near the peak ITD");
+        setPropertyTooltip(bf, "beamFormingRangeUs","range of time in us for which events are passed around best ITD");
+        setPropertyTooltip(bf,"beamFormingITDUs","explicit ITD to pass through; set to NaN to pass around peak measured ITD");
+        
         if (chip.getRemoteControl() != null) {
             chip.getRemoteControl().addCommandListener(this, "itdfilter", "Testing remotecontrol of itdfilter.");
         }
     }
 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if (!filterEnabled) {
-            return in;
-        }
         if (connectToPanTiltThread) {
             CommObjForITDFilter commObjIncomming = panTilt.pollBlockingQForITDFilter();
             while (commObjIncomming != null) {
@@ -380,6 +417,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             return in;
         }
 
+        OutputEventIterator outItr=out.outputIterator();
         int nleft = 0, nright = 0;
         for (Object e : in) {
             BinauralCochleaEvent i = (BinauralCochleaEvent) e;
@@ -420,7 +458,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                         } else {
                             nleft++;
                         }
-                        if (java.lang.Math.abs(diff) < maxITD) {
+                        int absdiff=java.lang.Math.abs(diff);
+                        if (absdiff < maxITD) {
+                            
                             lastWeight = 1f;
                             //Compute weight:
                             if (useLaterSpikeForWeight == true) {
@@ -472,6 +512,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                     ITDEventQueueFull = false;
                                 }
                             }
+                            if (isBeamFormingEnabled()) {
+                                // if
+                                int bestITD=Float.isNaN(beamFormingITDUs)?(int)beamFormingITDUs:getBestITD();
+                                if(Math.abs(diff-bestITD)<beamFormingRangeUs){
+                                    BinauralCochleaEvent oe=(BinauralCochleaEvent)outItr.nextOutput();
+                                    oe.copyFrom(i);
+                                }
+                            }
                         } else {
                             break;
                         }
@@ -490,7 +538,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                     if (this.write2FileForEverySpike == true) {
                         if (this.writeAvgITD2File == true && AvgITDFile != null) {
                             refreshITD();
-                            AvgITDFile.write(i.timestamp + "\t" + avgITD + "\t" + avgITDConfidence + "\n");
+                            AvgITDFile.write(i.timestamp + "\t" + bestITD + "\t" + avgITDConfidence + "\n");
                         }
                         if (this.writeBin2File == true && BinFile != null) {
                             refreshITD();
@@ -515,7 +563,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             ILD = (float) (nleft - nright) / (float) (nright + nleft); //Max ILD is 1 (if only one side active)
             if (this.write2FileForEverySpike == false) {
                 if (this.writeAvgITD2File == true && AvgITDFile != null) {
-                    AvgITDFile.write(in.getLastTimestamp() + "\t" + avgITD + "\t" + avgITDConfidence + "\n");
+                    AvgITDFile.write(in.getLastTimestamp() + "\t" + bestITD + "\t" + avgITDConfidence + "\n");
                 }
                 if (this.writeBin2File == true && BinFile != null) {
                     BinFile.write(in.getLastTimestamp() + "\t" + myBins.toString() + "\n");
@@ -525,7 +573,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             log.warning("In filterPacket caught exception " + e);
             e.printStackTrace();
         }
-        return in;
+        return isBeamFormingEnabled()? out:in;
     }
 
     public void refreshITD() {
@@ -557,7 +605,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                         }
                         this.ConfidenceRising = false;
 
-                        avgITD = avgITDtemp;
+                        bestITD = avgITDtemp;
 
                         if (this.saveFrequenciesSeperately) {
                             for (int i = 0; i < 64; i++) {
@@ -587,7 +635,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                 double servopos = ridgeWeights[0] + (myBins.getITDMaxIndex() + 1) * ridgeWeights[1];
                                 filterOutput.setPanOffset((float) servopos * 2f - 1f);
                             } else {
-                                filterOutput.setPanOffset((float) avgITD / (float) this.maxITD);
+                                filterOutput.setPanOffset((float) bestITD / (float) this.maxITD);
                             }
                             filterOutput.setConfidence(avgITDConfidence);
                             panTilt.offerBlockingQ(filterOutput);
@@ -624,6 +672,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         return null;
     }
 
+    @Override
     public void resetFilter() {
         initFilter();
     }
@@ -684,6 +733,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
     }
 
+    @Override
     public void update(Observable o, Object arg) {
         if (arg != null) {
 //            log.info("ITDFilter.update() is called from " + o + " with arg=" + arg);
@@ -1453,7 +1503,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         gl.glColor3f(1, 1, 1);
         gl.glRasterPos3f(0, 0, 0);
         if (showAnnotations == true) {
-            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("avgITD(us)=%s", fmt.format(avgITD)));
+            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("avgITD(us)=%s", fmt.format(bestITD)));
             glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("  ITDConfidence=%f", avgITDConfidence));
             glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("  ILD=%f", ILD));
             if (useLaterSpikeForWeight == true || usePriorSpikeForWeight == true) {
@@ -1462,7 +1512,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         }
         if (display == true && frame != null) {
             //frame.setITD(avgITD);
-            frame.setText(String.format("avgITD(us)=%s   ITDConfidence=%f   ILD=%f", fmt.format(avgITD), avgITDConfidence, ILD));
+            frame.setText(String.format("avgITD(us)=%s   ITDConfidence=%f   ILD=%f", fmt.format(bestITD), avgITDConfidence, ILD));
         }
         gl.glPopMatrix();
     }
@@ -1481,5 +1531,50 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
      */
     public ITDBins getITDBins() {
         return myBins;
+    }
+
+    /**
+     * @return the beamFormingEnabled
+     */
+    public boolean isBeamFormingEnabled() {
+        return beamFormingEnabled;
+    }
+
+    /**
+     * @param beamFormingEnabled the beamFormingEnabled to set
+     */
+    public void setBeamFormingEnabled(boolean beamFormingEnabled) {
+        this.beamFormingEnabled = beamFormingEnabled;
+        putBoolean("beamFormingEnabled", beamFormingEnabled);
+    }
+
+    /**
+     * @return the beamFormingRangeUs
+     */
+    public int getBeamFormingRangeUs() {
+        return beamFormingRangeUs;
+    }
+
+    /**
+     * @param beamFormingRangeUs the beamFormingRangeUs to set
+     */
+    public void setBeamFormingRangeUs(int beamFormingRangeUs) {
+        this.beamFormingRangeUs = beamFormingRangeUs;
+        putFloat("beamFormingRangeUs", beamFormingRangeUs);
+    }
+
+    /**
+     * @return the beamFormingITDUs
+     */
+    public float getBeamFormingITDUs() {
+        return beamFormingITDUs;
+    }
+
+    /**
+     * @param beamFormingITDUs the beamFormingITDUs to set
+     */
+    public void setBeamFormingITDUs(float beamFormingITDUs) {
+        this.beamFormingITDUs = beamFormingITDUs;
+        putFloat("beamFormingITDUs",beamFormingITDUs);
     }
 }
