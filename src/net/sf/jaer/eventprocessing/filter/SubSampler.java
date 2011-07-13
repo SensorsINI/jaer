@@ -28,14 +28,16 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 public class SubSampler extends EventFilter2D {
     
     private int bits;
+    private boolean shiftToCenterEnabled=getBoolean("shiftToCenterEnabled", false);
     short shiftx, shifty;
         
     /** Creates a new instance of SubSampler */
     public SubSampler(AEChip chip) {
         super(chip);
-        setBits(getPrefs().getInt("SubSampler.bits",1));
+        setBits(getInt("bits",1));
         computeShifts();
         setPropertyTooltip("bits","Subsample by this many bits, by masking these off X and Y addreses");
+        setPropertyTooltip("shiftToCenterEnabled","Shifts output addresses to be centered. Disable to leave at lower left corner of scene");
     }
     
     public Object getFilterState() {
@@ -63,7 +65,7 @@ public class SubSampler extends EventFilter2D {
     synchronized public void setBits(int bits) {
         if(bits<0) bits=0; else if(bits>8) bits=8;
         this.bits = bits;
-        getPrefs().putInt("SubSampler.bits",bits);
+        putInt("bits",bits);
         computeShifts();
     }
     
@@ -85,14 +87,31 @@ public class SubSampler extends EventFilter2D {
         if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
         checkOutputPacketEventType(in);
         OutputEventIterator oi=out.outputIterator();
+        int sx=shiftToCenterEnabled?shiftx:0;
+        int sy=shiftToCenterEnabled?shifty:0;
         for(Object obj:in){
             TypedEvent e=(TypedEvent)obj;
             TypedEvent o=(TypedEvent)oi.nextOutput();
             o.copyFrom(e);
-            o.setX((short) ((e.x >>> bits) + shiftx));
-            o.setY((short) ((e.y >>> bits) + shifty));
+            o.setX((short) ((e.x >>> bits) + sx));
+            o.setY((short) ((e.y >>> bits) + sy));
         }
         return out;
+    }
+
+    /**
+     * @return the shiftToCenterEnabled
+     */
+    public boolean isShiftToCenterEnabled() {
+        return shiftToCenterEnabled;
+    }
+
+    /**
+     * @param shiftToCenterEnabled the shiftToCenterEnabled to set
+     */
+    public void setShiftToCenterEnabled(boolean shiftToCenterEnabled) {
+        this.shiftToCenterEnabled = shiftToCenterEnabled;
+        putBoolean("shiftToCenterEnabled", shiftToCenterEnabled);
     }
     
 }
