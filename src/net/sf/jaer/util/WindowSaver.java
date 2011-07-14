@@ -93,7 +93,7 @@ public class WindowSaver implements AWTEventListener {
         String name=frame.getName();
         if(!isPreference(name+".x")) {
             // if the window has not been sized, then don't set its size
-            log.info("no preference saved for "+name+".x");
+//            log.info("no preference saved for "+name+".x");
 //            log.info("no preference saved for "+name+".x, not restoring position or size");
 //            return;
         }
@@ -116,13 +116,13 @@ public class WindowSaver implements AWTEventListener {
 
         if(gs!=null&&gs.length>0) {
             if(gs.length>1){
-                log.info("There are "+gs.length+" GraphicsDevice's found; using first one which is "+gs[0].getIDstring());
+//                log.info("There are "+gs.length+" GraphicsDevice's found; using first one which is "+gs[0].getIDstring());
             }
             GraphicsDevice gd=gs[0];
             GraphicsConfiguration[] gc=gd.getConfigurations();
             if(gc!=null&&gc.length>0) {
                 if(gc.length>1){
-                    log.info("There are "+gc.length+" GraphicsConfiguration's found; using first one which is "+gc[0].toString());
+//                    log.info("There are "+gc.length+" GraphicsConfiguration's found; using first one which is "+gc[0].toString());
                 }
                 Insets insets=Toolkit.getDefaultToolkit().getScreenInsets(gc[0]);
                 lowerInset=insets.bottom;
