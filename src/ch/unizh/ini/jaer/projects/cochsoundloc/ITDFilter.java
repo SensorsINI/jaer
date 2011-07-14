@@ -87,7 +87,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     InetSocketAddress client = null;
     private int UDP_BUFFER_SIZE = 1024;
     private ByteBuffer udpBuffer = ByteBuffer.allocateDirect(UDP_BUFFER_SIZE);
-       private boolean printedFirstUdpMessage=false;
+    private boolean printedFirstUdpMessage = false;
+    long lastUdpMsgTime = 0;
+    int MIN_UPD_PACKET_INTERVAL_MS = 15;
 
 
     
@@ -536,28 +538,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                     ITDEventQueueFull = false;
                                 }
                             }
-                            if (sendITD_UDP_Messages && client != null) {
-                                try {
-                                    udpBuffer.clear();
-                                    udpBuffer.putInt(packetSequenceNumber++);
-                                    udpBuffer.putInt(maxITD);
-                                    float[] bins=getITDBins().getBins();
-                                    for (float f : bins) {
-                                        udpBuffer.putFloat(f);
-                                    }
-                                    if(!printedFirstUdpMessage){
-                                    log.info("sending buf=" + udpBuffer + " to client=" + client);
-                                    printedFirstUdpMessage=true;
-                                    }
-                                    udpBuffer.flip();
-                                    channel.send(udpBuffer, client);
-                                } catch (IOException udpEx) {
-                                    log.warning(udpEx.toString());
-                                    setSendITD_UDP_Messages(false);
-                                }catch(BufferOverflowException boe){
-                                    log.warning(boe.toString()+": decrease number of histogram bins to fit 1024 byte datagrams");
-                                }
-                            }
+ 
                             if (isBeamFormingEnabled()) {
                                 // if
                                 int bestITD = Float.isNaN(beamFormingITDUs) ? (int) beamFormingITDUs : getBestITD();
@@ -618,6 +599,33 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         } catch (Exception e) {
             log.warning("In filterPacket caught exception " + e);
             e.printStackTrace();
+        }
+        
+        // send udp messages
+        long now = System.currentTimeMillis();
+        if ((now - lastUdpMsgTime > MIN_UPD_PACKET_INTERVAL_MS) && sendITD_UDP_Messages && client != null) {
+            lastUdpMsgTime = now;
+            try {
+                udpBuffer.clear();
+                udpBuffer.putInt(packetSequenceNumber++);
+                udpBuffer.putLong(now);
+                udpBuffer.putInt(maxITD);
+                float[] bins = getITDBins().getBins();
+                for (float f : bins) {
+                    udpBuffer.putFloat(f);
+                }
+                if (!printedFirstUdpMessage) {
+                    log.info("sending buf=" + udpBuffer + " to client=" + client);
+                    printedFirstUdpMessage = true;
+                }
+                udpBuffer.flip();
+                channel.send(udpBuffer, client);
+            } catch (IOException udpEx) {
+                log.warning(udpEx.toString());
+                setSendITD_UDP_Messages(false);
+            } catch (BufferOverflowException boe) {
+                log.warning(boe.toString() + ": decrease number of histogram bins to fit 1024 byte datagrams");
+            }
         }
         return isBeamFormingEnabled() ? out : in;
     }
