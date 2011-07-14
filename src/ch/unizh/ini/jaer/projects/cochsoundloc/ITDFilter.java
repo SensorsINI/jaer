@@ -1683,9 +1683,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
         } else {
             this.sendITD_UDP_Messages=sendITD_UDP_Messages;
-            socket.close();
+            if(socket!=null) socket.close();
             try {
-                channel.close();
+                if(channel!=null) channel.close();
             } catch (IOException ex) {
                 log.warning(ex.toString());
             }
