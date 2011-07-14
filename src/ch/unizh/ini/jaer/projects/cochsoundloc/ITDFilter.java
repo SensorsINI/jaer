@@ -20,6 +20,11 @@ import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.EngineeringFormat;
 import java.io.*;
+import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
+import java.nio.BufferOverflowException;
+import java.nio.ByteBuffer;
+import java.nio.channels.DatagramChannel;
 import java.util.concurrent.ArrayBlockingQueue;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
@@ -69,10 +74,24 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private int numOfCochleaChannels = getPrefs().getInt("ITDFilter.numOfCochleaChannels", 32);
     private boolean useCalibration = getPrefs().getBoolean("ITDFilter.useCalibration", false);
     private String calibrationFilePath = getPrefs().get("ITDFilter.calibrationFilePath", null);
-    private boolean beamFormingEnabled=getBoolean("beamFormingEnabled", false);
-    private int beamFormingRangeUs=getInt("beamFormingRangeUs",100);
-    private float beamFormingITDUs=getFloat("beamFormingITDUs",Float.NaN);
+    /// beamforming
+    private boolean beamFormingEnabled = getBoolean("beamFormingEnabled", false);
+    private int beamFormingRangeUs = getInt("beamFormingRangeUs", 100);
+    private float beamFormingITDUs = getFloat("beamFormingITDUs", Float.NaN);
+    // UDP messages
+    private String sendITD_UDP_port = getString("sendITD_UDP_port", "localhost:9999");
+    private boolean sendITD_UDP_Messages = getBoolean("sendITD_UDP_Messages", false);
+    protected DatagramChannel channel = null;
+    protected DatagramSocket socket = null;
+    int packetSequenceNumber = 0;
+    InetSocketAddress client = null;
+    private int UDP_BUFFER_SIZE = 1024;
+    private ByteBuffer udpBuffer = ByteBuffer.allocateDirect(UDP_BUFFER_SIZE);
+       private boolean printedFirstUdpMessage=false;
+
+
     
+    //////////////////////
     private double[] frequencyWeights;
     private double[] ridgeWeights;
     ITDFrame frame;
@@ -87,7 +106,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     Iterator iterator;
     private float lastWeight = 1f;
     /** filled in with measured best ITD according to selected method (max, median, mean) */
-    private int bestITD; 
+    private int bestITD;
     private float avgITDConfidence = 0;
     private float ILD;
     EngineeringFormat fmt = new EngineeringFormat();
@@ -109,9 +128,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private double ConfidenceRecentMin = 1e6;
     private int ConfidenceRecentMinTime = 0;
     private boolean ConfidenceRising = true;
-
+ 
     public String processRemoteControlCommand(RemoteControlCommand command, String input) {
-        String[] tok = input.split("\\s",3);
+        String[] tok = input.split("\\s", 3);
         if (tok.length < 2) {
             return "not enough arguments\n";
         }
@@ -153,7 +172,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             }
             if (tok[1].equals("savebin")) {
                 String filename = tok[2];
-                log.info("save bins to: "+filename);
+                log.info("save bins to: " + filename);
                 if (tok.length < 3) {
                     return "not enough arguments\n";
                 } else {
@@ -177,8 +196,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                     return "writing bins now\n";
                 }
             }
-            if(tok[1].equals("zerotimestamps"))
-            {
+            if (tok[1].equals("zerotimestamps")) {
                 chip.getAeViewer().zeroTimestamps();
                 return "zeroed time\n";
             }
@@ -234,7 +252,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         // Create file
         fstreamBins = new FileWriter(path);
         BinFile = new BufferedWriter(fstreamBins);
-        
+
         if (this.isSaveFrequenciesSeperately()) {
             String titles = "time\tfreq\t";
             for (int i = 0; i < this.numOfBins; i++) {
@@ -276,7 +294,6 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     public int getBestITD() {
         return bestITD;
     }
-
 
     /**
      * Returns the overall confidence measure of the average ITD.
@@ -367,14 +384,21 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         addPropertyToGroup("ITDWeighting", "usePriorSpikeForWeight");
         addPropertyToGroup("ITDWeighting", "maxWeight");
         addPropertyToGroup("ITDWeighting", "maxWeightTime");
-        String bf="Beam Forming";
-        setPropertyTooltip(bf, "beamFormingEnabled","filters out events that are not near the peak ITD");
-        setPropertyTooltip(bf, "beamFormingRangeUs","range of time in us for which events are passed around best ITD");
-        setPropertyTooltip(bf,"beamFormingITDUs","explicit ITD to pass through; set to NaN to pass around peak measured ITD");
-        
+        setPropertyTooltip("sendITDsToOtherThread", "send ITD messages to another thread via an ArrayBlockingQueue available from static method pollITDEvent");
+        String udp = "UDP Messages";
+        setPropertyTooltip(udp, "sendITD_UDP_Messages", "send ITD messages via UDP datagrams to a chosen host and port");
+        setPropertyTooltip(udp, "sendITD_UDP_port", "hostname:port (e.g. localhost:9999) to send UDP ITD histograms to; messages are int32 seq # followed by int32 bin values");
+        String bf = "Beam Forming";
+        setPropertyTooltip(bf, "beamFormingEnabled", "filters out events that are not near the peak ITD");
+        setPropertyTooltip(bf, "beamFormingRangeUs", "range of time in us for which events are passed around best ITD");
+        setPropertyTooltip(bf, "beamFormingITDUs", "explicit ITD to pass through; set to NaN to pass around peak measured ITD");
+
         if (chip.getRemoteControl() != null) {
             chip.getRemoteControl().addCommandListener(this, "itdfilter", "Testing remotecontrol of itdfilter.");
         }
+
+        setSendITD_UDP_port(sendITD_UDP_port);
+        setSendITD_UDP_Messages(sendITD_UDP_Messages); // init port for datagram if used
     }
 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -417,14 +441,14 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             return in;
         }
 
-        OutputEventIterator outItr=out.outputIterator();
+        OutputEventIterator outItr = out.outputIterator();
         int nleft = 0, nright = 0;
         for (Object e : in) {
             BinauralCochleaEvent i = (BinauralCochleaEvent) e;
             int ganglionCellThreshold;
-            if (hasMultipleGanglionCellTypes &&
-                    (this.amsProcessingMethod == AMSprocessingMethod.NeuronsIndividually ||
-                    this.amsProcessingMethod == AMSprocessingMethod.StoreSeparetlyCompareEvery)) {
+            if (hasMultipleGanglionCellTypes
+                    && (this.amsProcessingMethod == AMSprocessingMethod.NeuronsIndividually
+                    || this.amsProcessingMethod == AMSprocessingMethod.StoreSeparetlyCompareEvery)) {
                 CochleaAMSEvent camsevent = ((CochleaAMSEvent) i);
                 ganglionCellThreshold = camsevent.getThreshold();
 //                if (useGanglionCellType != camsevent.getFilterType()) {
@@ -458,9 +482,9 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                         } else {
                             nleft++;
                         }
-                        int absdiff=java.lang.Math.abs(diff);
+                        int absdiff = java.lang.Math.abs(diff);
                         if (absdiff < maxITD) {
-                            
+
                             lastWeight = 1f;
                             //Compute weight:
                             if (useLaterSpikeForWeight == true) {
@@ -512,11 +536,33 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                     ITDEventQueueFull = false;
                                 }
                             }
+                            if (sendITD_UDP_Messages && client != null) {
+                                try {
+                                    udpBuffer.clear();
+                                    udpBuffer.putInt(packetSequenceNumber++);
+                                    udpBuffer.putInt(maxITD);
+                                    float[] bins=getITDBins().getBins();
+                                    for (float f : bins) {
+                                        udpBuffer.putFloat(f);
+                                    }
+                                    if(!printedFirstUdpMessage){
+                                    log.info("sending buf=" + udpBuffer + " to client=" + client);
+                                    printedFirstUdpMessage=true;
+                                    }
+                                    udpBuffer.flip();
+                                    channel.send(udpBuffer, client);
+                                } catch (IOException udpEx) {
+                                    log.warning(udpEx.toString());
+                                    setSendITD_UDP_Messages(false);
+                                }catch(BufferOverflowException boe){
+                                    log.warning(boe.toString()+": decrease number of histogram bins to fit 1024 byte datagrams");
+                                }
+                            }
                             if (isBeamFormingEnabled()) {
                                 // if
-                                int bestITD=Float.isNaN(beamFormingITDUs)?(int)beamFormingITDUs:getBestITD();
-                                if(Math.abs(diff-bestITD)<beamFormingRangeUs){
-                                    BinauralCochleaEvent oe=(BinauralCochleaEvent)outItr.nextOutput();
+                                int bestITD = Float.isNaN(beamFormingITDUs) ? (int) beamFormingITDUs : getBestITD();
+                                if (Math.abs(diff - bestITD) < beamFormingRangeUs) {
+                                    BinauralCochleaEvent oe = (BinauralCochleaEvent) outItr.nextOutput();
                                     oe.copyFrom(i);
                                 }
                             }
@@ -573,7 +619,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             log.warning("In filterPacket caught exception " + e);
             e.printStackTrace();
         }
-        return isBeamFormingEnabled()? out:in;
+        return isBeamFormingEnabled() ? out : in;
     }
 
     public void refreshITD() {
@@ -1575,6 +1621,76 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
      */
     public void setBeamFormingITDUs(float beamFormingITDUs) {
         this.beamFormingITDUs = beamFormingITDUs;
-        putFloat("beamFormingITDUs",beamFormingITDUs);
+        putFloat("beamFormingITDUs", beamFormingITDUs);
+    }
+
+    /**
+     * @return the sendITD_UDP_port
+     */
+    public String getSendITD_UDP_port() {
+        return sendITD_UDP_port;
+    }
+
+    /**
+     * @param sendITD_UDP_port the sendITD_UDP_port to set
+     */
+    public final void setSendITD_UDP_port(String sendITD_UDP_port) { // TODO call in constructor
+        try {
+            String[] parts = sendITD_UDP_port.split(":");
+            if (parts.length != 2) {
+                log.warning(sendITD_UDP_port + " is not a valid hostname:port address");
+                return;
+            }
+            String host = parts[0];
+            try {
+                int port = Integer.parseInt(parts[1]);
+                client = new InetSocketAddress(host, port);
+            } catch (NumberFormatException e) {
+                log.warning(parts[1] + " is not a valid port number in " + sendITD_UDP_port);
+                return;
+            }
+            this.sendITD_UDP_port = sendITD_UDP_port;
+            putString("sendITD_UDP_port", sendITD_UDP_port);
+            log.info("set client to "+client);
+        } catch (Exception e) {
+            log.warning("caught exception " + e.toString());
+        }
+    }
+
+    /**
+     * @return the sendITD_UDP_Messages
+     */
+    public boolean isSendITD_UDP_Messages() {
+        return sendITD_UDP_Messages;
+    }
+
+    /**
+     * @param sendITD_UDP_Messages the sendITD_UDP_Messages to set
+     */
+    public final synchronized void setSendITD_UDP_Messages(boolean sendITD_UDP_Messages) { // TODO call this in constructor to set up socket
+        boolean old = this.sendITD_UDP_Messages;
+        if (sendITD_UDP_Messages) {
+            try {
+                channel = DatagramChannel.open();
+                socket = channel.socket(); // bind to any available port because we will be sending datagrams with included host:port info
+                this.sendITD_UDP_Messages = sendITD_UDP_Messages;
+                putBoolean("sendITD_UDP_Messages", sendITD_UDP_Messages);
+                packetSequenceNumber=0;
+                
+            } catch (IOException ex) {
+                log.warning("couldn't get datagram channel: " + ex.toString());
+            }
+
+        } else {
+            this.sendITD_UDP_Messages=sendITD_UDP_Messages;
+            socket.close();
+            try {
+                channel.close();
+            } catch (IOException ex) {
+                log.warning(ex.toString());
+            }
+        }
+        getSupport().firePropertyChange("sendITD_UDP_Messages", old, this.sendITD_UDP_Messages);
+        printedFirstUdpMessage=false;
     }
 }
