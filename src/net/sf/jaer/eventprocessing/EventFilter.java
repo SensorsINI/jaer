@@ -502,7 +502,7 @@ public abstract class EventFilter extends Observable {
                 Class enclClass = Class.forName(enclClassName);
                 if (EventFilter.class.isAssignableFrom(enclClass)) {
                     prefs = getPrefsForEnclosedFilter(prefs, enclClassName);
-                    log.info("This filter " + this.getClass() + " is enclosed in " + enclClass + " and has new Preferences node=" + prefs);
+//                    log.info("This filter " + this.getClass() + " is enclosed in " + enclClass + " and has new Preferences node=" + prefs);
                 }
             }
         } catch (ClassNotFoundException e) {
