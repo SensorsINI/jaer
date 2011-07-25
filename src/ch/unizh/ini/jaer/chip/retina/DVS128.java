@@ -258,10 +258,15 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                     PolarityEvent e = (PolarityEvent) outItr.nextOutput();
                     e.address=addr;
                     e.timestamp = (timestamps[i]);
+                    
+                    
                     e.type = (byte) (1 - addr & 1);
                     e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
                     e.x = (short) (sxm - ((short) ((addr & XMASK) >>> XSHIFT)));
                     e.y = (short) ((addr & YMASK) >>> YSHIFT);
+                     
+                    
+                    
                 }
 
             }

@@ -23,6 +23,8 @@ import net.sf.jaer.hardwareinterface.usb.silabs.SiLabs_USBIO_C8051F3xxFactory;
 import net.sf.jaer.hardwareinterface.usb.usbaermapper.USBAERatcFactory;
 import net.sf.jaer.hardwareinterface.udp.*;
 
+import net.sf.jaer.hardwareinterface.serial.*;
+
 /**
  * This class builds a list of all available devices and lets you get one of them.
  *It is a singleton: get the instance() and ask it to make an interface for you.
@@ -40,13 +42,14 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
     // these are devices that can be enumerated and opened
     // TODO fix to used scanned classpath as in filter menu or chip classes
     static Class[] factories = {
+        SerialInterfaceFactory.class
         //CypressFX2TmpdiffRetinaFactory.class, 
-        SiLabs_USBIO_C8051F3xxFactory.class,
-        USBIOHardwareInterfaceFactory.class,
-        HardwareInterfaceFactoryLinux.class,
-        USBAERatcFactory.class,
-        UDPInterfaceFactory.class,
-        CLEyeHardwareInterfaceFactory.class
+        //SiLabs_USBIO_C8051F3xxFactory.class,
+        //USBIOHardwareInterfaceFactory.class,
+        //HardwareInterfaceFactoryLinux.class,
+        //USBAERatcFactory.class,
+        //UDPInterfaceFactory.class,
+        //CLEyeHardwareInterfaceFactory.class
     //  CypressFX2MonitorSequencerFactory.class  // this removed because all CypressFX2 devices are found by their common GUID now at the same time
     }; // raphael: added my class so i can still test before having refactored
     private static HardwareInterfaceFactory instance = new HardwareInterfaceFactory();

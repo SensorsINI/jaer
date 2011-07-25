@@ -269,6 +269,7 @@ public class AEChipRenderer extends Chip2DRenderer {
                                 < numEvents; i += skipBy) {
                             BasicEvent e = packet.getEvent(i);
                             int type = e.getType();
+                            //System.out.println("x: " + e.x + "   y:" + e.y);
                             if (e.x == xsel && e.y == ysel) {
                                 playSpike(type);
                             }
