@@ -69,7 +69,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(deviceName);
 
             if (portIdentifier.isCurrentlyOwned()) {
-                System.out.println("Error: Port is currently in use");
+                log.warning("Error: Port "+deviceName+" is currently in use");
             } else {
                 CommPort commPort = portIdentifier.open(this.getClass().getName(), 2000);
 
@@ -397,7 +397,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
                                     try {
                                         len = retina.available();
                            length = retina.read(buffer, 0, len - (len % 4));  
-                           System.out.println(length);
+//                           System.out.println(length);
                                     } catch (IOException e) {
                                         e.printStackTrace();
                                     }

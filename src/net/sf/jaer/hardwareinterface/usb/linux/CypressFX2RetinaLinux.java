@@ -407,15 +407,18 @@ public class CypressFX2RetinaLinux implements AEMonitorInterface, BiasgenHardwar
      * @return true, if successful.
      */
     synchronized public boolean vendorRequest(byte request, short value, short index, byte[] data) {
-        byte bvendor[]=new byte[5];
-        bvendor[0]=request;
-        bvendor[1]=(byte)(((value<<8)>>8) & 0x00ff);
-        bvendor[2]=(byte)(value>>8 & 0x00ff);
-        bvendor[3]=(byte)(((index<<8)>>8) & 0x00ff);
-        bvendor[4]=(byte)(index>>8 & 0x00ff);
-        try{
-        retinaVendor.write(bvendor);
-        }catch(IOException e){e.printStackTrace();}
+        byte bvendor[] = new byte[5+data.length];
+        bvendor[0] = request;
+        bvendor[1] = (byte) (((value << 8) >> 8) & 0x00ff);
+        bvendor[2] = (byte) (value >> 8 & 0x00ff);
+        bvendor[3] = (byte) (((index << 8) >> 8) & 0x00ff);
+        bvendor[4] = (byte) (index >> 8 & 0x00ff);
+        System.arraycopy(data, 0, bvendor, 5, data.length);
+        try {
+            retinaVendor.write(bvendor);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         return true;
 //        byte bmRequestType = VENDOR_DEVICE_OUT_REQUEST;
 //        UsbControlIrp vendorRequestIrp = usbDevice.createUsbControlIrp(bmRequestType, request, value, index);
