@@ -13,8 +13,8 @@ import java.util.logging.Logger;
 public class IOThread extends Thread {
     
     private static Logger log=Logger.getLogger("IOThread");
-
-    private boolean threadRunning;
+     
+    private volatile boolean threadRunning;
     private HWP_UART port = null;
     private boolean echoOutputOnScreen = false;
     private String rs232Input;
@@ -30,14 +30,14 @@ public class IOThread extends Thread {
     }
 
     public void run() {
-
-        while (threadRunning) {
-            try {
+           try {
                 port.setHardwareFlowControl(true);
             } catch (UnsupportedCommOperationException ex) {
                 log.warning(ex.toString());
             }
-            port.purgeInput();
+        while (threadRunning) {
+ 
+//            port.purgeInput();
 
             yield();
 
