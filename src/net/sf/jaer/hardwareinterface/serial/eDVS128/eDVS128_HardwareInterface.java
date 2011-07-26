@@ -33,7 +33,52 @@ import java.io.OutputStream;
 import java.lang.Math.*;
 
 /**
- *
+ * Interface to eDVS128 camera.
+ * 
+ * This camera uses 4Mbaud 8 bits 1 stop no parity with RTS/CTS.
+ * 
+ * The camera returns the following help
+ * <pre>
+ * DVS128 - LPC2106/01 Interface Board, V6.0: Apr 25 2011, 13:09:50
+System Clock: 64MHz / 64 -> 1000ns event time resolution
+Modules: 
+
+Supported Commands:
+
+ E+/-       - enable/disable event sending
+ !Ex        - specify event data format, ??E to list options
+
+ B          - send bias settings to DVS
+ !Bx=y      - set bias register x[0..11] to value y[0..0xFFFFFF]
+ ?Bx        - get bias register x current value
+
+ !R+/-      - transmit event rate on/off
+ 0,1,2      - LED off/on/blinking
+ !S=x       - set baudrate to x
+
+ R          - reset board
+ P          - enter reprogramming mode
+
+ ??         - display help
+
+??E
+ !E0   - 2 bytes per event binary 0yyyyyyy.pxxxxxxx (default)
+ !E1   - 4 bytes per event (as above followed by 16bit timestamp)
+
+ !E10  - 3 bytes per event, 6bit encoded
+ !E11  - 6 bytes per event+timestamp, 6bit encoded 
+ !E12  - 4 bytes per event, 6bit encoded; new-line
+ !E13  - 7 bytes per event+timestamp, 6bit encoded; new-line
+
+ !E20  - 4 bytes per event, hex encoded
+ !E21  - 8 bytes per event+timestamp, hex encoded 
+ !E22  - 5 bytes per event, hex encoded; new-line
+ !E23  - 8 bytes per event+timestamp, hex encoded; new-line
+
+ !E30  - 10 bytes per event, ASCII <1p> <3y> <3x>; new-line
+ !E31  - 10 bytes per event+timestamp, ASCII <1p> <3y> <3x> <5ts>; new-line
+ * </pre>
+ * 
  * @author lou
  */
 public class eDVS128_HardwareInterface implements SerialInterface, HardwareInterface, AEMonitorInterface, BiasgenHardwareInterface {
@@ -532,7 +577,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
                 
                 addresses[eventCounter] = (int)( (x_ & cHighBitMask) >> 7 | ((y_ & cLowerBitsMask) << 8) | ((x_ & cLowerBitsMask) << 1) )& 0x7FFF;
                 //timestamps[eventCounter] = (c_ | (d_ << 8));
-                timestamps[eventCounter] =  ( (c_ << 8)  | d_ );
+                timestamps[eventCounter] =  ( (d_ << 8)  | c_ );
                 eventCounter++;
                 buffer.setNumEvents(eventCounter);
             }
