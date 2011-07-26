@@ -41,17 +41,18 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
     static final Logger log = Logger.getLogger("HardwareInterfaceFactory");
     // these are devices that can be enumerated and opened
     // TODO fix to used scanned classpath as in filter menu or chip classes
-    static Class[] factories = {
-        SerialInterfaceFactory.class
-        //CypressFX2TmpdiffRetinaFactory.class, 
-        //SiLabs_USBIO_C8051F3xxFactory.class,
-        //USBIOHardwareInterfaceFactory.class,
-        //HardwareInterfaceFactoryLinux.class,
-        //USBAERatcFactory.class,
-        //UDPInterfaceFactory.class,
-        //CLEyeHardwareInterfaceFactory.class
-    //  CypressFX2MonitorSequencerFactory.class  // this removed because all CypressFX2 devices are found by their common GUID now at the same time
-    }; // raphael: added my class so i can still test before having refactored
+    
+    /** Factories that can be queried for interfaces. */
+    final public static Class[] factories = {
+        SiLabs_USBIO_C8051F3xxFactory.class,
+        USBIOHardwareInterfaceFactory.class,
+        HardwareInterfaceFactoryLinux.class,
+        USBAERatcFactory.class,
+        UDPInterfaceFactory.class,
+        CLEyeHardwareInterfaceFactory.class,
+        EmbeddedDVSSerialPortChooserFactory.class
+//        EmbeddedDVS128_SerialInterfaceFactory.class,
+    }; 
     private static HardwareInterfaceFactory instance = new HardwareInterfaceFactory();
 
     /** Creates a new instance of HardwareInterfaceFactory, private because this is a singleton factory class */
@@ -85,10 +86,12 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
 //                if(num>0) System.out.println("interface "+inst+" has "+num+" devices available"); // TODO comment
                 for (int j = 0; j < num; j++) {
                     u = inst.getInterface(j); // for each one, construct the HardwareInterface and put it in a list
+                    if(u==null) continue;
                     interfaceList.add(u);
 //                    System.out.println("HardwareInterfaceFactory.buildInterfaceList: added "+u);// TODO comment
                 }
             } catch (NoSuchMethodException e) {
+                log.warning(factories[i] + " has no instance() method but it needs to be a singleton of this form");
                 e.printStackTrace();
             } catch (IllegalAccessException e3) {
                 e3.printStackTrace();

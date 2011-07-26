@@ -6,9 +6,7 @@
  * Created on December 24, 2005, 1:58 PM
  */
 package net.sf.jaer.graphics;
-import java.awt.geom.Point2D.Float;
 import java.net.SocketException;
-import java.text.NumberFormat;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
@@ -49,6 +47,7 @@ import javax.swing.*;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import spread.*;
 import cl.eye.*;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceChooserFactory;
 /**
  * This is the main jAER interface to the user. The main event loop "ViewLoop" is here; see ViewLoop.run(). AEViewer shows AE chip live view and allows for controlling view and recording and playing back events from files and network connections.
 <p>
@@ -1076,12 +1075,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
-    /** builds list of attached hardware interfaces by asking the
-     * hardware interface factory for the list. */
+    /** Builds list of attached hardware interfaces by asking the
+     * hardware interface factories for the interfaces. Populates the Interface menu with these items,
+     and with a "None" item to close and set the chip's HardwareInterface to null.
+     * Various specialized interfaces customize the code below.
+     */
     private synchronized void buildInterfaceMenu (){
-        if ( !isWindows() ){ // TODO not really anymore with linux interface to retinas
-            return;
-        }
+//        if ( !isWindows() ){ // TODO not really anymore with linux interface to retinas
+//            return;
+//        }
 //        System.out.println("AEViewer.buildInterfaceMenu");
         ButtonGroup bg = new ButtonGroup();
         interfaceMenu.removeAll();
@@ -1096,7 +1098,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if ( hw == null ){
                 continue;
             } // in case it disappeared
-            if (CLRetinaHardwareInterface.class.isInstance(hw)) {
+            
+            if (CLRetinaHardwareInterface.class.isInstance(hw)) { // TODO better to make some kind of plugin mechanism to handle these exceptions.
                 int numModes = ((CLRetinaHardwareInterface) hw).numModes;
                 CLCamera.CameraMode currentMode = ((CLRetinaHardwareInterface) hw).getCameraMode();
                 JMenu hwSubMenu = new JMenu(hw.toString());
@@ -1134,8 +1137,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
                 interfaceMenu.add(hwSubMenu);
                 choseOneButton = true;
-            }
-            else if((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip))
+            }else if((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip))
                     || (UDPInterface.class.isInstance(hw) && NetworkChip.class.isInstance(chip))){
                 interfaceButton = new JRadioButtonMenuItem(hw.toString());
                 interfaceButton.putClientProperty("HardwareInterfaceNumber",new Integer(i));
@@ -1158,6 +1160,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                     }
                 });
+                // set the button on for the actual interface of the chip if there is one already
                 if (chip != null) {
                     HardwareInterface chipInterface = chip.getHardwareInterface();
                     //            if (chipInterface != null) {
@@ -1195,10 +1198,52 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             interfaceMenu.add(new JSeparator());
             noneInterfaceButton.setSelected(true);
         }
+        boolean addedSep = false;
+        // make items for HardwareInterfaceChooserFactory factories
+        for (Class c : HardwareInterfaceFactory.factories) {
+            if (HardwareInterfaceChooserFactory.class.isAssignableFrom(c)) {
+                log.log(Level.INFO, "found hardware chooser class {0}", c);
+                if (!addedSep) {
+                    interfaceMenu.add(new JSeparator());
+                    addedSep = true;
+                }
+                try {
+                    Method m = (c.getMethod("instance")); // get singleton instance of factory
+                    final HardwareInterfaceChooserFactory inst = (HardwareInterfaceChooserFactory) m.invoke(c);
+                    JMenuItem mi = new JMenuItem(inst.getGUID());
+                    mi.setToolTipText("Shows a chooser dialog for making this type of HardwareInterface");
+                    interfaceMenu.add(mi);
+                    mi.addActionListener(new ActionListener() {
+
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            JDialog fac = inst.getInterfaceChooser(chip);
+                            ((JDialog) inst.getInterfaceChooser(chip)).setVisible(true);
+                            if (inst.getChosenHardwareInterface() != null) {
+                                HardwareInterface hw = inst.getChosenHardwareInterface();
+                                if (chip.getHardwareInterface() == null || !hw.toString().equals(chip.getHardwareInterface().toString())) {
+                                    // close interface on chip if there is one and it's open
+                                    if (chip.getHardwareInterface() != null && chip.getHardwareInterface().isOpen()) {
+                                        log.info("closing " + chip.getHardwareInterface().toString());
+                                        chip.getHardwareInterface().close();
+                                    }
+                                    log.info("you selected interface " + hw);
+                                    chip.setHardwareInterface(hw);
+                                }
+                            }
+                        }
+                    });
+                } catch (Exception e) {
+                    log.warning(c + " threw Exception when trying to get HardwareInterfaceChooserFactory: " + e.toString());
+                    e.printStackTrace();
+                }
+
+            }
+
+        }
         log.info(sb.toString());
 
-        // TODO add menu items for things that cannot be easily enumerated like serial port devices, e.g. where enumeration is very expensive because
-       // you need to probe each possible com port
+        // TODO add menu item for choosers for things that cannot be easily enumerated like serial port devices, e.g. where enumeration is very expensive because
 
     }
 

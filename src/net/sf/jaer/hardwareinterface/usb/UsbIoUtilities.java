@@ -53,7 +53,7 @@ public class UsbIoUtilities {
                     System.loadLibrary("USBIOJAVA");
                     setLibraryLoaded(true);
                 }
-                log.info("USBIOJAVA is avaiable");
+//                log.info("USBIOJAVA is avaiable");
             }catch(UnsatisfiedLinkError e){
                 log.warning(e.getMessage()+ ": USBIOJAVA libaray not found; either you are not running Windows, the UsbIoJava.jar is not on the classpath, or the native DLL is not on java.library.path");
                 setLibraryLoaded(false);

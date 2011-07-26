@@ -61,7 +61,7 @@ public class CLCamera implements HardwareInterface {
                     System.loadLibrary(DLLNAME);
                     setLibraryLoaded(true);
                 }
-                log.info("CLEyeMulticam available");
+//                log.info("CLEyeMulticam available");
             } catch (UnsatisfiedLinkError e1) {
                 String lp = null;
                 try {

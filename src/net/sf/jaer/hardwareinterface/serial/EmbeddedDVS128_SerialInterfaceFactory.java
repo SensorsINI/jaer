@@ -22,21 +22,22 @@ import java.io.OutputStream;
 
 import net.sf.jaer.eventio.*;
 import net.sf.jaer.hardwareinterface.*;
-import net.sf.jaer.hardwareinterface.serial.eDVS128.eDVS128;
+import net.sf.jaer.hardwareinterface.serial.eDVS128.eDVS128_HardwareInterface;
 
 
 /**
- *
- * @author lou
+ * Manufactures serial port FTDI interfaces to eDVS 128x128 cameras.
+ * 
+ * @author Lie Lou
  */
-public class SerialInterfaceFactory implements HardwareInterfaceFactoryInterface {
+public class EmbeddedDVS128_SerialInterfaceFactory implements HardwareInterfaceFactoryInterface {
     private ArrayList<HardwareInterface> availableInterfaces = new ArrayList<HardwareInterface>();
-    private static SerialInterfaceFactory instance = new SerialInterfaceFactory();
+    private static EmbeddedDVS128_SerialInterfaceFactory instance = new EmbeddedDVS128_SerialInterfaceFactory();
 
-    public static final String DEVICE_FILE="/dev/ttyUSB0";
+    public static final String DEVICE_FILE="/dev/ttyUSB0"; // TODO fix for multiple platforms and ports
 
 
-    private SerialInterfaceFactory() {
+    private EmbeddedDVS128_SerialInterfaceFactory() {
         buildSerialIoList();
     }
 
@@ -56,14 +57,11 @@ public class SerialInterfaceFactory implements HardwareInterfaceFactoryInterface
 
     private void buildSerialIoList() {
         try{    
-            availableInterfaces.add(new eDVS128(DEVICE_FILE));
-        
+            availableInterfaces.add(new eDVS128_HardwareInterface(DEVICE_FILE)); // TODO hardcoded serial port here must allow choice
         }
         catch (Exception e){
             e.printStackTrace();
         }
-
-
     }
 
     @Override

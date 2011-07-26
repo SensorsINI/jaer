@@ -15,7 +15,8 @@ import java.util.Collection;
 
 
 /**
- * Defines the interface a hardware interface factory has to have to be included in the list in HardwareInterfaceFactory.
+ * Defines the interface a hardware interface factory has to have to be 
+ * included in the list in HardwareInterfaceFactory.
  *
  * @author tobi
  */

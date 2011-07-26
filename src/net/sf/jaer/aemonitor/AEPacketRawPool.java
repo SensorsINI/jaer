@@ -57,7 +57,7 @@ public class AEPacketRawPool {
     }
 
     /** allocates AEPacketRaw buffers each with capacity of  */
-    public void allocateMemory() {
+    public final void allocateMemory() {
         buffers = new AEPacketRaw[2];
         for (int i = 0; i < buffers.length; i++) {
             buffers[i] = new AEPacketRaw();

@@ -36,9 +36,10 @@ import java.lang.Math.*;
  *
  * @author lou
  */
-public class eDVS128 implements SerialInterface, HardwareInterface, AEMonitorInterface, BiasgenHardwareInterface {
+public class eDVS128_HardwareInterface implements SerialInterface, HardwareInterface, AEMonitorInterface, BiasgenHardwareInterface {
+    public static final int BAUD_RATE = 4000000;
 
-    protected static Preferences prefs = Preferences.userNodeForPackage(eDVS128.class);
+    protected static Preferences prefs = Preferences.userNodeForPackage(eDVS128_HardwareInterface.class);
     public PropertyChangeSupport support = new PropertyChangeSupport(this);
     protected Logger log = Logger.getLogger("eDVS128");
     protected AEChip chip;
@@ -62,7 +63,7 @@ public class eDVS128 implements SerialInterface, HardwareInterface, AEMonitorInt
 
     //AEUnicastInput input = null;
     //InetSocketAddress client = null;
-    public eDVS128(String deviceName) throws FileNotFoundException {
+    public eDVS128_HardwareInterface(String deviceName) throws FileNotFoundException {
         //this.interfaceNumber = devNumber;
         try {
             CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(deviceName);
@@ -74,7 +75,7 @@ public class eDVS128 implements SerialInterface, HardwareInterface, AEMonitorInt
 
                 if (commPort instanceof SerialPort) {
                     SerialPort serialPort = (SerialPort) commPort;
-                    serialPort.setSerialPortParams(4000000, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
+                    serialPort.setSerialPortParams(BAUD_RATE, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
                     serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_RTSCTS_IN);
                     serialPort.setFlowControlMode(serialPort.FLOWCONTROL_RTSCTS_OUT);
 
@@ -84,7 +85,7 @@ public class eDVS128 implements SerialInterface, HardwareInterface, AEMonitorInt
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.warning("When trying to construct an interface on port "+deviceName+" caught "+e.toString());
         }
 
 
@@ -93,6 +94,8 @@ public class eDVS128 implements SerialInterface, HardwareInterface, AEMonitorInt
     @Override
     public void open() throws HardwareInterfaceException {
 
+        if(retinaVendor==null) throw new HardwareInterfaceException("no serial interface to open");
+               
         if (!isOpen) {
             try {
 
@@ -143,6 +146,7 @@ public class eDVS128 implements SerialInterface, HardwareInterface, AEMonitorInt
 
     @Override
     public void close() {
+        if(retinaVendor==null) return;
         try {
             String s = "E-\n";
             byte[] b = s.getBytes();
@@ -373,9 +377,9 @@ public class eDVS128 implements SerialInterface, HardwareInterface, AEMonitorInt
     public class AEReader extends Thread implements Runnable {
 
         private byte[] buffer = null;
-        eDVS128 monitor;
+        eDVS128_HardwareInterface monitor;
 
-        public AEReader(eDVS128 monitor) {
+        public AEReader(eDVS128_HardwareInterface monitor) {
             this.monitor = monitor;
             /* This is a list of all this interface's endpoints. */
             allocateAEBuffers();
@@ -488,7 +492,7 @@ public class eDVS128 implements SerialInterface, HardwareInterface, AEMonitorInt
         }
 
         synchronized public void resetTimestamps() {
-            log.info(eDVS128.this + ": wrapAdd=" + wrapAdd + ", zeroing it");
+            log.info(eDVS128_HardwareInterface.this + ": wrapAdd=" + wrapAdd + ", zeroing it");
             wrapAdd = WRAP_START;
             timestampsReset = true; // will inform reader thread that timestamps are reset
 

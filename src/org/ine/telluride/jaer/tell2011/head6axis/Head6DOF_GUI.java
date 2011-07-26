@@ -149,7 +149,7 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
         int x = evt.getX();
         float pan = (float) x / ((JPanel)evt.getSource()).getWidth(); // 0-1
         pan=2*pan-1;
-        log.info("computed pan="+pan);
+//        log.info("computed pan="+pan);
         return pan;
 
     }
@@ -159,14 +159,16 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
         int h=((JPanel)evt.getSource()).getHeight();
         float tilt = (float) (h - y) / h;
         tilt=tilt*2-1;
-        log.info("computed y="+y+" tilt="+tilt);
+//        log.info("computed y="+y+" tilt="+tilt);
         return tilt;
     }
-    Point p2 = new Point();
+    private Point p2 = new Point();
 
-    Point gaze2pix(JPanel pan, Point2D.Float gaze) {
+    // converts from gaze to to panel coordinates
+    private Point gaze2pix(JPanel pan, Point2D.Float gaze) {
         int h=pan.getHeight(), w=pan.getWidth();
-        p2.setLocation((gaze.x + 1) / 2 * w, h-((gaze.y + 1) / 2 * h));
+        // (g+1)/2 ranges 0:1
+        p2.setLocation((gaze.x + 1) / 2 * w, h-((gaze.y + 1) / 2 * h)); // y starts from top in AWT, so flip y here
         return p2;
     }
 
@@ -174,7 +176,7 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
     public void paint(Graphics g) {
         final int r = 6;
         super.paint(g);
-        Head6DOF_ServoController.GazeDirection gaze = controller.gazeDirection;
+        Head6DOF_ServoController.GazeDirection gaze = controller.gazeDirection; // current state of all servos in -1:1 coordinates
 
         int h=eyePanel.getHeight();
         Point p = gaze2pix(eyePanel, gaze.gazeDirection);
