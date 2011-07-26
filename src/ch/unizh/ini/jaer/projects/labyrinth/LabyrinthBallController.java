@@ -824,6 +824,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         long timeReachedNextPathPointMs, timeNowMs, timeSinceReachedMs;
         PathPoint currenPathPoint, nextPathPoint = null, previousPathPoint = null;
         float fractionToNextPoint = 0;
+        private int NUM_PATH_POINTS_AHEAD_TO_ACCEPT=3;
 
         public PathNavigator() {
             timeNowMs = System.currentTimeMillis();
@@ -857,7 +858,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 if(previousPathPoint==null){
                     previousPathPoint=currenPathPoint;
                 }
-                
+
                 timeSinceReachedMs = timeNowMs - timeReachedNextPathPointMs;  // at all times that we have a target, compute time since we reached previous point
                 fractionToNextPoint = (float) timeSinceReachedMs / getDwellTimePathPointMs(); // compute fraction of time we allocate to each segment
                 if(fractionToNextPoint>1) fractionToNextPoint=1;
