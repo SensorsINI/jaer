@@ -88,7 +88,9 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
     public PropertyChangeSupport support = new PropertyChangeSupport(this);
     protected Logger log = Logger.getLogger("eDVS128");
     protected AEChip chip;
-    public final short TICK_US = 1;
+    
+    /** Timestamp tick on eDVS in us */
+    public final int TICK_US = 100; // TODO not right name for the divisor
     protected AEPacketRaw lastEventsAcquired = new AEPacketRaw();
     public static final int AE_BUFFER_SIZE = 100000; // should handle 5Meps at 30FPS
     protected int aeBufferSize = prefs.getInt("eDVS128.aeBufferSize", AE_BUFFER_SIZE);
@@ -105,6 +107,9 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
     protected OutputStream retinaVendor;
     public final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE = new PropertyChangeEvent(this, "NewEvents", null, null);
     protected AEPacketRawPool aePacketRawPool = new AEPacketRawPool();
+    private int numWrapEvents=0;
+    final int WRAP=0x10000; // amount of timestamp wrap to add for each overflow of 1 bit timestamps
+    private int lastshortts=0;
 
     //AEUnicastInput input = null;
     //InetSocketAddress client = null;
@@ -289,6 +294,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
     @Override
     synchronized public void resetTimestamps() {
         //TODO call TDS to reset timestamps
+        numWrapEvents=0;
     }
 
     /** returns last events from {@link #acquireAvailableEventsFromDriver}
@@ -437,15 +443,15 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             int offset = 0;
             int length = 0;
             int len = 0;
-  
-            while (running) {    
-                                    try {
-                                        len = retina.available();
-                           length = retina.read(buffer, 0, len - (len % 4));  
+
+            while (running) {
+                try {
+                    len = retina.available();
+                    length = retina.read(buffer, 0, len - (len % 4));
 //                           System.out.println(length);
-                                    } catch (IOException e) {
-                                        e.printStackTrace();
-                                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
 
                 int nDump = 0;
 
@@ -556,8 +562,6 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
 
             AEPacketRaw buffer = aePacketRawPool.writeBuffer();
             int shortts;
-            int NumberOfWrapEvents;
-            NumberOfWrapEvents = 0;
 
             int[] addresses = buffer.getAddresses();
             int[] timestamps = buffer.getTimestamps();
@@ -565,6 +569,9 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             // write the start of the packet
             buffer.lastCaptureIndex = eventCounter;
 
+            boolean debug=false;
+            StringBuilder sb=null;
+            if(debug) sb=new StringBuilder(String.format("%d events: ",bytesSent/4));
             for (int i = 0; i < bytesSent; i += 4) {
                 byte y_ = b[i];
                 byte x_ = b[i + 1];
@@ -577,10 +584,17 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
                 
                 addresses[eventCounter] = (int)( (x_ & cHighBitMask) >> 7 | ((y_ & cLowerBitsMask) << 8) | ((x_ & cLowerBitsMask) << 1) )& 0x7FFF;
                 //timestamps[eventCounter] = (c_ | (d_ << 8));
-                timestamps[eventCounter] =  ( (d_ << 8)  | c_ );
+                
+                shortts=( (d_<< 8)  | c_ );
+                if(lastshortts>=0 && shortts<0) numWrapEvents++;
+                timestamps[eventCounter] =  (WRAP*numWrapEvents+(shortts+32768))/TICK_US; 
+                lastshortts=shortts;
+                
+                if(debug) sb.append(String.format("%d ",timestamps[eventCounter]));
                 eventCounter++;
-                buffer.setNumEvents(eventCounter);
-            }
+             }
+            if(debug) log.info(sb.toString());
+               buffer.setNumEvents(eventCounter);
 
             // write capture size
             buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
