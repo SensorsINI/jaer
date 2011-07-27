@@ -91,7 +91,7 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         super.filterPacket(in);  // run cluster tracker
-        update(in.getLastTimestamp()); // compute gryo parameters
+        if(!in.isEmpty()) update(in.getLastTimestamp()); // compute gryo parameters
         return in;  // return input packet
     }
 
