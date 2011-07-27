@@ -105,7 +105,8 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
     public final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE = new PropertyChangeEvent(this, "NewEvents", null, null);
     protected AEPacketRawPool aePacketRawPool = new AEPacketRawPool();
     private int lastshortts = 0;
-    private final int NUM_BIASES=12; // number of biases, to renumber biases for bias command
+    private final int NUM_BIASES = 12; // number of biases, to renumber biases for bias command
+    private boolean DEBUG = false;
 
     //AEUnicastInput input = null;
     //InetSocketAddress client = null;
@@ -448,7 +449,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             int v = p.getBitValue();
             int n = NUM_BIASES-1-p.getShiftRegisterNumber(); // eDVS firmware numbers in reverse order from DVS firmware, we want shift register 0 to become 11 on the eDVS
             String s = String.format("!B%d=%d\n", n, v); // LPC210 has 16-byte serial buffer, hopefully fits
-             log.info("sending command "+s+" for pot "+p+" at bias position "+n);
+            if(DEBUG) log.info("sending command "+s+" for pot "+p+" at bias position "+n);
            // note that eDVS must have rev1 firmware for BF command to work.
             byte[] b = s.getBytes();
             if(b.length>16) log.warning("sending "+b.length+" bytes, might not fit in eDVS LPC2016 16-byte buffer");
@@ -613,9 +614,8 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             // write the start of the packet
             buffer.lastCaptureIndex = eventCounter;
 
-            boolean debug = false;
             StringBuilder sb = null;
-            if (debug) {
+            if (DEBUG) {
                 sb = new StringBuilder(String.format("%d events: Timestamp deltas are ", bytesSent / 4));
             }
             for (int i = 0; i < bytesSent; i += 4) {
@@ -638,23 +638,23 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
                 addresses[eventCounter] = (int) ((x_ & cHighBitMask) >> 7 | ((y_ & cLowerBitsMask) << 8) | ((x_ & cLowerBitsMask) << 1)) & 0x7FFF;
                 //timestamps[eventCounter] = (c_ | (d_ << 8));
 
-                shortts = ((0xffff & (d_ << 8)) | c_);  // should be unsigned since c_ and d_ are unsigned
+                shortts = ((0xffff & (d_ << 8)) + c_);  // should be unsigned since c_ and d_ are unsigned
                 if (lastshortts > shortts) { // timetamp wrapped
                     wrapAdd+=WRAP;
                     long thisWrapTime=System.nanoTime();
                     
-                    if(debug) log.info("This timestamp was less than last one by "+(shortts-lastshortts)+" and system deltaT="+(thisWrapTime-lastWrapTime)/1000+"us, wrapAdd="+(wrapAdd/WRAP)+" wraps");
+                    if(DEBUG) log.info("This timestamp was less than last one by "+(shortts-lastshortts)+" and system deltaT="+(thisWrapTime-lastWrapTime)/1000+"us, wrapAdd="+(wrapAdd/WRAP)+" wraps");
                     lastWrapTime=thisWrapTime;
                 }
                 timestamps[eventCounter] = (wrapAdd + shortts) * TICK_US;
-               if (debug) {
+               if (DEBUG) {
                     sb.append(String.format("%d ", shortts-lastshortts));
                 }
                lastshortts = shortts;
 
                   eventCounter++;
             }
-            if (debug) {
+            if (DEBUG) {
                 log.info(sb.toString());
             }
             buffer.setNumEvents(eventCounter);
