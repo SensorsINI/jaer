@@ -7,6 +7,7 @@ package net.sf.jaer.hardwareinterface.serial.eDVS128;
 import java.io.*;
 import java.beans.*;
 import java.util.Observable;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.*;
 
@@ -86,8 +87,8 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
     public PropertyChangeSupport support = new PropertyChangeSupport(this);
     protected Logger log = Logger.getLogger("eDVS128");
     protected AEChip chip;
-    /** Timestamp tick on eDVS in us - this is default value */
-    public final int TICK_US = 1; 
+    /** Amount by which we need to divide the received timestamp values to get us timestamps. */
+    public final int TICK_DIVIDER = 1; 
     protected AEPacketRaw lastEventsAcquired = new AEPacketRaw();
     public static final int AE_BUFFER_SIZE = 100000; // should handle 5Meps at 30FPS
     protected int aeBufferSize = prefs.getInt("eDVS128.aeBufferSize", AE_BUFFER_SIZE);
@@ -239,7 +240,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
 
     @Override
     final public int getTimestampTickUs() {
-        return TICK_US;
+        return 1;
     }
     private int estimatedEventRate = 0;
 
@@ -490,6 +491,14 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             while (running) {
                 try {
                     len = retina.available();
+                    if(len==0){
+                        try {
+                            Thread.sleep(10);
+                        } catch (InterruptedException ex) {
+                            log.warning("sleep interrupted while waiting events");
+                        }
+                        continue;
+                    }
                     length = retina.read(buffer, 0, len - (len % 4));
 //                           System.out.println(length);
                 } catch (IOException e) {
@@ -575,9 +584,6 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
 
         }
 
-        synchronized private void submit(int BufNumber) {
-        }
-
         /**
          * Stop/abort listening for data events.
          */
@@ -603,7 +609,6 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
 
     protected void translateEvents_code(byte[] b, int bytesSent) {
         synchronized (aePacketRawPool) {
-            eventCounter = 0;
 
             AEPacketRaw buffer = aePacketRawPool.writeBuffer();
             int shortts;
@@ -613,6 +618,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
 
             // write the start of the packet
             buffer.lastCaptureIndex = eventCounter;
+//            log.info("entering translateEvents_code with "+eventCounter+" events");
 
             StringBuilder sb = null;
             if (DEBUG) {
@@ -635,10 +641,14 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
 //                     System.out.println("Data not aligned!");
 //                }
 
+                if(eventCounter>=buffer.getCapacity()){
+                    buffer.overrunOccuredFlag=true;
+                    continue;
+                }
                 addresses[eventCounter] = (int) ((x_ & cHighBitMask) >> 7 | ((y_ & cLowerBitsMask) << 8) | ((x_ & cLowerBitsMask) << 1)) & 0x7FFF;
                 //timestamps[eventCounter] = (c_ | (d_ << 8));
 
-                shortts = ((0xffff & (d_ << 8)) + c_);  // should be unsigned since c_ and d_ are unsigned
+                shortts = ((c_ << 8) + d_);  // should be unsigned since c_ and d_ are unsigned, timestamp is sent big endian, MSB first at index 3
                 if (lastshortts > shortts) { // timetamp wrapped
                     wrapAdd+=WRAP;
                     long thisWrapTime=System.nanoTime();
@@ -646,7 +656,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
                     if(DEBUG) log.info("This timestamp was less than last one by "+(shortts-lastshortts)+" and system deltaT="+(thisWrapTime-lastWrapTime)/1000+"us, wrapAdd="+(wrapAdd/WRAP)+" wraps");
                     lastWrapTime=thisWrapTime;
                 }
-                timestamps[eventCounter] = (wrapAdd + shortts) * TICK_US;
+                timestamps[eventCounter] = (wrapAdd + shortts) / TICK_DIVIDER;
                if (DEBUG) {
                     sb.append(String.format("%d ", shortts-lastshortts));
                 }
@@ -671,6 +681,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
         }
     }
 
+    /** Double buffer for writing and reading events. */
     private class AEPacketRawPool {
 
         int capacity;
@@ -683,6 +694,9 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             reset();
         }
 
+        /** Swaps read and write buffers in preparation for reading last captured bufffer of events.
+         * 
+         */
         synchronized final void swap() {
             lastBufferReference = buffers[readBuffer];
             if (readBuffer == 0) {
@@ -694,15 +708,19 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             }
             writeBuffer().clear();
             writeBuffer().overrunOccuredFlag = false; // mark new write buffer clean, no overrun happened yet. writer sets this if it happens
-
+//            log.info("swapped buffers - new read buffer has "+readBuffer().getNumEvents()+" events");
         }
 
-        /** @return buffer to read from */
+        /** Returns the current read buffer.
+         * @return buffer to read from */
         synchronized final AEPacketRaw readBuffer() {
             return buffers[readBuffer];
         }
 
-        /** @return buffer to write to */
+        /** Returns the current writing buffer. Does not swap buffers.
+         * @return buffer to write to 
+         @see #swap
+         */
         synchronized final AEPacketRaw writeBuffer() {
             return buffers[writeBuffer];
         }
