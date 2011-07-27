@@ -5,32 +5,30 @@
 package net.sf.jaer.hardwareinterface.serial.eDVS128;
 
 import java.io.*;
-import java.net.*;
 import java.beans.*;
-import java.util.Map;
-import java.util.logging.Level;
+import java.util.Observable;
 import java.util.logging.Logger;
 import java.util.prefs.*;
-import java.nio.channels.DatagramChannel;
 
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.chip.*;
-import net.sf.jaer.eventio.*;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.hardwareinterface.serial.*;
-import ch.unizh.ini.jaer.projects.einsteintunnel.multicamera.*;
 
 import gnu.io.CommPort;
 import gnu.io.CommPortIdentifier;
 import gnu.io.SerialPort;
 
-import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
 import java.lang.Math.*;
+import java.util.ArrayList;
+import java.util.Observer;
+
+import ch.unizh.ini.jaer.chip.retina.DVS128;
 
 /**
  * Interface to eDVS128 camera.
@@ -45,52 +43,51 @@ Modules:
 
 Supported Commands:
 
- E+/-       - enable/disable event sending
- !Ex        - specify event data format, ??E to list options
+E+/-       - enable/disable event sending
+!Ex        - specify event data format, ??E to list options
 
- B          - send bias settings to DVS
- !Bx=y      - set bias register x[0..11] to value y[0..0xFFFFFF]
- ?Bx        - get bias register x current value
+B          - send bias settings to DVS
+!Bx=y      - set bias register x[0..11] to value y[0..0xFFFFFF]
+?Bx        - get bias register x current value
 
- !R+/-      - transmit event rate on/off
- 0,1,2      - LED off/on/blinking
- !S=x       - set baudrate to x
+!R+/-      - transmit event rate on/off
+0,1,2      - LED off/on/blinking
+!S=x       - set baudrate to x
 
- R          - reset board
- P          - enter reprogramming mode
+R          - reset board
+P          - enter reprogramming mode
 
- ??         - display help
+??         - display help
 
 ??E
- !E0   - 2 bytes per event binary 0yyyyyyy.pxxxxxxx (default)
- !E1   - 4 bytes per event (as above followed by 16bit timestamp)
+!E0   - 2 bytes per event binary 0yyyyyyy.pxxxxxxx (default)
+!E1   - 4 bytes per event (as above followed by 16bit timestamp)
 
- !E10  - 3 bytes per event, 6bit encoded
- !E11  - 6 bytes per event+timestamp, 6bit encoded 
- !E12  - 4 bytes per event, 6bit encoded; new-line
- !E13  - 7 bytes per event+timestamp, 6bit encoded; new-line
+!E10  - 3 bytes per event, 6bit encoded
+!E11  - 6 bytes per event+timestamp, 6bit encoded 
+!E12  - 4 bytes per event, 6bit encoded; new-line
+!E13  - 7 bytes per event+timestamp, 6bit encoded; new-line
 
- !E20  - 4 bytes per event, hex encoded
- !E21  - 8 bytes per event+timestamp, hex encoded 
- !E22  - 5 bytes per event, hex encoded; new-line
- !E23  - 8 bytes per event+timestamp, hex encoded; new-line
+!E20  - 4 bytes per event, hex encoded
+!E21  - 8 bytes per event+timestamp, hex encoded 
+!E22  - 5 bytes per event, hex encoded; new-line
+!E23  - 8 bytes per event+timestamp, hex encoded; new-line
 
- !E30  - 10 bytes per event, ASCII <1p> <3y> <3x>; new-line
- !E31  - 10 bytes per event+timestamp, ASCII <1p> <3y> <3x> <5ts>; new-line
+!E30  - 10 bytes per event, ASCII <1p> <3y> <3x>; new-line
+!E31  - 10 bytes per event+timestamp, ASCII <1p> <3y> <3x> <5ts>; new-line
  * </pre>
  * 
  * @author lou
  */
-public class eDVS128_HardwareInterface implements SerialInterface, HardwareInterface, AEMonitorInterface, BiasgenHardwareInterface {
-    public static final int BAUD_RATE = 4000000;
+public class eDVS128_HardwareInterface implements SerialInterface, HardwareInterface, AEMonitorInterface, BiasgenHardwareInterface, Observer {
 
+    public static final int BAUD_RATE = 4000000;
     protected static Preferences prefs = Preferences.userNodeForPackage(eDVS128_HardwareInterface.class);
     public PropertyChangeSupport support = new PropertyChangeSupport(this);
     protected Logger log = Logger.getLogger("eDVS128");
     protected AEChip chip;
-    
-    /** Timestamp tick on eDVS in us */
-    public final int TICK_US = 100; // TODO not right name for the divisor
+    /** Timestamp tick on eDVS in us - this is default value */
+    public final int TICK_US = 1; 
     protected AEPacketRaw lastEventsAcquired = new AEPacketRaw();
     public static final int AE_BUFFER_SIZE = 100000; // should handle 5Meps at 30FPS
     protected int aeBufferSize = prefs.getInt("eDVS128.aeBufferSize", AE_BUFFER_SIZE);
@@ -107,9 +104,8 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
     protected OutputStream retinaVendor;
     public final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE = new PropertyChangeEvent(this, "NewEvents", null, null);
     protected AEPacketRawPool aePacketRawPool = new AEPacketRawPool();
-    private int numWrapEvents=0;
-    final int WRAP=0x10000; // amount of timestamp wrap to add for each overflow of 1 bit timestamps
-    private int lastshortts=0;
+    private int lastshortts = 0;
+    private final int NUM_BIASES=12; // number of biases, to renumber biases for bias command
 
     //AEUnicastInput input = null;
     //InetSocketAddress client = null;
@@ -119,7 +115,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(deviceName);
 
             if (portIdentifier.isCurrentlyOwned()) {
-                log.warning("Error: Port "+deviceName+" is currently in use");
+                log.warning("Error: Port " + deviceName + " is currently in use");
             } else {
                 CommPort commPort = portIdentifier.open(this.getClass().getName(), 2000);
 
@@ -135,7 +131,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
                 }
             }
         } catch (Exception e) {
-            log.warning("When trying to construct an interface on port "+deviceName+" caught "+e.toString());
+            log.warning("When trying to construct an interface on port " + deviceName + " caught " + e.toString());
         }
 
 
@@ -144,8 +140,10 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
     @Override
     public void open() throws HardwareInterfaceException {
 
-        if(retinaVendor==null) throw new HardwareInterfaceException("no serial interface to open");
-               
+        if (retinaVendor == null) {
+            throw new HardwareInterfaceException("no serial interface to open");
+        }
+
         if (!isOpen) {
             try {
 
@@ -196,7 +194,9 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
 
     @Override
     public void close() {
-        if(retinaVendor==null) return;
+        if (retinaVendor == null) {
+            return;
+        }
         try {
             String s = "E-\n";
             byte[] b = s.getBytes();
@@ -216,10 +216,15 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
     @Override
     public void setChip(AEChip chip) {
         this.chip = chip;
-        //host = "localhost";
-        //port = STREAM_PORT;
-        //host = chip.getPrefs().get("ATIS304.host","172.25.48.35"); // "localhost"
-        //port = chip.getPrefs().getInt("controlPort",CONTROL_PORT);
+        if(chip==null) return;
+       if (!addedBiasListeners && chip instanceof DVS128) {
+            addedBiasListeners = true;
+            DVS128 dvs128=(DVS128)chip;
+            ArrayList<Pot> pots = dvs128.getBiasgen().getPotArray().getPots();
+            for (Pot p : pots) {
+                p.addObserver(this); // TODO first send won't work
+            }
+        }
     }
 
     @Override
@@ -289,12 +294,12 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
         return overrunOccuredFlag;
     }
 
-    /** Resets the timestamp unwrap value, resets the USBIO pipe, and resets the AEPacketRawPool.
+    /** Resets the timestamp unwrap value, and resets the AEPacketRawPool.
      */
     @Override
     synchronized public void resetTimestamps() {
-        //TODO call TDS to reset timestamps
-        numWrapEvents=0;
+        wrapAdd=0; //TODO call TDS to reset timestamps
+        aePacketRawPool.reset();
     }
 
     /** returns last events from {@link #acquireAvailableEventsFromDriver}
@@ -369,9 +374,11 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
     public void setPowerDown(boolean powerDown) {
         log.warning("Power down not supported by eDVS128 devices.");
     }
+    private boolean addedBiasListeners = false;
 
     @Override
     public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
+        // comes here when bias values should be sent, but we don't know which one should be sent from this call.
     }
 
     @Override
@@ -381,7 +388,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
 
     @Override
     public byte[] formatConfigurationBytes(Biasgen biasgen) {
-        throw new UnsupportedOperationException("Not supported yet.");// TODO use this to send all biases at once?
+        throw new UnsupportedOperationException("Not supported yet.");// TODO use this to send all biases at once?  yes, this is how the on-chip bias generator works
     }
 
     @Override
@@ -389,7 +396,8 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
         return "Serial: eDVS128";
     }
     protected boolean running = true;
-    final int WRAP_START = 0; //(int)(0xFFFFFFFFL&(2147483648L-0x400000L)); // set high to test big wrap 1<<30;
+     final int WRAP = 0x10000; // amount of timestamp wrap to add for each overflow of 1 bit timestamps
+   final int WRAP_START = 0; //(int)(0xFFFFFFFFL&(2147483648L-0x400000L)); // set high to test big wrap 1<<30;
     volatile int wrapAdd = WRAP_START; //0;
     protected AEReader aeReader = null;
 
@@ -423,8 +431,31 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
     synchronized public void releaseInterface() {
     }
 
-     
-    
+    /** Called when notifyObservers is called in Observable we are watching, e.g. biasgen */
+    @Override
+    synchronized public void update(Observable o, Object arg) {
+
+        if (o instanceof IPot) {
+            if (retinaVendor == null) {
+                log.warning("no connection; null serial device");
+                return;
+            }
+            IPot p = (IPot) o;
+            int v = p.getBitValue();
+            int n = NUM_BIASES-1-p.getShiftRegisterNumber(); // eDVS firmware numbers in reverse order from DVS firmware, we want shift register 0 to become 11 on the eDVS
+            log.info("sending "+p+" at shift register position "+n);
+            String s = String.format("!B%d=%d\nBF\n", n, v); // LPC210 has 16-byte serial buffer, hopefully fits
+            // note that eDVS must have rev1 firmware for BF command to work.
+            byte[] b = s.getBytes();
+            if(b.length>16) log.warning("sending "+b.length+" bytes, might not fit in eDVS LPC2016 16-byte buffer");
+            try {
+                retinaVendor.write(b, 0, b.length);
+            } catch (IOException ex) {
+                log.warning(ex.toString());
+            }
+        }
+    }
+
     public class AEReader extends Thread implements Runnable {
 
         private byte[] buffer = null;
@@ -435,7 +466,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             /* This is a list of all this interface's endpoints. */
             allocateAEBuffers();
 
-            buffer = new byte[8192*4];//UsbUtil.unsignedInt(usbPipe.getUsbEndpoint().getUsbEndpointDescriptor().wMaxPacketSize())];
+            buffer = new byte[8192 * 4];//UsbUtil.unsignedInt(usbPipe.getUsbEndpoint().getUsbEndpointDescriptor().wMaxPacketSize())];
         }
 
         public void run() {
@@ -506,7 +537,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
                             try {
                                 while (length1 != nDump) {
                                     //len = retina.read(buffer, length1, nDump - length1);
-                                    len1 = retina.skip(nDump-length1);
+                                    len1 = retina.skip(nDump - length1);
                                     length1 = length1 + len1;
                                 }
                             } catch (IOException e) {
@@ -555,6 +586,8 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
     private int pixelX, pixelY, pixelP;
     private String specialData;
     private int bCali = 1;
+    
+    private long lastWrapTime=0;
 
     protected void translateEvents_code(byte[] b, int bytesSent) {
         synchronized (aePacketRawPool) {
@@ -569,32 +602,51 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             // write the start of the packet
             buffer.lastCaptureIndex = eventCounter;
 
-            boolean debug=false;
-            StringBuilder sb=null;
-            if(debug) sb=new StringBuilder(String.format("%d events: ",bytesSent/4));
+            boolean debug = false;
+            StringBuilder sb = null;
+            if (debug) {
+                sb = new StringBuilder(String.format("%d events: Timestamp deltas are ", bytesSent / 4));
+            }
             for (int i = 0; i < bytesSent; i += 4) {
-                byte y_ = b[i];
-                byte x_ = b[i + 1];
-                byte c_ = b[i + 2];
-                byte d_ = b[i + 3];
+                /* event polarity is encoded in the msb of the second byte. i.e.
+                        Byte0, bit 7:         always zero
+                        Byte0, bits 6-0:   event address y
+                        Byte1, bit 7:         event polarity
+                        Byte1, bits 6-0:   event address x
+                        Bytes2+3:             16 bit timestamp, MSB first
+                 */
+                int y_ = (0xff & b[i]); // & with 0xff to prevent sign bit from extending to int (treat byte as unsigned)
+                int x_ = (0xff &  b[i + 1]);
+                int c_ = (0xff &  b[i + 2]);
+                int d_ = (0xff &  b[i + 3]);
 
 //                if ( (y_ & 0x80) != 0){
 //                     System.out.println("Data not aligned!");
 //                }
-                
-                addresses[eventCounter] = (int)( (x_ & cHighBitMask) >> 7 | ((y_ & cLowerBitsMask) << 8) | ((x_ & cLowerBitsMask) << 1) )& 0x7FFF;
+
+                addresses[eventCounter] = (int) ((x_ & cHighBitMask) >> 7 | ((y_ & cLowerBitsMask) << 8) | ((x_ & cLowerBitsMask) << 1)) & 0x7FFF;
                 //timestamps[eventCounter] = (c_ | (d_ << 8));
-                
-                shortts=( (d_<< 8)  | c_ );
-                if(lastshortts>=0 && shortts<0) numWrapEvents++;
-                timestamps[eventCounter] =  (WRAP*numWrapEvents+(shortts+32768))/TICK_US; 
-                lastshortts=shortts;
-                
-                if(debug) sb.append(String.format("%d ",timestamps[eventCounter]));
-                eventCounter++;
-             }
-            if(debug) log.info(sb.toString());
-               buffer.setNumEvents(eventCounter);
+
+                shortts = ((0xffff & (d_ << 8)) | c_);  // should be unsigned since c_ and d_ are unsigned
+                if (lastshortts > shortts) { // timetamp wrapped
+                    wrapAdd+=WRAP;
+                    long thisWrapTime=System.nanoTime();
+                    
+                    log.info("This timestamp was less than last one by "+(shortts-lastshortts)+" and system deltaT="+(thisWrapTime-lastWrapTime)/1000+"us, wrapAdd="+(wrapAdd/WRAP)+" wraps");
+                    lastWrapTime=thisWrapTime;
+                }
+                timestamps[eventCounter] = (wrapAdd + shortts) * TICK_US;
+               if (debug) {
+                    sb.append(String.format("%d ", shortts-lastshortts));
+                }
+               lastshortts = shortts;
+
+                  eventCounter++;
+            }
+            if (debug) {
+                log.info(sb.toString());
+            }
+            buffer.setNumEvents(eventCounter);
 
             // write capture size
             buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
