@@ -132,6 +132,10 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             }
         } catch (Exception e) {
             log.warning("When trying to construct an interface on port " + deviceName + " caught " + e.toString());
+             throw new FileNotFoundException("Port "+deviceName+" already owned by another process?");
+       } catch(Error er){
+            log.warning("Caught error "+er.toString()+"; this usually means port is owned by another process");
+            throw new FileNotFoundException("Port "+deviceName+" already owned by another process?");
         }
 
 
@@ -443,9 +447,9 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             IPot p = (IPot) o;
             int v = p.getBitValue();
             int n = NUM_BIASES-1-p.getShiftRegisterNumber(); // eDVS firmware numbers in reverse order from DVS firmware, we want shift register 0 to become 11 on the eDVS
-            log.info("sending "+p+" at shift register position "+n);
-            String s = String.format("!B%d=%d\nBF\n", n, v); // LPC210 has 16-byte serial buffer, hopefully fits
-            // note that eDVS must have rev1 firmware for BF command to work.
+            String s = String.format("!B%d=%d\n", n, v); // LPC210 has 16-byte serial buffer, hopefully fits
+             log.info("sending command "+s+" for pot "+p+" at bias position "+n);
+           // note that eDVS must have rev1 firmware for BF command to work.
             byte[] b = s.getBytes();
             if(b.length>16) log.warning("sending "+b.length+" bytes, might not fit in eDVS LPC2016 16-byte buffer");
             try {
@@ -453,7 +457,14 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             } catch (IOException ex) {
                 log.warning(ex.toString());
             }
-        }
+            s="!BF\n";
+            b=s.getBytes();
+            try {
+                retinaVendor.write(b, 0, b.length);
+            } catch (IOException ex) {
+                log.warning(ex.toString());
+            }
+       }
     }
 
     public class AEReader extends Thread implements Runnable {
@@ -632,7 +643,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
                     wrapAdd+=WRAP;
                     long thisWrapTime=System.nanoTime();
                     
-                    log.info("This timestamp was less than last one by "+(shortts-lastshortts)+" and system deltaT="+(thisWrapTime-lastWrapTime)/1000+"us, wrapAdd="+(wrapAdd/WRAP)+" wraps");
+                    if(debug) log.info("This timestamp was less than last one by "+(shortts-lastshortts)+" and system deltaT="+(thisWrapTime-lastWrapTime)/1000+"us, wrapAdd="+(wrapAdd/WRAP)+" wraps");
                     lastWrapTime=thisWrapTime;
                 }
                 timestamps[eventCounter] = (wrapAdd + shortts) * TICK_US;
