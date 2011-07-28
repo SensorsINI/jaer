@@ -507,7 +507,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
 
                 int nDump = 0;
 
-                if (len > 3) {
+                if (len > 3) { // TODO what if len<=3?  e.g. for part of an event that was sent
 //                    try {
 //                        length = retina.read(buffer, 0, len - (len % 4));
 //                    } catch (IOException e) {
