@@ -51,7 +51,6 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
         UDPInterfaceFactory.class,
         CLEyeHardwareInterfaceFactory.class,
         EmbeddedDVSSerialPortChooserFactory.class
-//        EmbeddedDVS128_SerialInterfaceFactory.class,
     }; 
     private static HardwareInterfaceFactory instance = new HardwareInterfaceFactory();
 

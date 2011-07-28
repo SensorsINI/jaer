@@ -282,6 +282,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
      */
     @Override
     public void setHardwareInterface(final HardwareInterface hardwareInterface) {
+        super.setHardwareInterface(hardwareInterface);
         this.hardwareInterface = hardwareInterface;
         try {
             if (getBiasgen() == null) {

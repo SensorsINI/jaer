@@ -10,10 +10,13 @@
  */
 package net.sf.jaer.hardwareinterface.serial;
 
+import gnu.io.CommPortIdentifier;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.io.FileNotFoundException;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
@@ -29,9 +32,6 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceChooserFactory;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.hardwareinterface.serial.eDVS128.eDVS128_HardwareInterface;
-import net.sf.jaer.hardwareinterface.serial.edvsviewer.HWP_RS232;
-import net.sf.jaer.hardwareinterface.serial.edvsviewer.HWPort.PortAttribute;
-import net.sf.jaer.hardwareinterface.serial.edvsviewer.HWPort.PortIdentifier;
 
 /**
  * Allows choice of serial port for eDVS interface.
@@ -44,19 +44,16 @@ public class EmbeddedDVSSerialPortChooserFactory extends javax.swing.JDialog imp
     public static final int RET_CANCEL = 0;
     /** A return status code - returned if OK button has been pressed */
     public static final int RET_OK = 1;
-    private HWP_RS232 portRS232 = null;
     private Preferences prefs = Preferences.userNodeForPackage(EmbeddedDVSSerialPortChooserFactory.class);
     int lastPortIndex = prefs.getInt("EmbeddedDVSSerialPortChooserFactory.lastPortIndex", 0);
-    private List<PortAttribute> lpa = null;
-    private List<PortIdentifier> lid = null;
     // singleton
     private static EmbeddedDVSSerialPortChooserFactory instance = new EmbeddedDVSSerialPortChooserFactory();
     private eDVS128_HardwareInterface chosenInterface = null;
+    private static final String RESCAN="-rescan-";
 
     /** Creates new form EmbeddedDVSSerialPortChooserFactory */
     private EmbeddedDVSSerialPortChooserFactory() {
         super();
-        portRS232 = new HWP_RS232();
         setModal(true);
         initComponents();
 
@@ -116,10 +113,18 @@ public class EmbeddedDVSSerialPortChooserFactory extends javax.swing.JDialog imp
     private void refreshPortList() {
         portCB.removeAllItems();
         // add available COM ports to menu
-        lid = portRS232.getPortIdentifierList();
-        for (PortIdentifier id : lid) {
-            portCB.addItem(id);
+        CommPortIdentifier portId;
+        Enumeration<CommPortIdentifier> portList = CommPortIdentifier.getPortIdentifiers();
+
+        while (portList.hasMoreElements()) {
+            portId = (CommPortIdentifier) portList.nextElement();
+
+            if (portId.getPortType() == CommPortIdentifier.PORT_SERIAL) {
+                portCB.addItem(portId.getName());
+            }
         }
+        portCB.addItem(RESCAN);
+
         if (lastPortIndex >= portCB.getItemCount()) {
             lastPortIndex = portCB.getItemCount() - 1;
         }
@@ -130,10 +135,6 @@ public class EmbeddedDVSSerialPortChooserFactory extends javax.swing.JDialog imp
     /** @return the return status of this dialog - one of RET_OK or RET_CANCEL */
     public int getReturnStatus() {
         return returnStatus;
-    }
-
-    public PortIdentifier getPortIdentifier() {
-        return (PortIdentifier) portCB.getSelectedItem();
     }
 
     /** This method is called from within the constructor to
@@ -233,11 +234,8 @@ public class EmbeddedDVSSerialPortChooserFactory extends javax.swing.JDialog imp
 
     private void portCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_portCBActionPerformed
         Object o = portCB.getSelectedItem();
-        if (o instanceof PortIdentifier) {
-            PortIdentifier pi = (PortIdentifier) o;
-            if (pi.toString().contains("-rescan-")) {
-                refreshPortList();
-            }
+        if(o==RESCAN){
+            refreshPortList();
         }
     }//GEN-LAST:event_portCBActionPerformed
 
@@ -246,23 +244,17 @@ public class EmbeddedDVSSerialPortChooserFactory extends javax.swing.JDialog imp
         if (retStatus == RET_OK) {
             // make interface based on chosen serial port
             Object o = portCB.getSelectedItem();
-            if (o == null || !(o instanceof PortIdentifier)) {
-                log.warning("Selected item " + o + " is not a PortIdentifier, can't use it to make eDVS128_HardwareInterface");
+            if (o == null || !(o instanceof String)) {
+                log.warning("Selected item " + o + " is not a String, can't use it to make eDVS128_HardwareInterface");
                 chosenInterface=null;
             } else {
                 lastPortIndex = portCB.getSelectedIndex();
                 prefs.putInt("EmbeddedDVSSerialPortChooserFactory.lastPortIndex", lastPortIndex);
-                PortIdentifier pi = (PortIdentifier) o;
-                if (!(pi.getID() instanceof String)) {
-                    log.warning("Port ID " + pi.getID() + " is not a String, can't use to open port");
-                    chosenInterface=null;
-                } else {
-                    String s = (String) pi.getID();
-                    try {
-                        chosenInterface = new eDVS128_HardwareInterface(s);
-                    } catch (FileNotFoundException ex) {
-                        log.warning("Serial port not found: " + ex.toString());
-                    }
+                String s = (String) o;
+                try {
+                    chosenInterface = new eDVS128_HardwareInterface(s);
+                } catch (FileNotFoundException ex) {
+                    log.warning("Serial port "+s+" not found: " + ex.toString());
                 }
             }
         }

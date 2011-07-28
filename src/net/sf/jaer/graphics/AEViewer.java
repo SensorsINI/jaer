@@ -1224,12 +1224,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 if (chip.getHardwareInterface() == null || !hw.toString().equals(chip.getHardwareInterface().toString())) {
                                     // close interface on chip if there is one and it's open
                                     if (chip.getHardwareInterface() != null && chip.getHardwareInterface().isOpen()) {
-                                        log.info("closing " + chip.getHardwareInterface().toString());
+                                        log.info("before opening new interface, closing " + chip.getHardwareInterface().toString());
                                         chip.getHardwareInterface().close();
                                     }
-                                    log.info("you selected interface " + hw);
-                                    chip.setHardwareInterface(hw);
                                 }
+                                log.info("setting new interface " + hw);
+                                chip.setHardwareInterface(hw);
                             }
                         }
                     });
