@@ -38,7 +38,7 @@ import ch.unizh.ini.jaer.chip.retina.DVS128;
  * 
  * The camera returns the following help
  * <pre>
- * DVS128 - LPC2106/01 Interface Board, V6.0: Apr 25 2011, 13:09:50
+ * DVS128 - LPC2106/01 Interface Board, 1.1: July 27, 2011.
 System Clock: 64MHz / 64 -> 1000ns event time resolution
 Modules: 
 
@@ -47,7 +47,7 @@ Supported Commands:
 E+/-       - enable/disable event sending
 !Ex        - specify event data format, ??E to list options
 
-B          - send bias settings to DVS
+!BF          - send bias settings to DVS
 !Bx=y      - set bias register x[0..11] to value y[0..0xFFFFFF]
 ?Bx        - get bias register x current value
 
@@ -78,7 +78,7 @@ P          - enter reprogramming mode
 !E31  - 10 bytes per event+timestamp, ASCII <1p> <3y> <3x> <5ts>; new-line
  * </pre>
  * 
- * @author lou
+ * @author lou, tobi
  */
 public class eDVS128_HardwareInterface implements SerialInterface, HardwareInterface, AEMonitorInterface, BiasgenHardwareInterface, Observer {
 
@@ -88,7 +88,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
     protected Logger log = Logger.getLogger("eDVS128");
     protected AEChip chip;
     /** Amount by which we need to divide the received timestamp values to get us timestamps. */
-    public final int TICK_DIVIDER = 1; 
+    public final int TICK_DIVIDER = 1;
     protected AEPacketRaw lastEventsAcquired = new AEPacketRaw();
     public static final int AE_BUFFER_SIZE = 100000; // should handle 5Meps at 30FPS
     protected int aeBufferSize = prefs.getInt("eDVS128.aeBufferSize", AE_BUFFER_SIZE);
@@ -109,15 +109,12 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
     private final int NUM_BIASES = 12; // number of biases, to renumber biases for bias command
     private boolean DEBUG = false;
 
-    //AEUnicastInput input = null;
-    //InetSocketAddress client = null;
     public eDVS128_HardwareInterface(String deviceName) throws FileNotFoundException {
-        //this.interfaceNumber = devNumber;
         try {
             CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(deviceName);
 
             if (portIdentifier.isCurrentlyOwned()) {
-                log.warning("Error: Port " + deviceName + " is currently in use by "+portIdentifier.getCurrentOwner());
+                log.warning("Error: Port " + deviceName + " is currently in use by " + portIdentifier.getCurrentOwner());
             } else {
                 CommPort commPort = portIdentifier.open(this.getClass().getName(), 2000);
 
@@ -134,10 +131,10 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             }
         } catch (Exception e) {
             log.warning("When trying to construct an interface on port " + deviceName + " caught " + e.toString());
-             throw new FileNotFoundException("Port "+deviceName+" already owned by another process?");
-       } catch(Error er){
-            log.warning("Caught error "+er.toString()+"; this usually means port is owned by another process");
-            throw new FileNotFoundException("Port "+deviceName+" already owned by another process?");
+            throw new FileNotFoundException("Port " + deviceName + " already owned by another process?");
+        } catch (Error er) {
+            log.warning("Caught error " + er.toString() + "; this usually means port is owned by another process");
+            throw new FileNotFoundException("Port " + deviceName + " already owned by another process?");
         }
 
 
@@ -152,8 +149,6 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
 
         if (!isOpen) {
             try {
-
-
                 String s = "!E1\n";
                 byte[] b = s.getBytes();
                 retinaVendor.write(b, 0, 4);
@@ -167,30 +162,6 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
                 e.printStackTrace();
             }
         }
-        /*
-        if (!isOpen){
-        try{
-        if ( input != null ){
-        input.close();
-        }
-        
-        input = new AEUnicastInput(STREAM_PORT);
-        input.setSequenceNumberEnabled(false);
-        input.setAddressFirstEnabled(true);
-        input.setSwapBytesEnabled(true);
-        input.set4ByteAddrTimestampEnabled(true);
-        input.setTimestampsEnabled(true);
-        input.setLocalTimestampEnabled(true);
-        input.setBufferSize(1200);
-        input.setTimestampMultiplier(0.001f);
-        input.open();
-        isOpen = true;
-        } catch ( IOException ex ){
-        throw new HardwareInterfaceException(ex.toString());
-        }
-        }*/
-
-
     }
 
     @Override
@@ -222,10 +193,12 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
     @Override
     public void setChip(AEChip chip) {
         this.chip = chip;
-        if(chip==null) return;
-       if (!addedBiasListeners && chip instanceof DVS128) {
+        if (chip == null) {
+            return;
+        }
+        if (!addedBiasListeners && chip instanceof DVS128) {
             addedBiasListeners = true;
-            DVS128 dvs128=(DVS128)chip;
+            DVS128 dvs128 = (DVS128) chip;
             ArrayList<Pot> pots = dvs128.getBiasgen().getPotArray().getPots();
             for (Pot p : pots) {
                 p.addObserver(this); // TODO first send won't work
@@ -251,7 +224,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
 
     @Override
     public int getMaxCapacity() {
-        return 156250000;
+        return 100000;
     }
 
     @Override
@@ -267,10 +240,8 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
     @Override
     public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
         if (enable) {
-            //startAer();
             startAEReader();
         } else {
-            //stopAer();
             stopAEReader();
         }
     }
@@ -304,7 +275,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
      */
     @Override
     synchronized public void resetTimestamps() {
-        wrapAdd=0; //TODO call TDS to reset timestamps
+        wrapAdd = 0; //TODO call TDS to reset timestamps
         aePacketRawPool.reset();
     }
 
@@ -402,8 +373,8 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
         return "Serial: eDVS128";
     }
     protected boolean running = true;
-     final int WRAP = 0x10000; // amount of timestamp wrap to add for each overflow of 1 bit timestamps
-   final int WRAP_START = 0; //(int)(0xFFFFFFFFL&(2147483648L-0x400000L)); // set high to test big wrap 1<<30;
+    final int WRAP = 0x10000; // amount of timestamp wrap to add for each overflow of 1 bit timestamps
+    final int WRAP_START = 0; //(int)(0xFFFFFFFFL&(2147483648L-0x400000L)); // set high to test big wrap 1<<30;
     volatile int wrapAdd = WRAP_START; //0;
     protected AEReader aeReader = null;
 
@@ -448,25 +419,29 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             }
             IPot p = (IPot) o;
             int v = p.getBitValue();
-            int n = NUM_BIASES-1-p.getShiftRegisterNumber(); // eDVS firmware numbers in reverse order from DVS firmware, we want shift register 0 to become 11 on the eDVS
+            int n = NUM_BIASES - 1 - p.getShiftRegisterNumber(); // eDVS firmware numbers in reverse order from DVS firmware, we want shift register 0 to become 11 on the eDVS
             String s = String.format("!B%d=%d\n", n, v); // LPC210 has 16-byte serial buffer, hopefully fits
-            if(DEBUG) log.info("sending command "+s+" for pot "+p+" at bias position "+n);
-           // note that eDVS must have rev1 firmware for BF command to work.
+            if (DEBUG) {
+                log.info("sending command " + s + " for pot " + p + " at bias position " + n);
+            }
+            // note that eDVS must have rev1 firmware for BF command to work.
             byte[] b = s.getBytes();
-            if(b.length>16) log.warning("sending "+b.length+" bytes, might not fit in eDVS LPC2016 16-byte buffer");
+            if (b.length > 16) {
+                log.warning("sending " + b.length + " bytes, might not fit in eDVS LPC2016 16-byte buffer");
+            }
             try {
                 retinaVendor.write(b, 0, b.length);
             } catch (IOException ex) {
                 log.warning(ex.toString());
             }
-            s="!BF\n";
-            b=s.getBytes();
+            s = "!BF\n";
+            b = s.getBytes();
             try {
                 retinaVendor.write(b, 0, b.length);
             } catch (IOException ex) {
                 log.warning(ex.toString());
             }
-       }
+        }
     }
 
     public class AEReader extends Thread implements Runnable {
@@ -491,7 +466,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             while (running) {
                 try {
                     len = retina.available();
-                    if(len==0){
+                    if (len == 0) {
                         try {
                             Thread.sleep(10);
                         } catch (InterruptedException ex) {
@@ -600,12 +575,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
         protected boolean running = true;
         volatile boolean timestampsReset = false; // used to tell processData that another thread has reset timestamps
     }
-    private int inputProcessingIndex = 0;
-    private int pixelX, pixelY, pixelP;
-    private String specialData;
-    private int bCali = 1;
-    
-    private long lastWrapTime=0;
+    private long lastWrapTime = 0;
 
     protected void translateEvents_code(byte[] b, int bytesSent) {
         synchronized (aePacketRawPool) {
@@ -626,43 +596,44 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             }
             for (int i = 0; i < bytesSent; i += 4) {
                 /* event polarity is encoded in the msb of the second byte. i.e.
-                        Byte0, bit 7:         always zero
-                        Byte0, bits 6-0:   event address y
-                        Byte1, bit 7:         event polarity
-                        Byte1, bits 6-0:   event address x
-                        Bytes2+3:             16 bit timestamp, MSB first
+                Byte0, bit 7:         always zero
+                Byte0, bits 6-0:   event address y
+                Byte1, bit 7:         event polarity
+                Byte1, bits 6-0:   event address x
+                Bytes2+3:             16 bit timestamp, MSB first
                  */
                 int y_ = (0xff & b[i]); // & with 0xff to prevent sign bit from extending to int (treat byte as unsigned)
-                int x_ = (0xff &  b[i + 1]);
-                int c_ = (0xff &  b[i + 2]);
-                int d_ = (0xff &  b[i + 3]);
+                int x_ = (0xff & b[i + 1]);
+                int c_ = (0xff & b[i + 2]);
+                int d_ = (0xff & b[i + 3]);
 
 //                if ( (y_ & 0x80) != 0){
 //                     System.out.println("Data not aligned!");
 //                }
 
-                if(eventCounter>=buffer.getCapacity()){
-                    buffer.overrunOccuredFlag=true;
+                if (eventCounter >= buffer.getCapacity()) {
+                    buffer.overrunOccuredFlag = true;
                     continue;
                 }
                 addresses[eventCounter] = (int) ((x_ & cHighBitMask) >> 7 | ((y_ & cLowerBitsMask) << 8) | ((x_ & cLowerBitsMask) << 1)) & 0x7FFF;
-                //timestamps[eventCounter] = (c_ | (d_ << 8));
 
                 shortts = ((c_ << 8) + d_);  // should be unsigned since c_ and d_ are unsigned, timestamp is sent big endian, MSB first at index 3
                 if (lastshortts > shortts) { // timetamp wrapped
-                    wrapAdd+=WRAP;
-                    long thisWrapTime=System.nanoTime();
-                    
-                    if(DEBUG) log.info("This timestamp was less than last one by "+(shortts-lastshortts)+" and system deltaT="+(thisWrapTime-lastWrapTime)/1000+"us, wrapAdd="+(wrapAdd/WRAP)+" wraps");
-                    lastWrapTime=thisWrapTime;
+                    wrapAdd += WRAP;
+                    long thisWrapTime = System.nanoTime();
+
+                    if (DEBUG) {
+                        log.info("This timestamp was less than last one by " + (shortts - lastshortts) + " and system deltaT=" + (thisWrapTime - lastWrapTime) / 1000 + "us, wrapAdd=" + (wrapAdd / WRAP) + " wraps");
+                    }
+                    lastWrapTime = thisWrapTime;
                 }
                 timestamps[eventCounter] = (wrapAdd + shortts) / TICK_DIVIDER;
-               if (DEBUG) {
-                    sb.append(String.format("%d ", shortts-lastshortts));
+                if (DEBUG) {
+                    sb.append(String.format("%d ", shortts - lastshortts));
                 }
-               lastshortts = shortts;
+                lastshortts = shortts;
 
-                  eventCounter++;
+                eventCounter++;
             }
             if (DEBUG) {
                 log.info(sb.toString());
@@ -719,7 +690,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
 
         /** Returns the current writing buffer. Does not swap buffers.
          * @return buffer to write to 
-         @see #swap
+        @see #swap
          */
         synchronized final AEPacketRaw writeBuffer() {
             return buffers[writeBuffer];
