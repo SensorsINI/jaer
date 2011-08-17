@@ -131,16 +131,18 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     private int ConfidenceRecentMinTime = 0;
     private boolean ConfidenceRising = true;
  
+    private String USAGE="Need at least 2 arguments: itdfilter <command> <args>\nCommands are: saveitd, saveitdandreset, stopsaveitd, savefreqbins <filename>, stopsavefreqbins, savebin <filename>, stopsavebin, resetbins, savebinnow <filename>, zerotimestamps\n";
+    
     public String processRemoteControlCommand(RemoteControlCommand command, String input) {
         String[] tok = input.split("\\s", 3);
         if (tok.length < 2) {
-            return "not enough arguments\n";
+            return USAGE;
         }
 
         try {
             if (tok[1].equals("saveitd")) {
                 if (tok.length < 2) {
-                    return "not enough arguments\n";
+                    return USAGE;
                 } else {
                     startAvgITD2File(tok[2]);
                     return "starting to save itds\n";
@@ -148,7 +150,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             }
             if (tok[1].equals("saveitdandreset")) {
                 if (tok.length < 2) {
-                    return "not enough arguments\n";
+                    return USAGE;
                 } else {
                     chip.getAeViewer().zeroTimestamps();
                     createBins();
@@ -162,7 +164,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             }
             if (tok[1].equals("savefreqbins")) {
                 if (tok.length < 3) {
-                    return "not enough arguments\n";
+                    return USAGE;
                 } else {
                     startSaveFreq(tok[2]);
                     return "starting to save freqbins\n";
@@ -173,14 +175,13 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                 return "stop saving freqbins\n";
             }
             if (tok[1].equals("savebin")) {
+                if (tok.length < 3) {
+                    return USAGE;
+                }
                 String filename = tok[2];
                 log.info("save bins to: " + filename);
-                if (tok.length < 3) {
-                    return "not enough arguments\n";
-                } else {
-                    startWriteBin2File(filename);
-                    return "starting to save bins\n";
-                }
+                startWriteBin2File(filename);
+                return "starting to save bins\n";
             }
             if (tok[1].equals("stopsavebin")) {
                 setWriteBin2File(false);
@@ -192,7 +193,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
             }
             if (tok[1].equals("savebinnow")) {
                 if (tok.length < 3) {
-                    return "not enough arguments\n";
+                    return USAGE;
                 } else {
                     writeBin2FileNow(tok[2]);
                     return "writing bins now\n";
@@ -206,7 +207,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         } catch (IOException e) {
             return "IOExeption in remotecontrol\n";
         }
-        return "not a valid command.";
+        return USAGE;
     }
 
     private void startAvgITD2File(String path) throws IOException {
