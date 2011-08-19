@@ -175,11 +175,10 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             return;
         }
         try {
+           isOpen = false;
             String s = "E-\n";
             byte[] b = s.getBytes();
             retinaVendor.write(b, 0, 3);
-            isOpen = false;
-
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -477,7 +476,10 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
                     length = retina.read(buffer, 0, len - (len % 4));
 //                           System.out.println(length);
                 } catch (IOException e) {
+                    log.warning("Aborting AEReader because caught exception "+e);
                     e.printStackTrace();
+                    close();
+                    return;
                 }
 
                 int nDump = 0;
