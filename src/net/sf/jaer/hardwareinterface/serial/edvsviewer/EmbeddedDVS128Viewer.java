@@ -78,7 +78,7 @@ public class EmbeddedDVS128Viewer extends JApplet {
 
 	private IOThread terminalThread = null;
 	private EventProcessorWindow viewerWindow = null;
-	private Tools_GamePad gpThread = null;
+//	private Tools_GamePad gpThread = null;
 
 	private HWP_RS232 portRS232 = new HWP_RS232();
 	private HWP_TCP portTCP = new HWP_TCP();
@@ -299,9 +299,9 @@ public class EmbeddedDVS128Viewer extends JApplet {
 			port = null;
 		}
 
-		if (gpThread != null) {
-			gpThread.setIOThreadReference(terminalThread);
-		}
+//		if (gpThread != null) {
+//			gpThread.setIOThreadReference(terminalThread);
+//		}
 
 	}
 	private class ButtonListener implements ActionListener {
@@ -354,17 +354,17 @@ public class EmbeddedDVS128Viewer extends JApplet {
 				Thread t = new ReplayEventsFromFile();			// starts a thread to replay events
 				t.start();
 			}
-
-			if (e.getSource() == gamePadButton) {
-				if (gpThread != null) {
-					gpThread.close();
-				}
-				gpThread = null;
-				if (gamePadButton.isSelected()) {
-					gpThread = new Tools_GamePad();
-					gpThread.setIOThreadReference(terminalThread);
-				}
-			}
+//
+//			if (e.getSource() == gamePadButton) {
+//				if (gpThread != null) {
+//					gpThread.close();
+//				}
+//				gpThread = null;
+//				if (gamePadButton.isSelected()) {
+//					gpThread = new Tools_GamePad();
+//					gpThread.setIOThreadReference(terminalThread);
+//				}
+//			}
 
 			if (e.getSource() == showFlickerWindowButton) {
 				new Tools_FlickeringWindow();

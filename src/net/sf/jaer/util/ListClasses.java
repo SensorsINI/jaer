@@ -101,7 +101,7 @@ public class ListClasses {
 
             while (st.hasMoreTokens()) {
                 String token = st.nextToken();
-                if(true) log.info("classpath token="+token);
+                if(debug) log.info("classpath token="+token);
                 File classpathElement = new File(token);
                 classNames.addAll(classpathElement.isDirectory()
                 //?loadClassesFromDir(classpathElement.list(new CLASSFilter()))

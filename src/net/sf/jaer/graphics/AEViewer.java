@@ -221,6 +221,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Returns an ArrayBlockingQueue that may be associated with this viewer; used for inter-viewer communication.
      * @return the blockingQueueInput
      */
     public ArrayBlockingQueue getBlockingQueueInput (){
