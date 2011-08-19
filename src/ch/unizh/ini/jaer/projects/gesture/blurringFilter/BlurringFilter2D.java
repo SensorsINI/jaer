@@ -1913,8 +1913,13 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             if(yIndexEnd > numOfNeuronsY - 1)
                 yIndexEnd = numOfNeuronsY - 1;
 
+            Point2D.Float centerIndex = new Point2D.Float( 0.5f*(xIndexStart+xIndexEnd), 0.5f*(yIndexStart+yIndexEnd));
+            float indexRadius = Math.max(0.5f*(xIndexEnd - xIndexStart), 0.5f*(yIndexEnd - yIndexStart));
             for(int x = xIndexStart; x <= xIndexEnd; x++){
                 for(int y = yIndexStart; y <= yIndexEnd; y++){
+                    if(centerIndex.distance(x, y) > indexRadius)
+                        continue;
+                    
                     LIFNeuron n = lifNeurons.get(x+y*numOfNeuronsX);
                     if(n.getMP() == 0 || Float.isNaN(n.getMP()))
                         n.membranePotential = 0.001f;
