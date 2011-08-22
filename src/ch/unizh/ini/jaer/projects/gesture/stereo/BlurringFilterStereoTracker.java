@@ -169,7 +169,7 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
 
         // updates paths of shadow clusters first
         for(Cluster sc : shadowClusters){
-            if(!sc.isDead() && sc.isUpdated() != ClusterUpdateStatus.NOT_UPDATED){
+            if(!sc.isDead() && sc.getUpdateStatus() != ClusterUpdateStatus.NOT_UPDATED){
                 sc.updatePath(t, ((BlurringFilterStereo) bfilter).disparityUpdater.getGlobalDisparity());
                 // reset the cluster's update status
                 sc.setUpdated(ClusterUpdateStatus.NOT_UPDATED);
@@ -190,7 +190,7 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
                 }
             }
 
-            if(!c.isDead() && c.isUpdated() != ClusterUpdateStatus.NOT_UPDATED){
+            if(!c.isDead() && c.getUpdateStatus() != ClusterUpdateStatus.NOT_UPDATED){
                 if(replaced)
                     c.updatePath(t, ((BlurringFilterStereo) bfilter).disparityUpdater.getGlobalDisparity());
                 else

@@ -13,6 +13,7 @@ import java.awt.Dimension;
 import javax.media.opengl.GL;
 import java.awt.geom.Point2D;
 import java.util.*;
+import java.util.ArrayList;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
@@ -135,7 +136,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      */
     private float RefractoryPeriodMaxMs = getPrefs().getFloat("BlurringFilter2D.RefractoryPeriodMaxMs", 1.0f);
 
-
     /**
      * names of color
      */
@@ -241,6 +241,15 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      */
     protected Random random = new Random();
 
+    /**
+     * ROIs
+     */
+    protected HashMap<Integer, ROI> rois = new HashMap<Integer, ROI>();
+
+    /**
+     * if true, ROI is considered in clustering
+     */
+    protected boolean ROIactivated = false;
 
 
 
@@ -784,7 +793,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                 effectiveMP = newNeuron.getMP();
             } else {
                 if(mode == Add_Mode.MEMBRANE_POTENTAIL_AVERAGE)
-                    effectiveMP = newNeuron.getMP() + newNeuron.numSpikes;
+                    effectiveMP = newNeuron.getMP() + newNeuron.numSpikes*newNeuron.thresholdMP*newNeuron.MPDecreaseArterFiringPercentTh/100;
                 else
                     effectiveMP = newNeuron.numSpikes;
             }
@@ -1114,6 +1123,21 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             for(int i=0; i<in.getSize(); i++){
                 BasicEvent ev = in.getEvent(i);
                 lastTime = ev.getTimestamp();
+
+                // checks ROI
+                if(ROIactivated && !rois.isEmpty()){
+                    boolean goOn = false;
+                    for(ROI roi:rois.values()){
+                        goOn |= roi.contains(ev.x, ev.y);
+                        if(goOn)
+                            break;
+                    }
+
+                    if(!goOn){
+                        maybeCallUpdateObservers(in, lastTime);
+                        continue;
+                    }
+                }
 
                 int subIndexX = (int) (ev.getX() / halfReceptiveFieldSizePixels);
                 if (subIndexX == numOfNeuronsX)
@@ -2167,4 +2191,47 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             neuron.refractoryPeriodMaxMs = RefractoryPeriodMaxMs;
     }
 
+    public boolean isROIactivated() {
+        return ROIactivated;
+    }
+
+    public void setROIactivated(boolean ROIactivated) {
+        this.ROIactivated = ROIactivated;
+    }
+
+    public void addROI(int id, ROI roi){
+        if(roi != null){
+            rois.put(id, roi);
+        }
+    }
+
+    public ROI getROI(int id){
+        return rois.get(id);
+    }
+
+    public HashMap<Integer, ROI> getROIs(){
+        return rois;
+    }
+
+    public void setROI(int id, int timestamp, Point2D.Float center, float radius){
+        ROI roi = rois.get(id);
+
+        if(roi == null){
+            roi = new ROI(id, timestamp, center, radius);
+            rois.put(id, roi);
+        } else {
+            roi.update(timestamp, center, radius);
+        }
+    }
+
+    public void pruneROIs(int timestamp){
+        ArrayList<Integer> pruneList = new ArrayList<Integer>();
+        for(ROI roi:rois.values()){
+            if(roi.timestamp < timestamp)
+                pruneList.add(roi.id);
+        }
+
+        for(int i=0; i<pruneList.size(); i++)
+            rois.remove(pruneList.get(i));
+    }
 }

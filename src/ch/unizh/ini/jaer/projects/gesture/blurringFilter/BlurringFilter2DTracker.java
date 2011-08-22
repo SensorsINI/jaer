@@ -59,6 +59,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     private float maximumClusterLifetimeMs = getPrefs().getFloat("BluringFilter2DTracker.maximumClusterLifetimeMs",10.0f);
     private float clusterRadiusLifetimeMs = getPrefs().getFloat("BluringFilter2DTracker.clusterRadiusLifetimeMs",200.0f);
     private NUM_CLUSTERS maxNumClusters = NUM_CLUSTERS.valueOf(getPrefs().get("BlurringFilter2D.maxNumClusters", NUM_CLUSTERS.SINGLE.toString()));
+    private boolean ROIactivated = getPrefs().getBoolean("BluringFilter2DTracker.ROIactivated",false);
 
 
     /**
@@ -155,6 +156,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         setPropertyTooltip(global,"maximumClusterLifetimeMs","upper limit of cluster lifetime. It increases by when the cluster is properly updated. Otherwise, it decreases. When the lifetime becomes zero, the cluster will be expired.");
         setPropertyTooltip(global,"clusterRadiusLifetimeMs","time constant of the cluster radius.");
         setPropertyTooltip(global,"maxNumClusters","the maximum allowed number of clusters");
+        setPropertyTooltip(global,"ROIactivated","if true, ROI is considered in clustering");
 
         setPropertyTooltip(selMotionDet,"selectMotionDetectionAreaSizePixels","size of area to detect select motion.");
         setPropertyTooltip(selMotionDet,"clusterLifeTimeMsInSelectMotion","cluster life time to detect select motion.");
@@ -274,6 +276,10 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
         if(enableMerge)
             mergeClusters();
+
+       if(ROIactivated)
+            updateROIs(t);
+
         updateClusterPaths(t);
     }
 
@@ -360,7 +366,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             float dy = c.distanceToY(neuronGroup);
             float aveRadius = ( c.getRadius() + neuronGroup.getOutterRadiusPixels() ) / 2.0f;
 
-            if ( c.isUpdated() == ClusterUpdateStatus.NOT_UPDATED && dx < aveRadius && dy < aveRadius ){
+            if ( c.getUpdateStatus() == ClusterUpdateStatus.NOT_UPDATED && dx < aveRadius && dy < aveRadius ){
                 if ( dx + dy < minDistance ){
                     closest = c;
                     minDistance = dx + dy;
@@ -381,7 +387,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
         // updates paths of shadow clusters first
         for(Cluster sc : shadowClusters){
-            if(!sc.dead && sc.isUpdated() != ClusterUpdateStatus.NOT_UPDATED){
+            if(!sc.dead && sc.getUpdateStatus() != ClusterUpdateStatus.NOT_UPDATED){
                 sc.updatePath(t, 0);
                 // reset the cluster's update status
                 sc.setUpdated(ClusterUpdateStatus.NOT_UPDATED);
@@ -400,7 +406,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                 }
             }
 
-            if(!c.dead && c.isUpdated() != ClusterUpdateStatus.NOT_UPDATED){
+            if(!c.dead && c.getUpdateStatus() != ClusterUpdateStatus.NOT_UPDATED){
                 c.updatePath(t, 0);
                 // reset the cluster's update status
                 c.setUpdated(ClusterUpdateStatus.NOT_UPDATED);
@@ -805,7 +811,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          *
          * @return 
          */
-        public ClusterUpdateStatus isUpdated (){
+        public ClusterUpdateStatus getUpdateStatus (){
             return updated;
         }
 
@@ -2094,7 +2100,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                         trackLargestGroup(clusters, ngCollection, 0, defaultUpdateInterval);
                     } else {
                         Cluster c = clusters.get(0);
-                        if(c.isUpdated() == ClusterUpdateStatus.NOT_UPDATED)
+                        if(c.getUpdateStatus() == ClusterUpdateStatus.NOT_UPDATED)
                             c.trackClosestGroup(ngCollection, defaultUpdateInterval);
                     }
                     break;
@@ -2107,9 +2113,9 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
                             // finds the closest neuron group for each cluster
                             NeuronGroup ng1 = null;
-                            if(c1.isUpdated() == ClusterUpdateStatus.NOT_UPDATED)  ng1 = getClosestGroup(ngCollection, c1);
+                            if(c1.getUpdateStatus() == ClusterUpdateStatus.NOT_UPDATED)  ng1 = getClosestGroup(ngCollection, c1);
                             NeuronGroup ng2 = null;
-                            if(c2.isUpdated() == ClusterUpdateStatus.NOT_UPDATED)  ng2 = getClosestGroup(ngCollection, c2);
+                            if(c2.getUpdateStatus() == ClusterUpdateStatus.NOT_UPDATED)  ng2 = getClosestGroup(ngCollection, c2);
 
                             // updates clusters
                             if(ng1 != null){
@@ -2135,7 +2141,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                     case 1:
                         {
                            Cluster c = clusters.get(0);
-                            if(c.isUpdated() == ClusterUpdateStatus.NOT_UPDATED)
+                            if(c.getUpdateStatus() == ClusterUpdateStatus.NOT_UPDATED)
                                 c.trackClosestGroup(ngCollection, defaultUpdateInterval);
 
                             if(ngCollection.size() > 0)
@@ -2186,7 +2192,6 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
         // updates cluster list
         updateClusterList(msg.timestamp);
-
     }
 
     /**
@@ -2268,7 +2273,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
         LinkedList<Cluster> pruneSCList = new LinkedList<Cluster>();
         for(Cluster sc : shadowClusters){
-            if(sc.isUpdated() == ClusterUpdateStatus.NORMAL_UPDATED)
+            if(sc.getUpdateStatus() == ClusterUpdateStatus.NORMAL_UPDATED)
                 continue;
             
             // neuron group
@@ -2377,7 +2382,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
             // finds the first cluster which was not updated
             for(int i = 0; i< clusterList.size(); i++){
-                if(clusterList.get(i).isUpdated() == ClusterUpdateStatus.NOT_UPDATED){
+                if(clusterList.get(i).getUpdateStatus() == ClusterUpdateStatus.NOT_UPDATED){
                     cl = clusterList.get(i);
                     pos = i;
                     break;
@@ -2391,7 +2396,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             float minDist = cl.distanceTo(maxGroup);
             for(int i = pos+1; i< clusterList.size(); i++){
                 Cluster c = clusterList.get(i);
-                if(c.isUpdated() != ClusterUpdateStatus.NOT_UPDATED) continue; // skips updated clusters
+                if(c.getUpdateStatus() != ClusterUpdateStatus.NOT_UPDATED) continue; // skips updated clusters
 
                 if(c.distanceTo(maxGroup) < minDist){
                     cl = c;
@@ -2424,6 +2429,33 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         }
 
         return ret;
+    }
+
+    public void updateROIs(int timestamp){
+        for(int i=0; i<clusters.size(); i++){
+            Cluster cl = clusters.get(i);
+            if(cl.getLastEventTimestamp() < timestamp)
+                continue;
+
+            ROI roi = bfilter.getROI(cl.clusterNumber);
+            if(roi == null){
+                roi = new ROI(cl.clusterNumber, timestamp, cl.location, (float) chip.getSizeX());
+                bfilter.addROI(cl.clusterNumber, roi);
+            } else {
+                float r = roi.radius;
+                if(cl.getUpdateStatus() == ClusterUpdateStatus.NORMAL_UPDATED){
+                    float dr = (float) ((r-2*cl.getRadius())*Math.exp(-(timestamp - roi.timestamp)/10000));
+                    r -= (r-2*cl.getRadius())*Math.exp(-(timestamp - roi.timestamp)/(clusterRadiusLifetimeMs*1000));
+                } else {
+                    r *= Math.exp((timestamp - roi.timestamp)/(clusterRadiusLifetimeMs*1000));
+                    if(r > (float) chip.getSizeX())
+                        r = (float) chip.getSizeX();
+                }
+                roi.update(timestamp, cl.location, r);
+            }
+        }
+
+        bfilter.pruneROIs(timestamp);
     }
 
     /**
@@ -2998,5 +3030,18 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         this.selectStayLastingTimeMs = selectStayLastingTimeMs;
         getPrefs().putInt("BluringFilter2DTracker.selectStayLastingTimeMs", selectStayLastingTimeMs);
         getSupport().firePropertyChange("selectStayLastingTimeMs",old,this.selectStayLastingTimeMs);
+    }
+
+    public boolean getROIactivated() {
+        return ROIactivated;
+    }
+
+    public void setROIactivated(boolean ROIactivated) {
+        boolean old = this.ROIactivated;
+        this.ROIactivated = ROIactivated;
+        getPrefs().putBoolean("BluringFilter2DTracker.ROIactivated", ROIactivated);
+        getSupport().firePropertyChange("ROIactivated",old,this.ROIactivated);
+
+        bfilter.setROIactivated(ROIactivated);
     }
 }

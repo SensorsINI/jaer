@@ -6,6 +6,7 @@
 package ch.unizh.ini.jaer.projects.gesture.stereo;
 
 import ch.unizh.ini.jaer.projects.gesture.blurringFilter.BlurringFilter2D;
+import ch.unizh.ini.jaer.projects.gesture.blurringFilter.ROI;
 import java.awt.Point;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
@@ -142,6 +143,22 @@ public class BlurringFilterStereo extends BlurringFilter2D{
             // stereo vergence
             int evx = vergence(ev, (int) (disparityUpdater.getVergenceDisparity()/2), oei);
             if(evx == chip.getSizeX()) continue; // vergenced event falls on outside of DVS
+
+
+            // checks ROI
+            if(ROIactivated && !rois.isEmpty()){
+                boolean goOn = false;
+                for(ROI roi:rois.values()){
+                    goOn |= roi.contains(ev.x, ev.y);
+                    if(goOn)
+                        break;
+                }
+
+                if(!goOn){
+                    maybeCallUpdateObservers(in, lastTime);
+                    continue;
+                }
+            }
 
             // add events to the corresponding LIF neurons
             addEvent(ev, evx, er);
