@@ -195,12 +195,12 @@ public class StereoDisparity {
         }
 
         Disparity(float disparity, int timestamp, boolean validity){
-            super();
+            this();
             setDisparity(disparity, timestamp, validity);
         }
 
         Disparity(Disparity disp){
-            super();
+            this();
             setDisparity(disp.disparity, disp.timestamp, disp.valid);
         }
 
