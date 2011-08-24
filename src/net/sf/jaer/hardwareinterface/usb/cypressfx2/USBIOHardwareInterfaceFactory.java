@@ -9,6 +9,7 @@
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx2;
 
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cHardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_AeSequencer;
 import net.sf.jaer.hardwareinterface.usb.*;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1bHardwareInterface;
@@ -185,6 +186,8 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
         short pid = (short) (0xffff & deviceDescriptor.idProduct); // for some reason returns 0xffff8613 from blank cypress fx2
         // TODO fix this so that PID is parsed by reflection or introspection from hardwareinterface classes
 
+        // here the PID switches to construct the appropriate hardwareinterface.
+        // add new PIDs here for this VID
         switch (pid) {
             case CypressFX2.PID_USB2AERmapper:
                 return new CypressFX2Mapper(n);
@@ -210,6 +213,8 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
                 return new DVS320HardwareInterface(n);
             case CochleaAMS1bHardwareInterface.PID:
                 return new CochleaAMS1bHardwareInterface(n);
+            case CochleaAMS1cHardwareInterface.PID:
+                return new CochleaAMS1cHardwareInterface(n);
             case SiLabsC8051F320_USBIO_DVS128.PID:
                 return new SiLabsC8051F320_USBIO_DVS128(n);
             case IVS128HardwareInterface.PID:

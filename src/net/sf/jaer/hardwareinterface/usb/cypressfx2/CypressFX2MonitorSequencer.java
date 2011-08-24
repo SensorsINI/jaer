@@ -880,19 +880,19 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             }
         }
 
-        /** Method that translates the UsbIoBuffer when a board that has a CPLD to timetamp events and that uses the CypressFX2 in slave 
+        /** Method that translates the UsbIoBuffer when a board that has a CPLD to timestamp events and that uses the CypressFX2 in slave 
          * FIFO mode, such as the USBAERmini2 board or StereoRetinaBoard, is used. 
          * <p>
          *On these boards, the msb of the timestamp is used to signal a wrap (the actual timestamp is only 14 bits).
          * The timestamp is also used to signal a timestamp reset
          *
-         * The wrapAdd is incremented when an emtpy event is received which has the timestamp bit 15
+         * The wrapAdd is incremented when an empty event is received which has the timestamp bit 15
          * set to one.
          * The timestamp is reset when an event is received which has the timestamp bit 14 set.
          *<p>
          * Therefore for a valid event only 14 bits of the 16 transmitted timestamp bits are valid, bits 14 and 15
          * are the status bits. overflow happens every 16 ms.
-         * This way, no roll overs go by undetected, and the problem of invalid wraps doesn't arise.
+         * This way, no roll-overs go by undetected, and the problem of invalid wraps doesn't arise.
          *@param b the data buffer
          *@see #translateEvents
          */
@@ -970,7 +970,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             } // sync on aePacketRawPool
         }
 
-        /** Method that translates the UsbIoBuffer when a board that has a CPLD with old firmware to timetamp events and that uses the CypressFX2 in slave 
+        /** Method that translates the UsbIoBuffer when a board that has a CPLD with old firmware to timestamp events and that uses the CypressFX2 in slave 
          * FIFO mode, such as the USBAERmini2 board, is used. 
          * <p>
          *On these boards, the msb of the timestamp is used to signal a wrap (the actual timestamp is only 15 bits).

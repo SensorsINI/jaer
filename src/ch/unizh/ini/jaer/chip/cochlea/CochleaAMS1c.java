@@ -44,7 +44,10 @@ import net.sf.jaer.util.RemoteControlled;
 /**
  * Extends Shih-Chii's AMS cochlea AER chip to 
  * add bias generator interface, 
- * to be used when using the on-chip bias generator and the on-board DACs. Also implemements ConfigBits, Scanner, and Equalizer configuration.
+ * to be used when using the on-chip bias generator and the on-board DACs. 
+ * This board also includes off-chip ADC for reading microphone inputs and scanned cochlea outputs.
+ * The board also includes for the first time a shift-register based CPLD configuration register to configure CPLD functions.
+ * Also implements ConfigBits, Scanner, and Equalizer configuration.
  * @author tobi
  */
 @Description("Binaural AER silicon cochlea with 64 channels and 8 ganglion cells of two types per channel with fixes to CochleaAMS1b")
@@ -155,7 +158,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
         int get();
 
-        void set(int v);
+        void set(int v) throws IllegalArgumentException;
     }
 
     interface ConfigTristate extends ConfigBit {
@@ -191,7 +194,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 ;
         // portD
         private PortBit vCtrlKillBit = new PortBit("d6", "vCtrlKill", "Set high to kill ???"),
-                aerKillBit = new PortBit("d7", "aerKill", "Set high to kill selected channel ???");
+                aerKillBit = new PortBit("d7", "vCtrlKill", "Set high to kill selected channel ???");
         // portE
         private PortBit powerDown = new PortBit("e2", "powerDown", "High to power down bias generator"),
                 cochleaReset = new PortBit("e3", "cochleaReset", "High to reset cochlea logic; global latch reset (1=reset, 0=run) ???"),
@@ -448,10 +451,10 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
          */
         @Override
         synchronized public void update(Observable observable, Object object) {  // thread safe to ensure gui cannot retrigger this while it is sending something
-//            log.info(observable + " sent " + object);
-            if (cypress == null) {
-                return;
-            }
+            log.info("Observable="+observable + " Object=" + object);
+//            if (cypress == null) {
+//                return;
+//            }
             // sends a vendor request depending on type of update
             // vendor request is always VR_CONFIG
             // value is the type of update
@@ -765,7 +768,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
             @Override
             public String toString() {
-                return String.format("AbstractConfigValue name=%s key=%s", name);
+                return String.format("AbstractConfigValue name=%s key=%s", name,key);
             }
 
             public String getName(){ return name;}
@@ -775,7 +778,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
         public class AbstractConfigBit extends AbstractConfigValue implements ConfigBit {
 
-            private volatile boolean value;
+            protected volatile boolean value;
 
             public AbstractConfigBit(String name, String tip) {
                 super(name, tip);
@@ -818,7 +821,13 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             public void storePreference() {
                 putPref(key, value); // will eventually call pref change listener which will call set again
             }
-        }
+  
+            @Override
+            public String toString() {
+                return String.format("AbstractConfigBit name=%s key=%s value=%s", name,key, value);
+            }
+
+       }
 
         /** A direct bit output from CypressFX2 port. */
         public class PortBit extends AbstractConfigBit implements ConfigBit {
@@ -858,7 +867,12 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 bitmask = 1 << Integer.valueOf(s.substring(1, 2));
                 portbit = (short) (0xffff & ((port << 8) + (0xff & bitmask)));
             }
-        }
+            
+            @Override
+            public String toString() {
+                return String.format("PortBit name=%s port=%s value=%s", name,portBitString, value);
+            }
+       }
 
         /** Adds a hiZ state to the bit to set port bit to input */
         class TriStateablePortBit extends PortBit implements ConfigTristate {
@@ -983,7 +997,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
             @Override
             public String toString() {
-                return "CPLDBit{" + "pos=" + pos + "value=" + value + '}';
+                return "CPLDBit{" + "pos=" + pos + " value=" + value + '}';
             }
         }
 
@@ -1019,7 +1033,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
             @Override
             public String toString() {
-                return String.format("TriStateablePortBit name=%s pos=%d value=%s hiZ=%s", name, pos, Boolean.toString(isSet()), hiZEnabled);
+                return String.format("TriStateableCPLDBit name=%s shiftregpos=%d value=%s hiZ=%s", name, pos, Boolean.toString(isSet()), hiZEnabled);
             }
 
             @Override
@@ -1051,8 +1065,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             }
 
             @Override
-            public void set(int value) {
-                if(value<0 || value>=1<<nBits) throw new RuntimeException("tried to store value="+value+" which larger than permitted or negative in "+this);
+            public void set(int value) throws IllegalArgumentException{
+                if(value<0 || value>=1<<nBits) throw new IllegalArgumentException("tried to store value="+value+" which larger than permitted value of "+(1<<nBits)+" or is negative in "+this);
                 this.value = value;
 //                log.info("set " + this + " to value=" + value+" notifying "+countObservers()+" observers");
                 setChanged();
@@ -1066,7 +1080,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
             @Override
             public String toString() {
-                return String.format("CPLDInt name=%s value=%d", name, Integer.toString(value));
+                return String.format("CPLDInt name=%s value=%d", name, value);
             }
 
             @Override

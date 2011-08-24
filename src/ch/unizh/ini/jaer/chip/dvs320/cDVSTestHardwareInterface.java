@@ -729,7 +729,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen implements  ADC
         </literal>
         
          *The msb of the 16 bit timestamp is used to signal a wrap (the actual timestamp is only 15 bits).
-         * The wrapAdd is incremented when an emtpy event is received which has the timestamp bit 15
+         * The wrapAdd is incremented when an empty event is received which has the timestamp bit 15
          * set to one.
          *<p>
          * Therefore for a valid event only 15 bits of the 16 transmitted timestamp bits are valid, bit 15
@@ -761,7 +761,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen implements  ADC
                     byte[] buf = b.BufferMem;
                     int bytesSent = b.BytesTransferred;
                     if (bytesSent % 2 != 0) {
-                        System.err.println("CypressFX2.AEReader.translateEvents(): warning: " + bytesSent + " bytes sent, which is not multiple of 2");
+                        System.err.println("warning: " + bytesSent + " bytes sent, which is not multiple of 2");
                         bytesSent = (bytesSent / 2) * 2; // truncate off any extra part-event
                     }
 

@@ -761,18 +761,10 @@
           </SubComponents>
         </Container>
         <Container class="javax.swing.JPanel" name="configPanel">
-          <Properties>
-            <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
-              <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
-                <TitledBorder title="Configuration"/>
-              </Border>
-            </Property>
-            <Property name="toolTipText" type="java.lang.String" value="Set special config bits"/>
-          </Properties>
           <Constraints>
             <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout" value="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout$JTabbedPaneConstraintsDescription">
-              <JTabbedPaneConstraints tabName="config">
-                <Property name="tabTitle" type="java.lang.String" value="config"/>
+              <JTabbedPaneConstraints tabName="Config">
+                <Property name="tabTitle" type="java.lang.String" value="Config"/>
               </JTabbedPaneConstraints>
             </Constraint>
           </Constraints>

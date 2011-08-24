@@ -171,6 +171,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 label.setToolTipText(in.getDescription());
                 pan.add(label);
                 JTextField tf=new JTextField();
+                tf.setText(Integer.toString(in.get()));
                 tf.setPreferredSize(new Dimension(200,20));
                 tf.setMaximumSize(new Dimension(200,30));
                 pan.add(tf);
@@ -458,8 +459,11 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 int val = Integer.parseInt(tf.getText());
                 integerConfig.set(val);
                 setFileModified();
-            } catch (NumberFormatException ex) {
+                tf.setBackground(Color.white);
+            } catch (Exception ex) {
                 tf.selectAll();
+                tf.setBackground(Color.red);
+                log.warning(ex.toString());
             }
         }
     }
@@ -933,8 +937,6 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
 
         tabbedPane.addTab("Mic Preamp", preampPanel);
 
-        configPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Configuration"));
-        configPanel.setToolTipText("Set special config bits");
         configPanel.setLayout(new javax.swing.BoxLayout(configPanel, javax.swing.BoxLayout.Y_AXIS));
 
         specialResetButton.setText("Do special AER reset");
@@ -946,7 +948,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         });
         configPanel.add(specialResetButton);
 
-        tabbedPane.addTab("config", configPanel);
+        tabbedPane.addTab("Config", configPanel);
 
         add(tabbedPane, java.awt.BorderLayout.CENTER);
     }// </editor-fold>//GEN-END:initComponents

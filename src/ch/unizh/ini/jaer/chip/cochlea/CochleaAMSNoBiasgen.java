@@ -85,9 +85,9 @@ public class CochleaAMSNoBiasgen extends CochleaChip {
      * <li>
      * CH5:0 are the channel address. 0 is the base (input) responsive to high frequencies. 63 is the apex responding to low frequencies.
      * <li>
-     * EAR is the binaruaral ear. EAR=0 is left ear, EAR=1 is right ear.
+     * EAR is the binaural ear. EAR=0 is left ear, EAR=1 is right ear.
      * <li>
-     * LPFBPF is the ganglion cell type. LPFBPF=1 is a lowpass neuron, LPFBPF=1 is a bandpass neuron.
+     * LPFBPF is the ganglion cell type. LPFBPF=1 is a low-pass neuron, LPFBPF=1 is a bandpass neuron.
      * </ul>
      */
     public class Extractor extends TypedEventExtractor implements java.io.Serializable {
