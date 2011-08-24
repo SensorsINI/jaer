@@ -1273,7 +1273,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
             clusterArea.setRect((int) location.x - width/2, (int) location.y - height/2, width, height);
 
-            maxRadius = (height + width)/4;
+            this.maxRadius = (height + width)/4;
         }
 
         public void setRadius(float maxRadius, int timeIntervalUs){
@@ -1293,7 +1293,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
             clusterArea.setRect((int) location.x - width/2, (int) location.y - height/2, width, height);
 
-            maxRadius = (height + width)/4;
+            this.maxRadius = (height + width)/4;
         }
 
         /**
