@@ -603,10 +603,6 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          */
         private VelocityFitter velocityFitter = new VelocityFitter(path, numVelocityPoints);
 
-
-        private ArrayList<Float> mpMemory = new ArrayList<Float>();
-
-
         @Override
         public int hashCode (){
             return clusterNumber;
@@ -931,13 +927,14 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             numNeurons = ng.getNumMemberNeurons();
             mass = curMass + ngTotalMP;
 
+            float refMass = bfilter.getMPThreshold()*numNeurons;
             // averaging the location
             Point2D.Float prevLocation = new Point2D.Float(location.x, location.y);
             if(mass == 0){
                 // do not update the location since it's not a good information
             } else {
-                location.x = (location.x*curMass + ng.location.x*ngTotalMP)/mass;
-                location.y = (location.y*curMass + ng.location.y*ngTotalMP)/mass;
+                location.x = (location.x*refMass + ng.location.x*ngTotalMP)/(refMass + ngTotalMP);
+                location.y = (location.y*refMass + ng.location.y*ngTotalMP)/(refMass + ngTotalMP);
             }
 
             // solves cluster overlapping
@@ -1138,7 +1135,6 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         public void doSubThTracking(int updateTimestamp, NonOverlappingRadiusOfCluster no_radius){
             float xpos = location.x;
             float ypos = location.y;
-            float corr = 0;
 
             if(useVelocity){
                 if(Math.abs(velocityPPS.x) > 10)
@@ -1162,51 +1158,9 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                 return;
             }
 
-            // calculates correlation of membrane potential map
-            // correlation is used for reduce the errors caused by spontaneous noises
-            if(mpMemory != null){
-                if(mpMemory.size() == ng.getNumMemberNeurons()){
-                    float sum_p = 0, sum_n = 0, sum_np = 0, ssum_n = 0, ssum_p = 0;
-                    int num = mpMemory.size();
-                    ArrayList<LIFNeuron> nList = ng.getMemberNeurons();
-                    for(int i = 0; i < num; i++ ){
-                        float mp_n = nList.get(i).getMPNow(updateTimestamp);
-                        float mp_p = mpMemory.get(i);
-                        mpMemory.set(i, mp_n); // update
-
-                        sum_p += mp_p;
-                        sum_n += mp_n;
-                        sum_np += mp_n*mp_p;
-                        ssum_p += mp_p*mp_p;
-                        ssum_n += mp_n*mp_n;
-                    }
-                    float den_p = (float)Math.sqrt(num*ssum_p - sum_p*sum_p);
-                    float den_n = (float)Math.sqrt(num*ssum_n - sum_n*sum_n);
-                    if(den_p == 0 || den_n == 0)
-                        corr = 0;
-                    else 
-                        corr = (num*sum_np - sum_n*sum_p)/den_n/den_p;
-                } else {
-                    mpMemory.clear();
-                    for(LIFNeuron n:ng.getMemberNeurons())
-                        mpMemory.add(n.getMPNow(updateTimestamp));
-                }
-            } else {
-                for(LIFNeuron n:ng.getMemberNeurons())
-                    mpMemory.add(n.getMPNow(updateTimestamp));
-            }
-
-            // reference threshold
-            float refThreshold  = bfilter.getMPThreshold() * Math.min(ng.getNumMemberNeurons()*0.2f, 20.0f);
-
-            // if the total MP of the virtual group is lower than reference threshold and correlation is lower than xx, use current location.
-            if(corr < 0.9f){
-                if(ng.getTotalMP() < refThreshold)
-                    ng.location.setLocation(location);
-            } else {
-                if(ng.getTotalMP() < 0.1f*refThreshold)
-                    ng.location.setLocation(location);
-            }
+            // if the total MP of the virtual group is too low, use current location.
+            if(ng.getTotalMP() < bfilter.getMPThreshold()*ng.getNumMemberNeurons()*0.03f)
+                ng.location.setLocation(location);
 
             addGroup(ng, true, updateTimestamp);
         }
