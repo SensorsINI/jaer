@@ -927,7 +927,9 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             numNeurons = ng.getNumMemberNeurons();
             mass = curMass + ngTotalMP;
 
-            float refMass = bfilter.getMPThreshold()*numNeurons;
+            float refMassTau = bfilter.getMPThreshold()*numNeurons;
+            float refMass = 5*refMassTau*(float)Math.exp(-20*ngTotalMP/refMassTau) + curMass*0.7f;
+            
             // averaging the location
             Point2D.Float prevLocation = new Point2D.Float(location.x, location.y);
             if(mass == 0){
@@ -2196,19 +2198,16 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         else
             curMass *= leakyfactor;
 
-        float refmass = curMass + ngTotalMP;
-
+        float refMassTau = bfilter.getMPThreshold()*c.numNeurons;
+        float refMass = 5*refMassTau*(float)Math.exp(-20*ngTotalMP/refMassTau) + curMass*0.7f;
 
         if(useVelocity){
-            if(Math.abs(c.velocityPPS.x) > 10)
                 refLoc.x += c.velocityPPS.x*(msg.timestamp - c.lastUpdateTimestamp)*1e-6f;
-
-            if(Math.abs(c.velocityPPS.y) > 10)
                 refLoc.y += c.velocityPPS.y*(msg.timestamp - c.lastUpdateTimestamp)*1e-6f;
         }
 
-        refLoc.x = (refLoc.x*curMass + ng.location.x*ngTotalMP)/refmass;
-        refLoc.y = (refLoc.y*curMass + ng.location.y*ngTotalMP)/refmass;
+        refLoc.x = (refLoc.x*refMass + ng.location.x*ngTotalMP)/(refMass + ngTotalMP);
+        refLoc.y = (refLoc.y*refMass + ng.location.y*ngTotalMP)/(refMass + ngTotalMP);
 
         return refLoc;
     }
