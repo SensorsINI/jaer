@@ -355,6 +355,11 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 //        resend(); // shouldn't be necessary with the batch edit start/end in biasgen.importPreferences
     }
 
+    /** Call this with exception to briefly show the exception in the status field.
+     * 
+     * @param x the exception
+     * @param source the source of the exception
+     */
     public void exceptionOccurred(Exception x, Object source) {
         if (x.getMessage() != null) {
             setStatusMessage(x.getMessage());

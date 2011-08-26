@@ -151,9 +151,9 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 but.addActionListener(new ConfigBitAction(b2));
                 hiZButton.addActionListener(new ConfigTristateAction(b2));
                 bit.addObserver(this);
-            } else if(bit instanceof CochleaAMS1c.ConfigBit) {
-                 ConfigBit b2 = (ConfigBit) bit;
-               JRadioButton but = new JRadioButton(bit.getName() + ": " + bit.getDescription());
+            } else if (bit instanceof CochleaAMS1c.ConfigBit) {
+                ConfigBit b2 = (ConfigBit) bit;
+                JRadioButton but = new JRadioButton(bit.getName() + ": " + bit.getDescription());
                 but.setAlignmentX(Component.LEFT_ALIGNMENT);
                 but.setToolTipText("Select to set bit, clear to clear bit");
                 but.setSelected(b2.isSet()); // pref value
@@ -162,18 +162,18 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 but.addActionListener(new ConfigBitAction(b2));
                 bit.addObserver(this);
 
-            }else if(bit instanceof CochleaAMS1c.ConfigInt){
-                ConfigInt in=(ConfigInt)bit;
-                JPanel pan=new JPanel();
-                 pan.setAlignmentX(Component.LEFT_ALIGNMENT);
-               pan.setLayout(new BoxLayout(pan, BoxLayout.X_AXIS));
-                JLabel label=new JLabel(in.getName());
+            } else if (bit instanceof CochleaAMS1c.ConfigInt) {
+                ConfigInt in = (ConfigInt) bit;
+                JPanel pan = new JPanel();
+                pan.setAlignmentX(Component.LEFT_ALIGNMENT);
+                pan.setLayout(new BoxLayout(pan, BoxLayout.X_AXIS));
+                JLabel label = new JLabel(in.getName());
                 label.setToolTipText(in.getDescription());
                 pan.add(label);
-                JTextField tf=new JTextField();
+                JTextField tf = new JTextField();
                 tf.setText(Integer.toString(in.get()));
-                tf.setPreferredSize(new Dimension(200,20));
-                tf.setMaximumSize(new Dimension(200,30));
+                tf.setPreferredSize(new Dimension(200, 20));
+                tf.setMaximumSize(new Dimension(200, 30));
                 pan.add(tf);
                 configPanel.add(pan);
                 configBitMap.put(bit, tf);
@@ -195,7 +195,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
 
         tabbedPane.setSelectedIndex(prefs.getInt("CochleaAMS1cControlPanel.selectedPaneIndex", 0));
     }
-    final Dimension sliderDimPref = new Dimension(2, 200),  sliderDimMin = new Dimension(1, 35),  killDimPref = new Dimension(2, 15),  killDimMax = new Dimension(6, 15),  killDimMin = new Dimension(1, 8);
+    final Dimension sliderDimPref = new Dimension(2, 200), sliderDimMin = new Dimension(1, 35), killDimPref = new Dimension(2, 15), killDimMax = new Dimension(6, 15), killDimMin = new Dimension(1, 8);
     final Insets zeroInsets = new Insets(0, 0, 0, 0);
 
     /** Handles updates to GUI controls from any source, including preference changes */
@@ -213,12 +213,12 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
 //                log.info("set button for "+b+" to selected="+but.isSelected());
             } else if (observable instanceof ConfigBit) {
                 ConfigBit b = (ConfigBit) observable;
-                AbstractButton but = (AbstractButton)configBitMap.get(b);
+                AbstractButton but = (AbstractButton) configBitMap.get(b);
                 but.setSelected(b.isSet());
 //                log.info("set button for "+b+" to selected="+but.isSelected());
             } else if (observable instanceof ConfigInt) {
                 ConfigInt b = (ConfigInt) observable;
-                JTextField tf = (JTextField)configBitMap.get(b);
+                JTextField tf = (JTextField) configBitMap.get(b);
                 tf.setText(Integer.toString(b.get()));
 //                log.info("set button for "+b+" to selected="+but.isSelected());
             } else if (observable instanceof Scanner) {
@@ -464,6 +464,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 tf.selectAll();
                 tf.setBackground(Color.red);
                 log.warning(ex.toString());
+                showException(ex, e.getSource());
             }
         }
     }
@@ -536,7 +537,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         });
         setLayout(new java.awt.BorderLayout());
 
-        tabbedPane.setToolTipText("");
+        tabbedPane.setToolTipText("Select tab for aspect of configuration");
         tabbedPane.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 tabbedPaneMouseClicked(evt);
@@ -713,7 +714,6 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         continuousScanningEnabledCheckBox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 continuousScanningEnabledCheckBoxActionPerformed(evt);
-                jCheckBox1ActionPerformed(evt);
             }
         });
 
@@ -738,7 +738,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(periodSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 43, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(continuousScanningEnabledCheckBox))
-                .addContainerGap(409, Short.MAX_VALUE))
+                .addContainerGap(266, Short.MAX_VALUE))
         );
         continuousScanningPanelLayout.setVerticalGroup(
             continuousScanningPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -794,11 +794,11 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 713, Short.MAX_VALUE)
+            .addGap(0, 570, Short.MAX_VALUE)
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 131, Short.MAX_VALUE)
+            .addGap(0, 40, Short.MAX_VALUE)
         );
 
         scannerPanel.add(jPanel1);
@@ -809,11 +809,11 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         adcPanel.setLayout(adcPanelLayout);
         adcPanelLayout.setHorizontalGroup(
             adcPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 725, Short.MAX_VALUE)
+            .addGap(0, 582, Short.MAX_VALUE)
         );
         adcPanelLayout.setVerticalGroup(
             adcPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 460, Short.MAX_VALUE)
+            .addGap(0, 368, Short.MAX_VALUE)
         );
 
         tabbedPane.addTab("ADC", adcPanel);
@@ -858,7 +858,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
             .addGroup(jPanel4Layout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(jPanel6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(274, Short.MAX_VALUE))
+                .addContainerGap(131, Short.MAX_VALUE))
         );
         jPanel4Layout.setVerticalGroup(
             jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -904,7 +904,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 .addComponent(jPanel7, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel8, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(453, Short.MAX_VALUE))
+                .addContainerGap(310, Short.MAX_VALUE))
         );
         jPanel5Layout.setVerticalGroup(
             jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -932,7 +932,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(117, Short.MAX_VALUE))
+                .addContainerGap(25, Short.MAX_VALUE))
         );
 
         tabbedPane.addTab("Mic Preamp", preampPanel);
@@ -957,10 +957,6 @@ private void continuousScanningEnabledCheckBoxActionPerformed(java.awt.event.Act
     biasgen.scanner.setContinuousScanningEnabled(continuousScanningEnabledCheckBox.isSelected());
     setFileModified();
 }//GEN-LAST:event_continuousScanningEnabledCheckBoxActionPerformed
-
-private void jCheckBox1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBox1ActionPerformed
-    biasgen.scanner.setContinuousScanningEnabled(continuousScanningEnabledCheckBox.isSelected());
-}//GEN-LAST:event_jCheckBox1ActionPerformed
 
 private void scanSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_scanSpinnerStateChanged
     int stage = scannerChannelSpinnerModel.getNumber().intValue();
@@ -1177,4 +1173,12 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
 //        }
 //        protected void removeRedundantState(){}; // override this to actually isSet a state stored!!
 //    }
+
+    public void showException(Exception ex, Object source) {
+        try {
+            chip.getAeViewer().getBiasgenFrame().exceptionOccurred(ex, source);
+        } catch (Exception e) {
+            log.warning(e.toString());
+        }
+    }
 }
