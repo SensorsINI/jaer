@@ -165,11 +165,12 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
     }
 
     synchronized public void startJitter() {
+        log.info("starting jitter");
         if (timer != null) {
             stopJitter(); //  running, must stop to get new position correct
         }
         timer = new java.util.Timer();
-        timer.scheduleAtFixedRate(new JittererTask(getPanTiltValues()), 0, 20); // 40 ms delay
+        timer.schedule(new JittererTask(new float[]{0,0}), 0, 20); // every 20 ms update jitter
     }
 
     synchronized public void stopJitter() {
@@ -304,9 +305,10 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
         @Override
         public void run() {
             long t = System.currentTimeMillis() - startTime;
-            double phase = Math.PI * 2 * (double) t / 1000 * jitterFreqHz;
+            double phase = Math.PI * 2 * ((double) t / 1000) * jitterFreqHz;
             float dx = (float) (jitterAmplitude * Math.sin(phase));
             float dy = (float) (jitterAmplitude * Math.cos(phase));
+//            System.out.println("t="+t+" phase="+(phase/2/Math.PI)+" dx,dy="+dx+", "+dy);
             try {
                 setPanTiltValues(pantiltvalues[0] + dx, pantiltvalues[1] + dy);
             } catch (HardwareInterfaceException ex) {

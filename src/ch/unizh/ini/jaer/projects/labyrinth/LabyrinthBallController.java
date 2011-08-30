@@ -118,7 +118,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if (controllerEnabled) {
+        if (isControllerEnabled()) {
             control(in, timeUs()); //in.getLastTimestamp()
         } // control is also called from callback via update from tracker
        out = getEnclosedFilterChain().filterPacket(in);// TODO real practical problem here that if there is no retina input that survives to tracker, we get no updates here to control on
@@ -209,7 +209,6 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             long timeSinceBallLost=timeNow-lastTimeBallDetected;
             if(timeSinceBallLost>getTimeToTriggerJiggleAfterBallLostMs()){
                 timeSinceBallLost=timeNow+getJiggleTimeMs();
-                log.info("ball lost, triggering a jiggle");
                 doJiggleTable();
             }
             resetControllerState();
@@ -661,6 +660,11 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 setControllerDisabledTemporarily(true);
                 tracker.resetFilter();
                 centerTilts();
+                try {
+                    Thread.sleep(300);
+                } catch (InterruptedException ex) {
+                }
+                
                 labyrinthHardware.startJitter();
                 try {
                     Thread.sleep(getJiggleTimeMs());

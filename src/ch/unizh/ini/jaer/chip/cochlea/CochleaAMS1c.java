@@ -232,7 +232,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         // config bits/values
         // portA
         private PortBit hostResetTimestamps = new PortBit("a7", "hostResetTimestamps", "High to reset timestamps"),
-                runAERComm = new PortBit("a3", "runAERComm", "High to run CPLD state machine (send events)");
+                runAERComm = new PortBit("a3", "runAERComm", "High to run CPLD state machine (send events)- also controls CPLDLED2");
 //                timestampMaster = new PortBit("a1", "timestampMaster", "High to make this the master AER timing source"); // output from CPLD to signify it is the master
         // portC
         private PortBit runAdc = new PortBit("c0", "runAdc", "High to run ADC");
@@ -241,24 +241,24 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 aerKillBit = new PortBit("d7", "aerKillBit", "Set high to kill selected channel ???");
         // portE
         private PortBit powerDown = new PortBit("e2", "powerDown", "High to power down bias generator"),
-                nCochleaReset = new PortBit("e3", "nCochleaReset", "Low to reset cochlea logic; global latch reset (0=reset, 1=run)"),
-                nCpldReset = new PortBit("e7", "nCpldReset", "Low to reset CPLD");
+                nCochleaReset = new PortBit("e3", "nCochleaReset", "Low to reset cochlea logic; global latch reset (0=reset, 1=run)");
+//                nCpldReset = new PortBit("e7", "nCpldReset", "Low to reset CPLD"); // don't expose this, firmware unresets on init
         // CPLD config on CPLD shift register
         private CPLDBit yBit = new CPLDBit(0, "yBit", "Used to select which neurons to kill"),
-                selAER = new CPLDBit(3, "selAER", "Chooses whether lpf (0) or rectified (1) lpf output drives lpf neurons"),
-                selIn = new CPLDBit(4, "selIn", "Parallel (1) or Cascaded (0) Arch");
+                selAER = new CPLDBit(3, "selAER", "Chooses whether lpf (0) or rectified (1) lpf output drives low-pass filter neurons"),
+                selIn = new CPLDBit(4, "selIn", "Parallel (1) or Cascaded (0) cochlea architecture");
         private CPLDInt onchipPreampGain = new CPLDInt(1, 2, "onchipPreampGain", "chooses onchip microphone preamp feedback resistor");
-        private CPLDInt adcConfig = new CPLDInt(11, 22, "adcConfig", "???"),
+        private CPLDInt adcConfig = new CPLDInt(11, 22, "adcConfig", "determines configuration of ADC - should have fixed value which is ???"),
                 adcTrackTime = new CPLDInt(23, 38, "adcTrackTime", "ADC track time in clock cycles ???"),
                 adcIdleTime = new CPLDInt(39, 54, "adcIdleTime", "ADC idle time after last acquisition in clock cycles ???");
-        private CPLDInt scanX = new CPLDInt(55, 61, "scanChannel", "Cochlea tap to scan when not scanning continuously");
-        private CPLDBit scanSel = new CPLDBit(66, "scanSel", "select scanner shift register"), // TODO firmware controlled?
-                scanEnable = new CPLDBit(67, "scanEnable", "enable continuous scanning");
+        private CPLDInt scanX = new CPLDInt(55, 61, "scanChannel", "cochlea tap to monitor when not scanning continuously");
+        private CPLDBit scanSel = new CPLDBit(66, "scanSel", "selects on-chip cochlea scanner shift register - also turns on CPLDLED1 near FXLED1"), // TODO firmware controlled?
+                scanEnable = new CPLDBit(67, "scanEnable", "enables continuous scanning of on-chip scanner");
         private TriStateableCPLDBit preampAR = new TriStateableCPLDBit(5, 6, "preampAttack/Release", "offchip preamp attack/release ratio (0=attack/release ratio=1:500, 1=A/R=1:2000, HiZ=A/R=1:4000)"),
                 preampGainLeft = new TriStateableCPLDBit(5, 6, "preamp gain, left", "offchip preamp gain bit (1=gain=40dB, 0=gain=50dB, HiZ=60dB if preamp threshold \"PreampAGCThreshold (TH)\"is set above 2V)"),
                 preampGainRight = new TriStateableCPLDBit(5, 6, "preamp gain, right", "offchip preamp gain bit (1=gain=40dB, 0=gain=50dB, HiZ=60dB if preamp threshold \"PreampAGCThreshold (TH)\"is set above 2V)");
         // store all values here, then iterate over this array to build up CPLD shift register stuff and dialogs
-        volatile AbstractConfigValue[] config = {hostResetTimestamps, runAERComm, runAdc, vCtrlKillBit, aerKillBit, powerDown, nCochleaReset, nCpldReset, yBit, selAER, selIn, onchipPreampGain,
+        volatile AbstractConfigValue[] config = {hostResetTimestamps, runAERComm, runAdc, vCtrlKillBit, aerKillBit, powerDown, nCochleaReset, yBit, selAER, selIn, onchipPreampGain,
             adcConfig, adcTrackTime, adcIdleTime, scanX, scanSel, scanEnable, preampAR, preampGainLeft, preampGainRight
         };
         CPLDConfigValue[] cpldConfigValues = {yBit, selAER, selIn, onchipPreampGain, adcConfig, adcTrackTime, adcIdleTime, scanX, scanSel, scanEnable, preampAR, preampGainLeft, preampGainRight};
@@ -452,14 +452,14 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 public void run() {
                     yBit.set(true);
                     aerKillBit.set(false); // after kill bit changed, must wait
-                    nCpldReset.set(true);
+//                    nCpldReset.set(true);
                     //  yBit.set(true);
                     //           aerKillBit.set(false); // after kill bit changed, must wait
                     try {
                         Thread.sleep(50);
                     } catch (InterruptedException e) {
                     }
-                    nCpldReset.set(false);
+//                    nCpldReset.set(false);
                     aerKillBit.set(true);
                     try {
                         Thread.sleep(50);
