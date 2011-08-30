@@ -31,8 +31,14 @@ public class EdgeExtractor extends EventFilter2D implements Observer {
     /**
      * Determines whether events that cannot be assigned to an edge should be filtered out
      */
-    private boolean isFilterEnabled=getPrefs().getBoolean("EdgeExtractor.isFilterOn",false);
-    {setPropertyTooltip("isFilterOn","Should the extractor act as filter for unallocated events");}
+    private boolean filteringEnabled=getPrefs().getBoolean("EdgeExtractor.filterinEnabled",false);
+    {setPropertyTooltip("filteringEnabled","Should the extractor act as filter for unallocated events");}
+    
+    /**
+     * Determines whether events that cannot be assigned to an edge should be filtered out
+     */
+    private float tolerance=getPrefs().getFloat("EdgeExtractor.tolerance",1.5f);
+    {setPropertyTooltip("tolerance","The distance belonging to one vertex");}
     
     @Override
     public void initFilter() {
@@ -49,8 +55,12 @@ public class EdgeExtractor extends EventFilter2D implements Observer {
         if(!filterEnabled) return in;
         if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
         checkOutputPacketEventType(in);
-        //Processing done here
-        if(isFilterEnabled){ 
+        for (Object o : in) {
+            TypedEvent e = (TypedEvent) o;
+            
+        }
+        
+        if(filteringEnabled){ 
             return out;
         }else{
             return in;
@@ -60,6 +70,35 @@ public class EdgeExtractor extends EventFilter2D implements Observer {
     @Override
     public void update(Observable o, Object arg) {
         
+    }
+    
+     /**
+     * @return the tolerance
+     */
+    public float getTolerance() {
+        return tolerance;
+    }
+
+    /**
+     * @param tolerance the tolerance to set
+     */
+    public void setTolerance(float tau) {
+        this.tolerance = tolerance;
+        prefs().putFloat("EdgeExtractor.tolerance", tolerance);
+    }
+    
+    /**
+     * @return the filteringEnabled
+     */
+    public boolean isFilteringEnabled() {
+        return filteringEnabled;
+    }
+
+    /**
+     * @param filteringEnabled the filteringEnabled to set
+     */
+    public void setFilteringEnabled(boolean filteringEnabled) {
+        this.filteringEnabled = filteringEnabled;
     }
     
 }
