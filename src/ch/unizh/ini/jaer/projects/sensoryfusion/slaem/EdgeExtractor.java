@@ -21,13 +21,9 @@ package ch.unizh.ini.jaer.projects.sensoryfusion.slaem;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class EdgeExtractor extends EventFilter2D implements Observer {
     
-    public EdgeExtractor(AEChip chip){
-        super(chip);
-        chip.addObserver(this);
-        initFilter();
-        resetFilter();
-    }
-    
+	public ArrayList<EdgeVertex> vertices;
+	public Iterator<EdgeVertex> vertexItr;
+	
     /**
      * Determines whether events that cannot be assigned to an edge should be filtered out
      */
@@ -37,9 +33,16 @@ public class EdgeExtractor extends EventFilter2D implements Observer {
     /**
      * Determines whether events that cannot be assigned to an edge should be filtered out
      */
-    private float tolerance=getPrefs().getFloat("EdgeExtractor.tolerance",1.5f);
+    private float vertexDiameter=getPrefs().getFloat("EdgeExtractor.vertexDiameter",1.5f);
     {setPropertyTooltip("tolerance","The distance belonging to one vertex");}
     
+	    public EdgeExtractor(AEChip chip){
+        super(chip);
+        chip.addObserver(this);
+        initFilter();
+        resetFilter();
+    }
+	
     @Override
     public void initFilter() {
         resetFilter();
@@ -47,7 +50,8 @@ public class EdgeExtractor extends EventFilter2D implements Observer {
     
     @Override
     public void resetFilter() {
-        
+        vertices = new ArrayList();
+		vertexItr = vertices.iterator();
     }
     
     @Override
@@ -57,7 +61,7 @@ public class EdgeExtractor extends EventFilter2D implements Observer {
         checkOutputPacketEventType(in);
         for (Object o : in) {
             TypedEvent e = (TypedEvent) o;
-            
+            updateVertices(e);
         }
         
         if(filteringEnabled){ 
@@ -66,6 +70,20 @@ public class EdgeExtractor extends EventFilter2D implements Observer {
             return in;
         }
     }
+	
+	private boolean isFree;
+	
+	private void updateVertices(TypedEvent e){
+		isFree = true;
+		while(vertexItr.hasNext()){
+			if(vertexItr.next().checkEvent(e)){
+				isFree = false;
+			}
+		}
+		if(isFree){
+			vertices.add(new EdgeVertex(e, vertexDiameter));
+		}
+	}
 
     @Override
     public void update(Observable o, Object arg) {
@@ -76,15 +94,15 @@ public class EdgeExtractor extends EventFilter2D implements Observer {
      * @return the tolerance
      */
     public float getTolerance() {
-        return tolerance;
+        return vertexDiameter;
     }
 
     /**
      * @param tolerance the tolerance to set
      */
     public void setTolerance(float tau) {
-        this.tolerance = tolerance;
-        prefs().putFloat("EdgeExtractor.tolerance", tolerance);
+        this.vertexDiameter = vertexDiameter;
+        prefs().putFloat("EdgeExtractor.vertexDiameter", vertexDiameter);
     }
     
     /**
