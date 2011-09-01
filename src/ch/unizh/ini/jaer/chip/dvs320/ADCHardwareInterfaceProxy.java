@@ -12,13 +12,13 @@ public class ADCHardwareInterfaceProxy {
 
     static Logger log = Logger.getLogger("cDVSTestHardwareInterface");
     // following define limits for slider controls that are automagically constucted by ParameterControlPanel
-    private final int minRefOffTime = 0;
+    private final int minRefOffTime = 1;
     private final int maxRefOffTime = 100;
     private final int minRefOnTime = 1;
     private final int maxRefOnTime = 100;
-    private final int minTrackTime = 0;
+    private final int minTrackTime = 1;
     private final int maxTrackTime = 100;
-    private final int minIdleTime = 0;
+    private final int minIdleTime = 1;
     private final int maxIdleTime = 100;
     private final int minADCchannel = 0;
     private final int maxADCchannel = 3;
@@ -55,7 +55,7 @@ public class ADCHardwareInterfaceProxy {
          if (!checkHw()) {
             return;
         }
-        hw.sendCPLDconfiguration();
+        hw.sendADCConfiguration();
     }
 
     public void setADCEnabled(boolean yes) throws HardwareInterfaceException {

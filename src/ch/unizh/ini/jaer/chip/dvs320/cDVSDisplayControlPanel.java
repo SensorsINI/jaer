@@ -255,7 +255,7 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
 
         gainLabel.setText("gain");
 
-        gainSlider.setMaximum(cDVSTest20.MAX_ADC/10);
+        gainSlider.setMaximum(cDVSTest20.MAX_ADC/100);
         gainSlider.setToolTipText("Sets the gain applied to ADC count. Gain=1 scales full count to white when offset=0. Gain=MAX_ADC scales a single count to full white when offset=0.");
 
         binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${logIntensityGain}"), gainSlider, org.jdesktop.beansbinding.BeanProperty.create("value"));

@@ -3,7 +3,7 @@ created 26 Oct 2008 for new cDVSTest chip
  */
 package ch.unizh.ini.jaer.chip.dvs320;
 
-import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
+//import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
 import ch.unizh.ini.jaer.chip.retina.*;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.biasgen.*;
@@ -376,7 +376,7 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
         private ShiftedSourceBias ssn, ssp, ssnMid, sspMid;
         private ShiftedSourceBias[] ssBiases = new ShiftedSourceBias[4];
         private VPot thermometerDAC;
-        ADCHardwareInterfaceProxy adcProxy = new ADCHardwareInterfaceProxy(cDVSTest20.this); // must set hardware later
+        ADCHardwareInterfaceProxy adcProxy = new ADCHardwareInterfaceProxy();//cDVSTest20.this); // must set hardware later
         int pos = 0;
         JPanel bPanel;
         JTabbedPane bgTabbedPane;
