@@ -271,17 +271,17 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
                         }
 
                         if (e.x < SIZE_X_CDVS * 2) { // cDVS pixel array // *2 because size is defined to be 32 and event types are still different x's
-                            if ((e.y & 1) == 0) { // odd rows: log intensity change events
+                            if ((e.y & 1) == 1) { // odd rows: log intensity change events, RAPHA changed to ==1 for odd row
                                 if (e.polarity == 1) { // off is 0, on is 1
                                     e.eventType = cDVSEvent.EventType.Brighter;
                                 } else {
                                     e.eventType = cDVSEvent.EventType.Darker;
                                 }
                             } else {  // even rows: color events
-                                if (e.polarity == 1) { // blue is on is 1
-                                    e.eventType = cDVSEvent.EventType.Bluer;
-                                } else {
+                                if (e.polarity == 0) { // blue is on is 1 on cDVSTest20, but 0 on cDVSTest30
                                     e.eventType = cDVSEvent.EventType.Redder;
+                                } else {
+                                    e.eventType = cDVSEvent.EventType.Bluer;
                                 }
                             }
                             e.x = (short) (e.x >>> 1);
@@ -894,6 +894,9 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
             byte[] formatConfigurationBytes() {
                 int nBits = 0;
                 StringBuilder s = new StringBuilder();
+                s.append("000000");
+                s.append("00");  // cDVSTest30 configuration bits: 1: use static pullups 0 : dont use em
+                nBits=8;
                 for (OutputMux m : this) {
                     s.append(m.getBitString());
                     nBits += m.nSrBits;
@@ -938,10 +941,19 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
                     dmuxes[i].put(11, "Rrow");
                     dmuxes[i].put(12, "RxcolG");
                     dmuxes[i].put(13, "nArow");
+
+                }
+
+                dmuxes[0].put(14, "nResetRxcol");  // cDVSTest30
+                dmuxes[0].put(15, "nArowBottom");  // cDVSTest30
+
+                for (int i = 1; i < 5; i++) {
+
                     dmuxes[i].put(14, "FF2");
                     dmuxes[i].put(15, "RCarb");
                 }
 
+                
 
                 vmuxes[0].setName("AnaMux3");
                 vmuxes[1].setName("AnaMux2");
@@ -953,25 +965,29 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
                     vmuxes[i].put(1, "DiffAmpOut");
                     vmuxes[i].put(2, "InPh");
                 }
-
+         
+                vmuxes[0].put(2, "InPh");
                 vmuxes[0].put(3, "refcurrent");
                 vmuxes[0].put(4, "DiffAmpRef");
                 vmuxes[0].put(5, "log");
                 vmuxes[0].put(6, "Vt");
                 vmuxes[0].put(7, "top");
 
+                vmuxes[1].put(2, "InPh");
                 vmuxes[1].put(3, "refcurrent");
                 vmuxes[1].put(4, "DiffAmpRef");
                 vmuxes[1].put(5, "log");
                 vmuxes[1].put(6, "Vt");
                 vmuxes[1].put(7, "top");
 
+                vmuxes[2].put(2, "Vdiff"); // InPh for cDVSTest20
                 vmuxes[2].put(3, "phi1");
                 vmuxes[2].put(4, "phi2");
                 vmuxes[2].put(5, "Vcoldiff");
                 vmuxes[2].put(6, "Vs");
                 vmuxes[2].put(7, "sum");
 
+                vmuxes[3].put(2, "Vdiff");  // InPh for cDVSTest20
                 vmuxes[3].put(3, "phi1");
                 vmuxes[3].put(4, "phi2");
                 vmuxes[3].put(5, "Vcoldiff");
