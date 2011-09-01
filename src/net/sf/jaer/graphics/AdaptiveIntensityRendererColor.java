@@ -77,19 +77,19 @@ import net.sf.jaer.event.*;
         float freq;
         int tt, dt = 0;
 
-        float x1=1.3f; //0.7RG Scale
-        float x2=4.2f;  //3.2GB Scale
-        float x3=2.2f;  //2.2B Scale
+        //float x1=1.3f; //0.7RG Scale
+        //float x2=4.2f;  //3.2GB Scale
+        //float x3=2.2f;  //2.2B Scale
 
-        float eb=0.7f;
-        float eg=0.7f;
+        float eb=0.8f; //0.7
+        float eg=0.8f; //0.7
         float er=1f;
 
         float Cb=1/14700f;
         float Cgb=1/4500f;
         float Crg=1/14100f;
 
-        float gateing=0.3f;
+        float gateing=0.1f; //0.3
 
      
 
@@ -137,7 +137,9 @@ import net.sf.jaer.event.*;
         float[] E=new float [22*22*3];
         float[] Emax=new float [22*22*3];
         float[] E_aux=new float [22*22*3];
-    
+        float EmaxR_global=0f;
+        float EmaxG_global=0f;
+        float EmaxB_global=0f;
 
         for (int i=0; i<22*22*3;i++){
 
@@ -175,16 +177,17 @@ import net.sf.jaer.event.*;
                         case 1:// RG
                         {
 
-                            //p[ind + 0] = freq*x1*GUIscale;
-                           
-                            E[ind+0]=(freq*Crg-E[ind+1]*eb)/er;
-                            Emax[ind+0]=Math.max(E[ind+2],E[ind+1]);
-                            Emax[ind+0]=Math.max(Emax[ind+0],E[ind+0]);
+                                //Old color seåaration algorithm //p[ind + 0] = freq*x1*GUIscale;
 
-                                                       
-                            E_aux[ind+0]=E[ind+0]/Emax[ind+0];
+                            //To cancel the geteing operation, comment lines 183, 184, 188 and 189.
+                            EmaxR_global=EmaxR_global-E[ind+0];
+                            E[ind+0]=(freq*Crg-E[ind+1]*eb)/er;
+                            EmaxR_global=EmaxR_global+E[ind+0];
+                            
+                                
+                            E_aux[ind+0]=22*22*E[ind+0]/EmaxR_global;
                             E_aux[ind+0]=(E_aux[ind+0]-gateing)/(1-gateing);
-                            p[ind+0]=GUIscale*Math.max(E[ind+0],0);
+                            p[ind+0]=GUIscale*Math.max(E_aux[ind+0],0);
 
                            
                             break;
@@ -192,14 +195,17 @@ import net.sf.jaer.event.*;
                         case 2:// GB
                         {
                             
-                                //p[ind + 1] = (freq*x2-0*p[ind+0]*x1/x2)*GUIscale;
-                                
+                                    //Old color seåaration algorithm //p[ind + 1] = (freq*x2-0*p[ind+0]*x1/x2)*GUIscale;
+
+                                //To cancel the geteing operation, comment lines 201, 203, 206 and 207.
+                                EmaxG_global=EmaxG_global-E[ind+1];
                                 E[ind+1]=(freq*Cgb-E[ind+2]*eb)/eg;
-                                    Emax[ind+1]=Math.max(E[ind+2],E[ind+1]);
-                                    Emax[ind+1]=Math.max(Emax[ind+1],E[ind+0]);
-                                    E_aux[ind+1]=E[ind+1]/Emax[ind+1];
-                                    E_aux[ind+1]=(E_aux[ind+1]-gateing)/(1-gateing);
-                                p[ind+1]=GUIscale*Math.max(E[ind+1],0);
+                                EmaxG_global=EmaxG_global+E[ind+1];
+                                    
+                                    
+                                E_aux[ind+1]=22*22*E[ind+1]/EmaxG_global;
+                                E_aux[ind+1]=(E_aux[ind+1]-gateing)/(1-gateing);
+                                p[ind+1]=GUIscale*Math.max(E_aux[ind+1],0);
                                
                             
                            
@@ -208,14 +214,16 @@ import net.sf.jaer.event.*;
                         case 3:// B
                         {
                           
-                           //p[ind + 2] = (freq*x3-p[ind+0]*x1/x3)*GUIscale;
-                           
+                                //Old color seåaration algorithm //p[ind + 2] = (freq*x3-p[ind+0]*x1/x3)*GUIscale;
+
+                            ////To cancel the geteing operation, comment lines 220,222,224, and 225.
+                           EmaxB_global=EmaxB_global-E[ind+2];
                            E[ind+2]=freq*Cb/eb;
-                                Emax[ind+2]=Math.max(E[ind+2],E[ind+1]);
-                                Emax[ind+2]=Math.max(Emax[ind+2],E[ind+0]);
-                                E_aux[ind+2]=E[ind+2]/Emax[ind+2];
-                                E_aux[ind+2]=(E_aux[ind+2]-gateing)/(1-gateing);
-                           p[ind+2]=GUIscale*Math.max(E[ind+2],0);
+                           EmaxB_global=EmaxB_global+E[ind+2];
+                                
+                            E_aux[ind+2]=22*22*E[ind+2]/EmaxB_global;
+                            E_aux[ind+2]=(E_aux[ind+2]-gateing)/(1-gateing);
+                           p[ind+2]=GUIscale*Math.max(E_aux[ind+2],0);
                           
                             break;
                         }
