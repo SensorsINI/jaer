@@ -39,6 +39,7 @@ public class LoggingWindow extends JFrame {
                 textArea.setEditable(false);
                 getContentPane().add(pane, BorderLayout.CENTER);
                 JButton copyBut = new JButton("Copy to clipboard");
+                copyBut.setToolTipText("Copies text to clipboard");
                 copyBut.addActionListener(new ActionListener() {
 
                     @Override
@@ -53,6 +54,7 @@ public class LoggingWindow extends JFrame {
                 });
                 
                 JButton mailBut=new JButton("Mail to developers");
+                mailBut.setToolTipText("Opens your email client to mail this exception to the jAER core developers. Restricted to 2048 characters.");
                  mailBut.addActionListener(new ActionListener() {
 
                     @Override

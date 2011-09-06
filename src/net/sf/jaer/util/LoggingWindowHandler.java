@@ -9,7 +9,7 @@ public class LoggingWindowHandler extends Handler {
     
     private LoggingWindowHandler() {
         configure();
-        window = new LoggingWindow("Logging window...", 500, 400);
+        window = new LoggingWindow("Uncaught Exception in jAER...", 500, 400);
     }
 
     /** Returns the instance */
