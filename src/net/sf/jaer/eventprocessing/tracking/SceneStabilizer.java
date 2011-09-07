@@ -131,6 +131,8 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
         setPropertyTooltip("flipContrast", "flips contrast of output events depending on x*y sign of motion - should maintain colors of edges");
         setPropertyTooltip("cornerFreqHz", "sets highpass corner frequency in Hz for stabilization - frequencies smaller than this will not be stabilized and transform will return to zero on this time scale");
         setPropertyTooltip("annotateEnclosedEnabled", "showing tracking or motion filter output annotation of output, for setting up parameters of enclosed filters");
+        setPropertyTooltip("opticalGyroTauLowpassMs","lowpass filter time constant in ms for optical gyro camera rotation measure");
+        setPropertyTooltip("opticalGyroRotationEnabled","enables rotation in transform");
     }
 
     @Override
@@ -593,4 +595,23 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
             computeTransform(msg); // gets the transform from the enclosed filter
         }
     }
+
+    public void setOpticalGyroRotationEnabled(boolean opticalGyroRotationEnabled) {
+        opticalGyro.setOpticalGyroRotationEnabled(opticalGyroRotationEnabled);
+    }
+
+    public boolean isOpticalGyroRotationEnabled() {
+        return opticalGyro.isOpticalGyroRotationEnabled();
+    }
+
+    public void setOpticalGyroTauLowpassMs(float opticalGyroTauLowpassMs) {
+        opticalGyro.setOpticalGyroTauLowpassMs(opticalGyroTauLowpassMs);
+    }
+
+    public float getOpticalGyroTauLowpassMs() {
+        return opticalGyro.getOpticalGyroTauLowpassMs();
+    }
+
+    
+    
 }
