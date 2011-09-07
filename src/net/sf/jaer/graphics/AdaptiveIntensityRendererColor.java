@@ -89,7 +89,7 @@ import net.sf.jaer.event.*;
         float Cgb=1/4500f;
         float Crg=1/14100f;
 
-        float gateing=0.2f; //0.3
+        float gateing=0.3f; //0.3
 
      
 
@@ -173,6 +173,8 @@ import net.sf.jaer.event.*;
                     GUIscale=0.5f * ((float) Math.pow(1.3f, colorScale))* intensity_scaling;
                     freq = 1.0f / ((float) dt * 1e-6f) * calibrationMatrix[e.y][e.x][e.type] ;
                     //freq = 0.5f * ((float) Math.pow(2, colorScale)) / ((float) dt * 1e-6f) / avgEventRateHz * calibrationMatrix[e.y][e.x][e.type] * intensity_scaling;
+                    if ((e.y!=21)&(e.x!=21)&(e.y!=0)&(e.x!=0)) {
+                    
                     int ind = getPixMapIndex(e.x, e.y);
                     switch (e.type) {
                         case 1:// RG
@@ -184,9 +186,7 @@ import net.sf.jaer.event.*;
                           
                             EmaxR_global=EmaxR_global-E[ind+0];
                             E[ind+0]=(freq*Crg-E[ind+1]*eb)/er;
-                            if ((ind<22*3-1)){
-                                E[ind+0]=0;
-                            }
+                            
                             EmaxR_global=EmaxR_global+E[ind+0];
                             
                             //if (Emax_global<E[ind+0]){
@@ -194,7 +194,7 @@ import net.sf.jaer.event.*;
                             //}
                             
                                // E_aux[ind+0]=E[ind+0]/Emax_global;
-                            E_aux[ind+0]=22*22*E[ind+0]/(1.5f*EmaxR_global);
+                            E_aux[ind+0]=22*22*E[ind+0]/(2f*EmaxR_global);
                             
                             if (E_aux[ind+0]>1){
                                    E_aux[ind+0]=1;
@@ -215,9 +215,7 @@ import net.sf.jaer.event.*;
                                 
                                 EmaxG_global=EmaxG_global-E[ind+1];
                                 E[ind+1]=(freq*Cgb-E[ind+2]*eb)/eg;
-                                if ((ind<22*3-1)){
-                                E[ind+1]=0;
-                                }
+                                
                                 EmaxG_global=EmaxG_global+E[ind+1];
                                  
                                 //if (Emax_global<E[ind+1]){
@@ -225,7 +223,7 @@ import net.sf.jaer.event.*;
                                 //}
                                     
                                 //E_aux[ind+1]=E[ind+1]/Emax_global;
-                                E_aux[ind+1]=22*22*E[ind+1]/(1.5f*EmaxG_global);
+                                E_aux[ind+1]=22*22*E[ind+1]/(2f*EmaxG_global);
                                 if (E_aux[ind+1]>1){
                                     E_aux[ind+1]=1;
                                 }
@@ -246,9 +244,7 @@ import net.sf.jaer.event.*;
                             
                            EmaxB_global=EmaxB_global-E[ind+2];
                            E[ind+2]=freq*Cb/eb;
-                            if ((ind<22*3-1)){
-                                E[ind+2]=0;
-                            }
+                            
                            EmaxB_global=EmaxB_global+E[ind+2];
                            
                            if (Emax_global<E[ind+2]){
@@ -256,7 +252,7 @@ import net.sf.jaer.event.*;
                                 }
                                 
                            //E_aux[ind+2]=E[ind+2]/Emax_global;
-                            E_aux[ind+2]=22*22*E[ind+2]/(1.5f*EmaxB_global);
+                            E_aux[ind+2]=22*22*E[ind+2]/(2f*EmaxB_global);
                             if (E_aux[ind+2]>1){
                                     E_aux[ind+2]=1;
                             }
@@ -271,9 +267,11 @@ import net.sf.jaer.event.*;
                         default:
                             break;
                     }
+
                     if ((e.x >= adaptAreaStart[0]) && (e.y >= adaptAreaStart[1]) && (e.x <= adaptAreaStop[0]) && (e.y <= adaptAreaStop[1])) {
                         adaptAreaNumSpikes += 1;
-                        
+
+                        }
                     }
                 }
             }
