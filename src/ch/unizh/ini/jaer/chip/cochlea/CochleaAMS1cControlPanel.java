@@ -155,11 +155,52 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
             c.addObserver(this);
         }
         biasgen.equalizer.addObserver(this);
-        
+
         biasgen.getOnchipPreamp().addObserver(this);
         biasgen.getOffchipPreampLeft().addObserver(this);
         biasgen.getOffchipPreampRight().addObserver(this);
-        
+
+        switch (biasgen.getOnchipGain()) {
+            case High:
+                onchipHighB.setSelected(true);
+                break;
+            case Medium:
+                onchipMedB.setSelected(true);
+                break;
+            case Low:
+                onchipMedB.setSelected(true);
+        }
+
+        switch (biasgen.getOffchipLeftGain()) {
+            case High:
+                offchipLeftGainHighBut.setSelected(true);
+                break;
+            case Medium:
+                offchipLeftGainMedBut.setSelected(true);
+                break;
+            case Low:
+                offchipLeftGainLowBut.setSelected(true);
+        }
+        switch (biasgen.getOffchipRightGain()) {
+            case High:
+                offchipRightGainHighBut.setSelected(true);
+                break;
+            case Medium:
+                offchipRightGainMedBut.setSelected(true);
+                break;
+            case Low:
+                offchipRightGainLowBut.setSelected(true);
+        }
+        switch (biasgen.getArRatio()) {
+            case Fast:
+                arFastBut.setSelected(true);
+                break;
+            case Medium:
+                arMedBut.setSelected(true);
+                break;
+            case Slow:
+                arSlowBut.setSelected(true);
+        }
         tabbedPane.setSelectedIndex(prefs.getInt("CochleaAMS1cControlPanel.selectedPaneIndex", 0));
     }
 
@@ -243,8 +284,8 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 cont.lPFKillBox.setSelected(c.isLpfKilled());
                 cont.qBPFSlider.setValue(c.getQBPF());
                 cont.qSOSSlider.setValue(c.getQSOS());
-            }else if (observable instanceof CochleaAMS1c.Biasgen.OnChipPreamp) {
-                switch(biasgen.getOnchipGain()){
+            } else if (observable instanceof CochleaAMS1c.Biasgen.OnChipPreamp) {
+                switch (biasgen.getOnchipGain()) {
                     case High:
                         onchipHighB.setSelected(true);
                         break;
@@ -254,10 +295,10 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                     case Low:
                         onchipMedB.setSelected(true);
                 }
-                
-            }else if (observable instanceof CochleaAMS1c.Biasgen.OffChipPreamp) {
-                if(observable==biasgen.getOffchipPreampLeft()){
-                    switch(biasgen.getOffchipLeftGain()){
+
+            } else if (observable instanceof CochleaAMS1c.Biasgen.OffChipPreamp) {
+                if (observable == biasgen.getOffchipPreampLeft()) {
+                    switch (biasgen.getOffchipLeftGain()) {
                         case High:
                             offchipLeftGainHighBut.setSelected(true);
                             break;
@@ -267,8 +308,8 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                         case Low:
                             offchipLeftGainLowBut.setSelected(true);
                     }
-                }else{
-                   switch(biasgen.getOffchipRightGain()){
+                } else {
+                    switch (biasgen.getOffchipRightGain()) {
                         case High:
                             offchipRightGainHighBut.setSelected(true);
                             break;
@@ -277,21 +318,21 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                             break;
                         case Low:
                             offchipRightGainLowBut.setSelected(true);
-                    }                   
+                    }
                 }
-                
-            }else if (observable instanceof CochleaAMS1c.Biasgen.OffChipPreampARRatio) {
-                  switch(biasgen.getArRatio()){
-                      case Fast:
-                          arFastBut.setSelected(true);
-                          break;
-                      case Medium:
-                          arMedBut.setSelected(true);
-                          break;
-                      case Slow:
-                          arSlowBut.setSelected(true);
-                  }
-               
+
+            } else if (observable instanceof CochleaAMS1c.Biasgen.OffChipPreampARRatio) {
+                switch (biasgen.getArRatio()) {
+                    case Fast:
+                        arFastBut.setSelected(true);
+                        break;
+                    case Medium:
+                        arMedBut.setSelected(true);
+                        break;
+                    case Slow:
+                        arSlowBut.setSelected(true);
+                }
+
             } else {
                 log.warning("unknown observable " + observable + " , not sending anything");
             }
@@ -891,13 +932,31 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         onchipGainPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("On-chip preamp gain"));
         onchipGainPanel.setLayout(new javax.swing.BoxLayout(onchipGainPanel, javax.swing.BoxLayout.LINE_AXIS));
 
+        onchipGainGroup.add(onchipLowB);
         onchipLowB.setText("low");
+        onchipLowB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                onchipLowBActionPerformed(evt);
+            }
+        });
         onchipGainPanel.add(onchipLowB);
 
+        onchipGainGroup.add(onchipMedB);
         onchipMedB.setText("medium");
+        onchipMedB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                onchipMedBActionPerformed(evt);
+            }
+        });
         onchipGainPanel.add(onchipMedB);
 
+        onchipGainGroup.add(onchipHighB);
         onchipHighB.setText("high");
+        onchipHighB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                onchipHighBActionPerformed(evt);
+            }
+        });
         onchipGainPanel.add(onchipHighB);
 
         javax.swing.GroupLayout onchipPanelLayout = new javax.swing.GroupLayout(onchipPanel);
@@ -922,14 +981,29 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
 
         offchipGainLeftGroup.add(offchipLeftGainLowBut);
         offchipLeftGainLowBut.setText("low (40dB)");
+        offchipLeftGainLowBut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                offchipLeftGainLowButActionPerformed(evt);
+            }
+        });
         offchipGainPanelLeft.add(offchipLeftGainLowBut);
 
         offchipGainLeftGroup.add(offchipLeftGainMedBut);
-        offchipLeftGainMedBut.setText("mediumm (50dB)");
+        offchipLeftGainMedBut.setText("medium (50dB)");
+        offchipLeftGainMedBut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                offchipLeftGainMedButActionPerformed(evt);
+            }
+        });
         offchipGainPanelLeft.add(offchipLeftGainMedBut);
 
         offchipGainLeftGroup.add(offchipLeftGainHighBut);
         offchipLeftGainHighBut.setText("high (60dB)");
+        offchipLeftGainHighBut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                offchipLeftGainHighButActionPerformed(evt);
+            }
+        });
         offchipGainPanelLeft.add(offchipLeftGainHighBut);
 
         offchipPanel.add(offchipGainPanelLeft);
@@ -939,14 +1013,29 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
 
         offchipARGroup.add(arFastBut);
         arFastBut.setText("fast release (1:500)");
+        arFastBut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                arFastButActionPerformed(evt);
+            }
+        });
         offchipARPanel.add(arFastBut);
 
         offchipARGroup.add(arMedBut);
         arMedBut.setText("medium release (1:2000)");
+        arMedBut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                arMedButActionPerformed(evt);
+            }
+        });
         offchipARPanel.add(arMedBut);
 
         offchipARGroup.add(arSlowBut);
         arSlowBut.setText("slow release (1:4000)");
+        arSlowBut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                arSlowButActionPerformed(evt);
+            }
+        });
         offchipARPanel.add(arSlowBut);
 
         offchipPanel.add(offchipARPanel);
@@ -956,14 +1045,29 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
 
         offchipGainRightGroup.add(offchipRightGainLowBut);
         offchipRightGainLowBut.setText("low (40dB)");
+        offchipRightGainLowBut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                offchipRightGainLowButActionPerformed(evt);
+            }
+        });
         offchipGainPanelRight.add(offchipRightGainLowBut);
 
         offchipGainRightGroup.add(offchipRightGainMedBut);
-        offchipRightGainMedBut.setText("mediumm (50dB)");
+        offchipRightGainMedBut.setText("medium (50dB)");
+        offchipRightGainMedBut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                offchipRightGainMedButActionPerformed(evt);
+            }
+        });
         offchipGainPanelRight.add(offchipRightGainMedBut);
 
         offchipGainRightGroup.add(offchipRightGainHighBut);
         offchipRightGainHighBut.setText("high (60dB)");
+        offchipRightGainHighBut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                offchipRightGainHighButActionPerformed(evt);
+            }
+        });
         offchipGainPanelRight.add(offchipRightGainHighBut);
 
         offchipPanel.add(offchipGainPanelRight);
@@ -1128,6 +1232,54 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
 //        }
 //    }
 }//GEN-LAST:event_formAncestorAdded
+
+    private void offchipLeftGainLowButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_offchipLeftGainLowButActionPerformed
+        biasgen.getOffchipPreampLeft().setGain(CochleaAMS1c.OffChipPreampGain.Low);
+    }//GEN-LAST:event_offchipLeftGainLowButActionPerformed
+
+    private void offchipLeftGainMedButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_offchipLeftGainMedButActionPerformed
+        biasgen.getOffchipPreampLeft().setGain(CochleaAMS1c.OffChipPreampGain.Medium);
+    }//GEN-LAST:event_offchipLeftGainMedButActionPerformed
+
+    private void offchipLeftGainHighButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_offchipLeftGainHighButActionPerformed
+        biasgen.getOffchipPreampLeft().setGain(CochleaAMS1c.OffChipPreampGain.High);
+    }//GEN-LAST:event_offchipLeftGainHighButActionPerformed
+
+    private void offchipRightGainLowButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_offchipRightGainLowButActionPerformed
+        biasgen.getOffchipPreampRight().setGain(CochleaAMS1c.OffChipPreampGain.Low);
+    }//GEN-LAST:event_offchipRightGainLowButActionPerformed
+
+    private void offchipRightGainMedButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_offchipRightGainMedButActionPerformed
+        biasgen.getOffchipPreampRight().setGain(CochleaAMS1c.OffChipPreampGain.Medium);
+    }//GEN-LAST:event_offchipRightGainMedButActionPerformed
+
+    private void offchipRightGainHighButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_offchipRightGainHighButActionPerformed
+        biasgen.getOffchipPreampRight().setGain(CochleaAMS1c.OffChipPreampGain.High);
+    }//GEN-LAST:event_offchipRightGainHighButActionPerformed
+
+    private void arFastButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_arFastButActionPerformed
+        biasgen.setArRatio(CochleaAMS1c.OffChipPreamp_AGC_AR_Ratio.Fast);
+    }//GEN-LAST:event_arFastButActionPerformed
+
+    private void arMedButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_arMedButActionPerformed
+        biasgen.setArRatio(CochleaAMS1c.OffChipPreamp_AGC_AR_Ratio.Medium);
+    }//GEN-LAST:event_arMedButActionPerformed
+
+    private void arSlowButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_arSlowButActionPerformed
+        biasgen.setArRatio(CochleaAMS1c.OffChipPreamp_AGC_AR_Ratio.Slow);
+    }//GEN-LAST:event_arSlowButActionPerformed
+
+    private void onchipLowBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_onchipLowBActionPerformed
+        biasgen.getOnchipPreamp().setGain(CochleaAMS1c.OnChipPreampGain.Low);
+    }//GEN-LAST:event_onchipLowBActionPerformed
+
+    private void onchipMedBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_onchipMedBActionPerformed
+        biasgen.getOnchipPreamp().setGain(CochleaAMS1c.OnChipPreampGain.Medium);
+    }//GEN-LAST:event_onchipMedBActionPerformed
+
+    private void onchipHighBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_onchipHighBActionPerformed
+        biasgen.getOnchipPreamp().setGain(CochleaAMS1c.OnChipPreampGain.High);
+    }//GEN-LAST:event_onchipHighBActionPerformed
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel adcPanel;
     private javax.swing.JRadioButton arFastBut;

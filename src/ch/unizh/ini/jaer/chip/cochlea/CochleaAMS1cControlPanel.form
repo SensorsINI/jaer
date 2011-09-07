@@ -640,18 +640,36 @@
                   <SubComponents>
                     <Component class="javax.swing.JRadioButton" name="onchipLowB">
                       <Properties>
+                        <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
+                          <ComponentRef name="onchipGainGroup"/>
+                        </Property>
                         <Property name="text" type="java.lang.String" value="low"/>
                       </Properties>
+                      <Events>
+                        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="onchipLowBActionPerformed"/>
+                      </Events>
                     </Component>
                     <Component class="javax.swing.JRadioButton" name="onchipMedB">
                       <Properties>
+                        <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
+                          <ComponentRef name="onchipGainGroup"/>
+                        </Property>
                         <Property name="text" type="java.lang.String" value="medium"/>
                       </Properties>
+                      <Events>
+                        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="onchipMedBActionPerformed"/>
+                      </Events>
                     </Component>
                     <Component class="javax.swing.JRadioButton" name="onchipHighB">
                       <Properties>
+                        <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
+                          <ComponentRef name="onchipGainGroup"/>
+                        </Property>
                         <Property name="text" type="java.lang.String" value="high"/>
                       </Properties>
+                      <Events>
+                        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="onchipHighBActionPerformed"/>
+                      </Events>
                     </Component>
                   </SubComponents>
                 </Container>
@@ -688,14 +706,20 @@
                         </Property>
                         <Property name="text" type="java.lang.String" value="low (40dB)"/>
                       </Properties>
+                      <Events>
+                        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="offchipLeftGainLowButActionPerformed"/>
+                      </Events>
                     </Component>
                     <Component class="javax.swing.JRadioButton" name="offchipLeftGainMedBut">
                       <Properties>
                         <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
                           <ComponentRef name="offchipGainLeftGroup"/>
                         </Property>
-                        <Property name="text" type="java.lang.String" value="mediumm (50dB)"/>
+                        <Property name="text" type="java.lang.String" value="medium (50dB)"/>
                       </Properties>
+                      <Events>
+                        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="offchipLeftGainMedButActionPerformed"/>
+                      </Events>
                     </Component>
                     <Component class="javax.swing.JRadioButton" name="offchipLeftGainHighBut">
                       <Properties>
@@ -704,6 +728,9 @@
                         </Property>
                         <Property name="text" type="java.lang.String" value="high (60dB)"/>
                       </Properties>
+                      <Events>
+                        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="offchipLeftGainHighButActionPerformed"/>
+                      </Events>
                     </Component>
                   </SubComponents>
                 </Container>
@@ -727,6 +754,9 @@
                         </Property>
                         <Property name="text" type="java.lang.String" value="fast release (1:500)"/>
                       </Properties>
+                      <Events>
+                        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="arFastButActionPerformed"/>
+                      </Events>
                     </Component>
                     <Component class="javax.swing.JRadioButton" name="arMedBut">
                       <Properties>
@@ -735,6 +765,9 @@
                         </Property>
                         <Property name="text" type="java.lang.String" value="medium release (1:2000)"/>
                       </Properties>
+                      <Events>
+                        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="arMedButActionPerformed"/>
+                      </Events>
                     </Component>
                     <Component class="javax.swing.JRadioButton" name="arSlowBut">
                       <Properties>
@@ -743,6 +776,9 @@
                         </Property>
                         <Property name="text" type="java.lang.String" value="slow release (1:4000)"/>
                       </Properties>
+                      <Events>
+                        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="arSlowButActionPerformed"/>
+                      </Events>
                     </Component>
                   </SubComponents>
                 </Container>
@@ -766,14 +802,20 @@
                         </Property>
                         <Property name="text" type="java.lang.String" value="low (40dB)"/>
                       </Properties>
+                      <Events>
+                        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="offchipRightGainLowButActionPerformed"/>
+                      </Events>
                     </Component>
                     <Component class="javax.swing.JRadioButton" name="offchipRightGainMedBut">
                       <Properties>
                         <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
                           <ComponentRef name="offchipGainRightGroup"/>
                         </Property>
-                        <Property name="text" type="java.lang.String" value="mediumm (50dB)"/>
+                        <Property name="text" type="java.lang.String" value="medium (50dB)"/>
                       </Properties>
+                      <Events>
+                        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="offchipRightGainMedButActionPerformed"/>
+                      </Events>
                     </Component>
                     <Component class="javax.swing.JRadioButton" name="offchipRightGainHighBut">
                       <Properties>
@@ -782,6 +824,9 @@
                         </Property>
                         <Property name="text" type="java.lang.String" value="high (60dB)"/>
                       </Properties>
+                      <Events>
+                        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="offchipRightGainHighButActionPerformed"/>
+                      </Events>
                     </Component>
                   </SubComponents>
                 </Container>
