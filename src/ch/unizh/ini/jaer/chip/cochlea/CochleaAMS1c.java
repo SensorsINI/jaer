@@ -189,8 +189,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             return code;
         }
 
-        @Override
-        public String toString() {
+        public String label() {
             return label;
         }
     };
@@ -212,14 +211,17 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             return code;
         }
 
-        @Override
-        public String toString() {
+        public String label() {
             return label;
         }
     };
 
     public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements ChipControlPanel {
 
+        private OnChipPreamp onchipPreamp;
+        private OffChipPreamp offchipPreampLeft;
+        private OffChipPreamp offchipPreampRight;
+        private OffChipPreampARRatio offchipPreampARRatio;
         private ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
         /** The DAC on the board. Specified with 5V reference even though Vdd=3.3 because the internal 2.5V reference is used and so that the VPot controls display correct voltage. */
         protected final DAC dac = new DAC(32, 12, 0, 5f, 3.3f); // the DAC object here is actually 2 16-bit DACs daisy-chained on the Cochlea board; both corresponding values need to be sent to change one value
@@ -252,11 +254,11 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 adcTrackTime = new CPLDInt(23, 38, "adcTrackTime", "ADC track time in clock cycles ???"),
                 adcIdleTime = new CPLDInt(39, 54, "adcIdleTime", "ADC idle time after last acquisition in clock cycles ???");
         private CPLDInt scanX = new CPLDInt(55, 61, "scanChannel", "cochlea tap to monitor when not scanning continuously");
-        private CPLDBit scanSel = new CPLDBit(66, "scanSel", "selects on-chip cochlea scanner shift register - also turns on CPLDLED1 near FXLED1"), // TODO firmware controlled?
-                scanEnable = new CPLDBit(67, "scanEnable", "enables continuous scanning of on-chip scanner");
+        private CPLDBit scanSel = new CPLDBit(62, "scanSel", "selects on-chip cochlea scanner shift register - also turns on CPLDLED1 near FXLED1"), // TODO firmware controlled?
+                scanEnable = new CPLDBit(63, "scanEnable", "enables continuous scanning of on-chip scanner");
         private TriStateableCPLDBit preampAR = new TriStateableCPLDBit(5, 6, "preampAttack/Release", "offchip preamp attack/release ratio (0=attack/release ratio=1:500, 1=A/R=1:2000, HiZ=A/R=1:4000)"),
-                preampGainLeft = new TriStateableCPLDBit(5, 6, "preamp gain, left", "offchip preamp gain bit (1=gain=40dB, 0=gain=50dB, HiZ=60dB if preamp threshold \"PreampAGCThreshold (TH)\"is set above 2V)"),
-                preampGainRight = new TriStateableCPLDBit(5, 6, "preamp gain, right", "offchip preamp gain bit (1=gain=40dB, 0=gain=50dB, HiZ=60dB if preamp threshold \"PreampAGCThreshold (TH)\"is set above 2V)");
+                preampGainLeft = new TriStateableCPLDBit(7, 8, "preamp gain, left", "offchip preamp gain bit (1=gain=40dB, 0=gain=50dB, HiZ=60dB if preamp threshold \"PreampAGCThreshold (TH)\"is set above 2V)"),
+                preampGainRight = new TriStateableCPLDBit(9, 10, "preamp gain, right", "offchip preamp gain bit (1=gain=40dB, 0=gain=50dB, HiZ=60dB if preamp threshold \"PreampAGCThreshold (TH)\"is set above 2V)");
         // store all values here, then iterate over this array to build up CPLD shift register stuff and dialogs
         volatile AbstractConfigValue[] config = {hostResetTimestamps, runAERComm, runAdc, vCtrlKillBit, aerKillBit, powerDown, nCochleaReset, yBit, selAER, selIn, onchipPreampGain,
             adcConfig, adcTrackTime, adcIdleTime, scanX, scanSel, scanEnable, preampAR, preampGainLeft, preampGainRight
@@ -291,8 +293,10 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             for (CPLDConfigValue c : cpldConfigValues) {
                 cpldConfig.add(c);
             }
-            OnChipPreamp onchipPreamp = new OnChipPreamp(onchipPreampGain);
-            OffChipPreamp offchipPreampLeft = new OffChipPreamp(preampGainLeft, preampAR), offchipPreampRight = new OffChipPreamp(preampGainRight, preampAR);
+            onchipPreamp = new OnChipPreamp(onchipPreampGain);
+            offchipPreampLeft = new OffChipPreamp(preampGainLeft, Ear.Left);
+            offchipPreampRight = new OffChipPreamp(preampGainRight, Ear.Right);
+            offchipPreampARRatio = new OffChipPreampARRatio(preampAR);
 
             for (AbstractConfigValue b : config) {
                 b.addObserver(this);
@@ -378,6 +382,38 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 //            Pot.setModificationTrackingEnabled(false); // don't flag all biases modified on construction
             loadPreferences();
 //            Pot.setModificationTrackingEnabled(true);
+        }
+
+        void setOnchipGain(OnChipPreampGain gain) {
+            getOnchipPreamp().setGain(gain);
+        }
+
+        OnChipPreampGain getOnchipGain() {
+            return getOnchipPreamp().getGain();
+        }
+
+        void setOffchipLeftGain(OffChipPreampGain gain) {
+            getOffchipPreampLeft().setGain(gain);
+        }
+
+        OffChipPreampGain getOffchipLeftGain() {
+            return getOffchipPreampLeft().getGain();
+        }
+
+        void setOffchipRightGain(OffChipPreampGain gain) {
+            getOffchipPreampRight().setGain(gain);
+        }
+
+        OffChipPreampGain getOffchipRightGain() {
+            return getOffchipPreampRight().getGain();
+        }
+
+        public void setArRatio(OffChipPreamp_AGC_AR_Ratio arRatio) {
+            offchipPreampARRatio.setArRatio(arRatio);
+        }
+
+        public OffChipPreamp_AGC_AR_Ratio getArRatio() {
+            return offchipPreampARRatio.getArRatio();
         }
 
         @Override
@@ -678,6 +714,27 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             return dacPowered;
         }
 
+        /**
+         * @return the onchipPreamp
+         */
+        public OnChipPreamp getOnchipPreamp() {
+            return onchipPreamp;
+        }
+
+        /**
+         * @return the offchipPreampLeft
+         */
+        public OffChipPreamp getOffchipPreampLeft() {
+            return offchipPreampLeft;
+        }
+
+        /**
+         * @return the offchipPreampRight
+         */
+        public OffChipPreamp getOffchipPreampRight() {
+            return offchipPreampRight;
+        }
+
 //        public PropertyChangeSupport getSupport() {
 //            return support;
 //        }
@@ -762,16 +819,20 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
             private void compute() {
                 if (minBit > 0) {
-                    return; // not yet
+                    return; // not yet, we haven't filled in bit 0 yet
                 }
                 bits = new boolean[maxBit + 1];
                 for (CPLDConfigValue v : cpldConfigValues) {
                     if (v instanceof ConfigBit) {
-                        bits[v.endBit] = ((ConfigBit) v).isSet();
+                        bits[v.startBit] = ((ConfigBit) v).isSet();
+//                        if (bits[v.startBit]) {
+//                            System.out.println("true bit at " + v.startBit);
+//                        }
                     } else if (v instanceof ConfigInt) {
                         int i = ((ConfigInt) v).get();
                         for (int k = v.startBit; k < v.endBit; k++) {
                             bits[k] = (i & 1) == 1;
+                            i = i >>> 1;
                         }
                     }
                 }
@@ -794,8 +855,13 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
             }
 
-            /** Returns byte[] to send to uC to load into CPLD shift register */
+            /** Returns byte[] to send to uC to load into CPLD shift register. 
+             * This array is returned in big endian order so that
+             the bytes sent will be sent in big endian order to the device, according to how they are handled in firmware
+             and loaded into the CPLD shift register.
+             */
             private byte[] getBytes() {
+                compute();
                 int nBytes = bits.length / 8;
                 if (bits.length % 8 != 0) {
                     nBytes++;
@@ -805,14 +871,24 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 }
                 Arrays.fill(bytes, (byte) 0);
                 int byteCounter = 0;
-                for (int i = 0; i < bits.length; i++) {
-                    bytes[byteCounter] = (byte) (0xff & bytes[byteCounter] << 1);
-                    bytes[byteCounter] = (byte) (0xff & (bytes[byteCounter] | (bits[i] ? 1 : 0)));
-                    if ((i + 1) % 8 == 0) {
-                        byteCounter++;
+                int bitcount=0;
+                for (int i = bits.length-1; i >=0; i--) { // start with msb and go down
+                    bytes[byteCounter] = (byte) (0xff & bytes[byteCounter] << 1); // left shift the bits in this byte that are already there
+//                    if (bits[i]) {
+//                        System.out.println("true bit at bit " + i);
+//                    }
+                    bytes[byteCounter] = (byte) (0xff & (bytes[byteCounter] | (bits[i] ? 1 : 0))); // set or clear the current bit
+                    bitcount++;
+                    if ((bitcount) % 8 == 0) {
+                        byteCounter++; // go to next byte when we finish each 8 bits
                     }
                 }
                 return bytes;
+            }
+
+            @Override
+            public String toString() {
+                return "CPLDConfig{" + "numBits=" + numBits + ", minBit=" + minBit + ", maxBit=" + maxBit + ", cpldConfigValues=" + cpldConfigValues + ", bits=" + bits + ", bytes=" + bytes + '}';
             }
         }
 
@@ -853,7 +929,6 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 key = "CochleaAMS1c.Biasgen.ConfigBit." + name;
                 loadPreference();
                 getPrefs().addPreferenceChangeListener(this);
-                hasPreferencesList.add(this);
             }
 
             @Override
@@ -997,6 +1072,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 this.startBit = startBit;
                 this.endBit = endBit;
                 nBits = endBit - startBit + 1;
+                hasPreferencesList.add(this);
             }
 
             @Override
@@ -1013,7 +1089,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
             @Override
             public String toString() {
-                return "CPLDConfigValue{" + "startBit=" + startBit + "endBit=" + endBit + "nBits=" + nBits + '}';
+                return "CPLDConfigValue{" + "name=" + name + " startBit=" + startBit + "endBit=" + endBit + "nBits=" + nBits + '}';
             }
         }
 
@@ -1026,6 +1102,9 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             public CPLDBit(int pos, String name, String tip) {
                 super(pos, pos, name, tip);
                 this.pos = pos;
+                loadPreference();
+                 getPrefs().addPreferenceChangeListener(this);
+               hasPreferencesList.add(this);
             }
 
             @Override
@@ -1062,7 +1141,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
             @Override
             public String toString() {
-                return "CPLDBit{" + "pos=" + pos + " value=" + value + '}';
+                return "CPLDBit{" + " name=" + name + " pos=" + pos + " value=" + value + '}';
             }
         }
 
@@ -1078,6 +1157,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 this.hiZBit = hiZBit;
                 hiZKey = "CochleaAMS1c.Biasgen.TriStateableCPLDBit." + name + ".hiZEnabled";
                 loadPreference();
+                getPrefs().addPreferenceChangeListener(this);
+                hasPreferencesList.add(this);
             }
 
             /**
@@ -1415,6 +1496,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             }
         } // equalizer
 
+        /** Represents the on-chip preamps */
         class OnChipPreamp extends Observable implements PreferenceChangeListener, HasPreference {
 
             protected String key = "OnChipPreamp";
@@ -1424,7 +1506,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
             public OnChipPreamp(CPLDInt gainBits) {
                 this.gainBits = gainBits;
-//                loadPreferences();
+                loadPreference();
                 hasPreferencesList.add(this);
             }
 
@@ -1449,7 +1531,11 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
             @Override
             public void loadPreference() {
-                setGain(OnChipPreampGain.valueOf(getPrefs().get(key, OnChipPreampGain.High.name())));
+                try {
+                    setGain(OnChipPreampGain.valueOf(getPrefs().get(key, OnChipPreampGain.High.name())));
+                } catch (Exception e) {
+                    setGain(OnChipPreampGain.High);
+                }
             }
 
             @Override
@@ -1463,44 +1549,17 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             }
         }//preamp
 
-        class OffChipPreamp extends Observable implements PreferenceChangeListener, HasPreference {
+        /** Represents the combined off-chip AGC attack/release ratio setting; this setting common for both preamps. */
+        class OffChipPreampARRatio extends Observable implements PreferenceChangeListener, HasPreference {
 
-            final String arkey = "OffChipPreamp.arRatio", gainkey = "OffChipPreamp.gain";
-            private OffChipPreampGain gain = OffChipPreampGain.valueOf(getPrefs().get(gainkey, OffChipPreampGain.High.name()));
-            private OffChipPreamp_AGC_AR_Ratio arRatio = OffChipPreamp_AGC_AR_Ratio.valueOf(getPrefs().get(arkey, OffChipPreamp_AGC_AR_Ratio.Fast.name()));
-            TriStateableCPLDBit gainBit, arBit;
+            final String arkey = "OffChipPreamp.arRatio";
+            TriStateableCPLDBit arBit;
+            private OffChipPreamp_AGC_AR_Ratio arRatio;
 
-            public OffChipPreamp(TriStateableCPLDBit gainBit, TriStateableCPLDBit arBit) {
-                this.gainBit = gainBit;
+            public OffChipPreampARRatio(TriStateableCPLDBit arBit) {
                 this.arBit = arBit;
-            }
-
-            /** Sets offchip preamp gain via
-            <pre> 
-            preampGainLeft = new TriStateableCPLDBit(5, 6, "preamp gain, left", "offchip preamp gain bit (1=gain=40dB, 0=gain=50dB, HiZ=60dB if preamp threshold \"PreampAGCThreshold (TH)\"is set above 2V)"),
-             * </pre>
-             * @param gain 
-             */
-            void setGain(OffChipPreampGain gain) {
-                this.gain = gain;
-                switch (gain) {
-                    case High:
-                        gainBit.setHiZ(true);
-                        break;
-                    case Medium:
-                        gainBit.setHiZ(false);
-                        gainBit.set(false);
-                        break;
-                    case Low:
-                        gainBit.setHiZ(false);
-                        gainBit.set(true);
-                }
-                setChanged();
-                notifyObservers(this); // handle in update()
-            }
-
-            OffChipPreampGain getGain() {
-                return gain;
+                loadPreference();
+                hasPreferencesList.add(this);
             }
 
             /**
@@ -1536,10 +1595,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
             @Override
             public void preferenceChange(PreferenceChangeEvent e) {
-                if (e.getKey().equals(gainkey)) {
-                    log.info(this + " preferenceChange(): event=" + e + " key=" + e.getKey() + " newValue=" + e.getNewValue());
-                    setGain(OffChipPreampGain.valueOf(e.getNewValue()));
-                } else if (e.getKey().equals(arkey)) {
+                if (e.getKey().equals(arkey)) {
                     log.info(this + " preferenceChange(): event=" + e + " key=" + e.getKey() + " newValue=" + e.getNewValue());
                     setArRatio(OffChipPreamp_AGC_AR_Ratio.valueOf(e.getNewValue()));
                 }
@@ -1547,23 +1603,96 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
             @Override
             public void loadPreference() {
-                setGain(OffChipPreampGain.valueOf(getPrefs().get(gainkey, OffChipPreampGain.High.name())));
-                setArRatio(OffChipPreamp_AGC_AR_Ratio.valueOf(getPrefs().get(arkey, OffChipPreamp_AGC_AR_Ratio.Fast.name())));
+                try {
+                    setArRatio(OffChipPreamp_AGC_AR_Ratio.valueOf(getPrefs().get(arkey, OffChipPreamp_AGC_AR_Ratio.Fast.name())));
+                } catch (Exception e) {
+                    setArRatio(OffChipPreamp_AGC_AR_Ratio.Medium);
+                }
             }
 
             @Override
             public void storePreference() {
-                putPref(gainkey, gain.toString()); // will eventually call pref change listener which will call set again
                 putPref(arkey, arRatio.toString()); // will eventually call pref change listener which will call set again
+            }
+        }
+
+        /** Represents a single off-chip pre-amplifier. */
+        class OffChipPreamp extends Observable implements PreferenceChangeListener, HasPreference {
+
+            Ear ear = Ear.Both;
+            final String gainkey = "OffChipPreamp.gain";
+            private OffChipPreampGain gain;
+            TriStateableCPLDBit gainBit;
+
+            public OffChipPreamp(TriStateableCPLDBit gainBit, Ear ear) {
+                this.gainBit = gainBit;
+                this.ear = ear;
+                loadPreference();
+                hasPreferencesList.add(this);
+            }
+
+            /** Sets off-chip pre-amp gain via
+            <pre> 
+            preampGainLeft = new TriStateableCPLDBit(5, 6, "preamp gain, left", "offchip preamp gain bit (1=gain=40dB, 0=gain=50dB, HiZ=60dB if preamp threshold \"PreampAGCThreshold (TH)\"is set above 2V)"),
+             * </pre>
+             * @param gain 
+             */
+            void setGain(OffChipPreampGain gain) {
+                this.gain = gain;
+                switch (gain) {
+                    case High:
+                        gainBit.setHiZ(true);
+                        break;
+                    case Medium:
+                        gainBit.setHiZ(false);
+                        gainBit.set(false);
+                        break;
+                    case Low:
+                        gainBit.setHiZ(false);
+                        gainBit.set(true);
+                }
+                setChanged();
+                notifyObservers(this); // handle in update()
+            }
+
+            OffChipPreampGain getGain() {
+                return gain;
+            }
+
+            @Override
+            public void preferenceChange(PreferenceChangeEvent e) {
+                if (e.getKey().equals(key())) {
+                    log.info(this + " preferenceChange(): event=" + e + " key=" + e.getKey() + " newValue=" + e.getNewValue());
+                    setGain(OffChipPreampGain.valueOf(e.getNewValue()));
+                }
+            }
+
+            @Override
+            public void loadPreference() {
+                try {
+                    setGain(OffChipPreampGain.valueOf(getPrefs().get(key(), OffChipPreampGain.High.name())));
+                } catch (Exception e) {
+                    setGain(OffChipPreampGain.High);
+                }
+            }
+
+            @Override
+            public void storePreference() {
+                putPref(key(), gain.toString()); // will eventually call pref change listener which will call set again
             }
 
             @Override
             public String toString() {
-                return "OffChipPreamp{" + "arkey=" + arkey + ", gainkey=" + gainkey + ", gain=" + gain + ", arRatio=" + arRatio + '}';
+                return "OffChipPreamp{" + " gainkey=" + key() + ", gain=" + gain + '}';
+            }
+
+            private String key() {
+                return gainkey + "." + ear.toString();
             }
         }// offchip preamp
     } // biasgen
 
+    /** Enum for on-chip preamp gain values */
     public enum OnChipPreampGain {
 
         Low(0, "Low (100 kohm)"),
@@ -1580,10 +1709,15 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         public int code() {
             return code;
         }
+//        @Override
+//        public String toString() {
+//            return label;
+//        }
+    }
 
-        @Override
-        public String toString() {
-            return label;
-        }
+    /** Used for preamp preferences */
+    public enum Ear {
+
+        Left, Right, Both
     };
 }
