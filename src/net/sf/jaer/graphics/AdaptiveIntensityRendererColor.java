@@ -7,7 +7,7 @@ package net.sf.jaer.graphics;
 /**
  * Extending the adaptive intensity renderer for our first octopus colour retina
  * Not sure yet about how to do the adaption best
- * @author hafliger
+ * @authors: juanle, hafliger
  */
 import net.sf.jaer.chip.Calibratible;
 import net.sf.jaer.chip.AEChip;
@@ -81,15 +81,15 @@ import net.sf.jaer.event.*;
         //float x2=4.2f;  //3.2GB Scale
         //float x3=2.2f;  //2.2B Scale
 
-        float eb=0.8f; //0.7
-        float eg=0.8f; //0.7
+        float eb=0.7f; //0.7
+        float eg=0.7f; //0.7
         float er=1f;
 
         float Cb=1/14700f;
         float Cgb=1/4500f;
         float Crg=1/14100f;
 
-        float gateing=0.1f; //0.3
+        float gateing=0.2f; //0.3
 
      
 
@@ -140,6 +140,7 @@ import net.sf.jaer.event.*;
         float EmaxR_global=0f;
         float EmaxG_global=0f;
         float EmaxB_global=0f;
+        float Emax_global=0f;
 
         for (int i=0; i<22*22*3;i++){
 
@@ -176,19 +177,33 @@ import net.sf.jaer.event.*;
                     switch (e.type) {
                         case 1:// RG
                         {
-
+                                
+                                //Emax_global=Emax_global*.99f;
                                 //Old color seåaration algorithm //p[ind + 0] = freq*x1*GUIscale;
 
-                            //To cancel the geteing operation, comment lines 183, 184, 188 and 189.
+                          
                             EmaxR_global=EmaxR_global-E[ind+0];
                             E[ind+0]=(freq*Crg-E[ind+1]*eb)/er;
+                            if ((ind<22*3-1)){
+                                E[ind+0]=0;
+                            }
                             EmaxR_global=EmaxR_global+E[ind+0];
                             
-                                
-                            E_aux[ind+0]=22*22*E[ind+0]/EmaxR_global;
+                            //if (Emax_global<E[ind+0]){
+                            //    Emax_global=E[ind+0];
+                            //}
+                            
+                               // E_aux[ind+0]=E[ind+0]/Emax_global;
+                            E_aux[ind+0]=22*22*E[ind+0]/(1.5f*EmaxR_global);
+                            
+                            if (E_aux[ind+0]>1){
+                                   E_aux[ind+0]=1;
+                            }
+                            
                             E_aux[ind+0]=(E_aux[ind+0]-gateing)/(1-gateing);
                             p[ind+0]=GUIscale*Math.max(E_aux[ind+0],0);
-
+                            
+                           
                            
                             break;
                         }
@@ -196,17 +211,29 @@ import net.sf.jaer.event.*;
                         {
                             
                                     //Old color seåaration algorithm //p[ind + 1] = (freq*x2-0*p[ind+0]*x1/x2)*GUIscale;
-
-                                //To cancel the geteing operation, comment lines 201, 203, 206 and 207.
+                               // Emax_global=Emax_global*.99f;
+                                
                                 EmaxG_global=EmaxG_global-E[ind+1];
                                 E[ind+1]=(freq*Cgb-E[ind+2]*eb)/eg;
+                                if ((ind<22*3-1)){
+                                E[ind+1]=0;
+                                }
                                 EmaxG_global=EmaxG_global+E[ind+1];
+                                 
+                                //if (Emax_global<E[ind+1]){
+                                //Emax_global=E[ind+1];
+                                //}
                                     
-                                    
-                                E_aux[ind+1]=22*22*E[ind+1]/EmaxG_global;
+                                //E_aux[ind+1]=E[ind+1]/Emax_global;
+                                E_aux[ind+1]=22*22*E[ind+1]/(1.5f*EmaxG_global);
+                                if (E_aux[ind+1]>1){
+                                    E_aux[ind+1]=1;
+                                }
+                                
                                 E_aux[ind+1]=(E_aux[ind+1]-gateing)/(1-gateing);
                                 p[ind+1]=GUIscale*Math.max(E_aux[ind+1],0);
                                
+                                
                             
                            
                             break;
@@ -215,15 +242,29 @@ import net.sf.jaer.event.*;
                         {
                           
                                 //Old color seåaration algorithm //p[ind + 2] = (freq*x3-p[ind+0]*x1/x3)*GUIscale;
-
-                            ////To cancel the geteing operation, comment lines 220,222,224, and 225.
+                           //Emax_global=Emax_global*.99f;
+                            
                            EmaxB_global=EmaxB_global-E[ind+2];
                            E[ind+2]=freq*Cb/eb;
+                            if ((ind<22*3-1)){
+                                E[ind+2]=0;
+                            }
                            EmaxB_global=EmaxB_global+E[ind+2];
+                           
+                           if (Emax_global<E[ind+2]){
+                                Emax_global=E[ind+2];
+                                }
                                 
-                            E_aux[ind+2]=22*22*E[ind+2]/EmaxB_global;
+                           //E_aux[ind+2]=E[ind+2]/Emax_global;
+                            E_aux[ind+2]=22*22*E[ind+2]/(1.5f*EmaxB_global);
+                            if (E_aux[ind+2]>1){
+                                    E_aux[ind+2]=1;
+                            }
+                          
                             E_aux[ind+2]=(E_aux[ind+2]-gateing)/(1-gateing);
                            p[ind+2]=GUIscale*Math.max(E_aux[ind+2],0);
+                           
+                          
                           
                             break;
                         }
