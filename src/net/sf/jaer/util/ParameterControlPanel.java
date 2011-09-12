@@ -160,6 +160,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         // when clazz fires a property change event, we getString called here and we update all our controls
 //        getClazz().getPropertyChangeSupport().addPropertyChangeListener(this);
         ToolTipManager.sharedInstance().setDismissDelay(10000); // to show tips
+        revalidate();
     }
 
     // checks for group container and adds to that if needed.
@@ -1159,7 +1160,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.PAGE_AXIS));
+        setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
     }// </editor-fold>//GEN-END:initComponents
     boolean controlsVisible = true;
 
