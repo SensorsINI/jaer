@@ -126,7 +126,7 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
         try {
             for (Object o : ae) {
                 TypedEvent ev = (TypedEvent) o;
-                gl.glColor3fv(typeColors[ev.type], 0);// FIXME depends on these colors having been created by a rendering cycle...
+                gl.glColor3fv(typeColors[ev.type], 0); // TODO depends on these colors having been created by a rendering cycle...
 //            CochleaGramDisplayMethod.typeColor(gl, ev.type);
 //            if(ev.type==0) gl.glColor4f(1,0,0,alpha); else gl.glColor4f(0,1,0,alpha); // red right
             z = (float) (ev.timestamp-t0) / dt; // z goes from 0 (oldest) to 1 (youngest)
@@ -134,6 +134,8 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
             }
         } catch (ClassCastException e) {
             log.warning("while rendering events caught " + e + ", some filter is casting events to BasicEvent?");
+        } catch(NullPointerException npe){
+            log.warning("caught "+npe.toString()+", need a rendering cycle to create event type colors");
         }
 
         getChipCanvas().checkGLError(gl, glu, "after CochleaGramDisplayMethod");

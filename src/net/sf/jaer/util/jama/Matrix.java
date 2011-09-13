@@ -344,11 +344,10 @@ public class Matrix implements Cloneable, java.io.Serializable {
       return X;
    }
 
-   /** Get a submatrix.
+   /** Get a submatrix. Constructs  A(r(:),j0:j1).
    @param r    Array of row indices.
-   @param i0   Initial column index
-   @param i1   Final column index
-   @return     A(r(:),j0:j1)
+   @param j0   Initial column index
+   @param j1   Final column index
    @exception  ArrayIndexOutOfBoundsException Submatrix indices
    */
 

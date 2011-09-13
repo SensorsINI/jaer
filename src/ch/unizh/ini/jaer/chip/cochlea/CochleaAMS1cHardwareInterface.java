@@ -4,7 +4,6 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
-import ch.unizh.ini.jaer.chip.dvs320.cDVSTest20;
 import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterface;
 import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterface;
 import de.thesycon.usbio.UsbIo;
@@ -26,24 +25,11 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
  * 
  * @author tobi
  */
-public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer implements BiasgenHardwareInterface, ADCHardwareInterface, ScannerHardwareInterface {
+public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer implements BiasgenHardwareInterface {
 
     /** The USB product ID of this device */
     static public final short PID = (short) 0x8406;
     static Preferences hwPrefs = Preferences.userNodeForPackage(CochleaAMS1cHardwareInterface.class); // TODO should really come from Chip instance, not this class
-    private boolean adcEnabled = hwPrefs.getBoolean("CochleaAMS1cHardwareInterface.adcEnabled", true);
-    private short TrackTime = (short) hwPrefs.getInt("CochleaAMS1cHardwareInterface.TrackTime", 50),
-            RefOnTime = (short) hwPrefs.getInt("CochleaAMS1cHardwareInterface.RefOnTime", 20),
-            RefOffTime = (short) hwPrefs.getInt("CochleaAMS1cHardwareInterface.RefOffTime", 20),
-            IdleTime = (short) hwPrefs.getInt("CochleaAMS1cHardwareInterface.IdleTime", 10);
-    private boolean UseCalibration = hwPrefs.getBoolean("CochleaAMS1cHardwareInterface.UseCalibration", false);
-    private boolean scanContinuouslyEnabled = hwPrefs.getBoolean("CochleaAMS1cHardwareInterface.scanContinuouslyEnabled", true);
-    private int scanX = hwPrefs.getInt("CochleaAMS1cHardwareInterface.scanX", 0);
-    private int scanY = hwPrefs.getInt("CochleaAMS1cHardwareInterface.scanY", 0);
-    private byte ADCchannel = (byte) hwPrefs.getInt("CochleaAMS1cHardwareInterface.ADCchannel", 3);
-    private static final int ADCchannelshift = 5;
-    private static final short ADCconfig = (short) 0x100;   //normal power mode, single ended, sequencer unused : (short) 0x908;
-    private final static short ADCconfigLength = (short) 12;
     final byte VR_CONFIG = CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES;
 
     public CochleaAMS1cHardwareInterface(int n) {
@@ -56,6 +42,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
      * @param powerDown true to power down the master bias.
      * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
      */
+    @Override
     public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
         if (gUsbIo == null) {
             throw new RuntimeException("device must be opened before sending this vendor request");
@@ -81,6 +68,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
 
     }
 
+    @Override
     public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         if (!(biasgen instanceof CochleaAMS1c.Biasgen)) {
             log.warning("biasgen is not instanceof CochleaAMS1c.Biasgen");
@@ -89,10 +77,12 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
         ((CochleaAMS1c.Biasgen) biasgen).sendConfiguration(); // delegates actual work to Biasgen object
     }
 
+    @Override
     public void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         throw new HardwareInterfaceException("Flashing configuration not supported yet.");
     }
 
+    @Override
     public byte[] formatConfigurationBytes(Biasgen biasgen) {
         if (!(biasgen instanceof CochleaAMS1c.Biasgen)) {
             log.warning(biasgen + " is not instanceof CochleaAMS1c.Biasgen, returning null array");
@@ -102,6 +92,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
         return new byte[0];
     }
 
+    @Override
     synchronized public void resetTimestamps() {
         try {
             sendVendorRequest(this.VENDOR_REQUEST_RESET_TIMESTAMPS);
@@ -197,7 +188,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
                                         addresses[eventCounter] = dataword;
                                         timestamps[eventCounter] = currentts;  // ADC event gets last timestamp
                                         eventCounter++;
-                                        System.out.println("ADC word: " + (dataword & ADC_DATA_MASK));
+//                                        System.out.println("ADC word: " + (dataword & ADC_DATA_MASK));
                                     } else {////  received an X address, write out event to addresses/timestamps output arrays
                                         // x adddress
                                         //xadd = (buf[i] & 0xff);  //
@@ -242,157 +233,8 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
         }
     }
 
-    public void setTrackTime(short trackTimeUs) {
-        try {
-            int old = this.TrackTime;
-            TrackTime = trackTimeUs;  // TODO bound values here
-            hwPrefs.putInt("CochleaAMS1cHardwareInterface.TrackTime", TrackTime);
-            getSupport().firePropertyChange(EVENT_TRACK_TIME, old, TrackTime);
-            sendADCConfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
 
-    public void setIdleTime(short trackTimeUs) {
-        try {
-            int old = this.IdleTime;
-            IdleTime = trackTimeUs;// TODO bound values here
-            hwPrefs.putInt("CochleaAMS1cHardwareInterface.IdleTime", IdleTime);
-            getSupport().firePropertyChange(EVENT_IDLE_TIME, old, IdleTime);
-            sendADCConfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
 
-    public void setRefOnTime(short trackTimeUs) {
-        try {
-            int old = this.RefOnTime;
-            RefOnTime = trackTimeUs;// TODO bound values here
-            sendADCConfiguration();
-            hwPrefs.putInt("CochleaAMS1cHardwareInterface.RefOnTime", RefOnTime);
-            getSupport().firePropertyChange(EVENT_REF_ON_TIME, old, RefOnTime);
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
-
-    public void setRefOffTime(short trackTimeUs) {
-        try {
-            int old = this.RefOffTime;
-            RefOffTime = trackTimeUs;// TODO bound values here
-            hwPrefs.putInt("CochleaAMS1cHardwareInterface.RefOffTime", RefOffTime);
-            getSupport().firePropertyChange(EVENT_REF_OFF_TIME, old, RefOffTime);
-            sendADCConfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
-
-    public void setADCchannel(byte chan) {
-        try {
-            int old = this.ADCchannel;
-            if (chan < 0) {
-                chan = 0;
-            } else if (chan > 3) {
-                chan = 3;
-            }
-            ADCchannel = chan;
-            hwPrefs.putInt("CochleaAMS1cHardwareInterface.ADCchannel", ADCchannel);
-            getSupport().firePropertyChange(EVENT_ADC_CHANNEL, old, ADCchannel);
-            sendADCConfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
-
-    /**
-     * @return the scanContinuouslyEnabled
-     */
-    @Override
-    public boolean isScanContinuouslyEnabled() {
-        return scanContinuouslyEnabled;
-    }
-
-    /**
-     * @param scanContinuouslyEnabled the scanContinuouslyEnabled to set
-     */
-    public void setScanContinuouslyEnabled(boolean scanContinuouslyEnabled) {
-        try {
-            boolean old = this.scanContinuouslyEnabled;
-            this.scanContinuouslyEnabled = scanContinuouslyEnabled;
-            hwPrefs.putBoolean("CochleaAMS1cHardwareInterface.scanContinuouslyEnabled", scanContinuouslyEnabled);
-            getSupport().firePropertyChange(EVENT_SCAN_CONTINUOUSLY_ENABLED, old, this.scanContinuouslyEnabled);
-            sendADCConfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
-
-    @Override
-    public int getSizeX() {
-        return 64;
-    }
-
-    @Override
-    public int getSizeY() {
-        return 1;
-    }
-
-    /**
-     * @return the scanX
-     */
-    public int getScanX() {
-        return scanX;
-    }
-
-    /**
-     * @param scanX the scanX to set
-     */
-    public void setScanX(int scanX) {
-        int old = this.scanX;
-        if (scanX < 0) {
-            scanX = 0;
-        } else if (scanX >= getSizeX()) {
-            scanX = getSizeX() - 1;
-        }
-        try {
-            this.scanX = scanX;
-            hwPrefs.putInt("CochleaAMS1cHardwareInterface.scanX", scanX);
-            getSupport().firePropertyChange(EVENT_SCAN_X, old, this.scanX);
-            sendADCConfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
-
-    /**
-     * @return the scanY
-     */
-    public int getScanY() {
-        return scanY;
-    }
-
-    /**
-     * @param scanY the scanY to set
-     */
-    public void setScanY(int scanY) {
-        int old = this.scanY;
-        if (scanY < 0) {
-            scanY = 0;
-        } else if (scanY >= getSizeY()) {
-            scanY = getSizeY() - 1;
-        }
-        try {
-            this.scanY = scanY;
-            hwPrefs.putInt("CochleaAMS1cHardwareInterface.scanY", scanY);
-            getSupport().firePropertyChange(EVENT_SCAN_Y, old, this.scanY);
-            sendADCConfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
 
     private String getBitString(short value, short nSrBits) {
         StringBuilder s = new StringBuilder();
@@ -408,118 +250,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
         return bitString;
     }
 
-    @Override
-    synchronized public void sendADCConfiguration() throws HardwareInterfaceException {
-        short ADCword = (short) (ADCconfig | (getADCchannel() << ADCchannelshift));
 
-        int nBits = 0;
 
-        StringBuilder s = new StringBuilder();
 
-        // scanner control
-        final int SCANXY_NBITS = 6;
-        s.append(getBitString(isScanContinuouslyEnabled() ? (short) 1 : (short) 0, (short) 1));
-        s.append(getBitString((short) getScanX(), (short) SCANXY_NBITS));
-        s.append(getBitString((short) getScanY(), (short) SCANXY_NBITS));
-        nBits += 1 + 2 * SCANXY_NBITS;
-
-        // ADC params
-        s.append(getBitString((short) (getIdleTime() * 15), (short) 16)); // multiplication with 15 to get from us to clockcycles
-        nBits += 16;
-        s.append(getBitString((short) (getRefOffTime() * 15), (short) 16)); // multiplication with 15 to get from us to clockcycles
-        nBits += 16;
-        s.append(getBitString((short) (getRefOnTime() * 15), (short) 16)); // multiplication with 15 to get from us to clockcycles
-        nBits += 16;
-        s.append(getBitString((short) (getTrackTime() * 15), (short) 16)); // multiplication with 15 to get from us to clockcycles
-        nBits += 16;
-        s.append(getBitString(ADCword, ADCconfigLength));
-        nBits += ADCconfigLength;
-
-//        // readout pathway
-//        if (isUseCalibration()) {
-//            s.append(getBitString((short) 1, (short) 1));
-//        } else {
-//            s.append(getBitString((short) 0, (short) 1));
-//        }
-        nBits += 1;
-
-//        if (isSelect5Tbuffer()) {
-//            s.append(getBitString((short) 1, (short) 1));
-//        } else {
-//            s.append(getBitString((short) 0, (short) 1));
-//        }
-        nBits += 1;
-
-        //s.reverse();
-        //System.out.println(s);
-
-        BigInteger bi = new BigInteger(s.toString(), 2);
-        byte[] byteArray = bi.toByteArray(); // finds minimal set of bytes in big endian format, with MSB as first element
-        // we need to pad out to nbits worth of bytes
-        int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 8->1, 9->2
-        byte[] bytes = new byte[nbytes];
-        System.arraycopy(byteArray, 0, bytes, nbytes - byteArray.length, byteArray.length);
-
-        this.sendVendorRequest(VENDOR_REQUEST_WRITE_CPLD_SR, (short) 0, (short) 0, bytes); // stops ADC running
-        setADCEnabled(isADCEnabled());
-    }
-
-    synchronized public void startADC() throws HardwareInterfaceException {
-        this.sendVendorRequest(VENDOR_REQUEST_RUN_ADC, (short) 1, (short) 0);
-    }
-
-    synchronized public void stopADC() throws HardwareInterfaceException {
-        this.sendVendorRequest(VENDOR_REQUEST_RUN_ADC, (short) 0, (short) 0);
-    }
-
-    public boolean isADCEnabled() {
-        return adcEnabled;
-    }
-
-    public void setADCEnabled(boolean yes) throws HardwareInterfaceException {
-        boolean old = this.adcEnabled;
-        this.adcEnabled = yes;
-        hwPrefs.putBoolean("CochleaAMS1cHardwareInterface.adcEnabled", yes);
-        getSupport().firePropertyChange(EVENT_ADC_ENABLED, old, this.adcEnabled);
-        if (yes) {
-            startADC();
-        } else {
-            stopADC();
-        }
-    }
-
-    /**
-     * @return the TrackTime
-     */
-    public short getTrackTime() {
-        return TrackTime;
-    }
-
-    /**
-     * @return the RefOnTime
-     */
-    public short getRefOnTime() {
-        return RefOnTime;
-    }
-
-    /**
-     * @return the RefOffTime
-     */
-    public short getRefOffTime() {
-        return RefOffTime;
-    }
-
-    /**
-     * @return the IdleTime
-     */
-    public short getIdleTime() {
-        return IdleTime;
-    }
-
-    /**
-     * @return the ADCchannel
-     */
-    public byte getADCchannel() {
-        return (byte) ADCchannel;
-    }
 }

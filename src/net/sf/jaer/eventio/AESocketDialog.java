@@ -30,7 +30,7 @@ public class AESocketDialog extends javax.swing.JDialog{
     /** Creates new form AEUnicastDialog.
     @param parent the parent frame
     @param modal true to be modal (not allow access to parent GUI until dismissed
-    @param unicastInterface the interface to control
+    @param socketInterface the interface to control
      */
     public AESocketDialog (java.awt.Frame parent,boolean modal,AESocketSettings socketInterface){
         super(parent,modal);

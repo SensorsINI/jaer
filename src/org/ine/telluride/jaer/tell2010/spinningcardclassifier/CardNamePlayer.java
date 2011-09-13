@@ -139,7 +139,7 @@ public class CardNamePlayer implements SoundPlayerInterface{
 
      /** Loads a binary sound file into memory. The filename is used to search the resource path (i.e. the jar archives on the classpath).
      * If the file is not found in the resources (jars or classes on classpath) then the file system is checked.
-     *@param i the file number of the available files
+     *@param soundNumber the file number of the available files
      **/
    public final synchronized boolean setFile (int soundNumber) throws UnsupportedAudioFileException,FileNotFoundException,IOException{
         if(soundNumber>=getSoundFilePaths().size()) throw new FileNotFoundException("invalid file index");

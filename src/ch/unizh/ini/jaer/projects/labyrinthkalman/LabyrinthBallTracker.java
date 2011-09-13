@@ -141,7 +141,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
 
     /** returns the path index, or -1 if there is no ball or is too far away from the path.
      * 
-     * @return 
+     * @return index of nearest path point
      */
     public int findNearestPathIndex() {
         return map.findNearestPathIndex(kalmanFilter.getBallPosition());

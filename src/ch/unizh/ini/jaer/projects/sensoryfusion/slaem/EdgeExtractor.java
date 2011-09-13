@@ -100,7 +100,7 @@ public class EdgeExtractor extends EventFilter2D implements Observer {
     /**
      * @param tolerance the tolerance to set
      */
-    public void setTolerance(float tau) {
+    public void setTolerance(float vertexDiameter) {
         this.vertexDiameter = vertexDiameter;
         prefs().putFloat("EdgeExtractor.vertexDiameter", vertexDiameter);
     }

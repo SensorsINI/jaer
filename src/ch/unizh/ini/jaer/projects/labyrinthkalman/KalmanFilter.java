@@ -184,8 +184,6 @@ public abstract class KalmanFilter
 	 * update the state covariance.
 	 * set Ct to the correct value and compute Kt before calling this.
 	 * 
-	 * @param meas
-	 *            the measurement (a k-vector)
 	 */
 	protected void correctSigma()
 	{

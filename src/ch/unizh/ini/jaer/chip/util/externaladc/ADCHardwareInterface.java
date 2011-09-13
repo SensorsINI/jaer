@@ -13,51 +13,38 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * @author tobi
  */
 public interface ADCHardwareInterface {
-    public String EVENT_ADC_CHANNEL = "ADCchannel";
-    public String EVENT_ADC_ENABLED = "adcEnabled";
-    public String EVENT_IDLE_TIME = "IdleTime";
-    public String EVENT_REF_OFF_TIME = "RefOffTime";
-    public String EVENT_REF_ON_TIME = "RefOnTime";
-    public String EVENT_TRACK_TIME = "TrackTime";
+    public static final String EVENT_ADC_CHANGED="adcChanged";
+    public static final String EVENT_ADC_CHANNEL_MASK = "adcChannelMask";
+    public static final String EVENT_ADC_ENABLED = "adcEnabled";
+    public static final String EVENT_IDLE_TIME = "idleTime";
+    public static final String EVENT_TRACK_TIME = "trackTime";
 
     /**
      * @return the ADCchannel
      */
-    public byte getADCchannel();
+    public int getADCChannelMask();
 
     /**
      * @return the IdleTime
      */
-    public short getIdleTime();
+    public int getIdleTime();
 
-    /**
-     * @return the RefOffTime
-     */
-    public short getRefOffTime();
-
-    /**
-     * @return the RefOnTime
-     */
-    public short getRefOnTime();
 
     /**
      * @return the TrackTime
      */
-    public short getTrackTime();
+    public int getTrackTime();
 
     public boolean isADCEnabled();
 
     public void setADCEnabled(boolean yes) throws HardwareInterfaceException;
 
-    public void setADCchannel(byte chan);
+    public void setADCChannelMask(int chan);
 
-    public void setIdleTime(short trackTimeUs);
+    public void setIdleTime(int trackTimeUs);
 
-    public void setRefOffTime(short trackTimeUs);
-
-    public void setRefOnTime(short trackTimeUs);
-
-    public void setTrackTime(short trackTimeUs);
+  
+    public void setTrackTime(int trackTimeUs);
 
     public void startADC() throws HardwareInterfaceException;
 

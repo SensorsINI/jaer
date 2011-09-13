@@ -2452,7 +2452,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         status = gUsbIo.classOrVendorOutRequest(dataBuffer, VendorRequest);
 
         if (status != USBIO_ERR_SUCCESS) {
-            throw new HardwareInterfaceException("Unable to send vendor request " + request + ": " + UsbIo.errorText(status));
+            throw new HardwareInterfaceException("Unable to send vendor request " + String.format("0x%x", request) + ": " + UsbIo.errorText(status));
         }
 
         HardwareInterfaceException.clearException();

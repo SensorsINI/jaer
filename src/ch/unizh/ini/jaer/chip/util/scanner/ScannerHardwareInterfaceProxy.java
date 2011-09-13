@@ -10,21 +10,24 @@ import java.util.prefs.Preferences;
 import net.sf.jaer.chip.Chip;
 
 /**
- * Represents the hardware scanner interface as a host-side software object that sets hardware when available.
+ * Represents the hardware scanner interface as a host-side software object that stores
+ * in preferences the state of the scanner, and calls update listener(s) when the state is changed.
+ * A listener (e.g. a Chip's configuration control (biasgen)) registers itself as a listener
+ * on this. In the update() method it reads the desired scanner state and sends appropriate messages
+ * to the hardware.
  *
  * @author tobi
  */
-public class ScannerHardwareInterfaceProxy extends HardwareInterfaceProxy {
+public class ScannerHardwareInterfaceProxy extends HardwareInterfaceProxy implements ScannerHardwareInterface {
 
-     static final Logger log = Logger.getLogger("HardwareInterfaceProxy");
-   protected ScannerHardwareInterface hw;
+//     static final Logger log = Logger.getLogger("HardwareInterfaceProxy");
+    protected ScannerHardwareInterface hw;
     protected int scanX, scanY;
     protected boolean scanContinuouslyEnabled;
-    private int minScanX = 0;
-    private int maxScanX = 32;
-    private int minScanY = 0;
-    private int maxScanY = 32;
-    private boolean printedWarning = false;
+    protected int minScanX = 0;
+    protected int maxScanX = 32;
+    protected int minScanY = 0;
+    protected int maxScanY = 32;
 
     public ScannerHardwareInterfaceProxy(Chip chip) {
         super(chip);
@@ -33,68 +36,36 @@ public class ScannerHardwareInterfaceProxy extends HardwareInterfaceProxy {
         scanY = getPrefs().getInt("CochleaAMS1cHardwareInterface.scanY", 0);
     }
 
-    private boolean checkHw() {
-        if (hw == null) {
-            if (!printedWarning) {
-                printedWarning = true;
-                log.warning("null hardware, not doing anything with ADC hardware");
-            }
-            return false;
-        }
-        return true;
-    }
-
-    public ScannerHardwareInterface getHw() {
-        return hw;
-    }
-
-    /**
-     * @param hw the hardware interface to set
-     */
-    public void setHw(ScannerHardwareInterface hw) {
-        this.hw = hw;
-    }
-
     public void setScanY(int scanY) {
-        if (!checkHw()) {
-            return;
-        }
-        hw.setScanY(scanY);
+        this.scanY = scanY;
+        getPrefs().putInt("ScannerHardwareInterface.scanY", scanY);
+        setScanContinuouslyEnabled(false);
+        notifyChange(EVENT_SCAN_Y);
     }
 
     public void setScanX(int scanX) {
-        if (!checkHw()) {
-            return;
-        }
-        hw.setScanX(scanX);
+        this.scanX = scanX;
+        getPrefs().putInt("ScannerHardwareInterface.scanX", scanX);
+        setScanContinuouslyEnabled(false);
+        notifyChange(EVENT_SCAN_X);
     }
 
     public void setScanContinuouslyEnabled(boolean scanContinuouslyEnabled) {
-        if (!checkHw()) {
-            return;
-        }
-        hw.setScanContinuouslyEnabled(scanContinuouslyEnabled);
+        this.scanContinuouslyEnabled = scanContinuouslyEnabled;
+        getPrefs().putBoolean("ScannerHardwareInterface.scanContinuouslyEnabled", scanContinuouslyEnabled);
+        notifyChange(EVENT_SCAN_CONTINUOUSLY_ENABLED);
     }
 
     public boolean isScanContinuouslyEnabled() {
-        if (!checkHw()) {
-            return false;
-        }
-        return hw.isScanContinuouslyEnabled();
+        return scanContinuouslyEnabled;
     }
 
     public int getScanY() {
-        if (!checkHw()) {
-            return -1;
-        }
-        return hw.getScanY();
+        return scanY;
     }
 
     public int getScanX() {
-        if (!checkHw()) {
-            return -1;
-        }
-        return hw.getScanX();
+        return scanX;
     }
 
     /**

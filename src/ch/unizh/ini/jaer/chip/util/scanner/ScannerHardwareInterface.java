@@ -2,7 +2,6 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-
 package ch.unizh.ini.jaer.chip.util.scanner;
 
 /**
@@ -12,15 +11,12 @@ package ch.unizh.ini.jaer.chip.util.scanner;
  */
 public interface ScannerHardwareInterface {
 
-   public static final String
-            EVENT_SCAN_X="scanX",
-            EVENT_SCAN_Y="scanY";
+    public static final String EVENT_SCANNER_CHANGED = "scannerChanged",
+            EVENT_SCAN_X = "scanX",
+            EVENT_SCAN_Y = "scanY";
     public static final String EVENT_SCAN_CONTINUOUSLY_ENABLED = "scanContinuouslyEnabled";
 
-   public int getSizeX();
-   public int getSizeY();
-
-   /**
+    /**
      * @return the scanX
      */
     public int getScanX();
@@ -49,5 +45,4 @@ public interface ScannerHardwareInterface {
      * @param scanY the scanY to set
      */
     public void setScanY(int scanY);
-
 }

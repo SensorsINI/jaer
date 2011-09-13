@@ -828,7 +828,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
 //    public Point2D.Float find
     /** returns the path index, or -1 if there is no ball or is too far away from the path.
      * 
-     * @return 
+     * @return nearest path index
      */
     public int findNearestPathIndex(Point2D point) {
         return findClosestIndex(point, 15, true);

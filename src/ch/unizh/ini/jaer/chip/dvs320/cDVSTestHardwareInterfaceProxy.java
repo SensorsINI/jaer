@@ -3,12 +3,16 @@ package ch.unizh.ini.jaer.chip.dvs320;
 import java.util.logging.Logger;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceProxy;
 
 /**
- * A proxy to wrap around the actual hardware interface to expose the ADC controls
- * for purposes of GUI building using ParameterControlPanel.
+ * A proxy to wrap around the actual hardware interface to expose the ADC and Scanner controls
+ * for purposes of GUI building using ParameterControlPanel.  In the cDVSTest chips, some parameter preferences are (wrongly!) stored 
+ * in the hardware interface rather than the Chip object, causing many difficulties.  That is why this class does not store preferences but
+ * rather defers the job to the hardware interface class.
+ * 
  */
-public class ADCHardwareInterfaceProxy {
+public class cDVSTestHardwareInterfaceProxy extends HardwareInterfaceProxy {
 
     static Logger log = Logger.getLogger("cDVSTestHardwareInterface");
     // following define limits for slider controls that are automagically constucted by ParameterControlPanel
@@ -26,9 +30,10 @@ public class ADCHardwareInterfaceProxy {
     private final int minScanX = 0, maxScanX = cDVSTest20.SIZE_X_CDVS - 1, minScanY = 0, maxScanY = cDVSTest20.SIZE_Y_CDVS - 1;
     private cDVSTestHardwareInterface hw;
 
-    public ADCHardwareInterfaceProxy() {
+    public cDVSTestHardwareInterfaceProxy(Chip chip) {
+        super(chip);
     }
-
+    
     private boolean checkHw() {
         if (hw == null) {
             if (!printedWarning) {
@@ -118,7 +123,7 @@ public class ADCHardwareInterfaceProxy {
         if (!checkHw()) {
             return;
         }
-        hw.setADCchannel((byte) chan);
+        hw.setADCChannelMask( chan);
     }
 
     public synchronized void resetTimestamps() {
@@ -181,7 +186,7 @@ public class ADCHardwareInterfaceProxy {
         if (!checkHw()) {
             return -1;
         }
-        return hw.getADCchannel();
+        return hw.getADCChannelMask();
     }
 
     public int getMinRefOnTime() {

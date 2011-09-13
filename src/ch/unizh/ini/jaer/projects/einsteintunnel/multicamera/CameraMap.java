@@ -70,7 +70,7 @@ public class CameraMap extends ConcurrentHashMap<InetSocketAddress, Integer> imp
 
     /** Increments a camera position, swapping with next camera in array.
      *
-     * @param fromPos. If already at size()-1, does nothing.
+     * @param fromPos  If already at size()-1, does nothing.
      */
     public void incrementCameraPosition(int fromPos) {
         if (fromPos < 0 || fromPos >= size() - 1) {

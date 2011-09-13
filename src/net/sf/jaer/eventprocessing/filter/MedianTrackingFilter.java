@@ -123,7 +123,7 @@ public class MedianTrackingFilter extends EventFilter2D implements FrameAnnotate
         return this.stddev_scale;
     }
 
-    /**@param tauUs the time constant of the 1st order lowpass filter on median location */
+    /**@param stddev_scale the scale to show  stdDev; scaling factor for the standard deviation circle (1/10). */
     public void setStdDev_Scale(final int stddev_scale) {
         this.stddev_scale = stddev_scale;
         getPrefs().putInt("FastCardID.stddev_scale", stddev_scale);

@@ -1,7 +1,5 @@
 package ch.unizh.ini.jaer.chip.util.externaladc;
 
-import ch.unizh.ini.jaer.chip.dvs320.cDVSTest20;
-import ch.unizh.ini.jaer.chip.dvs320.cDVSTestHardwareInterface;
 import java.util.logging.Logger;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -10,13 +8,18 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceProxy;
 /**
  * A proxy to wrap around the actual hardware interface to expose the ADC controls
  * for purposes of GUI building using ParameterControlPanel.
+ * It  stores
+ * in preferences the state of the ADC, and calls update listener(s) when the state is changed.
+ * A listener (e.g. a Chip's configuration control (biasgen)) registers itself as a listener
+ * on this. In the update() method it reads the desired ADC state and sends appropriate messages
+ * to the hardware.
  */
-public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy {
+public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy implements ADCHardwareInterface {
 
     static final Logger log = Logger.getLogger("HardwareInterfaceProxy");
     private boolean adcEnabled;
-    private short trackTime, refOnTime, refOffTime, idleTime;
-    private boolean UseCalibration;
+    private int trackTime, refOnTime, refOffTime, idleTime;
+//    private boolean UseCalibration;
     // following define limits for slider controls that are automagically constucted by ParameterControlPanel
     private final int minRefOffTime = 0;
     private final int maxRefOffTime = 100;
@@ -28,176 +31,66 @@ public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy {
     private final int maxIdleTime = 100;
     private final int minADCchannel = 0;
     private final int maxADCchannel = 3;
-    private boolean printedWarning = false;
-    private ADCHardwareInterface hw;
-    private static final int adcChannelshift = 5;
-    private static final short adcConfig = (short) 0x100;   //normal power mode, single ended, sequencer unused : (short) 0x908;
-    private final static short adcConfigLength = (short) 12;
-    private final byte adcChannel;
+    private int adcChannelMask = 1;
 
     public ADCHardwareInterfaceProxy(Chip chip) {
         super(chip);
-        adcChannel = (byte) getPrefs().getInt("CochleaAMS1cHardwareInterface.ADCchannel", 3);
-        adcEnabled = getPrefs().getBoolean("CochleaAMS1cHardwareInterface.adcEnabled", true);
+        adcChannelMask = getPrefs().getInt("ADCHardwareInterfaceProxy.ADCchannelMask", 3);
+        adcEnabled = getPrefs().getBoolean("ADCHardwareInterfaceProxy.adcEnabled", true);
 
-        UseCalibration = getPrefs().getBoolean("CochleaAMS1cHardwareInterface.UseCalibration", false);
-        adcEnabled = getPrefs().getBoolean("CochleaAMS1cHardwareInterface.adcEnabled", true);
-        trackTime = (short) getPrefs().getInt("CochleaAMS1cHardwareInterface.TrackTime", 50);
-        refOnTime = (short) getPrefs().getInt("CochleaAMS1cHardwareInterface.RefOnTime", 20);
-        refOffTime = (short) getPrefs().getInt("CochleaAMS1cHardwareInterface.RefOffTime", 20);
-        idleTime = (short) getPrefs().getInt("CochleaAMS1cHardwareInterface.IdleTime", 10);
-        UseCalibration = getPrefs().getBoolean("CochleaAMS1cHardwareInterface.UseCalibration", false);
+//        UseCalibration = getPrefs().getBoolean("ADCHardwareInterfaceProxy.UseCalibration", false);
+        adcEnabled = getPrefs().getBoolean("ADCHardwareInterfaceProxy.adcEnabled", true);
+        trackTime = getPrefs().getInt("ADCHardwareInterfaceProxy.TrackTime", 50);
+        refOnTime = getPrefs().getInt("ADCHardwareInterfaceProxy.RefOnTime", 20);
+        refOffTime = getPrefs().getInt("ADCHardwareInterfaceProxy.RefOffTime", 20);
+        idleTime = getPrefs().getInt("ADCHardwareInterfaceProxy.IdleTime", 10);
     }
 
-    private boolean checkHw() {
-        if (hw == null) {
-            if (!printedWarning) {
-                printedWarning = true;
-                log.warning("null hardware, not doing anything with ADC hardware");
-            }
-            return false;
-        }
-        return true;
-    }
-
-    public ADCHardwareInterface getHw() {
-        return hw;
-    }
-
-    /**
-     * @param hw the hardware interface to set
-     */
-    public void setHw(ADCHardwareInterface hw) {
-        this.hw = hw;
-    }
-
-    public void doSendConfiguration() throws HardwareInterfaceException {
-        if (!checkHw()) {
-            return;
-        }
-        hw.sendADCConfiguration();
-    }
-
+    @Override
     public void setADCEnabled(boolean yes) throws HardwareInterfaceException {
-        if (!checkHw()) {
-            return;
-        }
-        hw.setADCEnabled(yes);
+        this.adcEnabled = yes;
+        getPrefs().putBoolean("ADCHardwareInterfaceProxy.adcEnabled", yes);
+        notifyChange(EVENT_ADC_ENABLED);
     }
 
+    @Override
     public boolean isADCEnabled() {
-        if (!checkHw()) {
-            return false;
-        }
-        return hw.isADCEnabled();
+        return adcEnabled;
     }
 
-//    public void setUseCalibration(boolean se) {
-//        if (!checkHw()) {
-//            return;
-//        }
-//        hw.setUseCalibration(se);
-//    }
-    public void setTrackTime(int trackTimeUs) {
-        if (!checkHw()) {
-            return;
-        }
-        hw.setTrackTime((short) trackTimeUs);
+    @Override
+    public void setTrackTime(int trackTime) {
+        this.trackTime = trackTime;
+        getPrefs().putInt("ADCHardwareInterfaceProxy.trackTime", trackTime);
+        notifyChange(EVENT_TRACK_TIME);
     }
 
-//    public void setSelect5Tbuffer(boolean se) {
-//        if (!checkHw()) {
-//            return;
-//        }
-//        hw.setSelect5Tbuffer(se);
-//    }
-    public void setRefOnTime(int trackTimeUs) {
-        if (!checkHw()) {
-            return;
-        }
-        hw.setRefOnTime((short) trackTimeUs);
+    @Override
+    public void setIdleTime(int idleTime) {
+        this.idleTime = idleTime;
+        getPrefs().putInt("ADCHardwareInterfaceProxy.idleTime", idleTime);
+        notifyChange(EVENT_IDLE_TIME);
     }
 
-    public void setRefOffTime(int trackTimeUs) {
-        if (!checkHw()) {
-            return;
-        }
-        hw.setRefOffTime((short) trackTimeUs);
+    public void setADCChannelMask(int adcChannelMask) {
+        this.adcChannelMask = adcChannelMask;
+        getPrefs().putInt("ADCHardwareInterfaceProxy.adcChannelMask", adcChannelMask);
+        notifyChange(EVENT_ADC_CHANNEL_MASK);
     }
 
-    public void setIdleTime(int trackTimeUs) {
-        if (!checkHw()) {
-            return;
-        }
-        hw.setIdleTime((short) trackTimeUs);
-    }
-
-    public void setADCchannel(int chan) {
-        if (!checkHw()) {
-            return;
-        }
-        hw.setADCchannel((byte) chan);
-    }
-
-//    public synchronized void resetTimestamps() {
-//        if (!checkHw()) {
-//            return;
-//        }
-//        hw.resetTimestamps();
-//    }
-
-//    public boolean isUseCalibration() {
-//        if (!checkHw()) {
-//            return false;
-//        }
-//        return hw.isUseCalibration();
-//    }
-//
-//    public boolean isSelect5Tbuffer() {
-//        if (!checkHw()) {
-//            return false;
-//        }
-//        return hw.isSelect5Tbuffer();
-//    }
-//    public boolean isChipReset() {
-//        if (!checkHw()) {
-//            return false;
-//        }
-//        return hw.isChipReset();
-//    }
+    @Override
     public int getTrackTime() {
-        if (!checkHw()) {
-            return -1;
-        }
-        return hw.getTrackTime();
+        return trackTime;
     }
 
-    public int getRefOnTime() {
-        if (!checkHw()) {
-            return -1;
-        }
-        return hw.getRefOnTime();
-    }
-
-    public int getRefOffTime() {
-        if (!checkHw()) {
-            return -1;
-        }
-        return hw.getRefOffTime();
-    }
-
+    @Override
     public int getIdleTime() {
-        if (!checkHw()) {
-            return -1;
-        }
-        return hw.getIdleTime();
+        return idleTime;
     }
 
-    public int getADCchannel() {
-        if (!checkHw()) {
-            return -1;
-        }
-        return hw.getADCchannel();
+    @Override
+    public int getADCChannelMask() {
+        return adcChannelMask;
     }
 
     public int getMinRefOnTime() {
@@ -239,4 +132,26 @@ public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy {
     public int getMaxRefOffTime() {
         return maxRefOffTime;
     }
+
+    @Override
+    public void startADC() throws HardwareInterfaceException {
+        setADCEnabled(true);
+    }
+
+    @Override
+    public void stopADC() throws HardwareInterfaceException {
+        setADCEnabled(false);
+    }
+
+    @Override
+    public void sendADCConfiguration() throws HardwareInterfaceException {
+        notifyChange(EVENT_ADC_CHANGED);
+    }
+
+    @Override
+    public String toString() {
+        return "ADCHardwareInterfaceProxy{" + "adcEnabled=" + adcEnabled + ", trackTime=" + trackTime + ", refOnTime=" + refOnTime + ", refOffTime=" + refOffTime + ", idleTime=" + idleTime + ", adcChannelMask=" + adcChannelMask + '}';
+    }
+    
+    
 }

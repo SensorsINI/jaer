@@ -110,9 +110,9 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
     }
 
     /**
-     * Set the value of staticEventRate
+     * Set the value of eventRate emitted by ball in Hz.
      *
-     * @param staticEventRate new value of staticEventRate
+     * @param eventRate new value of eventRate
      */
     public void setStaticEventRate(float eventRate) {
         this.staticEventRate = eventRate;

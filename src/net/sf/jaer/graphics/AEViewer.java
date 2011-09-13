@@ -696,7 +696,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /** If the AEMonitor is open, tells it to resetTimestamps.
-     * @see AEMonitorInterface#resetTimetamps
+     * @see AEMonitorInterface#resetTimestamps() 
      */
     public void zeroTimestamps (){
         if ( aemon != null && aemon.isOpen() ){

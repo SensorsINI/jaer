@@ -81,7 +81,6 @@ public class BasicEvent implements EventInterface<BasicEvent> {
      *
      * @param timestamp the timestamp, by convention in us.
      * @param address the raw address
-     * @return
      */
      public BasicEvent(int timestamp, int address){
          this.address=address;
