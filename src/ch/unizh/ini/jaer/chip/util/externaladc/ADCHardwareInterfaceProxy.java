@@ -18,32 +18,28 @@ public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy implements
 
     static final Logger log = Logger.getLogger("HardwareInterfaceProxy");
     private boolean adcEnabled;
-    private int trackTime, refOnTime, refOffTime, idleTime;
+    private int trackTime,  idleTime;
+    private boolean sequencingEnabled;
 //    private boolean UseCalibration;
     // following define limits for slider controls that are automagically constucted by ParameterControlPanel
-    private final int minRefOffTime = 0;
-    private final int maxRefOffTime = 100;
-    private final int minRefOnTime = 1;
-    private final int maxRefOnTime = 100;
-    private final int minTrackTime = 0;
-    private final int maxTrackTime = 100;
-    private final int minIdleTime = 0;
-    private final int maxIdleTime = 100;
-    private final int minADCchannel = 0;
-    private final int maxADCchannel = 3;
-    private int adcChannelMask = 1;
+
+    private int minTrackTime = 0;
+    private int maxTrackTime = 100;
+    private int minIdleTime = 0;
+    private int maxIdleTime = 100;
+    private int minADCchannel = 0;
+    private int maxADCchannel = 3;
+    private int adcChannel = 0;
 
     public ADCHardwareInterfaceProxy(Chip chip) {
         super(chip);
-        adcChannelMask = getPrefs().getInt("ADCHardwareInterfaceProxy.ADCchannelMask", 3);
+        adcChannel = getPrefs().getInt("ADCHardwareInterfaceProxy.adcChannel", 0);
         adcEnabled = getPrefs().getBoolean("ADCHardwareInterfaceProxy.adcEnabled", true);
 
-//        UseCalibration = getPrefs().getBoolean("ADCHardwareInterfaceProxy.UseCalibration", false);
         adcEnabled = getPrefs().getBoolean("ADCHardwareInterfaceProxy.adcEnabled", true);
-        trackTime = getPrefs().getInt("ADCHardwareInterfaceProxy.TrackTime", 50);
-        refOnTime = getPrefs().getInt("ADCHardwareInterfaceProxy.RefOnTime", 20);
-        refOffTime = getPrefs().getInt("ADCHardwareInterfaceProxy.RefOffTime", 20);
-        idleTime = getPrefs().getInt("ADCHardwareInterfaceProxy.IdleTime", 10);
+        trackTime = getPrefs().getInt("ADCHardwareInterfaceProxy.trackTime", 50);
+        idleTime = getPrefs().getInt("ADCHardwareInterfaceProxy.idleTime", 10);
+        sequencingEnabled=getPrefs().getBoolean("ADCHardwareInterfaceProxy.sequencingEnabled",false);
     }
 
     @Override
@@ -58,6 +54,10 @@ public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy implements
         return adcEnabled;
     }
 
+    /** Sets the time in us that track and hold should should track before closing switch to sample signal.
+     * 
+     * @param trackTime in us
+     */
     @Override
     public void setTrackTime(int trackTime) {
         this.trackTime = trackTime;
@@ -65,6 +65,10 @@ public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy implements
         notifyChange(EVENT_TRACK_TIME);
     }
 
+    /** Sets the time in us that ADC should idle after conversion is finished, before starting next track and hold.
+     * 
+     * @param idleTime in us
+     */
     @Override
     public void setIdleTime(int idleTime) {
         this.idleTime = idleTime;
@@ -72,9 +76,14 @@ public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy implements
         notifyChange(EVENT_IDLE_TIME);
     }
 
-    public void setADCChannelMask(int adcChannelMask) {
-        this.adcChannelMask = adcChannelMask;
-        getPrefs().putInt("ADCHardwareInterfaceProxy.adcChannelMask", adcChannelMask);
+    /** Sets either the maximum ADC channel (if sequencing) or the selected channel
+     * 
+     * @param channel the max (if sequencing) or selected channel. 0 based.
+     */
+    public void setADCChannel(int channel) {
+        if(adcChannel<minADCchannel) adcChannel=minADCchannel; else if(adcChannel>maxADCchannel) adcChannel=maxADCchannel;
+        this.adcChannel = channel;
+        getPrefs().putInt("ADCHardwareInterfaceProxy.adcChannel", channel);
         notifyChange(EVENT_ADC_CHANNEL_MASK);
     }
 
@@ -89,16 +98,8 @@ public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy implements
     }
 
     @Override
-    public int getADCChannelMask() {
-        return adcChannelMask;
-    }
-
-    public int getMinRefOnTime() {
-        return minRefOnTime;
-    }
-
-    public int getMaxRefOnTime() {
-        return maxRefOnTime;
+    public int getADCChannel() {
+        return adcChannel;
     }
 
     public int getMinTrackTime() {
@@ -121,16 +122,8 @@ public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy implements
         return minADCchannel;
     }
 
-    public int getMaxADCchannel() {
+    public int getMaxADCChannel() {
         return maxADCchannel;
-    }
-
-    public int getMinRefOffTime() {
-        return minRefOffTime;
-    }
-
-    public int getMaxRefOffTime() {
-        return maxRefOffTime;
     }
 
     @Override
@@ -150,8 +143,62 @@ public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy implements
 
     @Override
     public String toString() {
-        return "ADCHardwareInterfaceProxy{" + "adcEnabled=" + adcEnabled + ", trackTime=" + trackTime + ", refOnTime=" + refOnTime + ", refOffTime=" + refOffTime + ", idleTime=" + idleTime + ", adcChannelMask=" + adcChannelMask + '}';
+        return "ADCHardwareInterfaceProxy{" + "adcEnabled=" + adcEnabled + ", trackTime=" + trackTime + ", idleTime=" + idleTime + ", lastChannel=" + adcChannel + '}';
     }
+
+    /**
+     * @return the sequencingEnabled
+     */
+    public boolean isSequencingEnabled() {
+        return sequencingEnabled;
+    }
+
+    /**
+     * @param sequencingEnabled the sequencingEnabled to set
+     */
+    public void setSequencingEnabled(boolean sequencingEnabled) {
+        this.sequencingEnabled = sequencingEnabled;
+        getPrefs().putBoolean("ADCHardwareInterfaceProxy.sequencingEnabled",sequencingEnabled);
+        notifyChange(EVENT_SEQUENCING);
+    }
+
+    /**
+     * @param minTrackTime the minTrackTime to set
+     */
+    public void setMinTrackTimeValue(int minTrackTime) { // named this to avoid javabeans property
+        this.minTrackTime = minTrackTime;
+    }
+
+    /**
+     * @param maxTrackTime the maxTrackTime to set
+     */
+    public void setMaxTrackTimeValue(int maxTrackTime) { // named this to avoid javabeans property
+        this.maxTrackTime = maxTrackTime;
+    }
+
+    /**
+     * @param minIdleTime the minIdleTime to set
+     */
+    public void setMinIdleTimeValue(int minIdleTime) { // named this to avoid javabeans property
+        this.minIdleTime = minIdleTime;
+    }
+
+    /**
+     * @param maxIdleTime the maxIdleTime to set
+     */
+    public void setMaxIdleTimeValue(int maxIdleTime) { // named this to avoid javabeans property
+        this.maxIdleTime = maxIdleTime;
+    }
+
+
+    /**
+     * @param maxADCchannel the maxADCchannel to set
+     */
+    public void setMaxADCchannelValue(int maxADCchannel) { // named this to avoid javabeans property
+        this.maxADCchannel = maxADCchannel;
+    }
+    
+    
     
     
 }

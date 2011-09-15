@@ -18,11 +18,13 @@ public interface ADCHardwareInterface {
     public static final String EVENT_ADC_ENABLED = "adcEnabled";
     public static final String EVENT_IDLE_TIME = "idleTime";
     public static final String EVENT_TRACK_TIME = "trackTime";
+    public static final String EVENT_SEQUENCING = "sequencingEnabled"; // method not yet in this interface
+    
 
     /**
      * @return the ADCchannel
      */
-    public int getADCChannelMask();
+    public int getADCChannel();
 
     /**
      * @return the IdleTime
@@ -39,7 +41,7 @@ public interface ADCHardwareInterface {
 
     public void setADCEnabled(boolean yes) throws HardwareInterfaceException;
 
-    public void setADCChannelMask(int chan);
+    public void setADCChannel(int chan);
 
     public void setIdleTime(int trackTimeUs);
 

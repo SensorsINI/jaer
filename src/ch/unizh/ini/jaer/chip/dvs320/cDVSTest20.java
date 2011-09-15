@@ -203,7 +203,7 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
         }
         private float avdt = 100; // used to compute rolling average of intensity
 
-        /** extracts the meaning of the raw events.
+        /** extracts the meaning of the raw events, including putting the ADC samples into the frameData object.
          *@param in the raw events, can be null
          *@return out the processed events. these are partially processed in-place. empty packet is returned if null is supplied as in.
          */
@@ -300,10 +300,10 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
                     // to some maximum number of samples TODO not done yet.
                     // TODO comment back in
                     if ((data & ADC_START_BIT) == ADC_START_BIT) {
-                        getFrameData().swapBuffers();  // the hardware interface here swaps the reading and writing buffers so that new data goes into the other buffer and the old data will be displayed by the rendering thread
-                        getFrameData().setTimestamp(timestamps[i]);
+                        frameData.swapBuffers();  // the hardware interface here swaps the reading and writing buffers so that new data goes into the other buffer and the old data will be displayed by the rendering thread
+                        frameData.setTimestamp(timestamps[i]);
                     }
-                    getFrameData().put(data & ADC_DATA_MASK);
+                    frameData.put(data & ADC_DATA_MASK);
 
                     ////////////// TODO debug remove
 //                    if(++debugSampleCounter==SIZE_X_CDVS*SIZE_Y_CDVS) {

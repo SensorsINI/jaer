@@ -40,6 +40,7 @@ import javax.swing.JButton;
 import javax.swing.JRadioButton;
 import javax.swing.JSlider;
 import javax.swing.SpinnerNumberModel;
+import net.sf.jaer.biasgen.VDAC.VPotGUIControl;
 import net.sf.jaer.util.ParameterControlPanel;
 
 /**
@@ -76,8 +77,6 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         scanSlider.setMinimum(0);
         scanSlider.setMaximum(max);
 
-        scannerPeriodSpinnerModel = new SpinnerNumberModel(getBiasgen().getScanner().getPeriod(), getBiasgen().getScanner().minPeriod, getBiasgen().getScanner().maxPeriod, 1);
-        periodSpinner.setModel(scannerPeriodSpinnerModel);
 //        continuousScanningEnabledCheckBox.setSelected(biasgen.getScanner().isScanContinuouslyEnabled());
         biasgen.getScanner().addObserver(this);
 
@@ -207,11 +206,8 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
             case Slow:
                 arSlowBut.setSelected(true);
         }
-        adparamsPan.add(new ParameterControlPanel(biasgen.getAdcProxy()));
-        adchbut0.setSelected((biasgen.getAdcProxy().getADCChannelMask() & 1) != 0);
-        adchbut1.setSelected((biasgen.getAdcProxy().getADCChannelMask() & 2) != 0);
-        adchbut2.setSelected((biasgen.getAdcProxy().getADCChannelMask() & 4) != 0);
-        adchbut3.setSelected((biasgen.getAdcProxy().getADCChannelMask() & 8) != 0);
+        adcPanel.add(new ParameterControlPanel(biasgen.getAdcProxy()));
+        offchipPanel.add(new VPotGUIControl(biasgen.getPreampAGCThresholdPot()));
         tabbedPane.setSelectedIndex(prefs.getInt("CochleaAMS1cControlPanel.selectedPaneIndex", 0));
     }
 
@@ -636,20 +632,12 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         scannerPanel = new javax.swing.JPanel();
         continuousScanningPanel = new javax.swing.JPanel();
         continuousScanningEnabledCheckBox = new javax.swing.JCheckBox();
-        periodSpinner = new javax.swing.JSpinner();
-        jLabel2 = new javax.swing.JLabel();
         singleChannelSelectionPanel = new javax.swing.JPanel();
         scanSlider = new javax.swing.JSlider();
         scanSpinner = new javax.swing.JSpinner();
         jPanel1 = new javax.swing.JPanel();
         adcPanel = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
-        adChPan = new javax.swing.JPanel();
-        adchbut0 = new javax.swing.JRadioButton();
-        adchbut1 = new javax.swing.JRadioButton();
-        adchbut2 = new javax.swing.JRadioButton();
-        adchbut3 = new javax.swing.JRadioButton();
-        adparamsPan = new javax.swing.JPanel();
         jLabel6 = new javax.swing.JLabel();
         preampPanel = new javax.swing.JPanel();
         onchipPanel = new javax.swing.JPanel();
@@ -658,6 +646,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         onchipMedB = new javax.swing.JRadioButton();
         onchipHighB = new javax.swing.JRadioButton();
         offchipPanel = new javax.swing.JPanel();
+        jPanel4 = new javax.swing.JPanel();
         offchipGainPanelLeft = new javax.swing.JPanel();
         offchipLeftGainLowBut = new javax.swing.JRadioButton();
         offchipLeftGainMedBut = new javax.swing.JRadioButton();
@@ -864,36 +853,19 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${scanContinuouslyEnabled}"), continuousScanningEnabledCheckBox, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
-        periodSpinner.setToolTipText("Sets the period as some multiple of a timer interrupt");
-
-        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${period}"), periodSpinner, org.jdesktop.beansbinding.BeanProperty.create("value"));
-        bindingGroup.addBinding(binding);
-
-        jLabel2.setText("Inter-pixel period - 255 gives about 64us period");
-
         javax.swing.GroupLayout continuousScanningPanelLayout = new javax.swing.GroupLayout(continuousScanningPanel);
         continuousScanningPanel.setLayout(continuousScanningPanelLayout);
         continuousScanningPanelLayout.setHorizontalGroup(
             continuousScanningPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(continuousScanningPanelLayout.createSequentialGroup()
-                .addGroup(continuousScanningPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(continuousScanningPanelLayout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(jLabel2)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(periodSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 43, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(continuousScanningEnabledCheckBox))
-                .addContainerGap(359, Short.MAX_VALUE))
+                .addComponent(continuousScanningEnabledCheckBox)
+                .addContainerGap(683, Short.MAX_VALUE))
         );
         continuousScanningPanelLayout.setVerticalGroup(
             continuousScanningPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(continuousScanningPanelLayout.createSequentialGroup()
                 .addComponent(continuousScanningEnabledCheckBox)
-                .addGap(9, 9, 9)
-                .addGroup(continuousScanningPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel2)
-                    .addComponent(periodSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(71, Short.MAX_VALUE))
+                .addContainerGap(100, Short.MAX_VALUE))
         );
 
         scannerPanel.add(continuousScanningPanel);
@@ -942,7 +914,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 663, Short.MAX_VALUE)
+            .addGap(0, 852, Short.MAX_VALUE)
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -956,55 +928,11 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         adcPanel.setLayout(new javax.swing.BoxLayout(adcPanel, javax.swing.BoxLayout.Y_AXIS));
 
         jLabel1.setText("Enables off-chip ADC, selects ADC channels, and thus controls graphical display of this data");
-        jLabel1.setAlignmentX(0.5F);
         adcPanel.add(jLabel1);
-
-        adChPan.setBorder(javax.swing.BorderFactory.createTitledBorder("ADC channels"));
-        adChPan.setLayout(new javax.swing.BoxLayout(adChPan, javax.swing.BoxLayout.LINE_AXIS));
-
-        adchbut0.setText("0");
-        adchbut0.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                adchbut0ActionPerformed(evt);
-            }
-        });
-        adChPan.add(adchbut0);
-
-        adchbut1.setText("1");
-        adchbut1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                adchbut1ActionPerformed(evt);
-            }
-        });
-        adChPan.add(adchbut1);
-
-        adchbut2.setText("2");
-        adchbut2.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                adchbut2ActionPerformed(evt);
-            }
-        });
-        adChPan.add(adchbut2);
-
-        adchbut3.setText("3");
-        adchbut3.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                adchbut3ActionPerformed(evt);
-            }
-        });
-        adChPan.add(adchbut3);
-
-        adcPanel.add(adChPan);
-
-        adparamsPan.setBorder(javax.swing.BorderFactory.createTitledBorder("Parameters"));
-        adparamsPan.setAlignmentX(0.5F);
-        adparamsPan.setLayout(new javax.swing.BoxLayout(adparamsPan, javax.swing.BoxLayout.Y_AXIS));
 
         jLabel6.setForeground(new java.awt.Color(204, 0, 0));
         jLabel6.setText("Warning: State changes made here can leave other GUI controls in inconsistent state");
-        adparamsPan.add(jLabel6);
-
-        adcPanel.add(adparamsPan);
+        adcPanel.add(jLabel6);
 
         tabbedPane.addTab("ADC", adcPanel);
 
@@ -1047,7 +975,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
             .addGroup(onchipPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(onchipGainPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(474, Short.MAX_VALUE))
+                .addContainerGap(663, Short.MAX_VALUE))
         );
         onchipPanelLayout.setVerticalGroup(
             onchipPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -1055,7 +983,9 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         );
 
         offchipPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Off-chip preamp"));
-        offchipPanel.setLayout(new javax.swing.BoxLayout(offchipPanel, javax.swing.BoxLayout.LINE_AXIS));
+        offchipPanel.setLayout(new javax.swing.BoxLayout(offchipPanel, javax.swing.BoxLayout.Y_AXIS));
+
+        jPanel4.setLayout(new javax.swing.BoxLayout(jPanel4, javax.swing.BoxLayout.LINE_AXIS));
 
         offchipGainPanelLeft.setBorder(javax.swing.BorderFactory.createTitledBorder("Gain - Left"));
         offchipGainPanelLeft.setLayout(new javax.swing.BoxLayout(offchipGainPanelLeft, javax.swing.BoxLayout.Y_AXIS));
@@ -1087,7 +1017,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         });
         offchipGainPanelLeft.add(offchipLeftGainHighBut);
 
-        offchipPanel.add(offchipGainPanelLeft);
+        jPanel4.add(offchipGainPanelLeft);
 
         offchipARPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("AGC Attack/Release Ratio"));
         offchipARPanel.setLayout(new javax.swing.BoxLayout(offchipARPanel, javax.swing.BoxLayout.Y_AXIS));
@@ -1119,7 +1049,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         });
         offchipARPanel.add(arSlowBut);
 
-        offchipPanel.add(offchipARPanel);
+        jPanel4.add(offchipARPanel);
 
         offchipGainPanelRight.setBorder(javax.swing.BorderFactory.createTitledBorder("Gain - Right"));
         offchipGainPanelRight.setLayout(new javax.swing.BoxLayout(offchipGainPanelRight, javax.swing.BoxLayout.Y_AXIS));
@@ -1151,7 +1081,9 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         });
         offchipGainPanelRight.add(offchipRightGainHighBut);
 
-        offchipPanel.add(offchipGainPanelRight);
+        jPanel4.add(offchipGainPanelRight);
+
+        offchipPanel.add(jPanel4);
 
         javax.swing.GroupLayout preampPanelLayout = new javax.swing.GroupLayout(preampPanel);
         preampPanel.setLayout(preampPanelLayout);
@@ -1160,16 +1092,16 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, preampPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(preampPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(onchipPanel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(offchipPanel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 655, Short.MAX_VALUE))
+                    .addComponent(offchipPanel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 844, Short.MAX_VALUE)
+                    .addComponent(onchipPanel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
         preampPanelLayout.setVerticalGroup(
             preampPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(preampPanelLayout.createSequentialGroup()
                 .addComponent(onchipPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(94, 94, 94)
-                .addComponent(offchipPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 165, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addComponent(offchipPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 241, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(37, Short.MAX_VALUE))
         );
 
@@ -1349,40 +1281,17 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         }
         boolean yes = ((AbstractButton) evt.getSource()).isSelected();
         if (yes) {
-            biasgen.getAdcProxy().setADCChannelMask(biasgen.getAdcProxy().getADCChannelMask() | (1 << chan));
+            biasgen.getAdcProxy().setADCChannel(biasgen.getAdcProxy().getADCChannel() | (1 << chan));
         } else {
-            biasgen.getAdcProxy().setADCChannelMask(biasgen.getAdcProxy().getADCChannelMask() & ~(1 << chan));
+            biasgen.getAdcProxy().setADCChannel(biasgen.getAdcProxy().getADCChannel() & ~(1 << chan));
         }
     }
-    private void adchbut0ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_adchbut0ActionPerformed
-        setClrADCChannel(evt, 0);
-    }//GEN-LAST:event_adchbut0ActionPerformed
-
-    private void adchbut1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_adchbut1ActionPerformed
-        setClrADCChannel(evt, 1);
-
-    }//GEN-LAST:event_adchbut1ActionPerformed
-
-    private void adchbut2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_adchbut2ActionPerformed
-        setClrADCChannel(evt, 2);
-    }//GEN-LAST:event_adchbut2ActionPerformed
-
-    private void adchbut3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_adchbut3ActionPerformed
-        setClrADCChannel(evt, 3);
-    }//GEN-LAST:event_adchbut3ActionPerformed
-
     private void scanSpinnerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_scanSpinnerStateChanged
         continuousScanningEnabledCheckBox.setSelected(false);
     }//GEN-LAST:event_scanSpinnerStateChanged
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JPanel adChPan;
     private javax.swing.JPanel adcPanel;
-    private javax.swing.JRadioButton adchbut0;
-    private javax.swing.JRadioButton adchbut1;
-    private javax.swing.JRadioButton adchbut2;
-    private javax.swing.JRadioButton adchbut3;
-    private javax.swing.JPanel adparamsPan;
     private javax.swing.JRadioButton arFastBut;
     private javax.swing.JRadioButton arMedBut;
     private javax.swing.JRadioButton arSlowBut;
@@ -1406,7 +1315,6 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.JPanel gainSlidersPanel;
     private javax.swing.JButton initDACButton;
     private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
@@ -1414,6 +1322,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
+    private javax.swing.JPanel jPanel4;
     private javax.swing.JPanel lpfKilledPanel;
     private javax.swing.ButtonGroup offchipARGroup;
     private javax.swing.JPanel offchipARPanel;
@@ -1436,7 +1345,6 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.JRadioButton onchipLowB;
     private javax.swing.JRadioButton onchipMedB;
     private javax.swing.JPanel onchipPanel;
-    private javax.swing.JSpinner periodSpinner;
     private javax.swing.JPanel preampPanel;
     private javax.swing.JPanel qualSlidersPanel;
     private javax.swing.JSlider scanSlider;

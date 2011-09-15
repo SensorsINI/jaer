@@ -5145,14 +5145,26 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
         }
 }//GEN-LAST:event_openSocketOutputStreamMenuItemActionPerformed
 
-    public int getFrameRate (){
+    /** Returns desired frame rate of FrameRater
+     * 
+     * @return desired frame rate in Hz. 
+     */
+    public int getFrameRate() {
         return frameRater.getDesiredFPS();
     }
 
+    /** Sets desired frame rate of FrameRater
+     * 
+     * @param renderDesiredFrameRateHz frame rate in Hz
+     */
     public void setFrameRate (int renderDesiredFrameRateHz){
         frameRater.setDesiredFPS(renderDesiredFrameRateHz);
     }
 
+    /** Returns true if viewer is paused
+     * 
+     * @return true if paused 
+     */
     public boolean isPaused (){
         if(jaerViewer==null) return false; // not yet initialized
         return jaerViewer.getSyncPlayer().isPaused();

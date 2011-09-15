@@ -4,15 +4,11 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
-import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterface;
-import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterface;
 import de.thesycon.usbio.UsbIo;
 import de.thesycon.usbio.UsbIoBuf;
 import de.thesycon.usbio.UsbIoInterface;
 import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
 import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
-import java.math.BigInteger;
-import java.util.prefs.Preferences;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
@@ -29,8 +25,13 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
 
     /** The USB product ID of this device */
     static public final short PID = (short) 0x8406;
-    static Preferences hwPrefs = Preferences.userNodeForPackage(CochleaAMS1cHardwareInterface.class); // TODO should really come from Chip instance, not this class
-    final byte VR_CONFIG = CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES;
+    /** data type is either timestamp or data (AE address or ADC reading) */
+    public static final int DATA_TYPE_MASK = 0xc000, DATA_TYPE_ADDRESS = 0x0000, DATA_TYPE_TIMESTAMP = 0x4000, DATA_TYPE_WRAP = 0x8000, DATA_TYPE_TIMESTAMP_RESET = 0xd000;
+    /** Address-type refers to data if is it an "address". This data is either an AE address or ADC reading. CochleaAMS uses 10 address bits. 
+    An extra bit signals that the data is from the on-board ADC. */
+    public static final int ADDRESS_TYPE_MASK = 0x2000, EVENT_ADDRESS_MASK = 0x1ff, ADDRESS_TYPE_EVENT = 0x0000, ADDRESS_TYPE_ADC = 0x2000;
+    /** For ADC data, the data is defined by the ADC channel and whether it is the first ADC value from the scanner. */
+    public static final int ADC_TYPE_MASK = 0x1000, ADC_DATA_MASK = 0x3ff, ADC_START_BIT = 0x1000, ADC_CHANNEL_MASK = 0x0c00; // right now there is no channel info in the data word
 
     public CochleaAMS1cHardwareInterface(int n) {
         super(n);
@@ -115,22 +116,41 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
         HardwareInterfaceException.clearException();
     }
 
+    /** Parses the ADC channel number from the ADC sample word
+     * 
+     * @param adcData
+     * @return channel number, 0-3
+     */
+    public static int adcChannel(int adcData) {
+        return ((adcData & ADC_CHANNEL_MASK) >>> Integer.bitCount(ADC_DATA_MASK)); // bits 11:10
+    }
+
+    /** Parses the ADC sample value from the ADC sample word
+     * 
+     * @param adcData
+     * @return sample value, 10 bits
+     */
+    public static int adcSample(int adcData) {
+        return (adcData & ADC_DATA_MASK); // rightmost 10 bits 9:0
+    }
+
+    /** Is the ADC sample associated with the sync input high at the time of sampling.
+     * 
+     * @param adcData
+     * @return true if sync input (from cochlea) was high
+     */
+    public static boolean isAdcStartBit(int adcData) {
+        return ((adcData & ADC_START_BIT) != 0);
+    }
+
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
     public class AEReader extends CypressFX2MonitorSequencer.MonSeqAEReader {
 
         /*
          * data type fields
          */
-        /** data type is either timestamp or data (AE address or ADC reading) */
-        public final int DATA_TYPE_MASK = 0xc000, DATA_TYPE_ADDRESS = 0x0000, DATA_TYPE_TIMESTAMP = 0x4000, DATA_TYPE_WRAP = 0x8000, DATA_TYPE_TIMESTAMP_RESET = 0xd000;
-        /** Address-type refers to data if is it an "address". This data is either an AE address or ADC reading. CochleaAMS uses 10 address bits. 
-        An extra bit signals that the data is from the on-board ADC. */
-        public final int ADDRESS_TYPE_MASK = 0x2000, EVENT_ADDRESS_MASK = 0x1ff, ADDRESS_TYPE_EVENT = 0x0000, ADDRESS_TYPE_ADC = 0x2000;
-        /** For ADC data, the data is defined by the ADC channel and whether it is the first ADC value from the scanner. */
-        public static final int ADC_TYPE_MASK = 0x1000, ADC_DATA_MASK = 0xfff, ADC_START_BIT = 0x1000, ADC_CHANNEL_MASK = 0x0000; // right now there is no channel info in the data word
         public static final int MAX_ADC = (int) ((1 << 12) - 1);
         private int currentts = 0;
-        private int lastts = 0;
 
         public AEReader(CypressFX2 cypress) throws HardwareInterfaceException {
             super(cypress);
@@ -177,33 +197,29 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
                         switch (code) {
                             case 0: // address
                                 // If the data is an address, we write out an address value if we either get an ADC reading or an x address.
-                                // NOTE that because ADC events do not have a timestamp, the size of the addresses and timestamps data are not the same.
                                 // To simplify data structure handling in AEPacketRaw and AEPacketRawPool,
-                                // ADC events are timestamped just like address-events. ADC events get the timestamp of the most recently preceeding address-event.
+                                // ADC events are timestamped just like address-events. 
                                 // NOTE2: unmasked bits are read as 1's from the hardware. Therefore it is crucial to properly mask bits.
                                 if ((eventCounter >= aeBufferSize) || (buffer.overrunOccuredFlag)) {
                                     buffer.overrunOccuredFlag = true; // throw away events if we have overrun the output arrays
                                 } else {
                                     if ((dataword & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
-                                        addresses[eventCounter] = dataword;
-                                        timestamps[eventCounter] = currentts;  // ADC event gets last timestamp
+                                        addresses[eventCounter] = dataword; // leave all bits unchanged for ADC sample
+                                        timestamps[eventCounter] = currentts;  // ADC event gets timestamp too
                                         eventCounter++;
-//                                        System.out.println("ADC word: " + (dataword & ADC_DATA_MASK));
-                                    } else {////  received an X address, write out event to addresses/timestamps output arrays
-                                        // x adddress
-                                        //xadd = (buf[i] & 0xff);  //
-                                        addresses[eventCounter] = (dataword & EVENT_ADDRESS_MASK);  // combine current bits with last y address bits and send
-                                        timestamps[eventCounter] = currentts; // add in the wrap offset and convert to 1us tick
+//                                        System.out.println("ADC word: " + dataword + " adcChannel=" + adcChannel(dataword) + " adcSample=" + adcSample(dataword) + " isAdcStartBit=" + isAdcStartBit(dataword));
+                                    } else { //  received an address, write out event to addresses/timestamps output arrays, masking out other bits
+                                        addresses[eventCounter] = (dataword & EVENT_ADDRESS_MASK);
+                                        timestamps[eventCounter] = currentts;
                                         eventCounter++;
-                                        System.out.println("received address "+addresses[eventCounter-1]);
+//                                        System.out.println("address=" + addresses[eventCounter - 1]);
                                     }
                                 }
                                 break;
-                            case 1: // timestamp
-                                lastts = currentts;
+                            case 1: // timestamp - always comes before data
                                 currentts = ((0x3f & buf[i + 1]) << 8) | (buf[i] & 0xff);
                                 currentts = (TICK_US * (currentts + wrapAdd));
-                                System.out.println("received timestamp "+currentts);
+//                                System.out.println("timestamp=" + currentts);
                                 break;
                             case 2: // wrap
                                 wrapAdd += 0x4000L;
@@ -233,24 +249,17 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
         }
     }
 
-
-
-
-    private String getBitString(short value, short nSrBits) {
-        StringBuilder s = new StringBuilder();
-
-        int k = nSrBits - 1;
-        while (k >= 0) {
-            int x = value & (1 << k); // start with msb
-            boolean b = (x == 0); // get bit
-            s.append(b ? '0' : '1'); // append to string 0 or 1, string grows with msb on left
-            k--;
-        } // construct big endian string e.g. code=14, s='1011'
-        String bitString = s.toString();
-        return bitString;
-    }
-
-
-
-
+//    private String getBitString(short value, short nSrBits) {
+//        StringBuilder s = new StringBuilder();
+//
+//        int k = nSrBits - 1;
+//        while (k >= 0) {
+//            int x = value & (1 << k); // start with msb
+//            boolean b = (x == 0); // get bit
+//            s.append(b ? '0' : '1'); // append to string 0 or 1, string grows with msb on left
+//            k--;
+//        } // construct big endian string e.g. code=14, s='1011'
+//        String bitString = s.toString();
+//        return bitString;
+//    }
 }

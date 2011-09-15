@@ -152,7 +152,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen implements  cDV
      * @param chan the channel number, ranging 0-3
      */
     @Override
-    public void setADCChannelMask(int chan) {// TODO fix to proper mask with labeled ADC samples in returned data
+    public void setADCChannel(int chan) {// TODO fix to proper mask with labeled ADC samples in returned data
         try {
             int old=this.ADCchannel;
             if (chan < 0) {
@@ -270,7 +270,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen implements  cDV
 
     @Override
     synchronized public void sendADCConfiguration() throws HardwareInterfaceException {
-        short ADCword = (short) (ADCconfig | (getADCChannelMask() << ADCchannelshift));
+        short ADCword = (short) (ADCconfig | (getADCChannel() << ADCchannelshift));
 
         int nBits = 0;
 
@@ -671,7 +671,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen implements  cDV
     /**
      * @return the ADCchannel
      */
-    public int getADCChannelMask() {
+    public int getADCChannel() {
         return ADCchannel;
     }
 

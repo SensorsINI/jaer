@@ -123,7 +123,7 @@ public class cDVSTestHardwareInterfaceProxy extends HardwareInterfaceProxy {
         if (!checkHw()) {
             return;
         }
-        hw.setADCChannelMask( chan);
+        hw.setADCChannel( chan);
     }
 
     public synchronized void resetTimestamps() {
@@ -186,7 +186,7 @@ public class cDVSTestHardwareInterfaceProxy extends HardwareInterfaceProxy {
         if (!checkHw()) {
             return -1;
         }
-        return hw.getADCChannelMask();
+        return hw.getADCChannel();
     }
 
     public int getMinRefOnTime() {

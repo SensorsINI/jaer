@@ -11,17 +11,21 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
-import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterface;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ADCSample;
 import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
 import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterfaceProxy;
+import ch.unizh.ini.jaer.projects.cochsoundloc.ITDFilter;
 import java.util.ArrayList;
 import java.util.Observer;
 import java.util.prefs.PreferenceChangeEvent;
+import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.IPotArray;
 import net.sf.jaer.biasgen.VDAC.DAC;
 import net.sf.jaer.biasgen.VDAC.VPot;
 import net.sf.jaer.chip.*;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -55,20 +59,20 @@ import net.sf.jaer.util.RemoteControlled;
 @Description("Binaural AER silicon cochlea with 64 channels and 8 ganglion cells of two types per channel with many fixes to CochleaAMS1b")
 public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
-//    // biasgen components implement this interface to send their own messages
-//    interface ConfigurationSender {
-//
-//        void sendConfiguration();
-//    }
     final GLUT glut = new GLUT();
+    /** Samples from ADC on CochleaAMS1c PCB */
+    private CochleaAMS1cADCSamples adcSamples = new CochleaAMS1cADCSamples();
 
     /** Creates a new instance of CochleaAMSWithBiasgen */
     public CochleaAMS1c() {
         super();
         setBiasgen(new CochleaAMS1c.Biasgen(this));
         getCanvas().setBorderSpacePixels(40);
+        setEventExtractor(new CochleaAMS1c.Extractor(this));
+                getCanvas().addDisplayMethod(new CochleaAMS1cRollingCochleagramADCDisplayMethod(this));
         for (DisplayMethod m : getCanvas().getDisplayMethods()) {
             if (m instanceof ChipRendererDisplayMethod || m instanceof SpaceTimeEventDisplayMethod) {
+                // add labels on frame of chip for these xy chip displays
                 m.addAnnotator(new FrameAnnotater() {
 
                     @Override
@@ -78,12 +82,6 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                     @Override
                     public boolean isAnnotationEnabled() {
                         return true;
-                    }
-
-                    public void annotate(float[][][] frame) {
-                    }
-
-                    public void annotate(Graphics2D g) {
                     }
 
                     // renders the string starting at x,y,z with angleDeg angle CCW from horizontal in degrees
@@ -121,8 +119,65 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                         gl.glPopMatrix();
                     }
                 });
+                // add basic ADC samples drawing
+//                m.addAnnotator(new FrameAnnotater() {
+//
+//                    @Override
+//                    public void setAnnotationEnabled(boolean yes) {
+//                    }
+//
+//                    @Override
+//                    public boolean isAnnotationEnabled() {
+//                        return true;
+//                    }
+//
+//                    // renders the string starting at x,y,z with angleDeg angle CCW from horizontal in degrees
+//                    void renderStrokeFontString(GL gl, float x, float y, float z, float angleDeg, String s) {
+//                        final int font = GLUT.STROKE_ROMAN;
+//                        final float scale = 2f / 104f; // chars will be about 1 pixel wide
+//                        gl.glPushMatrix();
+//                        gl.glTranslatef(x, y, z);
+//                        gl.glRotatef(angleDeg, 0, 0, 1);
+//                        gl.glScalef(scale, scale, scale);
+//                        gl.glLineWidth(2);
+//                        for (char c : s.toCharArray()) {
+//                            glut.glutStrokeCharacter(font, c);
+//                        }
+//                        gl.glPopMatrix();
+//                    }                    // chars about 104 model units wide
+//                    final float xlen = glut.glutStrokeLength(GLUT.STROKE_ROMAN, "channel"), ylen = glut.glutStrokeLength(GLUT.STROKE_ROMAN, "cell type");
+//
+//                    @Override
+//                    public void annotate(GLAutoDrawable drawable) {
+//                        GL gl = drawable.getGL();
+//                        gl.glPushMatrix();
+//                        {
+//                            adcSamples.swapBuffers();
+//                            for (int i = 0; i < CochleaAMS1cADCSamples.NUM_CHANNELS; i++) {
+//                                CochleaAMS1cADCSamples.ChannelBuffer cb = adcSamples.currentReadingDataBuffer.channelBuffers[i];
+//                                int dt = cb.deltaTime();
+//                                if (!cb.hasData() || dt == 0) {
+//                                    continue;
+//                                }
+//                                ADCSample[] samples = cb.samples;
+//                                int t0=samples[0].time;
+//                                gl.glColor3f(1, 1, 1); // must set color before raster position (raster position is like glVertex)
+//                                gl.glBegin(GL.GL_LINE_STRIP);
+//                                int n=cb.size();
+//                                for (int j=0;j<n;j++) {
+//                                    ADCSample s=samples[j];
+//                                    gl.glVertex2f(sizeX * ((float) (s.time-t0) / dt), sizeY * ((float) s.data / CochleaAMS1cADCSamples.MAX_ADC_VALUE));
+//                                }
+//                                gl.glEnd();
+//                            }
+//                        }
+//                        gl.glPopMatrix();
+//                    }
+//                }); // annotater for adc samples
             }
+
         }
+        
     }
 
     /** overrides the Chip setHardware interface to construct a biasgen if one doesn't exist already.
@@ -141,6 +196,13 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         } catch (ClassCastException e) {
             System.err.println(e.getMessage() + ": probably this chip object has a biasgen but the hardware interface doesn't, ignoring");
         }
+    }
+
+    /**
+     * @return the adcSamples
+     */
+    public CochleaAMS1cADCSamples getAdcSamples() {
+        return adcSamples;
     }
 
     interface ConfigBase {
@@ -303,6 +365,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         Equalizer equalizer = new Equalizer();
         BufferIPot bufferIPot = new BufferIPot();
         boolean dacPowered = getPrefs().getBoolean("CochleaAMS1c.Biasgen.DAC.powered", true);
+        private final VPot preampAGCThresholdPot; // used in Microphone preamp control panel
 
         /** Creates a new instance of Biasgen for Tmpdiff128 with a given hardware interface
          *@param chip the chip this biasgen belongs to
@@ -335,12 +398,14 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             ipots.addPot(new IPot(this, "DacBufferNb", 2, IPot.Type.NORMAL, IPot.Sex.N, 0, 3, "Sets bias current of amp in local DACs"));
             ipots.addPot(new IPot(this, "Vbp", 3, IPot.Type.NORMAL, IPot.Sex.P, 0, 4, "Sets bias for readout amp of BPF"));
             ipots.addPot(new IPot(this, "Ibias20OpAmp", 4, IPot.Type.NORMAL, IPot.Sex.P, 0, 5, "Bias current for preamp"));
-            ipots.addPot(new IPot(this, "N.C.", 5, IPot.Type.NORMAL, IPot.Sex.N, 0, 6, "not used"));
+//            ipots.addPot(new IPot(this, "N.C.", 5, IPot.Type.NORMAL, IPot.Sex.N, 0, 6, "not used"));
+            ipots.addPot(new IPot(this, "Vioff", 5, IPot.Type.NORMAL, IPot.Sex.P, 0, 11, "Sets DC shift input to LPF"));
             ipots.addPot(new IPot(this, "Vsetio", 6, IPot.Type.CASCODE, IPot.Sex.P, 0, 7, "Sets 2I0 and I0 for LPF time constant"));
             ipots.addPot(new IPot(this, "Vdc1", 7, IPot.Type.NORMAL, IPot.Sex.P, 0, 8, "Sets DC shift for close end of cascade"));
             ipots.addPot(new IPot(this, "NeuronRp", 8, IPot.Type.NORMAL, IPot.Sex.P, 0, 9, "Sets bias current of neuron"));
             ipots.addPot(new IPot(this, "Vclbtgate", 9, IPot.Type.NORMAL, IPot.Sex.P, 0, 10, "Bias gate of CLBT"));
-            ipots.addPot(new IPot(this, "Vioff", 10, IPot.Type.NORMAL, IPot.Sex.P, 0, 11, "Sets DC shift input to LPF"));
+            ipots.addPot(new IPot(this, "N.C.", 10, IPot.Type.NORMAL, IPot.Sex.N, 0, 6, "not used"));
+//            ipots.addPot(new IPot(this, "Vioff", 10, IPot.Type.NORMAL, IPot.Sex.P, 0, 11, "Sets DC shift input to LPF"));
             ipots.addPot(new IPot(this, "Vbias2", 11, IPot.Type.NORMAL, IPot.Sex.P, 0, 12, "Sets lower cutoff freq for cascade"));
             ipots.addPot(new IPot(this, "Ibias10OpAmp", 12, IPot.Type.NORMAL, IPot.Sex.P, 0, 13, "Bias current for preamp"));
             ipots.addPot(new IPot(this, "Vthbpf2", 13, IPot.Type.CASCODE, IPot.Sex.P, 0, 14, "Sets high end of threshold current for bpf neurons"));
@@ -366,47 +431,54 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 //    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
             // top dac in schem/layout, first 16 channels of 32 total
             vpots.addPot(new VPot(CochleaAMS1c.this, "Vterm", dac, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets bias current of terminator xtor in diffusor"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vrefhres", dac, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "VthAGC", dac, 2, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vrefreadout", dac, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vrefhres", dac, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets source of terminator xtor in diffusor"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "VthAGC", dac, 2, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets input to diffpair that generates VQ"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vrefreadout", dac, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets reference for readout amp"));
 //            vpots.addPot(new VPot(CochleaAMS1c.this, "Vbpf2x", dac,         4, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "BiasDACBufferNBias", dac, 4, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "DAC buffer bias for ???"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "BiasDACBufferNBias", dac, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets bias current of buffer in pixel DACs"));
 //            vpots.addPot(new VPot(CochleaAMS1c.this, "Vbias2x", dac,        5, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vrefract", dac, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vrefract", dac, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets refractory period of neuron"));
 //            vpots.addPot(new VPot(CochleaAMS1c.this, "Vbpf1x", dac,         6, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "PreampAGCThreshold (TH)", dac, 6, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Threshold for microphone preamp AGC gain reduction turn-on"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vrefpreamp", dac, 7, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(preampAGCThresholdPot=new VPot(CochleaAMS1c.this, "PreampAGCThreshold (TH)", dac, 6, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Threshold for microphone preamp AGC gain reduction turn-on"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vrefpreamp", dac, 7, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets virtual group of microphone drain preamp"));
 //            vpots.addPot(new VPot(CochleaAMS1c.this, "Vbias1x", dac,        8, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "NeuronRp", dac, 8, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets bias current of neuron - overrides onchip bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vthbpf1x", dac, 9, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vioffbpfn", dac, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "NeuronRp", dac, 8, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets bias current of neuron comparator- overrides onchip bias"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vthbpf1x", dac, 9, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets threshold for BPF neuron"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vioffbpfn", dac, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets DC level for BPF input"));
             vpots.addPot(new VPot(CochleaAMS1c.this, "NeuronVleak", dac, 11, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets leak current for neuron - not connected on board"));
             vpots.addPot(new VPot(CochleaAMS1c.this, "DCOutputLevel", dac, 12, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Microphone DC output level to cochlea chip"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vthbpf2x", dac, 13, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vthbpf2x", dac, 13, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets threshold for BPF neuron"));
             vpots.addPot(new VPot(CochleaAMS1c.this, "DACSpOut2", dac, 14, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
             vpots.addPot(new VPot(CochleaAMS1c.this, "DACSpOut1", dac, 15, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
 
             // bot DAC in schem/layout, 2nd 16 channels
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vth4", dac, 16, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vcas2x", dac, 17, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vrefo", dac, 18, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vrefn2", dac, 19, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vq", dac, 20, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vcassyni", dac, 21, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vgain", dac, 22, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vrefn", dac, 23, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "VAI0", dac, 24, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vdd1", dac, 25, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vth1", dac, 26, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vref", dac, 27, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vtau", dac, 28, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "VcondVt", dac, 29, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vpm", dac, 30, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
-            vpots.addPot(new VPot(CochleaAMS1c.this, "Vhm", dac, 31, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "test dac bias"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vth4", dac, 16, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets high VT for LPF neuron"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vcas2x", dac, 17, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets cascode voltage for subtraction of neighboring filter outputs"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vrefo", dac, 18, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets src for output of CM LPF"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vrefn2", dac, 19, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets DC gain gain cascode bias in BPF"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vq", dac, 20, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets tau of feedback amp in SOS"));
+
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vpf", dac, 21, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets bias current for scanner follower"));
+
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vgain", dac, 22, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets bias for differencing amp in BPF/LPF"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vrefn", dac, 23, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets cascode bias in BPF"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "VAI0", dac, 24, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets tau of CLBT for ref current"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vdd1", dac, 25, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets up power to on-chip DAC"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vth1", dac, 26, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets low VT for LPF neuron"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vref", dac, 27, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets src for input of CM LPF"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vtau", dac, 28, Pot.Type.NORMAL, Pot.Sex.P, 0, 0, "Sets tau of forward amp in SOS"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "VcondVt", dac, 29, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets VT of conductance neuron"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vpm", dac, 30, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "sets bias of horizontal element of diffusor"));
+            vpots.addPot(new VPot(CochleaAMS1c.this, "Vhm", dac, 31, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "sets bias of horizontal element of diffusor"));
 //            Pot.setModificationTrackingEnabled(false); // don't flag all biases modified on construction
 
-
+            adcProxy.setMaxADCchannelValue(3);
+            adcProxy.setMaxIdleTimeValue(0xffff / 15);
+            adcProxy.setMaxTrackTimeValue(0xffff / 15);
+            adcProxy.setMinTrackTimeValue(1);
+            adcProxy.setMinIdleTimeValue(0);
             adcProxy.addObserver(this);
+
             scanner.addObserver(this);
             loadPreferences();
 //            Pot.setModificationTrackingEnabled(true);
@@ -489,7 +561,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 cypress = (CypressFX2) hardwareInterface;
                 log.info("set hardwareInterface CochleaAMS1cHardwareInterface=" + hardwareInterface.toString());
                 sendConfiguration();
-                resetAERComm();
+//                resetAERComm();
             }
         }
         // vendor requestion commands understood by the cochleaAMS1c firmware
@@ -565,9 +637,9 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
          */
         @Override
         synchronized public void update(Observable observable, Object object) {  // thread safe to ensure gui cannot retrigger this while it is sending something
-            if (!(observable instanceof CochleaAMS1c.Biasgen.Equalizer.EqualizerChannel)) {
-                log.info("Observable=" + observable + " Object=" + object);
-            }
+//            if (!(observable instanceof CochleaAMS1c.Biasgen.Equalizer.EqualizerChannel)) {
+//                log.info("Observable=" + observable + " Object=" + object);
+//            }
 //            if (cypress == null) {
 //                return;
 //            }
@@ -625,13 +697,21 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 } else if (observable instanceof OnChipPreamp) { // TODO check if nothing needs to be done on update
                 } else if (observable instanceof OffChipPreamp) {
                 } else if (observable instanceof ADCHardwareInterfaceProxy) {
-                    runAdc.set(getAdcProxy().isADCEnabled());
+                    boolean old = getAdcProxy().isADCEnabled(); // old state of whether ADC is running
+                    runAdc.set(false); // disable ADC before loading new configuration
                     adcIdleTime.set(getAdcProxy().getIdleTime() * 15); // multiplication with 15 to get from us to clockcycles
                     adcTrackTime.set(getAdcProxy().getTrackTime() * 15); // multiplication with 15 to get from us to clockcycles
-
+                    int lastChan = getAdcProxy().getADCChannel();
+                    boolean seq = getAdcProxy().isSequencingEnabled();
+                    // from AD7933/AD7934 datasheet
+                    int config = (1 << 8) + (lastChan << 5) + (seq ? 6 : 0);
+                    adcConfig.set(config);
 
                     byte[] bytes = cpldConfig.getBytes();
                     sendCmd(CMD_CPLD_CONFIG, 0, bytes);
+                    if (old) {
+                        runAdc.set(true); // reenable ADC
+                    }
                 } else {
                     super.update(observable, object);  // super (Biasgen) handles others, e.g. masterbias
                 }
@@ -667,6 +747,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             for (Equalizer.EqualizerChannel c : equalizer.channels) {
                 update(c, null);
             }
+            
+            
 
         }
 
@@ -777,6 +859,13 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
          */
         public Scanner getScanner() {
             return scanner;
+        }
+
+        /**
+         * @return the preampAGCThresholdPot
+         */
+        public VPot getPreampAGCThresholdPot() {
+            return preampAGCThresholdPot;
         }
 
         class BufferIPot extends Observable implements RemoteControlled, PreferenceChangeListener, HasPreference {
@@ -1323,7 +1412,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             }
 
             public int getPeriod() {
-                return getAdcProxy().getIdleTime();
+                return getAdcProxy().getIdleTime() + getAdcProxy().getTrackTime();
             }
 
             /** Sets the scan rate using the ADC idleTime setting, indirectly. 
@@ -1751,4 +1840,153 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
         Left, Right, Both
     };
+
+    /** Extract cochlea events from CochleaAMS1c including the ADC samples that are intermixed with cochlea AER data. 
+     * <p>
+     * The event class returned by the extractor is CochleaAMSEvent.
+     * <p>
+     * The address are mapped as follows
+     * <pre>
+     * TX0 - AE0 
+     * TX1 - AE1
+     * ...
+     * TX7 - AE7
+     * TY0 - AE8
+     * TY1 - AE9
+     * AE15:10 are unused and are unconnected - they should be masked out in software.
+     * </pre>
+     * 
+     * <table border="1px">
+     * <tr><td>15<td>14<td>13<td>12<td>11<td>10<td>9<td>8<td>7<td>6<td>5<td>4<td>3<td>2<td>1<td>0
+     * <tr><td>x<td>x<td>x<td>x<td>x<td>x<td>TH1<td>TH0<td>CH5<td>CH4<td>CH3<td>CH2<td>CH1<td>CH0<td>EAR<td>LPFBPF
+     * </table>
+     * <ul>
+     * <li>
+     * TH1:0 are the ganglion cell. TH1:0=00 is the one biased with Vth1, TH1:0=01 is biased with Vth2, etc. TH1:0=11 is biased with Vth4. Vth1 and Vth4 are external voltage biaes.
+     * <li>
+     * CH5:0 are the channel address. 0 is the base (input) responsive to high frequencies. 63 is the apex responding to low frequencies.
+     * <li>
+     * EAR is the binaural ear. EAR=0 is left ear, EAR=1 is right ear.
+     * <li>
+     * LPFBPF is the ganglion cell type. LPFBPF=1 is a low-pass neuron, LPFBPF=1 is a bandpass neuron.
+     * </ul>
+     */
+    public class Extractor extends TypedEventExtractor {
+
+        public Extractor(AEChip chip) {
+            super(chip);
+        }
+
+        /**
+         * Extracts the meaning of the raw events. This form is used to supply an output packet. This method is used for real time
+         * event filtering using a buffer of output events local to data acquisition. An AEPacketRaw may contain multiple events, 
+         * not all of them have to sent out as EventPackets. An AEPacketRaw is a set(!) of addresses and corresponding timing moments.
+         * 
+         * A first filter (independent from the other ones) is implemented by subSamplingEnabled and getSubsampleThresholdEventCount. 
+         * The latter may limit the amount of samples in one package to say 50,000. If there are 160,000 events and there is a sub samples 
+         * threshold of 50,000, a "skip parameter" set to 3. Every so now and then the routine skips with 4, so we end up with 50,000.
+         * It's an approximation, the amount of events may be less than 50,000. The events are extracted uniform from the input. 
+         * 
+         * @param in 		the raw events, can be null
+         * @param out 		the processed events. these are partially processed in-place. empty packet is returned if null is
+         * 					supplied as input.
+         */
+        @Override
+        synchronized public void extractPacket(AEPacketRaw in, EventPacket out) {
+            out.clear();
+            if (in == null) {
+                return;
+            }
+            int n = in.getNumEvents(); //addresses.length;
+
+            int skipBy = 1, incEach = 0, j = 0;
+            if (isSubSamplingEnabled()) {
+                skipBy = n / getSubsampleThresholdEventCount();
+                incEach = getSubsampleThresholdEventCount() / (n % getSubsampleThresholdEventCount());
+            }
+            if (skipBy == 0) {
+                incEach = 0;
+                skipBy = 1;
+            }
+
+            int[] a = in.getAddresses();
+            int[] timestamps = in.getTimestamps();
+//            boolean hasTypes = false;
+//            if (chip != null) {
+//                hasTypes = chip.getNumCellTypes() > 1;
+//            }
+            OutputEventIterator<?> outItr = out.outputIterator();
+            for (int i = 0; i < n; i += skipBy) {
+                int addr = a[i];
+                int ts = timestamps[i];
+                if ((addr & CochleaAMS1cHardwareInterface.ADDRESS_TYPE_MASK) == CochleaAMS1cHardwareInterface.ADDRESS_TYPE_EVENT) {
+                    CochleaAMSEvent e = (CochleaAMSEvent) outItr.nextOutput();
+                    e.address = addr;
+                    e.timestamp = (ts);
+                    e.x = getXFromAddress(addr);
+                    e.y = getYFromAddress(addr);
+                    e.type = getTypeFromAddress(addr);
+                    j++;
+                    if (j == incEach) {
+                        j = 0;
+                        i++;
+                    }
+//                    System.out.println("timestamp=" + e.timestamp + " address=" + addr);
+                } else { // adc samples
+//                    if (CochleaAMS1cHardwareInterface.isAdcStartBit(addr)) {
+//                        getAdcSamples().swapBuffers();  // the hardware interface here swaps the reading and writing buffers so that new data goes into the other buffer and the old data will be displayed by the rendering thread
+//                    }
+                    getAdcSamples().put(CochleaAMS1cHardwareInterface.adcChannel(addr), timestamps[i], CochleaAMS1cHardwareInterface.adcSample(addr));
+//                    System.out.println("ADC sample: timestamp=" + timestamps[i] + " addr=" + addr
+//                            + " adcChannel=" + CochleaAMS1cHardwareInterface.adcChannel(addr)
+//                            + " adcSample=" + CochleaAMS1cHardwareInterface.adcSample(addr)
+//                            + " isAdcStartBit=" + CochleaAMS1cHardwareInterface.isAdcStartBit(addr));
+
+                }
+//            System.out.println("a="+a[i]+" t="+e.timestamp+" x,y="+e.x+","+e.y);
+            }
+        }
+
+        /** Overrides default extractor so that cochlea channels are returned, 
+         * numbered from x=0 (base, high frequencies, input end) to x=63 (apex, low frequencies).
+         * 
+         * @param addr raw address.
+         * @return channel, from 0 to 63.
+         */
+        @Override
+        public short getXFromAddress(int addr) {
+            short tap = (short) (((addr & 0xfc) >>> 2)); // addr&(1111 1100) >>2, 6 bits, max 63, min 0
+            return tap;
+        }
+
+        /** Overrides default extract to define type of event the same as the Y address.
+         *@param addr the raw address.
+         *@return the type
+         */
+        @Override
+        public byte getTypeFromAddress(int addr) {
+//            return (byte)((addr&0x02)>>>1);
+            return (byte) getYFromAddress(addr);
+        }
+
+        /** Overrides default extractor to spread all outputs from a tap (left/right, ganglion cell, LPF/HPF) into a
+         *single y address that can be displayed in the 2d histogram.
+         * The y returned goes like this from 0-15: left LPF(4) right LPF(4) left BPF(4) right BPF(4). Eech group of 4 ganglion cells goes
+         * from Vth1 to Vth4.
+         *@param addr the raw address
+         *@return the Y address
+         */
+        @Override
+        public short getYFromAddress(int addr) {
+//            int gangCell=(addr&0x300)>>>8; // each tap has 8 ganglion cells, 4 of each of LPF/BPF type
+//            int lpfBpf=(addr&0x01)<<2; // lowpass/bandpass ganglion cell type
+//            int leftRight=(addr&0x02)<<2; // left/right cochlea. see javadoc jpg scan for layout
+//            short v=(short)(gangCell+lpfBpf+leftRight);
+            int lpfBpf = (addr & 0x01) << 3; // LPF=8 BPF=0 ganglion cell type
+            int rightLeft = (addr & 0x02) << 1; // right=4 left=0 cochlea
+            int thr = (0x300 & addr) >> 8; // thr=0 to 4
+            short v = (short) (lpfBpf + rightLeft + thr);
+            return v;
+        }
+    }
 }
