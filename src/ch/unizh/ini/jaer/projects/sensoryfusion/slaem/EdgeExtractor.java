@@ -6,23 +6,26 @@ package ch.unizh.ini.jaer.projects.sensoryfusion.slaem;
 
     import net.sf.jaer.chip.*;
     import net.sf.jaer.event.*;
-    import net.sf.jaer.event.EventPacket;
     import net.sf.jaer.eventprocessing.EventFilter2D;
     import java.util.*;
-    import net.sf.jaer.Description;
-    import net.sf.jaer.DevelopmentStatus;
+    import javax.media.opengl.*;
+    import net.sf.jaer.*;
+    import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
  * This filter extracts edges by inferring points and connecting lines into a scene
+ * 
+ * TODO: expand the event counter to infinity by reseting it when it hits the max int value
  *
  * @author christian
  */
 @Description("Extracts edges as linear point interpolations")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class EdgeExtractor extends EventFilter2D implements Observer {
+public class EdgeExtractor extends EventFilter2D implements Observer, FrameAnnotater{
     
-	public ArrayList<EdgeVertex> vertices;
-	public Iterator<EdgeVertex> vertexItr;
+    public EdgePixelArray edgePixels;
+    public int eventNr;
+    public int trimmedEvents;
 	
     /**
      * Determines whether events that cannot be assigned to an edge should be filtered out
@@ -31,27 +34,39 @@ public class EdgeExtractor extends EventFilter2D implements Observer {
     {setPropertyTooltip("filteringEnabled","Should the extractor act as filter for unallocated events");}
     
     /**
+     * Determines whether edgePixels should be drawn
+     */
+    private boolean drawEdgePixels=getPrefs().getBoolean("EdgeExtractor.drawEdgePixels",true);
+    {setPropertyTooltip("drawEdgePixels","Should the edgePixels be drawn");}
+    
+    /**
      * Determines whether events that cannot be assigned to an edge should be filtered out
      */
-    private float vertexDiameter=getPrefs().getFloat("EdgeExtractor.vertexDiameter",1.5f);
-    {setPropertyTooltip("tolerance","The distance belonging to one vertex");}
+    private int activeEvents=getPrefs().getInt("EdgeExtractor.activeEvents",5000);
+    {setPropertyTooltip("activeEvents","The number of most recent events allowed to make up the edges");}
     
-	    public EdgeExtractor(AEChip chip){
+    /**
+     * Determines the maximal time to neighboring activity for becoming active (us)
+     */
+    private int deltaTsActivity=getPrefs().getInt("EdgeExtractor.deltaTsActivity",5000);
+    {setPropertyTooltip("deltaTsActivity","Determines the maximal time to neighboring activity for becoming active (us)");}
+    
+    public EdgeExtractor(AEChip chip){
         super(chip);
         chip.addObserver(this);
         initFilter();
-        resetFilter();
     }
 	
     @Override
     public void initFilter() {
+        edgePixels = new EdgePixelArray(chip);
         resetFilter();
     }
     
     @Override
     public void resetFilter() {
-        vertices = new ArrayList();
-		vertexItr = vertices.iterator();
+        eventNr = 1;
+        edgePixels.resetArray();
     }
     
     @Override
@@ -59,10 +74,17 @@ public class EdgeExtractor extends EventFilter2D implements Observer {
         if(!filterEnabled) return in;
         if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
         checkOutputPacketEventType(in);
+        OutputEventIterator outItr = out.outputIterator();
         for (Object o : in) {
             TypedEvent e = (TypedEvent) o;
-            updateVertices(e);
+            if(edgePixels.addEvent(e, eventNr)){
+                eventNr++;
+                TypedEvent oe = (TypedEvent) outItr.nextOutput();
+                oe.copyFrom(e);
+            }
         }
+        trimmedEvents = edgePixels.trimActivePixels(eventNr-activeEvents);
+        eventNr -= trimmedEvents;
         
         if(filteringEnabled){ 
             return out;
@@ -70,20 +92,27 @@ public class EdgeExtractor extends EventFilter2D implements Observer {
             return in;
         }
     }
-	
-	private boolean isFree;
-	
-	private void updateVertices(TypedEvent e){
-		isFree = true;
-		while(vertexItr.hasNext()){
-			if(vertexItr.next().checkEvent(e)){
-				isFree = false;
-			}
-		}
-		if(isFree){
-			vertices.add(new EdgeVertex(e, vertexDiameter));
-		}
-	}
+
+    @Override
+    public void annotate(GLAutoDrawable drawable) {
+        if(!isFilterEnabled()) return;
+        if(!drawEdgePixels) return;
+        GL gl=drawable.getGL();
+        
+        gl.glColor3f(1,0,0);
+        
+        gl.glPushMatrix();
+
+        gl.glPointSize(4);
+        Iterator edgePixelItr = edgePixels.activePixels.iterator();
+        while(edgePixelItr.hasNext()){
+            EdgePixelArray.EdgePixel pixel = (EdgePixelArray.EdgePixel)edgePixelItr.next();
+            gl.glBegin(GL.GL_POINTS);
+            gl.glVertex2i(pixel.posX,pixel.posY);
+            gl.glEnd();
+        }
+        gl.glPopMatrix();
+    }
 
     @Override
     public void update(Observable o, Object arg) {
@@ -91,18 +120,34 @@ public class EdgeExtractor extends EventFilter2D implements Observer {
     }
     
      /**
-     * @return the tolerance
+     * @return the activeEvents
      */
-    public float getTolerance() {
-        return vertexDiameter;
+    public int getActiveEvents() {
+        return activeEvents;
     }
 
     /**
-     * @param tolerance the tolerance to set
+     * @param setActiveEvents the setActiveEvents to set
      */
-    public void setTolerance(float vertexDiameter) {
-        this.vertexDiameter = vertexDiameter;
-        prefs().putFloat("EdgeExtractor.vertexDiameter", vertexDiameter);
+    public void setActiveEvents(int activeEvents) {
+        this.activeEvents = activeEvents;
+        prefs().putInt("EdgeExtractor.activeEvents", activeEvents);
+    }
+    
+     /**
+     * @return the activeEvents
+     */
+    public int getDeltaTsActivity() {
+        return deltaTsActivity;
+    }
+
+    /**
+     * @param deltaTsActivity the deltaTsActivity to set
+     */
+    public void setDeltaTsActivity(int deltaTsActivity) {
+        this.deltaTsActivity = deltaTsActivity;
+        edgePixels.setDeltaTsActivity(deltaTsActivity);
+        prefs().putInt("EdgeExtractor.deltaTsActivity", deltaTsActivity);
     }
     
     /**
@@ -119,4 +164,17 @@ public class EdgeExtractor extends EventFilter2D implements Observer {
         this.filteringEnabled = filteringEnabled;
     }
     
+        /**
+     * @return the drawEdgePixels
+     */
+    public boolean isDrawEdgePixels() {
+        return drawEdgePixels;
+    }
+
+    /**
+     * @param drawEdgePixels the drawEdgePixels to set
+     */
+    public void setDrawEdgePixels(boolean drawEdgePixels) {
+        this.drawEdgePixels = drawEdgePixels;
+    }
 }
