@@ -51,7 +51,16 @@ public class EdgeExtractor extends EventFilter2D implements Observer, FrameAnnot
     private int deltaTsActivity=getPrefs().getInt("EdgeExtractor.deltaTsActivity",5000);
     {setPropertyTooltip("deltaTsActivity","Determines the maximal time to neighboring activity for becoming active (us)");}
     
-    public EdgeExtractor(AEChip chip){
+	/**
+     * Selection of the edge detection method
+     */
+	public enum EdgePixelMethod {
+        LastSignificants, RecentNeighbors, Combined
+    };
+    private EdgePixelMethod edgePixelMethod = EdgePixelMethod.valueOf(getPrefs().get("ITDFilter.edgePixelMethod", "LastSignificants"));
+	{setPropertyTooltip("edgePixelMethod","Method to do the edge detection");}
+    
+	public EdgeExtractor(AEChip chip){
         super(chip);
         chip.addObserver(this);
         initFilter();
@@ -59,7 +68,7 @@ public class EdgeExtractor extends EventFilter2D implements Observer, FrameAnnot
 	
     @Override
     public void initFilter() {
-        edgePixels = new EdgePixelArray(chip);
+        edgePixels = new EdgePixelArray(this);
         resetFilter();
     }
     
@@ -176,5 +185,15 @@ public class EdgeExtractor extends EventFilter2D implements Observer, FrameAnnot
      */
     public void setDrawEdgePixels(boolean drawEdgePixels) {
         this.drawEdgePixels = drawEdgePixels;
+    }
+	
+	public EdgePixelMethod getEdgePixelMethod() {
+        return edgePixelMethod;
+    }
+
+    synchronized public void setEdgePixelMethod(EdgePixelMethod edgePixelMethod) {
+        getSupport().firePropertyChange("edgePixelMethod", this.edgePixelMethod, edgePixelMethod);
+        getPrefs().put("EdgeExtractor.edgePixelMethod", edgePixelMethod.toString());
+        this.edgePixelMethod = edgePixelMethod;
     }
 }

@@ -20,23 +20,24 @@ public class EdgePixelArray {
     int sizeX, sizeY;
     int deltaTsActive = 1000; 
     EdgePixel[][] array;
-    AEChip chip;
+    EdgeExtractor extractor;
     ArrayList<EdgePixel> activePixels;
+	
     
-    public EdgePixelArray(AEChip chip){
-        this.chip = chip;
+    public EdgePixelArray(EdgeExtractor extractor){
+        this.extractor = extractor;
         initializeArray();
     }
     
-    public EdgePixelArray(AEChip chip, int deltaTsActive){
+    public EdgePixelArray(EdgeExtractor extractor, int deltaTsActive){
         this.deltaTsActive = deltaTsActive;
-        this.chip = chip;
+        this.extractor = extractor;
         initializeArray();
     }
     
     private void initializeArray(){
-        sizeX = chip.getSizeX();
-        sizeY = chip.getSizeX();
+        sizeX = extractor.getChip().getSizeX();
+        sizeY = extractor.getChip().getSizeY();
         array = new EdgePixel[sizeX][sizeY];
         for(int x=0; x<sizeX; x++){
             for(int y=0; y<sizeY; y++){
@@ -74,65 +75,74 @@ public class EdgePixelArray {
     }
     
     public class EdgePixel {
-	int posX, posY;
-        int lastTs, lastEventNr;
+		int posX, posY;
+        int lastNeighborTs, lastEventNr, lastTs;
         boolean isActive;
         
 	
-	public EdgePixel(int xPos, int yPos){
-		this.posX = xPos;
-		this.posY = yPos;
-                isActive = false;
-                lastEventNr = -1;
-                lastTs = 0;
-	}
+		public EdgePixel(int xPos, int yPos){
+			this.posX = xPos;
+			this.posY = yPos;
+					isActive = false;
+					lastEventNr = -1;
+					lastNeighborTs = 0;
+		}
 
-	public boolean addEvent(TypedEvent e, int eventNr){
-            if (e.x != posX || e.y != posY){
-                return false;
-            } 
-            if(isActive){
-                lastEventNr = eventNr;
-                return true;
-            } else {
-                if(turnActive(e.timestamp)){
-                    isActive = true;
-                    activePixels.add(this);
-                    return true;
-                } else {
-                    return false;
-                }
-            }
-        }
-        
-        private boolean turnActive(int ts){
-            if(ts < lastTs+deltaTsActive){
-                updateNeighbors(ts);
-                return true;
-            }else{
-                return updateNeighbors(ts);
-            }
-        }
-        
-        private boolean updateNeighbors(int ts){
-            boolean output = false;
-            for (int x = posX-1; x<posX+1; x++){
-                for(int y = posY-1; y<posY+1; y++){
-                    if(x>=0 && y >=0 && x<sizeX && y<sizeY && !(x == posX && y ==posY)){
-                        array[x][y].lastTs = ts;
-                        if(array[x][y].isActive){
-                            output = true;
-                            //array[x][y].setInactive();
-                        }
-                    }
-                }
-            }
-            return output;
-        }
-        
-        public void setInactive(){
-            isActive = false;
-            activePixels.remove(this);
-        }
+		public boolean addEvent(TypedEvent e, int eventNr){
+			if (e.x != posX || e.y != posY){
+				return false;
+			} 
+			lastTs = e.timestamp;
+			if(isActive){
+				lastEventNr = eventNr;
+				return true;
+			} else {
+				if(turnActive(e.timestamp)){
+					isActive = true;
+					activePixels.add(this);
+					return true;
+				} else {
+					return false;
+				}
+			}
+		}
+
+		private boolean turnActive(int ts){
+			switch(extractor.getEdgePixelMethod()){
+				case LastSignificants: 
+				default:
+					if(ts < lastNeighborTs+deltaTsActive){
+						updateNeighbors(ts);
+						return true;
+					}else{
+						return updateNeighbors(ts);
+					}
+				case RecentNeighbors: 
+					return false;
+				case Combined:
+					return false;
+			}
+		}
+
+		private boolean updateNeighbors(int ts){
+			boolean output = false;
+			for (int x = posX-1; x<posX+1; x++){
+				for(int y = posY-1; y<posY+1; y++){
+					if(x>=0 && y >=0 && x<sizeX && y<sizeY && !(x == posX && y ==posY)){
+						array[x][y].lastNeighborTs = ts;
+						if(array[x][y].isActive){
+							output = true;
+							//array[x][y].setInactive();
+						}
+					}
+				}
+			}
+			return output;
+		}
+
+		public void setInactive(){
+			isActive = false;
+			activePixels.remove(this);
+		}
     }
 }
