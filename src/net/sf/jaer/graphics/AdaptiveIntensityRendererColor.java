@@ -85,11 +85,11 @@ import net.sf.jaer.event.*;
         float eg=0.7f; //0.7
         float er=1f;
 
-        float Cb=1/14700f;
-        float Cgb=1/4500f;
-        float Crg=1/14100f;
+        float Cb=1.1f/14700f;//1.2f/14700f;
+        float Cgb=1.2f/4500f;//1.3f/4500f;
+        float Crg=1f/14100f;//0.95f/14100f;
 
-        float gateing=0.3f; //0.3
+        float gateing=0f; //0.3
 
      
 
@@ -141,8 +141,11 @@ import net.sf.jaer.event.*;
         float EmaxG_global=0f;
         float EmaxB_global=0f;
         float Emax_global=0f;
+        float Emax_local=0f;
+        float Sensor_size=22f;
+        float k=2f; //Scaling factor for the average value
 
-        for (int i=0; i<22*22*3;i++){
+        for (int i=0; i<Sensor_size*Sensor_size*3;i++){
 
            E[i]=0;
            Emax[i]=0;
@@ -180,24 +183,28 @@ import net.sf.jaer.event.*;
                         case 1:// RG
                         {
                                 
-                                //Emax_global=Emax_global*.99f;
+                              
                                 //Old color seåaration algorithm //p[ind + 0] = freq*x1*GUIscale;
 
                           
-                            EmaxR_global=EmaxR_global-E[ind+0];
+                            Emax_global=Emax_global-E[ind+0];
                             E[ind+0]=(freq*Crg-E[ind+1]*eb)/er;
                             
-                            EmaxR_global=EmaxR_global+E[ind+0];
+                            Emax_global=Emax_global+E[ind+0];
                             
-                            //if (Emax_global<E[ind+0]){
-                            //    Emax_global=E[ind+0];
-                            //}
+                            //New gateing operation
                             
-                               // E_aux[ind+0]=E[ind+0]/Emax_global;
-                            E_aux[ind+0]=22*22*E[ind+0]/(2f*EmaxR_global);
+                            //Emax_local=Math.max(E[ind+0],E[ind+1]);
+                            //Emax_local=Math.max(Emax_local,E[ind+2]);
+                            //E_aux[ind+0]=Math.max(E[ind+0]-Emax_local*gateing, 0);
+                            //E_aux[ind+0]=3*Sensor_size*Sensor_size*E_aux[ind+0]/(k*Emax_global);
+                            
+                            //E_aux[ind+0]=0.0212f*E[ind+0]-0.0688f*E[ind+1]+0.0119f*E[ind+2];
+                            E_aux[ind+0]=3*Sensor_size*Sensor_size*E[ind+0]/(k*Emax_global);
+                                                     
                             
                             if (E_aux[ind+0]>1){
-                                   E_aux[ind+0]=1;
+                                  E_aux[ind+0]=1;
                             }
                             
                             E_aux[ind+0]=(E_aux[ind+0]-gateing)/(1-gateing);
@@ -211,19 +218,22 @@ import net.sf.jaer.event.*;
                         {
                             
                                     //Old color seåaration algorithm //p[ind + 1] = (freq*x2-0*p[ind+0]*x1/x2)*GUIscale;
-                               // Emax_global=Emax_global*.99f;
+                               
                                 
-                                EmaxG_global=EmaxG_global-E[ind+1];
+                                Emax_global=Emax_global-E[ind+1];
                                 E[ind+1]=(freq*Cgb-E[ind+2]*eb)/eg;
                                 
-                                EmaxG_global=EmaxG_global+E[ind+1];
+                                Emax_global=Emax_global+E[ind+1];
                                  
-                                //if (Emax_global<E[ind+1]){
-                                //Emax_global=E[ind+1];
-                                //}
-                                    
-                                //E_aux[ind+1]=E[ind+1]/Emax_global;
-                                E_aux[ind+1]=22*22*E[ind+1]/(2f*EmaxG_global);
+                                //New gateing operation
+                            
+                                //Emax_local=Math.max(E[ind+0],E[ind+1]);
+                                //Emax_local=Math.max(Emax_local,E[ind+2]);
+                                //E_aux[ind+1]=Math.max(E[ind+1]-Emax_local*gateing, 0);
+                                //E_aux[ind+1]=3*Sensor_size*Sensor_size*E_aux[ind+1]/(k*Emax_global);
+                           
+                                //E_aux[ind+1]=-0.008f*E[ind+0]+0.1070f*E[ind+1]-0.0364f*E[ind+2];
+                                E_aux[ind+1]=3*Sensor_size*Sensor_size*E[ind+1]/(k*Emax_global);
                                 if (E_aux[ind+1]>1){
                                     E_aux[ind+1]=1;
                                 }
@@ -240,24 +250,28 @@ import net.sf.jaer.event.*;
                         {
                           
                                 //Old color seåaration algorithm //p[ind + 2] = (freq*x3-p[ind+0]*x1/x3)*GUIscale;
-                           //Emax_global=Emax_global*.99f;
+                       
                             
-                           EmaxB_global=EmaxB_global-E[ind+2];
+                           Emax_global=Emax_global-E[ind+2];
                            E[ind+2]=freq*Cb/eb;
                             
-                           EmaxB_global=EmaxB_global+E[ind+2];
+                           Emax_global=Emax_global+E[ind+2];
                            
-                           if (Emax_global<E[ind+2]){
-                                Emax_global=E[ind+2];
-                                }
+                           //New gateing operation
+                            
+                            //Emax_local=Math.max(E[ind+0],E[ind+1]);
+                            //Emax_local=Math.max(Emax_local,E[ind+2]);
+                            //E_aux[ind+2]=Math.max(E[ind+2]-Emax_local*gateing, 0);
+                            //E_aux[ind+2]=3*22*22*E_aux[ind+2]/(k*Emax_global);
+                           
                                 
-                           //E_aux[ind+2]=E[ind+2]/Emax_global;
-                            E_aux[ind+2]=22*22*E[ind+2]/(2f*EmaxB_global);
+                           //E_aux[ind+2]=-0.0036f*E[ind+0]-0.0592f*E[ind+1]+0.0566f*E[ind+2];
+                           E_aux[ind+2]=3*Sensor_size*Sensor_size*E[ind+2]/(k*Emax_global);
                             if (E_aux[ind+2]>1){
                                     E_aux[ind+2]=1;
                             }
                           
-                            E_aux[ind+2]=(E_aux[ind+2]-gateing)/(1-gateing);
+                           E_aux[ind+2]=(E_aux[ind+2]-gateing)/(1-gateing);
                            p[ind+2]=GUIscale*Math.max(E_aux[ind+2],0);
                            
                           
