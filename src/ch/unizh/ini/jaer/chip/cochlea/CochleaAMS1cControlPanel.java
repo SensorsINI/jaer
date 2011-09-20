@@ -318,7 +318,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                         onchipMedB.setSelected(true);
                         break;
                     case Low:
-                        onchipMedB.setSelected(true);
+                        onchipLowB.setSelected(true);
                 }
 
             } else if (observable instanceof CochleaAMS1c.Biasgen.OffChipPreamp) {

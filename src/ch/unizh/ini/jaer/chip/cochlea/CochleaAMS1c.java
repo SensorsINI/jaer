@@ -640,7 +640,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 //            if (!(observable instanceof CochleaAMS1c.Biasgen.Equalizer.EqualizerChannel)) {
 //                log.info("Observable=" + observable + " Object=" + object);
 //            }
-//            if (cypress == null) {
+//            if (cypress == null) { // TODO only really for debugging do we need to do even if no hardware
 //                return;
 //            }
             // sends a vendor request depending on type of update
@@ -1032,6 +1032,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             public AbstractConfigValue(String name, String tip) {
                 this.name = name;
                 this.tip = tip;
+                this.key=getClass().getSimpleName()+"."+name;
             }
 
             @Override
