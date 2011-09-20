@@ -1569,12 +1569,13 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         log.info("USBAEMonitor.onRemove(): device removed");
     }
 
-    /** start or stops the event acquisition. sends apropriate vendor request to
-     * device and starts or stops the AEReader
+    /** start or stops the event acquisition. sends appropriate vendor request to
+     * device and starts or stops the AEReader.
+     * Thread-safe on hardware interface.
      * @param enable boolean to enable or disable event acquisition
      */
     @Override
-    public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
+    public synchronized void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
 //        log.info("setting event acquisition="+enable);
         setInEndpointEnabled(enable);
         if (enable) {
