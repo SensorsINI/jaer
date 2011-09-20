@@ -12,13 +12,15 @@ import java.util.logging.Logger;
  * 
  * Holds the frame of ADC samples to be displayed for CochleaAMS1c.
  * Double-buffers the samples with a locking mechanism.
+ * Includes option for sync input to reset sample counter to start of array, or allows larger number of samples for continuous recording of 
+ * data not using scanner with its sync output.
  * @author Tobi
  */
 public class CochleaAMS1cADCSamples {
 
     final static Logger log = Logger.getLogger("CochleaAMS1c");
-    public static final int WIDTH = 64, HEIGHT = 1;
-    public static final int NUM_SAMPLES = WIDTH * HEIGHT;
+//    public static final int WIDTH = 64, HEIGHT = 1;
+    public static final int NUM_SAMPLES = 100000; // fixed max size now, with sync() call to reset to start of array // WIDTH * HEIGHT;
     public static final int NUM_CHANNELS = 4;
     public static final int MAX_ADC_VALUE = 1023;
     DataBuffer data1 = new DataBuffer(), data2 = new DataBuffer();
@@ -33,7 +35,7 @@ public class CochleaAMS1cADCSamples {
         int data, time;
     }
 
-    /** A buffer for a single channel */
+    /** A buffer for a single channel of the ADC which holds an array of samples in the ADCSample array. */
     public class ChannelBuffer {
 
         final int channel;
@@ -47,6 +49,11 @@ public class CochleaAMS1cADCSamples {
             }
         }
 
+        /** Call this when scanning and we see a sync output active from scanner. */
+        public void sync(){
+            clear();
+        }
+        
         private void clear() {
             writeCounter = 0;
         }
@@ -111,8 +118,8 @@ public class CochleaAMS1cADCSamples {
         semaphore.release();
     }
 
-    public ADCSample get(int channel, int x, int y) {
-        return currentReadingDataBuffer.channelBuffers[channel].samples[y + WIDTH * x];
+    public ADCSample get(int channel, int x) {
+        return currentReadingDataBuffer.channelBuffers[channel].samples[x];
     }
 
     /** Put a value to the next writing position. Writes wrap around to the start position. */

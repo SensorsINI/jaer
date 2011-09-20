@@ -32,7 +32,8 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
     private Axis activityAxis;
     private Category[] activityCategories;
     private XYChart activityChart;
-    private int NUM_ACTIVITY_SAMPLES = 1000;
+    /** Max number of ADC samples to display for each ADC channel */
+    public static final int NUM_ACTIVITY_SAMPLES = 50000;
     private Color[] colors={Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW};
 
     public CochleaAMS1cRollingCochleagramADCDisplayMethod(CochleaAMS1c chip) {
@@ -48,7 +49,9 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
         data.swapBuffers();
         int chan=0;
         for (ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ChannelBuffer cb : data.currentReadingDataBuffer.channelBuffers) {
-            for (ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ADCSample s : cb.samples) {
+            int n=cb.size();
+            for(int i=0;i<n;i++){
+                ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ADCSample s=cb.samples[i];
                 activitySeries[chan].add(s.time, s.data);
             }
             chan++;
