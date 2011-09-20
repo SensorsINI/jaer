@@ -250,7 +250,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
      and pops up progress monitors.
      * @throws doesn't actually throw anything, so there's no way for the caller to know if the update succeeded.
      */
-    public void updateFirmware() throws HardwareInterfaceException {
+    synchronized public void updateFirmware() throws HardwareInterfaceException {
         //TODO no exceptions thrown
         Thread T = new Thread("FirmwareUpdater") {
 
