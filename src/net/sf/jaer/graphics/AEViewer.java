@@ -2225,10 +2225,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     int getScreenRefreshRate (){
         int rate = 60;
         GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        if(ge==null) return rate;
         GraphicsDevice[] gs = ge.getScreenDevices();
         for ( int i = 0 ; i < gs.length ; i++ ){
             DisplayMode dm = gs[i].getDisplayMode();
             // Get refresh rate in Hz
+            if(dm==null) return rate;
             int refreshRate = dm.getRefreshRate();
             if ( refreshRate == DisplayMode.REFRESH_RATE_UNKNOWN ){
                 log.warning("AEViewer.getScreenRefreshRate: got unknown refresh rate for screen " + i + ", assuming 60");
