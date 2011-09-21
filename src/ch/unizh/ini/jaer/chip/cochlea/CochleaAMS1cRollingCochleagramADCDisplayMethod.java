@@ -11,8 +11,11 @@ import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.util.prefs.Preferences;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import javax.media.opengl.GLJPanel;
+import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.graphics.AEViewer;
@@ -25,6 +28,7 @@ import net.sf.jaer.util.chart.XYChart;
  */
 public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochleaGramDisplayMethod {
 
+    private static final Preferences prefs = Preferences.userNodeForPackage(CochleaAMS1cRollingCochleagramADCDisplayMethod.class);
     private CochleaAMS1c chip = null;
     boolean registeredChart = false;
     private Series[] activitySeries;
@@ -34,11 +38,20 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
     private XYChart activityChart;
     /** Max number of ADC samples to display for each ADC channel */
     public static final int NUM_ACTIVITY_SAMPLES = 50000;
-    private Color[] colors={Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW};
+    private Color[] colors = {Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW};
+    private final int NCHAN = 4;
+    private int[] gains = new int[NCHAN];
+    private int[] offsets = new int[NCHAN];
+    private CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI[] gainGuis = new CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI[NCHAN];
+    GLJPanel activityPan;
 
     public CochleaAMS1cRollingCochleagramADCDisplayMethod(CochleaAMS1c chip) {
         super(chip.getCanvas());
         this.chip = chip;
+        for (int i = 0; i < NCHAN; i++) {
+            gains[i] = prefs.getInt("CochleaAMS1cRollingCochleagramADCDisplayMethod.gain" + i, 1);
+            offsets[i] = prefs.getInt("CochleaAMS1cRollingCochleagramADCDisplayMethod.offset" + i, 0);
+        }
     }
 
     @Override
@@ -47,12 +60,14 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
         super.display(drawable);
         ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples data = chip.getAdcSamples();
         data.swapBuffers();
-        int chan=0;
+        int chan = 0;
         for (ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ChannelBuffer cb : data.currentReadingDataBuffer.channelBuffers) {
-            int n=cb.size();
-            for(int i=0;i<n;i++){
-                ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ADCSample s=cb.samples[i];
-                activitySeries[chan].add(s.time, s.data);
+            int n = cb.size(); // must find size here since array contains junk outside the count
+            int g = getGain(chan);
+            int o = getOffset(chan);
+            for (int i = 0; i < n; i++) {
+                ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ADCSample s = cb.samples[i];
+                activitySeries[chan].add(s.time, (s.data + o) * g);
             }
             chan++;
         }
@@ -61,7 +76,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
         activityAxis.setMinimum(0);
         activityAxis.setMaximum(CochleaAMS1cADCSamples.MAX_ADC_VALUE);
         try {
-            activityChart.display();
+            activityPan.display();
         } catch (Exception e) {
             log.warning("while displaying activity chart caught " + e);
         }
@@ -105,7 +120,20 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
             for (int i = 0; i < CochleaAMS1cADCSamples.NUM_CHANNELS; i++) {
                 activityChart.addCategory(activityCategories[i]);
             }
-            imagePanel.add(activityChart, BorderLayout.SOUTH);
+            activityPan = new GLJPanel(); // holds chart and controls
+            activityPan.setLayout(new BorderLayout());
+            activityPan.setBackground(Color.black);
+            activityPan.add(activityChart, BorderLayout.CENTER);
+            JPanel gainPan = new JPanel();
+            gainPan.setLayout(new BoxLayout(gainPan, BoxLayout.X_AXIS));
+            for (int i = 0; i < NCHAN; i++) {
+                CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI gaingui = new CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI(this, i);
+                gainPan.add(gaingui);
+            }
+            activityPan.add(gainPan, BorderLayout.SOUTH);
+            activityPan.validate();
+            imagePanel.add(activityPan, BorderLayout.SOUTH);
+            imagePanel.validate();
             registeredChart = true;
         } catch (Exception e) {
             log.warning("could not register display panel: " + e);
@@ -133,5 +161,23 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
         gl.glVertex2f(x + w, y + h);
         gl.glVertex2f(x, y + h);
         gl.glEnd();
+    }
+
+    public int getGain(int chan) {
+        return gains[chan];
+    }
+
+    public void setGain(int chan, int gain) {
+        gains[chan] = gain;
+        prefs.putInt("CochleaAMS1cRollingCochleagramADCDisplayMethod.gain" + chan, gain);
+    }
+
+    public int getOffset(int chan) {
+        return offsets[chan];
+    }
+
+    public void setOffset(int chan, int offset) {
+        offsets[chan] = offset;
+        prefs.putInt("CochleaAMS1cRollingCochleagramADCDisplayMethod.offset" + chan, offset);
     }
 }

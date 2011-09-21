@@ -166,7 +166,7 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
         // render events
 
         EventPacket<TypedEvent> packet=(EventPacket)chip.getLastData();;
-        if(packet.getSize()==0) return;
+        if(packet==null || packet.getSize()==0) return;
         shammaMap.processPacket(packet);
         // draw results
         GL gl = drawable.getGL();
