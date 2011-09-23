@@ -257,6 +257,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
             @Override
             public void run() {
                 try {
+                    getChip().getAeViewer().setPaused(true);
                     setEventAcquisitionEnabled(false);
                     writeCPLDfirmware(FIRMWARE_FILENAME_DVS128_XSVF);
                     log.info("New firmware written to CPLD");
@@ -278,6 +279,8 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                 } catch (Exception e) {
                     log.warning("Firmware update failed: " + e.getMessage());
                     JOptionPane.showMessageDialog(chip.getAeViewer(), "Update failed: " + e.toString(), "Firmware update failed", JOptionPane.WARNING_MESSAGE);
+                }finally{
+                    getChip().getAeViewer().setPaused(false);
                 }
             }
         };
