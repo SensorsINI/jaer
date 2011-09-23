@@ -33,6 +33,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
         setBorder(border);
         gainSp.setValue(getGain(chan));
         offsetSp.setValue(getOffset(chan));
+        hideBut.setSelected(isHidden(chan));
     }
 
     final void setOffset(int chan, int offset) {
@@ -51,6 +52,16 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
         return getGui().getGain(chan);
     }
 
+    public void setHidden(int chan, boolean yes) {
+        gui.setHidden(chan, yes);
+    }
+
+    public boolean isHidden(int chan) {
+        return gui.isHidden(chan);
+    }
+    
+    
+
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -64,6 +75,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
         jLabel1 = new javax.swing.JLabel();
         jLabel2 = new javax.swing.JLabel();
         offsetSp = new javax.swing.JSpinner();
+        hideBut = new javax.swing.JCheckBox();
 
         setBorder(javax.swing.BorderFactory.createTitledBorder("Chan"));
 
@@ -85,29 +97,37 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
             }
         });
 
+        hideBut.setText("Hide");
+        hideBut.setToolTipText("Hide this trace");
+        hideBut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                hideButActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGap(18, 18, 18)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel1)
+                    .addComponent(jLabel2))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(jLabel2)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(offsetSp, javax.swing.GroupLayout.PREFERRED_SIZE, 56, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(jLabel1)
-                        .addGap(18, 18, 18)
-                        .addComponent(gainSp)))
+                    .addComponent(gainSp)
+                    .addComponent(offsetSp, javax.swing.GroupLayout.DEFAULT_SIZE, 56, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(hideBut)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel1)
                     .addComponent(gainSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel1))
+                    .addComponent(hideBut))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel2)
@@ -138,8 +158,13 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
         } 
     }//GEN-LAST:event_offsetSpStateChanged
 
+    private void hideButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_hideButActionPerformed
+        setHidden(chan, hideBut.isSelected());        // TODO add your handling code here:
+    }//GEN-LAST:event_hideButActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JSpinner gainSp;
+    private javax.swing.JCheckBox hideBut;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JSpinner offsetSp;

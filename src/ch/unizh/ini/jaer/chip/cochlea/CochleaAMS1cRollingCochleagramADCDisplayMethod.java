@@ -44,6 +44,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
     private int[] offsets = new int[NCHAN];
     private CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI[] gainGuis = new CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI[NCHAN];
     GLJPanel activityPan;
+    private boolean[] hidden=new boolean[NCHAN];
 
     public CochleaAMS1cRollingCochleagramADCDisplayMethod(CochleaAMS1c chip) {
         super(chip.getCanvas());
@@ -51,6 +52,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
         for (int i = 0; i < NCHAN; i++) {
             gains[i] = prefs.getInt("CochleaAMS1cRollingCochleagramADCDisplayMethod.gain" + i, 1);
             offsets[i] = prefs.getInt("CochleaAMS1cRollingCochleagramADCDisplayMethod.offset" + i, 0);
+            hidden[i] = prefs.getBoolean("CochleaAMS1cRollingCochleagramADCDisplayMethod.hidden" + i, false);
         }
     }
 
@@ -63,9 +65,11 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
         data.swapBuffers();
         int chan = 0;
         for (ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ChannelBuffer cb : data.currentReadingDataBuffer.channelBuffers) {
+            if(isHidden(chan)) {activitySeries[chan].clear(); continue;} // TODO does nothing now because clear() doesn't work
             int n = cb.size(); // must find size here since array contains junk outside the count
             int g = getGain(chan);
             int o = getOffset(chan);
+            if(isScannerRunning) activitySeries[chan].clear();
             for (int i = 0; i < n; i++) {
                 ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ADCSample s = cb.samples[i];
                 if (!isScannerRunning) {
@@ -190,5 +194,14 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
     public void setOffset(int chan, int offset) {
         offsets[chan] = offset;
         prefs.putInt("CochleaAMS1cRollingCochleagramADCDisplayMethod.offset" + chan, offset);
+    }
+    
+    public void setHidden(int chan, boolean yes){
+        hidden[chan]=yes;
+        prefs.putBoolean("CochleaAMS1cRollingCochleagramADCDisplayMethod.hidden"+chan,yes);
+    }
+    
+    public boolean isHidden(int chan){
+        return hidden[chan];
     }
 }

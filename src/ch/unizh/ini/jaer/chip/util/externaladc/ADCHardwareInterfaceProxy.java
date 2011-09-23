@@ -43,7 +43,7 @@ public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy implements
     }
 
     @Override
-    public void setADCEnabled(boolean yes) throws HardwareInterfaceException {
+    public void setADCEnabled(boolean yes) {
         this.adcEnabled = yes;
         getPrefs().putBoolean("ADCHardwareInterfaceProxy.adcEnabled", yes);
         notifyChange(EVENT_ADC_ENABLED);
@@ -127,17 +127,17 @@ public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy implements
     }
 
     @Override
-    public void startADC() throws HardwareInterfaceException {
+    public void startADC() {
         setADCEnabled(true);
     }
 
     @Override
-    public void stopADC() throws HardwareInterfaceException {
+    public void stopADC()  {
         setADCEnabled(false);
     }
 
     @Override
-    public void sendADCConfiguration() throws HardwareInterfaceException {
+    public void sendADCConfiguration()  {
         notifyChange(EVENT_ADC_CHANGED);
     }
 

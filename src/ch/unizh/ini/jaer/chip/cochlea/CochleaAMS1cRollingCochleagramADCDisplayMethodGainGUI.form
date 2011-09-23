@@ -24,19 +24,17 @@
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="0" attributes="0">
-              <EmptySpace min="-2" pref="18" max="-2" attributes="0"/>
-              <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                  <Group type="102" alignment="0" attributes="0">
-                      <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                      <Component id="offsetSp" min="-2" pref="56" max="-2" attributes="0"/>
-                  </Group>
-                  <Group type="102" alignment="0" attributes="1">
-                      <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace type="separate" max="-2" attributes="0"/>
-                      <Component id="gainSp" max="32767" attributes="0"/>
-                  </Group>
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
+                  <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
               </Group>
+              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                  <Component id="gainSp" alignment="0" max="32767" attributes="1"/>
+                  <Component id="offsetSp" alignment="0" pref="56" max="32767" attributes="1"/>
+              </Group>
+              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+              <Component id="hideBut" min="-2" max="-2" attributes="0"/>
               <EmptySpace max="32767" attributes="0"/>
           </Group>
       </Group>
@@ -45,8 +43,9 @@
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="0" attributes="0">
               <Group type="103" groupAlignment="3" attributes="0">
-                  <Component id="gainSp" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="jLabel1" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="gainSp" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="hideBut" alignment="3" min="-2" max="-2" attributes="0"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
               <Group type="103" groupAlignment="3" attributes="0">
@@ -83,6 +82,15 @@
       </Properties>
       <Events>
         <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="offsetSpStateChanged"/>
+      </Events>
+    </Component>
+    <Component class="javax.swing.JCheckBox" name="hideBut">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Hide"/>
+        <Property name="toolTipText" type="java.lang.String" value="Hide this trace"/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="hideButActionPerformed"/>
       </Events>
     </Component>
   </SubComponents>

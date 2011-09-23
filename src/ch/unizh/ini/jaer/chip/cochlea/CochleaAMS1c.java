@@ -1426,7 +1426,10 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
              * @param period 
              */
             public void setPeriod(int period) {
+                boolean old=getAdcProxy().isADCEnabled();
+                getAdcProxy().setADCEnabled(false);
                 getAdcProxy().setIdleTime(period); // TODO fix period units using track time + conversion time + idleTime
+                if(old) getAdcProxy().setADCEnabled(old);
             }
 
             @Override

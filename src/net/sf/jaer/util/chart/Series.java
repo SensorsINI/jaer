@@ -108,7 +108,7 @@ public class Series {
     /** Clears points. */
     synchronized public void clear() {
         // TODO this method does not WORK!  hard to clear points owing to buffers on GL card. (cryptic) - tobi
-//        clearEnabled = true;
+        clearEnabled = true;
     }
 
     /** Utility method to check for GL errors. Prints stacked up errors up to a limit.
@@ -187,8 +187,8 @@ public class Series {
             return;
         }
         if (hasBufferExtension) {
-            if (clearEnabled) {
-                cache.clear();
+            if (clearEnabled && vertices!=null) {
+                vertices.clear();
             }
 //            gl.glLineWidth(lineWidth);
             gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufferId);
