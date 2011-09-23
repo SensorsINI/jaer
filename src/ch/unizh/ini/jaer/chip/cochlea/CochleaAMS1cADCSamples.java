@@ -28,7 +28,7 @@ final public class CochleaAMS1cADCSamples {
     public DataBuffer currentReadingDataBuffer = data1;
     private DataBuffer currentWritingDataBuffer = data2;
     private Semaphore semaphore = new Semaphore(1);
-    private final int SCAN_LENGTH = 64;
+    public static final int SCAN_LENGTH = 64;
     private boolean syncDetected=false;  // we set this flag if we see a sync, reset if no sync by SCAN_LENGTH+1
 
     /**

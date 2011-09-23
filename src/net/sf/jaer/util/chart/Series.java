@@ -188,6 +188,7 @@ public class Series {
         }
         if (hasBufferExtension) {
             if (clearEnabled && vertices!=null) {
+                cache.clear();
                 vertices.clear();
             }
 //            gl.glLineWidth(lineWidth);
@@ -238,5 +239,9 @@ public class Series {
         }
         checkGLError(this.gl, glu, "after Series draw");
         clearEnabled = false;
+    }
+
+    public int getCapacity() {
+        return capacity;
     }
 }

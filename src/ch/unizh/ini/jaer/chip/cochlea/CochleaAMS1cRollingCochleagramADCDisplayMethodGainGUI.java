@@ -14,50 +14,51 @@ import java.awt.Color;
 import javax.swing.border.TitledBorder;
 
 /**
- *  Gain and offset control for trace plotting
+ *  Gain and offset control for trace plotting for CochleaAMS1c ADC sample traces.
+ * 
  * @author tobi
  */
 public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax.swing.JPanel {
 
     private CochleaAMS1cRollingCochleagramADCDisplayMethod gui;
-    int chan;
     Color[] colors={Color.red,Color.green,Color.blue, Color.yellow};
+    ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cRollingCochleagramADCDisplayMethod.DisplayControl displayControl;
 
     /** Creates new form CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI */
-    public CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI(CochleaAMS1cRollingCochleagramADCDisplayMethod gui, int chan) {
+    public CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI(CochleaAMS1cRollingCochleagramADCDisplayMethod gui, CochleaAMS1cRollingCochleagramADCDisplayMethod.DisplayControl displayControl) {
         this.gui = gui;
-        this.chan = chan;
+        this.displayControl=displayControl;
         initComponents();
-        TitledBorder border=javax.swing.BorderFactory.createTitledBorder("Chan" + chan);
-        border.setTitleColor(colors[chan]);
+        TitledBorder border=javax.swing.BorderFactory.createTitledBorder("Chan" + displayControl.getName());
+        border.setTitleColor(colors[displayControl.getChan()]);
         setBorder(border);
-        gainSp.setValue(getGain(chan));
-        offsetSp.setValue(getOffset(chan));
-        hideBut.setSelected(isHidden(chan));
+        gainSp.setValue(getGain());
+        offsetSp.setValue(getOffset());
+        hideBut.setSelected(isHidden());
     }
 
-    final void setOffset(int chan, int offset) {
-        getGui().setOffset(chan, offset);
+    final void setOffset(int offset) {
+        displayControl.setOffset(offset);
     }
 
-    final void setGain(int chan, int gain) {
-        getGui().setGain(chan, gain);
+    final void setGain(int gain) {
+        displayControl.setGain(gain);
     }
 
-    final int getOffset(int chan) {
-        return getGui().getOffset(chan);
+    final int getOffset() {
+        return displayControl.getOffset();
     }
 
-    final int getGain(int chan) {
-        return getGui().getGain(chan);
+    final int getGain() {
+        return displayControl.getGain();
     }
 
-    public void setHidden(int chan, boolean yes) {
-        gui.setHidden(chan, yes);
+    public void setHidden(boolean yes) {
+        displayControl.setHidden(yes);
     }
 
-    public boolean isHidden(int chan) {
-        return gui.isHidden(chan);
+    public boolean isHidden() {
+        return displayControl.isHidden();
     }
     
     
@@ -139,10 +140,10 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
     private void gainSpStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_gainSpStateChanged
         try {
             int i = (Integer) gainSp.getValue();
-            setGain(chan, i);
+            setGain(i);
             gainSp.setForeground(Color.black);
         } catch (Exception e) {
-            gainSp.setValue(getGain(chan));
+            gainSp.setValue(getGain());
             gainSp.setForeground(Color.red);
         }
     }//GEN-LAST:event_gainSpStateChanged
@@ -150,16 +151,16 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
     private void offsetSpStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_offsetSpStateChanged
      try {
             int i = (Integer) offsetSp.getValue();
-            setOffset(chan, i);
+            setOffset(i);
             offsetSp.setForeground(Color.black);
         } catch (Exception e) {
-            offsetSp.setValue(getOffset(chan));
+            offsetSp.setValue(getOffset());
             offsetSp.setForeground(Color.red);
         } 
     }//GEN-LAST:event_offsetSpStateChanged
 
     private void hideButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_hideButActionPerformed
-        setHidden(chan, hideBut.isSelected());        // TODO add your handling code here:
+        setHidden(hideBut.isSelected());        // TODO add your handling code here:
     }//GEN-LAST:event_hideButActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
