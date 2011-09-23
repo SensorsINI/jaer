@@ -121,7 +121,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
      * @param adcData
      * @return channel number, 0-3
      */
-    public static int adcChannel(int adcData) {
+    final public static int adcChannel(int adcData) {
         return ((adcData & ADC_CHANNEL_MASK) >>> Integer.bitCount(ADC_DATA_MASK)); // bits 11:10
     }
 
@@ -130,7 +130,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
      * @param adcData
      * @return sample value, 10 bits
      */
-    public static int adcSample(int adcData) {
+    final public static int adcSample(int adcData) {
         return (adcData & ADC_DATA_MASK); // rightmost 10 bits 9:0
     }
 
@@ -139,8 +139,8 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
      * @param adcData
      * @return true if sync input (from cochlea) was high
      */
-    public static boolean isAdcStartBit(int adcData) {
-        return ((adcData & ADC_START_BIT) != 0);
+    final public static boolean isAdcStartBit(int adcData) {
+        return ((adcData & ADC_START_BIT) == 0);
     }
 
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */

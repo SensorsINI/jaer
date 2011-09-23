@@ -59,6 +59,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
         checkADCDisplay();
         super.display(drawable);
         ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples data = chip.getAdcSamples();
+        boolean isScannerRunning = data.isSyncDetected();
         data.swapBuffers();
         int chan = 0;
         for (ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ChannelBuffer cb : data.currentReadingDataBuffer.channelBuffers) {
@@ -67,12 +68,22 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
             int o = getOffset(chan);
             for (int i = 0; i < n; i++) {
                 ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ADCSample s = cb.samples[i];
-                activitySeries[chan].add(s.time, (s.data + o) * g);
+                if (!isScannerRunning) {
+                    activitySeries[chan].add(s.time, (s.data + o) * g);
+                } else {
+                    activitySeries[chan].add(i, (s.data + o) * g);
+                }
             }
             chan++;
         }
-        timeAxis.setMinimum(getStartTimeUs());
-        timeAxis.setMaximum(getStartTimeUs() + getTimeWidthUs());
+        if (!isScannerRunning) {
+            timeAxis.setMinimum(getStartTimeUs());
+            timeAxis.setMaximum(getStartTimeUs() + getTimeWidthUs());
+        } else { // scanner sync
+            timeAxis.setMinimum(0);
+            timeAxis.setMaximum(chip.getScanner().getMaxScanX());
+
+        }
         activityAxis.setMinimum(0);
         activityAxis.setMaximum(CochleaAMS1cADCSamples.MAX_ADC_VALUE);
         try {
