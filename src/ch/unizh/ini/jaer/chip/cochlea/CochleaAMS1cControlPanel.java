@@ -209,6 +209,8 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         adcPanel.add(new ParameterControlPanel(biasgen.getAdcProxy()));
         offchipPanel.add(new VPotGUIControl(biasgen.getPreampAGCThresholdPot()));
         tabbedPane.setSelectedIndex(prefs.getInt("CochleaAMS1cControlPanel.selectedPaneIndex", 0));
+        basmemBut.setSelected(biasgen.getScanner().isScanBasMemV());
+        gangcellBut.setSelected(biasgen.getScanner().isScanGangCellVMem());
     }
 
     /**
@@ -606,6 +608,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         offchipGainLeftGroup = new javax.swing.ButtonGroup();
         offchipARGroup = new javax.swing.ButtonGroup();
         offchipGainRightGroup = new javax.swing.ButtonGroup();
+        scanSelGroup = new javax.swing.ButtonGroup();
         tabbedPane = new javax.swing.JTabbedPane();
         onchipBiasgenPanel = new javax.swing.JPanel();
         bufferBiasPanel = new javax.swing.JPanel();
@@ -632,6 +635,9 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         scannerPanel = new javax.swing.JPanel();
         continuousScanningPanel = new javax.swing.JPanel();
         continuousScanningEnabledCheckBox = new javax.swing.JCheckBox();
+        jPanel5 = new javax.swing.JPanel();
+        basmemBut = new javax.swing.JRadioButton();
+        gangcellBut = new javax.swing.JRadioButton();
         singleChannelSelectionPanel = new javax.swing.JPanel();
         scanSlider = new javax.swing.JSlider();
         scanSpinner = new javax.swing.JSpinner();
@@ -661,7 +667,6 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         offchipRightGainHighBut = new javax.swing.JRadioButton();
         configPanel = new javax.swing.JPanel();
         jLabel5 = new javax.swing.JLabel();
-        specialResetButton = new javax.swing.JButton();
 
         setName("CochleaAMS1cControlPanel"); // NOI18N
         addAncestorListener(new javax.swing.event.AncestorListener() {
@@ -853,19 +858,62 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${scanContinuouslyEnabled}"), continuousScanningEnabledCheckBox, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
+        jPanel5.setBorder(javax.swing.BorderFactory.createTitledBorder("Scanner selection"));
+        jPanel5.setToolTipText("Selects which of the two on-chip scanner sync outputs should be monitored to count scan location. Selection must be correct to monitor given type when scanning is stopped!");
+
+        scanSelGroup.add(basmemBut);
+        basmemBut.setText("Basilar membrane voltage");
+        basmemBut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                basmemButActionPerformed(evt);
+            }
+        });
+
+        scanSelGroup.add(gangcellBut);
+        gangcellBut.setText("Ganglion cell Vmem");
+        gangcellBut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                gangcellButActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout jPanel5Layout = new javax.swing.GroupLayout(jPanel5);
+        jPanel5.setLayout(jPanel5Layout);
+        jPanel5Layout.setHorizontalGroup(
+            jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel5Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(basmemBut)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(gangcellBut)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        jPanel5Layout.setVerticalGroup(
+            jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel5Layout.createSequentialGroup()
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(basmemBut)
+                    .addComponent(gangcellBut)))
+        );
+
         javax.swing.GroupLayout continuousScanningPanelLayout = new javax.swing.GroupLayout(continuousScanningPanel);
         continuousScanningPanel.setLayout(continuousScanningPanelLayout);
         continuousScanningPanelLayout.setHorizontalGroup(
             continuousScanningPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(continuousScanningPanelLayout.createSequentialGroup()
-                .addComponent(continuousScanningEnabledCheckBox)
-                .addContainerGap(683, Short.MAX_VALUE))
+                .addGroup(continuousScanningPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(continuousScanningEnabledCheckBox)
+                    .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(552, Short.MAX_VALUE))
         );
         continuousScanningPanelLayout.setVerticalGroup(
             continuousScanningPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(continuousScanningPanelLayout.createSequentialGroup()
                 .addComponent(continuousScanningEnabledCheckBox)
-                .addContainerGap(100, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(68, 68, 68))
         );
 
         scannerPanel.add(continuousScanningPanel);
@@ -1113,15 +1161,6 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         jLabel5.setText("Warning: State changes made here can leave other GUI controls in inconsistent state");
         configPanel.add(jLabel5);
 
-        specialResetButton.setText("Do special AER reset");
-        specialResetButton.setToolTipText("puts  AERKillBit low, toggles Vreset, then raises AEKillBit");
-        specialResetButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                specialResetButtonActionPerformed(evt);
-            }
-        });
-        configPanel.add(specialResetButton);
-
         tabbedPane.addTab("Config", configPanel);
 
         add(tabbedPane, java.awt.BorderLayout.CENTER);
@@ -1203,11 +1242,6 @@ private void dacPoweronButtonActionPerformed(java.awt.event.ActionEvent evt) {//
         log.warning(ex.toString());
     }
 }//GEN-LAST:event_dacPoweronButtonActionPerformed
-
-private void specialResetButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_specialResetButtonActionPerformed
-    // does special cycle of toggling bits to reset communcation
-    getBiasgen().resetAERComm();
-}//GEN-LAST:event_specialResetButtonActionPerformed
     private boolean addedUndoListener = false;
 
 private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST:event_formAncestorAdded
@@ -1290,11 +1324,20 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         continuousScanningEnabledCheckBox.setSelected(false);
     }//GEN-LAST:event_scanSpinnerStateChanged
 
+    private void basmemButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_basmemButActionPerformed
+        biasgen.getScanner().setScanBasMemV(basmemBut.isSelected());
+    }//GEN-LAST:event_basmemButActionPerformed
+
+    private void gangcellButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_gangcellButActionPerformed
+        biasgen.getScanner().setScanGanglionCellVMem(gangcellBut.isSelected());  
+    }//GEN-LAST:event_gangcellButActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel adcPanel;
     private javax.swing.JRadioButton arFastBut;
     private javax.swing.JRadioButton arMedBut;
     private javax.swing.JRadioButton arSlowBut;
+    private javax.swing.JRadioButton basmemBut;
     private javax.swing.JPanel bpfKilledPanel;
     private javax.swing.JPanel bufferBiasPanel;
     private javax.swing.JSlider bufferBiasSlider;
@@ -1313,6 +1356,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.JPanel equalizerPanel;
     private javax.swing.JPanel equalizerSlidersPanel;
     private javax.swing.JPanel gainSlidersPanel;
+    private javax.swing.JRadioButton gangcellBut;
     private javax.swing.JButton initDACButton;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel3;
@@ -1323,6 +1367,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
+    private javax.swing.JPanel jPanel5;
     private javax.swing.JPanel lpfKilledPanel;
     private javax.swing.ButtonGroup offchipARGroup;
     private javax.swing.JPanel offchipARPanel;
@@ -1347,11 +1392,11 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.JPanel onchipPanel;
     private javax.swing.JPanel preampPanel;
     private javax.swing.JPanel qualSlidersPanel;
+    private javax.swing.ButtonGroup scanSelGroup;
     private javax.swing.JSlider scanSlider;
     private javax.swing.JSpinner scanSpinner;
     private javax.swing.JPanel scannerPanel;
     private javax.swing.JPanel singleChannelSelectionPanel;
-    private javax.swing.JButton specialResetButton;
     private javax.swing.JTabbedPane tabbedPane;
     private org.jdesktop.beansbinding.BindingGroup bindingGroup;
     // End of variables declaration//GEN-END:variables

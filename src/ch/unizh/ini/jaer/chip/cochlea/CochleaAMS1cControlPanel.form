@@ -14,6 +14,8 @@
     </Component>
     <Component class="javax.swing.ButtonGroup" name="offchipGainRightGroup">
     </Component>
+    <Component class="javax.swing.ButtonGroup" name="scanSelGroup">
+    </Component>
   </NonVisualComponents>
   <Properties>
     <Property name="name" type="java.lang.String" value="CochleaAMS1cControlPanel" noResource="true"/>
@@ -410,8 +412,11 @@
                 <DimensionLayout dim="0">
                   <Group type="103" groupAlignment="0" attributes="0">
                       <Group type="102" attributes="0">
-                          <Component id="continuousScanningEnabledCheckBox" min="-2" max="-2" attributes="0"/>
-                          <EmptySpace pref="683" max="32767" attributes="0"/>
+                          <Group type="103" groupAlignment="0" attributes="0">
+                              <Component id="continuousScanningEnabledCheckBox" min="-2" max="-2" attributes="0"/>
+                              <Component id="jPanel5" alignment="0" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                          <EmptySpace pref="552" max="32767" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
@@ -419,7 +424,9 @@
                   <Group type="103" groupAlignment="0" attributes="0">
                       <Group type="102" alignment="0" attributes="0">
                           <Component id="continuousScanningEnabledCheckBox" min="-2" max="-2" attributes="0"/>
-                          <EmptySpace pref="100" max="32767" attributes="0"/>
+                          <EmptySpace max="32767" attributes="0"/>
+                          <Component id="jPanel5" min="-2" max="-2" attributes="0"/>
+                          <EmptySpace min="-2" pref="68" max="-2" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
@@ -434,6 +441,65 @@
                     <BindingProperty name="selected" source="Form" sourcePath="${scanContinuouslyEnabled}" target="continuousScanningEnabledCheckBox" targetPath="selected" updateStrategy="0" immediately="false"/>
                   </BindingProperties>
                 </Component>
+                <Container class="javax.swing.JPanel" name="jPanel5">
+                  <Properties>
+                    <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+                      <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
+                        <TitledBorder title="Scanner selection"/>
+                      </Border>
+                    </Property>
+                    <Property name="toolTipText" type="java.lang.String" value="Selects which of the two on-chip scanner sync outputs should be monitored to count scan location. Selection must be correct to monitor given type when scanning is stopped!"/>
+                  </Properties>
+
+                  <Layout>
+                    <DimensionLayout dim="0">
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" alignment="0" attributes="0">
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Component id="basmemBut" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Component id="gangcellBut" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace max="32767" attributes="0"/>
+                          </Group>
+                      </Group>
+                    </DimensionLayout>
+                    <DimensionLayout dim="1">
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" alignment="0" attributes="0">
+                              <EmptySpace max="32767" attributes="0"/>
+                              <Group type="103" groupAlignment="3" attributes="0">
+                                  <Component id="basmemBut" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  <Component id="gangcellBut" alignment="3" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                          </Group>
+                      </Group>
+                    </DimensionLayout>
+                  </Layout>
+                  <SubComponents>
+                    <Component class="javax.swing.JRadioButton" name="basmemBut">
+                      <Properties>
+                        <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
+                          <ComponentRef name="scanSelGroup"/>
+                        </Property>
+                        <Property name="text" type="java.lang.String" value="Basilar membrane voltage"/>
+                      </Properties>
+                      <Events>
+                        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="basmemButActionPerformed"/>
+                      </Events>
+                    </Component>
+                    <Component class="javax.swing.JRadioButton" name="gangcellBut">
+                      <Properties>
+                        <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
+                          <ComponentRef name="scanSelGroup"/>
+                        </Property>
+                        <Property name="text" type="java.lang.String" value="Ganglion cell Vmem"/>
+                      </Properties>
+                      <Events>
+                        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="gangcellButActionPerformed"/>
+                      </Events>
+                    </Component>
+                  </SubComponents>
+                </Container>
               </SubComponents>
             </Container>
             <Container class="javax.swing.JPanel" name="singleChannelSelectionPanel">
@@ -847,15 +913,6 @@
                 </Property>
                 <Property name="text" type="java.lang.String" value="Warning: State changes made here can leave other GUI controls in inconsistent state"/>
               </Properties>
-            </Component>
-            <Component class="javax.swing.JButton" name="specialResetButton">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Do special AER reset"/>
-                <Property name="toolTipText" type="java.lang.String" value="puts  AERKillBit low, toggles Vreset, then raises AEKillBit"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="specialResetButtonActionPerformed"/>
-              </Events>
             </Component>
           </SubComponents>
         </Container>

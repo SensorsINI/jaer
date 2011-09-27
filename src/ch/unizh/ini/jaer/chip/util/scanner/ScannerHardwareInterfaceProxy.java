@@ -37,23 +37,26 @@ public class ScannerHardwareInterfaceProxy extends HardwareInterfaceProxy implem
     }
 
     public void setScanY(int scanY) {
+        int old=this.scanY;
         this.scanY = scanY;
         getPrefs().putInt("ScannerHardwareInterface.scanY", scanY);
         setScanContinuouslyEnabled(false);
-        notifyChange(EVENT_SCAN_Y);
+        if(old!=this.scanY) notifyChange(EVENT_SCAN_Y);
     }
 
     public void setScanX(int scanX) {
+        int old=this.scanX;
         this.scanX = scanX;
         getPrefs().putInt("ScannerHardwareInterface.scanX", scanX);
         setScanContinuouslyEnabled(false);
-        notifyChange(EVENT_SCAN_X);
+        if(old!=this.scanX) notifyChange(EVENT_SCAN_X);
     }
 
     public void setScanContinuouslyEnabled(boolean scanContinuouslyEnabled) {
+        boolean old=this.scanContinuouslyEnabled;
         this.scanContinuouslyEnabled = scanContinuouslyEnabled;
         getPrefs().putBoolean("ScannerHardwareInterface.scanContinuouslyEnabled", scanContinuouslyEnabled);
-        notifyChange(EVENT_SCAN_CONTINUOUSLY_ENABLED);
+        if(old!=this.scanContinuouslyEnabled) notifyChange(EVENT_SCAN_CONTINUOUSLY_ENABLED);
     }
 
     public boolean isScanContinuouslyEnabled() {
