@@ -341,9 +341,9 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         private CPLDBit yBit = new CPLDBit(0, "yBit", "Used to select whether bandpass (0) or lowpass (1) neurons are killed for local kill", false),
                 selAER = new CPLDBit(3, "selAER", "Chooses whether lpf (0) or rectified (1) lpf output drives low-pass filter neurons", true),
                 selIn = new CPLDBit(4, "selIn", "Parallel (1) or Cascaded (0) cochlea architecture", false);
-        private CPLDInt onchipPreampGain = new CPLDInt(1, 2, "onchipPreampGain", "chooses onchip microphone preamp feedback resistor", 3);
+        private CPLDInt onchipPreampGain = new CPLDInt(1, 2, "onchipPreampGain", "chooses onchip microphone preamp feedback resistor selection", 3);
         // adc configuration is stored in adcProxy; updates to here should update CPLD config below
-        private CPLDInt adcConfig = new CPLDInt(11, 22, "adcConfig", "determines configuration of ADC - should have fixed value of " + ADC_CONFIG, ADC_CONFIG),
+        private CPLDInt adcConfig = new CPLDInt(11, 22, "adcConfig", "determines configuration of ADC - value depends on channel and sequencing enabled " + ADC_CONFIG, ADC_CONFIG),
                 adcTrackTime = new CPLDInt(23, 38, "adcTrackTime", "ADC track time in clock cycles which are 15 cycles/us", 0),
                 adcIdleTime = new CPLDInt(39, 54, "adcIdleTime", "ADC idle time after last acquisition in clock cycles which are 15 cycles/us", 0);
         // scanner config stored in scannerProxy; updates should update state of below fields
@@ -725,10 +725,10 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 } else if (observable instanceof OnChipPreamp) { // TODO check if nothing needs to be done on update
                 } else if (observable instanceof OffChipPreamp) {
                 } else if (observable instanceof ADCHardwareInterfaceProxy) {
-                    adcIdleTime.set(getAdcProxy().getIdleTime() * 15); // multiplication with 15 to get from us to clockcycles
-                    adcTrackTime.set(getAdcProxy().getTrackTime() * 15); // multiplication with 15 to get from us to clockcycles
-                    int lastChan = getAdcProxy().getADCChannel();
-                    boolean seq = getAdcProxy().isSequencingEnabled();
+                    adcIdleTime.set(adcProxy.getIdleTime() * 15); // multiplication with 15 to get from us to clockcycles
+                    adcTrackTime.set(adcProxy.getTrackTime() * 15); // multiplication with 15 to get from us to clockcycles
+                    int lastChan = adcProxy.getADCChannel();
+                    boolean seq = adcProxy.isSequencingEnabled();
                     // from AD7933/AD7934 datasheet
                     int config = (1 << 8) + (lastChan << 5) + (seq ? 6 : 0);
                     adcConfig.set(config);
@@ -747,7 +747,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 open();
             }
             log.info("sending complete configuration");
-            update(ipots.getPots().get(0), null);
+            update(ipots.getPots().get(0), null); // calls back to update to send all IPot bits
             for (Pot v : vpots.getPots()) {
                 update(v, v);
             }
@@ -760,8 +760,6 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 b.setChanged();
                 update(b, b);
             }
-            
-            
 
             for (Equalizer.EqualizerChannel c : equalizer.channels) {
                 update(c, null);
@@ -889,7 +887,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
         private void sendCPLDConfig() throws HardwareInterfaceException {
             boolean old = getAdcProxy().isADCEnabled(); // old state of whether ADC is running
-            runAdc.set(false); // disable ADC before loading new configuration
+            
+            runAdc.set(false); // disable ADC before loading new configuration // TODO do this on device!!
             byte[] bytes = cpldConfig.getBytes();
             sendCmd(CMD_CPLD_CONFIG, 0, bytes);
             if (old) {

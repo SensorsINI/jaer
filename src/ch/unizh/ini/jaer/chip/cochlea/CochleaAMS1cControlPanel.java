@@ -279,7 +279,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
 
     /** Handles updates to GUI controls from any source, including preference changes */
     @Override
-    synchronized public void update(Observable observable, Object object) {  // thread safe to ensure gui cannot retrigger this while it is sending something
+    public void update(Observable observable, Object object) {  // thread safe to ensure gui cannot retrigger this while it is sending something
 //            log.info(observable + " sent " + object);
         try {
             if (observable instanceof ConfigTristate) {
