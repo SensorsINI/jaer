@@ -137,9 +137,9 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
     /** Is the ADC sample associated with the sync input high at the time of sampling.
      * 
      * @param adcData
-     * @return true if sync input (from cochlea) was high
+     * @return true if sync input (from cochlea) is active (it is active low during sync period when no channel is selected)
      */
-    final public static boolean isAdcStartBit(int adcData) {
+    final public static boolean isScannerSyncBit(int adcData) {
         return ((adcData & ADC_START_BIT) == 0);
     }
 
@@ -207,7 +207,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
                                         addresses[eventCounter] = dataword; // leave all bits unchanged for ADC sample
                                         timestamps[eventCounter] = currentts;  // ADC event gets timestamp too
                                         eventCounter++;
-//                                        System.out.println("ADC word: " + dataword + " adcChannel=" + adcChannel(dataword) + " adcSample=" + adcSample(dataword) + " isAdcStartBit=" + isAdcStartBit(dataword));
+//                                        System.out.println("ADC word: " + dataword + " adcChannel=" + adcChannel(dataword) + " adcSample=" + adcSample(dataword) + " isScannerSyncBit=" + isScannerSyncBit(dataword));
                                     } else { //  received an address, write out event to addresses/timestamps output arrays, masking out other bits
                                         addresses[eventCounter] = (dataword & EVENT_ADDRESS_MASK);
                                         timestamps[eventCounter] = currentts;

@@ -115,19 +115,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
             clearScreenEnabled = false;
             startTime = t0;
         }
-        final float w = (float) timeWidthUs / getChipCanvas().getCanvas().getWidth(); // spike raster as fraction of screen width
-        float[][] typeColors = renderer.getTypeColorRGBComponents();
-        for (Object o : ae) {
-            TypedEvent ev = (TypedEvent) o;
-            gl.glColor3fv(typeColors[ev.type], 0);// FIXME depends on these colors having been created by a rendering cycle...
-//            CochleaGramDisplayMethod.typeColor(gl,ev.type);
-            float t = (float) (ev.timestamp - startTime); // z goes from 0 (oldest) to 1 (youngest)
-            gl.glRectf(t, ev.x, t + w, ev.x + 1);
-            if (t > timeWidthUs || t < 0) {
-                clearScreenEnabled = true;
-            }
-        }
-
+ 
         // draw time axis with label of total raster time
         gl.glColor3f(0, 0, 1);
         gl.glLineWidth(4f);
@@ -142,6 +130,26 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         int width = glut.glutBitmapLength(font, timeLabel);
         gl.glRasterPos3f(timeWidthUs * .9f, -3, 0);
         glut.glutBitmapString(font, timeLabel);
+
+        
+        final float w = (float) timeWidthUs / getChipCanvas().getCanvas().getWidth(); // spike raster as fraction of screen width
+        float[][] typeColors = renderer.getTypeColorRGBComponents();
+        if(typeColors==null || typeColors.length==0) {
+            log.warning("cannot render events because there are no event type colors, skipping rendering of events");
+            return;
+        }
+        for (Object o : ae) {
+            TypedEvent ev = (TypedEvent) o;
+            gl.glColor3fv(typeColors[ev.type], 0);// FIXME depends on these colors having been created by a rendering cycle...
+//            CochleaGramDisplayMethod.typeColor(gl,ev.type);
+            float t = (float) (ev.timestamp - startTime); // z goes from 0 (oldest) to 1 (youngest)
+            gl.glRectf(t, ev.x, t + w, ev.x + 1);
+            if (t > timeWidthUs || t < 0) {
+                clearScreenEnabled = true;
+            }
+        }
+
+ 
 
         gl.glFlush();
 //        gl.glFinish();  // should not need to be called, according to http://www.opengl.org/discussion_boards/ubbthreads.php?ubb=showflat&Number=196733

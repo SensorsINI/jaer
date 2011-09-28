@@ -87,8 +87,9 @@ final public class CochleaAMS1cADCSamples {
                 return;
             }
             if(sync){
-                writeCounter=0;
-                setSyncDetected(true);
+                System.out.println("writeCounter="+writeCounter+" at sync");
+                sync();
+                return; // don't save this sample which is during sync pulse
             }
             if(!sync && writeCounter>SCAN_LENGTH){
                 setSyncDetected(false);
