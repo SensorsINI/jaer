@@ -289,6 +289,15 @@
                 <Property name="axis" type="int" value="1"/>
               </Layout>
               <SubComponents>
+                <Component class="javax.swing.JButton" name="resetEqBut">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Reset all"/>
+                    <Property name="toolTipText" type="java.lang.String" value="Uses hardware reset to reset all latches to default state"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="resetEqButActionPerformed"/>
+                  </Events>
+                </Component>
                 <Container class="javax.swing.JPanel" name="gainSlidersPanel">
                   <Properties>
                     <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">

@@ -26,6 +26,13 @@ import java.util.prefs.*;
 public class Masterbias extends Observable implements BiasgenPreferences {
     private Preferences prefs;
     Biasgen biasgen;
+    /** Observable event */
+    public static final String  EVENT_POWERDOWN="powerDownEnabled", 
+            EVENT_INTERNAL_RESISTOR="internalResistor", 
+            EVENT_EXTERNAL_RESISTOR="externalResistor", 
+            EVENT_INTERNAL_RESISTOR_USED="internalReisistorUsed",
+            EVENT_TEMPERATURE_CHANGED="temperatureChange";
+    
     /** Creates a new instance of Masterbias.  */
     public Masterbias(Biasgen biasgen) {
         this.biasgen=biasgen;
@@ -113,7 +120,7 @@ public class Masterbias extends Observable implements BiasgenPreferences {
         if(rint!=rInternal){
             this.rInternal = rint;
             setChanged();
-            notifyObservers("internalResistor");
+            notifyObservers(EVENT_INTERNAL_RESISTOR);
         }
     }
     
@@ -125,7 +132,7 @@ public class Masterbias extends Observable implements BiasgenPreferences {
         if(rx!=rExternal){
             this.rExternal = rx;
             setChanged();
-            notifyObservers("externalResistor");
+            notifyObservers(EVENT_EXTERNAL_RESISTOR);
         }
     }
     
@@ -155,7 +162,7 @@ public class Masterbias extends Observable implements BiasgenPreferences {
         if(powerDownEnabled!=this.powerDownEnabled){
             this.powerDownEnabled = powerDownEnabled;
             setChanged();
-            notifyObservers("powerDownEnabled");
+            notifyObservers(EVENT_POWERDOWN);
         }
     }
     
@@ -167,7 +174,7 @@ public class Masterbias extends Observable implements BiasgenPreferences {
         if(internalResistorUsed!=this.internalResistorUsed){
             this.internalResistorUsed = internalResistorUsed;
             setChanged();
-            notifyObservers("internalReisistorUsed");
+            notifyObservers(EVENT_INTERNAL_RESISTOR_USED);
         }
     }
     
@@ -179,7 +186,7 @@ public class Masterbias extends Observable implements BiasgenPreferences {
         if(this.temperatureCelsius != temperatureCelsius){
             this.temperatureCelsius = temperatureCelsius;
             setChanged();
-            notifyObservers("temperatureChange");
+            notifyObservers(EVENT_TEMPERATURE_CHANGED);
         }
     }
     

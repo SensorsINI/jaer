@@ -627,6 +627,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         dacPoweroffButton = new javax.swing.JRadioButton();
         equalizerPanel = new javax.swing.JPanel();
         equalizerSlidersPanel = new javax.swing.JPanel();
+        resetEqBut = new javax.swing.JButton();
         gainSlidersPanel = new javax.swing.JPanel();
         qualSlidersPanel = new javax.swing.JPanel();
         lpfKilledPanel = new javax.swing.JPanel();
@@ -808,6 +809,15 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
 
         equalizerSlidersPanel.setBorder(javax.swing.BorderFactory.createEtchedBorder());
         equalizerSlidersPanel.setLayout(new javax.swing.BoxLayout(equalizerSlidersPanel, javax.swing.BoxLayout.Y_AXIS));
+
+        resetEqBut.setText("Reset all");
+        resetEqBut.setToolTipText("Uses hardware reset to reset all latches to default state");
+        resetEqBut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                resetEqButActionPerformed(evt);
+            }
+        });
+        equalizerSlidersPanel.add(resetEqBut);
 
         gainSlidersPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("SOS quality"));
         gainSlidersPanel.setToolTipText("Second order section feedback transconductance tweak, increase to increase Q");
@@ -1195,7 +1205,7 @@ private void dacCmdComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GE
 //            System.out.print(String.format("%2h ", bi & 0xff));
 //        }
 //        System.out.println();
-        getBiasgen().sendCmd(getBiasgen().CMD_VDAC, 0, b);
+        getBiasgen().sendConfig(getBiasgen().CMD_VDAC, 0, b);
         boolean isNew = true;
         for (int i = 1; i < dacCmdComboBox.getItemCount(); i++) {
             if (dacCmdComboBox.getItemAt(i).equals(s)) {
@@ -1332,6 +1342,10 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         biasgen.getScanner().setScanGanglionCellVMem(gangcellBut.isSelected());  
     }//GEN-LAST:event_gangcellButActionPerformed
 
+    private void resetEqButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetEqButActionPerformed
+        biasgen.resetEqualizer();  
+    }//GEN-LAST:event_resetEqButActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel adcPanel;
     private javax.swing.JRadioButton arFastBut;
@@ -1392,6 +1406,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.JPanel onchipPanel;
     private javax.swing.JPanel preampPanel;
     private javax.swing.JPanel qualSlidersPanel;
+    private javax.swing.JButton resetEqBut;
     private javax.swing.ButtonGroup scanSelGroup;
     private javax.swing.JSlider scanSlider;
     private javax.swing.JSpinner scanSpinner;

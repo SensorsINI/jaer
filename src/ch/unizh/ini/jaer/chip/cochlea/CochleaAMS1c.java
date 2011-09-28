@@ -312,16 +312,13 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         // lists of ports and CPLD config
         ArrayList<PortBit> portBits = new ArrayList();
         ArrayList<CPLDConfigValue> cpldConfigValues = new ArrayList();
-        ArrayList<AbstractConfigValue> config=new ArrayList<AbstractConfigValue>();
+        ArrayList<AbstractConfigValue> config = new ArrayList<AbstractConfigValue>();
         /** The DAC on the board. Specified with 5V reference even though Vdd=3.3 because the internal 2.5V reference is used and so that the VPot controls display correct voltage. */
         protected final DAC dac = new DAC(32, 12, 0, 5f, 3.3f); // the DAC object here is actually 2 16-bit DACs daisy-chained on the Cochlea board; both corresponding values need to be sent to change one value
         IPotArray ipots = new IPotArray(this);
         PotArray vpots = new PotArray(this);
 //        private IPot diffOn, diffOff, refr, pr, sf, diff;
         private CypressFX2 cypress = null;
-        // wraps around ADC, updates come back here to send CPLD config to hardware. Proxy used in GUI.
-        private ADCHardwareInterfaceProxy adcProxy = new ADCHardwareInterfaceProxy(CochleaAMS1c.this); // notifies us with updates 
-        private Scanner scanner = new Scanner(CochleaAMS1c.this);
         // config bits/values
         // portA
         private PortBit hostResetTimestamps = new PortBit("a7", "hostResetTimestamps", "High to reset timestamps", false),
@@ -334,7 +331,25 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 aerKillBit = new PortBit("d7", "aerKillBit", "Set high to kill a neuron which is selected by address loaded via the Equalizer GUI; not used except to unkill all neurons with vCtrlKill", false);
         // portE
         // tobi changed config bits on rev1 board since e3/4 control maxim mic preamp attack/release and gain now
-        private PortBit powerDown = new PortBit("e2", "powerDown", "High to power down bias generator", false),
+        private class PowerDownBit extends PortBit implements Observer{
+
+            public PowerDownBit(Masterbias masterBias, String portBit, String name, String tip, boolean def) {
+                super(portBit, name, tip, def);
+                masterBias.addObserver(this);
+            }
+
+            @Override
+            public void update(Observable o, Object arg) {
+                if(o instanceof Masterbias){
+                    Masterbias m=(Masterbias)o;
+                    if(arg!=null && arg==Masterbias.EVENT_POWERDOWN){
+                        set(m.isPowerDownEnabled());
+                    }
+                }
+            }
+        }
+        private PowerDownBit powerDown;
+        private PortBit 
                 nCochleaReset = new PortBit("e3", "nCochleaReset", "High to reset all neuron and Q latches; global latch reset (1=reset); aka vReset", true);
 //                nCpldReset = new PortBit("e7", "nCpldReset", "Low to reset CPLD"); // don't expose this, firmware unresets on init
         // CPLD config on CPLD shift register
@@ -377,13 +392,18 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         BufferIPot bufferIPot = new BufferIPot();
         boolean dacPowered = getPrefs().getBoolean("CochleaAMS1c.Biasgen.DAC.powered", true);
         private final VPot preampAGCThresholdPot; // used in Microphone preamp control panel
+  
+        // wraps around ADC, updates come back here to send CPLD config to hardware. Proxy used in GUI.
+        private ADC adcProxy = new ADC(CochleaAMS1c.this); // notifies us with updates 
+        private Scanner scanner = new Scanner(CochleaAMS1c.this);
 
         /** Creates a new instance of Biasgen for Tmpdiff128 with a given hardware interface
          *@param chip the chip this biasgen belongs to
          */
         public Biasgen(Chip chip) {
             super(chip);
-            setName("CochleaAMSWithBiasgen");
+            setName("CochleaAMS1c.Biasgen");
+            powerDown=new PowerDownBit(getMasterbias(), "e2", "powerDown", "High to power down bias generator", false);
             scanner.addObserver(this);
             equalizer.addObserver(this);
             bufferIPot.addObserver(this);
@@ -439,6 +459,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             ipots.addPot(new IPot(this, "reqpuTX", 30, IPot.Type.NORMAL, IPot.Sex.P, 0, 31, "Sets pullup bias for AER req ckts"));
             ipots.addPot(new IPot(this, "Vbpf1", 31, IPot.Type.NORMAL, IPot.Sex.P, 0, 32, "Sets higher cutoff freq for BPF"));   // first bits loaded, at end of shift register
 
+            getMasterbias().addObserver(powerDown);
+            
 //    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
             // top dac in schem/layout, first 16 channels of 32 total
             vpots.addPot(new VPot(CochleaAMS1c.this, "Vterm", dac, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets bias current of terminator xtor in diffusor"));
@@ -585,7 +607,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 log.info("set hardwareInterface CochleaAMS1cHardwareInterface=" + hardwareInterface.toString());
                 try {
                     sendConfiguration();
-    //                resetAERComm();
+                    //                resetAERComm();
                 } catch (HardwareInterfaceException ex) {
                     log.warning(ex.toString());
                 }
@@ -596,6 +618,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 CMD_SCANNER = 3, CMD_EQUALIZER = 4,
                 CMD_SETBIT = 5, CMD_VDAC = 6, CMD_INITDAC = 7,
                 CMD_CPLD_CONFIG = 8;
+        public final String[] CMD_NAMES = {"IPOT", "RESET_EQUALIZER", "SCANNER", "EQUALIZER", "SET_BIT", "VDAC", "INITDAC", "CPLD_CONFIG"};
         final byte[] emptyByteArray = new byte[0];
 
 //        /** Does special reset cycle, in background thread TODO unused now */
@@ -635,7 +658,25 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
          * @param bytes the payload
          * @throws HardwareInterfaceException 
          */
-        void sendCmd(int cmd, int index, byte[] bytes) throws HardwareInterfaceException {
+        void sendConfig(int cmd, int index, byte[] bytes) throws HardwareInterfaceException {
+            
+            // debug
+            System.out.print(String.format("sending config cmd 0x%X, index=0x%X, with %d bytes", cmd, index, bytes.length));
+            if (bytes == null || bytes.length == 0) {
+                System.out.println("");
+            } else {
+                int max = 8;
+                if (bytes.length < max) {
+                    max = bytes.length;
+                }
+                System.out.print(" = ");
+                for (int i = 0; i < max; i++) {
+                    System.out.print(String.format("%X, ", bytes[i]));
+                }
+                System.out.println("");
+            } // end debug
+            
+            
             if (bytes == null) {
                 bytes = emptyByteArray;
             }
@@ -651,8 +692,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
          * @param index
          * @throws HardwareInterfaceException 
          */
-        void sendCmd(int cmd, int index) throws HardwareInterfaceException {
-            sendCmd(cmd, index, emptyByteArray);
+        void sendConfig(int cmd, int index) throws HardwareInterfaceException {
+            sendConfig(cmd, index, emptyByteArray);
         }
 
         /** The central point for communication with HW from biasgen. All objects in Biasgen are Observables
@@ -686,7 +727,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                         ind += b.length;
                     }
                     bytes[ind] = (byte) bufferIPot.getValue(); // isSet 8 bitmask buffer bias value, this is *last* byte sent because it is at start of biasgen shift register
-                    sendCmd(CMD_IPOT, 0, bytes); // the usual packing of ipots
+                    sendConfig(CMD_IPOT, 0, bytes); // the usual packing of ipots
                 } else if (observable instanceof VPot) {
                     // There are 2 16-bit AD5391 DACs daisy chained; we need to send data for both 
                     // to change one of them. We can send all zero bytes to the one we're notifyChange changing and it will notifyChange affect any channel
@@ -697,11 +738,11 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 } else if (observable instanceof TriStateablePortBit) { // tristateable should come first before configbit since it is subclass
                     TriStateablePortBit b = (TriStateablePortBit) observable;
                     byte[] bytes = {(byte) ((b.isSet() ? (byte) 1 : (byte) 0) | (b.isHiZ() ? (byte) 2 : (byte) 0))};
-                    sendCmd(CMD_SETBIT, b.portbit, bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]= OR of value (1,0), hiZ=2/0, bit is set if tristate, unset if driving port
+                    sendConfig(CMD_SETBIT, b.portbit, bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]= OR of value (1,0), hiZ=2/0, bit is set if tristate, unset if driving port
                 } else if (observable instanceof PortBit) {
                     PortBit b = (PortBit) observable;
                     byte[] bytes = {b.isSet() ? (byte) 1 : (byte) 0};
-                    sendCmd(CMD_SETBIT, b.portbit, bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]=value (1,0)
+                    sendConfig(CMD_SETBIT, b.portbit, bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]=value (1,0)
                 } else if (observable instanceof CPLDConfigValue) {
                     sendCPLDConfig();
                     // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]=value (1,0)
@@ -711,13 +752,13 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 //                    scanX.set(scanner.getScanX());
 //                    scanContinuouslyEnabled.set(scanner.isScanContinuouslyEnabled()); // must update cpld config bits from software scanner object
 //                    byte[] bytes = cpldConfig.getBytes();
-//                    sendCmd(CMD_CPLD_CONFIG, 0, bytes);
+//                    sendConfig(CMD_CPLD_CONFIG, 0, bytes);
                 } else if (observable instanceof Equalizer.EqualizerChannel) {
                     // sends 0 byte message (no data phase for speed)
                     Equalizer.EqualizerChannel c = (Equalizer.EqualizerChannel) observable;
                     int value = (c.channel << 8) + CMD_EQUALIZER; // value has cmd in LSB, channel in MSB
                     int index = c.qsos + (c.qbpf << 5) + (c.lpfkilled ? 1 << 10 : 0) + (c.bpfkilled ? 1 << 11 : 0); // index has b11=bpfkilled, b10=lpfkilled, b9:5=qbpf, b4:0=qsos
-                    sendCmd(value, index);
+                    sendConfig(value, index);
 //                        System.out.println(String.format("channel=%50s value=%16s index=%16s",c.toString(),Integer.toBinaryString(0xffff&value),Integer.toBinaryString(0xffff&index)));
                     // killed byte has 2 lsbs with bitmask 1=lpfkilled, bitmask 0=bpf killed, active high (1=kill, 0=alive)
                 } else if (observable instanceof Equalizer) {
@@ -733,6 +774,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                     int config = (1 << 8) + (lastChan << 5) + (seq ? 6 : 0);
                     adcConfig.set(config);
                     sendCPLDConfig();
+                    runAdc.setChanged();
+                    runAdc.notifyObservers();
                 } else {
                     super.update(observable, object);  // super (Biasgen) handles others, e.g. masterbias
                 }
@@ -771,7 +814,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
         // sends VR to init DAC
         public void initDAC() throws HardwareInterfaceException {
-            sendCmd(CMD_INITDAC, 0);
+            sendConfig(CMD_INITDAC, 0);
         }
 
         void sendDAC(VPot pot) throws HardwareInterfaceException {
@@ -812,7 +855,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 //            System.out.print(String.format("value=%-6d channel=%-6d ",value,chan));
 //            for(byte bi:b) System.out.print(String.format("%2h ", bi&0xff));
 //            System.out.println();
-            sendCmd(CMD_VDAC, 0, b); // value=CMD_VDAC, index=0, bytes as above
+            sendConfig(CMD_VDAC, 0, b); // value=CMD_VDAC, index=0, bytes as above
         }
 
         /** Sets the VDACs on the board to be powered or high impedance output. This is a global operation.
@@ -832,7 +875,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 b[0] = down;
                 b[3] = down;
             }
-            sendCmd(CMD_VDAC, 0, b);
+            sendConfig(CMD_VDAC, 0, b);
         }
 
         /** Returns the DAC powered state
@@ -886,14 +929,21 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         }
 
         private void sendCPLDConfig() throws HardwareInterfaceException {
-            boolean old = getAdcProxy().isADCEnabled(); // old state of whether ADC is running
-            
-            runAdc.set(false); // disable ADC before loading new configuration // TODO do this on device!!
+//            boolean old = adcProxy.isADCEnabled(); // old state of whether ADC is running - now done in firmware
+
+//            runAdc.set(false); // disable ADC before loading new configuration // TODO do this on device!!
             byte[] bytes = cpldConfig.getBytes();
-            sendCmd(CMD_CPLD_CONFIG, 0, bytes);
-            if (old) {
-                runAdc.set(true); // reenable ADC
-            }
+            sendConfig(CMD_CPLD_CONFIG, 0, bytes);
+//            if (old) {
+//                runAdc.set(true); // reenable ADC
+//            }
+        }
+
+        /** Resets equalizer channels to default state, and finally does sequence with special bits to ensure hardware latches are all cleared.
+         * 
+         */
+        void resetEqualizer() {
+            equalizer.reset();
         }
 
         class BufferIPot extends Observable implements RemoteControlled, PreferenceChangeListener, HasPreference {
@@ -1253,8 +1303,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 nBits = endBit - startBit + 1;
                 hasPreferencesList.add(this);
                 cpldConfigValues.add(this);
-                      config.add(this);
-      }
+                config.add(this);
+            }
 
             @Override
             public void preferenceChange(PreferenceChangeEvent evt) {
@@ -1450,6 +1500,32 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 putPref(key, value); // will eventually call pref change listener which will call set again
             }
         }
+        
+        public class ADC extends ADCHardwareInterfaceProxy implements Observer{
+
+            public ADC(Chip chip) {
+                super(chip);
+            }
+
+            @Override
+            public boolean isADCEnabled() {
+                return runAdc.isSet();
+            }
+
+            @Override
+            public void setADCEnabled(boolean yes) {
+                super.setADCEnabled(yes);
+                runAdc.set(yes);
+            }
+            
+            
+
+            @Override
+            public void update(Observable o, Object arg) {
+                throw new UnsupportedOperationException("Not supported yet.");
+            }
+            
+        }
 
         public class Scanner extends ScannerHardwareInterfaceProxy implements PreferenceChangeListener, HasPreference, Observer {
 
@@ -1571,6 +1647,18 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 }
             }
 
+            /** Resets equalizer channels to default state, and finally does sequence with special bits to ensure hardware latches are all cleared.
+             * 
+             */
+            void reset() {
+                log.info("resetting all Equalizer states to default");
+                for (EqualizerChannel c : channels) {
+                    c.reset();
+                }
+                // TODO special dance with logic bits to reset here 
+
+            }
+
 //            public int getGlobalGain() {
 //                return globalGain;
 //            }
@@ -1672,8 +1760,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                         if (s instanceof CochleaAMS1cControlPanel.QBPFSlider) {
                             s.channel.setQBPF(s.getValue());
                         }
-                        setChanged();
-                        notifyObservers();
+//                        setChanged();
+//                        notifyObservers();
                     } else if (e.getSource() instanceof CochleaAMS1cControlPanel.KillBox) {
                         CochleaAMS1cControlPanel.KillBox b = (CochleaAMS1cControlPanel.KillBox) e.getSource();
                         if (b instanceof CochleaAMS1cControlPanel.LPFKillBox) {
@@ -1683,8 +1771,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                             b.channel.setBpfKilled(b.isSelected());
 //                            System.out.println("BPF: "+b.channel.toString());
                         }
-                        setChanged();
-                        notifyObservers();
+//                        setChanged();
+//                        notifyObservers();
                     }
                 }
 
@@ -1702,7 +1790,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 }
 
                 @Override
-                public void loadPreference() {
+                public final void loadPreference() {
                     qsos = getPrefs().getInt(prefsKey + "qsos", 15);
                     qbpf = getPrefs().getInt(prefsKey + "qbpf", 15);
                     bpfkilled = getPrefs().getBoolean(prefsKey + "bpfkilled", false);
@@ -1717,6 +1805,13 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                     putPref(prefsKey + "lpfkilled", lpfkilled);
                     putPref(prefsKey + "qbpf", qbpf);
                     putPref(prefsKey + "qsos", qsos);
+                }
+
+                private void reset() {
+                    setBpfKilled(false);
+                    setLpfKilled(false);
+                    setQBPF(0);
+                    setQSOS(0);
                 }
             }
         } // equalizer
