@@ -68,6 +68,7 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
         return false;
     }
     
+    @Override
     public void resetFilter() {
         medianPoint.setLocation(chip.getSizeX()/2,chip.getSizeY()/2);
         meanPoint.setLocation(chip.getSizeX()/2,chip.getSizeY()/2);
@@ -103,10 +104,12 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
         yMeanFilter.setTauMs(tauUs/1000f);
     }
     
+    @Override
     public void initFilter() {
     }
     
     
+    @Override
     public EventPacket filterPacket(EventPacket in) {
         int n=in.getSize();
         if(n==0) return in;
@@ -169,6 +172,7 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
     }
     
     /** JOGL annotation */
+    @Override
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
         Point2D p=medianPoint;
