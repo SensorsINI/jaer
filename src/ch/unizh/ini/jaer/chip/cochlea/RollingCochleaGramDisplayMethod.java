@@ -42,10 +42,10 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
     /** Set by rendering to total width in us time */
     protected float timeWidthUs; // set horizontal scale so that we can just use relative timestamp for x
     /** set by rendering so that 1 unit drawing scale draws to right side, 0 to left during rendering, using scaling as in
-     <pre>
-      drawTimeScale = (drawable.getWidth() / timeWidthUs); // scale horizontal is draw
-        gl.glScalef(drawTimeScale, yScale, 1);
-     </pre>
+    <pre>
+    drawTimeScale = (drawable.getWidth() / timeWidthUs); // scale horizontal is draw
+    gl.glScalef(drawTimeScale, yScale, 1);
+    </pre>
      */
     protected float drawTimeScale;
 
@@ -100,8 +100,8 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         }
         oldColorScale = colorScale;
         int frameRate = 60; // hz
-        if(chip instanceof AEChip){
-            frameRate=((AEChip)chip).getAeViewer().getFrameRate();
+        if (chip instanceof AEChip) {
+            frameRate = ((AEChip) chip).getAeViewer().getFrameRate();
         }
         timeWidthUs = 1e6f / frameRate * (1 << colorScale); // set horizontal scale so that we can just use relative timestamp for x
         drawTimeScale = (drawable.getWidth() / timeWidthUs); // scale horizontal is draw
@@ -115,7 +115,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
             clearScreenEnabled = false;
             startTime = t0;
         }
- 
+
         // draw time axis with label of total raster time
         gl.glColor3f(0, 0, 1);
         gl.glLineWidth(4f);
@@ -131,25 +131,21 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         gl.glRasterPos3f(timeWidthUs * .9f, -3, 0);
         glut.glutBitmapString(font, timeLabel);
 
-        
+
         final float w = (float) timeWidthUs / getChipCanvas().getCanvas().getWidth(); // spike raster as fraction of screen width
         float[][] typeColors = renderer.getTypeColorRGBComponents();
-        if(typeColors==null || typeColors.length==0) {
-            log.warning("cannot render events because there are no event type colors, skipping rendering of events");
-            return;
-        }
-        for (Object o : ae) {
-            TypedEvent ev = (TypedEvent) o;
-            gl.glColor3fv(typeColors[ev.type], 0);// FIXME depends on these colors having been created by a rendering cycle...
+        if (typeColors != null) {
+            for (Object o : ae) {
+                TypedEvent ev = (TypedEvent) o;
+                gl.glColor3fv(typeColors[ev.type], 0);// FIXME depends on these colors having been created by a rendering cycle...
 //            CochleaGramDisplayMethod.typeColor(gl,ev.type);
-            float t = (float) (ev.timestamp - startTime); // z goes from 0 (oldest) to 1 (youngest)
-            gl.glRectf(t, ev.x, t + w, ev.x + 1);
-            if (t > timeWidthUs || t < 0) {
-                clearScreenEnabled = true;
+                float t = (float) (ev.timestamp - startTime); // z goes from 0 (oldest) to 1 (youngest)
+                gl.glRectf(t, ev.x, t + w, ev.x + 1);
+                if (t > timeWidthUs || t < 0) {
+                    clearScreenEnabled = true;
+                }
             }
         }
-
- 
 
         gl.glFlush();
 //        gl.glFinish();  // should not need to be called, according to http://www.opengl.org/discussion_boards/ubbthreads.php?ubb=showflat&Number=196733
@@ -174,12 +170,12 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         glut.glutBitmapString(font, "Channel");
         getChipCanvas().checkGLError(gl, glu, "after RollingCochleaGramDisplayMethod,clearScreen");
     }
-    
-    protected float getTimeWidthUs(){
+
+    protected float getTimeWidthUs() {
         return timeWidthUs;
     }
-    
-    protected float getStartTimeUs(){
+
+    protected float getStartTimeUs() {
         return startTime;
     }
 }

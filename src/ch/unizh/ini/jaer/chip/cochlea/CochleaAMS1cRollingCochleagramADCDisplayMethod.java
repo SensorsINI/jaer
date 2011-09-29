@@ -4,6 +4,7 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.*;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ChannelBuffer;
 import ch.unizh.ini.jaer.chip.dvs320.*;
 import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterface;
@@ -24,6 +25,17 @@ import net.sf.jaer.util.chart.XYChart;
 
 /**
  * Displays data from CochleaAMS1c using RollingCochleaGramDisplayMethod with additional rolling strip chart of ADC samples.
+ * There are really two distinct display methods. One is the "strip chart" display of a large number of samples vs. time, for example from
+ * the microphones or a particular BM section. The other is
+ * the display of an "image" of the data from scanning out the scanner data from the chip, showing all the BM sections at once.
+ * <p>
+ * Depending on the data in CochleaAMS1cADCSamples the data is handled differently.
+ * <p> In the strip chart case, the data is acquired from
+ * the ADCSamples object, resetting it in the process, and passed to the Series plotting object.  In the meantime the USB thread is filling the other ADCSamples buffer.
+ * <P>
+ * In the image case, the data in the ADCSamples object is not reset by the acquisition. Rather, whatever data is in the ADCSamples object is passed to Series after the Series has been reset.
+ * Thus the data shown represents the latest data available, which could be a mixture of different "frames".
+ * 
  * @author Tobi
  */
 public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochleaGramDisplayMethod {
@@ -43,6 +55,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
     private final int NCHAN = 4;
     private CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI[] gainGuis = new CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI[NCHAN];
     DisplayControl[] displayControl = new DisplayControl[NCHAN];
+    int xmin = Integer.MAX_VALUE, xmax = Integer.MIN_VALUE;
 
     public CochleaAMS1cRollingCochleagramADCDisplayMethod(CochleaAMS1c chip) {
         super(chip.getCanvas());
@@ -57,54 +70,78 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
     public void display(GLAutoDrawable drawable) {
         checkADCDisplay();
         super.display(drawable);
-        ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples data = chip.getAdcSamples();
-        boolean isScannerRunning = data.isSyncDetected();
-        data.swapBuffers();
-        int chan = 0;
-        for (ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ChannelBuffer cb : data.currentReadingDataBuffer.channelBuffers) {
-            if (isHidden(chan)) {
+
+
+        int sx = chip.getSizeX();
+        CochleaAMS1cADCSamples adcSamples = chip.getAdcSamples();
+        boolean scannerRunning = adcSamples.isHasScannerData();
+        // branch here depending on whether scanner is running or we are display strip chart
+        if (scannerRunning) {
+            DataBuffer data = adcSamples.getCurrentWritingDataBuffer(); // plot data being collected now, without consuming it
+            timeAxis.setMinimum(0);
+            timeAxis.setMaximum(adcSamples.getScanLength());
+            int chan = 0;
+            for (CochleaAMS1cADCSamples.ChannelBuffer cb : data.channelBuffers) {
+                if (isHidden(chan)) {
+                    activitySeries[chan].clear();
+                    chan++;
+                    continue;
+                } // TODO does nothing now because clear() doesn't work
+
+                int n = cb.size(); // must find size here since array contains junk outside the count
+                int g = getGain(chan);
+                int o = getOffset(chan);
                 activitySeries[chan].clear();
-                continue;
-            } // TODO does nothing now because clear() doesn't work
-            int n = cb.size(); // must find size here since array contains junk outside the count
-            int g = getGain(chan);
-            int o = getOffset(chan);
-            if (isScannerRunning) {
-                if (activitySeries[chan].getCapacity() != CochleaAMS1cADCSamples.SCAN_LENGTH) {
-                    activitySeries[chan].setCapacity(CochleaAMS1cADCSamples.SCAN_LENGTH);
-                }
-                activitySeries[chan].clear();
-            } else {
                 if (activitySeries[chan].getCapacity() != NUM_ACTIVITY_SAMPLES) {
                     activitySeries[chan].setCapacity(NUM_ACTIVITY_SAMPLES);
                 }
-            }
 
-            for (int i = 0; i < n; i++) {
-                ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ADCSample s = cb.samples[i];
-                if (!isScannerRunning) {
-                    activitySeries[chan].add(s.time, (s.data + o) * g);
-                } else {
+                for (int i = 0; i < n; i++) {
+                    ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ADCSample s = cb.samples[i];
                     activitySeries[chan].add(i, (s.data + o) * g);
                 }
+                chan++;
             }
-            chan++;
-        }
-        if (!isScannerRunning) {
-            timeAxis.setMinimum(getStartTimeUs());
-            timeAxis.setMaximum(getStartTimeUs() + getTimeWidthUs());
-        } else { // scanner sync
-            timeAxis.setMinimum(0);
-            timeAxis.setMaximum(chip.getScanner().getMaxScanX());
+        } else {// strip chart
+            adcSamples.swapBuffers();  // only add new data
+            DataBuffer data = adcSamples.getCurrentReadingDataBuffer(); // plot data being collected now, without consuming it
 
+            timeAxis.setMinimum(startTime);
+            timeAxis.setMaximum(startTime + timeWidthUs);
+            int chan = 0;
+            for (ChannelBuffer cb : data.channelBuffers) {
+                if (isHidden(chan)) {
+                    activitySeries[chan].clear();
+                    chan++;
+                    continue;
+                } // TODO does nothing now because clear() doesn't work
+
+                int n = cb.size(); // must find size here since array contains junk outside the count
+                int g = getGain(chan);
+                int o = getOffset(chan);
+
+                if (activitySeries[chan].getCapacity() != NUM_ACTIVITY_SAMPLES) {
+                    activitySeries[chan].setCapacity(NUM_ACTIVITY_SAMPLES);
+                }
+
+                for (int i = 0; i < n; i++) {
+                    ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ADCSample s = cb.samples[i];
+                    activitySeries[chan].add(s.time, (s.data + o) * g);
+                    updateLimits(s.time);
+                }
+                chan++;
+            }
         }
+        resetLimits();
+
         activityAxis.setMinimum(0);
         activityAxis.setMaximum(CochleaAMS1cADCSamples.MAX_ADC_VALUE);
         try {
-            activityPan.display();
+            activityChart.display();
         } catch (Exception e) {
             log.warning("while displaying activity chart caught " + e);
         }
+        drawable.getGL().glFlush();
     }
 
     private void checkADCDisplay() {
@@ -210,6 +247,20 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
 
     public boolean isHidden(int chan) {
         return displayControl[chan].isHidden();
+    }
+
+    private void updateLimits(int time) {
+        if (time < xmin) {
+            xmin = time;
+        } else if (time > xmax) {
+            xmax = time;
+        }
+
+    }
+
+    private void resetLimits() {
+        xmin = Integer.MAX_VALUE;
+        xmax = Integer.MIN_VALUE;
     }
 
     public class DisplayControl {

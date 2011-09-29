@@ -202,6 +202,7 @@ public class Series {
                 }
                 if (this.gl == null || clearEnabled) {
                     gl.glBufferData(GL.GL_ARRAY_BUFFER, dimension * capacity * elementSize, cache, GL.GL_STATIC_DRAW);   // create buffer and flush
+                    gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufferId);
                     this.gl = gl;
                 } else {
                     gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufferId);

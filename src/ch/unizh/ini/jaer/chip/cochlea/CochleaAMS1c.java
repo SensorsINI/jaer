@@ -64,7 +64,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
     final GLUT glut = new GLUT();
     /** Samples from ADC on CochleaAMS1c PCB */
-    private CochleaAMS1cADCSamples adcSamples = new CochleaAMS1cADCSamples();
+    private CochleaAMS1cADCSamples adcSamples;
     private ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen ams1cbiasgen; // used to access scanner e.g. from delegate methods
 
     /** Creates a new instance of CochleaAMSWithBiasgen */
@@ -181,6 +181,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             }
 
         }
+        adcSamples = new CochleaAMS1cADCSamples(this); // need biasgen / scanner first
 
     }
 
@@ -331,7 +332,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 aerKillBit = new PortBit("d7", "aerKillBit", "Set high to kill a neuron which is selected by address loaded via the Equalizer GUI; not used except to unkill all neurons with vCtrlKill", false);
         // portE
         // tobi changed config bits on rev1 board since e3/4 control maxim mic preamp attack/release and gain now
-        private class PowerDownBit extends PortBit implements Observer{
+
+        private class PowerDownBit extends PortBit implements Observer {
 
             public PowerDownBit(Masterbias masterBias, String portBit, String name, String tip, boolean def) {
                 super(portBit, name, tip, def);
@@ -340,17 +342,16 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
             @Override
             public void update(Observable o, Object arg) {
-                if(o instanceof Masterbias){
-                    Masterbias m=(Masterbias)o;
-                    if(arg!=null && arg==Masterbias.EVENT_POWERDOWN){
+                if (o instanceof Masterbias) {
+                    Masterbias m = (Masterbias) o;
+                    if (arg != null && arg == Masterbias.EVENT_POWERDOWN) {
                         set(m.isPowerDownEnabled());
                     }
                 }
             }
         }
         private PowerDownBit powerDown;
-        private PortBit 
-                nCochleaReset = new PortBit("e3", "nCochleaReset", "High to reset all neuron and Q latches; global latch reset (1=reset); aka vReset", true);
+        private PortBit nCochleaReset = new PortBit("e3", "nCochleaReset", "High to reset all neuron and Q latches; global latch reset (1=reset); aka vReset", true);
 //                nCpldReset = new PortBit("e7", "nCpldReset", "Low to reset CPLD"); // don't expose this, firmware unresets on init
         // CPLD config on CPLD shift register
         private CPLDBit yBit = new CPLDBit(0, "yBit", "Used to select whether bandpass (0) or lowpass (1) neurons are killed for local kill", false),
@@ -392,10 +393,9 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         BufferIPot bufferIPot = new BufferIPot();
         boolean dacPowered = getPrefs().getBoolean("CochleaAMS1c.Biasgen.DAC.powered", true);
         private final VPot preampAGCThresholdPot; // used in Microphone preamp control panel
-  
         // wraps around ADC, updates come back here to send CPLD config to hardware. Proxy used in GUI.
-        private ADC adcProxy = new ADC(CochleaAMS1c.this); // notifies us with updates 
-        private Scanner scanner = new Scanner(CochleaAMS1c.this);
+        private ADC adcProxy;
+        private Scanner scanner;
 
         /** Creates a new instance of Biasgen for Tmpdiff128 with a given hardware interface
          *@param chip the chip this biasgen belongs to
@@ -403,8 +403,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         public Biasgen(Chip chip) {
             super(chip);
             setName("CochleaAMS1c.Biasgen");
-            powerDown=new PowerDownBit(getMasterbias(), "e2", "powerDown", "High to power down bias generator", false);
-            scanner.addObserver(this);
+            powerDown = new PowerDownBit(getMasterbias(), "e2", "powerDown", "High to power down bias generator", false);
             equalizer.addObserver(this);
             bufferIPot.addObserver(this);
 
@@ -460,7 +459,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             ipots.addPot(new IPot(this, "Vbpf1", 31, IPot.Type.NORMAL, IPot.Sex.P, 0, 32, "Sets higher cutoff freq for BPF"));   // first bits loaded, at end of shift register
 
             getMasterbias().addObserver(powerDown);
-            
+
 //    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
             // top dac in schem/layout, first 16 channels of 32 total
             vpots.addPot(new VPot(CochleaAMS1c.this, "Vterm", dac, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "Sets bias current of terminator xtor in diffusor"));
@@ -505,6 +504,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             vpots.addPot(new VPot(CochleaAMS1c.this, "Vhm", dac, 31, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "sets bias of horizontal element of diffusor"));
 //            Pot.setModificationTrackingEnabled(false); // don't flag all biases modified on construction
 
+            // ADC
+            adcProxy = new ADC(CochleaAMS1c.this); // notifies us with updates 
             adcProxy.setMaxADCchannelValue(3);
             adcProxy.setMaxIdleTimeValue(0xffff / 15);
             adcProxy.setMaxTrackTimeValue(0xffff / 15);
@@ -513,9 +514,11 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             adcProxy.addObserver(this);
 
             // scanner proxy gets updated from scanner hardware bit changes
+            scanner = new Scanner(CochleaAMS1c.this);
             scanContinuouslyEnabled.addObserver(scanner);
             scanX.addObserver(scanner);
             scanSel.addObserver(scanner);
+            scanner.addObserver(this);
 
             for (PortBit b : portBits) {
                 b.addObserver(this);
@@ -659,7 +662,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
          * @throws HardwareInterfaceException 
          */
         void sendConfig(int cmd, int index, byte[] bytes) throws HardwareInterfaceException {
-            
+
             // debug
             System.out.print(String.format("sending config cmd 0x%X, index=0x%X, with %d bytes", cmd, index, bytes.length));
             if (bytes == null || bytes.length == 0) {
@@ -675,8 +678,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 }
                 System.out.println("");
             } // end debug
-            
-            
+
+
             if (bytes == null) {
                 bytes = emptyByteArray;
             }
@@ -1500,8 +1503,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 putPref(key, value); // will eventually call pref change listener which will call set again
             }
         }
-        
-        public class ADC extends ADCHardwareInterfaceProxy implements Observer{
+
+        public class ADC extends ADCHardwareInterfaceProxy implements Observer {
 
             public ADC(Chip chip) {
                 super(chip);
@@ -1517,23 +1520,21 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 super.setADCEnabled(yes);
                 runAdc.set(yes);
             }
-            
-            
 
             @Override
             public void update(Observable o, Object arg) {
                 throw new UnsupportedOperationException("Not supported yet.");
             }
-            
         }
 
+        /** Extends base scanner class to control the relevant bits and parameters of the hardware */
         public class Scanner extends ScannerHardwareInterfaceProxy implements PreferenceChangeListener, HasPreference, Observer {
 
             public final int nstages = 64;
             public final int minPeriod = 10; // to avoid FX2 getting swamped by interrupts for scanclk
             public final int maxPeriod = 255;
 
-            public Scanner(Chip chip) {
+            public Scanner(CochleaAMS1c chip) {
                 super(chip);
                 loadPreference();
                 getPrefs().addPreferenceChangeListener(this);
@@ -1569,11 +1570,13 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
             @Override
             public void setScanContinuouslyEnabled(boolean scanContinuouslyEnabled) {
+                super.setScanContinuouslyEnabled(scanContinuouslyEnabled);
                 Biasgen.this.scanContinuouslyEnabled.set(scanContinuouslyEnabled);
             }
 
             @Override
             public void setScanX(int scanX) {
+                super.setScanX(scanX);
                 Biasgen.this.scanX.set(scanX);
             }
 
@@ -1604,16 +1607,13 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
             @Override
             public void loadPreference() {
-//                setCurrentStage(getPrefs().getInt("CochleaAMS1c.Biasgen.Scanner.currentStage", 0));
-//                setContinuousScanningEnabled(getPrefs().getBoolean("CochleaAMS1c.Biasgen.Scanner.continuousScanningEnabled", false));
-//                setPeriod(getPrefs().getInt("CochleaAMS1c.Biasgen.Scanner.period", 50)); // 50 gives about 80kHz
+                setScanX(Biasgen.this.scanX.get());
+                setScanContinuouslyEnabled(Biasgen.this.scanContinuouslyEnabled.isSet());
+                setScanGanglionCellVMem(scanSel.isSet());
             }
 
             @Override
             public void storePreference() {
-//                putPref("CochleaAMS1c.Biasgen.Scanner.period", period);
-//                putPref("CochleaAMS1c.Biasgen.Scanner.continuousScanningEnabled", continuousScanningEnabled);
-//                putPref("CochleaAMS1c.Biasgen.Scanner.currentStage", currentStage);
             }
 
             @Override
@@ -2151,6 +2151,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 }
 //            System.out.println("a="+a[i]+" t="+e.timestamp+" x,y="+e.x+","+e.y);
             }
+            adcSamples.setHasScannerData(getScanner().isScanContinuouslyEnabled());
         }
 
         /** Overrides default extractor so that cochlea channels are returned, 
@@ -2197,6 +2198,9 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
     }
 
     public Scanner getScanner() {
+        if (ams1cbiasgen == null) {
+            return null;
+        }
         return ams1cbiasgen.getScanner();
     }
 }
