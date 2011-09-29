@@ -24,6 +24,7 @@ package ch.unizh.ini.jaer.projects.sensoryfusion.slaem;
 public class EdgeExtractor extends EventFilter2D implements Observer, FrameAnnotater{
     
     public EdgePixelArray edgePixels;
+    public Camera camera;
     public int eventNr;
     public int trimmedEvents;
 	
@@ -55,12 +56,12 @@ public class EdgeExtractor extends EventFilter2D implements Observer, FrameAnnot
      * Selection of the edge detection method
      */
 	public enum EdgePixelMethod {
-        LastSignificants, RecentNeighbors, Combined
+        LastSignificants, Voxels
     };
     private EdgePixelMethod edgePixelMethod = EdgePixelMethod.valueOf(getPrefs().get("ITDFilter.edgePixelMethod", "LastSignificants"));
 	{setPropertyTooltip("edgePixelMethod","Method to do the edge detection");}
     
-	public EdgeExtractor(AEChip chip){
+    public EdgeExtractor(AEChip chip){
         super(chip);
         chip.addObserver(this);
         initFilter();
@@ -69,6 +70,7 @@ public class EdgeExtractor extends EventFilter2D implements Observer, FrameAnnot
     @Override
     public void initFilter() {
         edgePixels = new EdgePixelArray(this);
+        camera = new Camera (chip);
         resetFilter();
     }
     
@@ -76,6 +78,7 @@ public class EdgeExtractor extends EventFilter2D implements Observer, FrameAnnot
     public void resetFilter() {
         eventNr = 1;
         edgePixels.resetArray();
+        edgePixels.setDeltaTsActivity(deltaTsActivity);
     }
     
     @Override
@@ -91,15 +94,21 @@ public class EdgeExtractor extends EventFilter2D implements Observer, FrameAnnot
                 TypedEvent oe = (TypedEvent) outItr.nextOutput();
                 oe.copyFrom(e);
             }
-        }
-        trimmedEvents = edgePixels.trimActivePixels(eventNr-activeEvents);
+        }    
         eventNr -= trimmedEvents;
-        
+        switch(edgePixelMethod){
+            case LastSignificants:
+                trimmedEvents = edgePixels.trimActivePixels(eventNr-activeEvents);
+                break;
+            case Voxels:
+                trimmedEvents = edgePixels.trimActivePixelsV(eventNr-activeEvents);
+                break;
+        }
         if(filteringEnabled){ 
             return out;
         }else{
             return in;
-        }
+        }    
     }
 
     @Override
