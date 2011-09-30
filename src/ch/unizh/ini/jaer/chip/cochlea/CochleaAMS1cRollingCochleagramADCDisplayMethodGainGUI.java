@@ -10,7 +10,9 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cRollingCochleagramADCDisplayMethod.DisplayControl;
 import java.awt.Color;
+import javax.swing.JOptionPane;
 import javax.swing.border.TitledBorder;
 
 /**
@@ -21,21 +23,27 @@ import javax.swing.border.TitledBorder;
 public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax.swing.JPanel {
 
     private CochleaAMS1cRollingCochleagramADCDisplayMethod gui;
-    Color[] colors={Color.red,Color.green,Color.blue, Color.yellow};
+    Color[] colors = {Color.red, Color.green, Color.blue, Color.yellow};
     ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cRollingCochleagramADCDisplayMethod.DisplayControl displayControl;
+    TitledBorder border;
 
     /** Creates new form CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI */
     public CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI(CochleaAMS1cRollingCochleagramADCDisplayMethod gui, CochleaAMS1cRollingCochleagramADCDisplayMethod.DisplayControl displayControl) {
         this.gui = gui;
-        this.displayControl=displayControl;
+        this.displayControl = displayControl;
         initComponents();
-        TitledBorder border=javax.swing.BorderFactory.createTitledBorder("Chan" + displayControl.getChan());
-        border.setTitleColor(colors[displayControl.getChan()]);
-        setBorder(border);
         gainSp.setValue(getGain());
         offsetSp.setValue(getOffset());
         hideBut.setSelected(isHidden());
-        nameTF.setText(displayControl.getName());
+        border=new TitledBorder("");
+        border.setTitleColor(CochleaAMS1cRollingCochleagramADCDisplayMethod.colors[displayControl.getChan()]);
+        setBorderTitle(displayControl);
+        setBorder(border);
+    }
+
+    private void setBorderTitle(DisplayControl displayControl) {
+        border.setTitle("Chan" + displayControl.getChan() + ": " + displayControl.getName());
+        repaint();
     }
 
     final void setOffset(int offset) {
@@ -61,8 +69,6 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
     public boolean isHidden() {
         return displayControl.isHidden();
     }
-    
-    
 
     /** This method is called from within the constructor to
      * initialize the form.
@@ -78,9 +84,13 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
         jLabel2 = new javax.swing.JLabel();
         offsetSp = new javax.swing.JSpinner();
         hideBut = new javax.swing.JCheckBox();
-        nameTF = new javax.swing.JTextField();
 
         setBorder(javax.swing.BorderFactory.createTitledBorder("Chan"));
+        addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                formMouseClicked(evt);
+            }
+        });
 
         gainSp.setToolTipText("ADC values are multipled by this factor after offset is added");
         gainSp.addChangeListener(new javax.swing.event.ChangeListener() {
@@ -108,13 +118,6 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
             }
         });
 
-        nameTF.setToolTipText("Enter a signal name here");
-        nameTF.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                nameTFActionPerformed(evt);
-            }
-        });
-
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
@@ -128,11 +131,8 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
                     .addComponent(gainSp)
                     .addComponent(offsetSp, javax.swing.GroupLayout.DEFAULT_SIZE, 56, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(hideBut)
-                        .addContainerGap(22, Short.MAX_VALUE))
-                    .addComponent(nameTF, javax.swing.GroupLayout.DEFAULT_SIZE, 69, Short.MAX_VALUE)))
+                .addComponent(hideBut)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -144,8 +144,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel2)
-                    .addComponent(offsetSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(nameTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(offsetSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
@@ -162,30 +161,32 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
     }//GEN-LAST:event_gainSpStateChanged
 
     private void offsetSpStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_offsetSpStateChanged
-     try {
+        try {
             int i = (Integer) offsetSp.getValue();
             setOffset(i);
             offsetSp.setForeground(Color.black);
         } catch (Exception e) {
             offsetSp.setValue(getOffset());
             offsetSp.setForeground(Color.red);
-        } 
+        }
     }//GEN-LAST:event_offsetSpStateChanged
 
     private void hideButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_hideButActionPerformed
         setHidden(hideBut.isSelected());        // TODO add your handling code here:
     }//GEN-LAST:event_hideButActionPerformed
 
-    private void nameTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_nameTFActionPerformed
-        displayControl.setName(nameTF.getText());
-    }//GEN-LAST:event_nameTFActionPerformed
-
+    private void formMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_formMouseClicked
+        String name = JOptionPane.showInputDialog("Name of trace?",displayControl.getName());
+        if(name==null) name="";
+        if(name.length()>12) name=name.substring(0,11);
+        displayControl.setName(name);
+        setBorderTitle(displayControl);
+    }//GEN-LAST:event_formMouseClicked
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JSpinner gainSp;
     private javax.swing.JCheckBox hideBut;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
-    private javax.swing.JTextField nameTF;
     private javax.swing.JSpinner offsetSp;
     // End of variables declaration//GEN-END:variables
 
