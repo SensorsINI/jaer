@@ -29,12 +29,13 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
         this.gui = gui;
         this.displayControl=displayControl;
         initComponents();
-        TitledBorder border=javax.swing.BorderFactory.createTitledBorder("Chan" + displayControl.getName());
+        TitledBorder border=javax.swing.BorderFactory.createTitledBorder("Chan" + displayControl.getChan());
         border.setTitleColor(colors[displayControl.getChan()]);
         setBorder(border);
         gainSp.setValue(getGain());
         offsetSp.setValue(getOffset());
         hideBut.setSelected(isHidden());
+        nameTF.setText(displayControl.getName());
     }
 
     final void setOffset(int offset) {
@@ -77,6 +78,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
         jLabel2 = new javax.swing.JLabel();
         offsetSp = new javax.swing.JSpinner();
         hideBut = new javax.swing.JCheckBox();
+        nameTF = new javax.swing.JTextField();
 
         setBorder(javax.swing.BorderFactory.createTitledBorder("Chan"));
 
@@ -106,6 +108,13 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
             }
         });
 
+        nameTF.setToolTipText("Enter a signal name here");
+        nameTF.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                nameTFActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
@@ -119,8 +128,11 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
                     .addComponent(gainSp)
                     .addComponent(offsetSp, javax.swing.GroupLayout.DEFAULT_SIZE, 56, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(hideBut)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(hideBut)
+                        .addContainerGap(22, Short.MAX_VALUE))
+                    .addComponent(nameTF, javax.swing.GroupLayout.DEFAULT_SIZE, 69, Short.MAX_VALUE)))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -132,7 +144,8 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel2)
-                    .addComponent(offsetSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(offsetSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(nameTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
@@ -163,11 +176,16 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI extends javax
         setHidden(hideBut.isSelected());        // TODO add your handling code here:
     }//GEN-LAST:event_hideButActionPerformed
 
+    private void nameTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_nameTFActionPerformed
+        displayControl.setName(nameTF.getText());
+    }//GEN-LAST:event_nameTFActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JSpinner gainSp;
     private javax.swing.JCheckBox hideBut;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
+    private javax.swing.JTextField nameTF;
     private javax.swing.JSpinner offsetSp;
     // End of variables declaration//GEN-END:variables
 

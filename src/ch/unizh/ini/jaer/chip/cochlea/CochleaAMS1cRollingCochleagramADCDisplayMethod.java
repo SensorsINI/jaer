@@ -107,7 +107,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
             DataBuffer data = adcSamples.getCurrentReadingDataBuffer(); // plot data being collected now, without consuming it
 
             timeAxis.setMinimum(startTime);
-            timeAxis.setMaximum(startTime + timeWidthUs);
+            timeAxis.setMaximum(startTime + timeWidthUs); // TODO this comes from AE data in rolling event strip chart, but if no events, not set properly
             int chan = 0;
             for (ChannelBuffer cb : data.channelBuffers) {
                 if (isHidden(chan)) {
@@ -328,6 +328,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
          * @return the name
          */
         public String getName() {
+            if(name==null) return "";
             return name;
         }
 
@@ -336,7 +337,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
          */
         public void setName(String name) {
             this.name = name;
-            prefs.put("CochleaAMS1cRollingCochleagramADCDisplayMethod.hidden" + chan, name);
+            prefs.put("CochleaAMS1cRollingCochleagramADCDisplayMethod.name" + chan, name);
         }
 
         /**
