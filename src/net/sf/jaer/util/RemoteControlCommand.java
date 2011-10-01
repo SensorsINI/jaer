@@ -6,7 +6,7 @@
 package net.sf.jaer.util;
 
 /**
- * A single command decrription.
+ * A single command description.
  * 
  * @author tobi
  */
@@ -33,10 +33,18 @@ public class RemoteControlCommand {
         this.description=description;
     }
     
+    /** Returns "Command "+cmdName
+     * 
+     * @return  "Command "+cmdName
+     */
     public String toString(){
         return "Command "+cmdName;
     }
 
+    /** Returns initial token of command
+     * 
+     * @return Initial token of command
+     */
     public String getCmdName() {
         return cmdName;
     }
@@ -45,6 +53,10 @@ public class RemoteControlCommand {
         this.cmdName = cmdName;
     }
 
+    /** Returns full command, which could have several tokens
+     * 
+     * @return Initial token of command
+     */   
     public String getCmd() {
         return cmd;
     }
@@ -53,6 +65,10 @@ public class RemoteControlCommand {
         this.cmd = cmd;
     }
 
+    /** Returns description of command.
+     * 
+     * @return description 
+     */
     public String getDescription() {
         return description;
     }
@@ -61,6 +77,10 @@ public class RemoteControlCommand {
         this.description = description;
     }
 
+    /** Returns pre-parsed array of tokens
+     * 
+     * @return prebuilt array of tokens 
+     */
     public String[] getTokens() {
         return tokens;
     }

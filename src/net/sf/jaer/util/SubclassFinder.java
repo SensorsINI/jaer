@@ -25,6 +25,8 @@ import java.util.logging.Logger;
  * @author tobi
  */
 public class SubclassFinder {
+    // TODO needs a way of caching in preferences the list of classes and the number or checksum of classes,
+    // to reduce startup time, since this lookup of subclasses takes 10s of seconds on some machines
     
     final static Logger log=Logger.getLogger("SubclassFinder");
     

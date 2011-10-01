@@ -134,10 +134,12 @@ public class RemoteControl /* implements RemoteControlled */{
 
     // TODO add removeCommandListener method
     
-    /** Objects that want to receive commands should add themselves here with a command string and command description (for showing help).
+    /** Objects that want to receive commands should add themselves here with a 
+     * command string and command description (for showing help).
      * 
      * @param remoteControlled the remote controlled object.
-     * @param cmd a string such as "setipr bitvalue". "setipr" is the command and the RemoteControlled is responsible for parsing the rest of the line.
+     * @param cmd a string such as "setipr bitvalue". "setipr" is the command 
+     * and the RemoteControlled is responsible for parsing the rest of the line.
      * @param description for showing help.
      */
     public void addCommandListener (RemoteControlled remoteControlled,String cmd,String description){

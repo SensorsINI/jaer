@@ -608,6 +608,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 chipClassNames = (ArrayList<String>)in.readObject();
                 in.close();
             } else{
+                log.warning("building list of all AEChip classses - this takes some time. To reduce startup time, use AEChip/Customize to specify desired classes");
                 makeDefaultChipClassNames();
             }
         } catch ( Exception e ){
@@ -618,10 +619,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void makeDefaultChipClassNames (){
         chipClassNames = SubclassFinder.findSubclassesOf(AEChip.class.getName());
-//        chipClassNames=new ArrayList<String>(AEChip.CHIP_CLASSSES.length);
-//        for(int i=0;i<AEChip.CHIP_CLASSSES.length;i++){
-//            chipClassNames.add(AEChip.CHIP_CLASSSES[i].getCanonicalName());
-//        }
     }
 
     private void putChipClassPrefs (){

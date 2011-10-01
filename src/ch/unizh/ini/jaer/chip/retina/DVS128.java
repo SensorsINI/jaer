@@ -9,6 +9,7 @@
  */
 package ch.unizh.ini.jaer.chip.retina;
 
+import ch.unizh.ini.jaer.chip.retina.DVS128.*;
 import java.beans.PropertyChangeSupport;
 import java.util.Observable;
 import net.sf.jaer.aemonitor.*;
@@ -28,6 +29,8 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInte
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
 import net.sf.jaer.util.HexString;
+import net.sf.jaer.util.RemoteControlCommand;
+import net.sf.jaer.util.RemoteControlled;
 
 /**
  * Describes DVS128 retina and its event extractor and bias generator.
@@ -42,13 +45,15 @@ import net.sf.jaer.util.HexString;
  * @author tobi
  */
 @Description("DVS128 Dynamic Vision Sensor")
-public class DVS128 extends AETemporalConstastRetina implements Serializable, Observer {
+public class DVS128 extends AETemporalConstastRetina implements Serializable, Observer, RemoteControlled {
 
     private JMenu dvs128Menu = null;
     private JMenuItem arrayResetMenuItem = null, syncEnabledMenuItem = null;
     private JMenuItem setArrayResetMenuItem = null;
     private PropertyChangeSupport support=new PropertyChangeSupport(this);
- 
+    public static final String CMD_TWEAK_THESHOLD="threshold", CMD_TWEAK_ONOFF_BALANCE="balance", CMD_TWEAK_BANDWIDTH="bandwidth", CMD_TWEAK_MAX_FIRING_RATE="maxfiringrate";
+    private Biasgen dvs128Biasgen;
+    
     /** Creates a new instance of DVS128. No biasgen is constructed for this constructor, because there is no hardware interface defined. */
     public DVS128() {
         setName("DVS128");
@@ -58,14 +63,18 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         setPixelHeightUm(40);
         setPixelWidthUm(40);
         setEventExtractor(new Extractor(this));
-        setBiasgen(new DVS128.Biasgen(this));
+        setBiasgen((dvs128Biasgen=new DVS128.Biasgen(this)));
+        getRemoteControl().addCommandListener(this, CMD_TWEAK_BANDWIDTH, CMD_TWEAK_BANDWIDTH+" val - tweaks bandwidth. val in range -1.0 to 1.0.");
+        getRemoteControl().addCommandListener(this, CMD_TWEAK_ONOFF_BALANCE, CMD_TWEAK_ONOFF_BALANCE+" val - tweaks on/off balance; increase for more ON events. val in range -1.0 to 1.0.");
+        getRemoteControl().addCommandListener(this, CMD_TWEAK_MAX_FIRING_RATE, CMD_TWEAK_MAX_FIRING_RATE+" val - tweaks max firing rate; increase to reduce refractory period. val in range -1.0 to 1.0.");
+        getRemoteControl().addCommandListener(this, CMD_TWEAK_THESHOLD, CMD_TWEAK_THESHOLD+" val - tweaks threshold; increase to raise threshold. val in range -1.0 to 1.0.");
 //        ChipCanvas c = getCanvas();
         addObserver(this);
 //        if(c!=null)c.setBorderSpacePixels(5);// make border smaller than default
     }
 
     /** Creates a new instance of DVS128
-     * @param hardwareInterface an existing hardware interface. This constructer is preferred. It makes a new Biasgen object to talk to the on-chip biasgen.
+     * @param hardwareInterface an existing hardware interface. This constructor is preferred. It makes a new Biasgen object to talk to the on-chip biasgen.
      */
     public DVS128(HardwareInterface hardwareInterface) {
         this();
@@ -172,7 +181,44 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         }
 
     }
+    
+    
 
+    @Override
+    public String processRemoteControlCommand(RemoteControlCommand command, String input) {
+        log.info("processing RemoteControlCommand "+command+" with input="+input);
+        if(command==null) return null;
+        String[] tokens=input.split(" ");
+        if(tokens.length<2){
+            return input+ ": unknown command - did you forget the argument?";
+        }
+        if(tokens[1]==null || tokens[1].length()==0){
+           return input+ ": argument too short - need a number";
+        }
+        float v=0;
+        try{
+            v=Float.parseFloat(tokens[1]);
+        }catch(NumberFormatException e){
+            return input+ ": bad argument? Caught "+ e.toString();
+        }
+        String c=command.getCmdName();
+        if(c.equals(CMD_TWEAK_BANDWIDTH)){
+            dvs128Biasgen.setBandwidthTweak(v);
+        }else if(c.equals(CMD_TWEAK_ONOFF_BALANCE)){
+            dvs128Biasgen.setOnOffBalanceTweak(v);
+        }else if(c.equals(CMD_TWEAK_MAX_FIRING_RATE)){
+            dvs128Biasgen.setMaxFiringRateTweak(v);
+        }else if(c.equals(CMD_TWEAK_THESHOLD)){
+            dvs128Biasgen.setThresholdTweak(v);
+        }else {
+            return input+ ": unknown command";
+        }
+        return "successfully processed command "+input;
+    }
+    
+    
+
+    
     /** the event extractor for DVS128. DVS128 has two polarities 0 and 1. Here the polarity is flipped by the extractor so that the raw polarity 0 becomes 1
     in the extracted event. The ON events have raw polarity 0.
     1 is an ON event after event extraction, which flips the type. Raw polarity 1 is OFF event, which becomes 0 after extraction.
@@ -477,6 +523,10 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 
         private float bandwidth=1, maxFiringRate=1, threshold=1, onOffBalance=1;
 
+        /** Tweaks bandwidth around nominal value.
+         * 
+         * @param val -1 to 1 range
+         */
         public void setBandwidthTweak(float val) {
             if(val>1)val=1; else if(val<-1) val=-1;
             float old=bandwidth;
@@ -487,6 +537,11 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             getSupport().firePropertyChange(DVSTweaks.BANDWIDTH,old,val);
         }
 
+        /**
+         * Tweaks max firing rate (refractory period), larger is shorter refractory period.
+         * 
+         * @param val  -1 to 1 range
+         */
         public void setMaxFiringRateTweak(float val) {
              if(val>1)val=1; else if(val<-1) val=-1;
             float old=maxFiringRate;
@@ -496,7 +551,10 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             getSupport().firePropertyChange(DVSTweaks.MAX_FIRING_RATE,old,val);
         }
 
-        public void setThresholdTweak(float val) {
+        /**
+         *  Tweaks threshold, larger is higher threshold.
+         * @param val  -1 to 1 range
+         */        public void setThresholdTweak(float val) {
              if(val>1)val=1; else if(val<-1) val=-1;
            float old=threshold;
              final float MAX = 100;
@@ -507,6 +565,11 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 
        }
 
+         /**
+          * Tweaks balance of on/off events. Increase for more ON events.
+          * 
+          * @param val -1 to 1 range. 
+          */
         public void setOnOffBalanceTweak(float val) {
              if(val>1)val=1; else if(val<-1) val=-1;
             float old=onOffBalance;
