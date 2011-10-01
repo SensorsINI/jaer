@@ -282,6 +282,9 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
 //        System.out.println("set display method="+m);
 //        Thread.currentThread().dumpStack();
 
+        if(displayMethod!=null && m!=null && m!=displayMethod){
+            displayMethod.onDeregistration();
+        }
         this.displayMethod = m;
         if (m != null) {
             if (m.getMenuItem() == null) {
@@ -292,6 +295,7 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
 //            log.info("setting display method to " + m.getDescription());
                 m.getMenuItem().setSelected(true);
             }
+            m.onRegistration();
         }
         repaint();
     }

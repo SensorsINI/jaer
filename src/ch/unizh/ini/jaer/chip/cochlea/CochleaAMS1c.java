@@ -2051,7 +2051,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
      * <p>
      * The event class returned by the extractor is CochleaAMSEvent.
      * <p>
-     * The address are mapped as follows
+     * The 10 bits of AER address are mapped as follows
      * <pre>
      * TX0 - AE0 
      * TX1 - AE1
@@ -2125,7 +2125,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             for (int i = 0; i < n; i += skipBy) {
                 int addr = a[i];
                 int ts = timestamps[i];
-                if ((addr & CochleaAMS1cHardwareInterface.ADDRESS_TYPE_MASK) == CochleaAMS1cHardwareInterface.ADDRESS_TYPE_EVENT) {
+                if (CochleaAMS1cHardwareInterface.isAERAddress(addr) ) {
                     CochleaAMSEvent e = (CochleaAMSEvent) outItr.nextOutput();
                     e.address = addr;
                     e.timestamp = (ts);
@@ -2138,7 +2138,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                         i++;
                     }
 //                    System.out.println("timestamp=" + e.timestamp + " address=" + addr);
-                } else { // adc samples
+                } else { // adc sample
 //                    if (CochleaAMS1cHardwareInterface.isScannerSyncBit(addr)) {
 //                        getAdcSamples().swapBuffers();  // the hardware interface here swaps the reading and writing buffers so that new data goes into the other buffer and the old data will be displayed by the rendering thread
 //                    }
@@ -2177,7 +2177,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         }
 
         /** Overrides default extractor to spread all outputs from a tap (left/right, ganglion cell, LPF/HPF) into a
-         *single y address that can be displayed in the 2d histogram.
+         *single unique y address that can be displayed in the 2d histogram.
          * The y returned goes like this from 0-15: left LPF(4) right LPF(4) left BPF(4) right BPF(4). Eech group of 4 ganglion cells goes
          * from Vth1 to Vth4.
          *@param addr the raw address

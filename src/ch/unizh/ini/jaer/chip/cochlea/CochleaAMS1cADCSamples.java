@@ -99,6 +99,13 @@ final public class CochleaAMS1cADCSamples implements Observer {
     public class ADCSample {
 
         int data, time;
+
+        @Override
+        public String toString() {
+            return "ADCSample{" + "data=" + data + ", time=" + time + '}';
+        }
+        
+        
     }
 
     /** A buffer for a single channel of the ADC which holds an array of samples in the ADCSample array. */
@@ -107,6 +114,7 @@ final public class CochleaAMS1cADCSamples implements Observer {
         final int channel;
         public ADCSample[] samples = new ADCSample[MAX_NUM_SAMPLES];
         private int writeCounter = 0;
+//        private int max=Integer.MIN_VALUE, min=Integer.MAX_VALUE;
 
         public ChannelBuffer(final int channel) {
             this.channel = channel;

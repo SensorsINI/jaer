@@ -17,6 +17,7 @@ package net.sf.jaer.event;
  */
 public class TypedEvent extends BasicEvent {
     
+    /** The type field of the event. Generally a small number representing the cell type. */
     public byte type=0;
     
     /** Creates a new instance of TypedEvent */

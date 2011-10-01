@@ -19,6 +19,7 @@ import javax.media.opengl.GLJPanel;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.util.chart.*;
 import net.sf.jaer.util.chart.XYChart;
@@ -58,9 +59,13 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
     DisplayControl[] displayControl = new DisplayControl[NCHAN];
     int xmin = Integer.MAX_VALUE, xmax = Integer.MIN_VALUE;
 
-    public CochleaAMS1cRollingCochleagramADCDisplayMethod(CochleaAMS1c chip) {
+    public CochleaAMS1cRollingCochleagramADCDisplayMethod(Chip2D chip) {
         super(chip.getCanvas());
-        this.chip = chip;
+        if(chip instanceof CochleaAMS1c){
+            this.chip = (CochleaAMS1c)chip;
+        }else{
+            throw new RuntimeException("tried to construct this display method passing in an AEChip that is not CochleaAMS1c");
+        }
         for (int i = 0; i < NCHAN; i++) {
             displayControl[i] = new DisplayControl(i);
             gainGuis[i] = new CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI(this, displayControl[i]);
@@ -69,7 +74,6 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
 
     @Override
     public void display(GLAutoDrawable drawable) {
-        checkADCDisplay();
         super.display(drawable);
 
 
@@ -99,7 +103,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
 
                 for (int i = 0; i < n; i++) {
                     ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ADCSample s = cb.samples[i];
-                    activitySeries[chan].add(i, (s.data + o) * g);
+                    activitySeries[chan].add(i, clip((s.data + o) * g));
                 }
                 chan++;
             }
@@ -127,7 +131,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
 
                 for (int i = 0; i < n; i++) {
                     ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ADCSample s = cb.samples[i];
-                    activitySeries[chan].add(s.time, (s.data + o) * g);
+                    activitySeries[chan].add(s.time,  clip((s.data + o) * g));
                     updateLimits(s.time);
                 }
                 chan++;
@@ -145,14 +149,20 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
         drawable.getGL().glFlush();
     }
 
-    private void checkADCDisplay() {
-        if (registeredChart) {
-            return;
+   
+    @Override
+    protected void onDeregistration(){
+        if(activityPan!=null){
+            activityPan.setVisible(false);
         }
-        registerChart();
     }
 
-    public void registerChart() {
+    @Override
+    protected void onRegistration() {
+        if(activityPan!=null){
+            activityPan.setVisible(true);
+            return;
+        }
         try {
             AEChip chip = (AEChip) getChipCanvas().getChip();
             AEViewer viewer = chip.getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
@@ -203,28 +213,28 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
         }
     }
 
-    void unregisterChart() {
-        try {
-            AEChip chip = (AEChip) getChipCanvas().getChip();
-            AEViewer viewer = chip.getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
-            JPanel imagePanel = viewer.getImagePanel();
-            imagePanel.remove(activityChart);
-            registeredChart = false;
-        } catch (Exception e) {
-            log.warning("could not unregister control panel: " + e);
-        }
-    }
+//    void unregisterChart() {
+//        try {
+//            AEChip chip = (AEChip) getChipCanvas().getChip();
+//            AEViewer viewer = chip.getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
+//            JPanel imagePanel = viewer.getImagePanel();
+//            imagePanel.remove(activityChart);
+//            registeredChart = false;
+//        } catch (Exception e) {
+//            log.warning("could not unregister control panel: " + e);
+//        }
+//    }
 
-    private void drawRectangle(GL gl, float x, float y, float w, float h) {
-        gl.glLineWidth(2f);
-        gl.glColor3f(1, 1, 1);
-        gl.glBegin(GL.GL_LINE_LOOP);
-        gl.glVertex2f(x, y);
-        gl.glVertex2f(x + w, y);
-        gl.glVertex2f(x + w, y + h);
-        gl.glVertex2f(x, y + h);
-        gl.glEnd();
-    }
+//    private void drawRectangle(GL gl, float x, float y, float w, float h) {
+//        gl.glLineWidth(2f);
+//        gl.glColor3f(1, 1, 1);
+//        gl.glBegin(GL.GL_LINE_LOOP);
+//        gl.glVertex2f(x, y);
+//        gl.glVertex2f(x + w, y);
+//        gl.glVertex2f(x + w, y + h);
+//        gl.glVertex2f(x, y + h);
+//        gl.glEnd();
+//    }
 
     public int getGain(int chan) {
         return displayControl[chan].getGain();
@@ -262,6 +272,10 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
     private void resetLimits() {
         xmin = Integer.MAX_VALUE;
         xmax = Integer.MIN_VALUE;
+    }
+
+    private float clip(int i) {
+        if(i<0) return 0; else if(i>CochleaAMS1cADCSamples.MAX_ADC_VALUE) return CochleaAMS1cADCSamples.MAX_ADC_VALUE; else return i;
     }
 
     public class DisplayControl {
