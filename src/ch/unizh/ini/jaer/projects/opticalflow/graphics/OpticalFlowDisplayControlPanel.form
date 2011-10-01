@@ -36,6 +36,7 @@
                           <Component id="showHideToggleButton" min="-2" max="-2" attributes="0"/>
                           <Component id="displayPanel" min="-2" max="-2" attributes="0"/>
                       </Group>
+                      <EmptySpace min="-2" pref="20" max="-2" attributes="0"/>
                   </Group>
                   <Component id="photoPanel" alignment="0" min="-2" max="-2" attributes="1"/>
               </Group>
@@ -427,7 +428,7 @@
         <DimensionLayout dim="0">
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" attributes="0">
-                  <EmptySpace max="-2" attributes="0"/>
+                  <EmptySpace max="32767" attributes="0"/>
                   <Group type="103" groupAlignment="0" attributes="0">
                       <Component id="enableGlobalMotionCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
                       <Component id="enableGlobalMotionCheckBox2" alignment="0" min="-2" max="-2" attributes="0"/>
@@ -435,7 +436,6 @@
                       <Component id="enabledLocalMotionColorsCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
                       <Component id="enableLocalMotionCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
                   </Group>
-                  <EmptySpace pref="20" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -459,7 +459,7 @@
       <SubComponents>
         <Component class="javax.swing.JCheckBox" name="enableGlobalMotionCheckBox">
           <Properties>
-            <Property name="text" type="java.lang.String" value="global motion average"/>
+            <Property name="text" type="java.lang.String" value="global motion average (computer)"/>
             <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
               <Border info="org.netbeans.modules.form.compat2.border.EmptyBorderInfo">
                 <EmptyBorder bottom="0" left="0" right="0" top="0"/>
@@ -523,7 +523,8 @@
         </Component>
         <Component class="javax.swing.JCheckBox" name="enableGlobalMotionCheckBox2">
           <Properties>
-            <Property name="text" type="java.lang.String" value="global motion average (2)"/>
+            <Property name="text" type="java.lang.String" value="global motion average (firmware)"/>
+            <Property name="actionCommand" type="java.lang.String" value="global motion average (firmware)"/>
             <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
               <Border info="org.netbeans.modules.form.compat2.border.EmptyBorderInfo">
                 <EmptyBorder bottom="0" left="0" right="0" top="0"/>
@@ -576,7 +577,7 @@
           <Properties>
             <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
               <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
-                <TitledBorder title="Select Channel"/>
+                <TitledBorder title="Select Channel (Device)"/>
               </Border>
             </Property>
           </Properties>
@@ -654,7 +655,7 @@
           <Properties>
             <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
               <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
-                <TitledBorder title="Motion Algorithm"/>
+                <TitledBorder title="Motion Algorithm (Computer)"/>
               </Border>
             </Property>
           </Properties>
@@ -904,7 +905,7 @@
               <Layout>
                 <DimensionLayout dim="0">
                   <Group type="103" groupAlignment="0" attributes="0">
-                      <EmptySpace min="0" pref="448" max="32767" attributes="0"/>
+                      <EmptySpace min="0" pref="486" max="32767" attributes="0"/>
                   </Group>
                 </DimensionLayout>
                 <DimensionLayout dim="1">

@@ -393,7 +393,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
 
         displayPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Display Control"));
 
-        enableGlobalMotionCheckBox.setText("global motion average");
+        enableGlobalMotionCheckBox.setText("global motion average (computer)");
         enableGlobalMotionCheckBox.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         enableGlobalMotionCheckBox.setMargin(new java.awt.Insets(0, 0, 0, 0));
         enableGlobalMotionCheckBox.addActionListener(new java.awt.event.ActionListener() {
@@ -429,7 +429,8 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
             }
         });
 
-        enableGlobalMotionCheckBox2.setText("global motion average (2)");
+        enableGlobalMotionCheckBox2.setText("global motion average (firmware)");
+        enableGlobalMotionCheckBox2.setActionCommand("global motion average (firmware)");
         enableGlobalMotionCheckBox2.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         enableGlobalMotionCheckBox2.setMargin(new java.awt.Insets(0, 0, 0, 0));
         enableGlobalMotionCheckBox2.addActionListener(new java.awt.event.ActionListener() {
@@ -443,14 +444,13 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         displayPanelLayout.setHorizontalGroup(
             displayPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(displayPanelLayout.createSequentialGroup()
-                .addContainerGap()
+                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .add(displayPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                     .add(enableGlobalMotionCheckBox)
                     .add(enableGlobalMotionCheckBox2)
                     .add(enablePhotoreceptorCheckBox)
                     .add(enabledLocalMotionColorsCheckBox)
-                    .add(enableLocalMotionCheckBox))
-                .addContainerGap(20, Short.MAX_VALUE))
+                    .add(enableLocalMotionCheckBox)))
         );
         displayPanelLayout.setVerticalGroup(
             displayPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
@@ -469,7 +469,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
 
         jPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder("MDC2D Control"));
 
-        rawChannelControlPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Select Channel"));
+        rawChannelControlPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Select Channel (Device)"));
 
         channelRecep.setSelected(true);
         channelRecep.setText("recep");
@@ -530,7 +530,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
                     .add(channelLmc2)))
         );
 
-        jPanel6.setBorder(javax.swing.BorderFactory.createTitledBorder("Motion Algorithm"));
+        jPanel6.setBorder(javax.swing.BorderFactory.createTitledBorder("Motion Algorithm (Computer)"));
 
         jComboBox1.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
         jComboBox1.addActionListener(new java.awt.event.ActionListener() {
@@ -674,7 +674,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         placeHolder.setLayout(placeHolderLayout);
         placeHolderLayout.setHorizontalGroup(
             placeHolderLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(0, 448, Short.MAX_VALUE)
+            .add(0, 486, Short.MAX_VALUE)
         );
         placeHolderLayout.setVerticalGroup(
             placeHolderLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
@@ -722,7 +722,8 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
                         .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
                         .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                             .add(showHideToggleButton)
-                            .add(displayPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
+                            .add(displayPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                        .add(20, 20, 20))
                     .add(photoPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
                 .add(jPanel3, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
