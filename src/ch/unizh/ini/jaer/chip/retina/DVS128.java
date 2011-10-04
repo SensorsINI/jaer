@@ -53,6 +53,8 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
     private PropertyChangeSupport support=new PropertyChangeSupport(this);
     public static final String CMD_TWEAK_THESHOLD="threshold", CMD_TWEAK_ONOFF_BALANCE="balance", CMD_TWEAK_BANDWIDTH="bandwidth", CMD_TWEAK_MAX_FIRING_RATE="maxfiringrate";
     private Biasgen dvs128Biasgen;
+    JMenuItem helpMenuItem=null;
+     public static final String HELP_URL_RETINA = "http://siliconretina.ini.uzh.ch";
     
     /** Creates a new instance of DVS128. No biasgen is constructed for this constructor, because there is no hardware interface defined. */
     public DVS128() {
@@ -73,6 +75,8 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 //        if(c!=null)c.setBorderSpacePixels(5);// make border smaller than default
     }
 
+    
+    
     /** Creates a new instance of DVS128
      * @param hardwareInterface an existing hardware interface. This constructor is preferred. It makes a new Biasgen object to talk to the on-chip biasgen.
      */
@@ -180,6 +184,20 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 
         }
 
+    }
+
+    @Override
+    public void onDeregistration() {
+        super.onRegistration();
+        if(helpMenuItem==null) return;
+        if(getAeViewer()!=null) getAeViewer().deregisterHelpItem(helpMenuItem);
+    }
+
+    @Override
+    public void onRegistration() {
+        super.onRegistration();
+        if(getAeViewer()!=null) helpMenuItem=getAeViewer().registerHelpItem(HELP_URL_RETINA, "DVS128 wiki", "Opens user guide wiki for DVS128 silicon retina");
+        
     }
     
     

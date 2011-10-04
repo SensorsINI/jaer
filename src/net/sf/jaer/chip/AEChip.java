@@ -288,10 +288,19 @@ public class AEChip extends Chip2D {
     public void setRawAddressNumBits(int rawAddressNumBits) {
         this.rawAddressNumBits = rawAddressNumBits;
     }
+    
+    /** This method (empty by default) called on registration of AEChip in AEViewer.
+     * Can be used for instance to register new help menu items or chip controls.
+     * 
+     */
+    public void onRegistration(){
+        log.info("registering "+this);
+    }
 
-    /** This method (empty by default) called on de-registration of AEChip in AEViewer
+    /** This method (empty by default) called on de-registration of AEChip in AEViewer.
      * 
      */
     public void onDeregistration() {
+        log.info("unregistering "+this);
     }
 }

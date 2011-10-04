@@ -69,8 +69,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** PropertyChangeEvent */
     public static final String EVENT_PLAYMODE = "playmode", EVENT_FILEOPEN = "fileopen", EVENT_STOPME = "stopme", EVENT_CHIP = "chip", EVENT_PAUSED = "paused", EVENT_TIMESTAMPS_RESET = "timestampsReset";
     public static String HELP_URL_USER_GUIDE = "http://jaer.wiki.sourceforge.net";
-    public static String HELP_URL_RETINA = "http://siliconretina.ini.uzh.ch";
-    public static String HELP_URL_COCHLEA = "http://aer-ear.ini.uzh.ch";
     public static String HELP_URL_JAVADOC_WEB = "http://jaer.sourceforge.net/javadoc";
     public static String HELP_URL_JAVADOC;
 
@@ -498,9 +496,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
             registerHelpItem(HELP_URL_USER_GUIDE, "jAER wiki and user guide", "Opens the jAER wiki");
             registerHelpItem(HELP_URL_JAVADOC_WEB,"jAER javadoc","jAER online javadoc (probably out of date)");
-            registerHelpItem(HELP_URL_RETINA,"DVS128 silicon retina wiki","User guide for DVS128 silicon retina");
-            registerHelpItem(HELP_URL_COCHLEA,"AER-EAR silicon cochlea wiki","User guide for the AER-EAR silicon cochlea");
-
+ 
             registerHelpItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
             registerHelpItem(pathToURL(HELP_USER_GUIDE_AER_CABLING),"AER protocol and cabling guide","Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
             registerHelpItem(pathToURL("/deviceFirmwarePCBLayout/SiLabsC8051F320/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
@@ -860,6 +856,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 log.warning("null chip, not continuing");
                 return;
             }
+            chip.onRegistration();
             aeChipClass = deviceClass;
             setPreferredAEChipClass(aeChipClass);
             // chip constructed above, should have renderer already constructed as well
