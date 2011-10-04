@@ -136,7 +136,7 @@ public class FlickerSuppessor extends EventFilter2D implements FrameAnnotater {
     }
 
     /**
-     * @param _nb_yblocks the num of blocks (y-dir) to set, max retina width
+     * @param Nb_yblocks the num of blocks (y-dir) to set, max retina width
      */
     public void setNYBlocks(int Nb_yblocks) {
         this.Nb_yblocks = Nb_yblocks;
@@ -166,7 +166,7 @@ public class FlickerSuppessor extends EventFilter2D implements FrameAnnotater {
     }
 
     /**
-     * @param mb_threshold to set
+     * @param MB_threshold to set
      */
     public void setBlockEventsThresh(int MB_threshold) {
         int old = this.MB_threshold; // save the old value

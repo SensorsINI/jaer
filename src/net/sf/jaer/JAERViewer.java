@@ -23,7 +23,11 @@ import java.util.logging.Logger;
 import java.util.prefs.*;
 import javax.swing.*;
 /**
- * Used to show multiple chips simultaneously. A single viewer is launched initially, with a default chip. New ones can be constructed from the File menu.
+ * Used to show multiple chips simultaneously in separate instances of {@link net.sf.jaer.graphics.AEViewer}, each running
+ * in its own thread, and each with its own hardware interface thread or {@link net.sf.jaer.eventio.AEInputStream}. 
+ * A single viewer is launched 
+ * with a default {@link net.sf.jaer.chip.AEChip}. 
+ * New viewers can be constructed from the File menu.
  * @author tobi
  */
 public class JAERViewer{

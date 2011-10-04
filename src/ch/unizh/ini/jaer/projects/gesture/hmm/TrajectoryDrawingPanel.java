@@ -185,7 +185,7 @@ abstract public class TrajectoryDrawingPanel extends JFrame implements MouseMoti
 
     /**
      * returns pen color
-     * @return
+     * @return pen color
      */
     public Color getColor(){
         return penColor;

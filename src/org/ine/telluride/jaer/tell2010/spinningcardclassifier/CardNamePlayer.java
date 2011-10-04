@@ -47,7 +47,7 @@ public class CardNamePlayer implements SoundPlayerInterface{
 
     /** Creates new CardNamePlayer labeled number i, using sampled sound stored as preference for this number.
      *
-     * @param i an index, used to look up the preferred sound file.
+     * @param cardNumber an index, used to look up the preferred sound file.
      * @throws IOException
      * @throws LineUnavailableException
      * @throws UnsupportedAudioFileException

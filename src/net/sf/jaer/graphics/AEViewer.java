@@ -79,7 +79,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * 
      * @param path relative to root of installation, e.g. "/doc/USBAERmini2userguide.pdf"
      * @return the URL string pointing to the local file
-     * @see #registerHelpItem(java.net.URL, java.lang.String, java.lang.String) 
+     * @see #registerHelpItem(java.lang.String, java.lang.String, java.lang.String) 
      * @throws MalformedURLException if there is something wrong with the URL
      */
     public String pathToURL(String path) throws MalformedURLException{
@@ -124,7 +124,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Unregisters an item from the Help menu.
      * 
      * @param m the menu item originally returns from registration.
-     * @see #registerHelpItem(java.net.URL, java.lang.String, java.lang.String) 
+     * @see #registerHelpItem(java.lang.String, java.lang.String, java.lang.String) 
      */
     final public void deregisterHelpItem(JMenuItem m){
         if(m==null) return;

@@ -235,7 +235,6 @@ public class CLCamera implements HardwareInterface {
      * 
      * @param imgData
      * @param waitTimeout in ms
-     * @return true if successful
      * @throws HardwareInterfaceException if there is an error
      */
     synchronized public void getCameraFrame(int[] imgData, int waitTimeout) throws HardwareInterfaceException {

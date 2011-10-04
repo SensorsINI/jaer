@@ -83,8 +83,8 @@ public class MatrixOps
 	/**
 	 * copy vector a to b. Dimensions of a and b must match.
 	 * 
-	 * @param A
-	 * @param R
+	 * @param a from array
+	 * @param b to array 
 	 */
 	public static void copy( double[] a, double[] b )
 	{
@@ -247,7 +247,7 @@ public class MatrixOps
 	 * 
 	 * @param A
 	 * @param B
-	 * @param C
+	 * @param c product
 	 */
 	public static void mult( double[][] A, double[] b, double[] c )
 	{
@@ -272,9 +272,9 @@ public class MatrixOps
 	 * Dimensions of a, B, and c must match. That is, cols(aT) == rows(B),
 	 * cols(cT) == cols(B)
 	 * 
-	 * @param a
-	 * @param b
-	 * @param C
+	 * @param a vector
+	 * @param B matrix
+	 * @param C vector product
 	 */
 	public static void mult( double[] a, double[][] B, double[] c )
 	{

@@ -193,7 +193,7 @@ public class FlickerSuppressorStatistical extends EventFilter2D implements Frame
     }
 
     /**
-     * @param PacketEnergyThresh to set
+     * @param packetEnergyThresh to set
      */
     public void setPacketEnergyThresh(int packetEnergyThresh) {
         float old = this.packetEnergyThresh; // save the old value

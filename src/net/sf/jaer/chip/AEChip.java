@@ -25,7 +25,9 @@ import net.sf.jaer.Description;
  * Describes a generic address-event chip, and includes fields for associated classes like its renderer,
  * its rendering paint surface, file input and output event streams,
  * and the event filters that can operate on its output. A subclass can add it's own default EventFilters so that users
-need not customize the FilterChain.
+need not customize the FilterChain.\
+ * <p>
+ * The {@link #onRegistration()} and {@link #onDeregistration() } allows arbitrary actions after the chip is constructed and registered in the AEViewer.
  *
  * @author tobi
  */

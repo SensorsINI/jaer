@@ -278,7 +278,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
      * have been reused for other purposes.
      *
      * @return the raw packet
-     * @see net.sf.jaer.event.EventPacketInterface.
+     * @see net.sf.jaer.event.EventPacketInterface<T>.
      */
     public AEPacketRaw getRawPacket() {
         return rawPacket;

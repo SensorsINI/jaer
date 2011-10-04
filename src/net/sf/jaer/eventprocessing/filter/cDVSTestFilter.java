@@ -18,9 +18,7 @@ import java.util.*;
 import net.sf.jaer.Description;
 
 /**
- * An AE background that filters slow background activity by only passing inPacket that are
- * supported by another event in the past {@link #setDt dt} in the immediate spatial neighborhood, defined
- * by a subsampling bit shift.
+ * A filter just for the cDVSTest chip array
  * @author tobi
  */
 @Description("Counts relation of Y only events to correct events for cDVSTest chips")

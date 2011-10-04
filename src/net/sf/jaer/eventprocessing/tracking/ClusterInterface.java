@@ -30,7 +30,7 @@ public interface ClusterInterface {
 
     /** Returns path of cluster.
      *
-     * @return
+     * @return path as list of points
      */
     public java.util.List<ClusterPathPoint> getPath();
 

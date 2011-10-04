@@ -343,7 +343,7 @@ public class PSEyeCLModelRetina extends AEChip {
     }
 
     /**
-     * @param eventThreshold the eventThreshold to set
+     * @param linearInterpolateTimeStamp 
      */
     public void setLinearInterpolateTimeStamp(boolean linearInterpolateTimeStamp) {
         this.linearInterpolateTimeStamp = linearInterpolateTimeStamp;

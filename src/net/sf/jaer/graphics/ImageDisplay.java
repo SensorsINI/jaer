@@ -50,7 +50,6 @@ disp.setSize(size,size); // set dimensions of image
 
 disp.addKeyListener(new KeyAdapter() { // add some key listeners to the ImageDisplay
 
-@Override
 public void keyReleased(KeyEvent e) {
 System.out.println(e.toString());
 int k = e.getKeyCode();
@@ -825,7 +824,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
      * 
      * @param x horizontal coordinate in image units.
      * @param y coordinate in image units.
-     * @param s the string to draw.
+     * @param string the string to draw.
      */
     public void drawCenteredString(float x, float y, String string) {
         if (string == null || textRenderer==null) {

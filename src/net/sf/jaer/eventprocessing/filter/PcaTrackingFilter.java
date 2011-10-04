@@ -155,8 +155,7 @@ public class PcaTrackingFilter extends EventFilter2D implements FrameAnnotater {
      <p>
      Fires a PropertyChangeEvent "scale_stddev"
 
-     * @see #getDt
-     * @param dt delay in us
+     * @param scale_stddev delay in us
      */
     public void setScale_stddev(final int scale_stddev) {
         getPrefs().putInt("PcaTrackingFilter.scale_stddev",scale_stddev);
