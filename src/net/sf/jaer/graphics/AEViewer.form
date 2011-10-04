@@ -948,62 +948,6 @@
             <Property name="text" type="java.lang.String" value="Help"/>
           </Properties>
           <SubComponents>
-            <MenuItem class="javax.swing.JMenuItem" name="contentMenuItem">
-              <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="F1"/>
-                </Property>
-                <Property name="mnemonic" type="int" value="99"/>
-                <Property name="text" type="java.lang.String" value="jAER project web (jaer.wiki.sourceforge.net)"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="contentMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="helpRetinaMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Silicon retina web"/>
-                <Property name="toolTipText" type="java.lang.String" value="Goes to web site for silicon retina"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="helpRetinaMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="helpUserGuideMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="USB2 Mini user guide (PDF)"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="helpUserGuideMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="helpAERCablingUserGuideMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="AER cabling pin description (PDF)"/>
-                <Property name="toolTipText" type="java.lang.String" value="Cabling for AER headers"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="helpAERCablingUserGuideMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="javadocMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Javadoc (local)"/>
-                <Property name="toolTipText" type="java.lang.String" value="Shows Javadoc for classes if it has been built"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="javadocMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="javadocWebMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Javadoc (SourceForge snapshot)"/>
-                <Property name="toolTipText" type="java.lang.String" value="Goes to online snapshot of javadoc"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="javadocWebMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator7">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="aboutMenuItem">

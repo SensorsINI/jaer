@@ -7,6 +7,7 @@
  */
 package net.sf.jaer.graphics;
 import java.net.SocketException;
+import java.net.URL;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
@@ -47,6 +48,7 @@ import javax.swing.*;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import spread.*;
 import cl.eye.*;
+import java.net.MalformedURLException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceChooserFactory;
 /**
  * This is the main jAER interface to the user. The main event loop "ViewLoop" is here; see ViewLoop.run(). AEViewer shows AE chip live view and allows for controlling view and recording and playing back events from files and network connections.
@@ -68,28 +70,69 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public static final String EVENT_PLAYMODE = "playmode", EVENT_FILEOPEN = "fileopen", EVENT_STOPME = "stopme", EVENT_CHIP = "chip", EVENT_PAUSED = "paused", EVENT_TIMESTAMPS_RESET = "timestampsReset";
     public static String HELP_URL_USER_GUIDE = "http://jaer.wiki.sourceforge.net";
     public static String HELP_URL_RETINA = "http://siliconretina.ini.uzh.ch";
+    public static String HELP_URL_COCHLEA = "http://aer-ear.ini.uzh.ch";
     public static String HELP_URL_JAVADOC_WEB = "http://jaer.sourceforge.net/javadoc";
     public static String HELP_URL_JAVADOC;
 
-    static{
-        String curDir = System.getProperty("user.dir");
-        HELP_URL_JAVADOC = "file://" + curDir + "/dist/javadoc/index.html";
-//        System.out.println("HELP_URL_JAVADOC="+HELP_URL_JAVADOC);
-    }
-    public static String HELP_URL_USER_GUIDE_USB2_MINI;
-    public static String HELP_URL_USER_GUIDE_AER_CABLING;
+    public static String HELP_USER_GUIDE_USB2_MINI="/doc/USBAERmini2userguide.pdf";
+    public static String HELP_USER_GUIDE_AER_CABLING="/doc/AER Hardware and cabling.pdf";
 
-    static{
-        try{
-            String curDir = System.getProperty("user.dir");
-            File f = new File(curDir);
-            File pf = f.getParentFile().getParentFile();
-            HELP_URL_USER_GUIDE_USB2_MINI = "file://" + pf.getPath() + "/doc/USBAERmini2userguide.pdf";
-            HELP_URL_USER_GUIDE_AER_CABLING = "file://" + pf.getPath() + "/doc/AER Hardware and cabling.pdf";
-        } catch ( Exception e ){
-            Logger.getAnonymousLogger().log(Level.WARNING,"While making help file URLs caught exception " + e + ", happens when starting on different filesystem than jAER installation");
-        }
+    /** Utility method to return a URL to a file in the installation.
+     * 
+     * @param path relative to root of installation, e.g. "/doc/USBAERmini2userguide.pdf"
+     * @return the URL string pointing to the local file
+     * @see #registerHelpItem(java.net.URL, java.lang.String, java.lang.String) 
+     * @throws MalformedURLException if there is something wrong with the URL
+     */
+    public String pathToURL(String path) throws MalformedURLException{
+        String curDir = System.getProperty("user.dir");
+        File f = new File(curDir);
+        File pf = f.getParentFile().getParentFile();
+        String urlString = "file://" + pf.getPath() + path;
+        URL url = new URL(urlString);
+        return url.toString();
     }
+    
+    /** Registers a new item in the Help menu.
+     * 
+     * @param url for the item to be opened in the browser, e.g. pathToURL("docs/board.pdf"), or "http://jaer.wiki.sourceforge.net".
+     * @param title the menu item title
+     * @param tooltip useful tip about help
+     * @return the menu item - useful for removing the help item.
+     * @see #deregisterHelpItem(javax.swing.JMenuItem) 
+     * @see #pathToURL(java.lang.String) 
+     */
+    final public JMenuItem registerHelpItem(final String url, String title, String tooltip) {
+        JMenuItem menuItem = new JMenuItem(title);
+        menuItem.setToolTipText(tooltip);
+
+        menuItem.addActionListener(new java.awt.event.ActionListener() {
+
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                try {
+                    BrowserLauncher.openURL(url);
+                } catch (IOException e) {
+                    log.warning(e.toString());
+                    setStatusMessage(e.getMessage());
+                }
+            }
+        });
+        int n=helpMenu.getItemCount();
+        if(n<=2) n=0; else n=n-2;
+        helpMenu.add(menuItem,n);
+        return menuItem;
+    }
+
+    /** Unregisters an item from the Help menu.
+     * 
+     * @param m the menu item originally returns from registration.
+     * @see #registerHelpItem(java.net.URL, java.lang.String, java.lang.String) 
+     */
+    final public void deregisterHelpItem(JMenuItem m){
+        if(m==null) return;
+        helpMenu.remove(m);
+    }
+    
     /** Default port number for remote control of this AEViewer.
      *
      */
@@ -451,7 +494,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
 
+        // additional help
+        try {
+            registerHelpItem(HELP_URL_USER_GUIDE, "jAER wiki and user guide", "Opens the jAER wiki");
+            registerHelpItem(HELP_URL_JAVADOC_WEB,"jAER javadoc","jAER online javadoc (probably out of date)");
+            registerHelpItem(HELP_URL_RETINA,"DVS128 silicon retina wiki","User guide for DVS128 silicon retina");
+            registerHelpItem(HELP_URL_COCHLEA,"AER-EAR silicon cochlea wiki","User guide for the AER-EAR silicon cochlea");
 
+            registerHelpItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
+            registerHelpItem(pathToURL(HELP_USER_GUIDE_AER_CABLING),"AER protocol and cabling guide","Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
+            registerHelpItem(pathToURL("/deviceFirmwarePCBLayout/SiLabsC8051F320/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
+        } catch (Exception e) {
+            log.warning("could register help item: " + e.toString());
+        }
+        
         HardwareInterfaceFactory.instance().buildInterfaceList(); // once only to start
         buildInterfaceMenu();
         buildDeviceMenu();
@@ -2505,12 +2561,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         monSeqOpMode0 = new javax.swing.JRadioButtonMenuItem();
         monSeqOpMode1 = new javax.swing.JRadioButtonMenuItem();
         helpMenu = new javax.swing.JMenu();
-        contentMenuItem = new javax.swing.JMenuItem();
-        helpRetinaMenuItem = new javax.swing.JMenuItem();
-        helpUserGuideMenuItem = new javax.swing.JMenuItem();
-        helpAERCablingUserGuideMenuItem = new javax.swing.JMenuItem();
-        javadocMenuItem = new javax.swing.JMenuItem();
-        javadocWebMenuItem = new javax.swing.JMenuItem();
         jSeparator7 = new javax.swing.JSeparator();
         aboutMenuItem = new javax.swing.JMenuItem();
 
@@ -3456,60 +3506,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         helpMenu.setMnemonic('h');
         helpMenu.setText("Help");
-
-        contentMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F1, 0));
-        contentMenuItem.setMnemonic('c');
-        contentMenuItem.setText("jAER project web (jaer.wiki.sourceforge.net)");
-        contentMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                contentMenuItemActionPerformed(evt);
-            }
-        });
-        helpMenu.add(contentMenuItem);
-
-        helpRetinaMenuItem.setText("Silicon retina web");
-        helpRetinaMenuItem.setToolTipText("Goes to web site for silicon retina");
-        helpRetinaMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                helpRetinaMenuItemActionPerformed(evt);
-            }
-        });
-        helpMenu.add(helpRetinaMenuItem);
-
-        helpUserGuideMenuItem.setText("USB2 Mini user guide (PDF)");
-        helpUserGuideMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                helpUserGuideMenuItemActionPerformed(evt);
-            }
-        });
-        helpMenu.add(helpUserGuideMenuItem);
-
-        helpAERCablingUserGuideMenuItem.setText("AER cabling pin description (PDF)");
-        helpAERCablingUserGuideMenuItem.setToolTipText("Cabling for AER headers");
-        helpAERCablingUserGuideMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                helpAERCablingUserGuideMenuItemActionPerformed(evt);
-            }
-        });
-        helpMenu.add(helpAERCablingUserGuideMenuItem);
-
-        javadocMenuItem.setText("Javadoc (local)");
-        javadocMenuItem.setToolTipText("Shows Javadoc for classes if it has been built");
-        javadocMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                javadocMenuItemActionPerformed(evt);
-            }
-        });
-        helpMenu.add(javadocMenuItem);
-
-        javadocWebMenuItem.setText("Javadoc (SourceForge snapshot)");
-        javadocWebMenuItem.setToolTipText("Goes to online snapshot of javadoc");
-        javadocWebMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                javadocWebMenuItemActionPerformed(evt);
-            }
-        });
-        helpMenu.add(javadocWebMenuItem);
         helpMenu.add(jSeparator7);
 
         aboutMenuItem.setText("About");
@@ -3529,13 +3525,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-    private void javadocWebMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_javadocWebMenuItemActionPerformed
-        try{
-            BrowserLauncher.openURL(HELP_URL_JAVADOC_WEB);
-        } catch ( IOException e ){
-            JOptionPane.showMessageDialog(this,"<html>" + e.getMessage() + "<br>" + HELP_URL_JAVADOC_WEB + " is not available.","Javadoc not available",JOptionPane.INFORMATION_MESSAGE);
-        }
-    }//GEN-LAST:event_javadocWebMenuItemActionPerformed
 //    volatile boolean playerSliderMousePressed=false;
     volatile boolean playerSliderWasPaused = false;
 
@@ -3560,14 +3549,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         int heightInc = resizePoint.y - startResizePoint.y;
         setSize(getWidth() + widthInc,getHeight() + heightInc);
     }//GEN-LAST:event_resizeLabelMouseDragged
-
-    private void helpRetinaMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpRetinaMenuItemActionPerformed
-        try{
-            BrowserLauncher.openURL(HELP_URL_RETINA);
-        } catch ( IOException e ){
-            contentMenuItem.setText(e.getMessage());
-        }
-    }//GEN-LAST:event_helpRetinaMenuItemActionPerformed
 
     private void dataWindowMenuActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dataWindowMenuActionPerformed
         JAERViewer.globalDataViewer.setVisible(!jaerViewer.globalDataViewer.isVisible());
@@ -3712,14 +3693,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            spreadOutputEnabled=false;
 //        }
 //    }
-    private void helpAERCablingUserGuideMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpAERCablingUserGuideMenuItemActionPerformed
-        try{
-            BrowserLauncher.openURL(HELP_URL_USER_GUIDE_AER_CABLING);
-        } catch ( IOException e ){
-            contentMenuItem.setText(e.getMessage());
-        }
-    }//GEN-LAST:event_helpAERCablingUserGuideMenuItemActionPerformed
-
     private void openSocketInputStreamMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openSocketInputStreamMenuItemActionPerformed
         if ( socketInputEnabled ){
             closeAESocket();
@@ -3940,26 +3913,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }//GEN-LAST:event_loggingSetTimelimitMenuItemActionPerformed
 
-    private void helpUserGuideMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpUserGuideMenuItemActionPerformed
-        try{
-            BrowserLauncher.openURL(HELP_URL_USER_GUIDE_USB2_MINI);
-        } catch ( IOException e ){
-            contentMenuItem.setText(e.getMessage());
-        }
-    }//GEN-LAST:event_helpUserGuideMenuItemActionPerformed
-
     private void formWindowClosed(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosed
         log.info("window closed event, calling stopMe");
         stopMe();
     }//GEN-LAST:event_formWindowClosed
-
-    private void javadocMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_javadocMenuItemActionPerformed
-        try{
-            BrowserLauncher.openURL(HELP_URL_JAVADOC);
-        } catch ( IOException e ){
-            JOptionPane.showMessageDialog(this,"<html>" + e.getMessage() + "<br>" + HELP_URL_JAVADOC + " is not available.<br>You may need to build the javadoc </html>","Javadoc not available",JOptionPane.INFORMATION_MESSAGE);
-        }
-    }//GEN-LAST:event_javadocMenuItemActionPerformed
 
     private void viewRenderBlankFramesCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewRenderBlankFramesCheckBoxMenuItemActionPerformed
         setRenderBlankFramesEnabled(viewRenderBlankFramesCheckBoxMenuItem.isSelected());
@@ -4408,14 +4365,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
              firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // forward/refire events from AEFileInputStream to listeners on AEViewer
         }
     }
-
-    private void contentMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_contentMenuItemActionPerformed
-        try{
-            BrowserLauncher.openURL(HELP_URL_USER_GUIDE);
-        } catch ( IOException e ){
-            contentMenuItem.setText(e.getMessage());
-        }
-    }//GEN-LAST:event_contentMenuItemActionPerformed
 
     private void aboutMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_aboutMenuItemActionPerformed
         new AEViewerAboutDialog(new javax.swing.JFrame(),true).setVisible(true);
@@ -5496,7 +5445,6 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
     private javax.swing.JMenuItem changeAEBufferSizeMenuItem;
     private javax.swing.JCheckBoxMenuItem checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem;
     private javax.swing.JMenuItem closeMenuItem;
-    private javax.swing.JMenuItem contentMenuItem;
     private javax.swing.JMenu controlMenu;
     private javax.swing.JMenuItem copyMenuItem;
     private javax.swing.JMenuItem customizeDevicesMenuItem;
@@ -5524,10 +5472,7 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
     private javax.swing.JToggleButton filtersToggleButton;
     private javax.swing.JCheckBoxMenuItem flextimePlaybackEnabledCheckBoxMenuItem;
     private javax.swing.JMenu graphicsSubMenu;
-    private javax.swing.JMenuItem helpAERCablingUserGuideMenuItem;
     private javax.swing.JMenu helpMenu;
-    private javax.swing.JMenuItem helpRetinaMenuItem;
-    private javax.swing.JMenuItem helpUserGuideMenuItem;
     private javax.swing.JPanel imagePanel;
     private javax.swing.JMenuItem increaseBufferSizeMenuItem;
     private javax.swing.JMenuItem increaseContrastMenuItem;
@@ -5554,8 +5499,6 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
     private javax.swing.JSeparator jSeparator7;
     private javax.swing.JSeparator jSeparator8;
     private javax.swing.JSeparator jSeparator9;
-    private javax.swing.JMenuItem javadocMenuItem;
-    private javax.swing.JMenuItem javadocWebMenuItem;
     private javax.swing.JCheckBoxMenuItem logFilteredEventsCheckBoxMenuItem;
     private javax.swing.JToggleButton loggingButton;
     private javax.swing.JMenuItem loggingMenuItem;
