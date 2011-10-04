@@ -841,6 +841,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return;
             }
             AEChip oldChip = getChip();
+            if(oldChip!=null){
+                oldChip.onDeregistration();
+            }
             if ( getChip() == null ){ // handle initial case
                 constructChip(constructor);
             } else{
@@ -934,7 +937,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             extractor.setSubsamplingEnabled(subsampleEnabledCheckBoxMenuItem.isSelected());
             extractor.setSubsampleThresholdEventCount(getRenderer().getSubsampleThresholdEventCount()); // awkward connection between components here - ideally chip should contrain info about subsample limit
-
+             
         } catch ( Exception e ){
             log.warning("AEViewer.constructChip exception " + e.getMessage());
             e.printStackTrace();
