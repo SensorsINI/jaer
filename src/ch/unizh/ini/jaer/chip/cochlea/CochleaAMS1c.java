@@ -2131,7 +2131,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                     e.timestamp = (ts);
                     e.x = getXFromAddress(addr);
                     e.y = getYFromAddress(addr);
-                    e.type = getTypeFromAddress(addr);
+                    e.type = (byte) e.y; // overridden to just set cell type uniquely
                     j++;
                     if (j == incEach) {
                         j = 0;
