@@ -15,6 +15,7 @@ public class TextComponent extends GestureGUIComponent {
     private String str = null;
     private Font font = new Font("Arial", Font.PLAIN, 24);
     private Color color = Color.BLACK;
+    private float opacity = 1f;
 
     public TextComponent(String str){
         super();
@@ -53,6 +54,8 @@ public class TextComponent extends GestureGUIComponent {
         super.paintComponent(g);
 
         Graphics2D g2d = (Graphics2D)g;
+        Composite comp = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, opacity);
+        g2d.setComposite(comp);
         g2d.setColor(color);
         g2d.setFont(font);
         g2d.drawString(str, rect.x, (int) rect.getMaxY());
@@ -70,7 +73,7 @@ public class TextComponent extends GestureGUIComponent {
         repaint();
     }
 
-    public void setTextFont(Font font){
+    public final void setTextFont(Font font){
         this.font = font;
         update();
     }
@@ -93,5 +96,9 @@ public class TextComponent extends GestureGUIComponent {
 
     public String getStr() {
         return str;
+    }
+
+    public void setTransparent(float opacity){
+        this.opacity = opacity;
     }
 }

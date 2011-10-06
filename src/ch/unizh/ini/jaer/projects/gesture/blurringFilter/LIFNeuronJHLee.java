@@ -159,6 +159,21 @@ public class LIFNeuronJHLee {
         lastSpikeTimestamp = 0;
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        boolean ret = false;
+        if(obj instanceof LIFNeuronJHLee && id == ((LIFNeuronJHLee) obj).id)
+            ret= true;
+
+        return ret;
+    }
+
+
+    @Override
+    public int hashCode() {
+        return id;
+    }
+
     /**
      * Resets a neuron with initial values
      */

@@ -93,6 +93,14 @@ public class ImageComponent extends GestureGUIComponent{
         setPosition(pos);
     }
 
+    public void replaceImage(Image img) {
+        this.img = img;
+        rect.width = img.getWidth(null);
+        rect.height = img.getHeight(null);
+
+        setPosition(pos);
+    }
+
     public void replaceImage(String imgPath, int width, int height) {
         Toolkit myToolkit = Toolkit.getDefaultToolkit();
         img = myToolkit.getImage(imgPath);
