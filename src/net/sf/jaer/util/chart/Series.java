@@ -105,9 +105,11 @@ public class Series {
         cache = BufferUtil.newFloatBuffer(dimension * capacity);
     }
 
-    /** Clears points. */
+    /** Schedules a clear of existing points in vertex buffer on the next {@code display()}. 
+     * Call {@code clear()} if you want to clear out existing points before drawing
+     * new ones that you have added to the Series. 
+     */
     synchronized public void clear() {
-        // TODO this method does not WORK!  hard to clear points owing to buffers on GL card. (cryptic) - tobi
         clearEnabled = true;
     }
 
@@ -154,15 +156,11 @@ public class Series {
 
     /**
      * Flushes data to opengl graphics device and draws the vertices.
-     * The gl object must be always the same.
-     * @param gl the OpenGL context (must be identical betweeen calls)
+     * The gl object must be always the same; if not the existing one is discarded and a new one obtained to bind a vertex buffer to it.
+     * @param gl the OpenGL context (must be identical between calls)
      * @param method the method of drawing the series line segments, e.g. <code>GL.GL_LINE_STRIP</code>.
      */
     synchronized public void draw(GL gl, int method) {
-        // buffers only introduced in 1.5+ opengl
-//        hasBufferExtension = false; // TODO debug test
-
-
 
         if (!checkedBufferExtension) {
             log.info("checking once to see if vertex buffer extensions available (OpenGL 1.5+)");
@@ -182,25 +180,22 @@ public class Series {
                 bufferId = bufferIds[0];
             }
         } else if (this.gl != gl) { // error: cannot bind to multiple devices
-            log.warning("Chart data series: Always same GL object expected! this.gl=" + this.gl + " but called gl=" + gl);
+            log.warning("Chart data series: Expected the same GL object! this.gl=" + this.gl + " but called gl=" + gl+". Discarding GL context to make a new one");
             this.gl = null;
             return;
         }
         if (hasBufferExtension) {
-            if (clearEnabled && vertices!=null) {
-                cache.clear();
-                vertices.clear();
-            }
 //            gl.glLineWidth(lineWidth);
             gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufferId);
             int add = cache.position();   // check for new data...
             if (add > 0 || this.gl == null ||clearEnabled) {    // ...and transfer them to opengl buffer if necessary
                 cache.position(0);
-                if (elementsCount >= capacity) {
-                    this.gl = null;
+                if (elementsCount >= capacity || clearEnabled) {
+                    this.gl = null; // if we filled up this buffer to our limit, null the gl to force us to make a new data buffer
                     elementsCount = 0;
                 }
                 if (this.gl == null || clearEnabled) {
+                    // if clear is enabled, then just allocated a new buffer pointer and bind it
                     gl.glBufferData(GL.GL_ARRAY_BUFFER, dimension * capacity * elementSize, cache, GL.GL_STATIC_DRAW);   // create buffer and flush
                     gl.glBindBuffer(GL.GL_ARRAY_BUFFER, bufferId);
                     this.gl = gl;
@@ -217,7 +212,10 @@ public class Series {
             /* flush data to opengl device if necessary.
             if we don't have vertex buffer extension, we must render all the data again, from the cache itself. */
         } else { // no GPU buffer extension, must render cache as host vertex buffer
-            if (vertices == null || clearEnabled) {
+          if (clearEnabled ) {
+                if(vertices!=null) vertices.clear();
+            }           
+          if (vertices == null || clearEnabled) {
                 vertices = BufferUtil.newFloatBuffer(dimension * capacity); // allocates direct buffer
             }
             if (this.gl == null) {

@@ -634,6 +634,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         bpfKilledPanel = new javax.swing.JPanel();
         channelLabel = new javax.swing.JLabel();
         scannerPanel = new javax.swing.JPanel();
+        jLabel2 = new javax.swing.JLabel();
         continuousScanningPanel = new javax.swing.JPanel();
         continuousScanningEnabledCheckBox = new javax.swing.JCheckBox();
         jPanel5 = new javax.swing.JPanel();
@@ -858,6 +859,11 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         scannerPanel.setToolTipText("Control the analog scanner");
         scannerPanel.setLayout(new javax.swing.BoxLayout(scannerPanel, javax.swing.BoxLayout.PAGE_AXIS));
 
+        jLabel2.setForeground(new java.awt.Color(204, 0, 51));
+        jLabel2.setText("<html>ADC must be enabled to run Scanner");
+        jLabel2.setAlignmentX(1.0F);
+        scannerPanel.add(jLabel2);
+
         continuousScanningPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Continuous scanning"));
         continuousScanningPanel.setMaximumSize(new java.awt.Dimension(32767, 300));
         continuousScanningPanel.setPreferredSize(new java.awt.Dimension(0, 150));
@@ -976,7 +982,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 45, Short.MAX_VALUE)
+            .addGap(0, 31, Short.MAX_VALUE)
         );
 
         scannerPanel.add(jPanel1);
@@ -989,7 +995,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         adcPanel.add(jLabel1);
 
         jLabel6.setForeground(new java.awt.Color(204, 0, 0));
-        jLabel6.setText("Warning: State changes made here can leave other GUI controls in inconsistent state");
+        jLabel6.setText("<html>Warnings: ADC must be enabled to run Scanner. <br> State changes made here can leave other GUI controls in inconsistent state");
         adcPanel.add(jLabel6);
 
         tabbedPane.addTab("ADC", adcPanel);
@@ -1373,6 +1379,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.JRadioButton gangcellBut;
     private javax.swing.JButton initDACButton;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;

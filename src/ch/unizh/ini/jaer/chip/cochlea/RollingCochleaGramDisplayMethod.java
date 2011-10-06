@@ -128,9 +128,21 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
 
         String timeLabel = String.format("%.3f s", timeWidthUs * 1e-6f);
         int width = glut.glutBitmapLength(font, timeLabel);
-        gl.glRasterPos3f(timeWidthUs * .9f, -3, 0);
+        gl.glRasterPos3f(timeWidthUs * .9f, 2, 0);
         glut.glutBitmapString(font, timeLabel);
 
+
+         // draw channel (vertical) axis
+        gl.glColor3f(0, 0, 1);
+        gl.glLineWidth(4f);
+        gl.glBegin(GL.GL_LINES);
+        {
+            gl.glVertex3f(0, 0, 0);
+            gl.glVertex3f(0, chip.getSizeX(), 0); // taps axis
+        }
+        gl.glEnd();
+        gl.glRasterPos3f(0, chip.getSizeX(), 0);
+        glut.glutBitmapString(font, "Channel");
 
         final float w = (float) timeWidthUs / getChipCanvas().getCanvas().getWidth(); // spike raster as fraction of screen width
         float[][] typeColors = renderer.getTypeColorRGBComponents();
@@ -157,17 +169,6 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         gl.glDrawBuffer(GL.GL_FRONT_AND_BACK);
         gl.glClearColor(0, 0, 0, 0f);
         gl.glClear(GL.GL_COLOR_BUFFER_BIT);
-        // draw axes
-        gl.glColor3f(0, 0, 1);
-        gl.glLineWidth(4f);
-        gl.glBegin(GL.GL_LINES);
-        {
-            gl.glVertex3f(0, 0, 0);
-            gl.glVertex3f(0, chip.getSizeX(), 0); // taps axis
-        }
-        gl.glEnd();
-        gl.glRasterPos3f(0, chip.getSizeX(), 0);
-        glut.glutBitmapString(font, "Channel");
         getChipCanvas().checkGLError(gl, glu, "after RollingCochleaGramDisplayMethod,clearScreen");
     }
 

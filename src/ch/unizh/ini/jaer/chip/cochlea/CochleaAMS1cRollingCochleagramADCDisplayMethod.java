@@ -91,7 +91,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
                     activitySeries[chan].clear();
                     chan++;
                     continue;
-                } // TODO does nothing now because clear() doesn't work
+                } 
 
                 int n = cb.size(); // must find size here since array contains junk outside the count
                 int g = getGain(chan);
