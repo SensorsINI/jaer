@@ -152,7 +152,7 @@ public class CLRawFramePanel extends GLJPanel implements GLEventListener, AEList
         gl.glRasterPos2f(-.5f, chip.getSizeY()-.5f); // to UL corner of chip, but must be inside viewport or else it is ignored, breaks on zoom     if (zoom.isZoomEnabled() == false) {
 
         buf.position(0);
-        gl.glDrawPixels(ncol, nrow, GL.GL_RGBA, GL.GL_UNSIGNED_INT_8_8_8_8_REV, buf);
+        gl.glDrawPixels(ncol, nrow, GL.GL_BGRA, GL.GL_UNSIGNED_INT_8_8_8_8_REV, buf);
         checkGLError(gl, glu, "after pixmap");
     }
 
