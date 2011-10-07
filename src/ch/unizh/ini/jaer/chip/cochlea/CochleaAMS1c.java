@@ -1636,6 +1636,11 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             }
         }
 
+        /** Encapsulates each channels equalizer. Information is sent to device as
+         * <p>
+         * <img source="doc-files/equalizerBits.png"/>
+         * where the index field of the vendor request has the quality and kill bit information.
+         */
         class Equalizer extends Observable { // describes the local gain and Q registers and the kill bits
 
             final int numChannels = 128, maxValue = 31;
