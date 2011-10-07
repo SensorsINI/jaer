@@ -75,7 +75,9 @@ public class CLCamera implements HardwareInterface {
         }
     }
 
-    // Possible camera modes
+    /** Possible camera modes
+     * 
+     */
     public enum CameraMode {
         QVGA_MONO_15(CLEYE_QVGA, CLEYE_MONO_PROCESSED, 15),
         QVGA_MONO_30(CLEYE_QVGA, CLEYE_MONO_PROCESSED, 30),
@@ -193,6 +195,13 @@ public class CLCamera implements HardwareInterface {
         this.cameraIndex = cameraIndex;
         this.cameraMode = cameraMode;
     }
+
+    @Override
+    public String toString() {
+        return "CLCamera{" + "cameraIndex=" + cameraIndex + ", cameraMode=" + cameraMode + ", cameraStarted=" + cameraStarted + '}';
+    }
+    
+    
 
     synchronized private boolean createCamera(int cameraIndex, int mode, int resolution, int framerate) {
         cameraInstance = CLEyeCreateCamera(cameraIndex, mode, resolution, framerate);
@@ -316,14 +325,26 @@ public class CLCamera implements HardwareInterface {
         return isOpened;
     }
 
+    /** Returns the current mode of operation, e.g. QVGA_MONO_100
+     * 
+     * @return the operation mode
+     */
     public CameraMode getCameraMode() {
         return this.cameraMode;
     }
     
+    /** Sets the operating mode.
+     * 
+     * @param cameraMode desired mode.
+     */
     synchronized public void setCameraMode(CameraMode cameraMode) {
         this.cameraMode = cameraMode;
     }
     
+    /** Sets the operating mode by index into CameraMode enum.
+     * 
+     * @param cameraModeIndex desired index
+     */
     synchronized public void setCameraMode(int cameraModeIndex) {
         if (cameraModeIndex < 0 || cameraModeIndex >= numModes) {
             log.warning("Invalid Mode index " + cameraModeIndex + " leaving mode unchanged.");

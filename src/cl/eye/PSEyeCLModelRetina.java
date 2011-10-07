@@ -24,6 +24,7 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import org.jdesktop.beansbinding.Validator;
 
 /**
  * A behavioral model of an AE retina using the code laboratories interface to a PS eye camera.
@@ -49,6 +50,7 @@ public class PSEyeCLModelRetina extends AEChip {
     private BasicEvent tempEvent = new BasicEvent();
     private ArrayList<Integer> discreteEventCount = new ArrayList<Integer>();
     private boolean colorMode = false;
+    private ByteValueValidator byteValueValidator=new ByteValueValidator();
 
     public PSEyeCLModelRetina() {
         setSizeX(320);
@@ -64,7 +66,7 @@ public class PSEyeCLModelRetina extends AEChip {
         if (hardwareInterface != null && (hardwareInterface instanceof CLRetinaHardwareInterface)) {
             try {
                 CLRetinaHardwareInterface hw = (CLRetinaHardwareInterface) hardwareInterface;
-                colorMode = (hw.getCameraMode().color == CLCamera.CLEYE_COLOR_PROCESSED);
+                colorMode = (hw.getCameraMode().color == CLCamera.CLEYE_COLOR_PROCESSED); // sets whether input is color or not
             } catch (Exception ex) {
                 log.warning(ex.toString());
             }
@@ -84,6 +86,20 @@ public class PSEyeCLModelRetina extends AEChip {
                 log.warning(ex.toString());
             }
         }
+    }
+
+    /**
+     * @return the byteValueValidator
+     */
+    public ByteValueValidator getByteValueValidator() {
+        return byteValueValidator;
+    }
+
+    /**
+     * @param byteValueValidator the byteValueValidator to set
+     */
+    public void setByteValueValidator(ByteValueValidator byteValueValidator) {
+        this.byteValueValidator = byteValueValidator;
     }
 
     public class Controls extends Biasgen {
@@ -113,6 +129,12 @@ public class PSEyeCLModelRetina extends AEChip {
 
         // TODO logged events cannot be read in here since they are not complete frames anymore!
         
+        /** Extracts events from the raw camera frame data that is supplied in the input packet.
+         * Events are extracted according to the camera operating mode.
+         * 
+         * @param in
+         * @param out 
+         */
         @Override
         public synchronized void extractPacket(AEPacketRaw in, EventPacket out) {
             out.allocate(chip.getNumPixels());
@@ -126,13 +148,25 @@ public class PSEyeCLModelRetina extends AEChip {
             float pixR = 0, pixB = 0;
             for (int y = 0; y < sy; y++) {
                 for (int x = 0; x < sx; x++) {
-                    if (colorMode) {
-                        pixR = (float) ((pixVals[i] >> 4) & 0xff);
+                    if (colorMode) { // set by setHardwareInterface
+                        final int RMASK = 0xff0000;
+                        final int GMASK = 0x00ff00;
+                        final int BMASK = 0x0000ff; // colors packed like this into each int when in color mode
+                        pixR = (float) ((pixVals[i] >> 16) & 0xff);
                         pixB = (float) (pixVals[i] & 0xff);
                         pixval = 255;
-                        if (pixR > 0 || pixB > 0) 
+                        if (pixR > 0 || pixB > 0) { // compute mean wavelength value from RGB
+                            // Here we define the "mean color" as the magnitude of the difference between red and blue, scaled to 0-1.
+                            // Then if the color difference changes, we get events. If the difference becomes larger, we get "bigger color difference"
+                            // events, if the difference becomes smaller, we get "smaller color difference" events.
+                            // Not exactly mean wavelength.
+                            //  1-2(rb)/(r^2+b^2) =(b-r)^2/(r^2+b^2) which is somehow a measure of mean wavelength.
+                            // This is the magnitude of the difference between the red and blue value scaled to a value between 0 and 1
                             pixval = (int) (255 - 510 * (pixR * pixB) / (pixR * pixR + pixB * pixB));
-                    } else pixval = pixVals[i] & 0xff; // get gray value 0-255
+                        }
+                    } else {
+                        pixval = pixVals[i] & 0xff; // get gray value 0-255
+                    }
                     if (!initialized) {
                         lastEventPixelValues[i] += pixval; // update stored gray level for first frame
 
@@ -150,11 +184,10 @@ public class PSEyeCLModelRetina extends AEChip {
                                 if (linearInterpolateTimeStamp) {
                                     e.timestamp = ts - j * eventTimeDelta / n;
                                     orderedLastSwap(out, j);
-                                }
-                                else{
+                                } else {
                                     e.timestamp = ts;
                                 }
-                                
+
                             }
                             lastEventPixelValues[i] += eventThreshold * n; // update stored gray level by events
                         } else if (diff < -eventThreshold) {
@@ -168,11 +201,10 @@ public class PSEyeCLModelRetina extends AEChip {
                                 if (linearInterpolateTimeStamp) {
                                     e.timestamp = ts - j * eventTimeDelta / n;
                                     orderedLastSwap(out, j);
-                                }
-                                else{
+                                } else {
                                     e.timestamp = ts;
                                 }
-                                
+
                             }
                             lastEventPixelValues[i] -= eventThreshold * n;
                         }
@@ -239,6 +271,7 @@ public class PSEyeCLModelRetina extends AEChip {
      * @param gain new value of gain
      */
     public void setGain(int gain) {
+        if(gain<1) gain=1; else if(gain>81) gain=81;
         this.gain = gain;
         getPrefs().putInt("gain", gain);
         sendConfiguration();
@@ -255,6 +288,7 @@ public class PSEyeCLModelRetina extends AEChip {
      * @param exposure the exposure to set
      */
     public void setExposure(int exposure) {
+        if(exposure<1) exposure=1; else if(exposure>511) exposure=511;
         this.exposure = exposure;
         getPrefs().putInt("exposure", exposure);
         sendConfiguration();
@@ -331,6 +365,7 @@ public class PSEyeCLModelRetina extends AEChip {
      * @param eventThreshold the eventThreshold to set
      */
     public void setEventThreshold(int eventThreshold) {
+        if(eventThreshold<1) eventThreshold=1; else if(eventThreshold>255) eventThreshold=255;
         this.eventThreshold = eventThreshold;
         getPrefs().putInt("eventThreshold", eventThreshold);
     }
@@ -348,5 +383,19 @@ public class PSEyeCLModelRetina extends AEChip {
     public void setLinearInterpolateTimeStamp(boolean linearInterpolateTimeStamp) {
         this.linearInterpolateTimeStamp = linearInterpolateTimeStamp;
         getPrefs().putBoolean("linearInterpolateTimeStamp", linearInterpolateTimeStamp);
+    }
+    
+    public class ByteValueValidator extends Validator {
+
+        public Validator.Result validate(Object arg) {
+            if(!(arg instanceof String)) return null;
+            try{
+                int i=Integer.parseInt((String)arg);
+                if(i>1 && i<255) return null;
+                else return new Result(null, "Value range is 1-255");
+            }catch(Exception e){
+                return new Result(null, "bad value: "+arg);
+            }
+        }
     }
 }

@@ -252,7 +252,12 @@ public class CLRawFramePanel extends GLJPanel implements GLEventListener, AEList
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         if (evt == hardware.newEventPropertyChange) {
-            display();
+            try {
+                display();
+            } catch (Exception e) {
+                log.warning("caught " + e + " when dislay() was called in response to the event " + evt);
+
+            }
         }
     }
 }

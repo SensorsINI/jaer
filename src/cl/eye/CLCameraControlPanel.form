@@ -20,7 +20,7 @@
               <EmptySpace max="-2" attributes="0"/>
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" alignment="0" attributes="0">
-                      <Component id="rawInputPanel" pref="469" max="32767" attributes="0"/>
+                      <Component id="rawInputPanel" pref="643" max="32767" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
                   </Group>
                   <Group type="102" alignment="1" attributes="0">
@@ -42,7 +42,7 @@
               <EmptySpace max="-2" attributes="0"/>
               <Component id="jPanel2" min="-2" max="-2" attributes="0"/>
               <EmptySpace type="unrelated" max="-2" attributes="0"/>
-              <Component id="rawInputPanel" pref="185" max="32767" attributes="0"/>
+              <Component id="rawInputPanel" pref="137" max="32767" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
           </Group>
       </Group>
@@ -66,7 +66,7 @@
         <DimensionLayout dim="0">
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" attributes="0">
-                  <EmptySpace min="-2" pref="6" max="-2" attributes="0"/>
+                  <EmptySpace min="-2" pref="180" max="-2" attributes="0"/>
                   <Group type="103" groupAlignment="1" attributes="0">
                       <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
                       <Component id="jLabel2" alignment="1" min="-2" max="-2" attributes="0"/>
@@ -141,7 +141,7 @@
         </Component>
         <Component class="javax.swing.JSpinner" name="gainSp">
           <Properties>
-            <Property name="toolTipText" type="java.lang.String" value="CL eye gain (0-79("/>
+            <Property name="toolTipText" type="java.lang.String" value="CL eye gain (0-79)"/>
           </Properties>
           <BindingProperties>
             <BindingProperty name="value" source="Form" sourcePath="${chip.gain}" target="gainSp" targetPath="value" updateStrategy="0" immediately="false"/>
@@ -196,17 +196,20 @@
                       <Group type="102" attributes="0">
                           <Component id="jLabel4" min="-2" max="-2" attributes="0"/>
                           <EmptySpace max="-2" attributes="0"/>
-                          <Component id="thrSp" min="-2" max="-2" attributes="1"/>
+                          <Component id="thrSp" min="-2" pref="62" max="-2" attributes="1"/>
                       </Group>
                       <Component id="itsCB" alignment="0" min="-2" max="-2" attributes="0"/>
+                      <Component id="jLabel3" alignment="0" min="-2" max="-2" attributes="0"/>
                   </Group>
-                  <EmptySpace pref="121" max="32767" attributes="0"/>
+                  <EmptySpace max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
         <DimensionLayout dim="1">
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" attributes="0">
+                  <Component id="jLabel3" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace max="-2" attributes="0"/>
                   <Group type="103" groupAlignment="3" attributes="0">
                       <Component id="jLabel4" alignment="3" min="-2" max="-2" attributes="0"/>
                       <Component id="thrSp" alignment="3" min="-2" max="-2" attributes="0"/>
@@ -243,6 +246,11 @@
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="itsCBActionPerformed"/>
           </Events>
+        </Component>
+        <Component class="javax.swing.JLabel" name="jLabel3">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="&lt;html&gt;Controls the parameters for generating events. &lt;br&gt; If the hardware interface is chosen MONO, then the threshold is for absolute sample change.&lt;br&gt;If the interface is COLOR, then the threshold is for mean color change."/>
+          </Properties>
         </Component>
       </SubComponents>
     </Container>
