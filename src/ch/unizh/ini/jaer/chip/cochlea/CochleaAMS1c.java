@@ -21,6 +21,7 @@ import java.util.Observer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.PreferenceChangeEvent;
+import javax.swing.JComponent;
 import javax.swing.JMenuItem;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.*;
@@ -44,6 +45,7 @@ import java.util.prefs.PreferenceChangeListener;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JPanel;
+import javax.swing.JSeparator;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import net.sf.jaer.Description;
@@ -186,22 +188,24 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
     }
 
-    private JMenuItem help1, help2;
+    private JComponent help1, help2,help3;
     
     @Override
     public void onDeregistration() {
         super.onDeregistration();
         if(getAeViewer()==null) return;
-        getAeViewer().deregisterHelpItem(help1);
-        getAeViewer().deregisterHelpItem(help2);
+        getAeViewer().removeHelpItem(help1);
+        getAeViewer().removeHelpItem(help2);
+        getAeViewer().removeHelpItem(help3);
     }
 
     @Override
     public void onRegistration() {
         super.onRegistration();
         if(getAeViewer()==null) return;
-        help1=getAeViewer().registerHelpItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/cochleaams1c.pdf", "CochleaAMS1c PCB design", "Protel design of board");
-        help2=getAeViewer().registerHelpItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/CochleaAMS1c readme.pdf", "CochleaAMS1c README", "README file for CochleaAMS1c");
+        help1=getAeViewer().addHelpItem(new JSeparator());
+        help1=getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/cochleaams1c.pdf", "CochleaAMS1c PCB design", "Protel design of board");
+        help2=getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/CochleaAMS1c readme.pdf", "CochleaAMS1c README", "README file for CochleaAMS1c");
      }
     
     

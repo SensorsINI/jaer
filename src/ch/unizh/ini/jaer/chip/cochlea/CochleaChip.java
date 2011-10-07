@@ -9,6 +9,7 @@
 
 package ch.unizh.ini.jaer.chip.cochlea;
 
+import javax.swing.JComponent;
 import javax.swing.JMenuItem;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.graphics.DisplayMethod;
@@ -18,7 +19,7 @@ import net.sf.jaer.graphics.DisplayMethod;
  * @author tobi
  */
 abstract public class CochleaChip extends AEChip {
-   JMenuItem helpMenuItem=null;
+   JComponent helpMenuItem=null;
     public static String HELP_URL_COCHLEA = "http://aer-ear.ini.uzh.ch";
 
     /** Creates a new instance of CochleaChip */
@@ -35,13 +36,13 @@ abstract public class CochleaChip extends AEChip {
     public void onDeregistration() {
         super.onRegistration();
         if(helpMenuItem==null) return;
-        if(getAeViewer()!=null) getAeViewer().deregisterHelpItem(helpMenuItem);
+        if(getAeViewer()!=null) getAeViewer().removeHelpItem(helpMenuItem);
     }
 
     @Override
     public void onRegistration() {
         super.onRegistration();
-        if(getAeViewer()!=null) helpMenuItem=getAeViewer().registerHelpItem(HELP_URL_COCHLEA, "AER-EAR wiki", "Opens user guide wiki for AER-EAR silicon cochleas");
+        if(getAeViewer()!=null) helpMenuItem=getAeViewer().addHelpURLItem(HELP_URL_COCHLEA, "AER-EAR wiki", "Opens user guide wiki for AER-EAR silicon cochleas");
         
     }
     

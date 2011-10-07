@@ -17,6 +17,7 @@ import java.lang.reflect.*;
 import java.util.logging.Logger;
 import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
 
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.USBIOHardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.linux.HardwareInterfaceFactoryLinux;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabs_USBIO_C8051F3xxFactory;

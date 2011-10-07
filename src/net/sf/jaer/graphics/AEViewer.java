@@ -79,7 +79,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * 
      * @param path relative to root of installation, e.g. "/doc/USBAERmini2userguide.pdf"
      * @return the URL string pointing to the local file
-     * @see #registerHelpItem(java.lang.String, java.lang.String, java.lang.String) 
+     * @see #addHelpURLItem(java.lang.String, java.lang.String, java.lang.String) 
      * @throws MalformedURLException if there is something wrong with the URL
      */
     public String pathToURL(String path) throws MalformedURLException{
@@ -91,16 +91,35 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return url.toString();
     }
     
+    /** Adds item above separator/about
+     * 
+     * @param menuItem item to add
+     * @see #removeHelpItem(javax.swing.JMenuItem) 
+     * @see #addHelpURLItem(java.lang.String, java.lang.String, java.lang.String) 
+     * @return the component that you added, for later removal
+     */
+    public JComponent addHelpItem(JComponent menuItem) {
+        int n = helpMenu.getItemCount();
+        if (n <= 2) {
+            n = 0;
+        } else {
+            n = n - 2;
+        }
+        helpMenu.add(menuItem, n);
+        return menuItem;
+    }
+    
+    
     /** Registers a new item in the Help menu.
      * 
      * @param url for the item to be opened in the browser, e.g. pathToURL("docs/board.pdf"), or "http://jaer.wiki.sourceforge.net".
      * @param title the menu item title
      * @param tooltip useful tip about help
      * @return the menu item - useful for removing the help item.
-     * @see #deregisterHelpItem(javax.swing.JMenuItem) 
+     * @see #removeHelpItem(javax.swing.JMenuItem) 
      * @see #pathToURL(java.lang.String) 
      */
-    final public JMenuItem registerHelpItem(final String url, String title, String tooltip) {
+    final public JComponent addHelpURLItem(final String url, String title, String tooltip) {
         JMenuItem menuItem = new JMenuItem(title);
         menuItem.setToolTipText(tooltip);
 
@@ -115,18 +134,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
         });
-        int n=helpMenu.getItemCount();
-        if(n<=2) n=0; else n=n-2;
-        helpMenu.add(menuItem,n);
+        addHelpItem(menuItem);
         return menuItem;
     }
 
     /** Unregisters an item from the Help menu.
      * 
-     * @param m the menu item originally returns from registration.
-     * @see #registerHelpItem(java.lang.String, java.lang.String, java.lang.String) 
+     * @param m the menu item originally returns from addHelpURLItem or addHelpItem.
+     * @see #addHelpURLItem(java.lang.String, java.lang.String, java.lang.String) 
+     * @see #addHelpItem(javax.swing.JMenuItem) 
      */
-    final public void deregisterHelpItem(JMenuItem m){
+    final public void removeHelpItem(JComponent m){
         if(m==null) return;
         helpMenu.remove(m);
     }
@@ -318,6 +336,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public javax.swing.JPanel getImagePanel() {
         return imagePanel;
     }
+
+
     /** Modes of viewing: WAITING means waiting for device or for playback or remote, LIVE means showing a hardware interface, PLAYBACK means playing
      * back a recorded file, SEQUENCING means sequencing a file out on a sequencer device, REMOTE means playing a remote stream of AEs
      */
@@ -494,12 +514,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         // additional help
         try {
-            registerHelpItem(HELP_URL_USER_GUIDE, "jAER wiki and user guide", "Opens the jAER wiki");
-            registerHelpItem(HELP_URL_JAVADOC_WEB,"jAER javadoc","jAER online javadoc (probably out of date)");
+            addHelpURLItem(HELP_URL_USER_GUIDE, "jAER wiki and user guide", "Opens the jAER wiki");
+            addHelpURLItem(HELP_URL_JAVADOC_WEB,"jAER javadoc","jAER online javadoc (probably out of date)");
  
-            registerHelpItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
-            registerHelpItem(pathToURL(HELP_USER_GUIDE_AER_CABLING),"AER protocol and cabling guide","Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
-            registerHelpItem(pathToURL("/deviceFirmwarePCBLayout/SiLabsC8051F320/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
+            addHelpItem(new JSeparator());
+            addHelpURLItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
+            addHelpURLItem(pathToURL(HELP_USER_GUIDE_AER_CABLING),"AER protocol and cabling guide","Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
+            addHelpURLItem(pathToURL("/deviceFirmwarePCBLayout/SiLabsC8051F320/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
+            addHelpItem(new JSeparator());
         } catch (Exception e) {
             log.warning("could register help item: " + e.toString());
         }
