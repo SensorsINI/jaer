@@ -21,6 +21,7 @@ import java.util.Observer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.PreferenceChangeEvent;
+import javax.swing.JMenuItem;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.IPotArray;
@@ -184,6 +185,26 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         adcSamples = new CochleaAMS1cADCSamples(this); // need biasgen / scanner first
 
     }
+
+    private JMenuItem help1, help2;
+    
+    @Override
+    public void onDeregistration() {
+        super.onDeregistration();
+        if(getAeViewer()==null) return;
+        getAeViewer().deregisterHelpItem(help1);
+        getAeViewer().deregisterHelpItem(help2);
+    }
+
+    @Override
+    public void onRegistration() {
+        super.onRegistration();
+        if(getAeViewer()==null) return;
+        help1=getAeViewer().registerHelpItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/cochleaams1c.pdf", "CochleaAMS1c PCB design", "Protel design of board");
+        help2=getAeViewer().registerHelpItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/CochleaAMS1c readme.pdf", "CochleaAMS1c README", "README file for CochleaAMS1c");
+     }
+    
+    
 
     /** overrides the Chip setHardware interface to construct a biasgen if one doesn't exist already.
      * Sets the hardware interface and the bias generators hardware interface
