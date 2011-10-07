@@ -99,7 +99,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 panel.setAlignmentX(Component.LEFT_ALIGNMENT);
                 JLabel label = new JLabel(bit.getName() + ": " + bit.getDescription());
                 JRadioButton but = new JRadioButton("Set/Clear");
-                but.setToolTipText("Select to set bit, clear to clear bit");
+                but.setToolTipText("<html>"+b2.toString()+"<br>Select to set bit, clear to clear bit");
                 JRadioButton hiZButton = new JRadioButton("HiZ");
                 hiZButton.setToolTipText("Select to set pin to hiZ state");
 //                group.add(hiZButton);  // independent from other two buttons, can be hiz and 0 or 1
@@ -123,7 +123,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 ConfigBit b2 = (ConfigBit) bit;
                 JRadioButton but = new JRadioButton(bit.getName() + ": " + bit.getDescription());
                 but.setAlignmentX(Component.LEFT_ALIGNMENT);
-                but.setToolTipText("Select to set bit, clear to clear bit");
+                but.setToolTipText("<html>"+b2.toString()+"<br>Select to set bit, clear to clear bit");
                 but.setSelected(b2.isSet()); // pref value
                 configPanel.add(but);
                 configBitMap.put(bit, but);
@@ -136,7 +136,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 pan.setAlignmentX(Component.LEFT_ALIGNMENT);
                 pan.setLayout(new BoxLayout(pan, BoxLayout.X_AXIS));
                 JLabel label = new JLabel(in.getName());
-                label.setToolTipText(in.getDescription());
+                label.setToolTipText("<html>"+in.toString()+"<br>"+in.getDescription()+"<br>Enter value or use mouse wheel or arrow keys to change value");
                 pan.add(label);
                 JTextField tf = new JTextField();
                 tf.setText(Integer.toString(in.get()));

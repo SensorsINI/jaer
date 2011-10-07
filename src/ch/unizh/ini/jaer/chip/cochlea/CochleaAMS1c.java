@@ -1030,7 +1030,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             boolean[] bits;
             byte[] bytes = null;
 
-            /** Computes the bytes to be sent to the CPLD from all the CPLD config values: bits, tristateable bits, and ints
+            /** Computes the bits to be sent to the CPLD from all the CPLD config values: bits, tristateable bits, and ints.
+             * Writes the bits boolean[] so that they are set according to the bit position, e.g. for a bit if startBit=0, then bits[0] is set.
              * 
              */
             private void compute() {
@@ -1074,7 +1075,9 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             /** Returns byte[] to send to uC to load into CPLD shift register. 
              * This array is returned in big endian order so that
             the bytes sent will be sent in big endian order to the device, according to how they are handled in firmware
-            and loaded into the CPLD shift register.
+            and loaded into the CPLD shift register. In other words, the msb of the first byte returned (getBytes()[0] is the last bit
+             * in the bits[] array of booleans, bit 63 in the case of 64 bits of CPLD SR contents.
+             * 
              */
             private byte[] getBytes() {
                 compute();
