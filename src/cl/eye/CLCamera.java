@@ -453,7 +453,7 @@ public class CLCamera implements HardwareInterface {
         if (exp < 0) {
             throw new InvalidParameterException("tried to set exposure<0 (" + exp + ")");
         }
-        if (exp > 511) {
+        if (exp > CLEYE_MAX_EXPOSURE) {
             throw new InvalidParameterException("tried to set exposure>511 (" + exp + ")");
         }
         if (!setCameraParam(CLEYE_EXPOSURE, exp)) {

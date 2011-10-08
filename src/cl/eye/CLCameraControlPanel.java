@@ -37,7 +37,7 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
         hardware = (CLRetinaHardwareInterface) chip.getHardwareInterface();
         initComponents();
         camModeCB.setModel(new DefaultComboBoxModel(CLCamera.CameraMode.values()));
-        setControls();
+        handleUpdate(null);
         chip.addObserver(this);
     }
 
@@ -97,6 +97,7 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
 
         jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("PS Eye control"));
 
+        camModeCB.setMaximumRowCount(30);
         camModeCB.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
         camModeCB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -222,6 +223,11 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
         jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("Retina model control"));
 
         bThSp.setToolTipText("Sets threshold for temporal change events in ADC counts");
+        bThSp.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                bThSpStateChanged(evt);
+            }
+        });
 
         jLabel4.setText("Brightness change threshold");
 
@@ -242,9 +248,19 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
         jLabel5.setText("Hue change threshold");
 
         hThSp.setToolTipText("Sets threshold for temporal change events in ADC counts");
+        hThSp.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                hThSpStateChanged(evt);
+            }
+        });
 
         logCB.setText("Log intensity mode");
         logCB.setToolTipText("Enables brightness change detection on log intensity change, rather than linear intensity change");
+        logCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                logCBActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
@@ -327,7 +343,7 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
         if (!checkHardware()) {
             return;
         }
-        if (agCB.isSelected() && hardware != null) {
+        if (hardware != null) { //agCB.isSelected() && 
             gainSp.setValue(hardware.getGain());
         }
 }//GEN-LAST:event_agCBActionPerformed
@@ -336,7 +352,7 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
         if (!checkHardware()) {
             return;
         }
-        if (aeCB.isSelected() && hardware != null) {
+        if (hardware != null) { // aeCB.isSelected() && 
             expSp.setValue(hardware.getExposure());
         }
 }//GEN-LAST:event_aeCBActionPerformed
@@ -367,6 +383,33 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
             statusLabel.setText(e.toString());
         }
     }//GEN-LAST:event_camModeCBActionPerformed
+
+    private void hThSpStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_hThSpStateChanged
+        try {
+            Integer i = (Integer) hThSp.getValue();
+            chip.setHueChangeThreshold(i);
+            statusLabel.setText("");
+        } catch (Exception e) {
+            log.warning(e.toString());
+            statusLabel.setText(e.toString());
+        }
+    }//GEN-LAST:event_hThSpStateChanged
+
+    private void bThSpStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_bThSpStateChanged
+        try {
+            Integer i = (Integer) bThSp.getValue();
+            chip.setBrightnessChangeThreshold(i);
+            statusLabel.setText("");
+        } catch (Exception e) {
+            log.warning(e.toString());
+            statusLabel.setText(e.toString());
+        }
+    }//GEN-LAST:event_bThSpStateChanged
+
+    private void logCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_logCBActionPerformed
+        chip.setLogIntensityMode(logCB.isSelected());
+    }//GEN-LAST:event_logCBActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JCheckBox aeCB;
     private javax.swing.JCheckBox agCB;
@@ -409,22 +452,45 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
     @Override
     public void update(Observable o, Object arg) {
         if (o != null && o == chip) {
-            setControls();
+            handleUpdate(arg);
         }
     }
 
-    private void setControls() {
-        if (chip == null) {
+    /** The update arg is the event
+     * 
+     * @param arg the event from the PSEyeCLModelRetina
+     */
+    private void handleUpdate(Object arg) {
+        if (arg == null) {
+            agCB.setSelected(chip.isAutoGainEnabled());
+            aeCB.setSelected(chip.isAutoExposureEnabled());
+            gainSp.setValue(chip.getGain());
+            expSp.setValue(chip.getExposure());
+            bThSp.setValue(chip.getBrightnessChangeThreshold());
+            hThSp.setValue(chip.getHueChangeThreshold());
+            itsCB.setSelected(chip.isLinearInterpolateTimeStamp());
+            logCB.setSelected(chip.isLogIntensityMode());
+            camModeCB.setSelectedItem(chip.getCameraMode());
             return;
         }
-        agCB.setSelected(chip.isAutoGainEnabled());
-        aeCB.setSelected(chip.isAutoExposureEnabled());
-        gainSp.setValue(chip.getGain());
-        expSp.setValue(chip.getExposure());
-        bThSp.setValue(chip.getBrightnessChangeThreshold());
-        hThSp.setValue(chip.getHueChangeThreshold());
-        itsCB.setSelected(chip.isLinearInterpolateTimeStamp());
-        logCB.setSelected(chip.isLogIntensityMode());
-        camModeCB.setSelectedItem(chip.getCameraMode());
+        if (arg == PSEyeCLModelRetina.EVENT_AUTOEXPOSURE) {
+            aeCB.setSelected(chip.isAutoExposureEnabled());
+        } else if (arg == PSEyeCLModelRetina.EVENT_AUTO_GAIN) {
+            agCB.setSelected(chip.isAutoGainEnabled());
+        } else if (arg == PSEyeCLModelRetina.EVENT_BRIGHTNESS_CHANGE_THRESHOLD) {
+            bThSp.setValue(chip.getBrightnessChangeThreshold());
+        } else if (arg == PSEyeCLModelRetina.EVENT_CAMERA_MODE) {
+            camModeCB.setSelectedItem(chip.getCameraMode());
+        } else if (arg == PSEyeCLModelRetina.EVENT_EXPOSURE) {
+            expSp.setValue(chip.getExposure());
+        } else if (arg == PSEyeCLModelRetina.EVENT_GAIN) {
+            gainSp.setValue(chip.getGain());
+        } else if (arg == PSEyeCLModelRetina.EVENT_HUE_CHANGE_THRESHOLD) {
+            hThSp.setValue(chip.getHueChangeThreshold());
+        } else if (arg == PSEyeCLModelRetina.EVENT_LINEAR_INTERPOLATE_TIMESTAMP) {
+            itsCB.setSelected(chip.isLinearInterpolateTimeStamp());
+        } else if (arg == PSEyeCLModelRetina.EVENT_LOG_INTENSITY_MODE) {
+            logCB.setSelected(chip.isLogIntensityMode());
+        }
     }
 }

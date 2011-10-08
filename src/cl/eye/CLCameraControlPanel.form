@@ -114,6 +114,7 @@
       <SubComponents>
         <Component class="javax.swing.JComboBox" name="camModeCB">
           <Properties>
+            <Property name="maximumRowCount" type="int" value="30"/>
             <Property name="model" type="javax.swing.ComboBoxModel" editor="org.netbeans.modules.form.editors2.ComboBoxModelEditor">
               <StringArray count="4">
                 <StringItem index="0" value="Item 1"/>
@@ -317,6 +318,9 @@
           <Properties>
             <Property name="toolTipText" type="java.lang.String" value="Sets threshold for temporal change events in ADC counts"/>
           </Properties>
+          <Events>
+            <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="bThSpStateChanged"/>
+          </Events>
         </Component>
         <Component class="javax.swing.JLabel" name="jLabel4">
           <Properties>
@@ -349,12 +353,18 @@
           <Properties>
             <Property name="toolTipText" type="java.lang.String" value="Sets threshold for temporal change events in ADC counts"/>
           </Properties>
+          <Events>
+            <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="hThSpStateChanged"/>
+          </Events>
         </Component>
         <Component class="javax.swing.JCheckBox" name="logCB">
           <Properties>
             <Property name="text" type="java.lang.String" value="Log intensity mode"/>
             <Property name="toolTipText" type="java.lang.String" value="Enables brightness change detection on log intensity change, rather than linear intensity change"/>
           </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="logCBActionPerformed"/>
+          </Events>
         </Component>
       </SubComponents>
     </Container>

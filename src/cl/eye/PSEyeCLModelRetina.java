@@ -37,8 +37,13 @@ import org.jdesktop.beansbinding.Validator;
 @Description("AE retina using the PS eye camera")
 public class PSEyeCLModelRetina extends AEChip {
 
+    /** Number of gray levels in camera samples. */
+    public static final int NLEVELS=256;
+    /** Number of samples levels to leave linear when using log mapping. */
+    public static final int NLINEAR=10;
+
     // table lookup for log from int 8 bit pixel value
-    private static int[] logMapping = null;
+    private int[] logMapping = new int[NLEVELS];
     private int[] lastBrightnessValues = null, lastHueValues = null;
     // camera values
     private int gain = getPrefs().getInt("gain", 30);
@@ -79,6 +84,7 @@ public class PSEyeCLModelRetina extends AEChip {
     // validators for int values, used in bindings to GUI
     private ByteValueValidator gainValidator = new ByteValueValidator(CLCamera.CLEYE_MAX_GAIN);
     private ByteValueValidator exposureValidator = new ByteValueValidator(CLCamera.CLEYE_MAX_EXPOSURE);
+    PSEyeModelRetinaRenderer renderer=null;
 
     public PSEyeCLModelRetina() {
         setSizeX(320);
@@ -88,6 +94,8 @@ public class PSEyeCLModelRetina extends AEChip {
         setEventExtractor(new EventExtractor(this));
         setEventClass(PolarityEvent.class);
         setBiasgen(new Controls(this));
+                setRenderer((renderer = new PSEyeModelRetinaRenderer(this)));
+                fillLogMapping(logMapping);
     }
 
     @Override
@@ -128,11 +136,11 @@ public class PSEyeCLModelRetina extends AEChip {
     /**
      * @param hueChangeThreshold the hueChangeThreshold to set
      */
-    public void setHueChangeThreshold(int hueChangeThreshold) {
+     synchronized public void setHueChangeThreshold(int hueChangeThreshold) {
         if (hueChangeThreshold < 1) {
             hueChangeThreshold = 1;
-        } else if (hueChangeThreshold > 255) {
-            hueChangeThreshold = 255;
+        } else if (hueChangeThreshold > NLEVELS) {
+            hueChangeThreshold = NLEVELS;
         }
         if (this.hueChangeThreshold != hueChangeThreshold) {
             setChanged();
@@ -159,6 +167,41 @@ public class PSEyeCLModelRetina extends AEChip {
         this.logIntensityMode = logIntensityMode;
         getPrefs().putBoolean("logIntensityMode", logIntensityMode);
         notifyObservers(EVENT_LOG_INTENSITY_MODE);
+    }
+
+    /** Returns color mode
+     * 
+     * @return true if running color mode on PS-Eye 
+     */
+    public boolean isColorMode() {
+        return colorMode;
+    }
+
+    /** If logIntensityMode is active, returns value according to
+     * <p>
+     * <img src="doc-files/logmapping.png"/>
+     * @param v
+     * @return mapped value, or identity if not log mapping
+     */
+    public int map2linlog(int v){
+        if(!logIntensityMode) return v;
+            
+        if(v<0)v=0; else if(v>NLEVELS-1)v=NLEVELS-1;
+        return logMapping[v];
+    }
+    
+    private void fillLogMapping(int[] logMapping) {
+        // fill up lookup table to compute log from 8 bit sample value
+        // the first linpart values are linear, then the rest are log, so that it ends up mapping 0:255 to 0:255
+        for(int i=0;i<NLINEAR;i++){
+            logMapping[i]=i;
+        }
+        double a=((double)NLEVELS-NLINEAR)/(Math.log(NLEVELS)-Math.log(NLINEAR));
+        double b=NLEVELS-a*Math.log(NLEVELS);
+        
+        for(int i=NLINEAR;i<NLEVELS;i++){
+            logMapping[i]=(int)Math.floor(a*Math.log(i)+b);
+        }
     }
 
     public class Controls extends Biasgen {
@@ -208,91 +251,111 @@ public class PSEyeCLModelRetina extends AEChip {
                 discreteEventCount.clear();
             }
             int sx = getSizeX(), sy = getSizeY(), i = 0, j = 0;
-            int pixval = 0, n = 0, diff = 0, lastval = 0;
+            int n = 0, lastBrightness, lastHue;
             float pixR = 0, pixB = 0;
-            colorMode=getCameraMode().color==CLCamera.CLEYE_COLOR_PROCESSED;
+            if (out.getEventClass() != cDVSEvent.class) {
+                out.setEventClass(cDVSEvent.class); // set the proper output event class to include color change events
+            }
+            colorMode = getCameraMode().color == CLCamera.CLEYE_COLOR_PROCESSED;
             for (int y = 0; y < sy; y++) {
                 for (int x = 0; x < sx; x++) {
-                    if (colorMode) { // set by setHardwareInterface
-                        if (out.getEventClass() != cDVSEvent.class) {
-                            out.setEventClass(cDVSEvent.class);
-                        }
+                    int hueval = 127;
+                    int brightnessval = map2linlog(pixVals[i] & 0xff); // get gray value 0-255
+
+                    if (colorMode ) { // compute mean wavelength value from RGB
+                        // Here we define the "mean color" as the magnitude of the difference between red and blue, scaled to 0-1.
+                        // Then if the color difference changes, we get events. If the difference becomes larger, we get "bigger color difference"
+                        // events, if the difference becomes smaller, we get "smaller color difference" events.
+                        // Not exactly mean wavelength.
+                        //  1-2(rb)/(r^2+b^2) =(b-r)^2/(r^2+b^2) which is somehow a measure of mean wavelength.
+                        // This is the magnitude of the difference between the red and blue value scaled to a value between 0 and 1
                         final int RMASK = 0xff0000;
                         final int GMASK = 0x00ff00;
                         final int BMASK = 0x0000ff; // colors packed like this into each int when in color mode
+                        
                         pixR = (float) ((pixVals[i] >> 16) & 0xff);
                         pixB = (float) (pixVals[i] & 0xff);
-                        pixval = 255;
-                        if (pixR > 0 || pixB > 0) { // compute mean wavelength value from RGB
-                            // Here we define the "mean color" as the magnitude of the difference between red and blue, scaled to 0-1.
-                            // Then if the color difference changes, we get events. If the difference becomes larger, we get "bigger color difference"
-                            // events, if the difference becomes smaller, we get "smaller color difference" events.
-                            // Not exactly mean wavelength.
-                            //  1-2(rb)/(r^2+b^2) =(b-r)^2/(r^2+b^2) which is somehow a measure of mean wavelength.
-                            // This is the magnitude of the difference between the red and blue value scaled to a value between 0 and 1
-                            pixval = (int) (255 - 510 * (pixR * pixB) / (pixR * pixR + pixB * pixB));
-                        }
-                    } else {
-                        if (out.getEventClass() != PolarityEvent.class) {
-                            out.setEventClass(PolarityEvent.class);
-                        }
-                        pixval = pixVals[i] & 0xff; // get gray value 0-255
+                        pixR=map2linlog((int)pixR);
+                        pixB=map2linlog((int)pixB);
+                        if(pixR > 0 || pixB > 0) hueval = (int) (255 - 510 * (pixR * pixB) / (pixR * pixR + pixB * pixB));
                     }
                     if (!initialized) {
-                        lastBrightnessValues[i] += pixval; // update stored gray level for first frame
-
-                    } else {
-                        lastval = lastBrightnessValues[i];
-                        diff = pixval - lastval;
-                        if (diff > brightnessChangeThreshold) { // if our gray level is sufficiently higher than the stored gray level
-                            n = diff / brightnessChangeThreshold;
-                            for (j = 0; j < n; j++) { // use down iterator as ensures latest timestamp as last event
-                                BasicEvent e = (BasicEvent) itr.nextOutput();
-                                e.x = (short) x;
-                                e.y = (short) (sy - y - 1); // flip y according to jAER with 0,0 at LL
-                                if (!colorMode) {
-                                    PolarityEvent pe = (PolarityEvent) e;
-                                    pe.type = 1;  // ON type
-                                    pe.setPolarity(PolarityEvent.Polarity.On);
-                                } else {
-                                    cDVSEvent ce = (cDVSEvent) e;
-                                    ce.eventType = cDVSEvent.EventType.Bluer;
-                                }
-                                if (linearInterpolateTimeStamp) {
-                                    e.timestamp = ts - j * eventTimeDelta / n;
-                                    orderedLastSwap(out, j);
-                                } else {
-                                    e.timestamp = ts;
-                                }
-
-                            }
-                            lastBrightnessValues[i] += brightnessChangeThreshold * n; // update stored gray level by events
-                        } else if (diff < -brightnessChangeThreshold) {
-                            n = -diff / brightnessChangeThreshold;
-                            for (j = 0; j < n; j++) {
-                                BasicEvent e = (BasicEvent) itr.nextOutput();
-                                e.x = (short) x;
-                                e.y = (short) (sy - y - 1);
-                                if (!colorMode) {
-                                    PolarityEvent pe = (PolarityEvent) e;
-                                    pe.type = 0;
-                                    pe.setPolarity(PolarityEvent.Polarity.Off);
-                                } else {
-                                    cDVSEvent ce = (cDVSEvent) e;
-                                    ce.eventType = cDVSEvent.EventType.Redder;
-                                }
-                                if (linearInterpolateTimeStamp) {
-                                    e.timestamp = ts - j * eventTimeDelta / n;
-                                    orderedLastSwap(out, j);
-                                } else {
-                                    e.timestamp = ts;
-                                }
-
-                            }
-                            lastBrightnessValues[i] -= brightnessChangeThreshold * n;
-                        }
+                        lastBrightnessValues[i] = brightnessval; // update stored gray level for first frame
+                        lastHueValues[i] = hueval; // update stored gray level for first frame
                     }
 
+                    lastBrightness = lastBrightnessValues[i];
+                    lastHue = lastHueValues[i];
+                    int brightnessdiff = brightnessval - lastBrightness;
+
+                    // brightness change 
+                    if (brightnessdiff > brightnessChangeThreshold) { // if our gray level is sufficiently higher than the stored gray level
+                        n = brightnessdiff / brightnessChangeThreshold;
+                        for (j = 0; j < n; j++) { // use down iterator as ensures latest timestamp as last event
+                            cDVSEvent e = (cDVSEvent) itr.nextOutput();
+                            e.x = (short) x;
+                            e.y = (short) (sy - y - 1); // flip y according to jAER with 0,0 at LL
+                            e.eventType = cDVSEvent.EventType.Brighter;
+                            if (linearInterpolateTimeStamp) {
+                                e.timestamp = ts - j * eventTimeDelta / n;
+                                orderedLastSwap(out, j);
+                            } else {
+                                e.timestamp = ts;
+                            }
+
+                        }
+                        lastBrightnessValues[i] += brightnessChangeThreshold * n; // update stored gray level by events
+                    } else if (brightnessdiff < -brightnessChangeThreshold) {
+                        n = -brightnessdiff / brightnessChangeThreshold;
+                        for (j = 0; j < n; j++) {
+                            cDVSEvent e = (cDVSEvent) itr.nextOutput();
+                            e.x = (short) x;
+                            e.y = (short) (sy - y - 1);
+                            e.eventType = cDVSEvent.EventType.Darker;
+                            if (linearInterpolateTimeStamp) {
+                                e.timestamp = ts - j * eventTimeDelta / n;
+                                orderedLastSwap(out, j);
+                            } else {
+                                e.timestamp = ts;
+                            }
+
+                        }
+                        lastBrightnessValues[i] -= brightnessChangeThreshold * n;
+                    }
+                    // hue change
+                    int huediff = hueval - lastHue;
+                    if (huediff > hueChangeThreshold) { // if our gray level is sufficiently higher than the stored gray level
+                        n = huediff / hueChangeThreshold;
+                        for (j = 0; j < n; j++) { // use down iterator as ensures latest timestamp as last event
+                            cDVSEvent e = (cDVSEvent) itr.nextOutput();
+                            e.x = (short) x;
+                            e.y = (short) (sy - y - 1); // flip y according to jAER with 0,0 at LL
+                            e.eventType = cDVSEvent.EventType.Bluer;
+                            if (linearInterpolateTimeStamp) {
+                                e.timestamp = ts - j * eventTimeDelta / n;
+                                orderedLastSwap(out, j);
+                            } else {
+                                e.timestamp = ts;
+                            }
+
+                        }
+                        lastHueValues[i] += hueChangeThreshold * n; // update stored gray level by events
+                    } else if (huediff < -hueChangeThreshold) {
+                        n = -huediff / hueChangeThreshold;
+                        for (j = 0; j < n; j++) {
+                            cDVSEvent e = (cDVSEvent) itr.nextOutput();
+                            e.x = (short) x;
+                            e.y = (short) (sy - y - 1);
+                            e.eventType = cDVSEvent.EventType.Redder;
+                            if (linearInterpolateTimeStamp) {
+                                e.timestamp = ts - j * eventTimeDelta / n;
+                                orderedLastSwap(out, j);
+                            } else {
+                                e.timestamp = ts;
+                            }
+                        }
+                        lastHueValues[i] -= hueChangeThreshold * n;
+                    }
                     i++;
                 }
             }
@@ -353,7 +416,7 @@ public class PSEyeCLModelRetina extends AEChip {
      *
      * @param gain new value of gain
      */
-    public void setGain(int gain) {
+    synchronized public void setGain(int gain) {
         if (gain < 1) {
             gain = 1;
         } else if (gain > CLCamera.CLEYE_MAX_GAIN) {
@@ -378,7 +441,7 @@ public class PSEyeCLModelRetina extends AEChip {
     /**
      * @param exposure the exposure to set
      */
-    public void setExposure(int exposure) {
+    synchronized public void setExposure(int exposure) {
         if (exposure < 1) {
             exposure = 1;
         } else if (exposure > CLCamera.CLEYE_MAX_EXPOSURE) {
@@ -469,11 +532,11 @@ public class PSEyeCLModelRetina extends AEChip {
     /**
      * @param brightnessChangeThreshold the brightnessChangeThreshold to set
      */
-    public void setBrightnessChangeThreshold(int brightnessChangeThreshold) {
+    synchronized public void setBrightnessChangeThreshold(int brightnessChangeThreshold) {
         if (brightnessChangeThreshold < 1) {
             brightnessChangeThreshold = 1;
-        } else if (brightnessChangeThreshold > 255) {
-            brightnessChangeThreshold = 255;
+        } else if (brightnessChangeThreshold > NLEVELS) {
+            brightnessChangeThreshold = NLEVELS;
         }
         if (this.brightnessChangeThreshold != brightnessChangeThreshold) {
             setChanged();
@@ -493,7 +556,7 @@ public class PSEyeCLModelRetina extends AEChip {
     /**
      * @param linearInterpolateTimeStamp 
      */
-    public void setLinearInterpolateTimeStamp(boolean linearInterpolateTimeStamp) {
+    synchronized public void setLinearInterpolateTimeStamp(boolean linearInterpolateTimeStamp) {
         if (this.linearInterpolateTimeStamp != linearInterpolateTimeStamp) {
             setChanged();
         }
@@ -519,7 +582,7 @@ public class PSEyeCLModelRetina extends AEChip {
      * 
      * @param mode desired new mode.
      */
-    public void setCameraMode(CameraMode mode) throws HardwareInterfaceException {
+    synchronized public void setCameraMode(CameraMode mode) throws HardwareInterfaceException {
         if (getHardwareInterface() == null || !(getHardwareInterface() instanceof CLCamera)) {
             return;
         }
