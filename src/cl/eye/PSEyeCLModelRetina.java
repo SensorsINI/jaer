@@ -4,6 +4,8 @@
  */
 package cl.eye;
 
+import ch.unizh.ini.jaer.chip.dollbrain.ColorEvent;
+import ch.unizh.ini.jaer.chip.dvs320.cDVSEvent;
 import ch.unizh.ini.jaer.projects.thresholdlearner.TemporalContrastEvent;
 import cl.eye.CLCamera.InvalidParameterException;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -149,6 +151,9 @@ public class PSEyeCLModelRetina extends AEChip {
             for (int y = 0; y < sy; y++) {
                 for (int x = 0; x < sx; x++) {
                     if (colorMode) { // set by setHardwareInterface
+                        if(out.getEventClass()!=cDVSEvent.class){
+                            out.setEventClass(cDVSEvent.class);
+                        }
                         final int RMASK = 0xff0000;
                         final int GMASK = 0x00ff00;
                         final int BMASK = 0x0000ff; // colors packed like this into each int when in color mode
@@ -165,6 +170,9 @@ public class PSEyeCLModelRetina extends AEChip {
                             pixval = (int) (255 - 510 * (pixR * pixB) / (pixR * pixR + pixB * pixB));
                         }
                     } else {
+                        if (out.getEventClass() != PolarityEvent.class) {
+                            out.setEventClass(PolarityEvent.class);
+                        }
                         pixval = pixVals[i] & 0xff; // get gray value 0-255
                     }
                     if (!initialized) {
@@ -176,11 +184,17 @@ public class PSEyeCLModelRetina extends AEChip {
                         if (diff > eventThreshold) { // if our gray level is sufficiently higher than the stored gray level
                             n = diff / eventThreshold;
                             for (j = 0; j < n; j++) { // use down iterator as ensures latest timestamp as last event
-                                PolarityEvent e = (PolarityEvent) itr.nextOutput();
+                                BasicEvent e = (BasicEvent) itr.nextOutput();
                                 e.x = (short) x;
                                 e.y = (short) (sy - y - 1); // flip y according to jAER with 0,0 at LL
-                                e.type = 1;  // ON type
-                                e.setPolarity(PolarityEvent.Polarity.On);
+                                if (!colorMode) {
+                                    PolarityEvent pe = (PolarityEvent) e;
+                                    pe.type = 1;  // ON type
+                                    pe.setPolarity(PolarityEvent.Polarity.On);
+                                } else {
+                                    cDVSEvent ce = (cDVSEvent) e;
+                                    ce.eventType = cDVSEvent.EventType.Bluer;
+                                }
                                 if (linearInterpolateTimeStamp) {
                                     e.timestamp = ts - j * eventTimeDelta / n;
                                     orderedLastSwap(out, j);
@@ -193,11 +207,17 @@ public class PSEyeCLModelRetina extends AEChip {
                         } else if (diff < -eventThreshold) {
                             n = -diff / eventThreshold;
                             for (j = 0; j < n; j++) {
-                                PolarityEvent e = (PolarityEvent) itr.nextOutput();
+                                BasicEvent e = (BasicEvent) itr.nextOutput();
                                 e.x = (short) x;
                                 e.y = (short) (sy - y - 1);
-                                e.type = 0;
-                                e.setPolarity(PolarityEvent.Polarity.Off);
+                                if (!colorMode) {
+                                    PolarityEvent pe = (PolarityEvent) e;
+                                    pe.type = 0;
+                                    pe.setPolarity(PolarityEvent.Polarity.Off);
+                                } else {
+                                    cDVSEvent ce = (cDVSEvent) e;
+                                    ce.eventType = cDVSEvent.EventType.Redder;
+                                }
                                 if (linearInterpolateTimeStamp) {
                                     e.timestamp = ts - j * eventTimeDelta / n;
                                     orderedLastSwap(out, j);
