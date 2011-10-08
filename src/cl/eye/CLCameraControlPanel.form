@@ -16,21 +16,15 @@
   <Layout>
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
-          <Group type="102" alignment="0" attributes="0">
+          <Group type="102" alignment="1" attributes="0">
               <EmptySpace max="-2" attributes="0"/>
-              <Group type="103" groupAlignment="0" attributes="0">
-                  <Group type="102" alignment="0" attributes="0">
-                      <Component id="rawInputPanel" pref="643" max="32767" attributes="0"/>
-                      <EmptySpace max="-2" attributes="0"/>
-                  </Group>
-                  <Group type="102" alignment="1" attributes="0">
-                      <Group type="103" groupAlignment="1" attributes="0">
-                          <Component id="jPanel2" alignment="0" max="32767" attributes="1"/>
-                          <Component id="jPanel1" alignment="1" max="32767" attributes="1"/>
-                      </Group>
-                      <EmptySpace min="-2" pref="173" max="-2" attributes="0"/>
-                  </Group>
+              <Group type="103" groupAlignment="1" attributes="0">
+                  <Component id="jPanel1" alignment="0" max="32767" attributes="1"/>
+                  <Component id="rawInputPanel" alignment="0" pref="700" max="32767" attributes="1"/>
+                  <Component id="statusLabel" alignment="0" pref="700" max="32767" attributes="1"/>
+                  <Component id="jPanel2" alignment="1" max="32767" attributes="1"/>
               </Group>
+              <EmptySpace max="-2" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -38,20 +32,44 @@
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="0" attributes="0">
               <EmptySpace max="-2" attributes="0"/>
-              <Component id="jPanel1" min="-2" pref="111" max="-2" attributes="0"/>
+              <Component id="jPanel1" min="-2" pref="133" max="-2" attributes="0"/>
+              <EmptySpace type="separate" max="-2" attributes="0"/>
+              <Component id="jPanel2" min="-2" pref="129" max="-2" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
-              <Component id="jPanel2" min="-2" max="-2" attributes="0"/>
-              <EmptySpace type="unrelated" max="-2" attributes="0"/>
-              <Component id="rawInputPanel" pref="137" max="32767" attributes="0"/>
+              <Component id="rawInputPanel" pref="182" max="32767" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
+              <Component id="statusLabel" min="-2" pref="15" max="-2" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
   </Layout>
   <SubComponents>
     <Container class="javax.swing.JPanel" name="rawInputPanel">
+      <Properties>
+        <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+          <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
+            <TitledBorder title="Raw camera input (when enabled)"/>
+          </Border>
+        </Property>
+      </Properties>
 
       <Layout class="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout"/>
+      <SubComponents>
+        <Component class="javax.swing.JCheckBox" name="showRawInputCB">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="Show raw input"/>
+            <Property name="toolTipText" type="java.lang.String" value="Activates raw input panel to show camera output"/>
+          </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="showRawInputCBActionPerformed"/>
+          </Events>
+          <Constraints>
+            <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout" value="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout$BorderConstraintsDescription">
+              <BorderConstraints direction="First"/>
+            </Constraint>
+          </Constraints>
+        </Component>
+      </SubComponents>
     </Container>
     <Container class="javax.swing.JPanel" name="jPanel1">
       <Properties>
@@ -66,116 +84,175 @@
         <DimensionLayout dim="0">
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" attributes="0">
-                  <EmptySpace min="-2" pref="180" max="-2" attributes="0"/>
-                  <Group type="103" groupAlignment="1" attributes="0">
-                      <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
-                      <Component id="jLabel2" alignment="1" min="-2" max="-2" attributes="0"/>
-                  </Group>
                   <EmptySpace max="-2" attributes="0"/>
                   <Group type="103" groupAlignment="0" attributes="0">
-                      <Component id="gainSp" alignment="0" pref="132" max="32767" attributes="1"/>
-                      <Component id="expSp" alignment="0" pref="132" max="32767" attributes="1"/>
+                      <Component id="jLabel6" alignment="0" min="-2" max="-2" attributes="0"/>
+                      <Component id="camModeCB" alignment="0" min="-2" pref="194" max="-2" attributes="0"/>
                   </Group>
-                  <EmptySpace max="-2" attributes="0"/>
-                  <Group type="103" groupAlignment="0" attributes="0">
-                      <Component id="agCB" alignment="0" min="-2" max="-2" attributes="0"/>
-                      <Group type="103" alignment="0" groupAlignment="1" attributes="0">
-                          <Component id="showRawInputCB" alignment="1" min="-2" max="-2" attributes="0"/>
-                          <Component id="aeCB" alignment="1" min="-2" max="-2" attributes="0"/>
-                      </Group>
-                  </Group>
-                  <EmptySpace min="-2" max="-2" attributes="0"/>
+                  <EmptySpace min="-2" pref="27" max="-2" attributes="0"/>
+                  <Component id="jPanel3" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace pref="230" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
         <DimensionLayout dim="1">
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" attributes="0">
-                  <Group type="103" groupAlignment="3" attributes="0">
-                      <Component id="gainSp" alignment="3" min="-2" max="-2" attributes="0"/>
-                      <Component id="agCB" alignment="3" min="-2" max="-2" attributes="0"/>
-                      <Component id="jLabel1" alignment="3" min="-2" max="-2" attributes="0"/>
-                  </Group>
-                  <Group type="103" groupAlignment="0" attributes="0">
-                      <Group type="102" attributes="0">
-                          <EmptySpace min="-2" pref="5" max="-2" attributes="0"/>
-                          <Component id="aeCB" min="-2" max="-2" attributes="0"/>
-                      </Group>
-                      <Group type="102" alignment="0" attributes="0">
-                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                          <Group type="103" groupAlignment="3" attributes="0">
-                              <Component id="expSp" alignment="3" min="-2" max="-2" attributes="0"/>
-                              <Component id="jLabel2" alignment="3" min="-2" max="-2" attributes="0"/>
-                          </Group>
-                      </Group>
-                  </Group>
-                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                  <Component id="showRawInputCB" min="-2" max="-2" attributes="0"/>
-                  <EmptySpace min="-2" pref="35" max="-2" attributes="0"/>
+                  <EmptySpace max="32767" attributes="0"/>
+                  <Component id="jLabel6" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace max="-2" attributes="0"/>
+                  <Component id="camModeCB" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace min="-2" pref="111" max="-2" attributes="0"/>
+              </Group>
+              <Group type="102" alignment="0" attributes="0">
+                  <Component id="jPanel3" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace max="-2" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
       </Layout>
       <SubComponents>
-        <Component class="javax.swing.JCheckBox" name="showRawInputCB">
+        <Component class="javax.swing.JComboBox" name="camModeCB">
           <Properties>
-            <Property name="text" type="java.lang.String" value="Show raw input"/>
-            <Property name="toolTipText" type="java.lang.String" value="Activates raw input panel to show camera output"/>
+            <Property name="model" type="javax.swing.ComboBoxModel" editor="org.netbeans.modules.form.editors2.ComboBoxModelEditor">
+              <StringArray count="4">
+                <StringItem index="0" value="Item 1"/>
+                <StringItem index="1" value="Item 2"/>
+                <StringItem index="2" value="Item 3"/>
+                <StringItem index="3" value="Item 4"/>
+              </StringArray>
+            </Property>
           </Properties>
           <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="showRawInputCBActionPerformed"/>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="camModeCBActionPerformed"/>
           </Events>
         </Component>
-        <Component class="javax.swing.JSpinner" name="expSp">
+        <Component class="javax.swing.JLabel" name="jLabel6">
           <Properties>
-            <Property name="toolTipText" type="java.lang.String" value="CL eye exposure value (0-511)"/>
-          </Properties>
-          <BindingProperties>
-            <BindingProperty name="value" source="Form" sourcePath="${chip.exposure}" target="expSp" targetPath="value" updateStrategy="0" immediately="false"/>
-          </BindingProperties>
-        </Component>
-        <Component class="javax.swing.JLabel" name="jLabel2">
-          <Properties>
-            <Property name="text" type="java.lang.String" value="Exposure"/>
+            <Property name="text" type="java.lang.String" value="Camera mode"/>
           </Properties>
         </Component>
-        <Component class="javax.swing.JSpinner" name="gainSp">
-          <Properties>
-            <Property name="toolTipText" type="java.lang.String" value="CL eye gain (0-79)"/>
-          </Properties>
-          <BindingProperties>
-            <BindingProperty name="value" source="Form" sourcePath="${chip.gain}" target="gainSp" targetPath="value" updateStrategy="0" immediately="false"/>
-          </BindingProperties>
-        </Component>
-        <Component class="javax.swing.JLabel" name="jLabel1">
-          <Properties>
-            <Property name="text" type="java.lang.String" value="Gain"/>
-          </Properties>
-        </Component>
-        <Component class="javax.swing.JCheckBox" name="aeCB">
-          <Properties>
-            <Property name="text" type="java.lang.String" value="Auto exposure"/>
-            <Property name="toolTipText" type="java.lang.String" value="Enables automatic exposure control"/>
-          </Properties>
-          <BindingProperties>
-            <BindingProperty name="selected" source="Form" sourcePath="${chip.autoExposureEnabled}" target="aeCB" targetPath="selected" updateStrategy="0" immediately="false"/>
-          </BindingProperties>
-          <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="aeCBActionPerformed"/>
-          </Events>
-        </Component>
-        <Component class="javax.swing.JCheckBox" name="agCB">
-          <Properties>
-            <Property name="text" type="java.lang.String" value="Auto gain"/>
-            <Property name="toolTipText" type="java.lang.String" value="Enables AGC"/>
-          </Properties>
-          <BindingProperties>
-            <BindingProperty name="selected" source="Form" sourcePath="${chip.autoGainEnabled}" target="agCB" targetPath="selected" updateStrategy="0" immediately="false"/>
-          </BindingProperties>
-          <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="agCBActionPerformed"/>
-          </Events>
-        </Component>
+        <Container class="javax.swing.JPanel" name="jPanel3">
+
+          <Layout>
+            <DimensionLayout dim="0">
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <EmptySpace min="0" pref="227" max="32767" attributes="0"/>
+                  <Group type="103" rootIndex="1" groupAlignment="0" attributes="0">
+                      <Group type="102" alignment="0" attributes="0">
+                          <EmptySpace max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="0" attributes="0">
+                              <Component id="jLabel1" alignment="1" min="-2" max="-2" attributes="0"/>
+                              <Component id="jLabel2" alignment="1" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="1" max="-2" attributes="0">
+                              <Component id="expSp" max="32767" attributes="1"/>
+                              <Component id="gainSp" alignment="1" min="-2" pref="55" max="-2" attributes="1"/>
+                          </Group>
+                          <EmptySpace max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="0" attributes="0">
+                              <Component id="agCB" alignment="0" min="-2" max="-2" attributes="0"/>
+                              <Group type="102" alignment="0" attributes="0">
+                                  <EmptySpace min="-2" pref="2" max="-2" attributes="0"/>
+                                  <Component id="aeCB" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                          </Group>
+                          <EmptySpace max="32767" attributes="0"/>
+                      </Group>
+                  </Group>
+              </Group>
+            </DimensionLayout>
+            <DimensionLayout dim="1">
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <EmptySpace min="0" pref="73" max="32767" attributes="0"/>
+                  <Group type="103" rootIndex="1" groupAlignment="0" attributes="0">
+                      <Group type="102" alignment="0" attributes="0">
+                          <EmptySpace max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="0" attributes="0">
+                              <Group type="102" alignment="1" attributes="0">
+                                  <Group type="103" groupAlignment="3" attributes="0">
+                                      <Component id="gainSp" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="agCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  </Group>
+                                  <Group type="103" groupAlignment="0" attributes="0">
+                                      <Group type="102" alignment="0" attributes="0">
+                                          <EmptySpace min="-2" pref="5" max="-2" attributes="0"/>
+                                          <Component id="aeCB" min="-2" max="-2" attributes="0"/>
+                                      </Group>
+                                      <Group type="102" alignment="0" attributes="0">
+                                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                                          <Group type="103" groupAlignment="3" attributes="0">
+                                              <Component id="expSp" alignment="3" min="-2" max="-2" attributes="0"/>
+                                              <Component id="jLabel2" alignment="3" min="-2" max="-2" attributes="0"/>
+                                          </Group>
+                                      </Group>
+                                  </Group>
+                              </Group>
+                              <Group type="102" alignment="1" attributes="0">
+                                  <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
+                                  <EmptySpace min="-2" pref="31" max="-2" attributes="0"/>
+                              </Group>
+                          </Group>
+                          <EmptySpace max="32767" attributes="0"/>
+                      </Group>
+                  </Group>
+              </Group>
+            </DimensionLayout>
+          </Layout>
+          <SubComponents>
+            <Component class="javax.swing.JLabel" name="jLabel1">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Gain"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JSpinner" name="gainSp">
+              <Properties>
+                <Property name="toolTipText" type="java.lang.String" value="CL eye gain (0-79)"/>
+              </Properties>
+              <BindingProperties>
+                <BindingProperty name="value" source="Form" sourcePath="${chip.gain}" target="gainSp" targetPath="value" updateStrategy="0" immediately="false"/>
+              </BindingProperties>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="agCB">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Auto gain"/>
+                <Property name="toolTipText" type="java.lang.String" value="Enables AGC"/>
+              </Properties>
+              <BindingProperties>
+                <BindingProperty name="selected" source="Form" sourcePath="${chip.autoGainEnabled}" target="agCB" targetPath="selected" updateStrategy="0" immediately="false"/>
+              </BindingProperties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="agCBActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="aeCB">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Auto exposure"/>
+                <Property name="toolTipText" type="java.lang.String" value="Enables automatic exposure control"/>
+              </Properties>
+              <BindingProperties>
+                <BindingProperty name="selected" source="Form" sourcePath="${chip.autoExposureEnabled}" target="aeCB" targetPath="selected" updateStrategy="0" immediately="false"/>
+              </BindingProperties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="aeCBActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JLabel" name="jLabel2">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Exposure"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JSpinner" name="expSp">
+              <Properties>
+                <Property name="toolTipText" type="java.lang.String" value="CL eye exposure value (0-511)"/>
+              </Properties>
+              <BindingProperties>
+                <BindingProperty name="value" source="Form" sourcePath="${chip.exposure}" target="expSp" targetPath="value" updateStrategy="0" immediately="false"/>
+              </BindingProperties>
+            </Component>
+          </SubComponents>
+        </Container>
       </SubComponents>
     </Container>
     <Container class="javax.swing.JPanel" name="jPanel2">
@@ -193,15 +270,24 @@
               <Group type="102" attributes="0">
                   <EmptySpace max="-2" attributes="0"/>
                   <Group type="103" groupAlignment="0" attributes="0">
-                      <Group type="102" attributes="0">
+                      <Component id="jLabel3" alignment="0" min="-2" max="-2" attributes="0"/>
+                      <Group type="102" alignment="0" attributes="0">
                           <Component id="jLabel4" min="-2" max="-2" attributes="0"/>
                           <EmptySpace max="-2" attributes="0"/>
-                          <Component id="thrSp" min="-2" pref="62" max="-2" attributes="1"/>
+                          <Group type="103" groupAlignment="0" attributes="0">
+                              <Group type="102" alignment="0" attributes="0">
+                                  <Component id="bThSp" min="-2" pref="62" max="-2" attributes="1"/>
+                                  <EmptySpace min="6" pref="6" max="-2" attributes="0"/>
+                                  <Component id="logCB" min="-2" max="-2" attributes="0"/>
+                                  <EmptySpace min="-2" pref="63" max="-2" attributes="0"/>
+                                  <Component id="itsCB" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <Component id="hThSp" min="-2" pref="62" max="-2" attributes="1"/>
+                          </Group>
                       </Group>
-                      <Component id="itsCB" alignment="0" min="-2" max="-2" attributes="0"/>
-                      <Component id="jLabel3" alignment="0" min="-2" max="-2" attributes="0"/>
+                      <Component id="jLabel5" min="-2" max="-2" attributes="0"/>
                   </Group>
-                  <EmptySpace max="32767" attributes="0"/>
+                  <EmptySpace pref="157" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -212,33 +298,35 @@
                   <EmptySpace max="-2" attributes="0"/>
                   <Group type="103" groupAlignment="3" attributes="0">
                       <Component id="jLabel4" alignment="3" min="-2" max="-2" attributes="0"/>
-                      <Component id="thrSp" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="bThSp" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="logCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="itsCB" alignment="3" min="-2" max="-2" attributes="0"/>
                   </Group>
-                  <EmptySpace max="-2" attributes="0"/>
-                  <Component id="itsCB" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                  <Group type="103" groupAlignment="3" attributes="0">
+                      <Component id="jLabel5" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="hThSp" alignment="3" min="-2" max="-2" attributes="0"/>
+                  </Group>
                   <EmptySpace max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
       </Layout>
       <SubComponents>
-        <Component class="javax.swing.JSpinner" name="thrSp">
+        <Component class="javax.swing.JSpinner" name="bThSp">
           <Properties>
             <Property name="toolTipText" type="java.lang.String" value="Sets threshold for temporal change events in ADC counts"/>
           </Properties>
-          <BindingProperties>
-            <BindingProperty name="value" source="Form" sourcePath="${chip.eventThreshold}" target="thrSp" targetPath="value" updateStrategy="0" immediately="false"/>
-          </BindingProperties>
         </Component>
         <Component class="javax.swing.JLabel" name="jLabel4">
           <Properties>
-            <Property name="text" type="java.lang.String" value="Temporal change threshold"/>
+            <Property name="text" type="java.lang.String" value="Brightness change threshold"/>
           </Properties>
         </Component>
         <Component class="javax.swing.JCheckBox" name="itsCB">
           <Properties>
             <Property name="text" type="java.lang.String" value="Interpolate time stamp"/>
-            <Property name="toolTipText" type="java.lang.String" value="Enables ITS"/>
+            <Property name="toolTipText" type="java.lang.String" value="Enables linear interpolation of timestamps between frames"/>
           </Properties>
           <BindingProperties>
             <BindingProperty name="selected" source="Form" sourcePath="${chip.linearInterpolateTimeStamp}" target="itsCB" targetPath="selected" updateStrategy="0" immediately="false"/>
@@ -252,7 +340,28 @@
             <Property name="text" type="java.lang.String" value="&lt;html&gt;Controls the parameters for generating events. &lt;br&gt; If the hardware interface is chosen MONO, then the threshold is for absolute sample change.&lt;br&gt;If the interface is COLOR, then the threshold is for mean color change."/>
           </Properties>
         </Component>
+        <Component class="javax.swing.JLabel" name="jLabel5">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="Hue change threshold"/>
+          </Properties>
+        </Component>
+        <Component class="javax.swing.JSpinner" name="hThSp">
+          <Properties>
+            <Property name="toolTipText" type="java.lang.String" value="Sets threshold for temporal change events in ADC counts"/>
+          </Properties>
+        </Component>
+        <Component class="javax.swing.JCheckBox" name="logCB">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="Log intensity mode"/>
+            <Property name="toolTipText" type="java.lang.String" value="Enables brightness change detection on log intensity change, rather than linear intensity change"/>
+          </Properties>
+        </Component>
       </SubComponents>
     </Container>
+    <Component class="javax.swing.JLabel" name="statusLabel">
+      <Properties>
+        <Property name="toolTipText" type="java.lang.String" value="status output"/>
+      </Properties>
+    </Component>
   </SubComponents>
 </Form>

@@ -103,7 +103,9 @@ public class CLCamera implements HardwareInterface {
         }
     }
     // camera color mode
+    /** Processed mono mode - color is preprocessed to extract mono for each pixel. */
     public static final int CLEYE_MONO_PROCESSED = 0;
+    /** Processed color mode - color is preprocessed to extract RGB for each pixel from Bayer pattern. */
     public static final int CLEYE_COLOR_PROCESSED = 1;
     public static final int CLEYE_MONO_RAW = 2;
     public static final int CLEYE_COLOR_RAW = 3;
@@ -114,12 +116,15 @@ public class CLCamera implements HardwareInterface {
     // camera sensor parameters
     public static final int CLEYE_AUTO_GAIN = 0;  	// [0, 1]
     public static final int CLEYE_GAIN = 1;	// [0, 79]
+    public static final int CLEYE_MAX_GAIN=79;
     public static final int CLEYE_AUTO_EXPOSURE = 2;    // [0, 1]
     public static final int CLEYE_EXPOSURE = 3;    // [0, 511]
+    public static final int CLEYE_MAX_EXPOSURE=511;
     public static final int CLEYE_AUTO_WHITEBALANCE = 4;	// [0, 1]
     public static final int CLEYE_WHITEBALANCE_RED = 5;	// [0, 255]
     public static final int CLEYE_WHITEBALANCE_GREEN = 6;   	// [0, 255]
     public static final int CLEYE_WHITEBALANCE_BLUE = 7;    // [0, 255]
+    public static final int CLEYE_MAX_WHITEBALANCE=255;
     // camera linear transform parameters
     public static final int CLEYE_HFLIP = 8;    // [0, 1]
     public static final int CLEYE_VFLIP = 9;    // [0, 1]
@@ -215,7 +220,7 @@ public class CLCamera implements HardwareInterface {
     
     protected boolean cameraStarted = false;
 
-    /** Starts the camera
+    /** Starts the camera.
      * 
      * @return true if successful or if already started
      */
@@ -336,14 +341,22 @@ public class CLCamera implements HardwareInterface {
     /** Sets the operating mode.
      * 
      * @param cameraMode desired mode.
+     * @throws HardwareInterfaceException from the possible re-open attempt.
      */
-    synchronized public void setCameraMode(CameraMode cameraMode) {
+    synchronized public void setCameraMode(CameraMode cameraMode) throws HardwareInterfaceException {
         this.cameraMode = cameraMode;
+        if(isOpen()){
+            close();
+            open();
+        }
     }
     
     /** Sets the operating mode by index into CameraMode enum.
+     * After setting this mode, the camera must be closed and re-opened if it was already running.
      * 
      * @param cameraModeIndex desired index
+     * @see #close() 
+     * @see #open() 
      */
     synchronized public void setCameraMode(int cameraModeIndex) {
         if (cameraModeIndex < 0 || cameraModeIndex >= numModes) {
