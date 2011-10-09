@@ -1744,10 +1744,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         int xIndexEnd = subIndexX + radiusNeurons;
         if(xIndexEnd > numOfNeuronsX - 1)
             xIndexEnd = numOfNeuronsX - 1;
-        else{
-            if((xIndexEnd-xIndexStart)%2 != 0)
-                xIndexEnd++;
-        }
 
         int yIndexStart = subIndexY - radiusNeurons;
         if(yIndexStart < 0)
@@ -1756,15 +1752,11 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         int yIndexEnd = subIndexY + radiusNeurons;
         if(yIndexEnd > numOfNeuronsY - 1)
             yIndexEnd = numOfNeuronsY - 1;
-        else{
-            if((yIndexEnd-yIndexStart)%2 != 0)
-                yIndexEnd++;
-        }
 
         Point2D.Float centerIndex = new Point2D.Float( 0.5f*(xIndexStart+xIndexEnd), 0.5f*(yIndexStart+yIndexEnd));
-        float indexRadius = Math.max(0.5f*(xIndexEnd - xIndexStart), 0.5f*(yIndexEnd - yIndexStart));
-        for(int x = xIndexStart; x <= xIndexEnd; x+=2){
-            for(int y = yIndexStart; y <= yIndexEnd; y+=2){
+        float indexRadius = Math.max(0.6f*(xIndexEnd - xIndexStart), 0.6f*(yIndexEnd - yIndexStart));
+        for(int x = xIndexStart; x <= xIndexEnd; x++){
+            for(int y = yIndexStart; y <= yIndexEnd; y++){
                 if(centerIndex.distance(x, y) < indexRadius)
                     ng.add(lifNeurons.get(x+y*numOfNeuronsX), mode);
             }
