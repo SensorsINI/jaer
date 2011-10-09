@@ -5,6 +5,7 @@
  * and open the template in the editor.
  */
 package ch.unizh.ini.jaer.projects.gesture.blurringFilter;
+import ch.unizh.ini.jaer.projects.gesture.blurringFilter.BlurringFilter2D.Add_Mode;
 import ch.unizh.ini.jaer.projects.gesture.blurringFilter.BlurringFilter2D.NeuronGroup;
 import com.sun.opengl.util.GLUT;
 import net.sf.jaer.aemonitor.AEConstants;
@@ -137,6 +138,8 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     public final float VELOCITY_VECTOR_SCALING = 1e6f;
 
     private boolean starting = true;
+
+    protected BlurringFilter2D.Add_Mode neuronGroupAddMode = BlurringFilter2D.Add_Mode.HYBRID;
 
     /**
      * Creates a new instance of BlurringFilter2DTracker.
@@ -945,7 +948,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             numNeurons = ng.getNumMemberNeurons();
             mass = curMass + ngTotalMP;
 
-            float refMass = getRefMass(ng.location, ngTotalMP, 5, timestamp);
+            float refMass = getRefMass(ng.location, ngTotalMP, refMassScale, timestamp);
             
             // averaging the location
             Point2D.Float prevLocation = new Point2D.Float(location.x, location.y);
@@ -1152,7 +1155,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
             Point2D.Float loc = new Point2D.Float(xpos, ypos);
 
-            NeuronGroup ng = bfilter.getVirtualNeuronGroup(loc, no_radius.radius, updateTimestamp);
+            NeuronGroup ng = bfilter.getVirtualNeuronGroup(loc, no_radius.radius, updateTimestamp, neuronGroupAddMode);
 
             // We don't have to update the cluster when a closely located neighbor cluster is attracting it
             if(no_radius.isTouchingNeighbor  // has a neighbor in touch
@@ -1178,7 +1181,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                 loc.y += velocityPPS.y*(updateTimestamp - lastUpdateTimestamp)*1e-6f;
             }
 
-            NeuronGroup ng = bfilter.getVirtualNeuronGroup(loc, no_radius.radius, updateTimestamp);
+            NeuronGroup ng = bfilter.getVirtualNeuronGroup(loc, no_radius.radius, updateTimestamp, neuronGroupAddMode);
 
             // We don't have to update the cluster when a closely located neighbor cluster is attracting it
             if(no_radius.isTouchingNeighbor  // has a neighbor in touch
@@ -1206,7 +1209,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * @param radius
          */
         public void updateLocation(int updateTimestamp, Point2D.Float pos, float radius){
-            NeuronGroup ng = bfilter.getVirtualNeuronGroup(pos, radius, updateTimestamp);
+            NeuronGroup ng = bfilter.getVirtualNeuronGroup(pos, radius, updateTimestamp, neuronGroupAddMode);
 
             addGroup(ng, false, updateTimestamp);
         }
@@ -2200,7 +2203,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         refLoc.x = (refLoc.x*refMass + ng.location.x*ngTotalMP)/(refMass + ngTotalMP);
         refLoc.y = (refLoc.y*refMass + ng.location.y*ngTotalMP)/(refMass + ngTotalMP);
 
-        NeuronGroup ng2 = bfilter.getVirtualNeuronGroup(refLoc, c.getRadius(), msg.timestamp);
+        NeuronGroup ng2 = bfilter.getVirtualNeuronGroup(refLoc, c.getRadius(), msg.timestamp, neuronGroupAddMode);
 
         //return refLoc;
         return ng2.location;
@@ -2516,6 +2519,23 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     public int getPathLength (){
         return pathLength;
     }
+
+    /**
+     * returns neuronGroupAddMode
+     * @return
+     */
+    public Add_Mode getNeuronGroupAddMode() {
+        return neuronGroupAddMode;
+    }
+
+    /**
+     * sets neuronGroupAddMode
+     * @param neuronGroupAddMode
+     */
+    public void setNeuronGroupAddMode(Add_Mode neuronGroupAddMode) {
+        this.neuronGroupAddMode = neuronGroupAddMode;
+    }
+
 
     /** Sets the maximum number of path points recorded for each cluster. The {@link Cluster#path} list of points is adjusted
      * to be at most <code>pathLength</code> long.

@@ -363,11 +363,15 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * group location is decided by averging membrane potential of neurons.
          * This is used for uder threshold tracking.
          */
-        MEMBRANE_POTENTAIL,
+        MEMBRANE_POTENTAIL_AVERAGE,
         /**
          * group location is decided by averging firing rate of neurons.
          */
-        FIRING_RATE_AVERAGE;
+        FIRING_RATE_AVERAGE,
+        /**
+         * group location is decided by both membrane potential and averging firing rate of neurons.
+         */
+        HYBRID
     }
 
     /**
@@ -803,19 +807,28 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @param mode
          */
         public final void add(LIFNeuron newNeuron, Add_Mode mode) {
-            float effectiveMP;
+            float effectiveMP = 0;
             if(newNeuron.MPDecreaseArterFiringPercentTh == 0){
                 effectiveMP = newNeuron.getMP();
             } else {
-                if(mode == Add_Mode.MEMBRANE_POTENTAIL)
-                    effectiveMP = newNeuron.getMP();// + newNeuron.mpOffset*newNeuron.thresholdMP*newNeuron.MPDecreaseArterFiringPercentTh/100;
-                else
-                    effectiveMP = newNeuron.mpOffset;
+                switch(mode){
+                    case MEMBRANE_POTENTAIL_AVERAGE:
+                        effectiveMP = newNeuron.getMP();
+                        break;
+                    case FIRING_RATE_AVERAGE:
+                        effectiveMP = newNeuron.mpOffset;
+                        break;
+                    case HYBRID:
+                        effectiveMP = newNeuron.getMP() + newNeuron.mpOffset*newNeuron.thresholdMP*newNeuron.MPDecreaseArterFiringPercentTh/100;
+                        break;
+                    default:
+                        break;
+                }
             }
 
             // if this is the first one
             if (tag < 0) {
-                if(mode == Add_Mode.MEMBRANE_POTENTAIL)
+                if(mode == Add_Mode.MEMBRANE_POTENTAIL_AVERAGE)
                     tag = numOfNeuronsX*numOfNeuronsY;
                 else
                     tag = newNeuron.getGroupTag();
@@ -1210,10 +1223,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         numOfGroup = 0;
 
        if (!lifNeurons.isEmpty()) {
-            LIFNeuron upNeuron = null;
-            LIFNeuron downNeuron = null;
-            LIFNeuron leftNeuron = null;
-            LIFNeuron rightNeuron = null;
+            // neighbor neurons : [0] left, [1] right, [2] up, [3] down
+            LIFNeuron[] nborNeurons = new LIFNeuron[4];
+            for(int i=0; i<4; i++)
+                nborNeurons[i] = null;
 
             if(neuronsToBePostProcessed.size() > 0)
                 for(LIFNeuron n:neuronsToBePostProcessed)
@@ -1223,97 +1236,97 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                 boolean doMerge = false;
                 switch (tmpNeuron.locationType) {
                     case CORNER_00:
-                        upNeuron = lifNeurons.get(tmpNeuron.id + numOfNeuronsX);
-                        rightNeuron = lifNeurons.get(tmpNeuron.id + 1);
+                        nborNeurons[1] = lifNeurons.get(tmpNeuron.id + 1);
+                        nborNeurons[2] = lifNeurons.get(tmpNeuron.id + numOfNeuronsX);
 
                         tmpNeuron.setGroupTag(-1);
 
                         break;
                     case CORNER_01:
-                        downNeuron = lifNeurons.get(tmpNeuron.id - numOfNeuronsX);
-                        rightNeuron = lifNeurons.get(tmpNeuron.id + 1);
+                        nborNeurons[1] = lifNeurons.get(tmpNeuron.id + 1);
+                        nborNeurons[3] = lifNeurons.get(tmpNeuron.id - numOfNeuronsX);
 
-                        if (rightNeuron.groupTag == downNeuron.groupTag) {
-                            tmpNeuron.setGroupTag(downNeuron.groupTag);
+                        if (nborNeurons[1].groupTag == nborNeurons[3].groupTag) {
+                            tmpNeuron.setGroupTag(nborNeurons[3].groupTag);
                         } else {
                             tmpNeuron.setGroupTag(-1);
                         }
 
                         break;
                     case CORNER_10:
-                        upNeuron = lifNeurons.get(tmpNeuron.id + numOfNeuronsX);
-                        leftNeuron = lifNeurons.get(tmpNeuron.id - 1);
+                        nborNeurons[0] = lifNeurons.get(tmpNeuron.id - 1);
+                        nborNeurons[2] = lifNeurons.get(tmpNeuron.id + numOfNeuronsX);
 
                         tmpNeuron.setGroupTag(-1);
 
                         break;
                     case CORNER_11:
-                        downNeuron = lifNeurons.get(tmpNeuron.id - numOfNeuronsX);
-                        leftNeuron = lifNeurons.get(tmpNeuron.id - 1);
+                        nborNeurons[0] = lifNeurons.get(tmpNeuron.id - 1);
+                        nborNeurons[3] = lifNeurons.get(tmpNeuron.id - numOfNeuronsX);
 
-                        if (leftNeuron.groupTag == downNeuron.groupTag)
-                            tmpNeuron.setGroupTag(downNeuron.groupTag);
+                        if (nborNeurons[0].groupTag == nborNeurons[3].groupTag)
+                            tmpNeuron.setGroupTag(nborNeurons[3].groupTag);
                         else
                             doMerge = true;
 
                         break;
                     case EDGE_0Y:
-                        upNeuron = lifNeurons.get(tmpNeuron.id + numOfNeuronsX);
-                        downNeuron = lifNeurons.get(tmpNeuron.id - numOfNeuronsX);
-                        rightNeuron = lifNeurons.get(tmpNeuron.id + 1);
+                        nborNeurons[1] = lifNeurons.get(tmpNeuron.id + 1);
+                        nborNeurons[2] = lifNeurons.get(tmpNeuron.id + numOfNeuronsX);
+                        nborNeurons[3] = lifNeurons.get(tmpNeuron.id - numOfNeuronsX);
 
-                        if (rightNeuron.groupTag == downNeuron.groupTag) {
-                            tmpNeuron.setGroupTag(downNeuron.groupTag);
+                        if (nborNeurons[1].groupTag == nborNeurons[3].groupTag) {
+                            tmpNeuron.setGroupTag(nborNeurons[3].groupTag);
                         } else {
                             tmpNeuron.setGroupTag(-1);
                         }
 
                         break;
                     case EDGE_1Y:
-                        upNeuron = lifNeurons.get(tmpNeuron.id + numOfNeuronsX);
-                        downNeuron = lifNeurons.get(tmpNeuron.id - numOfNeuronsX);
-                        leftNeuron = lifNeurons.get(tmpNeuron.id - 1);
+                        nborNeurons[0] = lifNeurons.get(tmpNeuron.id - 1);
+                        nborNeurons[2] = lifNeurons.get(tmpNeuron.id + numOfNeuronsX);
+                        nborNeurons[3] = lifNeurons.get(tmpNeuron.id - numOfNeuronsX);
 
-                        if (leftNeuron.groupTag == downNeuron.groupTag)
-                            tmpNeuron.setGroupTag(downNeuron.groupTag);
+                        if (nborNeurons[0].groupTag == nborNeurons[3].groupTag)
+                            tmpNeuron.setGroupTag(nborNeurons[3].groupTag);
                         else
                             doMerge = true;
 
                         break;
                     case EDGE_X0:
-                        upNeuron = lifNeurons.get(tmpNeuron.id + numOfNeuronsX);
-                        rightNeuron = lifNeurons.get(tmpNeuron.id + 1);
-                        leftNeuron = lifNeurons.get(tmpNeuron.id - 1);
+                        nborNeurons[0] = lifNeurons.get(tmpNeuron.id - 1);
+                        nborNeurons[1] = lifNeurons.get(tmpNeuron.id + 1);
+                        nborNeurons[2] = lifNeurons.get(tmpNeuron.id + numOfNeuronsX);
 
                         tmpNeuron.setGroupTag(-1);
 
                         break;
                     case EDGE_X1:
-                        downNeuron = lifNeurons.get(tmpNeuron.id - numOfNeuronsX);
-                        rightNeuron = lifNeurons.get(tmpNeuron.id + 1);
-                        leftNeuron = lifNeurons.get(tmpNeuron.id - 1);
+                        nborNeurons[0] = lifNeurons.get(tmpNeuron.id - 1);
+                        nborNeurons[1] = lifNeurons.get(tmpNeuron.id + 1);
+                        nborNeurons[3] = lifNeurons.get(tmpNeuron.id - numOfNeuronsX);
 
-                        if (rightNeuron.groupTag == downNeuron.groupTag) {
-                            tmpNeuron.setGroupTag(downNeuron.groupTag);
+                        if (nborNeurons[1].groupTag == nborNeurons[3].groupTag) {
+                            tmpNeuron.setGroupTag(nborNeurons[3].groupTag);
                         }
 
-                        if (leftNeuron.groupTag == downNeuron.groupTag)
-                            tmpNeuron.setGroupTag(downNeuron.groupTag);
+                        if (nborNeurons[0].groupTag == nborNeurons[3].groupTag)
+                            tmpNeuron.setGroupTag(nborNeurons[3].groupTag);
                         else
                             doMerge = true;
 
                         break;
                     case INSIDE:
-                        upNeuron = lifNeurons.get(tmpNeuron.id + numOfNeuronsX);
-                        downNeuron = lifNeurons.get(tmpNeuron.id - numOfNeuronsX);
-                        rightNeuron = lifNeurons.get(tmpNeuron.id + 1);
-                        leftNeuron = lifNeurons.get(tmpNeuron.id - 1);
+                        nborNeurons[0] = lifNeurons.get(tmpNeuron.id - 1);
+                        nborNeurons[1] = lifNeurons.get(tmpNeuron.id + 1);
+                        nborNeurons[2] = lifNeurons.get(tmpNeuron.id + numOfNeuronsX);
+                        nborNeurons[3] = lifNeurons.get(tmpNeuron.id - numOfNeuronsX);
 
-                        if (rightNeuron.groupTag == downNeuron.groupTag)
-                            tmpNeuron.setGroupTag(downNeuron.groupTag);
+                        if (nborNeurons[1].groupTag == nborNeurons[3].groupTag)
+                            tmpNeuron.setGroupTag(nborNeurons[3].groupTag);
 
-                        if (leftNeuron.groupTag == downNeuron.groupTag)
-                            tmpNeuron.setGroupTag(downNeuron.groupTag);
+                        if (nborNeurons[0].groupTag == nborNeurons[3].groupTag)
+                            tmpNeuron.setGroupTag(nborNeurons[3].groupTag);
                         else
                             doMerge = true;
 
@@ -1324,22 +1337,35 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                 
                 // merges groups if necessary
                 if(doMerge){
-                    if (leftNeuron.groupTag > 0 && downNeuron.groupTag > 0) {
-                        tmpNeuron.setGroupTag(Math.min(downNeuron.groupTag, leftNeuron.groupTag));
+                    if (nborNeurons[0].groupTag > 0 && nborNeurons[3].groupTag > 0) {
+                        tmpNeuron.setGroupTag(Math.min(nborNeurons[3].groupTag, nborNeurons[0].groupTag));
 
                         // do merge here
-                        int targetGroupTag = Math.max(downNeuron.groupTag, leftNeuron.groupTag);
+                        int targetGroupTag = Math.max(nborNeurons[3].groupTag, nborNeurons[0].groupTag);
                         neuronGroups.get(tmpNeuron.groupTag).merge(neuronGroups.get(targetGroupTag));
                         neuronGroups.remove(targetGroupTag);
-                    } else if (leftNeuron.groupTag < 0 && downNeuron.groupTag < 0) {
+                    } else if (nborNeurons[0].groupTag < 0 && nborNeurons[3].groupTag < 0) {
                         tmpNeuron.setGroupTag(-1);
                     } else {
-                        tmpNeuron.setGroupTag(Math.max(downNeuron.groupTag, leftNeuron.groupTag));
+                        tmpNeuron.setGroupTag(Math.max(nborNeurons[3].groupTag, nborNeurons[0].groupTag));
                     }
                 }
 
                 // updates group with neurons
-                updateGroup(tmpNeuron, leftNeuron, rightNeuron, upNeuron, downNeuron, Add_Mode.FIRING_RATE_AVERAGE);
+                NeuronGroup tmpGroup = null;
+                if (neuronGroups.containsKey(tmpNeuron.getGroupTag())) {
+                    tmpGroup = neuronGroups.get(tmpNeuron.getGroupTag());
+                    tmpGroup.add(tmpNeuron, Add_Mode.FIRING_RATE_AVERAGE);
+                } else {
+                    tmpGroup = new NeuronGroup(tmpNeuron, Add_Mode.FIRING_RATE_AVERAGE);
+                    neuronGroups.put(tmpGroup.tag, tmpGroup);
+                }
+                for(int i=0; i<4; i++){
+                    if (nborNeurons[i] != null && nborNeurons[i].firingType == FiringType.FIRING_WITH_NEIGHBOR) {
+                        nborNeurons[i].setFiringTypeToBorder(tmpNeuron.groupTag);
+                        tmpGroup.add(nborNeurons[i], Add_Mode.FIRING_RATE_AVERAGE);
+                    }
+                }
             } // End of for
 
             neuronsToBePostProcessed.clear();
@@ -1351,43 +1377,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         } // End of if
     }
 
-    /**
-     * updates a neuron group with a new member
-     * 
-     * @param newMemberNeuron
-     * @param left
-     * @param right
-     * @param up
-     * @param down
-     * @param mode
-     */
-    private void updateGroup(LIFNeuron newMemberNeuron, LIFNeuron left, LIFNeuron right, LIFNeuron up, LIFNeuron down, Add_Mode mode) {
-        NeuronGroup tmpGroup = null;
-        if (neuronGroups.containsKey(newMemberNeuron.getGroupTag())) {
-            tmpGroup = neuronGroups.get(newMemberNeuron.getGroupTag());
-            tmpGroup.add(newMemberNeuron, mode);
-        } else {
-            tmpGroup = new NeuronGroup(newMemberNeuron, mode);
-            neuronGroups.put(tmpGroup.tag, tmpGroup);
-        }
-
-        if (left != null && left.firingType == FiringType.FIRING_WITH_NEIGHBOR) {
-            left.setFiringTypeToBorder(newMemberNeuron.groupTag);
-            tmpGroup.add(left, mode);
-        }
-        if (right != null && right.firingType == FiringType.FIRING_WITH_NEIGHBOR) {
-            right.setFiringTypeToBorder(newMemberNeuron.groupTag);
-            tmpGroup.add(right, mode);
-        }
-        if (up != null && up.firingType == FiringType.FIRING_WITH_NEIGHBOR) {
-            up.setFiringTypeToBorder(newMemberNeuron.groupTag);
-            tmpGroup.add(up, mode);
-        }
-        if (down != null && down.firingType == FiringType.FIRING_WITH_NEIGHBOR) {
-            down.setFiringTypeToBorder(newMemberNeuron.groupTag);
-            tmpGroup.add(down, mode);
-        }
-    }
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
@@ -1736,7 +1725,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
      * @param timestamp
      * @return
      */
-    public NeuronGroup getVirtualNeuronGroup(Point2D.Float location, float radius, int timestamp){
+    public NeuronGroup getVirtualNeuronGroup(Point2D.Float location, float radius, int timestamp, Add_Mode mode){
         NeuronGroup ng = new NeuronGroup();
 
         int subIndexX = (int) (location.x / halfReceptiveFieldSizePixels);
@@ -1755,6 +1744,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         int xIndexEnd = subIndexX + radiusNeurons;
         if(xIndexEnd > numOfNeuronsX - 1)
             xIndexEnd = numOfNeuronsX - 1;
+        else{
+            if((xIndexEnd-xIndexStart)%2 != 0)
+                xIndexEnd++;
+        }
 
         int yIndexStart = subIndexY - radiusNeurons;
         if(yIndexStart < 0)
@@ -1763,13 +1756,17 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         int yIndexEnd = subIndexY + radiusNeurons;
         if(yIndexEnd > numOfNeuronsY - 1)
             yIndexEnd = numOfNeuronsY - 1;
+        else{
+            if((yIndexEnd-yIndexStart)%2 != 0)
+                yIndexEnd++;
+        }
 
         Point2D.Float centerIndex = new Point2D.Float( 0.5f*(xIndexStart+xIndexEnd), 0.5f*(yIndexStart+yIndexEnd));
         float indexRadius = Math.max(0.5f*(xIndexEnd - xIndexStart), 0.5f*(yIndexEnd - yIndexStart));
-        for(int x = xIndexStart; x <= xIndexEnd; x++){
-            for(int y = yIndexStart; y <= yIndexEnd; y++){
+        for(int x = xIndexStart; x <= xIndexEnd; x+=2){
+            for(int y = yIndexStart; y <= yIndexEnd; y+=2){
                 if(centerIndex.distance(x, y) < indexRadius)
-                    ng.add(lifNeurons.get(x+y*numOfNeuronsX), Add_Mode.MEMBRANE_POTENTAIL);
+                    ng.add(lifNeurons.get(x+y*numOfNeuronsX), mode);
             }
         }
 
