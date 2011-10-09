@@ -26,7 +26,9 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /** Interface to Code Laboratories driver to Playstation Eye (PS Eye) camera.
- * See <a href="http://codelaboratories.com/research/view/cl-eye-muticamera-api">CodeLaboratories DL Eye Multicam C++ API</a> for the native API
+ * See <a href="http://codelaboratories.com/research/view/cl-eye-muticamera-api">CodeLaboratories CL Eye Multicam C++ API</a> 
+ * for the native API.
+ * <p>To install the driver, download the <a href="http://codelaboratories.com/downloads/">CL Eye Platform Driver</a>.
  * 
  * @author CodeLaboratories / jaer adaptation by tobi
  */
@@ -36,7 +38,8 @@ public class CLCamera implements HardwareInterface {
     protected static Preferences prefs=Preferences.userNodeForPackage(CLCamera.class);
     /** Set true if library was loaded successfully. */
     private static boolean libraryLoaded = false;
-    private final static String DLLNAME = "CLEyeMulticam";
+    /** Name of the dll for the Windows native part of the JNI for CLCamera. */
+    public final static String DLLNAME = "CLEyeMulticam";
     private int cameraIndex = 0; // index of camera to open
     private int cameraInstance = 0;
     private boolean isOpened = false;
