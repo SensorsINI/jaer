@@ -353,11 +353,12 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         // portC
         private PortBit runAdc = new PortBit("c0", "runAdc", "High to run ADC", true);
         // portD
-        private PortBit vCtrlKillBit = new PortBit("d6", "vCtrlKill", "Setting high resets all neuron kill bit latches, but aerKillBit needs to be high also", false),
-                aerKillBit = new PortBit("d7", "aerKillBit", "Set high to kill a neuron which is selected by address loaded via the Equalizer GUI; not used except to unkill all neurons with vCtrlKill", false);
+        private PortBit vCtrlKillBit = new PortBit("d6", "vCtrlKill", "Controls whether neurons can be killed. Set high to enable killing neurons.", true),
+                aerKillBit = new PortBit("d7", "aerKillBit", "The bit loaded into bank of 4 selected neuron kill bit latches. ", false);
         // portE
         // tobi changed config bits on rev1 board since e3/4 control maxim mic preamp attack/release and gain now
-
+        private PortBit cochleaBitLatch = new PortBit("e1", "cochleaBitLatch", "The latch signal for the cochlea address and data SRs; 0 to make latches transparent.", true);
+  
         private class PowerDownBit extends PortBit implements Observer {
 
             public PowerDownBit(Masterbias masterBias, String portBit, String name, String tip, boolean def) {
@@ -375,9 +376,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 }
             }
         }
-        private PowerDownBit powerDown;
-        private PortBit nCochleaReset = new PortBit("e3", "nCochleaReset", "High to reset all neuron and Q latches; global latch reset (1=reset); aka vReset", true);
-//                nCpldReset = new PortBit("e7", "nCpldReset", "Low to reset CPLD"); // don't expose this, firmware unresets on init
+        private PowerDownBit powerDown; // on port e2
+        private PortBit cochleaReset = new PortBit("e3", "cochleaReset", "High resets all neuron and Q latches; global latch reset (1=reset); aka vReset", false);
         // CPLD config on CPLD shift register
         private CPLDBit yBit = new CPLDBit(0, "yBit", "Used to select whether bandpass (0) or lowpass (1) neurons are killed for local kill", false),
                 selAER = new CPLDBit(3, "selAER", "Chooses whether lpf (0) or rectified (1) lpf output drives low-pass filter neurons", true),

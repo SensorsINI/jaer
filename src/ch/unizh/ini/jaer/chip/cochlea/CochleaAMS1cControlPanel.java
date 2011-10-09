@@ -274,7 +274,11 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
             this.bPFKillBox = bPFKillBox;
         }
     }
-    final Dimension sliderDimPref = new Dimension(2, 200), sliderDimMin = new Dimension(1, 35), killDimPref = new Dimension(2, 15), killDimMax = new Dimension(6, 15), killDimMin = new Dimension(1, 8);
+    final Dimension sliderDimPref = new Dimension(2, 200), 
+            sliderDimMin = new Dimension(1, 35), 
+            killDimPref = new Dimension(2, 25), 
+            killDimMax = new Dimension(6, 15), 
+            killDimMin = new Dimension(1, 15);
     final Insets zeroInsets = new Insets(0, 0, 0, 0);
 
     /** Handles updates to GUI controls from any source, including preference changes */
@@ -505,6 +509,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 }
 
                 public void mouseEntered(MouseEvent e) {
+//                    System.out.println("entered ");
                     channelLabel.setText(channel.toString());
                     if ((e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK) == MouseEvent.BUTTON3_DOWN_MASK) {
                         int v = (int) (getMaximum() * (float) (getHeight() - e.getY()) / getHeight());
@@ -519,7 +524,8 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
             addMouseMotionListener(new MouseMotionListener() {
 
                 public void mouseDragged(MouseEvent e) {
-                    if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
+//                    System.out.println("dragged ");
+                    if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK ) {
                         int v = (int) (getMaximum() * (float) (getHeight() - e.getY()) / getHeight());
                         setValue(v);
                         setFileModified();
@@ -527,6 +533,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 }
 
                 public void mouseMoved(MouseEvent e) {
+//                    System.out.println("moved ");
                     if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
                         int v = (int) (getMaximum() * (float) (getHeight() - e.getY()) / getHeight());
                         setValue(v);
