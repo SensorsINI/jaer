@@ -79,7 +79,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     private int markOutPosition = 0,  markInPosition = 0; // positions for editing (not yet implemented TODO)
 //    private int markInPosition = 0,  markOutPosition = 0; // points to mark IN and OUT positions for editing
     private int eventSizeBytes = AEFileInputStream.EVENT16_SIZE; // size of event in bytes, set finally after reading file header
-    private boolean firstReadCompleted = false;
+    protected boolean firstReadCompleted = false;
     private long absoluteStartingTimeMs = 0; // parsed from filename if possible
     private boolean enableTimeWrappingExceptionsChecking = true;
     //    private int numEvents,currentEventNumber;
@@ -100,11 +100,13 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     private int CHUNK_SIZE_EVENTS = 10000000;
     private int chunkSizeBytes = CHUNK_SIZE_EVENTS * EVENT16_SIZE; // size of memory mapped file chunk, depends on event size and number of events to map, initialized as though we didn't have a file header
 
-    // the packet used for reading events
-    private AEPacketRaw packet = new AEPacketRaw(MAX_BUFFER_SIZE_EVENTS);
+    /** the packet used for reading events. */
+    protected AEPacketRaw packet = new AEPacketRaw(MAX_BUFFER_SIZE_EVENTS);
     EventRaw tmpEvent = new EventRaw();
-    MappedByteBuffer byteBuffer = null;
-    private int position = 0; // absolute position in file in events, points to next event number, 0 based (1 means 2nd event)
+    /** The memory-mapped byte buffer pointing to the file. */
+    protected MappedByteBuffer byteBuffer = null;
+    /** absolute position in file in events, points to next event number, 0 based (1 means 2nd event) */
+    protected int position = 0; 
     protected ArrayList<String> header = new ArrayList<String>();
     private int headerOffset = 0; // this is starting position in file for rewind or to add to positioning via slider
     private int chunkNumber = 0; // current memory mapped file chunk, starts with 0 past header
@@ -818,7 +820,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         return pos;
     }
 
-    private void mapNextChunk () throws IOException{
+    /** Maps in the next chunk of the file. */
+    protected void mapNextChunk () throws IOException{
         chunkNumber++; // increment the chunk number
         if ( chunkNumber >= numChunks ){
             // if we try now to map a chunk past the last one then throw an EOF
@@ -831,7 +834,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         mapChunk(chunkNumber);
     }
 
-    private void mapPreviousChunk () throws IOException{
+    /** Maps back in the previous file chunk. */
+    protected void mapPreviousChunk () throws IOException{
         chunkNumber--;
         if ( chunkNumber < 0 ){
             chunkNumber = 0;
@@ -980,7 +984,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         return header;
     }
 
-    private void fireInitPropertyChange (){
+    /** Call to signal first read from file. */
+    protected void fireInitPropertyChange (){
         getSupport().firePropertyChange(AEInputStream.EVENT_INIT,0,0);
         firstReadCompleted = true;
     }

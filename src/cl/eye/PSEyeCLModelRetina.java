@@ -9,6 +9,8 @@ import ch.unizh.ini.jaer.chip.dvs320.cDVSEvent;
 import ch.unizh.ini.jaer.projects.thresholdlearner.TemporalContrastEvent;
 import cl.eye.CLCamera.CameraMode;
 import cl.eye.CLCamera.InvalidParameterException;
+import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -25,6 +27,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import org.jdesktop.beansbinding.Validator;
@@ -694,4 +697,11 @@ public class PSEyeCLModelRetina extends AEChip {
             }
         }
     }
+
+    @Override
+    public AEFileInputStream constuctFileInputStream(File file) throws IOException {
+        return new CLCameraFileInputStream(file);
+    }
+    
+    
 }

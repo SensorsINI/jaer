@@ -235,7 +235,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         }
 //            System.out.println("AEViewer.starting playback for DAT file "+file);
         outer.setCurrentFile(file);
-        aeFileInputStream = new AEFileInputStream(file);
+        aeFileInputStream = viewer.getChip().constuctFileInputStream(file); // new AEFileInputStream(file);
         aeFileInputStream.setNonMonotonicTimeExceptionsChecked(outer.getCheckNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem().isSelected());
         aeFileInputStream.setTimestampResetBitmask(outer.getAeFileInputStreamTimestampResetBitmask());
         aeFileInputStream.setFile(file);

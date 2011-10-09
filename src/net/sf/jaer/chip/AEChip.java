@@ -9,6 +9,8 @@
  */
 package net.sf.jaer.chip;
 
+import java.io.File;
+import java.io.IOException;
 import net.sf.jaer.eventprocessing.*;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.FilterFrame;
@@ -304,5 +306,15 @@ public class AEChip extends Chip2D {
      */
     public void onDeregistration() {
         log.info("unregistering "+this);
+    }
+
+    /** Constructs a new AEFileInputStream given a File. By default this just constructs a new AEFileInputStream, but
+     * it can be overridden by subclasses of AEChip to construct their own specialized readers that are implement the same interface.
+     * @param file the file to open.
+     * @return the stream
+     * @throws IOException on any IO exception 
+     */
+    public AEFileInputStream constuctFileInputStream(File file) throws IOException{
+        return new AEFileInputStream(file);
     }
 }
