@@ -129,7 +129,7 @@ public class PSEyeCLModelRetina extends AEChip {
         lastBrightnessValues = new int[sizeX * sizeY];
         lastHueValues = new int[sizeX * sizeY];
         setEventExtractor(new EventExtractor(this));
-        setEventClass(PolarityEvent.class);
+        setEventClass(cDVSEvent.class);
         setBiasgen(new Controls(this));
         String defModel = RetinaModel.RatioBtoRG.toString();
         retinaModel = RetinaModel.valueOf(getPrefs().get("retinaModel", defModel));
