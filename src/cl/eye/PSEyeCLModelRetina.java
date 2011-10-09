@@ -37,7 +37,7 @@ import org.jdesktop.beansbinding.Validator;
  * 
  * @author tobi
  */
-@Description("AE retina using the PS eye camera")
+@Description("AE retina using the PS-Eye Playstation camera")
 public class PSEyeCLModelRetina extends AEChip {
 
     /**
