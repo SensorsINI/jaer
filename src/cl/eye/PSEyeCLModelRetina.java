@@ -37,11 +37,35 @@ import org.jdesktop.beansbinding.Validator;
 @Description("AE retina using the PS eye camera")
 public class PSEyeCLModelRetina extends AEChip {
 
-    /** Number of gray levels in camera samples. */
-    public static final int NLEVELS=256;
-    /** Number of samples levels to leave linear when using log mapping. */
-    public static final int NLINEAR=10;
+    /**
+     * @return the retinaModel
+     */
+    public RetinaModel getRetinaModel() {
+        return retinaModel;
+    }
 
+    /**
+     * @param retinaModel the retinaModel to set
+     */
+    public void setRetinaModel(RetinaModel retinaModel) {
+        if (this.retinaModel != retinaModel) {
+            setChanged();
+            log.info("setting retinaModel="+retinaModel);
+        }
+        this.retinaModel = retinaModel;
+        getPrefs().put("retinaModel", retinaModel.toString());
+        notifyObservers(EVENT_RETINA_MODEL);
+    }
+
+    enum RetinaModel {
+
+        RatioBtoRG, DifferenceRB, MeanWaveLength
+    };
+    private RetinaModel retinaModel = null;
+    /** Number of gray levels in camera samples. */
+    public static final int NLEVELS = 256;
+    /** Number of samples levels to leave linear when using log mapping. */
+    public static final int NLINEAR = 10;
     // table lookup for log from int 8 bit pixel value
     private int[] logMapping = new int[NLEVELS];
     private int[] lastBrightnessValues = null, lastHueValues = null;
@@ -70,7 +94,8 @@ public class PSEyeCLModelRetina extends AEChip {
             EVENT_EXPOSURE = "exposure",
             EVENT_AUTO_GAIN = "autoGain",
             EVENT_AUTOEXPOSURE = "autoExposure",
-            EVENT_CAMERA_MODE = "cameraMode";
+            EVENT_CAMERA_MODE = "cameraMode",
+            EVENT_RETINA_MODEL = "retinaModel";
     //      
     //        
     private boolean initialized = false; // used to avoid writing events for all pixels of first frame of data
@@ -84,7 +109,7 @@ public class PSEyeCLModelRetina extends AEChip {
     // validators for int values, used in bindings to GUI
     private ByteValueValidator gainValidator = new ByteValueValidator(CLCamera.CLEYE_MAX_GAIN);
     private ByteValueValidator exposureValidator = new ByteValueValidator(CLCamera.CLEYE_MAX_EXPOSURE);
-    PSEyeModelRetinaRenderer renderer=null;
+    PSEyeModelRetinaRenderer renderer = null;
 
     public PSEyeCLModelRetina() {
         setSizeX(320);
@@ -94,8 +119,10 @@ public class PSEyeCLModelRetina extends AEChip {
         setEventExtractor(new EventExtractor(this));
         setEventClass(PolarityEvent.class);
         setBiasgen(new Controls(this));
-                setRenderer((renderer = new PSEyeModelRetinaRenderer(this)));
-                fillLogMapping(logMapping);
+        String defModel = RetinaModel.RatioBtoRG.toString();
+        retinaModel = RetinaModel.valueOf(getPrefs().get("retinaModel", defModel));
+        setRenderer((renderer = new PSEyeModelRetinaRenderer(this)));
+        fillLogMapping(logMapping);
     }
 
     @Override
@@ -104,6 +131,7 @@ public class PSEyeCLModelRetina extends AEChip {
         if (hardwareInterface != null && (hardwareInterface instanceof CLRetinaHardwareInterface)) {
             try {
                 CLRetinaHardwareInterface hw = (CLRetinaHardwareInterface) hardwareInterface;
+                hw.setCameraMode(getCameraMode());
                 colorMode = (hw.getCameraMode().color == CLCamera.CLEYE_COLOR_PROCESSED); // sets whether input is color or not
             } catch (Exception ex) {
                 log.warning(ex.toString());
@@ -136,7 +164,7 @@ public class PSEyeCLModelRetina extends AEChip {
     /**
      * @param hueChangeThreshold the hueChangeThreshold to set
      */
-     synchronized public void setHueChangeThreshold(int hueChangeThreshold) {
+    synchronized public void setHueChangeThreshold(int hueChangeThreshold) {
         if (hueChangeThreshold < 1) {
             hueChangeThreshold = 1;
         } else if (hueChangeThreshold > NLEVELS) {
@@ -183,24 +211,30 @@ public class PSEyeCLModelRetina extends AEChip {
      * @param v
      * @return mapped value, or identity if not log mapping
      */
-    public int map2linlog(int v){
-        if(!logIntensityMode) return v;
-            
-        if(v<0)v=0; else if(v>NLEVELS-1)v=NLEVELS-1;
+    public int map2linlog(int v) {
+        if (!logIntensityMode) {
+            return v;
+        }
+
+        if (v < 0) {
+            v = 0;
+        } else if (v > NLEVELS - 1) {
+            v = NLEVELS - 1;
+        }
         return logMapping[v];
     }
-    
+
     private void fillLogMapping(int[] logMapping) {
         // fill up lookup table to compute log from 8 bit sample value
         // the first linpart values are linear, then the rest are log, so that it ends up mapping 0:255 to 0:255
-        for(int i=0;i<NLINEAR;i++){
-            logMapping[i]=i;
+        for (int i = 0; i < NLINEAR; i++) {
+            logMapping[i] = i;
         }
-        double a=((double)NLEVELS-NLINEAR)/(Math.log(NLEVELS)-Math.log(NLINEAR));
-        double b=NLEVELS-a*Math.log(NLEVELS);
-        
-        for(int i=NLINEAR;i<NLEVELS;i++){
-            logMapping[i]=(int)Math.floor(a*Math.log(i)+b);
+        double a = ((double) NLEVELS - NLINEAR) / (Math.log(NLEVELS) - Math.log(NLINEAR));
+        double b = NLEVELS - a * Math.log(NLEVELS);
+
+        for (int i = NLINEAR; i < NLEVELS; i++) {
+            logMapping[i] = (int) Math.floor(a * Math.log(i) + b);
         }
     }
 
@@ -252,7 +286,7 @@ public class PSEyeCLModelRetina extends AEChip {
             }
             int sx = getSizeX(), sy = getSizeY(), i = 0, j = 0;
             int n = 0, lastBrightness, lastHue;
-            float pixR = 0, pixB = 0;
+            float pixR = 0, pixB = 0, pixG = 0;
             if (out.getEventClass() != cDVSEvent.class) {
                 out.setEventClass(cDVSEvent.class); // set the proper output event class to include color change events
             }
@@ -262,7 +296,7 @@ public class PSEyeCLModelRetina extends AEChip {
                     int hueval = 127;
                     int brightnessval = map2linlog(pixVals[i] & 0xff); // get gray value 0-255
 
-                    if (colorMode ) { // compute mean wavelength value from RGB
+                    if (colorMode) { // compute mean wavelength value from RGB
                         // Here we define the "mean color" as the magnitude of the difference between red and blue, scaled to 0-1.
                         // Then if the color difference changes, we get events. If the difference becomes larger, we get "bigger color difference"
                         // events, if the difference becomes smaller, we get "smaller color difference" events.
@@ -272,12 +306,35 @@ public class PSEyeCLModelRetina extends AEChip {
                         final int RMASK = 0xff0000;
                         final int GMASK = 0x00ff00;
                         final int BMASK = 0x0000ff; // colors packed like this into each int when in color mode
-                        
+                        final float lr = 650, lg = 500, lb = 430; // guesstimated mean wavelengh of color filters
+
                         pixR = (float) ((pixVals[i] >> 16) & 0xff);
+                        pixG = (float) ((pixVals[i] >> 8) & 0xff);
                         pixB = (float) (pixVals[i] & 0xff);
-                        pixR=map2linlog((int)pixR);
-                        pixB=map2linlog((int)pixB);
-                        if(pixR > 0 || pixB > 0) hueval = (int) (255 - 510 * (pixR * pixB) / (pixR * pixR + pixB * pixB));
+                        pixR = map2linlog((int) pixR);
+                        pixG = map2linlog((int) pixG);
+                        pixB = map2linlog((int) pixB);
+                        float sum = 0;
+                        switch (retinaModel) {
+                            case DifferenceRB:
+                                if (pixR > 0 || pixB > 0) {
+                                    hueval = (int) (255 - 510 * (pixR * pixB) / (pixR * pixR + pixB * pixB));
+                                }
+                                break;
+                            case MeanWaveLength:
+                                sum = (pixR + pixG + pixB);
+                                if (sum > 0) {
+                                    // new method computes hue directly
+                                    hueval = (int) ((lr * pixR + lg * pixG + lb * pixB) / sum);
+                                    hueval = (int) (255 * (hueval - lb) / ((float) (lr - lb)));
+                                }
+                                break;
+                            case RatioBtoRG:
+                                sum = pixG + pixR;
+                                if (sum > 0) {
+                                    hueval = (int) (255*((pixB) / sum));
+                                }
+                        }
                     }
                     if (!initialized) {
                         lastBrightnessValues[i] = brightnessval; // update stored gray level for first frame
@@ -591,6 +648,7 @@ public class PSEyeCLModelRetina extends AEChip {
             setChanged();
         }
         cl.setCameraMode(mode);
+        getPrefs().put("CLCamera.cameraMode", cl.getCameraMode().toString());
         notifyObservers(EVENT_CAMERA_MODE);
     }
 
