@@ -38,7 +38,7 @@
               <EmptySpace max="-2" attributes="0"/>
               <Component id="jPanel2" min="-2" max="-2" attributes="0"/>
               <EmptySpace type="unrelated" max="-2" attributes="0"/>
-              <Component id="rawInputPanel" pref="241" max="32767" attributes="0"/>
+              <Component id="rawInputPanel" pref="255" max="32767" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
               <Component id="statusLabel" min="-2" pref="15" max="-2" attributes="0"/>
           </Group>
@@ -362,7 +362,7 @@
         </Component>
         <Component class="javax.swing.JLabel" name="jLabel3">
           <Properties>
-            <Property name="text" type="java.lang.String" value="&lt;html&gt;Controls the parameters for generating events. &lt;br&gt; If the hardware interface is chosen MONO, then the threshold is for absolute sample change.&lt;br&gt;If the interface is COLOR, then the threshold is for mean color change."/>
+            <Property name="text" type="java.lang.String" value="&lt;html&gt;Controls the parameters for generating events. &lt;br&gt;The hue change threshold is only used for color camera modes."/>
           </Properties>
         </Component>
         <Component class="javax.swing.JLabel" name="jLabel5">

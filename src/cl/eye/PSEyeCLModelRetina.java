@@ -57,10 +57,19 @@ public class PSEyeCLModelRetina extends AEChip {
         notifyObservers(EVENT_RETINA_MODEL);
     }
 
-    enum RetinaModel {
-
-        RatioBtoRG, DifferenceRB, MeanWaveLength
+    /** Possible models of retina computation.
+     * 
+     */
+    public enum RetinaModel {
+        RatioBtoRG("Uses change of ratio of R/(B+G)"), 
+        DifferenceRB("Uses normalized absolute difference (B-R)^2/(R^2+B^2)"), 
+        MeanWaveLength("Uses mean wavelength (lr * pixR + lg * pixG + lb * pixB) / sum, where lx is the mean filter wavelength");
+        String description;
+        RetinaModel(String description){
+            this.description=description;
+        }
     };
+    
     private RetinaModel retinaModel = null;
     /** Number of gray levels in camera samples. */
     public static final int NLEVELS = 256;

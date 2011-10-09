@@ -245,7 +245,7 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
             }
         });
 
-        jLabel3.setText("<html>Controls the parameters for generating events. <br> If the hardware interface is chosen MONO, then the threshold is for absolute sample change.<br>If the interface is COLOR, then the threshold is for mean color change.");
+        jLabel3.setText("<html>Controls the parameters for generating events. <br>The hue change threshold is only used for color camera modes.");
 
         jLabel5.setText("Hue change threshold");
 
@@ -350,7 +350,7 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(rawInputPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 241, Short.MAX_VALUE)
+                .addComponent(rawInputPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 255, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(statusLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 15, javax.swing.GroupLayout.PREFERRED_SIZE))
         );
@@ -510,6 +510,7 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
             logCB.setSelected(chip.isLogIntensityMode());
             camModeCB.setSelectedItem(chip.getCameraMode());
             modelCB.setSelectedItem(chip.getRetinaModel());
+            modelCB.setToolTipText(chip.getRetinaModel().description);
             return;
         }
         if (arg == PSEyeCLModelRetina.EVENT_AUTOEXPOSURE) {
@@ -532,6 +533,7 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
             logCB.setSelected(chip.isLogIntensityMode());
         } else if (arg == PSEyeCLModelRetina.EVENT_RETINA_MODEL) {
             modelCB.setSelectedItem(chip.getRetinaModel());
+            modelCB.setToolTipText(chip.getRetinaModel().description);
         }
     }
 }
