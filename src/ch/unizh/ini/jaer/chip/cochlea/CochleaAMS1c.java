@@ -354,7 +354,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         private PortBit runAdc = new PortBit("c0", "runAdc", "High to run ADC", true);
         // portD
         private PortBit vCtrlKillBit = new PortBit("d6", "vCtrlKill", "Controls whether neurons can be killed. Set high to enable killing neurons.", true),
-                aerKillBit = new PortBit("d7", "aerKillBit", "The bit loaded into bank of 4 selected neuron kill bit latches. ", false);
+                aerKillBit = new PortBit("d7", "aerKillBit", "The bit loaded into bank of 8 selected neuron kill bit latches. ", false);
         // portE
         // tobi changed config bits on rev1 board since e3/4 control maxim mic preamp attack/release and gain now
         private PortBit cochleaBitLatch = new PortBit("e1", "cochleaBitLatch", "The latch signal for the cochlea address and data SRs; 0 to make latches transparent.", true);

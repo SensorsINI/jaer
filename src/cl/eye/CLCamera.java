@@ -49,7 +49,7 @@ public class CLCamera implements HardwareInterface {
      */
     
     public  final static int numModes = CameraMode.values().length;
-    private CameraMode cameraMode = CameraMode.QVGA_MONO_60; // default camera mode
+    private CameraMode cameraMode = null; 
     // static methods
 
     static {
@@ -189,6 +189,11 @@ public class CLCamera implements HardwareInterface {
      * 
      */
     public CLCamera() {
+        try{
+            cameraMode=CameraMode.valueOf(prefs.get("cameraMode",CameraMode.QVGA_MONO_60.toString()));
+        } catch(Exception e){
+            cameraMode=CameraMode.QVGA_MONO_60; // default;
+        }
     }
 
     /** Constructs instance to open the cameraIndex camera
@@ -201,7 +206,11 @@ public class CLCamera implements HardwareInterface {
     
     CLCamera(int cameraIndex, CameraMode cameraMode) {
         this.cameraIndex = cameraIndex;
-        this.cameraMode = cameraMode;
+        try {
+            setCameraMode(cameraMode);
+        } catch (HardwareInterfaceException ex) {
+            log.warning("Setting CameraMode on construction, caught "+ex.toString());
+        }
     }
 
     @Override
@@ -264,6 +273,12 @@ public class CLCamera implements HardwareInterface {
         }
     }
 
+    /** Sets a camera parameter by parameter key and value.
+     * 
+     * @param param some parameter code
+     * @param val the value
+     * @return true if successful
+     */
     synchronized public boolean setCameraParam(int param, int val) {
         if (cameraInstance == 0) {
             return false;
@@ -348,6 +363,7 @@ public class CLCamera implements HardwareInterface {
      */
     synchronized public void setCameraMode(CameraMode cameraMode) throws HardwareInterfaceException {
         this.cameraMode = cameraMode;
+        prefs.put("cameraMode",cameraMode.toString());
         if(isOpen()){
             close();
             open();
@@ -361,11 +377,12 @@ public class CLCamera implements HardwareInterface {
      * @see #close() 
      * @see #open() 
      */
-    synchronized public void setCameraMode(int cameraModeIndex) {
+    synchronized public void setCameraMode(int cameraModeIndex) throws HardwareInterfaceException {
         if (cameraModeIndex < 0 || cameraModeIndex >= numModes) {
             log.warning("Invalid Mode index " + cameraModeIndex + " leaving mode unchanged.");
+        } else {
+            setCameraMode(CameraMode.values()[cameraModeIndex]);
         }
-        else this.cameraMode = CameraMode.values()[cameraModeIndex];
     }
     
     /**

@@ -1198,7 +1198,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }
                             HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(interfaceNumber);
                             log.info("selected interface " + evt.getActionCommand() + " with HardwareInterface number" + interfaceNumber + " which is " + hw);
-                            ((CLRetinaHardwareInterface) hw).setCameraMode(modeNumber);
+                            try{
+                                ((CLRetinaHardwareInterface) hw).setCameraMode(modeNumber);
+                            }catch(HardwareInterfaceException camException){
+                                log.warning("couldn't set CameraMode, caught "+camException);
+                            }
                             chip.setHardwareInterface(hw);
                             try {
                                 hw.open();
