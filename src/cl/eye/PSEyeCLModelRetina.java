@@ -95,6 +95,8 @@ public class PSEyeCLModelRetina extends AEChip {
     private int brightnessChangeThreshold = getPrefs().getInt("PSEyeModelRetina.brightnessChangeThreshold", 10);
     // whether we use log intensity change or linear change
     private boolean logIntensityMode = getPrefs().getBoolean("PSEyeModelRetina.logIntensityMode", false);
+    // for log mode, where the lin-log transisition sample value is
+    private int linLogTransitionValue=getPrefs().getInt("PSEyeModelRetina.linLogTransitionValue",15);
     // for hue change
     private int hueChangeThreshold = getPrefs().getInt("PSEyeModelRetina.hueChangeThreshold", 20);
     /** Observable events; This event is fired when the parameter is changed. */
@@ -107,7 +109,8 @@ public class PSEyeCLModelRetina extends AEChip {
             EVENT_AUTO_GAIN = "autoGain",
             EVENT_AUTOEXPOSURE = "autoExposure",
             EVENT_CAMERA_MODE = "cameraMode",
-            EVENT_RETINA_MODEL = "retinaModel";
+            EVENT_RETINA_MODEL = "retinaModel",
+            EVENT_LINLOG_TRANSITION_VALUE="linLogTransitionValue";
     //      
     //        
     private boolean initialized = false; // used to avoid writing events for all pixels of first frame of data
@@ -215,6 +218,25 @@ public class PSEyeCLModelRetina extends AEChip {
         notifyObservers(EVENT_LOG_INTENSITY_MODE);
     }
 
+    /**
+     * @return the linLogTransitionValue
+     */
+    public int getLinLogTransitionValue() {
+        return linLogTransitionValue;
+    }
+
+    /**
+     * @param linLogTransitionValue the linLogTransitionValue to set
+     */
+    public void setLinLogTransitionValue(int linLogTransitionValue) {
+        if(linLogTransitionValue<1)linLogTransitionValue=1; else if(linLogTransitionValue>NLEVELS) linLogTransitionValue=NLEVELS;
+        if(this.linLogTransitionValue!=linLogTransitionValue) setChanged();
+        this.linLogTransitionValue = linLogTransitionValue;
+        fillLogMapping(logMapping);
+        getPrefs().putInt("PSEyeModelRetina.linLogTransitionValue",linLogTransitionValue);
+        notifyObservers(EVENT_LINLOG_TRANSITION_VALUE);
+    }
+
     /** Returns color mode
      * 
      * @return true if running color mode on PS-Eye 
@@ -245,13 +267,13 @@ public class PSEyeCLModelRetina extends AEChip {
     private void fillLogMapping(int[] logMapping) {
         // fill up lookup table to compute log from 8 bit sample value
         // the first linpart values are linear, then the rest are log, so that it ends up mapping 0:255 to 0:255
-        for (int i = 0; i < NLINEAR; i++) {
+        for (int i = 0; i < linLogTransitionValue; i++) {
             logMapping[i] = i;
         }
-        double a = ((double) NLEVELS - NLINEAR) / (Math.log(NLEVELS) - Math.log(NLINEAR));
+        double a = ((double) NLEVELS - linLogTransitionValue) / (Math.log(NLEVELS) - Math.log(linLogTransitionValue));
         double b = NLEVELS - a * Math.log(NLEVELS);
 
-        for (int i = NLINEAR; i < NLEVELS; i++) {
+        for (int i = linLogTransitionValue; i < NLEVELS; i++) {
             logMapping[i] = (int) Math.floor(a * Math.log(i) + b);
         }
     }

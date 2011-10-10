@@ -85,6 +85,8 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
         logCB = new javax.swing.JCheckBox();
         modelCB = new javax.swing.JComboBox();
         jLabel7 = new javax.swing.JLabel();
+        jLabel8 = new javax.swing.JLabel();
+        linlogSp = new javax.swing.JSpinner();
         statusLabel = new javax.swing.JLabel();
 
         rawInputPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Raw camera input (when enabled)"));
@@ -273,6 +275,15 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
 
         jLabel7.setText("Retina Model");
 
+        jLabel8.setText("Lin-Log transition value");
+
+        linlogSp.setToolTipText("mapping from sample to value is linear up to this value, then logarithmic afterwards");
+        linlogSp.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                linlogSpStateChanged(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
@@ -294,12 +305,19 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(hThSp, javax.swing.GroupLayout.PREFERRED_SIZE, 62, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(bThSp, javax.swing.GroupLayout.PREFERRED_SIZE, 62, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel2Layout.createSequentialGroup()
+                                .addGap(113, 113, 113)
+                                .addComponent(itsCB))
+                            .addGroup(jPanel2Layout.createSequentialGroup()
+                                .addGap(22, 22, 22)
+                                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addGroup(jPanel2Layout.createSequentialGroup()
-                                        .addComponent(bThSp, javax.swing.GroupLayout.PREFERRED_SIZE, 62, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(logCB)))))
-                        .addGap(18, 18, 18)
-                        .addComponent(itsCB))))
+                                        .addComponent(jLabel8)
+                                        .addGap(6, 6, 6)
+                                        .addComponent(linlogSp, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                    .addComponent(logCB)))))))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -314,15 +332,20 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jLabel4)
-                            .addComponent(bThSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(logCB))
+                            .addComponent(bThSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jLabel5)
                             .addComponent(hThSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addGap(16, 16, 16)
-                        .addComponent(itsCB)))
+                        .addComponent(itsCB)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(logCB)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel8)
+                            .addComponent(linlogSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -350,7 +373,7 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(rawInputPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 255, Short.MAX_VALUE)
+                .addComponent(rawInputPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 249, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(statusLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 15, javax.swing.GroupLayout.PREFERRED_SIZE))
         );
@@ -446,6 +469,17 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
             statusLabel.setText(e.toString());
         }
     }//GEN-LAST:event_modelCBActionPerformed
+
+    private void linlogSpStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_linlogSpStateChanged
+        try {
+            Integer i = (Integer) linlogSp.getValue();
+            chip.setLinLogTransitionValue(i);
+            statusLabel.setText("");
+        } catch (Exception e) {
+            log.warning(e.toString());
+            statusLabel.setText(e.toString());
+        }
+    }//GEN-LAST:event_linlogSpStateChanged
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JCheckBox aeCB;
     private javax.swing.JCheckBox agCB;
@@ -462,9 +496,11 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
     private javax.swing.JLabel jLabel5;
     private javax.swing.JLabel jLabel6;
     private javax.swing.JLabel jLabel7;
+    private javax.swing.JLabel jLabel8;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
+    private javax.swing.JSpinner linlogSp;
     private javax.swing.JCheckBox logCB;
     private javax.swing.JComboBox modelCB;
     private javax.swing.JPanel rawInputPanel;
@@ -511,6 +547,7 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
             camModeCB.setSelectedItem(chip.getCameraMode());
             modelCB.setSelectedItem(chip.getRetinaModel());
             modelCB.setToolTipText(chip.getRetinaModel().description);
+            linlogSp.setValue(chip.getLinLogTransitionValue());
             return;
         }
         if (arg == PSEyeCLModelRetina.EVENT_AUTOEXPOSURE) {
@@ -534,6 +571,8 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
         } else if (arg == PSEyeCLModelRetina.EVENT_RETINA_MODEL) {
             modelCB.setSelectedItem(chip.getRetinaModel());
             modelCB.setToolTipText(chip.getRetinaModel().description);
+        } else if (arg == PSEyeCLModelRetina.EVENT_LINLOG_TRANSITION_VALUE) {
+            linlogSp.setValue(chip.getLinLogTransitionValue());
         }
     }
 }
