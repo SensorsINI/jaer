@@ -190,7 +190,7 @@ public class CLCamera implements HardwareInterface {
      */
     public CLCamera() {
         try{
-            cameraMode=CameraMode.valueOf(prefs.get("cameraMode",CameraMode.QVGA_MONO_60.toString()));
+            cameraMode=CameraMode.valueOf(prefs.get("CLCamera.cameraMode",CameraMode.QVGA_MONO_60.toString()));
         } catch(Exception e){
             cameraMode=CameraMode.QVGA_MONO_60; // default;
         }
@@ -201,10 +201,12 @@ public class CLCamera implements HardwareInterface {
      * @param cameraIndex 0 based index of cameras.
      */
     CLCamera(int cameraIndex) {
+        this();
         this.cameraIndex = cameraIndex;
     }
     
     CLCamera(int cameraIndex, CameraMode cameraMode) {
+        this();
         this.cameraIndex = cameraIndex;
         try {
             setCameraMode(cameraMode);
@@ -363,7 +365,7 @@ public class CLCamera implements HardwareInterface {
      */
     synchronized public void setCameraMode(CameraMode cameraMode) throws HardwareInterfaceException {
         this.cameraMode = cameraMode;
-        prefs.put("cameraMode",cameraMode.toString());
+        prefs.put("CLCamera.cameraMode",cameraMode.toString());
         if(isOpen()){
             close();
             open();
