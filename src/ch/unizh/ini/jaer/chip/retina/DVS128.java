@@ -65,12 +65,14 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         setPixelHeightUm(40);
         setPixelWidthUm(40);
         setEventExtractor(new Extractor(this));
-        setBiasgen((dvs128Biasgen=new DVS128.Biasgen(this)));
-        getRemoteControl().addCommandListener(this, CMD_TWEAK_BANDWIDTH, CMD_TWEAK_BANDWIDTH+" val - tweaks bandwidth. val in range -1.0 to 1.0.");
-        getRemoteControl().addCommandListener(this, CMD_TWEAK_ONOFF_BALANCE, CMD_TWEAK_ONOFF_BALANCE+" val - tweaks on/off balance; increase for more ON events. val in range -1.0 to 1.0.");
-        getRemoteControl().addCommandListener(this, CMD_TWEAK_MAX_FIRING_RATE, CMD_TWEAK_MAX_FIRING_RATE+" val - tweaks max firing rate; increase to reduce refractory period. val in range -1.0 to 1.0.");
-        getRemoteControl().addCommandListener(this, CMD_TWEAK_THESHOLD, CMD_TWEAK_THESHOLD+" val - tweaks threshold; increase to raise threshold. val in range -1.0 to 1.0.");
-//        ChipCanvas c = getCanvas();
+        setBiasgen((dvs128Biasgen = new DVS128.Biasgen(this)));
+        if (getRemoteControl() != null) {
+            getRemoteControl().addCommandListener(this, CMD_TWEAK_BANDWIDTH, CMD_TWEAK_BANDWIDTH + " val - tweaks bandwidth. val in range -1.0 to 1.0.");
+            getRemoteControl().addCommandListener(this, CMD_TWEAK_ONOFF_BALANCE, CMD_TWEAK_ONOFF_BALANCE + " val - tweaks on/off balance; increase for more ON events. val in range -1.0 to 1.0.");
+            getRemoteControl().addCommandListener(this, CMD_TWEAK_MAX_FIRING_RATE, CMD_TWEAK_MAX_FIRING_RATE + " val - tweaks max firing rate; increase to reduce refractory period. val in range -1.0 to 1.0.");
+            getRemoteControl().addCommandListener(this, CMD_TWEAK_THESHOLD, CMD_TWEAK_THESHOLD + " val - tweaks threshold; increase to raise threshold. val in range -1.0 to 1.0.");
+        }
+        //        ChipCanvas c = getCanvas();
         addObserver(this);
 //        if(c!=null)c.setBorderSpacePixels(5);// make border smaller than default
     }
