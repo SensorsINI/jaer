@@ -11,6 +11,7 @@ import cl.eye.CLCamera.CameraMode;
 import cl.eye.CLCamera.InvalidParameterException;
 import java.io.File;
 import java.io.IOException;
+import java.util.Random;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,9 +34,9 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import org.jdesktop.beansbinding.Validator;
 
 /**
- * A behavioral model of an AE retina using the code laboratories interface to a PS eye camera.
+ * A behavioral model of several AE retina models using the code laboratories interface to a PS3-Eye camera.
  * 
- * @author tobi
+ * @author Tobi Delbruck and Mat Lubelski
  */
 @Description("AE retina using the PS-Eye Playstation camera")
 public class PSEyeCLModelRetina extends AEChip {
@@ -53,7 +54,7 @@ public class PSEyeCLModelRetina extends AEChip {
     public void setRetinaModel(RetinaModel retinaModel) {
         if (this.retinaModel != retinaModel) {
             setChanged();
-            log.info("setting retinaModel="+retinaModel);
+            log.info("setting retinaModel=" + retinaModel);
         }
         this.retinaModel = retinaModel;
         getPrefs().put("PSEyeModelRetina.retinaModel", retinaModel.toString());
@@ -64,15 +65,16 @@ public class PSEyeCLModelRetina extends AEChip {
      * 
      */
     public enum RetinaModel {
-        RatioBtoRG("Uses change of ratio of R/(B+G)"), 
-        DifferenceRB("Uses normalized absolute difference (B-R)^2/(R^2+B^2)"), 
+
+        RatioBtoRG("Uses change of ratio of R/(B+G)"),
+        DifferenceRB("Uses normalized absolute difference (B-R)^2/(R^2+B^2)"),
         MeanWaveLength("Uses mean wavelength (lr * pixR + lg * pixG + lb * pixB) / sum, where lx is the mean filter wavelength");
         String description;
-        RetinaModel(String description){
-            this.description=description;
+
+        RetinaModel(String description) {
+            this.description = description;
         }
     };
-    
     private RetinaModel retinaModel = null;
     /** Number of gray levels in camera samples. */
     public static final int NLEVELS = 256;
@@ -80,12 +82,22 @@ public class PSEyeCLModelRetina extends AEChip {
     public static final int NLINEAR = 10;
     // table lookup for log from int 8 bit pixel value
     private int[] logMapping = new int[NLEVELS];
+    // array of memorized brightness and hue values
     private int[] lastBrightnessValues = null, lastHueValues = null;
+    // array of per-pixel threshold mismatch values. These are ints because pixel values are ints, even the linlog ones which are floored to ints
+    private int[] sigmaThresholds = null;
+    // array of last event times for each pixel, for use in emitting background events. We initialize this to a random number 
+    // in the frame interval to avoid synchrounous bursts of background events
+    private int[] lastEventTimes = null;
     // camera values
     private int gain = getPrefs().getInt("PSEyeModelRetina.gain", 30);
     private int exposure = getPrefs().getInt("PSEyeModelRetina.exposure", 511);
     private boolean autoGainEnabled = getPrefs().getBoolean("PSEyeModelRetina.autoGainEnabled", true);
     private boolean autoExposureEnabled = getPrefs().getBoolean("PSEyeModelRetina.autoExposureEnabled", true);
+    // statistical parameters
+    private float sigmaThreshold = getPrefs().getFloat("PSEyeModelRetina.sigmaThreshold", 0);
+    private float backgroundEventRatePerPixelHz = getPrefs().getFloat("PSEyeModelRetina.backgroundEventRatePerPixelHz", 0);
+    private Random bgRandom=new Random();
     /* added into CLCamera.cameraMode
     private int frameRate = getPrefs().getInt("PSEyeModelRetina.frameRate", 120);
      */
@@ -96,7 +108,7 @@ public class PSEyeCLModelRetina extends AEChip {
     // whether we use log intensity change or linear change
     private boolean logIntensityMode = getPrefs().getBoolean("PSEyeModelRetina.logIntensityMode", false);
     // for log mode, where the lin-log transisition sample value is
-    private int linLogTransitionValue=getPrefs().getInt("PSEyeModelRetina.linLogTransitionValue",15);
+    private int linLogTransitionValue = getPrefs().getInt("PSEyeModelRetina.linLogTransitionValue", 15);
     // for hue change
     private int hueChangeThreshold = getPrefs().getInt("PSEyeModelRetina.hueChangeThreshold", 20);
     /** Observable events; This event is fired when the parameter is changed. */
@@ -110,7 +122,9 @@ public class PSEyeCLModelRetina extends AEChip {
             EVENT_AUTOEXPOSURE = "autoExposure",
             EVENT_CAMERA_MODE = "cameraMode",
             EVENT_RETINA_MODEL = "retinaModel",
-            EVENT_LINLOG_TRANSITION_VALUE="linLogTransitionValue";
+            EVENT_LINLOG_TRANSITION_VALUE = "linLogTransitionValue",
+            EVENT_SIGMA_THRESHOLD = "sigmaThreshold",
+            EVENT_BACKGROUND_EVENT_RATE = "backgroundEventRatePerPixelHz";
     //      
     //        
     private boolean initialized = false; // used to avoid writing events for all pixels of first frame of data
@@ -121,7 +135,7 @@ public class PSEyeCLModelRetina extends AEChip {
     private ArrayList<Integer> discreteEventCount = new ArrayList<Integer>();
     private boolean colorMode = false;
     //
-    // validators for int values, used in bindings to GUI
+    // validators for int values, meant to be used in bindings to GUI but not used yet in GUI.
     private ByteValueValidator gainValidator = new ByteValueValidator(CLCamera.CLEYE_MAX_GAIN);
     private ByteValueValidator exposureValidator = new ByteValueValidator(CLCamera.CLEYE_MAX_EXPOSURE);
     PSEyeModelRetinaRenderer renderer = null;
@@ -135,13 +149,20 @@ public class PSEyeCLModelRetina extends AEChip {
         setEventClass(cDVSEvent.class);
         setBiasgen(new Controls(this));
         String defModel = RetinaModel.RatioBtoRG.toString();
-        try{
+        try {
             retinaModel = RetinaModel.valueOf(getPrefs().get("PSEyeModelRetina.retinaModel", defModel));
-        }catch(Exception e){
-            retinaModel=RetinaModel.RatioBtoRG;
+        } catch (Exception e) {
+            retinaModel = RetinaModel.RatioBtoRG;
         }
         setRenderer((renderer = new PSEyeModelRetinaRenderer(this)));
-        fillLogMapping(logMapping);
+        fillLogMapping();
+        fillSigmaThresholds();
+        lastEventTimes = new int[getNumPixels()];
+        Random r = new Random();
+        for (int i = 0; i < lastEventTimes.length; i++) {
+            lastEventTimes[i] = r.nextInt(16000); // initialize to random time in 16ms
+        }
+        r = null;
     }
 
     @Override
@@ -229,11 +250,17 @@ public class PSEyeCLModelRetina extends AEChip {
      * @param linLogTransitionValue the linLogTransitionValue to set
      */
     public void setLinLogTransitionValue(int linLogTransitionValue) {
-        if(linLogTransitionValue<1)linLogTransitionValue=1; else if(linLogTransitionValue>NLEVELS) linLogTransitionValue=NLEVELS;
-        if(this.linLogTransitionValue!=linLogTransitionValue) setChanged();
+        if (linLogTransitionValue < 1) {
+            linLogTransitionValue = 1;
+        } else if (linLogTransitionValue > NLEVELS) {
+            linLogTransitionValue = NLEVELS;
+        }
+        if (this.linLogTransitionValue != linLogTransitionValue) {
+            setChanged();
+        }
         this.linLogTransitionValue = linLogTransitionValue;
-        fillLogMapping(logMapping);
-        getPrefs().putInt("PSEyeModelRetina.linLogTransitionValue",linLogTransitionValue);
+        fillLogMapping();
+        getPrefs().putInt("PSEyeModelRetina.linLogTransitionValue", linLogTransitionValue);
         notifyObservers(EVENT_LINLOG_TRANSITION_VALUE);
     }
 
@@ -264,7 +291,7 @@ public class PSEyeCLModelRetina extends AEChip {
         return logMapping[v];
     }
 
-    private void fillLogMapping(int[] logMapping) {
+    private void fillLogMapping() {
         // fill up lookup table to compute log from 8 bit sample value
         // the first linpart values are linear, then the rest are log, so that it ends up mapping 0:255 to 0:255
         for (int i = 0; i < linLogTransitionValue; i++) {
@@ -275,6 +302,17 @@ public class PSEyeCLModelRetina extends AEChip {
 
         for (int i = linLogTransitionValue; i < NLEVELS; i++) {
             logMapping[i] = (int) Math.floor(a * Math.log(i) + b);
+        }
+    }
+
+    private void fillSigmaThresholds() {
+        Random r = new Random();
+        if (sigmaThresholds == null) {
+            sigmaThresholds = new int[getNumPixels()];
+        }
+        for (int i = 0; i < sigmaThresholds.length; i++) {
+            int s = (int) Math.round(sigmaThreshold * r.nextGaussian());
+            sigmaThresholds[i] = s;
         }
     }
 
@@ -331,6 +369,9 @@ public class PSEyeCLModelRetina extends AEChip {
                 out.setEventClass(cDVSEvent.class); // set the proper output event class to include color change events
             }
             colorMode = getCameraMode().color == CLCamera.CLEYE_COLOR_PROCESSED;
+            int bgIntervalUs=Integer.MAX_VALUE;
+            if(backgroundEventRatePerPixelHz>0) bgIntervalUs=(int)(1e6f/backgroundEventRatePerPixelHz);
+            
             for (int y = 0; y < sy; y++) {
                 for (int x = 0; x < sx; x++) {
                     int hueval = 127;
@@ -367,12 +408,13 @@ public class PSEyeCLModelRetina extends AEChip {
                                     // new method computes hue directly
                                     hueval = (int) ((lr * pixR + lg * pixG + lb * pixB) / sum);
                                     hueval = (int) (255 * (hueval - lb) / ((float) (lr - lb)));
+                                    hueval=256-hueval; // flip hue value to get in same sense os RatioBtoRG, higher value is more blue
                                 }
                                 break;
                             case RatioBtoRG:
                                 sum = pixG + pixR;
                                 if (sum > 0) {
-                                    hueval = (int) (255*((pixB) / sum));
+                                    hueval = (int) (255 * ((pixB) / sum));
                                 }
                         }
                     }
@@ -385,79 +427,95 @@ public class PSEyeCLModelRetina extends AEChip {
                     lastHue = lastHueValues[i];
                     int brightnessdiff = brightnessval - lastBrightness;
 
+                    // Output synthetic events here.
+                    //  At the moment, the threshold variation is the same for each pixel for all event types. I.e., if a
+                    // pixel has a high threshold, it will be high for all event types, e.g. if it is hard to make ON events,
+                    // it will also be hard to make off events. This is only one possible variation.
+
+                    // events are output according to the size of the change from the stored value.
+                    // after events are output, the stored value is updated not to the new sample, but rather
+                    // by the number of emitted events times the threshold. The idea here is that
+                    // the leftover change is not discarded by emitting the events. E.g. if the threhsold is 10
+                    // and the change is +35, we emit 3 ON events but only increase the stored value by 30, not by 35.
+                    // Then on the next sample if the change is an additional +5, we emit 1 ON event rather than none.
+                    // This is closer to what the DVS pixel actually does than storing the new sample.
+
+
+                    // Background events are emitted according to the backgroundEventRatePerPixelHz of a particular event
+                    // type. For the DVS, ON events are emitted, while for the cDVS, Redder events are emitted (TODO check this).
+                    // Background events are emitted at a fixed time after the pixel last emitted an event regardless of the 
+                    // sample value to mimic the constant leakage of the stored pixel voltage on the differencing amplifier
+                    // towards Vdd. In reality this background rate varies considerably between pixels owing to large 
+                    // differences in dark current in the switches but we do not model this. Also, the cDVS emits background
+                    // events at a higher rate than the DVS because the differencing amplifier has higher gain, but we also
+                    // do not model this.
+
                     // brightness change 
-                    if (brightnessdiff > brightnessChangeThreshold) { // if our gray level is sufficiently higher than the stored gray level
+                    if (brightnessdiff > brightnessChangeThreshold + sigmaThresholds[i]) { // if our gray level is sufficiently higher than the stored gray level
                         n = brightnessdiff / brightnessChangeThreshold;
-                        for (j = 0; j < n; j++) { // use down iterator as ensures latest timestamp as last event
-                            cDVSEvent e = (cDVSEvent) itr.nextOutput();
-                            e.x = (short) x;
-                            e.y = (short) (sy - y - 1); // flip y according to jAER with 0,0 at LL
-                            e.eventType = cDVSEvent.EventType.Brighter;
-                            if (linearInterpolateTimeStamp) {
-                                e.timestamp = ts - j * eventTimeDelta / n;
-                                orderedLastSwap(out, j);
-                            } else {
-                                e.timestamp = ts;
-                            }
+                        outputEvents(cDVSEvent.EventType.Brighter, i, n, itr, x, sy, y, ts, eventTimeDelta, out);
+                        lastBrightnessValues[i] += brightnessChangeThreshold * n; // update stored gray level by events // TODO include mismatch
 
-                        }
-                        lastBrightnessValues[i] += brightnessChangeThreshold * n; // update stored gray level by events
-                    } else if (brightnessdiff < -brightnessChangeThreshold) {
+                    } else if (brightnessdiff < -brightnessChangeThreshold - sigmaThresholds[i]) { // note negative on sigmaThresholds here
                         n = -brightnessdiff / brightnessChangeThreshold;
-                        for (j = 0; j < n; j++) {
-                            cDVSEvent e = (cDVSEvent) itr.nextOutput();
-                            e.x = (short) x;
-                            e.y = (short) (sy - y - 1);
-                            e.eventType = cDVSEvent.EventType.Darker;
-                            if (linearInterpolateTimeStamp) {
-                                e.timestamp = ts - j * eventTimeDelta / n;
-                                orderedLastSwap(out, j);
-                            } else {
-                                e.timestamp = ts;
-                            }
-
-                        }
+                        outputEvents(cDVSEvent.EventType.Darker, i, n, itr, x, sy, y, ts, eventTimeDelta, out);
                         lastBrightnessValues[i] -= brightnessChangeThreshold * n;
                     }
                     // hue change
                     int huediff = hueval - lastHue;
-                    if (huediff > hueChangeThreshold) { // if our gray level is sufficiently higher than the stored gray level
+                    if (huediff > hueChangeThreshold + sigmaThresholds[i]) { // if our gray level is sufficiently higher than the stored gray level
                         n = huediff / hueChangeThreshold;
-                        for (j = 0; j < n; j++) { // use down iterator as ensures latest timestamp as last event
-                            cDVSEvent e = (cDVSEvent) itr.nextOutput();
-                            e.x = (short) x;
-                            e.y = (short) (sy - y - 1); // flip y according to jAER with 0,0 at LL
-                            e.eventType = cDVSEvent.EventType.Bluer;
-                            if (linearInterpolateTimeStamp) {
-                                e.timestamp = ts - j * eventTimeDelta / n;
-                                orderedLastSwap(out, j);
-                            } else {
-                                e.timestamp = ts;
-                            }
-
-                        }
+                        outputEvents(cDVSEvent.EventType.Bluer, i, n, itr, x, sy, y, ts, eventTimeDelta, out);
                         lastHueValues[i] += hueChangeThreshold * n; // update stored gray level by events
-                    } else if (huediff < -hueChangeThreshold) {
+                    } else if (huediff < -hueChangeThreshold - sigmaThresholds[i]) {
                         n = -huediff / hueChangeThreshold;
-                        for (j = 0; j < n; j++) {
-                            cDVSEvent e = (cDVSEvent) itr.nextOutput();
-                            e.x = (short) x;
-                            e.y = (short) (sy - y - 1);
-                            e.eventType = cDVSEvent.EventType.Redder;
-                            if (linearInterpolateTimeStamp) {
-                                e.timestamp = ts - j * eventTimeDelta / n;
-                                orderedLastSwap(out, j);
-                            } else {
-                                e.timestamp = ts;
-                            }
-                        }
+                        outputEvents(cDVSEvent.EventType.Redder, i, n, itr, x, sy, y, ts, eventTimeDelta, out);
                         lastHueValues[i] -= hueChangeThreshold * n;
                     }
-                    i++;
-                }
-            }
+                    // emit background event possibly
+                    if(backgroundEventRatePerPixelHz>0 && (ts-lastEventTimes[i])>bgIntervalUs){
+                        // randomly emit either Brighter or Redder event TODO check Redder/Bluer
+                        cDVSEvent.EventType bgType=bgRandom.nextBoolean()? cDVSEvent.EventType.Brighter: cDVSEvent.EventType.Redder;
+                        outputEvents(bgType, i, 1, itr, x, sy, y, ts, eventTimeDelta, out);
+                        // randomize time stored to avoid synchronizing background activity
+                        // TODO doesn't really work well, since it leaves behind a trail of activity that mirrors input after delay
+                        lastEventTimes[i]+=bgRandom.nextInt(bgIntervalUs); 
+                    }
+
+                    i++; // pixel counter
+                } // inner loop of pixel addresses
+            } // loop over rows
             initialized = true;
             lastEventTimeStamp = ts;
+        } // extractor
+
+        /** Outputs n events of a given type for pixel i using the output iterator itr, for pixel address, x, y, with stride sy, and timestamp ts, using
+         * eventTimeDelta for timestamp interpolation and output packet out.
+         * @param type
+         * @param i
+         * @param n
+         * @param itr
+         * @param x
+         * @param sy
+         * @param y
+         * @param ts
+         * @param eventTimeDelta
+         * @param out 
+         */
+        private void outputEvents(cDVSEvent.EventType type, int i, int n, OutputEventIterator itr, int x, int sy, int y, int ts, int eventTimeDelta, EventPacket out) {
+            for (int j = 0; j < n; j++) { // use down iterator as ensures latest timestamp as last event
+                cDVSEvent e = (cDVSEvent) itr.nextOutput();
+                e.x = (short) x;
+                e.y = (short) (sy - y - 1); // flip y according to jAER with 0,0 at LL
+                e.eventType = type;
+                if (linearInterpolateTimeStamp) {
+                    e.timestamp = ts - j * eventTimeDelta / n;
+                    orderedLastSwap(out, j);
+                } else {
+                    e.timestamp = ts;
+                }
+            }
+            lastEventTimes[i]=ts; // store event time for this pixel
         }
     }
 
@@ -729,6 +787,53 @@ public class PSEyeCLModelRetina extends AEChip {
     public AEFileInputStream constuctFileInputStream(File file) throws IOException {
         return new CLCameraFileInputStream(file);
     }
-    
-    
+
+    /**
+     * @return the sigmaThreshold
+     */
+    public float getSigmaThreshold() {
+        return sigmaThreshold;
+    }
+
+    /**
+     * @param sigmaThreshold the sigmaThreshold to set
+     */
+    public void setSigmaThreshold(float sigmaThreshold) {
+        if (sigmaThreshold < 0) {
+            sigmaThreshold = 0;
+        } else if (sigmaThreshold > NLEVELS) {
+            sigmaThreshold = NLEVELS;
+        }
+        if (this.sigmaThreshold != sigmaThreshold) {
+            setChanged();
+        }
+        this.sigmaThreshold = sigmaThreshold;
+        fillSigmaThresholds();
+        getPrefs().putFloat("PSEyeModelRetina.sigmaThreshold", sigmaThreshold);
+        notifyObservers(EVENT_SIGMA_THRESHOLD);
+    }
+
+    /**
+     * @return the backgroundEventRatePerPixelHz
+     */
+    public float getBackgroundEventRatePerPixelHz() {
+        return backgroundEventRatePerPixelHz;
+    }
+
+    /**
+     * @param backgroundEventRatePerPixelHz the backgroundEventRatePerPixelHz to set
+     */
+    public void setBackgroundEventRatePerPixelHz(float backgroundEventRatePerPixelHz) {
+        if (backgroundEventRatePerPixelHz < 0) {
+            backgroundEventRatePerPixelHz = 0;
+        } else if (backgroundEventRatePerPixelHz > NLEVELS) {
+            backgroundEventRatePerPixelHz = NLEVELS;
+        }
+        if (this.backgroundEventRatePerPixelHz != backgroundEventRatePerPixelHz) {
+            setChanged();
+        }
+        this.backgroundEventRatePerPixelHz = backgroundEventRatePerPixelHz;
+        getPrefs().putFloat("PSEyeModelRetina.backgroundEventRatePerPixelHz", backgroundEventRatePerPixelHz);
+        notifyObservers(EVENT_BACKGROUND_EVENT_RATE);
+    }
 }
