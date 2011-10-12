@@ -19,13 +19,18 @@ import net.sf.jaer.eventio.AEInputStream;
  */
 public class CLCameraFileInputStream extends AEFileInputStream {
 
+    /** Packets can hold this many frames at most. */
+    public static final int MAX_FRAMES=20;
+    
     /** Assumed number of pixels in each frame, each event holding the RGB data in address field of raw event. */
     public static final int NPIXELS = 320 * 240; // TODO assumes QVGA, can be obtained from CameraModel in principle, but only QVGA models for now
     /** Assumed frame interval in ms */
     public static final int FRAME_INTERVAL_MS = 15; 
+    
 
     public CLCameraFileInputStream(File f) throws IOException {
         super(f);
+        packet.ensureCapacity(NPIXELS*MAX_FRAMES);
     }
 
     /** Overrides to read image frames rather than events. 
@@ -48,9 +53,10 @@ public class CLCameraFileInputStream extends AEFileInputStream {
         for (int frame = 0; frame < nframes; frame++) {
             for (int i = 0; i < NPIXELS; i++) {
                 ev = readEventForwards();
+                addr[count] = ev.address;
+                ts[count] = ev.timestamp;
+//                if(ev.timestamp!=0)System.out.println("count="+count+" ev.timetamp="+ev.timestamp);
                 count++;
-                addr[i] = ev.address;
-                ts[i] = ev.timestamp;
             }
         }
         packet.setNumEvents(count);

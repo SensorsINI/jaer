@@ -89,6 +89,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     // this marks the present read time for packets
     private int currentStartTimestamp;
     FileChannel fileChannel = null;
+    /** Maximum size of raw packet in events. */
     public static final int MAX_BUFFER_SIZE_EVENTS = 100000;
     /** With new 32bits addresses, use EVENT32_SIZE, but use EVENT16_SIZE for backward compatibility with 16 bit addresses */
     public static final int EVENT16_SIZE = Short.SIZE / 8 + Integer.SIZE / 8;
@@ -354,12 +355,13 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             fireInitPropertyChange();
         }
         int an = (int)Math.abs(n);
-        if ( an > MAX_BUFFER_SIZE_EVENTS ){
-            an = MAX_BUFFER_SIZE_EVENTS;
+        int cap=packet.getCapacity();
+        if ( an > cap ){
+            an = cap;
             if ( n > 0 ){
-                n = MAX_BUFFER_SIZE_EVENTS;
+                n = cap;
             } else{
-                n = -MAX_BUFFER_SIZE_EVENTS;
+                n = -cap;
             }
         }
         int[] addr = packet.getAddresses();

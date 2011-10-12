@@ -82,14 +82,21 @@ public abstract class AEPacket {
         if(timestamps==null)numEvents=0; else numEvents=timestamps.length;
     }
     
-    /**@return the maximum capacity for holding events in the packet. Not the number of events present now.
+    /**
+     * Returns the maximum capacity for events.
+     * 
+     * @return the maximum capacity for holding events in the packet. Not the number of events present now.
+     * @see #ensureCapacity(int) 
      */
     public int getCapacity() {
         return this.capacity;
     }
     
-    /** ensure the capacity given. If present capacity is less than capacity, then arrays are newly allocated and old contents are copied to the new arrays.
+    /** Ensure the capacity given.
+     * If present capacity is less than capacity, 
+     * then arrays are newly allocated and old contents are copied to the new arrays.
      *@param c the desired capacity
+     * @see #getCapacity() 
      */
     public void ensureCapacity(final int c){
 //        System.out.println("ensure capacity "+c);

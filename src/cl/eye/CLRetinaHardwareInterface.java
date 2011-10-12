@@ -39,10 +39,19 @@ public class CLRetinaHardwareInterface extends CLCamera implements AEMonitorInte
         super(cameraIndex, cameraMode);
     }
 
-    /////////////////////////////////////////////////
-    // this camera returns frames. 
-    // We pack these frames into the AEPacketRaw and the consumer (the event extractor) interprets these to make events.
-    @Override
+    /**
+     * This camera returns frames. 
+     *  This method return a single frame of image data. We pack this single frame into the AEPacketRaw and the 
+     * consumer (the event extractor) interprets these to make events.
+     * <p>
+     * The AEFileInputStream subclass for the PSEyeCLModelRetina actually can read multiple input frames. It assigns the event timestamps using the
+     * frame timestamps we write here.
+     * 
+     * @return the raw RGBA pixel data from one QVGA frame from the camera. The pixel data is packed in the AEPacketRaw addresses array. The pixel color data depends on the CameraMode of the CLCamera.
+     * The timestamp of the frame is in the first timestamp of the packets timestamp array - the rest of the elements are untouched. The timestamps are untouched except for the first one, which is set to the System.currentTimeMillis*1000-startTimeUs.
+     *
+     */
+        @Override
     public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
         getCameraFrame(frameBuffer, 300); // TODO acquire multiple frames between calls, pack into single packet and return that packet with multiple frame timestamps
         packet.setNumEvents(320 * 240);

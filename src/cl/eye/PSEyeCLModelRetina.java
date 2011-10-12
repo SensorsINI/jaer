@@ -97,7 +97,7 @@ public class PSEyeCLModelRetina extends AEChip {
     // statistical parameters
     private float sigmaThreshold = getPrefs().getFloat("PSEyeModelRetina.sigmaThreshold", 0);
     private float backgroundEventRatePerPixelHz = getPrefs().getFloat("PSEyeModelRetina.backgroundEventRatePerPixelHz", 0);
-    private Random bgRandom=new Random();
+    private Random bgRandom = new Random();
     /* added into CLCamera.cameraMode
     private int frameRate = getPrefs().getInt("PSEyeModelRetina.frameRate", 120);
      */
@@ -129,7 +129,7 @@ public class PSEyeCLModelRetina extends AEChip {
     //        
     private boolean initialized = false; // used to avoid writing events for all pixels of first frame of data
     private boolean linearInterpolateTimeStamp = getPrefs().getBoolean("PSEyeModelRetina.linearInterpolateTimeStamp", false);
-    private int lastEventTimeStamp;
+    private int lastFrameTimestamp;
 //    private PolarityEvent tempEvent = new PolarityEvent();
     private BasicEvent tempEvent = new BasicEvent();
     private ArrayList<Integer> discreteEventCount = new ArrayList<Integer>();
@@ -341,9 +341,14 @@ public class PSEyeCLModelRetina extends AEChip {
             super(aechip);
         }
 
-        // TODO logged events cannot be read in here since they are not complete frames anymore!
         /** Extracts events from the raw camera frame data that is supplied in the input packet.
-         * Events are extracted according to the camera operating mode.
+         * Input packets are assumed to contain multiple frames of data (at least one but possibly several).
+         * The timestamp for the events from each frame are either 
+         * <ul>
+         * <li> A single common timestamp for all events from each frame
+         * <li> An interpolated timestamp for the events from each frame that assigns a continuous timestamp during each frame (TODO how does this work Mat?)
+         * </ul>
+         * Events are extracted according to the camera operating mode. For recorded data, it is assumed that the camera is operating in color mode.
          * <p>
          * <ul>
          * <li> If the mode is mono, only {@link PolarityEvent} are output. 
@@ -356,144 +361,161 @@ public class PSEyeCLModelRetina extends AEChip {
         public synchronized void extractPacket(AEPacketRaw in, EventPacket out) {
             out.allocate(chip.getNumPixels());
             int[] pixVals = in.getAddresses(); // pixel RGB values stored here by hardware interface
-            int ts = in.getTimestamps()[0]; // timestamps stored here, currently only first timestamp meaningful TODO multiple frames stored here
-            int eventTimeDelta = ts - lastEventTimeStamp;
             OutputEventIterator itr = out.outputIterator();
             if (linearInterpolateTimeStamp) {
                 discreteEventCount.clear();
             }
-            int sx = getSizeX(), sy = getSizeY(), i = 0, j = 0;
+            int sx = getSizeX(), sy = getSizeY(), addrCtr = 0, pixCtr=0;
             int n = 0, lastBrightness, lastHue;
             float pixR = 0, pixB = 0, pixG = 0;
             if (out.getEventClass() != cDVSEvent.class) {
                 out.setEventClass(cDVSEvent.class); // set the proper output event class to include color change events
             }
-            colorMode = getCameraMode().color == CLCamera.CLEYE_COLOR_PROCESSED;
-            int bgIntervalUs=Integer.MAX_VALUE;
-            if(backgroundEventRatePerPixelHz>0) bgIntervalUs=(int)(1e6f/backgroundEventRatePerPixelHz);
-            
-            for (int y = 0; y < sy; y++) {
-                for (int x = 0; x < sx; x++) {
-                    int hueval = 127;
-                    int brightnessval = map2linlog(pixVals[i] & 0xff); // get gray value 0-255
+            colorMode = getCameraMode() == null ? true : getCameraMode().color == CLCamera.CLEYE_COLOR_PROCESSED; // TODO what do we do with recorded data? assumes color raw data now
+            int bgIntervalUs = Integer.MAX_VALUE;
+            if (backgroundEventRatePerPixelHz > 0) {
+                bgIntervalUs = (int) (1e6f / backgroundEventRatePerPixelHz);
+            }
 
-                    if (colorMode) { // compute mean wavelength value from RGB
-                        // Here we define the "mean color" as the magnitude of the difference between red and blue, scaled to 0-1.
-                        // Then if the color difference changes, we get events. If the difference becomes larger, we get "bigger color difference"
-                        // events, if the difference becomes smaller, we get "smaller color difference" events.
-                        // Not exactly mean wavelength.
-                        //  1-2(rb)/(r^2+b^2) =(b-r)^2/(r^2+b^2) which is somehow a measure of mean wavelength.
-                        // This is the magnitude of the difference between the red and blue value scaled to a value between 0 and 1
-                        final int RMASK = 0xff0000;
-                        final int GMASK = 0x00ff00;
-                        final int BMASK = 0x0000ff; // colors packed like this into each int when in color mode
-                        final float lr = 650, lg = 500, lb = 430; // guesstimated mean wavelengh of color filters
+            int npix = chip.getNumPixels();
+            int nsamples = in.getNumEvents();
+            int nframes = nsamples / npix;
+            if (nsamples % npix != 0) {
+                log.warning("input packet does not appear to contain an integral number of frames of raw pixel data: there are " + nsamples + " pixel samples which is not a multiple of " + npix + " pixels");
+            }
+            int ts=0;
+            for (int fr = 0; fr < nframes; fr++) {
+                // get timestamp for events in this frame
+                ts = in.getTimestamp(addrCtr); // timestamps stored here, currently only first timestamp meaningful TODO multiple frames stored here
+                int eventTimeDelta = ts - lastFrameTimestamp;
+//                System.out.println("nframes="+nframes+" fr="+fr+" ts="+ts+" addrCtr="+addrCtr);
 
-                        pixR = (float) ((pixVals[i] >> 16) & 0xff);
-                        pixG = (float) ((pixVals[i] >> 8) & 0xff);
-                        pixB = (float) (pixVals[i] & 0xff);
-                        pixR = map2linlog((int) pixR);
-                        pixG = map2linlog((int) pixG);
-                        pixB = map2linlog((int) pixB);
-                        float sum = 0;
-                        switch (retinaModel) {
-                            case DifferenceRB:
-                                if (pixR > 0 || pixB > 0) {
-                                    hueval = (int) (255 - 510 * (pixR * pixB) / (pixR * pixR + pixB * pixB));
-                                }
-                                break;
-                            case MeanWaveLength:
-                                sum = (pixR + pixG + pixB);
-                                if (sum > 0) {
-                                    // new method computes hue directly
-                                    hueval = (int) ((lr * pixR + lg * pixG + lb * pixB) / sum);
-                                    hueval = (int) (255 * (hueval - lb) / ((float) (lr - lb)));
-                                    hueval=256-hueval; // flip hue value to get in same sense os RatioBtoRG, higher value is more blue
-                                }
-                                break;
-                            case RatioBtoRG:
-                                sum = pixG + pixR;
-                                if (sum > 0) {
-                                    hueval = (int) (255 * ((pixB) / sum));
-                                }
+                for (int y = 0; y < sy; y++) {
+                    for (int x = 0; x < sx; x++) {
+                        int hueval = 127;
+                        int brightnessval = map2linlog(pixVals[addrCtr] & 0xff); // get gray value 0-255
+
+                        if (colorMode) { // compute mean wavelength value from RGB
+                            // Here we define the "mean color" as the magnitude of the difference between red and blue, scaled to 0-1.
+                            // Then if the color difference changes, we get events. If the difference becomes larger, we get "bigger color difference"
+                            // events, if the difference becomes smaller, we get "smaller color difference" events.
+                            // Not exactly mean wavelength.
+                            //  1-2(rb)/(r^2+b^2) =(b-r)^2/(r^2+b^2) which is somehow a measure of mean wavelength.
+                            // This is the magnitude of the difference between the red and blue value scaled to a value between 0 and 1
+                            final int RMASK = 0xff0000;
+                            final int GMASK = 0x00ff00;
+                            final int BMASK = 0x0000ff; // colors packed like this into each int when in color mode
+                            final float lr = 650, lg = 500, lb = 430; // guesstimated mean wavelengh of color filters
+
+                            pixR = (float) ((pixVals[addrCtr] >> 16) & 0xff);
+                            pixG = (float) ((pixVals[addrCtr] >> 8) & 0xff);
+                            pixB = (float) (pixVals[addrCtr] & 0xff);
+                            pixR = map2linlog((int) pixR);
+                            pixG = map2linlog((int) pixG);
+                            pixB = map2linlog((int) pixB);
+                            float sum = 0;
+                            switch (retinaModel) {
+                                case DifferenceRB:
+                                    if (pixR > 0 || pixB > 0) {
+                                        hueval = (int) (255 - 510 * (pixR * pixB) / (pixR * pixR + pixB * pixB));
+                                    }
+                                    break;
+                                case MeanWaveLength:
+                                    sum = (pixR + pixG + pixB);
+                                    if (sum > 0) {
+                                        // new method computes hue directly
+                                        hueval = (int) ((lr * pixR + lg * pixG + lb * pixB) / sum);
+                                        hueval = (int) (255 * (hueval - lb) / ((float) (lr - lb)));
+                                        hueval = 256 - hueval; // flip hue value to get in same sense os RatioBtoRG, higher value is more blue
+                                    }
+                                    break;
+                                case RatioBtoRG:
+                                    sum = pixG + pixR;
+                                    if (sum > 0) {
+                                        hueval = (int) (255 * ((pixB) / sum));
+                                    }
+                            }
                         }
-                    }
-                    if (!initialized) {
-                        lastBrightnessValues[i] = brightnessval; // update stored gray level for first frame
-                        lastHueValues[i] = hueval; // update stored gray level for first frame
-                    }
+                        if (!initialized) {
+                            lastBrightnessValues[pixCtr] = brightnessval; // update stored gray level for first frame
+                            lastHueValues[pixCtr] = hueval; // update stored gray level for first frame
+                        }
 
-                    lastBrightness = lastBrightnessValues[i];
-                    lastHue = lastHueValues[i];
-                    int brightnessdiff = brightnessval - lastBrightness;
+                        lastBrightness = lastBrightnessValues[pixCtr];
+                        lastHue = lastHueValues[pixCtr];
+                        int brightnessdiff = brightnessval - lastBrightness;
 
-                    // Output synthetic events here.
-                    //  At the moment, the threshold variation is the same for each pixel for all event types. I.e., if a
-                    // pixel has a high threshold, it will be high for all event types, e.g. if it is hard to make ON events,
-                    // it will also be hard to make off events. This is only one possible variation.
+                        // Output synthetic events here.
+                        //  At the moment, the threshold variation is the same for each pixel for all event types. I.e., if a
+                        // pixel has a high threshold, it will be high for all event types, e.g. if it is hard to make ON events,
+                        // it will also be hard to make off events. This is only one possible variation.
 
-                    // events are output according to the size of the change from the stored value.
-                    // after events are output, the stored value is updated not to the new sample, but rather
-                    // by the number of emitted events times the threshold. The idea here is that
-                    // the leftover change is not discarded by emitting the events. E.g. if the threhsold is 10
-                    // and the change is +35, we emit 3 ON events but only increase the stored value by 30, not by 35.
-                    // Then on the next sample if the change is an additional +5, we emit 1 ON event rather than none.
-                    // This is closer to what the DVS pixel actually does than storing the new sample.
+                        // events are output according to the size of the change from the stored value.
+                        // after events are output, the stored value is updated not to the new sample, but rather
+                        // by the number of emitted events times the threshold. The idea here is that
+                        // the leftover change is not discarded by emitting the events. E.g. if the threhsold is 10
+                        // and the change is +35, we emit 3 ON events but only increase the stored value by 30, not by 35.
+                        // Then on the next sample if the change is an additional +5, we emit 1 ON event rather than none.
+                        // This is closer to what the DVS pixel actually does than storing the new sample.
 
 
-                    // Background events are emitted according to the backgroundEventRatePerPixelHz of a particular event
-                    // type. For the DVS, ON events are emitted, while for the cDVS, Redder events are emitted (TODO check this).
-                    // Background events are emitted at a fixed time after the pixel last emitted an event regardless of the 
-                    // sample value to mimic the constant leakage of the stored pixel voltage on the differencing amplifier
-                    // towards Vdd. In reality this background rate varies considerably between pixels owing to large 
-                    // differences in dark current in the switches but we do not model this. Also, the cDVS emits background
-                    // events at a higher rate than the DVS because the differencing amplifier has higher gain, but we also
-                    // do not model this.
+                        // Background events are emitted according to the backgroundEventRatePerPixelHz of a particular event
+                        // type. For the DVS, ON events are emitted, while for the cDVS, Redder events are emitted (TODO check this).
+                        // Background events are emitted at a fixed time after the pixel last emitted an event regardless of the 
+                        // sample value to mimic the constant leakage of the stored pixel voltage on the differencing amplifier
+                        // towards Vdd. In reality this background rate varies considerably between pixels owing to large 
+                        // differences in dark current in the switches but we do not model this. Also, the cDVS emits background
+                        // events at a higher rate than the DVS because the differencing amplifier has higher gain, but we also
+                        // do not model this.
 
-                    // brightness change 
-                    if (brightnessdiff > brightnessChangeThreshold + sigmaThresholds[i]) { // if our gray level is sufficiently higher than the stored gray level
-                        n = brightnessdiff / brightnessChangeThreshold;
-                        outputEvents(cDVSEvent.EventType.Brighter, i, n, itr, x, sy, y, ts, eventTimeDelta, out);
-                        lastBrightnessValues[i] += brightnessChangeThreshold * n; // update stored gray level by events // TODO include mismatch
 
-                    } else if (brightnessdiff < -brightnessChangeThreshold - sigmaThresholds[i]) { // note negative on sigmaThresholds here
-                        n = -brightnessdiff / brightnessChangeThreshold;
-                        outputEvents(cDVSEvent.EventType.Darker, i, n, itr, x, sy, y, ts, eventTimeDelta, out);
-                        lastBrightnessValues[i] -= brightnessChangeThreshold * n;
-                    }
-                    // hue change
-                    int huediff = hueval - lastHue;
-                    if (huediff > hueChangeThreshold + sigmaThresholds[i]) { // if our gray level is sufficiently higher than the stored gray level
-                        n = huediff / hueChangeThreshold;
-                        outputEvents(cDVSEvent.EventType.Bluer, i, n, itr, x, sy, y, ts, eventTimeDelta, out);
-                        lastHueValues[i] += hueChangeThreshold * n; // update stored gray level by events
-                    } else if (huediff < -hueChangeThreshold - sigmaThresholds[i]) {
-                        n = -huediff / hueChangeThreshold;
-                        outputEvents(cDVSEvent.EventType.Redder, i, n, itr, x, sy, y, ts, eventTimeDelta, out);
-                        lastHueValues[i] -= hueChangeThreshold * n;
-                    }
-                    // emit background event possibly
-                    if(backgroundEventRatePerPixelHz>0 && (ts-lastEventTimes[i])>bgIntervalUs){
-                        // randomly emit either Brighter or Redder event TODO check Redder/Bluer
-                        cDVSEvent.EventType bgType=bgRandom.nextBoolean()? cDVSEvent.EventType.Brighter: cDVSEvent.EventType.Redder;
-                        outputEvents(bgType, i, 1, itr, x, sy, y, ts, eventTimeDelta, out);
-                        // randomize time stored to avoid synchronizing background activity
-                        // TODO doesn't really work well, since it leaves behind a trail of activity that mirrors input after delay
-                        lastEventTimes[i]+=bgRandom.nextInt(bgIntervalUs); 
-                    }
+                        // brightness change 
+                        if (brightnessdiff > brightnessChangeThreshold + sigmaThresholds[pixCtr]) { // if our gray level is sufficiently higher than the stored gray level
+                            n = brightnessdiff / brightnessChangeThreshold;
+                            outputEvents(cDVSEvent.EventType.Brighter, pixCtr, n, itr, x, sy, y, ts, eventTimeDelta, out);
+                            lastBrightnessValues[pixCtr] += brightnessChangeThreshold * n; // update stored gray level by events // TODO include mismatch
 
-                    i++; // pixel counter
-                } // inner loop of pixel addresses
-            } // loop over rows
-            initialized = true;
-            lastEventTimeStamp = ts;
+                        } else if (brightnessdiff < -brightnessChangeThreshold - sigmaThresholds[pixCtr]) { // note negative on sigmaThresholds here
+                            n = -brightnessdiff / brightnessChangeThreshold;
+                            outputEvents(cDVSEvent.EventType.Darker, pixCtr, n, itr, x, sy, y, ts, eventTimeDelta, out);
+                            lastBrightnessValues[pixCtr] -= brightnessChangeThreshold * n;
+                        }
+                        // hue change
+                        int huediff = hueval - lastHue;
+                        if (huediff > hueChangeThreshold + sigmaThresholds[pixCtr]) { // if our gray level is sufficiently higher than the stored gray level
+                            n = huediff / hueChangeThreshold;
+                            outputEvents(cDVSEvent.EventType.Bluer, pixCtr, n, itr, x, sy, y, ts, eventTimeDelta, out);
+                            lastHueValues[pixCtr] += hueChangeThreshold * n; // update stored gray level by events
+                        } else if (huediff < -hueChangeThreshold - sigmaThresholds[pixCtr]) {
+                            n = -huediff / hueChangeThreshold;
+                            outputEvents(cDVSEvent.EventType.Redder, pixCtr, n, itr, x, sy, y, ts, eventTimeDelta, out);
+                            lastHueValues[pixCtr] -= hueChangeThreshold * n;
+                        }
+                        // emit background event possibly
+                        if (backgroundEventRatePerPixelHz > 0 && (ts - lastEventTimes[pixCtr]) > bgIntervalUs) {
+                            // randomly emit either Brighter or Redder event TODO check Redder/Bluer
+                            cDVSEvent.EventType bgType = bgRandom.nextBoolean() ? cDVSEvent.EventType.Brighter : cDVSEvent.EventType.Redder;
+                            outputEvents(bgType, pixCtr, 1, itr, x, sy, y, ts, eventTimeDelta, out);
+                            // randomize time stored to avoid synchronizing background activity
+                            // TODO doesn't really work well, since it leaves behind a trail of activity that mirrors input after delay
+                            lastEventTimes[pixCtr] += bgRandom.nextInt(bgIntervalUs);
+                        }
+
+                        addrCtr++; // pixel counter
+                        pixCtr++;
+                    } // inner loop of pixel addresses
+                } // loop over rows
+                initialized = true;
+                lastFrameTimestamp = ts;
+                pixCtr=0;
+            }// frame
         } // extractor
 
         /** Outputs n events of a given type for pixel i using the output iterator itr, for pixel address, x, y, with stride sy, and timestamp ts, using
          * eventTimeDelta for timestamp interpolation and output packet out.
-         * @param type
-         * @param i
-         * @param n
+         * @param type type of output event
+         * @param i pixel index in 1d pixel arrays, e.g. lastEventTimes
+         * @param n emit this many copies of event
          * @param itr
          * @param x
          * @param sy
@@ -515,7 +537,7 @@ public class PSEyeCLModelRetina extends AEChip {
                     e.timestamp = ts;
                 }
             }
-            lastEventTimes[i]=ts; // store event time for this pixel
+            lastEventTimes[i] = ts; // store event time for this pixel
         }
     }
 
