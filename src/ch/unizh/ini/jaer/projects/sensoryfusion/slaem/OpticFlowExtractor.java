@@ -5,7 +5,10 @@
 package ch.unizh.ini.jaer.projects.sensoryfusion.slaem;
 
 import java.util.*;
+import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.TypedEvent;
@@ -16,10 +19,16 @@ import net.sf.jaer.graphics.FrameAnnotater;
  *
  * @author Christian Brandli
  */
+@Description("Tries to extract the optical flow on a pixel basis")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class OpticFlowExtractor extends EventFilter2D implements Observer, FrameAnnotater{
-    public int sX, sY;
+    public int sizeX, sizeY, sizeX2, sizeY2;
     public int eventNr;
+    int length = 3;
     public OpticFlowVector[][] vectors;
+    public Vector<OpticFlowVector> activeVectors;
+    //global vectors
+    public int trX, trY, trZ;
     
     /**
      * Determines the maximal time to neighboring activity for becoming active (us)
@@ -36,14 +45,18 @@ public class OpticFlowExtractor extends EventFilter2D implements Observer, Frame
     @Override
     public void resetFilter() {
         eventNr = 1;
-        sX = chip.getSizeX();
-        sY = chip.getSizeY();
-        vectors = new OpticFlowVector[sX][sY];
-        for(int x=0; x<sX; x++){
-            for(int y=0; y<sY; y++){
+        sizeX = chip.getSizeX();
+        sizeX2 = sizeX/2;
+        sizeY = chip.getSizeY();
+        sizeY2 = sizeY/2;
+        vectors = new OpticFlowVector[sizeX][sizeY];
+        activeVectors = new Vector<OpticFlowVector>();
+        for(int x=0; x<sizeX; x++){
+            for(int y=0; y<sizeY; y++){
                 vectors[x][y] = new OpticFlowVector(x,y);
             }
         }
+        resetGlobalVectors();
     }
 
     @Override
@@ -57,6 +70,7 @@ public class OpticFlowExtractor extends EventFilter2D implements Observer, Frame
         if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
         checkOutputPacketEventType(in);
         cleanVectors();
+        resetGlobalVectors();
         for (Object o : in) {
             TypedEvent e = (TypedEvent) o;
             updateEvent(e);
@@ -71,27 +85,49 @@ public class OpticFlowExtractor extends EventFilter2D implements Observer, Frame
         vectors[e.x][e.y].lastTs = e.timestamp;
         for(int dx=-1; dx<=1; dx++){
             for(int dy=-1; dy<=1; dy++){
-                if(pX+dx>=0 && pY+dy >=0 && pX+dx<sX && pY+dy<sY && !(dx == 0 && dy == 0)){
-                    if(e.timestamp-vectors[pX+dx][pY+dy].lastTs<maxDeltaTs){
-                        
+                int x = pX+dx;
+                int y = pY+dy;
+                if(x>=0 && y >=0 && x<sizeX && y<sizeY && !(dx == 0 && dy == 0)){
+                    int tsDiff = e.timestamp-vectors[x][y].lastTs;
+                    if(tsDiff<maxDeltaTs){
+                        if(tsDiff == 0)tsDiff = 1;
+                        vectors[x][y].xComp+=dx/tsDiff;
+                        vectors[x][y].yComp+=dy/tsDiff;
+                        updateGlobalVectors(x,y,dx/tsDiff,dy/tsDiff);
+                        if(!activeVectors.contains(vectors[x][y])){
+                            activeVectors.add(vectors[x][y]);
+                        }
                     }
                 }
             }
         }
     }
     
+    public void updateGlobalVectors(int x, int y, double dX, double dY){
+        trX += dX;
+        trY += dY;
+        trZ += (Math.signum(x-sizeX2)*dX+Math.signum(y-sizeY2)*dY);
+    }
+    
+    public void resetGlobalVectors(){
+        trX = 0; 
+        trY = 0; 
+        trZ = 0;
+    }
+    
     public void cleanVectors(){
-        for(int x=0; x<sX; x++){
-            for(int y=0; y<sY; y++){
+        for(int x=0; x<sizeX; x++){
+            for(int y=0; y<sizeY; y++){
                 vectors[x][y].reset();
             }
         }
+        activeVectors.clear();
     }
     
     public class OpticFlowVector{
         int lastTs, lastUpdate;
         int xPos, yPos;
-        double xComp, yComp;
+        float xComp, yComp;
         
         public OpticFlowVector(int x, int y){
             xPos = x;
@@ -107,6 +143,40 @@ public class OpticFlowExtractor extends EventFilter2D implements Observer, Frame
             yComp = 0;
         }
         
+        public void draw(GL gl){
+            gl.glBegin(GL.GL_LINES);
+            UnitVector d = getUnitVector();
+            gl.glVertex2f(xPos,yPos);
+            gl.glVertex2f(xPos + d.x * length,yPos + d.y * length);
+            gl.glEnd();
+        }
+        
+        public UnitVector getUnitVector(){
+            return new UnitVector(xComp, yComp);
+        }
+        
+        public final class UnitVector{
+            public float x, y;
+            UnitVector(float x, float y){
+                float l=(float)Math.sqrt(x*x+y*y);
+                x=x/l;
+                y=y/l;
+                this.x=x;
+                this.y=y;
+            }
+        }
+        
+    }
+    
+    public void drawGlobalVector(GL gl){
+        double globalLength = Math.sqrt(trX*trX+trY*trY);
+        gl.glTranslatef((float)sizeX2 , (float)sizeY2, 0);
+        gl.glLineWidth(6f);
+        gl.glBegin(GL.GL_LINES);
+        gl.glColor3f(1,1,1);
+        gl.glVertex2f(0,0);
+        gl.glVertex2d(trX/globalLength*length*3,trY/globalLength*length*3);
+        gl.glEnd();
     }
     
     @Override
@@ -116,7 +186,21 @@ public class OpticFlowExtractor extends EventFilter2D implements Observer, Frame
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
+        if(!isFilterEnabled()) return;
+        GL gl=drawable.getGL();
         
+        gl.glColor3f(0,0,1);
+        
+        gl.glPushMatrix();
+
+        gl.glLineWidth(3f);
+        Iterator activeVectorItr = activeVectors.iterator();
+        while(activeVectorItr.hasNext()){
+            OpticFlowVector vector = (OpticFlowVector)activeVectorItr.next();
+            vector.draw(gl);
+        }
+        drawGlobalVector(gl);
+        gl.glPopMatrix();
     }
     
     /**
