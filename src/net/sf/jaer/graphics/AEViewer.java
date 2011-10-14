@@ -653,7 +653,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // TODO doesn't open an AEMonitor if there is a ServoInterface plugged in.
         // Should check to see if there is only 1 AEMonitorInterface, but this check is not possible currently without opening the interface.
         HardwareInterfaceFactory.instance().buildInterfaceList();
-        if ( jaerViewer != null && jaerViewer.getViewers().size() == 1 && chip.getHardwareInterface() == null && HardwareInterfaceFactory.instance().getNumInterfacesAvailable() == 1 ){
+        int ninterfaces=HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+        if(ninterfaces>1){
+            log.info("found "+ninterfaces+" hardware interfaces, choose one from Interface menu to connect");
+        }
+        if ( jaerViewer != null && jaerViewer.getViewers().size() == 1 && chip.getHardwareInterface() == null && ninterfaces == 1 ){
             HardwareInterface hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
             //UDP interfaces should only be opened if the chip is a NetworkChip
             if (UDPInterface.class.isInstance(hw)){
