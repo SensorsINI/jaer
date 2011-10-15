@@ -6,7 +6,9 @@
  * Created on December 24, 2005, 1:58 PM
  */
 package net.sf.jaer.graphics;
+import edu.stanford.ejalbert.BrowserLauncher;
 import java.net.SocketException;
+import java.net.URI;
 import java.net.URL;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
@@ -126,16 +128,31 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         menuItem.addActionListener(new java.awt.event.ActionListener() {
 
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                try {
-                    BrowserLauncher.openURL(url);
-                } catch (IOException e) {
-                    log.warning(e.toString());
-                    setStatusMessage(e.getMessage());
-                }
+                showInBrowser(url);
+//                try {
+//                    BrowserLauncher launcher=new BrowserLauncher();
+//                    launcher.openURLinBrowser(url);
+////                    BrowserLauncher.openURL(url);
+//                } catch (Exception e) {
+//                    log.warning(e.toString());
+//                    setStatusMessage(e.getMessage());
+//                }
             }
         });
         addHelpItem(menuItem);
         return menuItem;
+    }
+
+    private void showInBrowser(String url) {
+        if (!Desktop.isDesktopSupported()) {
+            log.warning("No Desktop support, can't show help from " + url);
+            return;
+        }
+        try {
+            Desktop.getDesktop().browse(new URI(url));
+        } catch (Exception ex) {
+            log.warning("Couldn't show " + url + "; caught " + ex);
+        }
     }
 
     /** Unregisters an item from the Help menu.

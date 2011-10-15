@@ -59,6 +59,7 @@ import java.lang.reflect.Method;
  *
  * @author Eric Albert (<a href="mailto:ejalbert@cs.stanford.edu">ejalbert@cs.stanford.edu</a>)
  * @version 1.4b1 (Released June 20, 2001)
+ * @deprecated using Desktop.browse now (Oct 2011)
  */
 public class BrowserLauncher {
     

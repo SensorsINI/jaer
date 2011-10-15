@@ -4,11 +4,14 @@
 
  */
 package net.sf.jaer.graphics;
-import net.sf.jaer.util.browser.BrowserLauncher;
+import edu.stanford.ejalbert.BrowserLauncher; // tobi switched oct 2011 to this sourceforge project at http://browserlaunch2.sourceforge.net/index.shtml
+//import net.sf.jaer.util.browser.BrowserLauncher;
 import java.awt.Cursor;
+import java.awt.Desktop;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.util.Enumeration;
 import java.util.Properties;
@@ -182,14 +185,29 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
 
 private void jaerProjectLinkLabelMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jaerProjectLinkLabelMouseClicked
     try {
-        BrowserLauncher.openURL(AEViewer.HELP_URL_USER_GUIDE);
+        showInBrowser(AEViewer.HELP_URL_USER_GUIDE);
+//        BrowserLauncher launcher = new BrowserLauncher();
+//        launcher.openURLinBrowser(AEViewer.HELP_URL_USER_GUIDE);
+////                    BrowserLauncher.openURL(AEViewer.HELP_URL_USER_GUIDE);
         setCursor(Cursor.getDefaultCursor());
-    } catch(IOException e) {
+    } catch (Exception e) {
         log.warning(e.toString());
     }
 
 }//GEN-LAST:event_jaerProjectLinkLabelMouseClicked
 
+  private void showInBrowser(String url) {
+        if (!Desktop.isDesktopSupported()) {
+            log.warning("No Desktop support, can't show help from " + url);
+            return;
+        }
+        try {
+            Desktop.getDesktop().browse(new URI(url));
+        } catch (Exception ex) {
+            log.warning("Couldn't show " + url + "; caught " + ex);
+        }
+    }
+  
 private void jaerProjectLinkLabelMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jaerProjectLinkLabelMouseEntered
     setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 }//GEN-LAST:event_jaerProjectLinkLabelMouseEntered

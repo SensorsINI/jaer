@@ -7,21 +7,35 @@
  * and open the template in the editor.
  */
 package net.sf.jaer;
+
+import java.awt.AlphaComposite;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.MediaTracker;
+import java.awt.SplashScreen;
+import java.net.URL;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.MemoryHandler;
 import net.sf.jaer.JAERViewer.ToggleLoggingAction;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.*;
 import net.sf.jaer.graphics.*;
 import net.sf.jaer.util.*;
 import java.awt.AWTEvent;
+import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.event.*;
+import java.awt.image.ImageObserver;
 import java.io.*;
 import java.text.*;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.prefs.*;
 import javax.swing.*;
+
 /**
  * Used to show multiple chips simultaneously in separate instances of {@link net.sf.jaer.graphics.AEViewer}, each running
  * in its own thread, and each with its own hardware interface thread or {@link net.sf.jaer.eventio.AEInputStream}. 
@@ -30,7 +44,8 @@ import javax.swing.*;
  * New viewers can be constructed from the File menu.
  * @author tobi
  */
-public class JAERViewer{
+public class JAERViewer {
+
     static Preferences prefs;
     static Logger log;
     /** Can be used to globally display data */
@@ -40,11 +55,11 @@ public class JAERViewer{
      * @return the cached chipClassNames
      */
     private ArrayList<AEViewer> viewers = new ArrayList<AEViewer>();
-    private boolean syncEnabled = prefs.getBoolean("JAERViewer.syncEnabled",true);
+    private boolean syncEnabled = prefs.getBoolean("JAERViewer.syncEnabled", true);
     ArrayList<AbstractButton> syncEnableButtons = new ArrayList<AbstractButton>(); // list of all viewer sync enable buttons, used here to change boolean state because this is not property of Action that buttons understand
     private ToggleSyncEnabledAction toggleSyncEnabledAction = new ToggleSyncEnabledAction();
 
-    public ToggleSyncEnabledAction getToggleSyncEnabledAction (){
+    public ToggleSyncEnabledAction getToggleSyncEnabledAction() {
         return toggleSyncEnabledAction;
     }
     volatile boolean loggingEnabled = false;
@@ -54,45 +69,31 @@ public class JAERViewer{
     private boolean playBack = false;
     //some time variables for timing across threads
     static public long globalTime1, globalTime2, globalTime3;
-    private SyncPlayer syncPlayer = new SyncPlayer(null,this); // TODO ugly, create here and then recreate later
+    private SyncPlayer syncPlayer = new SyncPlayer(null, this); // TODO ugly, create here and then recreate later
 
     /** Creates a new instance of JAERViewer */
-    public JAERViewer (){
+    public JAERViewer() {
         Thread.UncaughtExceptionHandler handler = new LoggingThreadGroup("jAER UncaughtExceptionHandler");
         Thread.setDefaultUncaughtExceptionHandler(handler);
-//        Thread test=new Thread("UncaughtExceptionHandler Test"){
-//            public void run(){
-//                try {
-//                    Thread.sleep(2000);
-//                    throw new RuntimeException("test exception 1");
-//                } catch (InterruptedException ex) {
-//                }
-//            }
-//        };
-//        test.start();
-//        Thread test2=new Thread("UncaughtExceptionHandler Test2"){
-//            public void run(){
-//                try {
-//                    Thread.sleep(5000);
-//                    throw new RuntimeException("test exception 2");
-//                } catch (InterruptedException ex) {
-//                }
-//            }
-//        };
-//        test2.start();
-//        log.addHandler(handler);
+
+        final SplashScreen splash = SplashScreen.getSplashScreen();
+        if(splash!=null)  new SplashHandler(splash);
+
+
         log.info("java.vm.version=" + System.getProperty("java.vm.version"));
-        windowSaver = new WindowSaver(this,prefs);
-        Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver,AWTEvent.WINDOW_EVENT_MASK); // adds windowSaver as JVM-wide event handler for window events
-        SwingUtilities.invokeLater(new Runnable(){
-            public void run (){
+        windowSaver = new WindowSaver(this, prefs);
+        Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver, AWTEvent.WINDOW_EVENT_MASK); // adds windowSaver as JVM-wide event handler for window events
+        SwingUtilities.invokeLater(new Runnable() {
+
+            public void run() {
                 AEViewer v = new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
 //                player=new SyncPlayer(v); // associate with the initial viewer
 //                v.pack();
                 v.setVisible(true);
+                //                splashThread.interrupt();
             }
         });
-        try{
+        try {
             // Create temp file.
             File temp = new File("JAERViewerRunning.txt");
 
@@ -103,28 +104,32 @@ public class JAERViewer{
             BufferedWriter out = new BufferedWriter(new FileWriter(temp));
             out.write("JAERViewer started " + new Date());
             out.close();
-        } catch ( IOException e ){
+        } catch (IOException e) {
             log.warning(e.getMessage());
         }
-        Runtime.getRuntime().addShutdownHook(new Thread(){
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+
             @Override
-            public void run (){
+            public void run() {
                 log.info("JAERViewer shutdown hook - saving window settings");
-                if ( windowSaver != null ){
-                    try{
+                if (windowSaver != null) {
+                    try {
                         windowSaver.saveSettings();
-                    } catch ( IOException e ){
+                    } catch (IOException e) {
                         e.printStackTrace();
                     }
                 }
             }
         });
+
+
+
     }
 
     /** The main launcher for AEViewer's. 
     @param args the first argument can be a recorded AE data filename (.dat) with full path; the viewer will play this file
      */
-    public static void main (String[] args){
+    public static void main(String[] args) {
         //redirect output to DataViewer window
         // should be before any logger is initialized 
 //        globalDataViewer.redirectStreams(); // tobi removed because AEViewerConsoleOutputFrame replaces this logging output
@@ -138,43 +143,141 @@ public class JAERViewer{
 //                System.out.println("exepath (set from JSmooth launcher) = " + exepath);
 //            }
 //        }
-        if ( args.length > 0 ){
+        if (args.length > 0) {
             log.info("starting with args[0]=" + args[0]);
             final File f = new File(args[0]);
-            try{
+            try {
                 JAERViewer jv = new JAERViewer();
-                while ( jv.getNumViewers() == 0 ){
+                while (jv.getNumViewers() == 0) {
                     Thread.sleep(300);
                 }
                 jv.getSyncPlayer().startPlayback(f);
-            } catch ( Exception e ){
-                JOptionPane.showMessageDialog(null,"<html>Trying to start JAERViewer with <br>file=\"" + f + "\"<br>Caught " + e);
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(null, "<html>Trying to start JAERViewer with <br>file=\"" + f + "\"<br>Caught " + e);
             }
-        } else{
-            SwingUtilities.invokeLater(new Runnable(){
-                public void run (){
+        } else {
+            SwingUtilities.invokeLater(new Runnable() {
+
+                public void run() {
                     new JAERViewer();
                 }
             });
         }
+
+
+
     }
 
-    public void addViewer (AEViewer aEViewer){
+    private void splashUpdate() {
+//        try {
+//            if (splash != null) {
+//                Graphics2D g = splash.createGraphics();
+//                if (g == null) {
+//                    log.warning("g is null - no splash screen");
+//                } else {
+//
+//                    for (int i = 0; i < 100; i += 10) {
+//                        if (g == null) {
+//                            break;
+//                        }
+//                        g.setComposite(AlphaComposite.Clear);
+//                        g.fillRect(120, 140, 200, 40);
+//                        g.setPaintMode();
+//                        g.setColor(Color.BLACK);
+//                        g.drawString("Loading " + i + "% ...", 120, 150);
+//                        splash.update();
+//                        log.info("updated splash #" + i);
+//                        try {
+//                            Thread.sleep(2000);
+//                        } catch (InterruptedException e) {
+//                        }
+//                    }
+//
+//                }
+//                splash.close();
+//            } else {
+//                log.warning("no splash screen");
+//            }
+//        } catch (Exception e) {
+//            log.info("aborting splash screen update, probably because appliation started. (Caught " + e.toString() + ")");
+//        }
+    }
+
+    private class SplashHandler extends java.util.logging.Handler {
+
+        SplashScreen splashScreen;
+        Graphics2D g;
+        Logger logger = null;
+        int cursor=0;
+        
+
+        public SplashHandler(SplashScreen splashScreen) {
+            this.splashScreen = splashScreen;
+            this.g = splashScreen.createGraphics();
+            logger = Logger.getLogger("");
+            logger.addHandler(this);
+        }
+
+        @Override
+        public synchronized void publish(LogRecord record) {
+            if (splashScreen == null || !splashScreen.isVisible()) {
+                close();
+                return;
+            }
+            String s = record.getMessage();
+            if (s == null) {
+                return;
+            }
+            Dimension d=splashScreen.getSize();
+            int x=45, y=90, h=20, ystep=15;
+            g.setComposite(AlphaComposite.Clear);
+            g.setColor(Color.white);
+            g.fillRect(x-10, y-10+cursor, (int)d.getWidth(), h);
+             g.setPaintMode();
+            g.setColor(Color.white);
+            g.drawString(s, x, y+cursor);
+           cursor+=ystep;
+            if(y+cursor>d.height-10) cursor=0;
+            splashScreen.update();
+  
+        }
+
+        @Override
+        public void close() throws SecurityException {
+            if(logger==null) return;
+            try {
+                logger.removeHandler(this);
+                splashScreen=null;
+                g=null;
+                logger=null;
+            } catch (Exception e) {
+                log.warning(e.toString());
+            }
+        }
+
+        @Override
+        public void flush() {
+    
+        }
+    }
+
+    public void addViewer(AEViewer aEViewer) {
         getViewers().add(aEViewer);
-        aEViewer.addWindowListener(new java.awt.event.WindowAdapter(){
+        aEViewer.addWindowListener(new java.awt.event.WindowAdapter() {
+
             @Override
-            public void windowClosing (java.awt.event.WindowEvent evt){
-                if ( evt.getSource() instanceof AEViewer ){
+            public void windowClosing(java.awt.event.WindowEvent evt) {
+                if (evt.getSource() instanceof AEViewer) {
                     log.info("removing " + evt.getSource() + " from list of AEViewers");
-                    removeViewer((AEViewer)evt.getSource());
+                    removeViewer((AEViewer) evt.getSource());
                 }
             }
         });
         buildMenus(aEViewer);
     }
 
-    public void saveSetup (File f){
-        JOptionPane.showMessageDialog(null,"Saving viewer setup not implemented yet - please request this feature.");
+    public void saveSetup(File f) {
+        JOptionPane.showMessageDialog(null, "Saving viewer setup not implemented yet - please request this feature.");
 
 //        File setupFile;
 //            JFileChooser fileChooser=new JFileChooser();
@@ -196,11 +299,11 @@ public class JAERViewer{
 //            fileChooser=null;
     }
 
-    public void loadSetup (File f){
-        JOptionPane.showMessageDialog(null,"Loading viewer setup Not implemented yet - please request this feature");
+    public void loadSetup(File f) {
+        JOptionPane.showMessageDialog(null, "Loading viewer setup Not implemented yet - please request this feature");
     }
 
-    void buildMenus (AEViewer v){
+    void buildMenus(AEViewer v) {
 //        log.info("building AEViewer sync menus");
         JMenu m = v.getFileMenu();
 
@@ -221,7 +324,7 @@ public class JAERViewer{
 
 
         boolean en = true; //viewers.size()>1? true:false;
-        for ( AbstractButton bb:syncEnableButtons ){
+        for (AbstractButton bb : syncEnableButtons) {
             bb.setEnabled(en);
         }
 
@@ -230,24 +333,24 @@ public class JAERViewer{
 //        if(en==false) syncEnableButtons.get(0).setSelected(false); // disable sync if there is only one viewer
     }
 
-    public void removeViewer (AEViewer v){
-        if ( getViewers().remove(v) == false ){
+    public void removeViewer(AEViewer v) {
+        if (getViewers().remove(v) == false) {
             log.warning("JAERViewer.removeViewer(): " + v + " is not in viewers list");
-        } else{
+        } else {
             syncEnableButtons.remove(v.getSyncEnabledCheckBoxMenuItem());
         }
         boolean en = true; //viewers.size()>1? true:false;
-        for ( AbstractButton bb:syncEnableButtons ){
+        for (AbstractButton bb : syncEnableButtons) {
             bb.setEnabled(en);
         }
     }
 
     /** @return collection of viewers we manage */
-    public ArrayList<AEViewer> getViewers (){
+    public ArrayList<AEViewer> getViewers() {
         return viewers;
     }
 
-    public int getNumViewers (){
+    public int getNumViewers() {
         return viewers.size();
     }
     File indexFile = null;
@@ -255,32 +358,31 @@ public class JAERViewer{
     final String indexFileSuffix = AEDataFile.INDEX_FILE_EXTENSION;
     DateFormat loggingFilenameDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ");
 
-    private String getDateString (){
+    private String getDateString() {
         String dateString = loggingFilenameDateFormat.format(new Date());
         return dateString;
     }
 
-
     /** Creates the index file at location path with timestamped name */
-    private File createIndexFile (String path){
+    private File createIndexFile(String path) {
         String indexFileName = indexFileNameHeader + getDateString() + indexFileSuffix;
         log.info("createIndexFile " + path + File.separator + indexFileName);
         indexFile = new File(path + File.separator + indexFileName);
-        if ( indexFile.isFile() ){
+        if (indexFile.isFile()) {
             throw new RuntimeException("index file " + indexFile + " already exists");
         }
         return indexFile;
     }
 
-    public void startSynchronizedLogging (){
+    public void startSynchronizedLogging() {
         log.info("starting synchronized logging");
 
-        if ( viewers.size() > 1 ){// && !isElectricalSyncEnabled()){
+        if (viewers.size() > 1) {// && !isElectricalSyncEnabled()){
 //            zeroTimestamps();  // TODO this is commented out because there is still a bug of getting old timestamps at start of recording, causing problems when synchronized playback is enabled.
-        } else{
+        } else {
             // log.info("not zeroing all board timestamps because they are specified electrically synchronized");
         }
-        for ( AEViewer v:viewers ){
+        for (AEViewer v : viewers) {
             File f = v.startLogging();
 
         }
@@ -288,21 +390,21 @@ public class JAERViewer{
         loggingEnabled = true;
     }
 
-    public void stopSynchronizedLogging (){
+    public void stopSynchronizedLogging() {
         log.info("stopping synchronized logging");
         FileWriter writer = null;
         boolean writingIndex = false;
         // pause all viewers
         viewers.get(0).aePlayer.pause();
 
-        try{
-            for ( AEViewer v:viewers ){
+        try {
+            for (AEViewer v : viewers) {
                 File f = v.stopLogging(getNumViewers() == 1); // only confirm filename if there is only a single viewer
 
-                if ( f.exists() ){ // if not cancelled
-                    if ( getNumViewers() > 1 ){
+                if (f.exists()) { // if not cancelled
+                    if (getNumViewers() > 1) {
 
-                        if ( writer == null ){
+                        if (writer == null) {
                             writingIndex = true;
                             createIndexFile(f.getParent());
                             writer = new FileWriter(indexFile);
@@ -311,17 +413,17 @@ public class JAERViewer{
                     }
                 }
             }
-            if ( viewers.size() > 1 && writingIndex ){
+            if (viewers.size() > 1 && writingIndex) {
                 writer.close();
             }
-            if ( indexFile != null ){
-                for ( AEViewer v:viewers ){
+            if (indexFile != null) {
+                for (AEViewer v : viewers) {
                     v.getRecentFiles().addFile(indexFile);
                 }
                 log.info("Saved index file " + indexFile.getAbsolutePath());
 //                JOptionPane.showMessageDialog(null,"Saved index file " + indexFile.getAbsolutePath());
             }
-        } catch ( IOException e ){
+        } catch (IOException e) {
             log.warning("creating index file " + indexFile);
             e.printStackTrace();
         }
@@ -332,22 +434,23 @@ public class JAERViewer{
         loggingEnabled = false;
     }
 
-    public void toggleSynchronizedLogging (){
+    public void toggleSynchronizedLogging() {
         //TODO - unchecking synchronized logging in AEViewer still comes here and logs sychrnoized
         loggingEnabled = !loggingEnabled;
-        if ( loggingEnabled ){
+        if (loggingEnabled) {
             startSynchronizedLogging();
-        } else{
+        } else {
             stopSynchronizedLogging();
         }
     }
 
-
-    public void zeroTimestamps (){
+    public void zeroTimestamps() {
 //        if(!isElectricalSyncEnabled()){
         log.info("JAERViewer.zeroTimestamps(): zeroing timestamps on all AEViewers");
-        for ( AEViewer v:viewers ){
+        for (AEViewer v : viewers) {
             v.zeroTimestamps();
+
+
         }
 //        }else{
 //            log.warning("JAERViewer.zeroTimestamps(): electricalSyncEnabled, not resetting all viewer device timestamps");
@@ -363,33 +466,35 @@ public class JAERViewer{
 //        }
 //    }
     File logIndexFile;
+
     /** this action toggles logging, possibily for all viewers depending on switch */
-    public class ToggleLoggingAction extends AbstractAction{
+    public class ToggleLoggingAction extends AbstractAction {
+
         AEViewer viewer; // to find source of logging action
 
-        public ToggleLoggingAction (AEViewer viewer){
+        public ToggleLoggingAction(AEViewer viewer) {
             this.viewer = viewer;
-            putValue(NAME,"Start logging");
-            putValue(SHORT_DESCRIPTION,"Controls synchronized logging on all viewers");
-            putValue(ACCELERATOR_KEY,KeyStroke.getKeyStroke(KeyEvent.VK_L,0));
-            putValue(MNEMONIC_KEY,new Integer(KeyEvent.VK_L));
+            putValue(NAME, "Start logging");
+            putValue(SHORT_DESCRIPTION, "Controls synchronized logging on all viewers");
+            putValue(ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_L, 0));
+            putValue(MNEMONIC_KEY, new Integer(KeyEvent.VK_L));
         }
 
-        public void actionPerformed (ActionEvent e){
+        public void actionPerformed(ActionEvent e) {
 //            log.info("JAERViewer.ToggleLoggingAction.actionPerformed");
-            if ( isSyncEnabled() ){
+            if (isSyncEnabled()) {
                 toggleSynchronizedLogging();
-                if ( loggingEnabled ){
-                    putValue(NAME,"Stop logging");
-                } else{
-                    if ( viewers.get(0).getPlayMode() == AEViewer.PlayMode.PLAYBACK ){
-                        putValue(NAME,"Start Re-logging");
-                    } else{
-                        putValue(NAME,"Start logging");
+                if (loggingEnabled) {
+                    putValue(NAME, "Stop logging");
+                } else {
+                    if (viewers.get(0).getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
+                        putValue(NAME, "Start Re-logging");
+                    } else {
+                        putValue(NAME, "Start logging");
                     }
                 }
                 log.info("loggingEnabled=" + loggingEnabled);
-            } else{
+            } else {
                 viewer.toggleLogging();
             }
         }
@@ -398,21 +503,22 @@ public class JAERViewer{
     /** Toggles player synchronization over all viewers.
      * 
      */
-    public class ToggleSyncEnabledAction extends AbstractAction{
-        public ToggleSyncEnabledAction (){
+    public class ToggleSyncEnabledAction extends AbstractAction {
+
+        public ToggleSyncEnabledAction() {
             String name = "Synchronize AEViewer logging/playback";
-            putValue(NAME,name);
-            putValue(SHORT_DESCRIPTION,"<html>When enabled, multiple viewer logging and playback are synchronized. <br>Does not affect timestamp synchronization except to send timestamp reset to all viewers." +
-                    "<br>Device electrical synchronization is independent of this setting.");
+            putValue(NAME, name);
+            putValue(SHORT_DESCRIPTION, "<html>When enabled, multiple viewer logging and playback are synchronized. <br>Does not affect timestamp synchronization except to send timestamp reset to all viewers."
+                    + "<br>Device electrical synchronization is independent of this setting.");
         }
 
-        public void actionPerformed (ActionEvent e){
+        public void actionPerformed(ActionEvent e) {
             log.info("JAERViewer.ToggleSyncEnabledAction.actionPerformed");
             setSyncEnabled(!isSyncEnabled());
-            for ( AbstractButton b:syncEnableButtons ){
+            for (AbstractButton b : syncEnableButtons) {
                 b.setSelected(isSyncEnabled());
             }
-            for ( AEViewer v:viewers ){
+            for (AEViewer v : viewers) {
                 AbstractAEPlayer p = isSyncEnabled() ? syncPlayer : v.aePlayer;
                 v.getPlayerControls().setAePlayer(p);
             }
@@ -423,7 +529,7 @@ public class JAERViewer{
      *
      * @return true if sychronized.
      */
-    public boolean isSyncEnabled (){
+    public boolean isSyncEnabled() {
         return syncEnabled;
     }
 
@@ -431,16 +537,16 @@ public class JAERViewer{
      *
      * @param syncEnabled true to be synchronized.
      */
-    public void setSyncEnabled (boolean syncEnabled){
+    public void setSyncEnabled(boolean syncEnabled) {
         this.syncEnabled = syncEnabled;
-        prefs.putBoolean("JAERViewer.syncEnabled",syncEnabled);
+        prefs.putBoolean("JAERViewer.syncEnabled", syncEnabled);
     }
 
-    public void pause (){
+    public void pause() {
         log.info("this pause shouldn't normally be called");
     }
 
-    public SyncPlayer getSyncPlayer (){
+    public SyncPlayer getSyncPlayer() {
         return syncPlayer;
     }
 
@@ -455,11 +561,47 @@ public class JAERViewer{
     v.getElectricalSyncEnabledCheckBoxMenuItem().setSelected(b);
     }
     }*/
-    public boolean isPlayBack (){
+    public boolean isPlayBack() {
         return playBack;
     }
 
-    public void setPlayBack (boolean playBack){
+    public void setPlayBack(boolean playBack) {
         this.playBack = playBack;
     }
+//    // not using anymore, instead using Java 6 SplashScreen functionality - tobi oct 2011
+//    private Thread showSplash() {
+//        Thread splashThread = new Thread() {
+//
+//            public void run() {
+//                try {
+//                    ClassLoader cl = this.getClass().getClassLoader();
+//                    URL splashImageURL = cl.getResource(SPLASH_IMAGE);
+//                    //            System.out.println("splashImageURL="+splashImageURL);
+//                    Image splashImage = Toolkit.getDefaultToolkit().getImage(splashImageURL);
+//                    GifViewerWindow splash = new GifViewerWindow(splashImage);
+//                    MediaTracker mt = new MediaTracker(splash.window);
+//                    mt.addImage(splashImage, 0);
+//                    try {
+//                        mt.waitForID(0);
+//                    } catch (InterruptedException ex) {
+//                        log.warning("wait for splash image interrupted");
+//                        return;
+//                    }
+//                    int h = splashImage.getHeight(splash.frame);
+//                    int w = splashImage.getWidth(splash.window);
+//                    splash.centerAndSetVisible(w, h);
+//                    splash.toFront();
+//                    try {
+//                        Thread.currentThread().sleep(SPLASH_DURATION);
+//                    } catch (InterruptedException e) {
+//                    }
+//                    GifViewerWindow.hideGifFile(splash);
+//                } catch (Exception io) {
+//                    log.warning("can't show splash image " + SPLASH_IMAGE);
+//                }
+//            }
+//        };
+//        splashThread.start();
+//        return splashThread; // call interrupt on it to abort showing
+//    }
 }
