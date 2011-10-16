@@ -77,7 +77,11 @@ public class JAERViewer {
         Thread.setDefaultUncaughtExceptionHandler(handler);
 
         final SplashScreen splash = SplashScreen.getSplashScreen();
-        if(splash!=null)  new SplashHandler(splash);
+        if(splash!=null){
+            new SplashHandler(splash);
+        }else{
+            log.warning("no splash screen to animate");
+        }
 
 
         log.info("java.vm.version=" + System.getProperty("java.vm.version"));
@@ -212,6 +216,10 @@ public class JAERViewer {
         
 
         public SplashHandler(SplashScreen splashScreen) {
+            if(splashScreen==null){
+                log.warning("null splash screen passed in");
+                return;
+            }
             this.splashScreen = splashScreen;
             this.g = splashScreen.createGraphics();
             logger = Logger.getLogger("");
@@ -221,6 +229,7 @@ public class JAERViewer {
         @Override
         public synchronized void publish(LogRecord record) {
             if (splashScreen == null || !splashScreen.isVisible()) {
+                log.info("splash screen is null or no longer visible, closing logging to it");
                 close();
                 return;
             }
@@ -228,6 +237,7 @@ public class JAERViewer {
             if (s == null) {
                 return;
             }
+//            log.info("logging "+s);
             Dimension d=splashScreen.getSize();
             int x=45, y=90, h=20, ystep=15;
             g.setComposite(AlphaComposite.Clear);
