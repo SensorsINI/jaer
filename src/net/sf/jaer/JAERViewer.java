@@ -229,6 +229,7 @@ public class JAERViewer {
         @Override
         public synchronized void publish(LogRecord record) {
             if (splashScreen == null || !splashScreen.isVisible()) {
+                // DO NOT call log.something here, leads to stack overflow
                 System.out.println("JAERViewer.SplashHandler.publish(): splash screen is null or no longer visible, closing logging to it");
                 close();
                 return;
@@ -237,17 +238,18 @@ public class JAERViewer {
             if (s == null) {
                 return;
             }
-//            log.info("logging "+s);
-            Dimension d=splashScreen.getSize();
-            int x=45, y=90, h=20, ystep=15;
+            Dimension d = splashScreen.getSize();
+            int x = 45, starty = 30, textheight = 20, ystep = 15;
             g.setComposite(AlphaComposite.Clear);
             g.setColor(Color.white);
-            g.fillRect(x-10, y-10+cursor, (int)d.getWidth(), h);
-             g.setPaintMode();
+            g.fillRect(x - textheight / 2, starty - 10 + cursor, (int) d.getWidth(), textheight);
+            g.setPaintMode();
             g.setColor(Color.white);
-            g.drawString(s, x, y+cursor);
-           cursor+=ystep;
-            if(y+cursor>d.height-10) cursor=0;
+            g.drawString(s, x, starty + cursor);
+            cursor += ystep;
+            if (starty + cursor > d.height - textheight) {
+                cursor = 0;
+            }
             splashScreen.update();
   
         }
