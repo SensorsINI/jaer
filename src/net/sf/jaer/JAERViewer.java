@@ -229,7 +229,7 @@ public class JAERViewer {
         @Override
         public synchronized void publish(LogRecord record) {
             if (splashScreen == null || !splashScreen.isVisible()) {
-                log.info("splash screen is null or no longer visible, closing logging to it");
+                System.out.println("JAERViewer.SplashHandler.publish(): splash screen is null or no longer visible, closing logging to it");
                 close();
                 return;
             }
