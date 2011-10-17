@@ -91,6 +91,14 @@
         <!-- build the exe in the jar build. -->
         <jsmoothgen project="../../jSmoothExeLauncher/jAERViewer" skeletonroot="../../jSmoothExeLauncher/skeletons" />
         <jsmoothgen project="../../jSmoothExeLauncher/jAERTrayLauncher" skeletonroot="../../jSmoothExeLauncher/skeletons" />
+
+        <echo message="If running Windows 7, building WinRun4J launcher - embedding jaer.ini"/>
+        <property name="executable-full-path" location="../../WinRun4J/RCEDIT.exe"/>
+        <exec os="Windows 7" dir="../../WinRun4J" executable="${executable-full-path}">
+            <arg value="/n"/>
+            <arg value="..\\jaer.exe"/>
+            <arg value="jaer.ini"/>
+        </exec>
     </target>
     
     <!-- builds a zip of all the javadoc -->
