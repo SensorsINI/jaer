@@ -417,7 +417,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * this is the copy of numSpike for MP calibration
          */
         protected int mpOffset = 0;
-
+        
         /**
          * neighbor neurons
          */
@@ -472,8 +472,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                     firingType = FiringType.FIRING_WITH_NEIGHBOR;
             }
        }
-
-
+        
 
         /**
          * adds neighbor
@@ -499,8 +498,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             lastAboveThresholdTimestamp = -1;
             lastSpikeTimestamp = 0;
         }
-
-
+        
         /** Draws the neuron using OpenGL.
          *
          * @param drawable area to drawReceptiveField this.
@@ -726,7 +724,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * The largest one among the lastUpdateTime of all member neurons becomes groups's lastEventTimestamp.
          */
         protected int lastEventTimestamp;
-
+        
         /** Parameters to represent the area of the group.
          * minX(Y) : minimum X(Y) among the locations of member neurons
          * maxX(Y) : maximum X(Y) among the locations of member neurons
@@ -862,7 +860,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                     }
                 }
             }
-
+            
             // updates boundary of the group
             if (newNeuron.getLocation().x < minX) {
                 minX = newNeuron.getLocation().x;
@@ -915,7 +913,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                     location.y = (targetGroup.location.y * targetGroup.totalMP * leakyFactor + location.y * prevMP) / (totalMP);
                 }
             }
-
+            
             if (targetGroup.minX < minX) {
                 minX = targetGroup.minX;
             }
@@ -964,7 +962,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         public int getNumMemberNeurons() {
             return memberNeurons.size();
         }
-
+        
         /**
          * returns the group membranePotential.
          * Time constant is not necessary.
@@ -1397,6 +1395,24 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
             gl.glRasterPos3f (10,5,0);
             glut.glutBitmapString (font,String.format ("MPThreshold = %d", MPThreshold));
+            
+            if(ROIactivated && !rois.isEmpty()){
+                for(ROI roi:rois.values()){
+                    Point2D.Float c = roi.getCenter();
+                    int radius = (int) roi.radius;
+                    gl.glPushMatrix();
+                    gl.glTranslatef(c.x,c.y,0);
+                    gl.glBegin(GL.GL_LINE_LOOP);
+                    {
+                        gl.glVertex2i(-radius,-radius);
+                        gl.glVertex2i(+radius,-radius);
+                        gl.glVertex2i(+radius,+radius);
+                        gl.glVertex2i(-radius,+radius);
+                    }
+                    gl.glEnd();
+                    gl.glPopMatrix();
+                }
+            }
         }
 
         try {
@@ -1538,6 +1554,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         lastTime = 0;
         neuronGroups.clear();
         numOfGroup = 0;
+        rois.clear();
     }
 
     /**
