@@ -85,19 +85,27 @@
             <zipfileset src="${libs.swing-layout.classpath}"/>
         </jar>
         -->
-        <taskdef name="jsmoothgen"
+<!--        Tobi deprecated jAERViewer.exe build by jsmoothgen Oct 2011 because of need for jsmoothgen to edit configuration.
+        Changed over to WinRun4J.-->
+<!--        <taskdef name="jsmoothgen"
                  classname="net.charabia.jsmoothgen.ant.JSmoothGen"
                  classpath="../../jSmoothExeLauncher/jsmoothgen-ant.jar"/>
-        <!-- build the exe in the jar build. -->
+         build the exe in the jar build. 
         <jsmoothgen project="../../jSmoothExeLauncher/jAERViewer" skeletonroot="../../jSmoothExeLauncher/skeletons" />
-        <jsmoothgen project="../../jSmoothExeLauncher/jAERTrayLauncher" skeletonroot="../../jSmoothExeLauncher/skeletons" />
+        <jsmoothgen project="../../jSmoothExeLauncher/jAERTrayLauncher" skeletonroot="../../jSmoothExeLauncher/skeletons" />-->
 
-        <echo message="If running Windows 7, building WinRun4J launcher - embedding jaer.ini"/>
+        <echo message="If running Windows 7, building WinRun4J launcher - embedding jaer.ini in jAERViewer.exe"/>
         <property name="executable-full-path" location="../../WinRun4J/RCEDIT.exe"/>
         <exec os="Windows 7" dir="../../WinRun4J" executable="${executable-full-path}">
             <arg value="/n"/>
-            <arg value="..\\jaer.exe"/>
+            <arg value="..\\jAERViewer.exe"/>
             <arg value="jaer.ini"/>
+        </exec>
+        <echo message="If running Windows 7 - embedding icon jaer.ico in jAERViewer.exe"/>
+        <exec os="Windows 7" dir="../../WinRun4J" executable="${executable-full-path}">
+            <arg value="/a"/>
+            <arg value="..\\jAERViewer.exe"/>
+            <arg value="jaer.ico"/>
         </exec>
     </target>
     
