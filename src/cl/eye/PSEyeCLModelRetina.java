@@ -11,6 +11,8 @@ import cl.eye.CLCamera.CameraMode;
 import cl.eye.CLCamera.InvalidParameterException;
 import java.io.File;
 import java.io.IOException;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.Random;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.logging.Level;
@@ -116,11 +118,11 @@ public class PSEyeCLModelRetina extends AEChip {
             EVENT_BRIGHTNESS_CHANGE_THRESHOLD = "brightnessChangeThreshold",
             EVENT_LOG_INTENSITY_MODE = "logIntensityMode",
             EVENT_LINEAR_INTERPOLATE_TIMESTAMP = "linearInterpolateTimeStamp",
-            EVENT_GAIN = "gain",
-            EVENT_EXPOSURE = "exposure",
-            EVENT_AUTO_GAIN = "autoGain",
-            EVENT_AUTOEXPOSURE = "autoExposure",
-            EVENT_CAMERA_MODE = "cameraMode",
+            EVENT_GAIN = CLCamera.EVENT_GAIN,
+            EVENT_EXPOSURE = CLCamera.EVENT_EXPOSURE,
+            EVENT_AUTO_GAIN = CLCamera.EVENT_AUTOGAIN,
+            EVENT_AUTOEXPOSURE = CLCamera.EVENT_AUTOEXPOSURE,
+            EVENT_CAMERA_MODE = CLCamera.EVENT_CAMERA_MODE,
             EVENT_RETINA_MODEL = "retinaModel",
             EVENT_LINLOG_TRANSITION_VALUE = "linLogTransitionValue",
             EVENT_SIGMA_THRESHOLD = "sigmaThreshold",
@@ -139,10 +141,12 @@ public class PSEyeCLModelRetina extends AEChip {
     private ByteValueValidator gainValidator = new ByteValueValidator(CLCamera.CLEYE_MAX_GAIN);
     private ByteValueValidator exposureValidator = new ByteValueValidator(CLCamera.CLEYE_MAX_EXPOSURE);
     PSEyeModelRetinaRenderer renderer = null;
+    private Observer cameraObserver; // observes updates from the camera
 
     public PSEyeCLModelRetina() {
         setSizeX(320);
         setSizeY(240);
+        setNumCellTypes(4);
         lastBrightnessValues = new int[sizeX * sizeY];
         lastHueValues = new int[sizeX * sizeY];
         setEventExtractor(new EventExtractor(this));
@@ -163,21 +167,54 @@ public class PSEyeCLModelRetina extends AEChip {
             lastEventTimes[i] = r.nextInt(16000); // initialize to random time in 16ms
         }
         r = null;
+        cameraObserver = new Observer() {
+
+            @Override
+            public void update(Observable o, Object arg) {
+                log.info(o + " sent " + arg);
+                if (o != null && getHardwareInterface() != null && (o instanceof CLCamera) && arg != null) {
+                    CLRetinaHardwareInterface hw = (CLRetinaHardwareInterface) getHardwareInterface();
+                    if (arg == CLCamera.EVENT_AUTOEXPOSURE) {
+                        setAutoExposureEnabled(hw.isAutoExposure());
+                    } else if (arg == CLCamera.EVENT_AUTOGAIN) {
+                        setAutoGainEnabled(hw.isAutoGain());
+                    } else if (arg == CLCamera.EVENT_CAMERA_MODE) {
+                        try {
+                            setCameraMode(hw.getCameraMode());
+                        } catch (HardwareInterfaceException ex) {
+                            log.warning(ex.toString());
+                        }
+                    } else if (arg == CLCamera.EVENT_EXPOSURE) {
+                        setExposure(hw.getExposure());
+                    } else if (arg == CLCamera.EVENT_GAIN) {
+                        setGain(hw.getGain());
+                    } else {
+                        log.warning(o + " sent unknown event " + arg);
+                    }
+                }
+            }
+        };
     }
 
     @Override
     public void setHardwareInterface(HardwareInterface hardwareInterface) {
-        super.setHardwareInterface(hardwareInterface);
         if (hardwareInterface != null && (hardwareInterface instanceof CLRetinaHardwareInterface)) {
+//        super.setHardwareInterface(hardwareInterface);
+            
             try {
-                CLRetinaHardwareInterface hw = (CLRetinaHardwareInterface) hardwareInterface;
-                if (hw != null) {
-                    hw.setCameraMode(getCameraMode());
-                    colorMode = (hw.getCameraMode().color == CLCamera.CLEYE_COLOR_PROCESSED); // sets whether input is color or not
+                if(this.hardwareInterface!=null && (this.hardwareInterface instanceof CLRetinaHardwareInterface)){
+                    ((CLRetinaHardwareInterface) hardwareInterface).deleteObserver(cameraObserver);
                 }
+                 super.setHardwareInterface(hardwareInterface);
+               CLRetinaHardwareInterface hw = (CLRetinaHardwareInterface) hardwareInterface;
+                hw.addObserver(cameraObserver); // we update our state depending on how camera is setup.
+                hw.setCameraMode(getCameraMode());
+                colorMode = (hw.getCameraMode().color == CLCamera.CLEYE_COLOR_PROCESSED); // sets whether input is color or not
             } catch (Exception ex) {
                 log.warning(ex.toString());
             }
+        }else{
+            log.warning("tried to set HardwareInterface to not a CLRetinaHardwareInterface: "+hardwareInterface);
         }
     }
 
@@ -365,7 +402,7 @@ public class PSEyeCLModelRetina extends AEChip {
             if (linearInterpolateTimeStamp) {
                 discreteEventCount.clear();
             }
-            int sx = getSizeX(), sy = getSizeY(), addrCtr = 0, pixCtr=0;
+            int sx = getSizeX(), sy = getSizeY(), addrCtr = 0, pixCtr = 0;
             int n = 0, lastBrightness, lastHue;
             float pixR = 0, pixB = 0, pixG = 0;
             if (out.getEventClass() != cDVSEvent.class) {
@@ -383,7 +420,7 @@ public class PSEyeCLModelRetina extends AEChip {
             if (nsamples % npix != 0) {
                 log.warning("input packet does not appear to contain an integral number of frames of raw pixel data: there are " + nsamples + " pixel samples which is not a multiple of " + npix + " pixels");
             }
-            int ts=0;
+            int ts = 0;
             for (int fr = 0; fr < nframes; fr++) {
                 // get timestamp for events in this frame
                 ts = in.getTimestamp(addrCtr); // timestamps stored here, currently only first timestamp meaningful TODO multiple frames stored here
@@ -507,7 +544,7 @@ public class PSEyeCLModelRetina extends AEChip {
                 } // loop over rows
                 initialized = true;
                 lastFrameTimestamp = ts;
-                pixCtr=0;
+                pixCtr = 0;
             }// frame
         } // extractor
 

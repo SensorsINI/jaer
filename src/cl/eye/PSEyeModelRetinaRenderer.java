@@ -135,6 +135,7 @@ public class PSEyeModelRetinaRenderer extends RetinaRenderer {
         int ind;
         ind = 3 * (x + y * sizeX);
         float r = c[0] * step, g = c[1] * step, b = c[2] * step;
+        if(ind<0 || ind>=f.length-2) return;
         f[ind] += r;
         f[ind + 1] += g;
         f[ind + 2] += b;

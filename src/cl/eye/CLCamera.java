@@ -15,6 +15,7 @@ package cl.eye;
 //import processing.core.*;
 
 import java.util.Arrays;
+import java.util.Observable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
@@ -32,7 +33,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * 
  * @author CodeLaboratories / jaer adaptation by tobi
  */
-public class CLCamera implements HardwareInterface {
+public class CLCamera extends Observable implements HardwareInterface {
 
     protected final static Logger log = Logger.getLogger("CLEye");
     protected static Preferences prefs=Preferences.userNodeForPackage(CLCamera.class);
@@ -47,6 +48,16 @@ public class CLCamera implements HardwareInterface {
     private int frameRateHz = prefs.getInt("CLCamera.frameRateHz",60);
      * 
      */
+    
+    
+   /** Observable events; This event is fired when the parameter is changed. */
+    public static final String 
+            EVENT_GAIN = "gain",
+            EVENT_EXPOSURE = "exposure",
+            EVENT_AUTOGAIN = "autoGain",
+            EVENT_AUTOEXPOSURE = "autoExposure",
+            EVENT_CAMERA_MODE = "cameraMode"
+            ;
     
     public  final static int numModes = CameraMode.values().length;
     private CameraMode cameraMode = null; 
@@ -364,12 +375,14 @@ public class CLCamera implements HardwareInterface {
      * @throws HardwareInterfaceException from the possible re-open attempt.
      */
     synchronized public void setCameraMode(CameraMode cameraMode) throws HardwareInterfaceException {
+        if(this.cameraMode!=cameraMode) setChanged();
         this.cameraMode = cameraMode;
         prefs.put("CLCamera.cameraMode",cameraMode.toString());
         if(isOpen()){
             close();
             open();
         }
+        notifyObservers(EVENT_CAMERA_MODE);
     }
     
     /** Sets the operating mode by index into CameraMode enum.
@@ -445,6 +458,7 @@ public class CLCamera implements HardwareInterface {
      * @throws cl.eye.CLCamera.InvalidParameterException if parameter is invalid (outside range)
      */
     synchronized public void setGain(int gain) throws HardwareInterfaceException, InvalidParameterException {
+        if(gain!=getGain())setChanged();
         if (gain < 0) {
             throw new InvalidParameterException("tried to set gain<0 (" + gain + ")");
         }
@@ -454,6 +468,7 @@ public class CLCamera implements HardwareInterface {
         if (!setCameraParam(CLEYE_GAIN, gain)) {
             throw new HardwareInterfaceException("setting gain to " + gain);
         }
+        notifyObservers(EVENT_GAIN);
     }
 
     /** Asks the driver for the gain value.
@@ -472,6 +487,7 @@ public class CLCamera implements HardwareInterface {
      * @throws cl.eye.CLCamera.InvalidParameterException if parameter is invalid (outside range)
      */
     synchronized public void setExposure(int exp) throws HardwareInterfaceException, InvalidParameterException {
+        if(exp!=getExposure()) setChanged();
         if (exp < 0) {
             throw new InvalidParameterException("tried to set exposure<0 (" + exp + ")");
         }
@@ -481,6 +497,7 @@ public class CLCamera implements HardwareInterface {
         if (!setCameraParam(CLEYE_EXPOSURE, exp)) {
             throw new HardwareInterfaceException("setting exposure to " + exp);
         }
+        notifyObservers(EVENT_EXPOSURE);
     }
 
    /** Asks the driver for the exposure value.
@@ -498,9 +515,11 @@ public class CLCamera implements HardwareInterface {
      * @throws HardwareInterfaceException 
      */
     synchronized public void setAutoGain(boolean yes) throws HardwareInterfaceException {
+       if(yes!=isAutoGain()) setChanged();
         if (!setCameraParam(CLEYE_AUTO_GAIN, yes ? 1 : 0)) {
             throw new HardwareInterfaceException("setting auto gain=" + yes);
         }
+        notifyObservers(EVENT_AUTOGAIN);
     }
 
     public boolean isAutoGain() {
@@ -513,9 +532,11 @@ public class CLCamera implements HardwareInterface {
      * @throws HardwareInterfaceException 
      */
     synchronized public void setAutoExposure(boolean yes) throws HardwareInterfaceException {
+        if(yes!=isAutoExposure()) setChanged();
         if (!setCameraParam(CLEYE_AUTO_EXPOSURE, yes ? 1 : 0)) {
             throw new HardwareInterfaceException("setting auto exposure=" + yes);
         }
+        notifyObservers(EVENT_AUTOEXPOSURE);
     }
 
     public boolean isAutoExposure() {

@@ -343,54 +343,48 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(jPanel2Layout.createSequentialGroup()
+                        .addComponent(jLabel7)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(modelCB, javax.swing.GroupLayout.PREFERRED_SIZE, 158, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(itsCB))
+                    .addGroup(jPanel2Layout.createSequentialGroup()
+                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(jLabel5)
+                            .addComponent(jLabel4))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(bThSp, javax.swing.GroupLayout.PREFERRED_SIZE, 62, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(hThSp, javax.swing.GroupLayout.PREFERRED_SIZE, 62, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(18, 18, 18)
                         .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(jPanel2Layout.createSequentialGroup()
-                                .addComponent(jLabel7)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(modelCB, javax.swing.GroupLayout.PREFERRED_SIZE, 158, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(jPanel2Layout.createSequentialGroup()
-                                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(jLabel5)
-                                    .addComponent(jLabel4))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(bThSp, javax.swing.GroupLayout.PREFERRED_SIZE, 62, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(hThSp, javax.swing.GroupLayout.PREFERRED_SIZE, 62, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(18, 18, 18)
-                                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addGroup(jPanel2Layout.createSequentialGroup()
-                                        .addComponent(jLabel8)
-                                        .addGap(6, 6, 6)
-                                        .addComponent(linlogSp, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                    .addComponent(logCB))))
-                        .addGap(61, 61, 61)
-                        .addComponent(itsCB))
+                                .addComponent(jLabel8)
+                                .addGap(6, 6, 6)
+                                .addComponent(linlogSp, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(logCB)))
                     .addComponent(jPanel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(modelCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLabel7))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel4)
-                            .addComponent(bThSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(logCB))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel5)
-                            .addComponent(hThSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLabel8)
-                            .addComponent(linlogSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addGap(16, 16, 16)
-                        .addComponent(itsCB)))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(modelCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel7)
+                    .addComponent(itsCB))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel4)
+                    .addComponent(bThSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(logCB))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel5)
+                    .addComponent(hThSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel8)
+                    .addComponent(linlogSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
@@ -607,7 +601,9 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
      * 
      * @param arg the event from the PSEyeCLModelRetina
      */
-    private void handleUpdate(Object arg) {
+    private void handleUpdate(Object o) {
+        String arg="";
+        if(o instanceof String)arg=(String)o;
         if (arg == null) {
             agCB.setSelected(chip.isAutoGainEnabled());
             aeCB.setSelected(chip.isAutoExposureEnabled());
@@ -625,32 +621,32 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
             bgRateTF.setText(String.format("%.3f", chip.getBackgroundEventRatePerPixelHz()));
             return;
         }
-        if (arg == PSEyeCLModelRetina.EVENT_AUTOEXPOSURE) {
+        if (arg.equals(PSEyeCLModelRetina.EVENT_AUTOEXPOSURE)) {
             aeCB.setSelected(chip.isAutoExposureEnabled());
-        } else if (arg == PSEyeCLModelRetina.EVENT_AUTO_GAIN) {
+        } else if (arg.equals(PSEyeCLModelRetina.EVENT_AUTO_GAIN)) {
             agCB.setSelected(chip.isAutoGainEnabled());
-        } else if (arg == PSEyeCLModelRetina.EVENT_BRIGHTNESS_CHANGE_THRESHOLD) {
+        } else if (arg.equals(PSEyeCLModelRetina.EVENT_BRIGHTNESS_CHANGE_THRESHOLD)) {
             bThSp.setValue(chip.getBrightnessChangeThreshold());
-        } else if (arg == PSEyeCLModelRetina.EVENT_CAMERA_MODE) {
+        } else if (arg.equals(PSEyeCLModelRetina.EVENT_CAMERA_MODE)) {
             camModeCB.setSelectedItem(chip.getCameraMode());
-        } else if (arg == PSEyeCLModelRetina.EVENT_EXPOSURE) {
+        } else if (arg.equals(PSEyeCLModelRetina.EVENT_EXPOSURE)) {
             expSp.setValue(chip.getExposure());
-        } else if (arg == PSEyeCLModelRetina.EVENT_GAIN) {
+        } else if (arg.equals(PSEyeCLModelRetina.EVENT_GAIN)) {
             gainSp.setValue(chip.getGain());
-        } else if (arg == PSEyeCLModelRetina.EVENT_HUE_CHANGE_THRESHOLD) {
+        } else if (arg.equals(PSEyeCLModelRetina.EVENT_HUE_CHANGE_THRESHOLD)) {
             hThSp.setValue(chip.getHueChangeThreshold());
-        } else if (arg == PSEyeCLModelRetina.EVENT_LINEAR_INTERPOLATE_TIMESTAMP) {
+        } else if (arg.equals(PSEyeCLModelRetina.EVENT_LINEAR_INTERPOLATE_TIMESTAMP)) {
             itsCB.setSelected(chip.isLinearInterpolateTimeStamp());
-        } else if (arg == PSEyeCLModelRetina.EVENT_LOG_INTENSITY_MODE) {
+        } else if (arg.equals(PSEyeCLModelRetina.EVENT_LOG_INTENSITY_MODE)) {
             logCB.setSelected(chip.isLogIntensityMode());
-        } else if (arg == PSEyeCLModelRetina.EVENT_RETINA_MODEL) {
+        } else if (arg.equals(PSEyeCLModelRetina.EVENT_RETINA_MODEL)) {
             modelCB.setSelectedItem(chip.getRetinaModel());
             modelCB.setToolTipText(chip.getRetinaModel().description);
-        } else if (arg == PSEyeCLModelRetina.EVENT_LINLOG_TRANSITION_VALUE) {
+        } else if (arg.equals(PSEyeCLModelRetina.EVENT_LINLOG_TRANSITION_VALUE)) {
             linlogSp.setValue(chip.getLinLogTransitionValue());
-        } else if (arg == PSEyeCLModelRetina.EVENT_SIGMA_THRESHOLD) {
+        } else if (arg.equals(PSEyeCLModelRetina.EVENT_SIGMA_THRESHOLD)) {
             thSigmaTF.setText(String.format("%.1f", chip.getSigmaThreshold()));
-        } else if (arg == PSEyeCLModelRetina.EVENT_BACKGROUND_EVENT_RATE) {
+        } else if (arg.equals(PSEyeCLModelRetina.EVENT_BACKGROUND_EVENT_RATE)) {
             bgRateTF.setText(String.format("%.3f", chip.getBackgroundEventRatePerPixelHz()));
         }
     }
