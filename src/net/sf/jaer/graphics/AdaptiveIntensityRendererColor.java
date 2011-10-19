@@ -184,7 +184,7 @@ import net.sf.jaer.event.*;
                         {
                                 
                               
-                                //Old color seåaration algorithm //p[ind + 0] = freq*x1*GUIscale;
+                                //Old color separation algorithm //p[ind + 0] = freq*x1*GUIscale;
 
                           
                             Emax_global=Emax_global-E[ind+0];
@@ -217,7 +217,7 @@ import net.sf.jaer.event.*;
                         case 2:// GB
                         {
                             
-                                    //Old color seåaration algorithm //p[ind + 1] = (freq*x2-0*p[ind+0]*x1/x2)*GUIscale;
+                                    //Old color separation algorithm //p[ind + 1] = (freq*x2-0*p[ind+0]*x1/x2)*GUIscale;
                                
                                 
                                 Emax_global=Emax_global-E[ind+1];
@@ -249,7 +249,7 @@ import net.sf.jaer.event.*;
                         case 3:// B
                         {
                           
-                                //Old color seåaration algorithm //p[ind + 2] = (freq*x3-p[ind+0]*x1/x3)*GUIscale;
+                                //Old color separation algorithm //p[ind + 2] = (freq*x3-p[ind+0]*x1/x3)*GUIscale;
                        
                             
                            Emax_global=Emax_global-E[ind+2];
