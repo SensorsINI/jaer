@@ -106,7 +106,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         setPixelHeightUm(14.5f);
         setPixelWidthUm(14.5f);
 
-        setEventExtractor(new cDVSTestExtractor(this));
+        setEventExtractor(new SeeBetter1011Extractor(this));
 
         setBiasgen(new SeeBetter1011.cDVSTestBiasgen(this));
 
@@ -196,13 +196,13 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
      * It means there was an intensity spike AND a normal pixel spike.
      *<p>
      */
-    public class cDVSTestExtractor extends RetinaExtractor {
+    public class SeeBetter1011Extractor extends RetinaExtractor {
 
         // according to  D:\Users\tobi\Documents\avlsi-svn\db\Firmware\cDVSTest20\cDVSTest_dataword_spec.pdf
 //        public static final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0x000,  YSHIFT = 12,  INTENSITYMASK = 0x40000;
         private int lastIntenTs = 0;
 
-        public cDVSTestExtractor(SeeBetter1011 chip) {
+        public SeeBetter1011Extractor(SeeBetter1011 chip) {
             super(chip);
         }
         private float avdt = 100; // used to compute rolling average of intensity
