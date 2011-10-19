@@ -4,6 +4,7 @@
  */
 package ch.unizh.ini.jaer.chip.dvs320;
 
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.TypedEvent;
 
 /**
@@ -48,4 +49,13 @@ public class cDVSEvent extends TypedEvent {
     public int getNumCellTypes() {
         return 4;
     }
+
+    @Override
+    public void copyFrom(BasicEvent src) {
+        cDVSEvent e=(cDVSEvent)src;
+        super.copyFrom(e);
+        eventType=e.eventType;
+    }
+    
+    
 }
