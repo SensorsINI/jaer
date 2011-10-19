@@ -661,6 +661,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    private int showMultipleInterfacesMessageCount=0;
+    
     /** If we are are the only viewer, automatically set
     interface to the hardware interface if there is only 1 of them and there is not already
     a hardware interface (e.g. StereoPairHardwareInterface which consists of
@@ -671,8 +673,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // Should check to see if there is only 1 AEMonitorInterface, but this check is not possible currently without opening the interface.
         HardwareInterfaceFactory.instance().buildInterfaceList();
         int ninterfaces=HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
-        if(ninterfaces>1){
-            log.info("found "+ninterfaces+" hardware interfaces, choose one from Interface menu to connect");
+        if (ninterfaces > 1) {
+            if (showMultipleInterfacesMessageCount++ % 100 == 0) {
+                log.info("found " + ninterfaces + " hardware interfaces, choose one from Interface menu to connect");
+            }
         }
         if ( jaerViewer != null && jaerViewer.getViewers().size() == 1 && chip.getHardwareInterface() == null && ninterfaces == 1 ){
             HardwareInterface hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
@@ -1200,6 +1204,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 int numModes = ((CLRetinaHardwareInterface) hw).numModes;
                 CLCamera.CameraMode currentMode = ((CLRetinaHardwareInterface) hw).getCameraMode();
                 JMenu hwSubMenu = new JMenu(hw.toString());
+                hwSubMenu.getPopupMenu().setLightWeightPopupEnabled(false);// make visible on GLCanvas
                 ButtonGroup sbg = new ButtonGroup();
                 for ( int j = 0; j < numModes ; j++ ) {
                     CLCamera.CameraMode cameraMode = CLCamera.CameraMode.values()[j];
@@ -2160,12 +2165,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                String numEventsString;
                 if ( chip.getFilterChain().isAnyFilterEnabled() ){
                     if ( filterChain.isTimedOut() ){
-                        numEventsString = String.format("%5d/%-5d TO  ",numRawEvents,numFilteredEvents);
+                        numEventsString = String.format("%5d/%-5d TO  ",numEvents,numFilteredEvents);
                     } else{
-                        numEventsString = String.format("%5d/%-5devts",numRawEvents,numFilteredEvents);
+                        numEventsString = String.format("%5d/%-5devts",numEvents,numFilteredEvents);
                     }
                 } else{
-                    numEventsString = String.format("%5devts",numRawEvents);
+                    numEventsString = String.format("%5devts",numEvents);
                 }
 
 
