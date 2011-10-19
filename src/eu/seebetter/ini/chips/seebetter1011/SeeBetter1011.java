@@ -1,11 +1,18 @@
 /*
 created 26 Oct 2008 for new cDVSTest chip
+ * adapted apr 2011 for cDVStest30 chip by tobi
+ *
  */
-package ch.unizh.ini.jaer.chip.dvs320;
+package eu.seebetter.ini.chips.seebetter1011;
 
-//import ch.unizh.ini.jaer.chip.util.externaladc.cDVSTestHardwareInterfaceProxy;
-import ch.unizh.ini.jaer.chip.dvs320.cDVSTestHardwareInterface;
 import ch.unizh.ini.jaer.chip.retina.*;
+import eu.seebetter.ini.chips.*;
+import eu.seebetter.ini.chips.cDVSEvent;
+import eu.seebetter.ini.chips.seebetter1011.*;
+import java.awt.event.ActionEvent;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.JRadioButton;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.VDAC.VPot;
@@ -20,7 +27,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Observable;
-import java.util.Random;
 import java.util.StringTokenizer;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
@@ -49,7 +55,7 @@ import net.sf.jaer.util.RemoteControlled;
  * @author tobi
  */
 @Description("cDVSTest color Dynamic Vision Test chip")
-public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity {
+public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntensity {
 
     public static final int SIZEX_TOTAL = 140;
     public static final int SIZE_Y = 64;
@@ -84,15 +90,15 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
     /** The computed intensity value. */
     private float globalIntensity = 0;
     private CDVSLogIntensityFrameData frameData = new CDVSLogIntensityFrameData();
-    private cDVSTest20Renderer cDVSRenderer = null;
-    private cDVSTest20DisplayMethod cDVSDisplayMethod = null;
+    private SeeBettter1011Renderer cDVSRenderer = null;
+    private SeeBetter1011DisplayMethod cDVSDisplayMethod = null;
     private boolean displayLogIntensity;
     private boolean displayColorChangeEvents;
     private boolean displayLogIntensityChangeEvents;
 
     /** Creates a new instance of cDVSTest10.  */
-    public cDVSTest20() {
-        setName("cDVSTest20");
+    public SeeBetter1011() {
+        setName("cDVSTest30");
         setEventClass(cDVSEvent.class);
         setSizeX(SIZEX_TOTAL);
         setSizeY(SIZE_Y);
@@ -102,13 +108,13 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
 
         setEventExtractor(new cDVSTestExtractor(this));
 
-        setBiasgen(new cDVSTest20.cDVSTestBiasgen(this));
+        setBiasgen(new SeeBetter1011.cDVSTestBiasgen(this));
 
         displayLogIntensity = getPrefs().getBoolean("displayLogIntensity", true);
         displayColorChangeEvents = getPrefs().getBoolean("displayColorChangeEvents", true);
         displayLogIntensityChangeEvents = getPrefs().getBoolean("displayLogIntensityChangeEvents", true);
 
-        setRenderer((cDVSRenderer = new cDVSTest20Renderer(this)));
+        setRenderer((cDVSRenderer = new SeeBettter1011Renderer(this)));
 
 //        DisplayMethod m = getCanvas().getDisplayMethod(); // get default method
 //        getCanvas().removeDisplayMethod(m);
@@ -119,7 +125,7 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
 //        getCanvas().addDisplayMethod(intenDisplayMethod);
 //        getCanvas().setDisplayMethod(intenDisplayMethod);
 
-        cDVSDisplayMethod = new cDVSTest20DisplayMethod(this);
+        cDVSDisplayMethod = new SeeBetter1011DisplayMethod(this);
         getCanvas().addDisplayMethod(cDVSDisplayMethod);
         getCanvas().setDisplayMethod(cDVSDisplayMethod);
         cDVSDisplayMethod.setIntensitySource(this);
@@ -136,7 +142,7 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
     /** Creates a new instance of cDVSTest10
      * @param hardwareInterface an existing hardware interface. This constructor is preferred. It makes a new cDVSTest10Biasgen object to talk to the on-chip biasgen.
      */
-    public cDVSTest20(HardwareInterface hardwareInterface) {
+    public SeeBetter1011(HardwareInterface hardwareInterface) {
         this();
         setHardwareInterface(hardwareInterface);
     }
@@ -158,9 +164,6 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
     public CDVSLogIntensityFrameData getFrameData() {
         return frameData;
     }
-    // TODO debug remove
-    Random random = new Random();  // TODO debug remove
-    int debugSampleCounter = 0;
 
     /**
      * @return the useOffChipCalibration
@@ -199,12 +202,12 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
 //        public static final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0x000,  YSHIFT = 12,  INTENSITYMASK = 0x40000;
         private int lastIntenTs = 0;
 
-        public cDVSTestExtractor(cDVSTest20 chip) {
+        public cDVSTestExtractor(SeeBetter1011 chip) {
             super(chip);
         }
         private float avdt = 100; // used to compute rolling average of intensity
 
-        /** extracts the meaning of the raw events, including putting the ADC samples into the frameData object.
+        /** extracts the meaning of the raw events.
          *@param in the raw events, can be null
          *@return out the processed events. these are partially processed in-place. empty packet is returned if null is supplied as in.
          */
@@ -237,12 +240,6 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
             for (int i = 0; i < n; i++) {  // TODO implement skipBy
                 int data = datas[i];
 
-                // TODO debug ADC events by making random ones
-//                if (random.nextFloat() > .98f) {
-//                    data ^= ADDRESS_TYPE_ADC; // make it be a random ADC event
-//                }
-
-                ///////////////////////
                 if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_EVENT) {
                     if ((data & INTENSITYMASK) == INTENSITYMASK) {// intensity spike
                         int dt = timestamps[i] - lastIntenTs;
@@ -272,17 +269,17 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
                         }
 
                         if (e.x < SIZE_X_CDVS * 2) { // cDVS pixel array // *2 because size is defined to be 32 and event types are still different x's
-                            if ((e.y & 1) == 1) { // odd rows: log intensity change events, RAPHA changed to ==1 for odd row
+                            if ((e.y & 1) == 0) { // odd rows: log intensity change events
                                 if (e.polarity == 1) { // off is 0, on is 1
                                     e.eventType = cDVSEvent.EventType.Brighter;
                                 } else {
                                     e.eventType = cDVSEvent.EventType.Darker;
                                 }
                             } else {  // even rows: color events
-                                if (e.polarity == 0) { // blue is on is 1 on cDVSTest20, but 0 on cDVSTest30
-                                    e.eventType = cDVSEvent.EventType.Redder;
-                                } else {
+                                if (e.polarity == 0) { // bluer is 0, opposite to cDVSTest20
                                     e.eventType = cDVSEvent.EventType.Bluer;
+                                } else {
+                                    e.eventType = cDVSEvent.EventType.Redder;
                                 }
                             }
                             e.x = (short) (e.x >>> 1);
@@ -301,17 +298,11 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
                     // to some maximum number of samples TODO not done yet.
                     // TODO comment back in
                     if ((data & ADC_START_BIT) == ADC_START_BIT) {
-                        frameData.swapBuffers();  // the hardware interface here swaps the reading and writing buffers so that new data goes into the other buffer and the old data will be displayed by the rendering thread
-                        frameData.setTimestamp(timestamps[i]);
+                        getFrameData().swapBuffers();  // the hardware interface here swaps the reading and writing buffers so that new data goes into the other buffer and the old data will be displayed by the rendering thread
+                        getFrameData().setTimestamp(timestamps[i]);
                     }
-                    frameData.put(data & ADC_DATA_MASK);
+                    getFrameData().put(data & ADC_DATA_MASK);
 
-                    ////////////// TODO debug remove
-//                    if(++debugSampleCounter==SIZE_X_CDVS*SIZE_Y_CDVS) {
-//                        debugSampleCounter=0;
-//                        getFrameData().swapBuffers();
-//                    }
-                    ///////////////////////
                 }
 
             }
@@ -326,10 +317,10 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
     @Override
     public void setHardwareInterface(final HardwareInterface hardwareInterface) {
         this.hardwareInterface = hardwareInterface;
-        cDVSTest20.cDVSTestBiasgen bg;
+        SeeBetter1011.cDVSTestBiasgen bg;
         try {
             if (getBiasgen() == null) {
-                setBiasgen(bg = new cDVSTest20.cDVSTestBiasgen(this));
+                setBiasgen(bg = new SeeBetter1011.cDVSTestBiasgen(this));
                 // now we can add the control panel
 
             } else {
@@ -372,12 +363,13 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
         ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
         private ConfigurableIPotRev0 pcas, diffOn, diffOff, diff, red, blue, amp;
         private ConfigurableIPotRev0 refr, pr, foll;
-        cDVSTest20OutputControlPanel controlPanel;
+        SeeBetter1011OutputControlPanel controlPanel;
         AllMuxes allMuxes = new AllMuxes(); // the output muxes
         private ShiftedSourceBias ssn, ssp, ssnMid, sspMid;
         private ShiftedSourceBias[] ssBiases = new ShiftedSourceBias[4];
         private VPot thermometerDAC;
-        ch.unizh.ini.jaer.chip.dvs320.cDVSTestHardwareInterfaceProxy adcProxy = new cDVSTestHardwareInterfaceProxy(cDVSTest20.this);//cDVSTest20.this); // must set hardware later
+        cDVSTestHardwareInterfaceProxy adcProxy = new cDVSTestHardwareInterfaceProxy(SeeBetter1011.this); // must set hardware later
+        ConfigBits configBits = new ConfigBits();
         int pos = 0;
         JPanel bPanel;
         JTabbedPane bgTabbedPane;
@@ -428,7 +420,7 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
             final float Vdd = 1.8f;
             DAC dac = new DAC(1, 8, 0, Vdd, Vdd);
             //    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
-            thermometerDAC = new VPot(cDVSTest20.this, "LogAmpRef", dac, 0, Type.NORMAL, Sex.N, 9, 0, "Voltage DAC for log intensity switched cap amplifier");
+            thermometerDAC = new VPot(SeeBetter1011.this, "LogAmpRef", dac, 0, Type.NORMAL, Sex.N, 9, 0, "Voltage DAC for log intensity switched cap amplifier");
             thermometerDAC.addObserver(this);
 
             setPotArray(new IPotArray(this));
@@ -493,7 +485,7 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
                     adcProxy.setHw(null);
                 }
             } else if (hardwareInterface instanceof cDVSTestHardwareInterface) {
-                adcProxy.setHw((ch.unizh.ini.jaer.chip.dvs320.cDVSTestHardwareInterface) hardwareInterface);
+                adcProxy.setHw((cDVSTestHardwareInterface) hardwareInterface);
             } else {
                 log.warning("cannot set ADC hardware interface proxy hardware interface to " + hardwareInterface + " because it is not a cDVSTestHardwareInterface");
             }
@@ -600,13 +592,10 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
             combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(sspMid));
             combinedBiasShiftedSourcePanel.add(new VPotGUIControl(thermometerDAC));
             bgTabbedPane.addTab("Biases", combinedBiasShiftedSourcePanel);
-            bgTabbedPane.addTab("Output control", new cDVSTest20OutputControlPanel(cDVSTest20.this));
+            bgTabbedPane.addTab("Output control", new SeeBetter1011OutputControlPanel(SeeBetter1011.this));
             final String tabTitle = "ADC control";
             bgTabbedPane.addTab(tabTitle, new ParameterControlPanel(adcProxy));
             bPanel.add(bgTabbedPane, BorderLayout.CENTER);
-            int tabnum=getPrefs().getInt("cDVSTest20.bgTabbedPaneSelectedIndex", 0);
-            if(tabnum>bgTabbedPane.getTabCount()-1) tabnum=0;
-            bgTabbedPane.setSelectedIndex(tabnum);
             bgTabbedPane.addMouseListener(new java.awt.event.MouseAdapter() {
 
                 @Override
@@ -614,11 +603,14 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
                     tabbedPaneMouseClicked(evt);
                 }
             });
-            return bPanel;
+            bgTabbedPane.addTab("More config", configBits.makeControlPanel());
+            // only select panel after all added
+             bgTabbedPane.setSelectedIndex(getPrefs().getInt("cDVSTest30.bgTabbedPaneSelectedIndex", 0));
+           return bPanel;
         }
 
         private void tabbedPaneMouseClicked(java.awt.event.MouseEvent evt) {
-            getPrefs().putInt("cDVSTest20.bgTabbedPaneSelectedIndex", bgTabbedPane.getSelectedIndex());
+            getPrefs().putInt("cDVSTest30.bgTabbedPaneSelectedIndex", bgTabbedPane.getSelectedIndex());
         }
 
         /** Formats the data sent to the microcontroller to load bias and other configuration. */
@@ -637,6 +629,10 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
             for (ShiftedSourceBias ss : ssBiases) {
                 bb.put(ss.getBinaryRepresentation());
             }
+
+            byte[] configBitBytes = configBits.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
+            bb.put(configBitBytes);
+
 
             byte[] allBytes = new byte[bb.position()];
             bb.flip();
@@ -702,7 +698,122 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
             diffOff.changeByRatio(1 / RATIO);
         }        // TODO fix functional biasgen panel to be more usable
 
-        /** A mux for selecting output. */
+        /** Bits on the on-chip shift register but not an output mux control
+
+         */
+        class ConfigBits extends Observable implements HasPreference { // TODO fix for config bit of pullup
+
+            final int TOTAL_NUM_BITS = 8;  // number of these bits on this chip
+            boolean value = false;
+
+            class ConfigBit implements HasPreference {
+
+                int position;
+                boolean value = false;
+                SelectAction action = new SelectAction();
+
+                class SelectAction extends AbstractAction {
+
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        select(!value);
+                    }
+                }
+
+                ConfigBit(String name, int position, String desc) {
+                    this.position = position;
+                    action.putValue(Action.SHORT_DESCRIPTION, desc);
+                    action.putValue(Action.NAME, name);
+                }
+
+                private String key() {
+                    return "cDVSTest." + getClass().getSimpleName() + "." + name + ".value";
+                }
+
+                @Override
+                public void loadPreference() {
+                    select(getPrefs().getBoolean(key(), false));
+                }
+
+                @Override
+                public void storePreference() {
+                    getPrefs().putBoolean(key(), value);
+                }
+
+                void select(boolean yes) {
+                    selectWithoutNotify(yes);
+                    setChanged();
+                    notifyObservers();
+                }
+
+                void selectWithoutNotify(boolean v) {
+                    value = v;
+                    try {
+                        sendConfiguration(SeeBetter1011.cDVSTestBiasgen.this);
+                    } catch (HardwareInterfaceException ex) {
+                        log.warning("selecting output: " + ex);
+                    }
+                }
+            }
+            ConfigBit pullupX =
+                    new ConfigBit("useStaticPullupX", 0, "turn on static pullup for X addresses (columns)"),
+                    pullupY =
+                    new ConfigBit("useStaticPullupY", 1, "turn on static pullup for Y addresses (rows)");
+            ConfigBit[] configBits = {pullupX, pullupY};
+
+            @Override
+            public void loadPreference() {
+                for (ConfigBit b : configBits) {
+                    b.loadPreference();
+                }
+            }
+
+            @Override
+            public void storePreference() {
+                for (ConfigBit b : configBits) {
+                    b.storePreference();
+                }
+            }
+
+            /** Returns the bit string to send to the firmware to load a bit sequence for the config bits in the shift register;
+             * bits are loaded big endian into shift register (msb first) but here returned string has msb at right-most position, i.e. end of string.
+             * @return big endian string e.g. code=11, s='1011', code=7, s='0111' for nSrBits=4.
+             */
+            String getBitString() {
+                StringBuilder s = new StringBuilder();
+                // we just manually deal with the bits since we know where they are
+                s.append("000000");  // 6 msbs are not used on this chip
+                s.append(pullupY.value ? "1" : "0");
+                s.append(pullupX.value ? "1" : "0");
+                return s.toString();
+            }
+
+            byte[] formatConfigurationBytes() {
+                String s = getBitString();
+                int nBits = s.length();
+                BigInteger bi = new BigInteger(s.toString(), 2);
+                byte[] byteArray = bi.toByteArray(); // finds minimal set of bytes in big endian format, with MSB as first element
+                // we need to pad out to nbits worth of bytes
+                int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 8->1, 9->2
+                byte[] bytes = new byte[nbytes];
+                System.arraycopy(byteArray, 0, bytes, nbytes - byteArray.length, byteArray.length);
+                return bytes;
+            }
+
+            JPanel makeControlPanel() {
+                JPanel pan = new JPanel();
+                pan.setLayout(new BoxLayout(pan, BoxLayout.Y_AXIS));
+                for (ConfigBit b : configBits) {
+                    JRadioButton but = new JRadioButton(b.action);
+                    but.setSelected(b.value);
+                    but.addActionListener(b.action);
+                    pan.add(but);
+                }
+                return pan;
+            }
+        }
+
+        /** A mux for selecting output on the on-chip configuration/biasgen shift register. */
         class OutputMux extends Observable implements HasPreference, RemoteControlled {
 
             int nSrBits;
@@ -713,6 +824,12 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
             String bitString = null;
             final String CMD_SELECTMUX = "selectMux_";
 
+            /**
+             *  A set of output mux channels.
+             * @param nsr number of shift register bits
+             * @param nin number of input ports to mux
+             * @param m the map where the info is stored
+             */
             OutputMux(int nsr, int nin, OutputMap m) {
                 nSrBits = nsr;
                 nInputs = nin;
@@ -729,13 +846,12 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
                 selectWithoutNotify(i);
                 setChanged();
                 notifyObservers();
-//                log.info("selected "+this);
             }
 
             void selectWithoutNotify(int i) {
                 selectedChannel = i;
                 try {
-                    sendConfiguration(cDVSTest20.cDVSTestBiasgen.this);
+                    sendConfiguration(SeeBetter1011.cDVSTestBiasgen.this);
                 } catch (HardwareInterfaceException ex) {
                     log.warning("selecting output: " + ex);
                 }
@@ -895,9 +1011,6 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
             byte[] formatConfigurationBytes() {
                 int nBits = 0;
                 StringBuilder s = new StringBuilder();
-                s.append("000000");
-                s.append("00");  // cDVSTest30 configuration bits: 1: use static pullups 0 : dont use em
-                nBits=8;
                 for (OutputMux m : this) {
                     s.append(m.getBitString());
                     nBits += m.nSrBits;
@@ -942,19 +1055,10 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
                     dmuxes[i].put(11, "Rrow");
                     dmuxes[i].put(12, "RxcolG");
                     dmuxes[i].put(13, "nArow");
-
-                }
-
-                dmuxes[0].put(14, "nResetRxcol");  // cDVSTest30
-                dmuxes[0].put(15, "nArowBottom");  // cDVSTest30
-
-                for (int i = 1; i < 5; i++) {
-
                     dmuxes[i].put(14, "FF2");
                     dmuxes[i].put(15, "RCarb");
                 }
 
-                
 
                 vmuxes[0].setName("AnaMux3");
                 vmuxes[1].setName("AnaMux2");
@@ -966,29 +1070,25 @@ public class cDVSTest20 extends AETemporalConstastRetina implements HasIntensity
                     vmuxes[i].put(1, "DiffAmpOut");
                     vmuxes[i].put(2, "InPh");
                 }
-         
-                vmuxes[0].put(2, "InPh");
+
                 vmuxes[0].put(3, "refcurrent");
                 vmuxes[0].put(4, "DiffAmpRef");
                 vmuxes[0].put(5, "log");
                 vmuxes[0].put(6, "Vt");
                 vmuxes[0].put(7, "top");
 
-                vmuxes[1].put(2, "InPh");
                 vmuxes[1].put(3, "refcurrent");
                 vmuxes[1].put(4, "DiffAmpRef");
                 vmuxes[1].put(5, "log");
                 vmuxes[1].put(6, "Vt");
                 vmuxes[1].put(7, "top");
 
-                vmuxes[2].put(2, "Vdiff"); // InPh for cDVSTest20
                 vmuxes[2].put(3, "phi1");
                 vmuxes[2].put(4, "phi2");
                 vmuxes[2].put(5, "Vcoldiff");
                 vmuxes[2].put(6, "Vs");
                 vmuxes[2].put(7, "sum");
 
-                vmuxes[3].put(2, "Vdiff");  // InPh for cDVSTest20
                 vmuxes[3].put(3, "phi1");
                 vmuxes[3].put(4, "phi2");
                 vmuxes[3].put(5, "Vcoldiff");

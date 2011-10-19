@@ -1,4 +1,4 @@
-package ch.unizh.ini.jaer.chip.dvs320;
+package eu.seebetter.ini.chips.seebetter1011;
 
 import java.util.logging.Logger;
 import net.sf.jaer.chip.Chip;
@@ -27,7 +27,7 @@ public class cDVSTestHardwareInterfaceProxy extends HardwareInterfaceProxy {
     private final int minADCchannel = 0;
     private final int maxADCchannel = 3;
     private boolean printedWarning = true;
-    private final int minScanX = 0, maxScanX = cDVSTest20.SIZE_X_CDVS - 1, minScanY = 0, maxScanY = cDVSTest20.SIZE_Y_CDVS - 1;
+    private final int minScanX = 0, maxScanX = SeeBetter1011.SIZE_X_CDVS - 1, minScanY = 0, maxScanY = SeeBetter1011.SIZE_Y_CDVS - 1;
     private cDVSTestHardwareInterface hw;
 
     public cDVSTestHardwareInterfaceProxy(Chip chip) {
@@ -52,7 +52,7 @@ public class cDVSTestHardwareInterfaceProxy extends HardwareInterfaceProxy {
     /**
      * @param hw the hw to set
      */
-    public void setHw(ch.unizh.ini.jaer.chip.dvs320.cDVSTestHardwareInterface hw) {
+    public void setHw(cDVSTestHardwareInterface hw) {
         this.hw = hw;
     }
 
