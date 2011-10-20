@@ -20,11 +20,12 @@ import java.net.URL;
 import java.util.Properties;
 import net.sf.jaer.graphics.AEViewerAboutDialog;
 
-/** A frame with text area to show logging results in. */
+/** A frame with text area to show logging results in. Has buttons to copy to clipboard and to mail text to developers. */
 public class LoggingWindow extends JFrame {
 
     final private JTextArea textArea = new JTextArea();
-    public static final String DEVELOPER_EMAIL="tobidelbruck@sourceforge.net,rberner@sourceforge.net";
+    /** Developer email addresses */
+    public static final String DEVELOPER_EMAIL="tobidelbruck@users.sourceforge.net,rberner@users.sourceforge.net";
 
     public LoggingWindow(String title, final int width,
             final int height) {
