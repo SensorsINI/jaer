@@ -25,18 +25,16 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 @Description("Temporary class for testing SeeBetter10 and SeeBetter11, will be replaced by SeeBetter1011")
 public class SeeBetter1011_Temporary extends cDVSTest30 {
 
-    cDVSTest30.cDVSTestBiasgen sb10biasgen;
 
     public SeeBetter1011_Temporary() {
-        this.sb10biasgen = (cDVSTest30.cDVSTestBiasgen) super.biasgen;
-        sb10biasgen.configBits.configBits = new cDVSTestBiasgen.ConfigBits.ConfigBit[13];
-
+        setBiasgen(new SB10TmpBiasgen(this));
     }
 
     class SB10TmpBiasgen extends cDVSTest30.cDVSTestBiasgen {
 
         public SB10TmpBiasgen(Chip chip) {
             super(chip);
+            configBits=new ExtraOnChipConfigBits();
         }
 
         /** Bits on the on-chip shift register but not an output mux control, added to end of shift register. Control

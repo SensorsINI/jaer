@@ -757,7 +757,8 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
                     new ConfigBit("useStaticPullupX", 0, "turn on static pullup for X addresses (columns)"),
                     pullupY =
                     new ConfigBit("useStaticPullupY", 1, "turn on static pullup for Y addresses (rows)");
-            ConfigBit[] configBits = {pullupX, pullupY};
+            /** Array of configuration bits at end of shift register on-chip */
+            protected ConfigBit[] configBits = {pullupX, pullupY};
 
             @Override
             public void loadPreference() {
