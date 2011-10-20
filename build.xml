@@ -96,16 +96,16 @@
 
         <echo message="If running Windows 7, building WinRun4J launcher - embedding jaer.ini in jAERViewer.exe"/>
         <property name="executable-full-path" location="../../WinRun4J/RCEDIT.exe"/>
-        <exec os="Windows 7" dir="../../WinRun4J" executable="${executable-full-path}">
+        <exec os="Windows 7" dir="../.." executable="${executable-full-path}">
             <arg value="/n"/>
-            <arg value="..\\jAERViewer.exe"/>
-            <arg value="jaer.ini"/>
+            <arg value="jAERViewer.exe"/>
+            <arg value="WinRun4J/jaer.ini"/>
         </exec>
         <echo message="If running Windows 7 - embedding icon jaer.ico in jAERViewer.exe"/>
-        <exec os="Windows 7" dir="../../WinRun4J" executable="${executable-full-path}">
+        <exec os="Windows 7" dir="../.." executable="${executable-full-path}">
             <arg value="/a"/>
-            <arg value="..\\jAERViewer.exe"/>
-            <arg value="jaer.ico"/>
+            <arg value="jAERViewer.exe"/>
+            <arg value="WinRun4J/jaer.ico"/>
         </exec>
     </target>
     
