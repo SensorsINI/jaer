@@ -310,22 +310,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         }
     };
 
-    public enum Tristate {
 
-        High, Low, HiZ;
-
-        public boolean isHigh() {
-            return this == Tristate.High;
-        }
-
-        public boolean isLow() {
-            return this == Tristate.Low;
-        }
-
-        public boolean isHiZ() {
-            return this == Tristate.HiZ;
-        }
-    }
 
     public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements net.sf.jaer.biasgen.ChipControlPanel {
 
@@ -2235,5 +2220,23 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             return null;
         }
         return ams1cbiasgen.getScanner();
+    }
+
+    /** Used for tristate outputs */
+    public enum Tristate {
+
+        High, Low, HiZ;
+
+        public boolean isHigh() {
+            return this == Tristate.High;
+        }
+
+        public boolean isLow() {
+            return this == Tristate.Low;
+        }
+
+        public boolean isHiZ() {
+            return this == Tristate.HiZ;
+        }
     }
 }

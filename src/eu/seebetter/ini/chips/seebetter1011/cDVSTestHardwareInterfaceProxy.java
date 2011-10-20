@@ -28,7 +28,7 @@ public class cDVSTestHardwareInterfaceProxy extends HardwareInterfaceProxy {
     private final int maxADCchannel = 3;
     private boolean printedWarning = true;
     private final int minScanX = 0, maxScanX = SeeBetter1011.SIZE_X_CDVS - 1, minScanY = 0, maxScanY = SeeBetter1011.SIZE_Y_CDVS - 1;
-    private cDVSTestHardwareInterface hw;
+    private SeeBetter1011HardwareInterface hw;
 
     public cDVSTestHardwareInterfaceProxy(Chip chip) {
         super(chip);
@@ -45,14 +45,14 @@ public class cDVSTestHardwareInterfaceProxy extends HardwareInterfaceProxy {
         return true;
     }
 
-    public cDVSTestHardwareInterface getHw() {
+    public SeeBetter1011HardwareInterface getHw() {
         return hw;
     }
 
     /**
      * @param hw the hw to set
      */
-    public void setHw(cDVSTestHardwareInterface hw) {
+    public void setHw(SeeBetter1011HardwareInterface hw) {
         this.hw = hw;
     }
 

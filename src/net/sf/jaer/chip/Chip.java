@@ -28,12 +28,10 @@ import net.sf.jaer.util.RemoteControl;
  * <p>
  A Chip also has Preferences; the Preferences node is based on the package of the 
  actual chip class.
- * <p>
- * A Chip has a preferred hardware interface class which is used in the HardwareInterfaceFactory or its subclasses
- * to construct the actual hardware interface class when the hardware interface is enumerated.
- *
+ * 
  *<p>
  * A Chip may be remote-controllable via its remote control, see getRemoteControl().
+ * <p>
  * @author tobi
  */
 @Description("Base class for all devices/chips etc.")
@@ -53,26 +51,32 @@ public class Chip extends Observable {
     
     private static Class<? extends HardwareInterface> preferredHardwareInterface=null;
     
-    /** Should be overridden by a subclass of Chip to specify the preferred HardwareInterface. In the case of chips
-     * that use a variety of generic interfaces the factory will construct a default interface if getPreferredHardwareInterface
-     * return null.
-     * @return a HardwareInterface class.
-     */
-    static public Class<? extends HardwareInterface> getPreferredHardwareInterface(){
-        return Chip.preferredHardwareInterface;
-    }
+//    /** Should be overridden by a subclass of Chip to specify the preferred HardwareInterface. In the case of chips
+//     * that use a variety of generic interfaces the factory will construct a default interface if getPreferredHardwareInterface
+//     * return null.
+//     * @return a HardwareInterface class.
+//     */
+//    static public Class<? extends HardwareInterface> getPreferredHardwareInterface(){
+//        return Chip.preferredHardwareInterface;
+//    }
+//    
+//    /** Sets the preferred HardwareInterface class. Warning: this can call static initializers of a class, which can cause problems
+//     * especially in non-standard classloader contexts, e.g. applets.
+//     * 
+//     * @param clazz the class that must extend HardwareInterface.
+//     */
+//    static public void setPreferredHardwareInterface(Class<? extends HardwareInterface> clazz){
+//        Chip.preferredHardwareInterface=clazz;
+//    }
     
-    /** Sets the preferred HardwareInterface class. Warning: this can call static initializers of a class, which can cause problems
-     * especially in non-standard classloader contexts, e.g. applets.
+    /** The remote control allows control of this Chip via a UDP connection
      * 
-     * @param clazz the class that must extend HardwareInterface.
      */
-    static public void setPreferredHardwareInterface(Class<? extends HardwareInterface> clazz){
-        Chip.preferredHardwareInterface=clazz;
-    }
-    
-    private RemoteControl remoteControl;
+    protected RemoteControl remoteControl;
 
+    /** This built in Logger should be used for logging, e.g. via log.info or log.warn
+     * 
+     */
     protected static Logger log=Logger.getLogger("Chip");
     
     /** Can be used to hold a reference to the last data associated with this Chip2D */

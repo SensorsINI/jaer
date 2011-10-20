@@ -40,7 +40,11 @@ public class SeeBettter1011Renderer extends RetinaRenderer {
         logIntensityOffset = chip.getPrefs().getInt("logIntensityOffset", 0);
     }
 
-    @Override
+   private boolean isCDVSArray(cDVSEvent e) {
+        return e.x < SeeBetter1011.SIZE_X_CDVS;
+    }
+
+     @Override
     public synchronized void render(EventPacket packet) {
 
 
@@ -58,7 +62,6 @@ public class SeeBettter1011Renderer extends RetinaRenderer {
         checkPixmapAllocation();
         float[] f = getPixmapArray();
         sizeX = chip.getSizeX();
-        final boolean showColorChange = isDisplayColorChangeEvents();
         final boolean showLogIntensityChange = isDisplayLogIntensityChangeEvents();
         try {
             if (!accumulateEnabled) {
@@ -86,14 +89,14 @@ public class SeeBettter1011Renderer extends RetinaRenderer {
 
                             break;
                         case Redder:
-                            if (showColorChange) {
-                                changeCDVSPixel(x, y, f, redder, step);
-                            }
+//                            if (showColorChange) {
+//                                changeCDVSPixel(x, y, f, redder, step);
+//                            }
                             break;
                         case Bluer:
-                            if (showColorChange) {
-                                changeCDVSPixel(x, y, f, bluer, step);
-                            }
+//                            if (showColorChange) {
+//                                changeCDVSPixel(x, y, f, bluer, step);
+//                            }
                             break;
                     }
                 } else { // address is in DVS arrays
@@ -156,10 +159,6 @@ public class SeeBettter1011Renderer extends RetinaRenderer {
         pixmap.rewind();
     }
 
-    private boolean isCDVSArray(cDVSEvent e) {
-        return e.x < SeeBetter1011.SIZE_X_CDVS;
-    }
-
     /** x,y refer to 32x32 space of cDVS pixels but rendering space for cDVS is 64x64 */
     private void changeCDVSPixel(int x, int y, float[] f, float[] c, float step) {
         int ind;
@@ -193,20 +192,12 @@ public class SeeBettter1011Renderer extends RetinaRenderer {
         cDVSChip.setDisplayLogIntensity(displayLogIntensity);
     }
 
-    public void setDisplayColorChangeEvents(boolean displayColorChangeEvents) {
-        cDVSChip.setDisplayColorChangeEvents(displayColorChangeEvents);
-    }
-
     public boolean isDisplayLogIntensityChangeEvents() {
         return cDVSChip.isDisplayLogIntensityChangeEvents();
     }
 
     public boolean isDisplayLogIntensity() {
         return cDVSChip.isDisplayLogIntensity();
-    }
-
-    public boolean isDisplayColorChangeEvents() {
-        return cDVSChip.isDisplayColorChangeEvents();
     }
 
     public void setUseOffChipCalibration(boolean useOffChipCalibration) {

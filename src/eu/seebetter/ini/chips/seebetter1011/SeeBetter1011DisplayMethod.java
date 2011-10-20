@@ -29,19 +29,19 @@ public class SeeBetter1011DisplayMethod extends DVSWithIntensityDisplayMethod {
 
     @Override
     public void display(GLAutoDrawable drawable) {
-        checkControlPanel();
         super.display(drawable);
         GL gl=drawable.getGL();
         gl.glLineWidth(2f);
         gl.glColor3f(1,1,1);
         // draw boxes around arrays
 
-       rect(gl,0,0,64,64);
-       rect(gl,64,0,32,32);
+       rect(gl,0,0,32,64); // big DVS + log
+       rect(gl,32,0,32,64);  // sDVS sensitive DVS
+       rect(gl,64,0,32,32); // DVS arrays
        rect(gl,96,0,32,32);
        rect(gl,96,32,32,32);
        rect(gl,64,32,32,32);
-       rect(gl,140,0,2,64);
+       rect(gl,140,0,2,64); /// whole chip + extra to right
 
     }
 
@@ -54,13 +54,6 @@ public class SeeBetter1011DisplayMethod extends DVSWithIntensityDisplayMethod {
         gl.glVertex2f(x+w,y+h);
         gl.glVertex2f(x,y+h);
         gl.glEnd();
-    }
-
-    private void checkControlPanel() {
-        if (registeredControlPanel) {
-            return;
-        }
-        registerControlPanel();
     }
 
     public void registerControlPanel() {
@@ -95,10 +88,6 @@ public class SeeBetter1011DisplayMethod extends DVSWithIntensityDisplayMethod {
         cDVSChip.setDisplayLogIntensity(displayLogIntensity);
     }
 
-    public void setDisplayColorChangeEvents(boolean displayColorChangeEvents) {
-        cDVSChip.setDisplayColorChangeEvents(displayColorChangeEvents);
-    }
-
     public boolean isDisplayLogIntensityChangeEvents() {
         return cDVSChip.isDisplayLogIntensityChangeEvents();
     }
@@ -107,7 +96,4 @@ public class SeeBetter1011DisplayMethod extends DVSWithIntensityDisplayMethod {
         return cDVSChip.isDisplayLogIntensity();
     }
 
-    public boolean isDisplayColorChangeEvents() {
-        return cDVSChip.isDisplayColorChangeEvents();
-    }
 }

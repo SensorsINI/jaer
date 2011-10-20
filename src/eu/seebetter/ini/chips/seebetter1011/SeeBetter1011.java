@@ -6,10 +6,16 @@ created 26 Oct 2008 for new cDVSTest chip
 package eu.seebetter.ini.chips.seebetter1011;
 
 import ch.unizh.ini.jaer.chip.retina.*;
+import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
+import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterfaceProxy;
 import eu.seebetter.ini.chips.*;
 import eu.seebetter.ini.chips.cDVSEvent;
-import eu.seebetter.ini.chips.seebetter1011.*;
+import eu.seebetter.ini.chips.config.*;
 import java.awt.event.ActionEvent;
+import java.util.Iterator;
+import java.util.Observer;
+import java.util.prefs.PreferenceChangeEvent;
+import java.util.prefs.PreferenceChangeListener;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JRadioButton;
@@ -36,6 +42,7 @@ import net.sf.jaer.biasgen.Pot.Sex;
 import net.sf.jaer.biasgen.Pot.Type;
 import net.sf.jaer.biasgen.VDAC.DAC;
 import net.sf.jaer.biasgen.VDAC.VPotGUIControl;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.util.ParameterControlPanel;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
@@ -47,14 +54,15 @@ import net.sf.jaer.util.RemoteControlled;
  * {@link #setHardwareInterface} is used when the hardware interface is constructed after the retina object.
  *The constructor that takes a hardware interface also constructs the biasgen interface.
  * <p>
- * cDVSTest features several arrays of pixels, a fully configurable bias generator,
+ * SeeBetter 10 and 11 feature several arrays of pixels, a fully configurable bias generator,
  * and a configurable output selector for digital and analog current and voltage outputs for characterization.
  * The output is word serial and includes an intensity neuron which rides onto the other addresses.
- * cDVSTest10 is built in UMC18 CIS process and has 14.5u pixels.
+ * <p>
+ * SeeBetter 10 and 11 are built in UMC18 CIS process and has 14.5u pixels.
  *
  * @author tobi
  */
-@Description("cDVSTest color Dynamic Vision Test chip")
+@Description("SeeBetter10 and 11 test chips")
 public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntensity {
 
     public static final int SIZEX_TOTAL = 140;
@@ -93,12 +101,11 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     private SeeBettter1011Renderer cDVSRenderer = null;
     private SeeBetter1011DisplayMethod cDVSDisplayMethod = null;
     private boolean displayLogIntensity;
-    private boolean displayColorChangeEvents;
     private boolean displayLogIntensityChangeEvents;
 
     /** Creates a new instance of cDVSTest10.  */
     public SeeBetter1011() {
-        setName("cDVSTest30");
+        setName("SeeBetter1011");
         setEventClass(cDVSEvent.class);
         setSizeX(SIZEX_TOTAL);
         setSizeY(SIZE_Y);
@@ -108,28 +115,28 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
         setEventExtractor(new SeeBetter1011Extractor(this));
 
-        setBiasgen(new SeeBetter1011.cDVSTestBiasgen(this));
+        setBiasgen(new SeeBetter1011.Biasgen(this));
 
         displayLogIntensity = getPrefs().getBoolean("displayLogIntensity", true);
-        displayColorChangeEvents = getPrefs().getBoolean("displayColorChangeEvents", true);
         displayLogIntensityChangeEvents = getPrefs().getBoolean("displayLogIntensityChangeEvents", true);
 
         setRenderer((cDVSRenderer = new SeeBettter1011Renderer(this)));
-
-//        DisplayMethod m = getCanvas().getDisplayMethod(); // get default method
-//        getCanvas().removeDisplayMethod(m);
-
-//        DVSWithIntensityDisplayMethod intenDisplayMethod = new DVSWithIntensityDisplayMethod(getCanvas());
-//
-//        intenDisplayMethod.setIntensitySource(this);
-//        getCanvas().addDisplayMethod(intenDisplayMethod);
-//        getCanvas().setDisplayMethod(intenDisplayMethod);
 
         cDVSDisplayMethod = new SeeBetter1011DisplayMethod(this);
         getCanvas().addDisplayMethod(cDVSDisplayMethod);
         getCanvas().setDisplayMethod(cDVSDisplayMethod);
         cDVSDisplayMethod.setIntensitySource(this);
 
+    }
+
+    @Override
+    public void onDeregistration() {
+        cDVSDisplayMethod.unregisterControlPanel();
+    }
+
+    @Override
+    public void onRegistration() {
+        cDVSDisplayMethod.registerControlPanel();
     }
 
     /** Cleans up on renewal of chip. */
@@ -317,11 +324,11 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     @Override
     public void setHardwareInterface(final HardwareInterface hardwareInterface) {
         this.hardwareInterface = hardwareInterface;
-        SeeBetter1011.cDVSTestBiasgen bg;
+        SeeBetter1011.Biasgen bg;
         try {
             if (getBiasgen() == null) {
-                setBiasgen(bg = new SeeBetter1011.cDVSTestBiasgen(this));
-                // now we can add the control panel
+                setBiasgen(bg = new SeeBetter1011.Biasgen(this));
+                // now we can addConfigValue the control panel
 
             } else {
                 getBiasgen().setHardwareInterface((BiasgenHardwareInterface) hardwareInterface);
@@ -358,28 +365,49 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
      *
      * @author tobi
      */
-    public class cDVSTestBiasgen extends net.sf.jaer.biasgen.Biasgen {
+    public class Biasgen extends SeeBetterChipConfig {
 
+        private final short ADC_CONFIG = (short) 0x100;   //normal power mode, single ended, sequencer unused : (short) 0x908;
         ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
-        private ConfigurableIPotRev0 pcas, diffOn, diffOff, diff, red, blue, amp;
-        private ConfigurableIPotRev0 refr, pr, foll;
+        private ConfigurableIPot32 pcas, diffOn, diffOff, diff, red, blue, amp;
+        private ConfigurableIPot32 refr, pr, foll;
         SeeBetter1011OutputControlPanel controlPanel;
         AllMuxes allMuxes = new AllMuxes(); // the output muxes
         private ShiftedSourceBias ssn, ssp, ssnMid, sspMid;
         private ShiftedSourceBias[] ssBiases = new ShiftedSourceBias[4];
         private VPot thermometerDAC;
-        cDVSTestHardwareInterfaceProxy adcProxy = new cDVSTestHardwareInterfaceProxy(SeeBetter1011.this); // must set hardware later
-        ConfigBits configBits = new ConfigBits();
+        ExtraOnChipConfigBits configBits = new ExtraOnChipConfigBits();
         int pos = 0;
         JPanel bPanel;
         JTabbedPane bgTabbedPane;
+        // portC
+        private PortBit runAdc = new PortBit(SeeBetter1011.this, "c0", "runAdc", "High to run ADC", true);
+        // adc configuration is stored in adcProxy; updates to here should update CPLD config below
+        private CPLDInt adcConfig = new CPLDInt(SeeBetter1011.this, 11, 22, "adcConfig", "determines configuration of ADC - value depends on channel and sequencing enabled " + ADC_CONFIG, ADC_CONFIG),
+                adcTrackTime = new CPLDInt(SeeBetter1011.this, 23, 38, "adcTrackTime", "ADC track time in clock cycles which are 15 cycles/us", 0),
+                adcIdleTime = new CPLDInt(SeeBetter1011.this, 39, 54, "adcIdleTime", "ADC idle time after last acquisition in clock cycles which are 15 cycles/us", 0);
+        // scanner config stored in scannerProxy; updates should update state of below fields
+        private CPLDInt scanX = new CPLDInt(SeeBetter1011.this, 55, 61, "scanChannel", "cochlea tap to monitor when not scanning continuously", 0);
+        private CPLDBit scanSel = new CPLDBit(SeeBetter1011.this, 62, "scanSel", "selects which on-chip cochlea scanner shift register to monitor for sync (0=BM, 1=Gang Cells) - also turns on CPLDLED1 near FXLED1", false), // TODO firmware controlled?
+                scanContinuouslyEnabled = new CPLDBit(SeeBetter1011.this, 63, "scanContinuouslyEnabled", "enables continuous scanning of on-chip scanner", true);
+        // lists of ports and CPLD config
+        private ADC adc;
+        private Scanner scanner;
+        boolean dacPowered = getPrefs().getBoolean("Biasgen.DAC.powered", true);
+        private CypressFX2 cypress = null;
 
-        /** Creates a new instance of cDVSTestBiasgen for cDVSTest with a given hardware interface
+        /** Creates a new instance of Biasgen for cDVSTest with a given hardware interface
          *@param chip the chip this biasgen belongs to
          */
-        public cDVSTestBiasgen(Chip chip) {
+        public Biasgen(Chip chip) {
             super(chip);
-            setName("cDVSTest");
+            setName("SeeBetter1011Biasgen");
+            
+            addConfigValue(runAdc);
+            addConfigValue(adcConfig);
+            addConfigValue(adcTrackTime);
+            addConfigValue(adcIdleTime);
+            addConfigValue(scanX);
 
             getMasterbias().setKPrimeNFet(55e-3f); // estimated from tox=42A, mu_n=670 cm^2/Vs // TODO fix for UMC18 process
             getMasterbias().setMultiplier(9 * (24f / 2.4f) / (4.8f / 2.4f));  // =45  correct for dvs320
@@ -426,7 +454,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             setPotArray(new IPotArray(this));
             /*
              *
-             * on cDVSTest10, shift register order is as follows
+             * on SeeBetter1011, shift register order is as follows TODO check these biases
             diff
             ON
             OFF
@@ -448,50 +476,47 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
              */
 
             try {
-                pot("diff,n,normal,differencing amp");
-                pot("ON,n,normal,DVS brighter threshold");
-                pot("OFF,n,normal,DVS darker threshold");
-                pot("Red,n,normal,Redder threshold");
-                pot("Blue,n,normal,Bluer threshold");
-                pot("Amp,n,normal,DVS ON threshold");
-                pot("pcas,p,cascode,DVS ON threshold");
-                pot("pixInvB,n,normal,pixel inverter bias");
-                pot("pr,p,normal,photoreceptor bias current");
-                pot("fb,p,normal,photoreceptor follower bias current");
-                pot("refr,p,normal,DVS refractory current");
-                pot("AReqPd,n,normal,request pulldown threshold");
-                pot("AReqEndPd,n,normal,handshake state machine pulldown bias current");
-                pot("AEPuX,p,normal,AER column pullup");
-                pot("AEPuY,p,normal,AER row pullup");
-                pot("If_threshold,n,normal,integrate and fire intensity neuroon threshold");
-                pot("If_refractory,n,normal,integrate and fire intensity neuron refractory period bias current");
-                pot("FollPadBias,n,normal,follower pad buffer bias current");
-                pot("ROgate,p,normal,bias voltage for log readout transistor ");
-                pot("ROcas,p,normal,bias voltage for log readout cascode ");
-                pot("refcurrent,p,normal,reference current for log readout ");
-                pot("RObuffer,n,normal,buffer bias for log readout");
+                addIPot("diff,n,normal,differencing amp");
+                addIPot("ON,n,normal,DVS brighter threshold");
+                addIPot("OFF,n,normal,DVS darker threshold");
+                addIPot("Red,n,normal,Redder threshold");
+                addIPot("Blue,n,normal,Bluer threshold");
+                addIPot("Amp,n,normal,DVS ON threshold");
+                addIPot("pcas,p,cascode,DVS ON threshold");
+                addIPot("pixInvB,n,normal,pixel inverter bias");
+                addIPot("pr,p,normal,photoreceptor bias current");
+                addIPot("fb,p,normal,photoreceptor follower bias current");
+                addIPot("refr,p,normal,DVS refractory current");
+                addIPot("AReqPd,n,normal,request pulldown threshold");
+                addIPot("AReqEndPd,n,normal,handshake state machine pulldown bias current");
+                addIPot("AEPuX,p,normal,AER column pullup");
+                addIPot("AEPuY,p,normal,AER row pullup");
+                addIPot("If_threshold,n,normal,integrate and fire intensity neuroon threshold");
+                addIPot("If_refractory,n,normal,integrate and fire intensity neuron refractory period bias current");
+                addIPot("FollPadBias,n,normal,follower pad buffer bias current");
+                addIPot("ROgate,p,normal,bias voltage for log readout transistor ");
+                addIPot("ROcas,p,normal,bias voltage for log readout cascode ");
+                addIPot("refcurrent,p,normal,reference current for log readout ");
+                addIPot("RObuffer,n,normal,buffer bias for log readout");
             } catch (Exception e) {
                 throw new Error(e.toString());
             }
+
+            adc = new ADC(chip);
+            adc.addObserver(this);
+            scanner=new Scanner(SeeBetter1011.this);
+            scanner.addObserver(this);
+            
             loadPreferences();
 
         }
 
-        @Override
-        public void setHardwareInterface(BiasgenHardwareInterface hardwareInterface) {
-            super.setHardwareInterface(hardwareInterface);
-            if (hardwareInterface == null) {
-                if (adcProxy != null) {
-                    adcProxy.setHw(null);
-                }
-            } else if (hardwareInterface instanceof cDVSTestHardwareInterface) {
-                adcProxy.setHw((cDVSTestHardwareInterface) hardwareInterface);
-            } else {
-                log.warning("cannot set ADC hardware interface proxy hardware interface to " + hardwareInterface + " because it is not a cDVSTestHardwareInterface");
-            }
-        }
-
-        private void pot(String s) throws ParseException {
+        /** Quick addConfigValue of a pot from a string description, comma delimited
+         * 
+         * @param s , e.g. "Amp,n,normal,DVS ON threshold"; separate tokens for name,sex,type,tooltip\nsex=n|p, type=normal|cascode
+         * @throws ParseException Error
+         */
+        private void addIPot(String s) throws ParseException {
             try {
                 String d = ",";
                 StringTokenizer t = new StringTokenizer(s, d);
@@ -523,17 +548,150 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
                 String tip = t.nextToken();
 
-                /*     public ConfigurableIPotCDVSTest(Biasgen biasgen, String name, int shiftRegisterNumber,
+                /*     public ConfigurableIPot32(Biasgen biasgen, String name, int shiftRegisterNumber,
                 Type type, Sex sex, boolean lowCurrentModeEnabled, boolean enabled,
                 int bitValue, int bufferBitValue, int displayPosition, String tooltipString) {
                  */
 
-                getPotArray().addPot(new ConfigurableIPotCDVSTest(this, name, pos++,
+                getPotArray().addPot(new ConfigurableIPot32(this, name, pos++,
                         type, sex, false, true,
-                        ConfigurableIPotCDVSTest.maxBitValue / 2, ConfigurableIPotCDVSTest.maxBuffeBitValue, pos, tip));
+                        ConfigurableIPot32.maxBitValue / 2, ConfigurableIPot32.maxBuffeBitValue, pos, tip));
             } catch (Exception e) {
                 throw new Error(e.toString());
             }
+        }
+        /** Vendor request command understood by the cochleaAMS1c firmware in connection with  VENDOR_REQUEST_SEND_BIAS_BYTES */
+        public final short CMD_IPOT = 1, CMD_RESET_EQUALIZER = 2,
+                CMD_SCANNER = 3, CMD_EQUALIZER = 4,
+                CMD_SETBIT = 5, CMD_VDAC = 6, CMD_INITDAC = 7,
+                CMD_CPLD_CONFIG = 8;
+        public final String[] CMD_NAMES = {"IPOT", "RESET_EQUALIZER", "SCANNER", "EQUALIZER", "SET_BIT", "VDAC", "INITDAC", "CPLD_CONFIG"};
+        final byte[] emptyByteArray = new byte[0];
+
+        /** The central point for communication with HW from biasgen. All objects in Biasgen are Observables
+        and addConfigValue Biasgen.this as Observer. They then call notifyObservers when their state changes.
+         * Objects such as adcProxy store preferences for ADC, and update should update the hardware registers accordingly.
+         * @param observable IPot, Scanner, etc
+         * @param object notifyChange used at present
+         */
+        @Override
+        synchronized public void update(Observable observable, Object object) {  // thread safe to ensure gui cannot retrigger this while it is sending something
+//            if (!(observable instanceof CochleaAMS1c.Biasgen.Equalizer.EqualizerChannel)) {
+//                log.info("Observable=" + observable + " Object=" + object);
+//            }
+//            if (cypress == null) { // TODO only really for debugging do we need to do even if no hardware
+//                return;
+//            }
+            // sends a vendor request depending on type of update
+            // vendor request is always VR_CONFIG
+            // value is the type of update
+            // index is sometimes used for 16 bitmask updates
+            // bytes are the rest of data
+            try {
+                if (observable instanceof IPot) { // must send all IPot values and set the select to the ipot shift register, this is done by the cypress
+                    byte[] bytes = new byte[1 + getPotArray().getNumPots() * getPotArray().getPots().get(0).getNumBytes()];
+                    int ind = 0;
+                    Iterator itr = ((IPotArray) getPotArray()).getShiftRegisterIterator();
+                    while (itr.hasNext()) {
+                        IPot p = (IPot) itr.next(); // iterates in order of shiftregister index, from Vbpf to VAGC
+                        byte[] b = p.getBinaryRepresentation();
+                        System.arraycopy(b, 0, bytes, ind, b.length);
+                        ind += b.length;
+                    }
+                    sendConfig(CMD_IPOT, 0, bytes); // the usual packing of ipots
+                } else if (observable instanceof VPot) {
+                    // There are 2 16-bit AD5391 DACs daisy chained; we need to send data for both 
+                    // to change one of them. We can send all zero bytes to the one we're notifyChange changing and it will notifyChange affect any channel
+                    // on that DAC. We also take responsibility to formatting all the bytes here so that they can just be piped out
+                    // surrounded by nSync low during the 48 bit write on the controller.
+                    VPot p = (VPot) observable;
+                    sendDAC(p);
+                } else if (observable instanceof TriStateablePortBit) { // tristateable should come first before configbit since it is subclass
+                    TriStateablePortBit b = (TriStateablePortBit) observable;
+                    byte[] bytes = {(byte) ((b.isSet() ? (byte) 1 : (byte) 0) | (b.isHiZ() ? (byte) 2 : (byte) 0))};
+                    sendConfig(CMD_SETBIT, b.getPortbit(), bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]= OR of value (1,0), hiZ=2/0, bit is set if tristate, unset if driving port
+                } else if (observable instanceof PortBit) {
+                    PortBit b = (PortBit) observable;
+                    byte[] bytes = {b.isSet() ? (byte) 1 : (byte) 0};
+                    sendConfig(CMD_SETBIT, b.getPortbit(), bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]=value (1,0)
+                } else if (observable instanceof CPLDConfigValue) {
+                    sendCPLDConfig();
+                    // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]=value (1,0)
+                } else if (observable instanceof ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen.Scanner) {// TODO resolve with scannerProxy
+// already handled by bits
+//                    scanSel.set(true);
+//                    scanX.set(scanner.getScanX());
+//                    scanContinuouslyEnabled.set(scanner.isScanContinuouslyEnabled()); // must update cpld config bits from software scanner object
+//                    byte[] bytes = cpld.getBytes();
+//                    sendConfig(CMD_CPLD_CONFIG, 0, bytes);
+                } else if (observable instanceof ADCHardwareInterfaceProxy) {
+                    adcIdleTime.set(adc.getIdleTime() * 15); // multiplication with 15 to get from us to clockcycles
+                    adcTrackTime.set(adc.getTrackTime() * 15); // multiplication with 15 to get from us to clockcycles
+                    int lastChan = adc.getADCChannel();
+                    boolean seq = adc.isSequencingEnabled();
+                    // from AD7933/AD7934 datasheet
+                    int config = (1 << 8) + (lastChan << 5) + (seq ? 6 : 0);
+                    adcConfig.set(config);
+                    sendCPLDConfig();
+                    runAdc.setChanged();
+                    runAdc.notifyObservers();
+                } else {
+                    super.update(observable, object);  // super (Biasgen) handles others, e.g. masterbias
+                }
+            } catch (HardwareInterfaceException e) {
+                log.warning("On update() caught " + e.toString());
+            }
+        }
+
+        private void sendCPLDConfig() throws HardwareInterfaceException {
+            byte[] bytes = cpldConfig.getBytes();
+            sendConfig(CMD_CPLD_CONFIG, 0, bytes);
+        }
+
+        /** convenience method for sending configuration to hardware. Sends vendor request VENDOR_REQUEST_SEND_BIAS_BYTES with subcommand cmd, index index and bytes bytes.
+         * 
+         * @param cmd the subcommand to set particular configuration, e.g. CMD_CPLD_CONFIG
+         * @param index unused
+         * @param bytes the payload
+         * @throws HardwareInterfaceException 
+         */
+        void sendConfig(int cmd, int index, byte[] bytes) throws HardwareInterfaceException {
+
+            // debug
+            System.out.print(String.format("sending config cmd 0x%X, index=0x%X, with %d bytes", cmd, index, bytes.length));
+            if (bytes == null || bytes.length == 0) {
+                System.out.println("");
+            } else {
+                int max = 8;
+                if (bytes.length < max) {
+                    max = bytes.length;
+                }
+                System.out.print(" = ");
+                for (int i = 0; i < max; i++) {
+                    System.out.print(String.format("%X, ", bytes[i]));
+                }
+                System.out.println("");
+            } // end debug
+
+
+            if (bytes == null) {
+                bytes = emptyByteArray;
+            }
+//            log.info(String.format("sending command vendor request cmd=%d, index=%d, and %d bytes", cmd, index, bytes.length));
+            if (getHardwareInterface() != null && getHardwareInterface() instanceof CypressFX2) {
+                ((CypressFX2) getHardwareInterface()).sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff & cmd), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
+            }
+        }
+
+        /** 
+         * Convenience method for sending configuration to hardware. Sends vendor request VENDOR_REQUEST_SEND_BIAS_BYTES with subcommand cmd, index index and empty byte array.
+         * 
+         * @param cmd the subcommand
+         * @param index data
+         * @throws HardwareInterfaceException 
+         */
+        void sendConfig(int cmd, int index) throws HardwareInterfaceException {
+            sendConfig(cmd, index, emptyByteArray);
         }
 
         @Override
@@ -570,9 +728,83 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             }
         }
 
+        // sends VR to init DAC
+        public void initDAC() throws HardwareInterfaceException {
+            sendConfig(CMD_INITDAC, 0);
+        }
+
+        void sendDAC(VPot pot) throws HardwareInterfaceException {
+            int chan = pot.getChannel();
+            int value = pot.getBitValue();
+            byte[] b = new byte[6]; // 2*24=48 bits
+// original firmware code
+//            unsigned char dat1 = 0x00; //00 00 0000;
+//            unsigned char dat2 = 0xC0; //Reg1=1 Reg0=1 : Write output data
+//            unsigned char dat3 = 0x00;
+//
+//            dat1 |= (address & 0x0F);
+//            dat2 |= ((msb & 0x0F) << 2) | ((lsb & 0xC0)>>6) ;
+//            dat3 |= (lsb << 2) | 0x03; // DEBUG; the last 2 bits are actually don't care
+            byte msb = (byte) (0xff & ((0xf00 & value) >> 8));
+            byte lsb = (byte) (0xff & value);
+            byte dat1 = 0;
+            byte dat2 = (byte) 0xC0;
+            byte dat3 = 0;
+            dat1 |= (0xff & ((chan % 16) & 0xf));
+            dat2 |= ((msb & 0xf) << 2) | ((0xff & (lsb & 0xc0) >> 6));
+            dat3 |= (0xff & ((lsb << 2)));
+            if (chan < 16) { // these are first VPots in list; they need to be loaded first to isSet to the second DAC in the daisy chain
+                b[0] = dat1;
+                b[1] = dat2;
+                b[2] = dat3;
+                b[3] = 0;
+                b[4] = 0;
+                b[5] = 0;
+            } else { // second DAC VPots, loaded second to end up at start of daisy chain shift register
+                b[0] = 0;
+                b[1] = 0;
+                b[2] = 0;
+                b[3] = dat1;
+                b[4] = dat2;
+                b[5] = dat3;
+            }
+//            System.out.print(String.format("value=%-6d channel=%-6d ",value,chan));
+//            for(byte bi:b) System.out.print(String.format("%2h ", bi&0xff));
+//            System.out.println();
+            sendConfig(CMD_VDAC, 0, b); // value=CMD_VDAC, index=0, bytes as above
+        }
+
+        /** Sets the VDACs on the board to be powered or high impedance output. This is a global operation.
+         * 
+         * @param yes true to power up DACs
+         * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
+         */
+        public void setDACPowered(boolean yes) throws HardwareInterfaceException {
+            putPref("Biasgen.DAC.powered", yes);
+            byte[] b = new byte[6];
+            Arrays.fill(b, (byte) 0);
+            final byte up = (byte) 9, down = (byte) 8;
+            if (yes) {
+                b[0] = up;
+                b[3] = up; // sends 09 00 00 to each DAC which is soft powerup
+            } else {
+                b[0] = down;
+                b[3] = down;
+            }
+            sendConfig(CMD_VDAC, 0, b);
+        }
+
+        /** Returns the DAC powered state
+         * 
+         * @return true if powered up
+         */
+        public boolean isDACPowered() {
+            return dacPowered;
+        }
+
         /**
          *
-         * Overrides the default method to add the custom control panel for configuring the cDVSTest output muxes.
+         * Overrides the default method to addConfigValue the custom control panel for configuring the cDVSTest output muxes.
          *
          * @return a new panel for controlling this bias generator functionally
          */
@@ -594,7 +826,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             bgTabbedPane.addTab("Biases", combinedBiasShiftedSourcePanel);
             bgTabbedPane.addTab("Output control", new SeeBetter1011OutputControlPanel(SeeBetter1011.this));
             final String tabTitle = "ADC control";
-            bgTabbedPane.addTab(tabTitle, new ParameterControlPanel(adcProxy));
+            bgTabbedPane.addTab(tabTitle, new ParameterControlPanel(adc));
             bPanel.add(bgTabbedPane, BorderLayout.CENTER);
             bgTabbedPane.addMouseListener(new java.awt.event.MouseAdapter() {
 
@@ -605,17 +837,17 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             });
             bgTabbedPane.addTab("More config", configBits.makeControlPanel());
             // only select panel after all added
-             bgTabbedPane.setSelectedIndex(getPrefs().getInt("cDVSTest30.bgTabbedPaneSelectedIndex", 0));
-           return bPanel;
+            bgTabbedPane.setSelectedIndex(getPrefs().getInt("cDVSTest30.bgTabbedPaneSelectedIndex", 0));
+            return bPanel;
         }
 
         private void tabbedPaneMouseClicked(java.awt.event.MouseEvent evt) {
             getPrefs().putInt("cDVSTest30.bgTabbedPaneSelectedIndex", bgTabbedPane.getSelectedIndex());
         }
 
-        /** Formats the data sent to the microcontroller to load bias and other configuration. */
+        /** Formats the data sent to the microcontroller to load bias and other configuration to the chip (not FX2 or CPLD configuration). */
         @Override
-        public byte[] formatConfigurationBytes(Biasgen biasgen) {
+        public byte[] formatConfigurationBytes(net.sf.jaer.biasgen.Biasgen biasgen) {
             ByteBuffer bb = ByteBuffer.allocate(1000);
             byte[] biasBytes = super.formatConfigurationBytes(biasgen);
             byte[] configBytes = allMuxes.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
@@ -698,12 +930,112 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             diffOff.changeByRatio(1 / RATIO);
         }        // TODO fix functional biasgen panel to be more usable
 
-        /** Bits on the on-chip shift register but not an output mux control
+        public class ADC extends ADCHardwareInterfaceProxy implements Observer {
 
+            public ADC(Chip chip) {
+                super(chip);
+            }
+
+            @Override
+            public void update(Observable o, Object arg) {
+                throw new UnsupportedOperationException("Not supported yet.");
+            }
+        }
+
+        /** Extends base scanner class to control the relevant bits and parameters of the hardware */
+        public class Scanner extends ScannerHardwareInterfaceProxy implements PreferenceChangeListener, HasPreference, Observer {
+
+            public final int nstages = 64;
+            public final int minPeriod = 10; // to avoid FX2 getting swamped by interrupts for scanclk
+            public final int maxPeriod = 255;
+
+            public Scanner(SeeBetter1011 chip) {
+                super(chip);
+                loadPreference();
+                getPrefs().addPreferenceChangeListener(this);
+                hasPreferencesList.add(this);
+            }
+
+            public int getPeriod() {
+                return adc.getIdleTime() + adc.getTrackTime();
+            }
+
+            /** Sets the scan rate using the ADC idleTime setting, indirectly. 
+             * 
+             * @param period 
+             */
+            public void setPeriod(int period) {
+                boolean old = adc.isADCEnabled();
+                adc.setADCEnabled(false);
+                adc.setIdleTime(period); // TODO fix period units using track time + conversion time + idleTime
+                if (old) {
+                    adc.setADCEnabled(old);
+                }
+            }
+
+            @Override
+            public int getScanX() {
+                return Biasgen.this.scanX.get();
+            }
+
+            @Override
+            public boolean isScanContinuouslyEnabled() {
+                return Biasgen.this.scanContinuouslyEnabled.isSet();
+            }
+
+            @Override
+            public void setScanContinuouslyEnabled(boolean scanContinuouslyEnabled) {
+                super.setScanContinuouslyEnabled(scanContinuouslyEnabled);
+                Biasgen.this.scanContinuouslyEnabled.set(scanContinuouslyEnabled);
+            }
+
+            @Override
+            public void setScanX(int scanX) {
+                super.setScanX(scanX);
+                Biasgen.this.scanX.set(scanX);
+            }
+
+            @Override
+            public void preferenceChange(PreferenceChangeEvent e) {
+//                if (e.getKey().equals("CochleaAMS1c.Biasgen.Scanner.currentStage")) {
+//                    setCurrentStage(Integer.parseInt(e.getNewValue()));
+//                } else if (e.getKey().equals("CochleaAMS1c.Biasgen.Scanner.currentStage")) {
+//                    setContinuousScanningEnabled(Boolean.parseBoolean(e.getNewValue()));
+//                }
+            }
+
+            @Override
+            public void loadPreference() {
+                setScanX(Biasgen.this.scanX.get());
+                setScanContinuouslyEnabled(Biasgen.this.scanContinuouslyEnabled.isSet());
+            }
+
+            @Override
+            public void storePreference() {
+            }
+
+            @Override
+            public String toString() {
+                return "Scanner{" + "currentStage=" + getScanX() + ", scanContinuouslyEnabled=" + isScanContinuouslyEnabled() + ", period=" + getPeriod() + '}';
+            }
+
+            @Override
+            public void update(Observable o, Object arg) {
+                if (o == Biasgen.this.scanContinuouslyEnabled) {
+                    setScanContinuouslyEnabled(Biasgen.this.scanContinuouslyEnabled.isSet());
+                } else if (o == Biasgen.this.scanX) {
+                    setScanX(Biasgen.this.scanX.get());
+                }
+            }
+        }
+
+        /** Bits on the on-chip shift register but not an output mux control, added to end of shift register. Control
+         * holding different pixel arrays in reset and how the RC delays are configured.
+        
          */
-        class ConfigBits extends Observable implements HasPreference { // TODO fix for config bit of pullup
+        class ExtraOnChipConfigBits extends Observable implements HasPreference { // TODO fix for config bit of pullup
 
-            final int TOTAL_NUM_BITS = 8;  // number of these bits on this chip
+            final int TOTAL_NUM_BITS = 24;  // number of these bits on this chip, at end of biasgen shift register
             boolean value = false;
 
             class ConfigBit implements HasPreference {
@@ -720,6 +1052,12 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     }
                 }
 
+                /** Makes a new on-chip extra config bit.
+                 * 
+                 * @param name label
+                 * @param position along shift register. Each loaded bit produces complementary output pair that is tapped off inside chip. We load positive (uncomplemented) value here.
+                 * @param desc tooltip and hint
+                 */
                 ConfigBit(String name, int position, String desc) {
                     this.position = position;
                     action.putValue(Action.SHORT_DESCRIPTION, desc);
@@ -727,7 +1065,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 }
 
                 private String key() {
-                    return "cDVSTest." + getClass().getSimpleName() + "." + name + ".value";
+                    return "SeeBetter1011." + getClass().getSimpleName() + "." + name + ".value";
                 }
 
                 @Override
@@ -749,17 +1087,27 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 void selectWithoutNotify(boolean v) {
                     value = v;
                     try {
-                        sendConfiguration(SeeBetter1011.cDVSTestBiasgen.this);
+                        sendConfiguration(SeeBetter1011.Biasgen.this);
                     } catch (HardwareInterfaceException ex) {
                         log.warning("selecting output: " + ex);
                     }
                 }
             }
-            ConfigBit pullupX =
-                    new ConfigBit("useStaticPullupX", 0, "turn on static pullup for X addresses (columns)"),
-                    pullupY =
-                    new ConfigBit("useStaticPullupY", 1, "turn on static pullup for Y addresses (rows)");
-            ConfigBit[] configBits = {pullupX, pullupY};
+            ConfigBit pullupX = new ConfigBit("useStaticPullupX", 0, "turn on static pullup for X addresses (columns)"),
+                    pullupY = new ConfigBit("useStaticPullupY", 1, "turn on static pullup for Y addresses (rows)"),
+                    delayY0 = new ConfigBit("delayY0", 2, "RC delay columns"),
+                    delayY1 = new ConfigBit("delayY1", 3, "RC delay columns"),
+                    delayY2 = new ConfigBit("delayY2", 4, "RC delay columns"), 
+                    delayX0 = new ConfigBit("delayX0", 5, "RC delay rows"),
+                    delayX1 = new ConfigBit("delayX1", 6, "RC delay rows"),
+                    delayX2 = new ConfigBit("delayX2", 7, "RC delay rows"),
+                    sDVSReset = new ConfigBit("sDVSReset", 8, "holds sensitive DVS (sDVS) array in reset"),
+                    bDVSReset = new ConfigBit("bDVSReset", 9, "holds big DVS + log intensity (bDVS) array in reset"),
+                    ros = new ConfigBit("ROS", 10, "reset on scan enabled"),
+                    delaySM0 = new ConfigBit("delaySM0", 11, "adds delay"),
+                    delaySM1 = new ConfigBit("delaySM1", 12, "adds delay"),
+                    delaySM2 = new ConfigBit("delaySM2", 13, "adds delay");
+            ConfigBit[] configBits = {pullupX, pullupY, delayY0,delayY1,delayY2,delayX0,delayX1,delayX2,sDVSReset,bDVSReset,ros,delaySM0,delaySM1,delaySM2};
 
             @Override
             public void loadPreference() {
@@ -781,10 +1129,12 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
              */
             String getBitString() {
                 StringBuilder s = new StringBuilder();
-                // we just manually deal with the bits since we know where they are
-                s.append("000000");  // 6 msbs are not used on this chip
-                s.append(pullupY.value ? "1" : "0");
-                s.append(pullupX.value ? "1" : "0");
+                // iterate over list
+                int n=configBits.length;
+                for(int i=0;i<TOTAL_NUM_BITS-n;i++) s.append("0"); // loaded first
+                for(int i=n-1;i<=0;i++){
+                    s.append(configBits[i].value? "1":"0"); // backwards from end
+                }
                 return s.toString();
             }
 
@@ -851,7 +1201,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             void selectWithoutNotify(int i) {
                 selectedChannel = i;
                 try {
-                    sendConfiguration(SeeBetter1011.cDVSTestBiasgen.this);
+                    sendConfiguration(SeeBetter1011.Biasgen.this);
                 } catch (HardwareInterfaceException ex) {
                     log.warning("selecting output: " + ex);
                 }
@@ -1111,22 +1461,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     public void setDisplayLogIntensity(boolean displayLogIntensity) {
         this.displayLogIntensity = displayLogIntensity;
         getPrefs().putBoolean("displayLogIntensity", displayLogIntensity);
-        getAeViewer().interruptViewloop();
-    }
-
-    /**
-     * @return the displayColorChangeEvents
-     */
-    public boolean isDisplayColorChangeEvents() {
-        return displayColorChangeEvents;
-    }
-
-    /**
-     * @param displayColorChangeEvents the displayColorChangeEvents to set
-     */
-    public void setDisplayColorChangeEvents(boolean displayColorChangeEvents) {
-        this.displayColorChangeEvents = displayColorChangeEvents;
-        getPrefs().putBoolean("displayColorChangeEvents", displayColorChangeEvents);
         getAeViewer().interruptViewloop();
     }
 
