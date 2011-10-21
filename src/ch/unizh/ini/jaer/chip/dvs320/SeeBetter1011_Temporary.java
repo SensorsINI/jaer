@@ -45,18 +45,18 @@ public class SeeBetter1011_Temporary extends cDVSTest30 {
 
             ConfigBit pullupX = new ConfigBit("useStaticPullupX", 0, "turn on static pullup for X addresses (columns)"),
                     pullupY = new ConfigBit("useStaticPullupY", 1, "turn on static pullup for Y addresses (rows)"),
-                    delayY0 = new ConfigBit("delayY0", 2, "RC delay columns"),
-                    delayY1 = new ConfigBit("delayY1", 3, "RC delay columns"),
-                    delayY2 = new ConfigBit("delayY2", 4, "RC delay columns"),
-                    delayX0 = new ConfigBit("delayX0", 5, "RC delay rows"),
-                    delayX1 = new ConfigBit("delayX1", 6, "RC delay rows"),
-                    delayX2 = new ConfigBit("delayX2", 7, "RC delay rows"),
+                    delayY0 = new ConfigBit("delayY0", 2, "RC delay columns, 1x"),
+                    delayY1 = new ConfigBit("delayY1", 3, "RC delay columns, 2x"),
+                    delayY2 = new ConfigBit("delayY2", 4, "RC delay columns 4x"),
+                    delayX0 = new ConfigBit("delayX0", 5, "RC delay rows, 1x"),
+                    delayX1 = new ConfigBit("delayX1", 6, "RC delay rows, 2x"),
+                    delayX2 = new ConfigBit("delayX2", 7, "RC delay rows, 4x"),
                     sDVSReset = new ConfigBit("sDVSReset", 8, "holds sensitive DVS (sDVS) array in reset"),
                     bDVSReset = new ConfigBit("bDVSReset", 9, "holds big DVS + log intensity (bDVS) array in reset"),
                     ros = new ConfigBit("ROS", 10, "reset on scan enabled"),
-                    delaySM0 = new ConfigBit("delaySM0", 11, "adds delay"),
-                    delaySM1 = new ConfigBit("delaySM1", 12, "adds delay"),
-                    delaySM2 = new ConfigBit("delaySM2", 13, "adds delay");
+                    delaySM0 = new ConfigBit("delaySM0", 11, "adds delay to state machine, 1x"),
+                    delaySM1 = new ConfigBit("delaySM1", 12, "adds delay to state machine, 2x"),
+                    delaySM2 = new ConfigBit("delaySM2", 13, "adds delay to state machine, 4x");
             final int TOTAL_NUM_BITS = 24;  // number of these bits on this chip, at end of biasgen shift register
             boolean value = false;
 
