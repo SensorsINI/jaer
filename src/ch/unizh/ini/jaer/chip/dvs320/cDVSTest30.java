@@ -617,6 +617,8 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
             ByteBuffer bb = ByteBuffer.allocate(1000);
             byte[] biasBytes = super.formatConfigurationBytes(biasgen);
             byte[] configBytes = allMuxes.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
+            byte[] configBitBytes = configBits.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
+            bb.put(configBitBytes);
             bb.put(configBytes);
 
             // 256 value (8 bit) VDAC for amplifier reference
@@ -627,10 +629,6 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
             for (ShiftedSourceBias ss : ssBiases) {
                 bb.put(ss.getBinaryRepresentation());
             }
-
-            byte[] configBitBytes = configBits.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
-            bb.put(configBitBytes);
-
 
             byte[] allBytes = new byte[bb.position()];
             bb.flip();
