@@ -5,8 +5,16 @@
  */
 package net.sf.jaer.util;
 
+import java.awt.Cursor;
+import java.beans.PropertyChangeEvent;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
+import javax.swing.JDialog;
+import javax.swing.JProgressBar;
 import javax.swing.JTextArea;
 import javax.swing.JTextPane;
+import javax.swing.ProgressMonitor;
 import net.sf.jaer.Description;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -20,10 +28,12 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.Rectangle2D;
+import java.beans.PropertyChangeListener;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.ArrayList;
 import java.util.Vector;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -35,6 +45,7 @@ import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListModel;
+import javax.swing.SwingWorker;
 import javax.swing.event.ListSelectionEvent;
 import net.sf.jaer.DevelopmentStatus;
 
@@ -97,12 +108,6 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 if (c.isAnnotationPresent(Description.class)) {
                     Description des = (Description) c.getAnnotation(Description.class);
                     descriptionString = des.value();
-                } else {
-                    Method m = c.getMethod("getDescription"); // makes warning about non-varargs call of varargs with inexact argument type
-
-                    if (m != null && Modifier.isStatic(m.getModifiers())) {
-                        descriptionString = (String) (m.invoke(null));
-                    }
                 }
                 DevelopmentStatus.Status devStatus = null;
                 if (c.isAnnotationPresent(DevelopmentStatus.class)) {
@@ -120,35 +125,120 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     }
     private DescriptionMap descriptionMap = new DescriptionMap();
 
-    /** Creates new form ClassChooserPanel2
+//    class SwingWorkerCompletionWaiter implements PropertyChangeListener {
+//
+//        private JDialog dialog;
+//
+//        public SwingWorkerCompletionWaiter(JDialog dialog) {
+//            this.dialog = dialog;
+//        }
+//
+//        public void propertyChange(PropertyChangeEvent event) {
+//            if ("state".equals(event.getPropertyName())
+//                    && SwingWorker.StateValue.DONE == event.getNewValue()) {
+//                dialog.setVisible(false);
+//                dialog.dispose();
+//            }
+//        }
+//    }
+    /** Creates new form ClassChooserPanel
     
     @param subclassOf a Class that will be used to search the classpath for subclasses of subClassOf.
     @param classNames a list of names, which is filled in by the actions of the user with the chosen classes
     @param defaultClassNames the list on the right is replaced by this lixt if the user pushes the Defaults button.
     
      */
-    public ClassChooserPanel(Class subclassOf, ArrayList<String> classNames, ArrayList<String> defaultClassNames) {
+    public ClassChooserPanel(final Class subclassOf, ArrayList<String> classNames, ArrayList<String> defaultClassNames) {
         initComponents();
         availFilterTextField.requestFocusInWindow();
         this.defaultClassNames = defaultClassNames;
-        availAllList = SubclassFinder.findSubclassesOf(subclassOf.getName());
-        Collections.sort(availAllList, new ClassNameSorter());
-        availClassesListModel = new FilterableListModel(availAllList);
-        availClassJList.setModel(availClassesListModel);
-        availClassJList.setCellRenderer(new MyCellRenderer());
-        Action addAction = new AbstractAction() {
+//        final ProgressMonitor progressMonitor = new ProgressMonitor(ClassChooserPanel.this, "Building class list for subclasses of " + subclassOf.getName(), "", 0, 1000);
+//        progressMonitor.setMinimum(0);
+//        progressMonitor.setMillisToPopup(100);
+        // TODO below totally broken, can't get progress show something.  box pops up but doesn't update.
+//        SwingWorker<ArrayList<String>, Integer> worker = new SwingWorker() {
+//
+//            @Override
+//            protected Object doInBackground() throws Exception {
+//                ArrayList<String> list = SubclassFinder.findSubclassesOf(subclassOf.getName(), progressMonitor);
+//                return list;
+//            }
+//
+//            @Override
+//            protected void done() {
+//                super.done();
+//                progressMonitor.close();
+//            }
+//
+//        };
+//        PropertyChangeListener l=new PropertyChangeListener() {
+//
+//            @Override
+//            public void propertyChange(PropertyChangeEvent evt) {
+//                throw new UnsupportedOperationException("Not supported yet.");
+//            }
+//        };
+//        worker.addPropertyChangeListener(l);
+//        worker.execute();
+//        try {
+//            while(!worker.isDone()){
+//                try {
+//                    availAllList = (ArrayList<String>) worker.get(1000,TimeUnit.MILLISECONDS);
+//                } catch (TimeoutException ex) {
+//                    
+//                }
+//            }
+//        } catch (InterruptedException ex) {
+//            log.warning(ex.toString());
+//                return;
+//        } catch (ExecutionException ex) {
+//            log.warning(ex.toString());
+//             return;
+//        } 
+        final SubclassFinder.SubclassFinderWorker worker = new SubclassFinder.SubclassFinderWorker(subclassOf);
+        worker.addPropertyChangeListener(new PropertyChangeListener() {
+//
 
-            public void actionPerformed(ActionEvent e) {
-                Object o = availClassJList.getSelectedValue();
-                if (o == null) {
-                    return;
+            @Override
+            public void propertyChange(PropertyChangeEvent evt) {
+                System.out.println("got event " + evt.toString());
+                try {
+                    availAllList = worker.get();
+                    if (availAllList == null) {
+                        log.warning("got empty list of classes - something wrong here, aborting dialog");
+                        return;
+                    }
+                    Collections.sort(availAllList, new ClassNameSorter());
+                    availClassesListModel = new FilterableListModel(availAllList);
+                    availClassJList.setModel(availClassesListModel);
+                    availClassJList.setCellRenderer(new MyCellRenderer());
+                    Action addAction = new AbstractAction() {
+
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            Object o = availClassJList.getSelectedValue();
+                            if (o == null) {
+                                return;
+                            }
+                            int last = chosenClassesListModel.getSize() - 1;
+                            chosenClassesListModel.add(last + 1, o);
+                            classJList.setSelectedIndex(last + 1);
+                        }
+                    };
+                    addAction(availClassJList, addAction);
+                } catch (Exception ex) {
+                    Logger.getLogger(ClassChooserPanel.class.getName()).log(Level.SEVERE, null, ex);
+                } finally {
+                    setCursor(Cursor.getDefaultCursor());
                 }
-                int last = chosenClassesListModel.getSize() - 1;
-                chosenClassesListModel.add(last + 1, o);
-                classJList.setSelectedIndex(last + 1);
             }
-        };
-        addAction(availClassJList, addAction);
+        });
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        DefaultListModel m=new DefaultListModel();
+        m.addElement("scanning...");
+        availClassJList.setModel(m);
+        worker.execute();
+
         Action removeAction = new AbstractAction() {
 
             public void actionPerformed(ActionEvent e) {

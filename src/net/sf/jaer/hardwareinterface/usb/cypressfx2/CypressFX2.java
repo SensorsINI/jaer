@@ -351,6 +351,13 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      *to size of buffer for control xfers. */
     public final int MAX_CONTROL_XFER_SIZE = 64; // max control xfer size
 
+    /** Returns a new ProgressMonitor with the AEViewer of this chip as the parent component.
+     * 
+     * @param message message at top of monitor
+     * @param start start value
+     * @param end value
+     * @return  the ProgressMonitor
+     */
     protected ProgressMonitor makeProgressMonitor(String message, int start, int end){
         Component c=null;
         if(getChip()!=null && getChip().getAeViewer()!=null){

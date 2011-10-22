@@ -3672,10 +3672,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        log.info("customizing chip classes");
         ClassChooserDialog dlg;
         try {
-            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+//            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             dlg = new ClassChooserDialog(this, AEChip.class, chipClassNames, null);
         } finally {
-            setCursor(Cursor.getDefaultCursor());
+//            setCursor(Cursor.getDefaultCursor());
         }
         dlg.setVisible(true);
         int ret = dlg.getReturnStatus();
