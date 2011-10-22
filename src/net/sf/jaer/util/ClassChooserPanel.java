@@ -125,22 +125,6 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     }
     private DescriptionMap descriptionMap = new DescriptionMap();
 
-//    class SwingWorkerCompletionWaiter implements PropertyChangeListener {
-//
-//        private JDialog dialog;
-//
-//        public SwingWorkerCompletionWaiter(JDialog dialog) {
-//            this.dialog = dialog;
-//        }
-//
-//        public void propertyChange(PropertyChangeEvent event) {
-//            if ("state".equals(event.getPropertyName())
-//                    && SwingWorker.StateValue.DONE == event.getNewValue()) {
-//                dialog.setVisible(false);
-//                dialog.dispose();
-//            }
-//        }
-//    }
     /** Creates new form ClassChooserPanel
     
     @param subclassOf a Class that will be used to search the classpath for subclasses of subClassOf.
@@ -152,92 +136,55 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         initComponents();
         availFilterTextField.requestFocusInWindow();
         this.defaultClassNames = defaultClassNames;
-//        final ProgressMonitor progressMonitor = new ProgressMonitor(ClassChooserPanel.this, "Building class list for subclasses of " + subclassOf.getName(), "", 0, 1000);
-//        progressMonitor.setMinimum(0);
-//        progressMonitor.setMillisToPopup(100);
-        // TODO below totally broken, can't get progress show something.  box pops up but doesn't update.
-//        SwingWorker<ArrayList<String>, Integer> worker = new SwingWorker() {
-//
-//            @Override
-//            protected Object doInBackground() throws Exception {
-//                ArrayList<String> list = SubclassFinder.findSubclassesOf(subclassOf.getName(), progressMonitor);
-//                return list;
-//            }
-//
-//            @Override
-//            protected void done() {
-//                super.done();
-//                progressMonitor.close();
-//            }
-//
-//        };
-//        PropertyChangeListener l=new PropertyChangeListener() {
-//
-//            @Override
-//            public void propertyChange(PropertyChangeEvent evt) {
-//                throw new UnsupportedOperationException("Not supported yet.");
-//            }
-//        };
-//        worker.addPropertyChangeListener(l);
-//        worker.execute();
-//        try {
-//            while(!worker.isDone()){
-//                try {
-//                    availAllList = (ArrayList<String>) worker.get(1000,TimeUnit.MILLISECONDS);
-//                } catch (TimeoutException ex) {
-//                    
-//                }
-//            }
-//        } catch (InterruptedException ex) {
-//            log.warning(ex.toString());
-//                return;
-//        } catch (ExecutionException ex) {
-//            log.warning(ex.toString());
-//             return;
-//        } 
         final SubclassFinder.SubclassFinderWorker worker = new SubclassFinder.SubclassFinderWorker(subclassOf);
-        worker.addPropertyChangeListener(new PropertyChangeListener() {
-//
+        final DefaultListModel tmpList = new DefaultListModel();
+        tmpList.addElement("scanning...");
+        availClassJList.setModel(tmpList);
+       worker.addPropertyChangeListener(new PropertyChangeListener() {
 
             @Override
             public void propertyChange(PropertyChangeEvent evt) {
-                System.out.println("got event " + evt.toString());
-                try {
-                    availAllList = worker.get();
-                    if (availAllList == null) {
-                        log.warning("got empty list of classes - something wrong here, aborting dialog");
-                        return;
-                    }
-                    Collections.sort(availAllList, new ClassNameSorter());
-                    availClassesListModel = new FilterableListModel(availAllList);
-                    availClassJList.setModel(availClassesListModel);
-                    availClassJList.setCellRenderer(new MyCellRenderer());
-                    Action addAction = new AbstractAction() {
-
-                        @Override
-                        public void actionPerformed(ActionEvent e) {
-                            Object o = availClassJList.getSelectedValue();
-                            if (o == null) {
-                                return;
-                            }
-                            int last = chosenClassesListModel.getSize() - 1;
-                            chosenClassesListModel.add(last + 1, o);
-                            classJList.setSelectedIndex(last + 1);
+                System.out.println(evt.getPropertyName() + "  " + evt.getNewValue());
+                if (evt != null && evt.getNewValue().equals(SwingWorker.StateValue.DONE)) {
+                    try {
+                        availAllList = worker.get();
+                        if (availAllList == null) {
+                            log.warning("got empty list of classes - something wrong here, aborting dialog");
+                            return;
                         }
-                    };
-                    addAction(availClassJList, addAction);
-                } catch (Exception ex) {
-                    Logger.getLogger(ClassChooserPanel.class.getName()).log(Level.SEVERE, null, ex);
-                } finally {
-                    setCursor(Cursor.getDefaultCursor());
+                        Collections.sort(availAllList, new ClassNameSorter());
+                        availClassesListModel = new FilterableListModel(availAllList);
+                        availClassJList.setModel(availClassesListModel);
+                        availClassJList.setCellRenderer(new MyCellRenderer());
+                        Action addAction = new AbstractAction() {
+
+                            @Override
+                            public void actionPerformed(ActionEvent e) {
+                                Object o = availClassJList.getSelectedValue();
+                                if (o == null) {
+                                    return;
+                                }
+                                int last = chosenClassesListModel.getSize() - 1;
+                                chosenClassesListModel.add(last + 1, o);
+                                classJList.setSelectedIndex(last + 1);
+                            }
+                        };
+                        addAction(availClassJList, addAction);
+                    } catch (Exception ex) {
+                        Logger.getLogger(ClassChooserPanel.class.getName()).log(Level.SEVERE, null, ex);
+                    } finally {
+                        setCursor(Cursor.getDefaultCursor());
+                    }
+                }else if(evt!=null && evt.getNewValue() instanceof Integer){
+                    int progress=(Integer)evt.getNewValue();
+                    String s=String.format("Scanning %d/100...",progress);
+                    tmpList.removeAllElements();
+                    tmpList.addElement(s);
                 }
             }
         });
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        DefaultListModel m=new DefaultListModel();
-        m.addElement("scanning...");
-        availClassJList.setModel(m);
-        worker.execute();
+         worker.execute();
 
         Action removeAction = new AbstractAction() {
 

@@ -69,6 +69,7 @@ public class SubclassFinder {
         return findSubclassesOf(name, null);
     }
 
+    /** Finds subclasses in SwingWorker */
     static public class SubclassFinderWorker extends SwingWorker<ArrayList<String>, Object> {
 
         Class clazz;
@@ -77,8 +78,14 @@ public class SubclassFinder {
             this.clazz = clazz;
         }
 
+        /** Called by SwingWorker on execute()
+         * 
+         * @return the list of classes that are subclasses.
+         * @throws Exception on any error
+         */
         @Override
         protected ArrayList<String> doInBackground() throws Exception {
+            setProgress(0);
             String superClassName = clazz.getName();
             ArrayList<String> classes = new ArrayList<String>(100);
             if (superClassName == null) {
@@ -95,9 +102,18 @@ public class SubclassFinder {
                     log.warning("List of subclasses of " + superClassName + " is empty, is there something wrong with your classpath. Do you have \"compile on save\" turned on? (This option can break the SubclassFinder).");
                 }
                 int i = 0;
+                int nclasses = allClasses.size();
                 publish("Scanning class list to find subclasses");
+                int lastProgress = 0;
                 for (String s : allClasses) {
+                    i++;
                     try {
+                        int p = (int) ((float) i / nclasses * 100);
+                        if (p > lastProgress+5) {
+                            setProgress(p);
+                            lastProgress = p;
+                        }
+
                         s = s.substring(0, s.length() - n);
                         s = s.replace('/', '.').replace('\\', '.'); // TODO check this replacement of file separators on win/unix
                         if (s.indexOf("$") != -1) {
@@ -127,17 +143,13 @@ public class SubclassFinder {
 
         @Override
         protected void done() {
-            super.done();
+            setProgress(100);
         }
-        
-        
 
         @Override
         protected void process(List<Object> chunks) {
-            log.info(chunks.toString());
+//            System.out.println("chunks="+chunks);
         }
-        
-        
     }
 
     /** Finds and returns list of fully-qualified name Strings of all subclases of a class.

@@ -34,7 +34,8 @@ public class ClassChooserDialog extends javax.swing.JDialog {
     
     private ClassChooserPanel chooserPanel;
     
-    /** Creates new form ClassChooserDialog
+    /** Creates new model dialog ClassChooserDialog.
+     * @param parent parent Frame
      @param subclassOf a Class that will be used to search the classpath for sublasses of this class; these class names are displayed on the left.
      @param classNames a list of class names that are already chosen, displayed on the right.
      @param defaultClassNames the defaults passed to ClassChooserPanel which replace the chosen list if the Defaults button is pressed.
