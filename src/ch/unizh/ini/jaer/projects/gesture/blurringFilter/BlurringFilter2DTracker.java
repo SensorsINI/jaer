@@ -19,6 +19,7 @@ import java.awt.geom.*;
 import java.util.*;
 import javax.media.opengl.*;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.util.filter.LowpassFilter;
 //import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
@@ -51,6 +52,8 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          */
         MANY
     }
+    
+    public static enum LOCATION_UPDATE_RESULT {NEW, STAY,TRY_AGAIN}
 
     /**
      * global parameters
@@ -61,6 +64,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
     private float clusterRadiusLifetimeMs = getPrefs().getFloat("BluringFilter2DTracker.clusterRadiusLifetimeMs",200.0f);
     private NUM_CLUSTERS maxNumClusters = NUM_CLUSTERS.valueOf(getPrefs().get("BlurringFilter2D.maxNumClusters", NUM_CLUSTERS.SINGLE.toString()));
     private boolean ROIactivated = getPrefs().getBoolean("BluringFilter2DTracker.ROIactivated",false);
+    private float MPMapCorrelationThreshold = getPrefs().getFloat("BluringFilter2DTracker.MPMapCorrelationThreshold", 0.8f);
 
 
     /**
@@ -160,6 +164,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         setPropertyTooltip(global,"clusterRadiusLifetimeMs","time constant of the cluster radius.");
         setPropertyTooltip(global,"maxNumClusters","the maximum allowed number of clusters");
         setPropertyTooltip(global,"ROIactivated","if true, ROI is considered in clustering");
+        setPropertyTooltip(global,"MPMapCorrelationThreshold","");
 
         setPropertyTooltip(selMotionDet,"selectMotionDetectionAreaSizePixels","size of area to detect select motion.");
         setPropertyTooltip(selMotionDet,"clusterLifeTimeMsInSelectMotion","cluster life time to detect select motion.");
@@ -616,6 +621,12 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * membrane potential snapshot for xcorrelation evaluation
          */
         private ArrayList<Float> mpMapSnapshot = new ArrayList<Float>();
+        private ArrayList<Float> mpMapSnapshotTmp = new ArrayList<Float>();
+        
+        /**
+         * membrane potential xcorrelation
+         */
+        public float mpMapCorrelation = 0;
 
         @Override
         public int hashCode (){
@@ -755,9 +766,6 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             int x = (int)location.x;
             int y = (int)location.y;
             
-            if(x == 0 && y == 0)
-                System.out.println(this.clusterNumber);
-
             // set color and line width of cluster annotation
             color.getRGBComponents(rgb);
             gl.glColor3fv(rgb,0);
@@ -765,6 +773,9 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
             // draw cluster rectangle
             drawBox(gl,x,y,(int)maxRadius);
+            
+            if(x == 0 && y == 0)
+                System.out.println("hey");
 
             gl.glPointSize(PATH_POINT_SIZE);
 
@@ -1146,6 +1157,8 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
             return ret;
         }
+        
+        
 
         /**
          * excute subthreshold tracking
@@ -1153,19 +1166,16 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * @param updateTimestamp
          * @param no_radius
          */
-        public void doSubThTracking(int updateTimestamp, NonOverlappingRadiusOfCluster no_radius){
+        public LOCATION_UPDATE_RESULT doSubThTracking(int updateTimestamp, NonOverlappingRadiusOfCluster no_radius, boolean forced){
+            LOCATION_UPDATE_RESULT ret = LOCATION_UPDATE_RESULT.NEW;
+            
             float xpos = location.x;
             float ypos = location.y;
-
-            if(useVelocity){
-                xpos += velocityPPS.x*(updateTimestamp - lastUpdateTimestamp)*1e-6f;
-                ypos += velocityPPS.y*(updateTimestamp - lastUpdateTimestamp)*1e-6f;
-            }
 
             Point2D.Float loc = new Point2D.Float(xpos, ypos);
 
             NeuronGroup ng = bfilter.getVirtualNeuronGroup(loc, no_radius.radius, updateTimestamp, neuronGroupAddMode);
-            float mpTh = Math.min(20, bfilter.getMPThreshold()*ng.getNumMemberNeurons()*0.01f);
+            float mpTh = Math.min(5, bfilter.getMPThreshold()*ng.getNumMemberNeurons()*0.01f);
 
             // We don't have to update the cluster when a closely located neighbor cluster is attracting it
             if(no_radius.isTouchingNeighbor  // has a neighbor in touch
@@ -1174,30 +1184,45 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             {
                 ng.location.setLocation(location);
                 addGroup(ng, true, updateTimestamp);
-                return;
+                ret = LOCATION_UPDATE_RESULT.STAY;
+                
+                return ret;
             }
 
             if(ng.getTotalMP() < mpTh){
                 // if the total MP of the virtual group is too low, use current location.
                 ng.location.setLocation(location);
+                if(forced)
+                    ret = LOCATION_UPDATE_RESULT.STAY;
+                else
+                    ret = LOCATION_UPDATE_RESULT.TRY_AGAIN;
             }else{
                 // calculates correlation of membrane potential map
                 // correlation is used for reduce the errors caused by spontaneous noises
-                if(checkMPMapCorrelation(ng, updateTimestamp) < 0.6f || location.distance(ng.location) > 10)
+                mpMapCorrelation = checkMPMapCorrelation(ng, updateTimestamp);
+                if(mpMapCorrelation < MPMapCorrelationThreshold || location.distance(ng.location) > 20){
                     ng.location.setLocation(location);
+                    if(forced)
+                        ret = LOCATION_UPDATE_RESULT.STAY;
+                    else
+                        ret = LOCATION_UPDATE_RESULT.TRY_AGAIN;
+                    
+//                    for(int i=0;i<mpMapSnapshot.size();i++)
+//                        mpMapSnapshot.set(i, mpMapSnapshotTmp.get(i));
+                }
             }
 
-            addGroup(ng, true, updateTimestamp);
+            if(ret != LOCATION_UPDATE_RESULT.TRY_AGAIN)
+                addGroup(ng, true, updateTimestamp);
+            
+            return ret;
         }
 
-        public void doSubThTracking(Point2D.Float loc, int updateTimestamp, NonOverlappingRadiusOfCluster no_radius){
-            if(useVelocity){
-                loc.x += velocityPPS.x*(updateTimestamp - lastUpdateTimestamp)*1e-6f;
-                loc.y += velocityPPS.y*(updateTimestamp - lastUpdateTimestamp)*1e-6f;
-            }
-
+        public LOCATION_UPDATE_RESULT doSubThTracking(Point2D.Float loc, int updateTimestamp, NonOverlappingRadiusOfCluster no_radius, boolean forced){
+            LOCATION_UPDATE_RESULT ret = LOCATION_UPDATE_RESULT.NEW;
+            
             NeuronGroup ng = bfilter.getVirtualNeuronGroup(loc, no_radius.radius, updateTimestamp, neuronGroupAddMode);
-            float mpTh = Math.min(20, bfilter.getMPThreshold()*ng.getNumMemberNeurons()*0.01f);
+            float mpTh = Math.min(5, bfilter.getMPThreshold()*ng.getNumMemberNeurons()*0.01f);
 
             // We don't have to update the cluster when a closely located neighbor cluster is attracting it
             if(no_radius.isTouchingNeighbor  // has a neighbor in touch
@@ -1206,20 +1231,38 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             {
                 ng.location.setLocation(location);
                 addGroup(ng, true, updateTimestamp);
-                return;
+                ret = LOCATION_UPDATE_RESULT.STAY;
+                
+                return ret;
             }
             
             if(ng.getTotalMP() < mpTh){
                 // if the total MP of the virtual group is too low, use current location.
                 ng.location.setLocation(location);
+                if(forced)
+                    ret = LOCATION_UPDATE_RESULT.STAY;
+                else
+                    ret = LOCATION_UPDATE_RESULT.TRY_AGAIN;
             }else{
                 // calculates correlation of membrane potential map
                 // correlation is used for reduce the errors caused by spontaneous noises
-                if(checkMPMapCorrelation(ng, updateTimestamp) < 0.6f || location.distance(ng.location) > 10)
+                mpMapCorrelation = checkMPMapCorrelation(ng, updateTimestamp);
+                if(mpMapCorrelation < MPMapCorrelationThreshold || location.distance(ng.location) > 20){
                     ng.location.setLocation(location);
+                    if(forced)
+                        ret = LOCATION_UPDATE_RESULT.STAY;
+                    else
+                        ret = LOCATION_UPDATE_RESULT.TRY_AGAIN;
+                    
+//                    for(int i=0;i<mpMapSnapshot.size();i++)
+//                        mpMapSnapshot.set(i, mpMapSnapshotTmp.get(i));
+                }
             }
 
-            addGroup(ng, true, updateTimestamp);
+            if(ret != LOCATION_UPDATE_RESULT.TRY_AGAIN)
+                addGroup(ng, true, updateTimestamp);
+            
+            return ret;
         }
 
         /**
@@ -1229,13 +1272,28 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * @param pos
          * @param radius
          */
-        public void updateLocation(int updateTimestamp, Point2D.Float pos, float radius){
+        public LOCATION_UPDATE_RESULT updateLocation(int updateTimestamp, Point2D.Float pos, float radius, boolean forced){
+            LOCATION_UPDATE_RESULT ret = LOCATION_UPDATE_RESULT.NEW;
+            
             NeuronGroup ng = bfilter.getVirtualNeuronGroup(pos, radius, updateTimestamp, neuronGroupAddMode);
             
-            if(checkMPMapCorrelation(ng, updateTimestamp) < 0.6f)
+            mpMapCorrelation = checkMPMapCorrelation(ng, updateTimestamp);
+            if(mpMapCorrelation < MPMapCorrelationThreshold){
                 ng.location.setLocation(location);
+                ng.totalMP = mass;
+                if(forced)
+                    ret = LOCATION_UPDATE_RESULT.STAY;
+                else
+                    ret = LOCATION_UPDATE_RESULT.TRY_AGAIN;
+                
+//                for(int i=0;i<mpMapSnapshot.size();i++)
+//                    mpMapSnapshot.set(i, mpMapSnapshotTmp.get(i));
+            }
 
-            addGroup(ng, false, updateTimestamp);
+            if(ret != LOCATION_UPDATE_RESULT.TRY_AGAIN)
+                addGroup(ng, false, updateTimestamp);
+            
+            return ret;
         }
         
         
@@ -1248,7 +1306,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
          * @return 
          */
         protected float checkMPMapCorrelation(NeuronGroup ng, int updateTimestamp){
-            float corr = 0;
+            float corr = 1;
             
             if(mpMapSnapshot != null){
                 if(mpMapSnapshot.size() == ng.getNumMemberNeurons()){
@@ -1259,6 +1317,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                         float mp_n = nList.get(i).getMPNow(updateTimestamp);
                         float mp_p = mpMapSnapshot.get(i);
                         mpMapSnapshot.set(i, mp_n); // update
+//                        mpMapSnapshotTmp.set(i, mp_p); // store prev into tmp
 
                         sum_p += mp_p;
                         sum_n += mp_n;
@@ -1274,14 +1333,19 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                         corr = (num*sum_np - sum_n*sum_p)/den_n/den_p;
                 } else {
                     mpMapSnapshot.clear();
-                    for(LIFNeuron n:ng.getMemberNeurons())
+//                    mpMapSnapshotTmp.clear();
+                    for(LIFNeuron n:ng.getMemberNeurons()){
                         mpMapSnapshot.add(n.getMPNow(updateTimestamp));
+//                        mpMapSnapshotTmp.add(n.getMPNow(updateTimestamp));
+                    }
                 }
             } else {
-                for(LIFNeuron n:ng.getMemberNeurons())
+                for(LIFNeuron n:ng.getMemberNeurons()){
                     mpMapSnapshot.add(n.getMPNow(updateTimestamp));
+//                    mpMapSnapshotTmp.add(n.getMPNow(updateTimestamp));
+                }
             }
-            
+         
             return corr;
         }
 
@@ -1786,8 +1850,8 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             private double xVelocityPPS = 0, yVelocityPPS = 0;
             private boolean valid = false;
 
-//            private LowpassFilter xlpf = new LowpassFilter();
-//            private LowpassFilter ylpf = new LowpassFilter();
+            private LowpassFilter xlpf = new LowpassFilter();
+            private LowpassFilter ylpf = new LowpassFilter();
 
             /** Creates a new instance of RollingLinearRegression */
             public VelocityFitter (ArrayList<ClusterPathPoint> points,int length){
@@ -1797,8 +1861,8 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                 else
                     this.length = length;
                 
-//                xlpf.setTauMs(50);
-//                ylpf.setTauMs(50);
+                xlpf.setTauMs(22);
+                ylpf.setTauMs(22);
             }
 
             @Override
@@ -1846,8 +1910,8 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
                     // first low-pass filtering
                     ClusterPathPoint p = points.get(size - 1); // takes the last point
-//                    xVelocityPPS = xlpf.filter((float) xVelocityPPS, p.t);
-//                    yVelocityPPS = ylpf.filter((float) yVelocityPPS, p.t);
+                    xVelocityPPS = xlpf.filter((float) xVelocityPPS, p.t);
+                    yVelocityPPS = ylpf.filter((float) yVelocityPPS, p.t);
 
                     // 2nd lowpass filtering with cluster mass
                     ClusterPathPoint pp = points.get(points.size() - 2); // takes the second last point
@@ -2068,8 +2132,6 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
                 if(crossMapping.get(closestCluster) == null)
                     crossMapping.put(closestCluster, ng);
-                else
-                    crossMapping.get(closestCluster).merge(ng);
 
                 ngListForPrune.add(ng);
             }
@@ -2229,7 +2291,18 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      * @param msg
      */
     protected void normalUpdateTracking(Cluster c, NeuronGroup tmpNg, UpdateMessage msg){
-        c.updateLocation(msg.timestamp, getRefLocation(c, tmpNg, msg), Math.max(tmpNg.getOutterRadiusPixels(), calRadius(c).radius));
+        LOCATION_UPDATE_RESULT ret = c.updateLocation(msg.timestamp, getRefLocation(c, tmpNg, msg), Math.max(tmpNg.getOutterRadiusPixels(), calRadius(c).radius), false);
+        float corr = c.mpMapCorrelation;
+        if(ret == LOCATION_UPDATE_RESULT.TRY_AGAIN){
+            ret = c.doSubThTracking(getRefLocation(c, null, msg), msg.timestamp, calRadius(c), false);
+            if(ret == LOCATION_UPDATE_RESULT.TRY_AGAIN){
+                if(corr > c.mpMapCorrelation){
+                    c.updateLocation(msg.timestamp, getRefLocation(c, tmpNg, msg), Math.max(tmpNg.getOutterRadiusPixels(), calRadius(c).radius), true);
+                } else {
+                    c.doSubThTracking(getRefLocation(c, null, msg), msg.timestamp, calRadius(c), true);
+                }
+            }
+        }
     }
 
     /**
@@ -2240,7 +2313,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      * @param msg
      */
     protected void subthresholdUpdateTracking(Cluster c, UpdateMessage msg){
-        c.doSubThTracking(msg.timestamp, calRadius(c));
+        c.doSubThTracking(getRefLocation(c, null, msg), msg.timestamp, calRadius(c), true);
     }
 
     /**
@@ -2254,30 +2327,25 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         Point2D.Float refLoc = new Point2D.Float();
         refLoc.setLocation(c.location);
 
-        if(ng == null){
-            return refLoc;
+        if(ng != null){
+            float leakyfactor =  c.calMassLeakyfactor(msg.timestamp, 1f);
+            float ngTotalMP = ng.getTotalMP();
+
+            if(leakyfactor > 1)
+                ngTotalMP /= leakyfactor;
+
+            float refMass = c.getRefMass(ng.location, ngTotalMP, refMassScale, msg.timestamp);
+
+            if(useVelocity){
+                    refLoc.x += c.velocityPPS.x*(msg.timestamp - c.lastUpdateTimestamp)*1e-6f;
+                    refLoc.y += c.velocityPPS.y*(msg.timestamp - c.lastUpdateTimestamp)*1e-6f;
+            }
+
+            refLoc.x = (refLoc.x*refMass + ng.location.x*ngTotalMP)/(refMass + ngTotalMP);
+            refLoc.y = (refLoc.y*refMass + ng.location.y*ngTotalMP)/(refMass + ngTotalMP);
         }
 
-        float leakyfactor =  c.calMassLeakyfactor(msg.timestamp, 1f);
-        float ngTotalMP = ng.getTotalMP();
-
-        if(leakyfactor > 1)
-            ngTotalMP /= leakyfactor;
-
-        float refMass = c.getRefMass(ng.location, ngTotalMP, 5, msg.timestamp);
-
-        if(useVelocity){
-                refLoc.x += c.velocityPPS.x*(msg.timestamp - c.lastUpdateTimestamp)*1e-6f;
-                refLoc.y += c.velocityPPS.y*(msg.timestamp - c.lastUpdateTimestamp)*1e-6f;
-        }
-
-        refLoc.x = (refLoc.x*refMass + ng.location.x*ngTotalMP)/(refMass + ngTotalMP);
-        refLoc.y = (refLoc.y*refMass + ng.location.y*ngTotalMP)/(refMass + ngTotalMP);
-
-        NeuronGroup ng2 = bfilter.getVirtualNeuronGroup(refLoc, c.getRadius(), msg.timestamp, neuronGroupAddMode);
-
-        //return refLoc;
-        return ng2.location;
+        return refLoc;
     }
 
     /**
@@ -2305,7 +2373,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
                     pruneSCList.add(sc);
                 continue;
             } else {
-                sc.updateLocation(refTimestamp, cg.location, Math.max(cg.getOutterRadiusPixels(), calRadius(sc).radius));
+                sc.updateLocation(refTimestamp, cg.location, Math.max(cg.getOutterRadiusPixels(), calRadius(sc).radius), true);
                 sc.setUpdated(ClusterUpdateStatus.NORMAL_UPDATED);
                 ngCollection.remove(cg);
             }
@@ -3070,5 +3138,16 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         getSupport().firePropertyChange("ROIactivated",old,this.ROIactivated);
 
         bfilter.setROIactivated(ROIactivated);
+    }
+
+    public float getMPMapCorrelationThreshold() {
+        return MPMapCorrelationThreshold;
+    }
+
+    public void setMPMapCorrelationThreshold(float MPMapCorrelationThreshold) {
+        float old = this.MPMapCorrelationThreshold;
+        this.MPMapCorrelationThreshold = MPMapCorrelationThreshold;
+        getPrefs().putFloat("BluringFilter2DTracker.MPMapCorrelationThreshold", MPMapCorrelationThreshold);
+        getSupport().firePropertyChange("MPMapCorrelationThreshold",old,this.MPMapCorrelationThreshold);
     }
 }

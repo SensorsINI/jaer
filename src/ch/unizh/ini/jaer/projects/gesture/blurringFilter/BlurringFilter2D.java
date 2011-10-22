@@ -444,7 +444,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
             setFiringType(FiringType.SILENT);
             groupTag = -1;
-            membranePotential = MPInitialPercnetTh*thresholdMP;
+            membranePotential = MPInitialPercnetTh*thresholdMP/100f;
             numFiringNeighbors = 0;
         }
 
@@ -489,7 +489,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         public void reset() {
             setFiringType(FiringType.SILENT);
             resetGroupTag();
-            membranePotential = MPInitialPercnetTh*thresholdMP;
+            membranePotential = MPInitialPercnetTh*thresholdMP/100f;
             numFiringNeighbors = 0;
             lastEventTimestamp = 0;
             numSpikes = 0;
@@ -779,7 +779,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          */
         public NeuronGroup(LIFNeuron firstNeuron, Add_Mode mode) {
             this();
-            add(firstNeuron, mode);
+            add(firstNeuron, mode, false);
         }
 
         /**
@@ -804,7 +804,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @param newNeuron
          * @param mode
          */
-        public final void add(LIFNeuron newNeuron, Add_Mode mode) {
+        public final void add(LIFNeuron newNeuron, Add_Mode mode, boolean virtualGroup) {
             float effectiveMP = 0;
             if(newNeuron.MPDecreaseArterFiringPercentTh == 0){
                 effectiveMP = newNeuron.getMP();
@@ -826,7 +826,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
             // if this is the first one
             if (tag < 0) {
-                if(mode == Add_Mode.MEMBRANE_POTENTAIL_AVERAGE)
+                if(virtualGroup)
                     tag = numOfNeuronsX*numOfNeuronsY;
                 else
                     tag = newNeuron.getGroupTag();
@@ -1353,7 +1353,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                 NeuronGroup tmpGroup = null;
                 if (neuronGroups.containsKey(tmpNeuron.getGroupTag())) {
                     tmpGroup = neuronGroups.get(tmpNeuron.getGroupTag());
-                    tmpGroup.add(tmpNeuron, Add_Mode.FIRING_RATE_AVERAGE);
+                    tmpGroup.add(tmpNeuron, Add_Mode.FIRING_RATE_AVERAGE, false);
                 } else {
                     tmpGroup = new NeuronGroup(tmpNeuron, Add_Mode.FIRING_RATE_AVERAGE);
                     neuronGroups.put(tmpGroup.tag, tmpGroup);
@@ -1361,7 +1361,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                 for(int i=0; i<4; i++){
                     if (nborNeurons[i] != null && nborNeurons[i].firingType == FiringType.FIRING_WITH_NEIGHBOR) {
                         nborNeurons[i].setFiringTypeToBorder(tmpNeuron.groupTag);
-                        tmpGroup.add(nborNeurons[i], Add_Mode.FIRING_RATE_AVERAGE);
+                        tmpGroup.add(nborNeurons[i], Add_Mode.FIRING_RATE_AVERAGE, false);
                     }
                 }
             } // End of for
@@ -1488,7 +1488,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                                                         MPThreshold,
                                                         MPJumpAfterFiringPercentTh);
 
-                    newNeuron.setMP(MPInitialPercnetTh*MPThreshold);
+                    newNeuron.setMP(MPInitialPercnetTh*MPThreshold/100f);
                     if (i == 0) {
                         if (j == 0) {
                             newNeuron.setLocationType(LocationType.CORNER_00);
@@ -1775,7 +1775,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         for(int x = xIndexStart; x <= xIndexEnd; x++){
             for(int y = yIndexStart; y <= yIndexEnd; y++){
                 if(centerIndex.distance(x, y) < indexRadius)
-                    ng.add(lifNeurons.get(x+y*numOfNeuronsX), mode);
+                    ng.add(lifNeurons.get(x+y*numOfNeuronsX), mode, true);
             }
         }
 
