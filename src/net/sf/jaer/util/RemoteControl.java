@@ -96,6 +96,8 @@ public class RemoteControl /* implements RemoteControlled */{
     public final String PROMPT = "> ";
     private boolean promptEnabled = true;
     private Thread T;
+    private static final int MAX_WARNINGS=5;
+    private int warningCount=0;
 
     /** Makes a new RemoteControl on the default port */
     public RemoteControl () throws SocketException{
@@ -145,8 +147,9 @@ public class RemoteControl /* implements RemoteControlled */{
     public void addCommandListener (RemoteControlled remoteControlled,String cmd,String description){
         RemoteControlCommand command = new RemoteControlCommand(cmd,description);
         String cmdKey = command.getCmdName();
-        if ( cmdMap.containsKey(cmdKey) ){
+        if ( cmdMap.containsKey(cmdKey) && warningCount++<MAX_WARNINGS){
             log.warning("remote control commands already contains command " + cmdKey + ", replacing existing command with " + cmd + ": " + description);
+            if(warningCount==MAX_WARNINGS) log.warning("suppressing further warnings about replacing commands");
         }
         cmdMap.put(cmdKey,command);
         controlledMap.put(cmdKey,remoteControlled);
