@@ -94,7 +94,8 @@ public class LoggingWindow extends JFrame {
         ClassLoader cl = this.getClass().getClassLoader(); // get this class'es class loader
         addLogInfo("\nLoading version info from resource " + AEViewerAboutDialog.VERSION_FILE);
         URL versionURL = cl.getResource(AEViewerAboutDialog.VERSION_FILE); // get a URL to the time stamp file
-        addLogInfo("\nVersion URL=" + versionURL);
+        addLogInfo("\nVersion URL=" + versionURL+"\n");
+        
         if (versionURL != null) {
             try {
                 Object urlContents = versionURL.getContent();
