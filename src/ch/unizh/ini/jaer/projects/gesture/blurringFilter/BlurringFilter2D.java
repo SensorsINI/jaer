@@ -39,11 +39,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     protected int MPTimeConstantUs = getPrefs().getInt("BlurringFilter2D.MPTimeConstantUs", 22000);
 
     /**
-     * initial value of the membrane potential in percents of the MPThreshold
-     */
-    protected float MPInitialPercnetTh = getPrefs().getFloat("BlurringFilter2D.MPInitialPercnetTh", 50.0f);
-
-    /**
      * Life time of LIF neuron.
      * A neuron will be reset if there is no additional event within this value of micro seconds since the last update.
      */
@@ -444,7 +439,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
             setFiringType(FiringType.SILENT);
             groupTag = -1;
-            membranePotential = MPInitialPercnetTh*thresholdMP/100f;
+            membranePotential = 0;
             numFiringNeighbors = 0;
         }
 
@@ -489,7 +484,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         public void reset() {
             setFiringType(FiringType.SILENT);
             resetGroupTag();
-            membranePotential = MPInitialPercnetTh*thresholdMP/100f;
+            membranePotential = 0;
             numFiringNeighbors = 0;
             lastEventTimestamp = 0;
             numSpikes = 0;
@@ -1488,7 +1483,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                                                         MPThreshold,
                                                         MPJumpAfterFiringPercentTh);
 
-                    newNeuron.setMP(MPInitialPercnetTh*MPThreshold/100f);
+                    newNeuron.setMP(0);
                     if (i == 0) {
                         if (j == 0) {
                             newNeuron.setLocationType(LocationType.CORNER_00);
@@ -1851,24 +1846,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     public void setShowMPThreshold(boolean showMPThreshold) {
         this.showMPThreshold = showMPThreshold;
         getPrefs().putBoolean("BlurringFilter2D.showMPThreshold", showMPThreshold);
-    }
-
-    /**
-     *
-     * @return MPInitialPercnetTh
-     */
-    public float getMPInitialPercnetTh() {
-        return MPInitialPercnetTh;
-    }
-
-    /**
-     * sets MPInitialPercnetTh
-     * 
-     * @param MPInitialPercnetTh
-     */
-    public void setMPInitialPercnetTh(float MPInitialPercnetTh) {
-        this.MPInitialPercnetTh = MPInitialPercnetTh;
-        getPrefs().putFloat("BlurringFilter2D.MPInitialPercnetTh", MPInitialPercnetTh);
     }
 
     /**
