@@ -85,9 +85,11 @@ public class JAERViewer {
         } else {
             log.warning("no splash screen to animate");
         }
-
-
-        log.info("java.vm.version=" + System.getProperty("java.vm.version"));
+//        if(true){
+//        throw new RuntimeException("test exception");
+//        }
+        log.info("java.vm.version=" + System.getProperty("java.vm.version")+" user.dir="+System.getProperty("user.dir"));
+        
         windowSaver = new WindowSaver(this, prefs);
         Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver, AWTEvent.WINDOW_EVENT_MASK); // adds windowSaver as JVM-wide event handler for window events
 
