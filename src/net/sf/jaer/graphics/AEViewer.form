@@ -682,9 +682,6 @@
                 <Property name="text" type="java.lang.String" value="Measure time"/>
                 <Property name="toolTipText" type="java.lang.String" value="Each click reports statistics about timing since last click"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="measureTimeMenuItemActionPerformed"/>
-              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator10">
             </MenuItem>

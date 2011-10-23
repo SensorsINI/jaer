@@ -3365,11 +3365,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         measureTimeMenuItem.setMnemonic('m');
         measureTimeMenuItem.setText("Measure time");
         measureTimeMenuItem.setToolTipText("Each click reports statistics about timing since last click");
-        measureTimeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                measureTimeMenuItemActionPerformed(evt);
-            }
-        });
         viewMenu.add(measureTimeMenuItem);
         viewMenu.add(jSeparator10);
 
@@ -4097,54 +4092,47 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
     // used to print dt for measuring frequency from playback by using '1' keystrokes
 
-    class Statistics {
-
-        JFrame statFrame;
-        JLabel statLabel;
-        int lastTime = 0, thisTime;
-        EngineeringFormat fmt = new EngineeringFormat();
-
-        {
-            fmt.precision = 2;
-        }
-
-        void printStats() {
-            synchronized (aePlayer) {
-                thisTime = aePlayer.getTime();
-                int dt = lastTime - thisTime;
-                float dtSec = (float) ((float) dt / 1e6f + java.lang.Float.MIN_VALUE);
-                float freqHz = 1 / dtSec;
-//                System.out.println(String.format("dt=%.2g s, freq=%.2g Hz",dtSec,freqHz));
-                if (statFrame == null) {
-                    statFrame = new JFrame("Statistics");
-                    statLabel = new JLabel();
-                    statLabel.setFont(statLabel.getFont().deriveFont(16f));
-                    statLabel.setToolTipText("Type \"1\" to update interval statistics");
-                    statFrame.getContentPane().setLayout(new BorderLayout());
-                    statFrame.getContentPane().add(statLabel, BorderLayout.CENTER);
-                    statFrame.pack();
-                }
-                String s = " dt=" + fmt.format(dtSec) + "s, freq=" + fmt.format(freqHz) + " Hz ";
-                log.info(s);
-                statLabel.setText(s);
-                statLabel.revalidate();
-                statFrame.pack();
-                if (!statFrame.isVisible()) {
-                    statFrame.setVisible(true);
-                }
-                requestFocus(); // leave the focus here
-                lastTime = thisTime;
-            }
-        }
-    }
-    Statistics statistics;
-
-    private void measureTimeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_measureTimeMenuItemActionPerformed
-        if (statistics == null) {
-            statistics = new Statistics();
-        }
-        statistics.printStats();
-    }//GEN-LAST:event_measureTimeMenuItemActionPerformed
+//    class Statistics {
+//
+//        JFrame statFrame;
+//        JLabel statLabel;
+//        int lastTime = 0, thisTime;
+//        EngineeringFormat fmt = new EngineeringFormat();
+//
+//        {
+//            fmt.precision = 2;
+//        }
+//
+//        void printStats() {
+//            synchronized (aePlayer) {
+//                thisTime = aePlayer.getTime();
+//                int dt = lastTime - thisTime;
+//                float dtSec = (float) ((float) dt / 1e6f + java.lang.Float.MIN_VALUE);
+//                float freqHz = 1 / dtSec;
+////                System.out.println(String.format("dt=%.2g s, freq=%.2g Hz",dtSec,freqHz));
+//                if (statFrame == null) {
+//                    statFrame = new JFrame("Statistics");
+//                    statLabel = new JLabel();
+//                    statLabel.setFont(statLabel.getFont().deriveFont(16f));
+//                    statLabel.setToolTipText("Type \"1\" to update interval statistics");
+//                    statFrame.getContentPane().setLayout(new BorderLayout());
+//                    statFrame.getContentPane().add(statLabel, BorderLayout.CENTER);
+//                    statFrame.pack();
+//                }
+//                String s = " dt=" + fmt.format(dtSec) + "s, freq=" + fmt.format(freqHz) + " Hz ";
+//                log.info(s);
+//                statLabel.setText(s);
+//                statLabel.revalidate();
+//                statFrame.pack();
+//                if (!statFrame.isVisible()) {
+//                    statFrame.setVisible(true);
+//                }
+//                requestFocus(); // leave the focus here
+//                lastTime = thisTime;
+//            }
+//        }
+//    }
+//    Statistics statistics;
 
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
         log.info("window closing");
