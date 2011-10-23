@@ -144,7 +144,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
             @Override
             public void propertyChange(PropertyChangeEvent evt) {
-                System.out.println(evt.getPropertyName() + "  " + evt.getNewValue());
+//                System.out.println(evt.getPropertyName() + "  " + evt.getNewValue());
                 if (evt != null && evt.getNewValue().equals(SwingWorker.StateValue.DONE)) {
                     try {
                         availAllList = worker.get();

@@ -321,7 +321,7 @@ private void clearCalibrationPointsButtonActionPerformed(java.awt.event.ActionEv
 }//GEN-LAST:event_clearCalibrationPointsButtonActionPerformed
 
 private void resetCalibrationButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetCalibrationButtonActionPerformed
-    support.firePropertyChange(Message.ResetCalibration.name(), null, null);        // TODO add your handling code here:
+    support.firePropertyChange(Message.ResetCalibration.name(), null, null);       
 }//GEN-LAST:event_resetCalibrationButtonActionPerformed
 
 

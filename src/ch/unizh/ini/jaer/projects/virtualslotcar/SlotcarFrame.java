@@ -246,7 +246,6 @@ public class SlotcarFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_ClearButtonActionPerformed
 
     private void EditorPanelMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_EditorPanelMouseClicked
-        // TODO add your handling code here:
         int ClickX = evt.getX();
         int ClickY = evt.getY();
 

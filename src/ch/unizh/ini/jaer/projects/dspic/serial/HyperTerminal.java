@@ -187,7 +187,7 @@ public class HyperTerminal extends javax.swing.JFrame
 
         jLabel1.setText("bauds");
 
-        baudText.setFont(new java.awt.Font("Monospaced", 0, 11));
+        baudText.setFont(new java.awt.Font("Monospaced", 0, 11)); // NOI18N
         baudText.setText(Integer.toString(prefs.getInt("baudRate", 618964)));
         baudText.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -196,12 +196,7 @@ public class HyperTerminal extends javax.swing.JFrame
         });
 
         statusText.setEditable(false);
-        statusText.setFont(new java.awt.Font("Courier New", 0, 11));
-        statusText.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                statusTextActionPerformed(evt);
-            }
-        });
+        statusText.setFont(new java.awt.Font("Courier New", 0, 11)); // NOI18N
 
         CTScb.setText("CTS");
         CTScb.setEnabled(false);
@@ -362,10 +357,6 @@ public class HyperTerminal extends javax.swing.JFrame
         }
         appendString("\n\n");
     }//GEN-LAST:event_hexCBActionPerformed
-
-    private void statusTextActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_statusTextActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_statusTextActionPerformed
 
     private void comportTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_comportTFActionPerformed
         portName = comportTF.getText();

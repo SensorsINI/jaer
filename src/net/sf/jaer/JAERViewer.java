@@ -46,14 +46,16 @@ import javax.swing.*;
  */
 public class JAERViewer {
 
-    static Preferences prefs;
-    static Logger log;
+    /** Root preferences object for jAER
+     * 
+     */
+    protected static Preferences prefs;
+    /** Root Logger
+     * 
+     */
+    protected static Logger log;
     /** Can be used to globally display data */
     static public JAERDataViewer globalDataViewer = new JAERDataViewer("Global data viewer");
-
-    /**
-     * @return the cached chipClassNames
-     */
     private ArrayList<AEViewer> viewers = new ArrayList<AEViewer>();
     private boolean syncEnabled = prefs.getBoolean("JAERViewer.syncEnabled", true);
     ArrayList<AbstractButton> syncEnableButtons = new ArrayList<AbstractButton>(); // list of all viewer sync enable buttons, used here to change boolean state because this is not property of Action that buttons understand
@@ -70,6 +72,7 @@ public class JAERViewer {
     //some time variables for timing across threads
     static public long globalTime1, globalTime2, globalTime3;
     private SyncPlayer syncPlayer = new SyncPlayer(null, this); // TODO ugly, create here and then recreate later
+    protected static final String JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY = "JAERViewer.viewerChipClassNames";
 
     /** Creates a new instance of JAERViewer */
     public JAERViewer() {
@@ -77,9 +80,9 @@ public class JAERViewer {
         Thread.setDefaultUncaughtExceptionHandler(handler);
 
         final SplashScreen splash = SplashScreen.getSplashScreen();
-        if(splash!=null){
+        if (splash != null) {
             new SplashHandler(splash);
-        }else{
+        } else {
             log.warning("no splash screen to animate");
         }
 
@@ -87,14 +90,35 @@ public class JAERViewer {
         log.info("java.vm.version=" + System.getProperty("java.vm.version"));
         windowSaver = new WindowSaver(this, prefs);
         Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver, AWTEvent.WINDOW_EVENT_MASK); // adds windowSaver as JVM-wide event handler for window events
+
+
         SwingUtilities.invokeLater(new Runnable() {
 
             public void run() {
-                AEViewer v = new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
+                // try to load a list of previous chip classes that running in viewers and then reopen them
+                ArrayList<String> classNames = null;
+                try {
+                    byte[] bytes = prefs.getByteArray(JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY, null);
+                    if (bytes != null) {
+                        ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
+                        classNames = (ArrayList<String>) in.readObject();
+                        in.close();
+                    }
+                } catch (Exception e) {
+                    log.info("couldn't load previous viewer AEChip classes, starting with last class");
+                }
+                if (classNames == null) {
+                    AEViewer v = new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
 //                player=new SyncPlayer(v); // associate with the initial viewer
 //                v.pack();
-                v.setVisible(true);
-                //                splashThread.interrupt();
+                    v.setVisible(true);
+                    //                splashThread.interrupt();
+                } else {
+                    for(String s:classNames){
+                        AEViewer v=new AEViewer(JAERViewer.this,s);
+                        v.setVisible(true);
+                    }
+                }
             }
         });
         try {
@@ -122,6 +146,30 @@ public class JAERViewer {
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
+                }
+                if (viewers != null && !viewers.isEmpty()) {
+                    log.info("saving list of AEViewer chip classes");
+                    try {
+
+                        ArrayList<String> viewerChipClassNames = new ArrayList<String>();
+                        for (AEViewer v : viewers) {
+                            viewerChipClassNames.add(v.getChip().getClass().getName());
+                        }
+                        // Serialize to a byte array
+                        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                        ObjectOutput out = new ObjectOutputStream(bos);
+                        out.writeObject(viewerChipClassNames);
+                        out.close();
+
+                        // Get the bytes of the serialized object
+                        byte[] buf = bos.toByteArray();
+                        prefs.putByteArray(JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY, buf);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } catch (IllegalArgumentException e2) {
+                        log.warning("tried to store too many classes in last chip classes");
+                    }
+
                 }
             }
         });
@@ -212,11 +260,10 @@ public class JAERViewer {
         SplashScreen splashScreen;
         Graphics2D g;
         Logger logger = null;
-        int cursor=0;
-        
+        int cursor = 0;
 
         public SplashHandler(SplashScreen splashScreen) {
-            if(splashScreen==null){
+            if (splashScreen == null) {
                 log.warning("null splash screen passed in");
                 return;
             }
@@ -251,17 +298,19 @@ public class JAERViewer {
                 cursor = 0;
             }
             splashScreen.update();
-  
+
         }
 
         @Override
         public void close() throws SecurityException {
-            if(logger==null) return;
+            if (logger == null) {
+                return;
+            }
             try {
                 logger.removeHandler(this);
-                splashScreen=null;
-                g=null;
-                logger=null;
+                splashScreen = null;
+                g = null;
+                logger = null;
             } catch (Exception e) {
                 log.warning(e.toString());
             }
@@ -269,7 +318,6 @@ public class JAERViewer {
 
         @Override
         public void flush() {
-    
         }
     }
 

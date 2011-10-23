@@ -66,7 +66,6 @@ public class RetinaPanel extends JPanel {
         maxValue= 256;
         if (this.data == null)
             this.data= new int[height][width];
-        //TODO check etc
         for(int y=0; y<height; y++)
             for(int x=0; x<width; x++)
                 this.data[y][x]= data[y][x] &0xff;
@@ -77,7 +76,6 @@ public class RetinaPanel extends JPanel {
     {
         if (painting) return;
         maxValue= max;
-        //TODO check etc
         this.data= data;
 
         repaint();

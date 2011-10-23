@@ -147,7 +147,6 @@ public class RacetrackFrame extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void formComponentResized(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentResized
-        // TODO add your handling code here:
         // Resize OpenGL window
 
         System.out.println("Resizing: " + this.getSize());
@@ -197,7 +196,6 @@ public class RacetrackFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_ThrottleSliderStateChanged
 
     private void drawCurveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_drawCurveActionPerformed
-        // TODO add your handling code here:
         if (myCar != null)
             myCar.setDrawCircle(drawCurve.isSelected());
     }//GEN-LAST:event_drawCurveActionPerformed
