@@ -60,7 +60,11 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen implements  cDV
     }
 
 
-    /** Overrides sendConfiguration to use this bias generator to format the data
+    /** Overrides sendConfiguration to use this bias generator to format the data and send the data.
+     * <p>
+     * Data is sent in bytes. Each byte is loaded into the shift register in big-endian bit order, starting with the msb and ending with the lsb.
+     * Bytes are loaded starting with the first byte from formatConfigurationBytes (element 0). Therefore the last bit in the on-chip shift register (the one
+     * that is furthest away from the bit input pin) should be in the msb of the first byte returned by formatConfigurationBytes.
      * 
      * @param biasgen the DVS320 biasgen which knows how to format the bias and bit configuration.
      * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
@@ -314,6 +318,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen implements  cDV
         //System.out.println(s);
 
         BigInteger bi = new BigInteger(s.toString(), 2);
+        System.out.println(s.length()+" CPLD bits="+s);
         byte[] byteArray = bi.toByteArray(); // finds minimal set of bytes in big endian format, with MSB as first element
         // we need to pad out to nbits worth of bytes
         int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 8->1, 9->2

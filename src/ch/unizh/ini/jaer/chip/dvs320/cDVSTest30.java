@@ -253,19 +253,9 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
                         e.timestamp = (timestamps[i]);
                         e.polarity = (byte) (data & POLMASK);
                         e.x = (short) (((data & XMASK) >>> XSHIFT));
-                        if (e.x < 0) {
-                            e.x = 0;
-                        } else if (e.x > 319) {
-                            //   e.x = 319; // TODO fix this artificial clamping of x address within space, masks symptoms
-                        }
+                        
                         e.y = (short) ((data & YMASK) >>> YSHIFT);
-                        if (e.y > 239) {
-//                    log.warning("e.y="+e.y);
-                            e.y = 239; // TODO fix this
-                        } else if (e.y < 0) {
-                            e.y = 0; // TODO
-                        }
-
+                       
                         if (e.x < SIZE_X_CDVS * 2) { // cDVS pixel array // *2 because size is defined to be 32 and event types are still different x's
                             if ((e.y & 1) == 0) { // odd rows: log intensity change events
                                 if (e.polarity == 1) { // off is 0, on is 1
@@ -616,10 +606,10 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
         public byte[] formatConfigurationBytes(Biasgen biasgen) {
             ByteBuffer bb = ByteBuffer.allocate(1000);
             byte[] biasBytes = super.formatConfigurationBytes(biasgen);
-            byte[] configBytes = allMuxes.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
-            byte[] configBitBytes = configBits.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
-            bb.put(configBitBytes);
-            bb.put(configBytes);
+            byte[] muxBytes = allMuxes.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
+            byte[] configBitBytes = configBits.formatConfigurationBytes(); 
+            bb.put(configBitBytes); // loaded first to go to far end of shift register
+            bb.put(muxBytes); 
 
             // 256 value (8 bit) VDAC for amplifier reference
             byte vdac = (byte) thermometerDAC.getBitValue(); //Byte.valueOf("9");
@@ -631,9 +621,14 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
             }
 
             byte[] allBytes = new byte[bb.position()];
-            bb.flip();
+            bb.flip(); // reads them out in order of putting them in, i.e., get configBitBytes first
             bb.get(allBytes);
 
+            StringBuilder sb=new StringBuilder("bytes sent to FX2 to be loaded big endian for each byte in order \n");
+            for(byte b:allBytes){
+                sb.append(String.format("%02x ",b));
+            }
+            log.info(sb.toString());
             return allBytes; // configBytes may be padded with extra bits to make up a byte, board needs to know this to chop off these bits
         }
         /** the change in current from an increase* or decrease* call */
@@ -712,6 +707,7 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
 
                     @Override
                     public void actionPerformed(ActionEvent e) {
+//                        System.out.println("\nevent="+e);
                         select(!value);
                     }
                 }
@@ -786,15 +782,21 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
             }
 
             byte[] formatConfigurationBytes() {
-                String s = getBitString();
+                String s = getBitString(); // in msb to lsb order from left end
                 int nBits = s.length();
-                BigInteger bi = new BigInteger(s.toString(), 2);
-                byte[] byteArray = bi.toByteArray(); // finds minimal set of bytes in big endian format, with MSB as first element
-                // we need to pad out to nbits worth of bytes
                 int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 8->1, 9->2
-                byte[] bytes = new byte[nbytes];
-                System.arraycopy(byteArray, 0, bytes, nbytes - byteArray.length, byteArray.length);
-                return bytes;
+                byte[] byteArray=new byte[nbytes];
+                int bit = 0;
+                for (int bite = 0; bite < nbytes; bite++) {
+                    for (int i = 0; i < 8; i++) {
+                        if (s.charAt(bit) == '1') {
+                            byteArray[bite] |= 1;
+                        }
+                        byteArray[bite] = (byte) (byteArray[bite] << 1);
+                        bit++;
+                    }
+                }
+                return byteArray;
             }
 
             JPanel makeControlPanel() {
@@ -803,7 +805,7 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
                 for (ConfigBit b : configBits) {
                     JRadioButton but = new JRadioButton(b.action);
                     but.setSelected(b.value);
-                    but.addActionListener(b.action);
+//                    but.addActionListener(b.action); // not needed, setting action already registers actionlistener
                     pan.add(but);
                 }
                 return pan;

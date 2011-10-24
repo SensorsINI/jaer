@@ -61,23 +61,25 @@ public class SeeBetter1011_Temporary extends cDVSTest30 {
             boolean value = false;
 
             public ExtraOnChipConfigBits() {
+                // bits in order of final shift register, to be padded out with 0s for unused bits
                 configBits = new ConfigBit[]{pullupX, pullupY, delayY0, delayY1, delayY2, delayX0, delayX1, delayX2, sDVSReset, bDVSReset, ros, delaySM0, delaySM1, delaySM2};
             }
 
-            /** Returns the bit string to send to the firmware to load a bit sequence for the config bits in the shift register;
-             * bits are loaded big endian into shift register (msb first) but here returned string has msb at right-most position, i.e. end of string.
-             * @return big endian string e.g. code=11, s='1011', code=7, s='0111' for nSrBits=4.
+            /** Returns the bit string to send to the firmware to load a bit sequence for the config bits in the shift register.
+             * 
+             * Bytes sent to FX2 are loaded big endian into shift register (msb first) but here returned string has msb at right-most position, i.e. end of string.
+             * @return string of 0 and 1 with first element of configBits at left hand end, and ending with padded 0s.
              */
             String getBitString() {
                 StringBuilder s = new StringBuilder();
                 // iterate over list
-                int n = configBits.length;
-                for (int i = 0; i < TOTAL_NUM_BITS - n; i++) {
-                    s.append("0"); // loaded first
+                for (int i = 0; i < TOTAL_NUM_BITS - configBits.length; i++) {
+                    s.append("1"); // loaded first into unused parts of final shift register
                 }
-                for (int i = n - 1; i <= 0; i++) {
-                    s.append(configBits[i].value ? "1" : "0"); // backwards from end
+                for (int i = configBits.length-1; i >=0; i--) {
+                    s.append(configBits[i].value ? "1" : "0"); // in order in array
                 }
+                log.info(s.length()+ " configBits="+s);
                 return s.toString();
             }
         }
