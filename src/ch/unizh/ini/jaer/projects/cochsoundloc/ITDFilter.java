@@ -967,6 +967,10 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
     /** Adds button to show display */
     public void doResetITDDisplay() {
+        if(frame==null){
+            log.warning("no display to reset - null frame");
+            return;
+        }
         frame.binsPanel.maxActivity = 0f;
     }
 
