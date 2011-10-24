@@ -74,9 +74,13 @@
     </target>
     
     <!-- makes sure that the build version is written to the jar -->
-    <target name="-pre-jar" depends="setBuildVersion" >
-        
+    <target name="-pre-jar" depends="setBuildVersion,copySplashImage" >
     </target>
+    
+    <!--    copy splash image to src tree so that it gets into main jar-->
+    <target name="copySplashImage">
+        <copy file="SplashScreen.gif" todir="build/classes"/>
+        </target>
     
     <!-- builds the windows executable .exe launcher files -->
     <target name="-post-jar" >
