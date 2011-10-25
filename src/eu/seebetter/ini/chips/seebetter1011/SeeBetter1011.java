@@ -382,14 +382,19 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         JTabbedPane bgTabbedPane;
         // portC
         private PortBit runAdc = new PortBit(SeeBetter1011.this, "c0", "runAdc", "High to run ADC", true);
-        // adc configuration is stored in adcProxy; updates to here should update CPLD config below
-        private CPLDInt adcConfig = new CPLDInt(SeeBetter1011.this, 11, 22, "adcConfig", "determines configuration of ADC - value depends on channel and sequencing enabled " + ADC_CONFIG, ADC_CONFIG),
-                adcTrackTime = new CPLDInt(SeeBetter1011.this, 23, 38, "adcTrackTime", "ADC track time in clock cycles which are 15 cycles/us", 0),
-                adcIdleTime = new CPLDInt(SeeBetter1011.this, 39, 54, "adcIdleTime", "ADC idle time after last acquisition in clock cycles which are 15 cycles/us", 0);
-        // scanner config stored in scannerProxy; updates should update state of below fields
-        private CPLDInt scanX = new CPLDInt(SeeBetter1011.this, 55, 61, "scanChannel", "cochlea tap to monitor when not scanning continuously", 0);
-        private CPLDBit scanSel = new CPLDBit(SeeBetter1011.this, 62, "scanSel", "selects which on-chip cochlea scanner shift register to monitor for sync (0=BM, 1=Gang Cells) - also turns on CPLDLED1 near FXLED1", false), // TODO firmware controlled?
-                scanContinuouslyEnabled = new CPLDBit(SeeBetter1011.this, 63, "scanContinuouslyEnabled", "enables continuous scanning of on-chip scanner", true);
+        //
+        // adc and scanner configurations are stored in scanner and adc; updates to here should update CPLD config below
+        // CPLD shift register contents specified here by CPLDInt and CPLDBit
+        private CPLDBit use5TBuffer = new CPLDBit(SeeBetter1011.this, 0, "use5TBuffer", "enables 5T OTA vs Source-Follower in-pixel buffer", true);
+        private CPLDBit useCalibration = new CPLDBit(SeeBetter1011.this, 1, "useCalibration", "enables on-chip per-pixel calibration current after log intenisty sample", true);
+        private CPLDInt adcTrackTime = new CPLDInt(SeeBetter1011.this, 2, 17, "adcTrackTime", "ADC track time in clock cycles which are 15 cycles/us", 0);
+        private CPLDInt adcRefOnTime = new CPLDInt(SeeBetter1011.this, 18, 33, "adcRefOnTime", "ADC Reference ON time in clock cycles which are 15 cycles/us", 0);
+        private CPLDInt adcRefOffTime = new CPLDInt(SeeBetter1011.this, 34, 49, "adcRefOffTime", "ADC Reference OFF time in clock cycles which are 15 cycles/us", 0);
+        private CPLDInt adcIdleTime = new CPLDInt(SeeBetter1011.this, 50, 65, "adcIdleTime", "ADC idle time after last acquisition in clock cycles which are 15 cycles/us", 0);
+        private CPLDInt scanY = new CPLDInt(SeeBetter1011.this, 66, 81, "scanY", "cochlea tap to monitor when not scanning continuously", 0);
+        private CPLDInt scanX = new CPLDInt(SeeBetter1011.this, 82, 97, "scanX", "cochlea tap to monitor when not scanning continuously", 0);
+        private CPLDBit scanContinuouslyEnabled = new CPLDBit(SeeBetter1011.this, 98, "scanContinuouslyEnabled", "enables continuous scanning of on-chip scanner", true);
+        //
         // lists of ports and CPLD config
         private ADC adc;
         private Scanner scanner;
@@ -402,9 +407,8 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         public Biasgen(Chip chip) {
             super(chip);
             setName("SeeBetter1011Biasgen");
-            
+
             addConfigValue(runAdc);
-            addConfigValue(adcConfig);
             addConfigValue(adcTrackTime);
             addConfigValue(adcIdleTime);
             addConfigValue(scanX);
@@ -504,9 +508,9 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
             adc = new ADC(chip);
             adc.addObserver(this);
-            scanner=new Scanner(SeeBetter1011.this);
+            scanner = new Scanner(SeeBetter1011.this);
             scanner.addObserver(this);
-            
+
             loadPreferences();
 
         }
@@ -560,6 +564,42 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 throw new Error(e.toString());
             }
         }
+
+        /**
+         * Formats bits represented in a string as '0' or '1' as a byte array to be sent over the interface to the firmware, for loading
+         * in big endian bit order, in order of the bytes sent.
+         * <p>
+         * Because the firmware writes integral bytes are always an integral number of bytes returned it is important that the 
+         * bytes sent to the device are padded with leading bits 
+         * (at msbs of first byte) that are finally shifted out of the on-chip shift register.
+         * 
+         * Therefore <code>bitString2Bytes</code> should only be called ONCE, after the complete bit string has been assembled, unless it is known
+         * the other bits are an integral number of bytes.
+         * 
+         * @param bitString in msb to lsb order from left end, where msb will be in msb of first output byte
+         * @return array of bytes to send
+         */
+        protected byte[] bitString2Bytes(String bitString) {
+            int nBits = bitString.length();
+            // compute needed number of bytes
+            int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 4->1, 8->1, 9->2
+            byte[] byteArray = new byte[nbytes];
+            int bit = 0;
+            for (int bite = 0; bite < nbytes; bite++) { // for each byte
+                for (int i = 0; i < 8; i++) { // iterate over each bit of this byte
+                    byteArray[bite] = (byte) ((0xff&byteArray[bite]) << 1); // first left shift previous value, with 0xff to avoid sign extension
+                    if (bit < nBits && bitString.charAt(bit) == '1') { // if there is a 1 at this position of string (starting from left side) 
+                        // this conditional and loop structure ensures we count in bytes and that we left shift for each bit position in the byte, padding on the right with 0's
+                        byteArray[bite] |= 1; // put a 1 at the lsb of the byte
+                    }
+                    bit++; // go to next bit of string to the right
+
+                }
+            }
+            return byteArray;
+        }
+        
+        
         /** Vendor request command understood by the cochleaAMS1c firmware in connection with  VENDOR_REQUEST_SEND_BIAS_BYTES */
         public final short CMD_IPOT = 1, CMD_RESET_EQUALIZER = 2,
                 CMD_SCANNER = 3, CMD_EQUALIZER = 4,
@@ -631,7 +671,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     boolean seq = adc.isSequencingEnabled();
                     // from AD7933/AD7934 datasheet
                     int config = (1 << 8) + (lastChan << 5) + (seq ? 6 : 0);
-                    adcConfig.set(config);
                     sendCPLDConfig();
                     runAdc.setChanged();
                     runAdc.notifyObservers();
@@ -845,7 +884,14 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             getPrefs().putInt("cDVSTest30.bgTabbedPaneSelectedIndex", bgTabbedPane.getSelectedIndex());
         }
 
-        /** Formats the data sent to the microcontroller to load bias and other configuration to the chip (not FX2 or CPLD configuration). */
+        /** Formats the data sent to the microcontroller to load bias and other configuration to the chip (not FX2 or CPLD configuration). 
+        <p>
+         * Data is sent in bytes. Each byte is loaded into the shift register in big-endian bit order, starting with the msb and ending with the lsb.
+         * Bytes are loaded starting with the first byte from formatConfigurationBytes (element 0). Therefore the last bit in the on-chip shift register (the one
+         * that is furthest away from the bit input pin) should be in the msb of the first byte returned by formatConfigurationBytes.
+         * @return byte array to be sent, which will be loaded into the chip starting with element 0 msb.
+         * @param biasgen this Biasgen
+         */
         @Override
         public byte[] formatConfigurationBytes(net.sf.jaer.biasgen.Biasgen biasgen) {
             ByteBuffer bb = ByteBuffer.allocate(1000);
@@ -1095,7 +1141,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             }
             ConfigBit pullupX = new ConfigBit("useStaticPullupX", 0, "turn on static pullup for X addresses (columns)"),
                     pullupY = new ConfigBit("useStaticPullupY", 1, "turn on static pullup for Y addresses (rows)"),
-                   delayY0 = new ConfigBit("delayY0", 2, "RC delay columns, 1x"),
+                    delayY0 = new ConfigBit("delayY0", 2, "RC delay columns, 1x"),
                     delayY1 = new ConfigBit("delayY1", 3, "RC delay columns, 2x"),
                     delayY2 = new ConfigBit("delayY2", 4, "RC delay columns 4x"),
                     delayX0 = new ConfigBit("delayX0", 5, "RC delay rows, 1x"),
@@ -1107,7 +1153,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     delaySM0 = new ConfigBit("delaySM0", 11, "adds delay to state machine, 1x"),
                     delaySM1 = new ConfigBit("delaySM1", 12, "adds delay to state machine, 2x"),
                     delaySM2 = new ConfigBit("delaySM2", 13, "adds delay to state machine, 4x");
-            ConfigBit[] configBits = {pullupX, pullupY, delayY0,delayY1,delayY2,delayX0,delayX1,delayX2,sDVSReset,bDVSReset,ros,delaySM0,delaySM1,delaySM2};
+            ConfigBit[] configBits = {pullupX, pullupY, delayY0, delayY1, delayY2, delayX0, delayX1, delayX2, sDVSReset, bDVSReset, ros, delaySM0, delaySM1, delaySM2};
 
             @Override
             public void loadPreference() {
@@ -1123,31 +1169,40 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 }
             }
 
-            /** Returns the bit string to send to the firmware to load a bit sequence for the config bits in the shift register;
-             * bits are loaded big endian into shift register (msb first) but here returned string has msb at right-most position, i.e. end of string.
-             * @return big endian string e.g. code=11, s='1011', code=7, s='0111' for nSrBits=4.
+            /** Returns the bit string to send to the firmware to load a bit sequence for the config bits in the shift register.
+             * 
+             * Bytes sent to FX2 are loaded big endian into shift register (msb first) and here returned string has msb at left-most position, i.e. left end of string.
+             * @return string of 0 and 1 with first element of configBits at left hand end, and ending with padded 0s.
              */
             String getBitString() {
                 StringBuilder s = new StringBuilder();
                 // iterate over list
-                int n=configBits.length;
-                for(int i=0;i<TOTAL_NUM_BITS-n;i++) s.append("0"); // loaded first
-                for(int i=n-1;i<=0;i++){
-                    s.append(configBits[i].value? "1":"0"); // backwards from end
+                for (int i = 0; i < configBits.length; i++) {
+                    s.append(configBits[i].value ? "1" : "0");
                 }
+                for (int i = 0; i < TOTAL_NUM_BITS - configBits.length; i++) {
+                    s.append("1"); // loaded first into unused parts of final shift register
+                }
+                log.info(s.length() + " configBits=" + s);
                 return s.toString();
             }
 
             byte[] formatConfigurationBytes() {
-                String s = getBitString();
+                String s = getBitString(); // in msb to lsb order from left end
                 int nBits = s.length();
-                BigInteger bi = new BigInteger(s.toString(), 2);
-                byte[] byteArray = bi.toByteArray(); // finds minimal set of bytes in big endian format, with MSB as first element
-                // we need to pad out to nbits worth of bytes
                 int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 8->1, 9->2
-                byte[] bytes = new byte[nbytes];
-                System.arraycopy(byteArray, 0, bytes, nbytes - byteArray.length, byteArray.length);
-                return bytes;
+                byte[] byteArray = new byte[nbytes];
+                int bit = 0;
+                for (int bite = 0; bite < nbytes; bite++) {
+                    for (int i = 0; i < 8; i++) {
+                        if (s.charAt(bit) == '1') {
+                            byteArray[bite] |= 1;
+                        }
+                       byteArray[bite] = (byte) ((0xff&byteArray[bite]) << 1); // then left shift the byte, and with 0xff to avoid sign extension
+                      bit++;
+                    }
+                }
+                return byteArray;
             }
 
             JPanel makeControlPanel() {
@@ -1156,7 +1211,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 for (ConfigBit b : configBits) {
                     JRadioButton but = new JRadioButton(b.action);
                     but.setSelected(b.value);
-                    but.addActionListener(b.action);
                     pan.add(but);
                 }
                 return pan;

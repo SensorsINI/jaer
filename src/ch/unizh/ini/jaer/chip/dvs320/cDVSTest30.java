@@ -16,6 +16,7 @@ import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.VDAC.VPot;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.hardwareinterface.*;
 import java.awt.BorderLayout;
 import java.math.BigInteger;
@@ -130,11 +131,38 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
 
     }
 
-    /** Cleans up on renewal of chip. */
     @Override
-    public void cleanup() {
-        super.cleanup();
-        cDVSDisplayMethod.unregisterControlPanel();
+    public void onDeregistration() {
+        unregisterControlPanel();
+    }
+
+    @Override
+    public void onRegistration() {
+        registerControlPanel();
+    }
+    
+    cDVSTest30DisplayControlPanel controlPanel = null;
+
+    public void registerControlPanel() {
+        try {
+            AEViewer viewer = getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
+            JPanel imagePanel = viewer.getImagePanel();
+            imagePanel.add((controlPanel = new cDVSTest30DisplayControlPanel(this)), BorderLayout.SOUTH);
+            imagePanel.revalidate();
+        } catch (Exception e) {
+            log.warning("could not register control panel: " + e);
+        }
+    }
+
+    void unregisterControlPanel() {
+        try {
+            AEViewer viewer = getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
+            JPanel imagePanel = viewer.getImagePanel();
+            imagePanel.remove(controlPanel);
+            imagePanel.revalidate();
+        } catch (Exception e) {
+            log.warning("could not unregister control panel: " + e);
+        }
     }
 
     /** Creates a new instance of cDVSTest10
@@ -253,9 +281,9 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
                         e.timestamp = (timestamps[i]);
                         e.polarity = (byte) (data & POLMASK);
                         e.x = (short) (((data & XMASK) >>> XSHIFT));
-                        
+
                         e.y = (short) ((data & YMASK) >>> YSHIFT);
-                       
+
                         if (e.x < SIZE_X_CDVS * 2) { // cDVS pixel array // *2 because size is defined to be 32 and event types are still different x's
                             if ((e.y & 1) == 0) { // odd rows: log intensity change events
                                 if (e.polarity == 1) { // off is 0, on is 1
@@ -465,6 +493,44 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
 
         }
 
+        /**
+         * Formats bits represented in a string as '0' or '1' as a byte array to be sent over the interface to the firmware, for loading
+         * in big endian bit order, in order of the bytes sent starting with byte 0.
+         * <p>
+         * Because the firmware writes integral bytes it is important that the 
+         * bytes sent to the device are padded with leading bits 
+         * (at msbs of first byte) that are finally shifted out of the on-chip shift register.
+         * 
+         * Therefore <code>bitString2Bytes</code> should only be called ONCE, after the complete bit string has been assembled, unless it is known
+         * the other bits are an integral number of bytes.
+         * 
+         * @param bitString in msb to lsb order from left end, where msb will be in msb of first output byte
+         * @return array of bytes to send
+         */
+        protected byte[] bitString2Bytes(String bitString) {
+            int nbits = bitString.length();
+            // compute needed number of bytes
+            int nbytes = (nbits % 8 == 0) ? (nbits / 8) : (nbits / 8 + 1); // 4->1, 8->1, 9->2
+            // for simplicity of following, left pad with 0's right away to get integral byte string
+            int npad=nbytes*8-nbits;
+            String pad=new String(new char[npad]).replace("\0", "0"); // http://stackoverflow.com/questions/1235179/simple-way-to-repeat-a-string-in-java
+            bitString=pad+bitString;
+            byte[] byteArray = new byte[nbytes];
+            int bit = 0;
+            for (int bite = 0; bite < nbytes; bite++) { // for each byte
+                for (int i = 0; i < 8; i++) { // iterate over each bit of this byte
+                    byteArray[bite] = (byte) ((0xff & byteArray[bite]) << 1); // first left shift previous value, with 0xff to avoid sign extension
+                    if (bitString.charAt(bit) == '1') { // if there is a 1 at this position of string (starting from left side) 
+                        // this conditional and loop structure ensures we count in bytes and that we left shift for each bit position in the byte, padding on the right with 0's
+                        byteArray[bite] |= 1; // put a 1 at the lsb of the byte
+                    }
+                    bit++; // go to next bit of string to the right
+
+                }
+            }
+            return byteArray;
+        }
+
         @Override
         public void setHardwareInterface(BiasgenHardwareInterface hardwareInterface) {
             super.setHardwareInterface(hardwareInterface);
@@ -593,8 +659,8 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
             });
             bgTabbedPane.addTab("More config", configBits.makeControlPanel());
             // only select panel after all added
-             bgTabbedPane.setSelectedIndex(getPrefs().getInt("cDVSTest30.bgTabbedPaneSelectedIndex", 0));
-           return bPanel;
+            bgTabbedPane.setSelectedIndex(getPrefs().getInt("cDVSTest30.bgTabbedPaneSelectedIndex", 0));
+            return bPanel;
         }
 
         private void tabbedPaneMouseClicked(java.awt.event.MouseEvent evt) {
@@ -605,28 +671,36 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
         @Override
         public byte[] formatConfigurationBytes(Biasgen biasgen) {
             ByteBuffer bb = ByteBuffer.allocate(1000);
+
+            // must return integral number of bytes and on-chip biasgen must be integral number of bytes, by method contract
             byte[] biasBytes = super.formatConfigurationBytes(biasgen);
-            byte[] muxBytes = allMuxes.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
-            byte[] configBitBytes = configBits.formatConfigurationBytes(); 
-            bb.put(configBitBytes); // loaded first to go to far end of shift register
-            bb.put(muxBytes); 
+
+
+            String configBitsBits = configBits.getBitString();
+            String muxBitsBits = allMuxes.getBitString(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
+
+            byte[] muxAndConfigBytes = bitString2Bytes((configBitsBits + muxBitsBits)); // returns bytes padded at end
+
+            bb.put(muxAndConfigBytes); // loaded first to go to far end of shift register
 
             // 256 value (8 bit) VDAC for amplifier reference
             byte vdac = (byte) thermometerDAC.getBitValue(); //Byte.valueOf("9");
             bb.put(vdac);   // VDAC needs 8 bits
             bb.put(biasBytes);
 
+            // the 4 shifted sources, each 2 bytes
             for (ShiftedSourceBias ss : ssBiases) {
                 bb.put(ss.getBinaryRepresentation());
             }
 
+            // make buffer for all output bytes
             byte[] allBytes = new byte[bb.position()];
-            bb.flip(); // reads them out in order of putting them in, i.e., get configBitBytes first
-            bb.get(allBytes);
+            bb.flip(); // flips to read them out in order of putting them in, i.e., get configBitBytes first
+            bb.get(allBytes); // we write these in vendor request
 
-            StringBuilder sb=new StringBuilder("bytes sent to FX2 to be loaded big endian for each byte in order \n");
-            for(byte b:allBytes){
-                sb.append(String.format("%02x ",b));
+            StringBuilder sb = new StringBuilder("bytes sent to FX2 to be loaded big endian for each byte in order \n");
+            for (byte b : allBytes) {
+                sb.append(String.format("%02x ", b));
             }
             log.info(sb.toString());
             return allBytes; // configBytes may be padded with extra bits to make up a byte, board needs to know this to chop off these bits
@@ -690,7 +764,7 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
         }        // TODO fix functional biasgen panel to be more usable
 
         /** Bits on the on-chip shift register but not an output mux control
-
+        
          */
         class ConfigBits extends Observable implements HasPreference { // TODO fix for config bit of pullup
 
@@ -769,8 +843,8 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
             }
 
             /** Returns the bit string to send to the firmware to load a bit sequence for the config bits in the shift register;
-             * bits are loaded big endian into shift register (msb first) but here returned string has msb at right-most position, i.e. end of string.
-             * @return big endian string e.g. code=11, s='1011', code=7, s='0111' for nSrBits=4.
+             * bits are loaded big endian into shift register (msb first) and here returned string has msb at left-most position, i.e. left end of string.
+             * @return big endian string of bits
              */
             String getBitString() {
                 StringBuilder s = new StringBuilder();
@@ -778,25 +852,7 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
                 s.append("000000");  // 6 msbs are not used on this chip
                 s.append(pullupY.value ? "1" : "0");
                 s.append(pullupX.value ? "1" : "0");
-                return s.toString();
-            }
-
-            byte[] formatConfigurationBytes() {
-                String s = getBitString(); // in msb to lsb order from left end
-                int nBits = s.length();
-                int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 8->1, 9->2
-                byte[] byteArray=new byte[nbytes];
-                int bit = 0;
-                for (int bite = 0; bite < nbytes; bite++) {
-                    for (int i = 0; i < 8; i++) {
-                        if (s.charAt(bit) == '1') {
-                            byteArray[bite] |= 1;
-                        }
-                        byteArray[bite] = (byte) (byteArray[bite] << 1);
-                        bit++;
-                    }
-                }
-                return byteArray;
+                return s.reverse().toString();
             }
 
             JPanel makeControlPanel() {
@@ -1007,25 +1063,15 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
             OutputMux[] vmuxes = {new VoltageOutputMux(1), new VoltageOutputMux(2), new VoltageOutputMux(3), new VoltageOutputMux(4)};
             OutputMux[] dmuxes = {new LogicMux(1), new LogicMux(2), new LogicMux(3), new LogicMux(4), new LogicMux(5)};
 
-            byte[] formatConfigurationBytes() {
+            String getBitString() {
                 int nBits = 0;
                 StringBuilder s = new StringBuilder();
                 for (OutputMux m : this) {
                     s.append(m.getBitString());
                     nBits += m.nSrBits;
                 }
-                BigInteger bi = new BigInteger(s.toString(), 2);
-                byte[] byteArray = bi.toByteArray(); // finds minimal set of bytes in big endian format, with MSB as first element
-                // we need to pad out to nbits worth of bytes
-                int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 8->1, 9->2
-                byte[] bytes = new byte[nbytes];
-                System.arraycopy(byteArray, 0, bytes, nbytes - byteArray.length, byteArray.length);
-                //System.out.println(String.format("%d bytes holding %d actual bits", bytes.length, nBits));
-//                for (int i=0;i<nbytes;i++)
-//                {
-//                  System.out.println("byte " + i + " : " + Integer.toHexString(bytes[i]));
-//                }
-                return bytes;
+
+                return s.toString();
             }
 
             AllMuxes() {

@@ -69,8 +69,12 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
     final static int CONFIG_TRAN_SIZE = 64;    // out endpoint for servo commands
     /** The vendor ID */
     static public final short VID = USBInterface.VID_THESYCON;
-    /** The product ID */
+    /** The product ID for devices programmed with latest PAER firmware*/
     static public final short PID = (short) 0x8411;
+    /** The product ID for Tmpdiff128 boards with SiLabsF320 chip developed in CAVIAR, programmed with older firmware and using USBXpress VID/PID. These
+     * devices are also specified in the inf files for installing the usbaermon.sys driver in drivers/Windows/driverDVS_USBAERmini2.
+     */
+    static public final short PID_LEGACY_SILABS_USBXPRESS = (short) 0xEA61;
     private final int ENDPOINT_IN = 0x82, ENDPOINT_OUT = 0x2; // both endpoint 2, but IN has bit 7 set. Verified from Thesycon Demo App
     private boolean isOpened = false;
     /** the USBIO device descriptor */
@@ -168,6 +172,9 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
     final int WRAP_START = 0; //(int)(0xFFFFFFFFL&(2147483648L-0x400000L)); // set high to test big wrap 1<<30;
     /** wrapAdd is the time to add to short timestamp to unwrap it */
     private int wrapAdd = WRAP_START; //0;
+    private int wrapsSinceLastEvent=0;
+    private final int WRAPS_TO_PRINT_NO_EVENT=500;
+    private boolean gotEvent=false;
 
     /** Does the translation, timestamp unwrapping and reset
      * @param b the raw buffer
@@ -195,6 +202,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
             int[] timestamps = buffer.getTimestamps();
 
             buffer.lastCaptureIndex = eventCounter; // write the start of the packet
+            gotEvent=false;
 
             for (int i = 0; i < bytesSent; i += 4) {
                 if (eventCounter > aeBufferSize - 1) {
@@ -209,11 +217,18 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
 
                 if (addresses[eventCounter] == 0xFFFF) { // changed to handle this address as special wrap event
                     wrapAdd += 0x10000;	// if we wrapped then increment wrap value by 2^16
+                    if(!gotEvent) wrapsSinceLastEvent++;
+                    if(wrapsSinceLastEvent>=WRAPS_TO_PRINT_NO_EVENT){
+                        log.warning("got "+wrapsSinceLastEvent+" timestamp wraps without any events");
+                        wrapsSinceLastEvent=0;
+                    }
                     continue; // skip timestamp and continue to next address without incrementing eventCounter
                     }
                 timestamps[eventCounter] = (int) (TICK_US * (shortts + wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
                 eventCounter++;
                 buffer.setNumEvents(eventCounter);
+                gotEvent=true;
+                wrapsSinceLastEvent=0;
             }
 
             // write capture size

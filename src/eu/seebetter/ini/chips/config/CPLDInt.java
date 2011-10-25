@@ -12,15 +12,19 @@ import net.sf.jaer.chip.Chip;
  * @author tobi
  */
 public class CPLDInt extends CPLDConfigValue implements ConfigInt {
+
     volatile int value;
     int def;
 
     public CPLDInt(Chip chip, int startBit, int endBit, String name, String tip, int def) {
-        super(chip, startBit,endBit, name, tip);
+        super(chip, startBit, endBit, name, tip);
         this.startBit = startBit;
         this.endBit = endBit;
         this.def = def;
         key = "CPLDInt." + name;
+        if (endBit - startBit != 15) {
+            throw new Error("wrong number of bits (only counted " + (endBit - startBit + 1) + ") but there should be 16 in " + this);
+        }
         loadPreference();
     }
 
@@ -65,5 +69,4 @@ public class CPLDInt extends CPLDConfigValue implements ConfigInt {
     public void storePreference() {
         prefs.putInt(key, value); // will eventually call pref change listener which will call set again
     }
-    
 }

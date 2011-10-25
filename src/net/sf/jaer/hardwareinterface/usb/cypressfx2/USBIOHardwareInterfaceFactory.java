@@ -18,10 +18,12 @@ import ch.unizh.ini.jaer.chip.dvs320.cDVSTestHardwareInterface;
 import net.sf.jaer.util.HexString;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
+import eu.seebetter.ini.chips.seebetter1011.SeeBetter1011HardwareInterface;
 import java.util.*;
 import net.sf.jaer.hardwareinterface.*;
 import java.util.logging.*;
 import jp.ac.osakau.eng.eei.IVS128HardwareInterface;
+import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_DVS128;
 
 /**
@@ -209,6 +211,8 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
                 return new SiLabsC8051F320_USBIO_AeSequencer(n);
             case cDVSTestHardwareInterface.PID:
                 return new cDVSTestHardwareInterface(n);
+            case SeeBetter1011HardwareInterface.PID:
+                return new SeeBetter1011HardwareInterface(n);
             case DVS320HardwareInterface.PID:
                 return new DVS320HardwareInterface(n);
             case CochleaAMS1bHardwareInterface.PID:

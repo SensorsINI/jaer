@@ -119,38 +119,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         setTitle(chip.getName()+" - "+lastFile.getName()+ " - Biases ");
         saveMenuItem.setEnabled(false); // until we load or save a file
         pack();
-//        System.out.println("x="+prefs.getInt("BiasgenFrame.XPosition", 0));
-//        System.out.println("y="+prefs.getInt("BiasgenFrame.YPosition", 0));
-//        setLocation(prefs.getInt("BiasgenFrame.XPosition", 0),prefs.getInt("BiasgenFrame.YPosition", 0));
-//        WindowSaver.restoreWindowLocation(this,prefs);
-
-        if (!(biasgen.getHardwareInterface() instanceof CypressFX2)) {
-            cypressFX2EEPROMMenuItem.setEnabled(false);//        Runtime.getRuntime().addShutdownHook(new Thread(){
-//            public void run(){
-//                System.out.println("biasgen shutdown hook");
-//                if(fileModified){
-//                   System.out.println("unsaved biases");
-//                }
-//            }
-//        });
-        }
-// to debug focus traversal        
-//        KeyboardFocusManager focusManager =
-//                KeyboardFocusManager.getCurrentKeyboardFocusManager();
-//        focusManager.addPropertyChangeListener(
-//                new PropertyChangeListener() {
-//
-//                    public void propertyChange(PropertyChangeEvent e) {
-//                        String prop = e.getPropertyName();
-//                        if (("focusOwner".equals(prop))) {
-//                            Component c1=null, c2=null;
-//                            if(e.getOldValue() instanceof Component) c1=(Component)e.getOldValue();
-//                            if(e.getNewValue() instanceof Component) c2=(Component)e.getNewValue();
-//                            log.info((c1==null?null:c1.getClass().getSimpleName())+" -> "+(c2==null?null:c2.getClass().getSimpleName()));
-//                        }
-//                    }
-//                });
-//
 
         defaultFolder = System.getProperty("user.dir");
         try {
@@ -163,32 +131,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 
 
     }
-//    public void dispose(){
-//        if(isFileModified()){
-//            System.out.println("biasgen settings were modified");
-//        }
-//        super.dispose();
-//    }
-//
-    //// doesn't work to save settings
-//    protected void finalize() throws Throwable{
-//        if(isFileModified()){
-//            System.out.println("biasgen settings were modified");
-//        }
-//        super.finalize();
-//    }
-    
-//    // commented out to let AEViewer handle all modifications saved checking
-//    /** overrides super implementation to check for file modifications
-//     * @param yes true to make visible, false to hide. false checks for bias modificaitaons
-//     */
-//    @Override
-//    public void setVisible(boolean yes) {
-//        if (yes == false) {
-//            isModificationsSaved();
-//        }
-//        super.setVisible(yes);
-//    }
 
     /** Checks if there are modifications, and if so, offers to save them. Returns true if it is OK to exit, meaning either
      * there are no modifications, or there are modifications and they have been saved. Returns false if user cancels save.
@@ -459,12 +401,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         flashMenuItem = new javax.swing.JMenuItem();
         jSeparator4 = new javax.swing.JSeparator();
         suspendCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        helpMenu = new javax.swing.JMenu();
-        helpMenuItem = new javax.swing.JMenuItem();
-        jSeparator2 = new javax.swing.JSeparator();
-        aboutMenuItem = new javax.swing.JMenuItem();
-        eepromMenu = new javax.swing.JMenu();
-        cypressFX2EEPROMMenuItem = new javax.swing.JMenuItem();
 
         setTitle("Biasgen");
         setName("Biasgen"); // NOI18N
@@ -672,44 +608,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 
         mainMenuBar.add(biasMenu);
 
-        helpMenu.setMnemonic('H');
-        helpMenu.setText("Help");
-
-        helpMenuItem.setMnemonic('H');
-        helpMenuItem.setText("Help (online)");
-        helpMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                helpMenuItemActionPerformed(evt);
-            }
-        });
-        helpMenu.add(helpMenuItem);
-        helpMenu.add(jSeparator2);
-
-        aboutMenuItem.setMnemonic('A');
-        aboutMenuItem.setText("About");
-        aboutMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                aboutMenuItemActionPerformed(evt);
-            }
-        });
-        helpMenu.add(aboutMenuItem);
-
-        mainMenuBar.add(helpMenu);
-
-        eepromMenu.setText("EEPROM");
-        eepromMenu.setToolTipText("Utilities for device EEPROM");
-
-        cypressFX2EEPROMMenuItem.setText("CypressFX2EEPROM");
-        cypressFX2EEPROMMenuItem.setToolTipText("Utilities for programming CypressFX2 EEPROM");
-        cypressFX2EEPROMMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                cypressFX2EEPROMMenuItemActionPerformed(evt);
-            }
-        });
-        eepromMenu.add(cypressFX2EEPROMMenuItem);
-
-        mainMenuBar.add(eepromMenu);
-
         setJMenuBar(mainMenuBar);
 
         pack();
@@ -726,12 +624,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         }
         suspendCheckBoxMenuItem.setSelected(suspendToggleButton.isSelected());
     }//GEN-LAST:event_suspendToggleButtonActionPerformed
-
-    private void cypressFX2EEPROMMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cypressFX2EEPROMMenuItemActionPerformed
-        if (biasgen.getHardwareInterface() instanceof CypressFX2) {
-            new CypressFX2EEPROM().setVisible(true);
-        }
-    }//GEN-LAST:event_cypressFX2EEPROMMenuItemActionPerformed
 
     private void suspendCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_suspendCheckBoxMenuItemActionPerformed
         if (biasgen != null) {
@@ -752,15 +644,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
             Toolkit.getDefaultToolkit().beep();
         }
     }//GEN-LAST:event_flashButtonActionPerformed
-
-    private void helpMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpMenuItemActionPerformed
-        try {
-            BrowserLauncher.openURL(HELP_URL);
-        } catch (IOException e) {
-            helpMenuItem.setText(e.getMessage());
-            Toolkit.getDefaultToolkit().beep();
-        }
-    }//GEN-LAST:event_helpMenuItemActionPerformed
 
     private void redoButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_redoButtonActionPerformed
         redo();
@@ -789,10 +672,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     private void resendButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resendButtonActionPerformed
         resend();
     }//GEN-LAST:event_resendButtonActionPerformed
-
-    private void aboutMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_aboutMenuItemActionPerformed
-        new BiasgenAboutDialog(new javax.swing.JFrame(), true).setVisible(true);
-    }//GEN-LAST:event_aboutMenuItemActionPerformed
 
     private void revertButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_revertButtonActionPerformed
         log.info("reverting settings");
@@ -833,13 +712,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
                 null,
                 options,
                 options[1]);
-        // Brings up an internal dialog panel with a specified icon, where the initial choice is determined by the initialValue parameter and the number of choices is determined by the optionType parameter.
-//                int ret=JOptionPane.showConfirmDialog(
-//                this,
-//                "Are you sure you want to exit (this will kill matlab if running from matlab)?",
-//                "Exit?",
-//                JOptionPane.YES_NO_OPTION,
-//                JOptionPane.WARNING_MESSAGE);
         if (ret == JOptionPane.YES_OPTION) {
             biasgen.close();
             System.exit(0);
@@ -854,21 +726,15 @@ private void prefsEditorMenuItemActionPerformed(java.awt.event.ActionEvent evt) 
 }//GEN-LAST:event_prefsEditorMenuItemActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JMenuItem aboutMenuItem;
     private javax.swing.JMenu biasMenu;
-    private javax.swing.JMenuItem cypressFX2EEPROMMenuItem;
     private javax.swing.JMenu editMenu;
-    private javax.swing.JMenu eepromMenu;
     private javax.swing.JMenuItem exitMenuItem;
     private javax.swing.JMenuItem exportPreferencesMenuItem;
     private javax.swing.JMenu fileMenu;
     private javax.swing.JButton flashButton;
     private javax.swing.JMenuItem flashMenuItem;
-    private javax.swing.JMenu helpMenu;
-    private javax.swing.JMenuItem helpMenuItem;
     private javax.swing.JMenuItem importPreferencesMenuItem;
     private javax.swing.JSeparator jSeparator1;
-    private javax.swing.JSeparator jSeparator2;
     private javax.swing.JSeparator jSeparator3;
     private javax.swing.JSeparator jSeparator4;
     private javax.swing.JMenuItem loadMenuItem;

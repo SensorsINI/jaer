@@ -293,7 +293,7 @@ public class AEChip extends Chip2D {
         this.rawAddressNumBits = rawAddressNumBits;
     }
     
-    /** This method (empty by default) called on registration of AEChip in AEViewer.
+    /** This method (empty by default) called on registration of AEChip in AEViewer at end of setAeChipClass, after other initialization routines.
      * Can be used for instance to register new help menu items or chip controls.
      * 
      */
@@ -301,7 +301,7 @@ public class AEChip extends Chip2D {
         log.info("registering "+this);
     }
 
-    /** This method (empty by default) called on de-registration of AEChip in AEViewer.
+    /** This method (empty by default) called on de-registration of AEChip in AEViewer, just before making a the new AEChip.
      * 
      */
     public void onDeregistration() {

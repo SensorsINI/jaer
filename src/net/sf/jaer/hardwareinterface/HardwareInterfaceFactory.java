@@ -25,6 +25,7 @@ import net.sf.jaer.hardwareinterface.usb.usbaermapper.USBAERatcFactory;
 import net.sf.jaer.hardwareinterface.udp.*;
 
 import net.sf.jaer.hardwareinterface.serial.*;
+import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320;
 
 /**
  * This class builds a list of all available devices and lets you get one of them.
@@ -51,7 +52,7 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
         USBAERatcFactory.class,
         UDPInterfaceFactory.class,
         CLEyeHardwareInterfaceFactory.class,
-        EmbeddedDVSSerialPortChooserFactory.class
+        EmbeddedDVSSerialPortChooserFactory.class,
     }; 
     private static HardwareInterfaceFactory instance = new HardwareInterfaceFactory();
 

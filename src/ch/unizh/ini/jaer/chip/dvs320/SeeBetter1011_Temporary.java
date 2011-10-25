@@ -4,19 +4,11 @@
  */
 package ch.unizh.ini.jaer.chip.dvs320;
 
-import eu.seebetter.ini.chips.config.HasPreference;
-import eu.seebetter.ini.chips.seebetter1011.SeeBetter1011;
-import java.awt.event.ActionEvent;
-import java.math.BigInteger;
-import java.util.Observable;
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-import javax.swing.BoxLayout;
+import java.awt.BorderLayout;
 import javax.swing.JPanel;
-import javax.swing.JRadioButton;
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.Chip;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.graphics.AEViewer;
 
 /**
  * Temporary, extends Biasgen to add config bits on SeeBetter10/11
@@ -25,16 +17,54 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 @Description("Temporary class for testing SeeBetter10 and SeeBetter11, will be replaced by SeeBetter1011")
 public class SeeBetter1011_Temporary extends cDVSTest30 {
 
-
     public SeeBetter1011_Temporary() {
         setBiasgen(new SB10TmpBiasgen(this));
     }
 
-    class SB10TmpBiasgen extends cDVSTest30.cDVSTestBiasgen {
+    @Override
+    public void onDeregistration() {
+        unregisterControlPanel();
+    }
+
+    @Override
+    public void onRegistration() {
+        registerControlPanel();
+    }
+    
+    SeeBetter1011_TemporaryDisplayControlPanel controlPanel = null;
+
+    public void registerControlPanel() {
+        try {
+            AEViewer viewer = getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
+            JPanel imagePanel = viewer.getImagePanel();
+            imagePanel.add((controlPanel = new SeeBetter1011_TemporaryDisplayControlPanel(this)), BorderLayout.SOUTH);
+            imagePanel.revalidate();
+        } catch (Exception e) {
+            log.warning("could not register control panel: " + e);
+        }
+    }
+
+    void unregisterControlPanel() {
+        try {
+            AEViewer viewer = getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
+            JPanel imagePanel = viewer.getImagePanel();
+            imagePanel.remove(controlPanel);
+            imagePanel.revalidate();
+        } catch (Exception e) {
+            log.warning("could not unregister control panel: " + e);
+        }
+    }
+
+    
+    /**
+     *    has 22 biases * 3 bytes + 4 ss sources * 2 bytes + 1 byte vdac + 4 * 1 nibble ana mux + 5 nibbles dmux + 3 bytes extra config
+    
+     */
+    public class SB10TmpBiasgen extends cDVSTest30.cDVSTestBiasgen {
 
         public SB10TmpBiasgen(Chip chip) {
             super(chip);
-            configBits=new ExtraOnChipConfigBits();
+            configBits = new ExtraOnChipConfigBits();
         }
 
         /** Bits on the on-chip shift register but not an output mux control, added to end of shift register. Control
@@ -61,15 +91,20 @@ public class SeeBetter1011_Temporary extends cDVSTest30 {
             boolean value = false;
 
             public ExtraOnChipConfigBits() {
-                // bits in order of final shift register, to be padded out with 0s for unused bits
+                // bits in order from input end of final shift register, to be padded out with 0s for unused bits
                 configBits = new ConfigBit[]{pullupX, pullupY, delayY0, delayY1, delayY2, delayX0, delayX1, delayX2, sDVSReset, bDVSReset, ros, delaySM0, delaySM1, delaySM2};
             }
 
             /** Returns the bit string to send to the firmware to load a bit sequence for the config bits in the shift register.
              * 
-             * Bytes sent to FX2 are loaded big endian into shift register (msb first) but here returned string has msb at right-most position, i.e. end of string.
-             * @return string of 0 and 1 with first element of configBits at left hand end, and ending with padded 0s.
+             * Bytes sent to FX2 are loaded big endian into shift register (msb first). 
+             * Here returned string has named config bits at right end and unused bits at left end. Right most character is pullupX.
+             * Think of the entire on-chip shift register laid out from right to left with input at right end and extra config bits at left end.
+             * Bits are loaded in order of bit string here starting from left end (the unused registers)
+             * 
+             * @return string of 0 and 1 with first element of configBits at right hand end, and starting with padding bits to fill unused registers.
              */
+            @Override
             String getBitString() {
                 StringBuilder s = new StringBuilder();
                 // iterate over list
@@ -77,9 +112,9 @@ public class SeeBetter1011_Temporary extends cDVSTest30 {
                     s.append("1"); // loaded first into unused parts of final shift register
                 }
                 for (int i = configBits.length-1; i >=0; i--) {
-                    s.append(configBits[i].value ? "1" : "0"); // in order in array
+                    s.append(configBits[i].value ? "1" : "0");
                 }
-                log.info(s.length()+ " configBits="+s);
+                log.info(s.length() + " extra config bits with unused registers at left end =" + s);
                 return s.toString();
             }
         }

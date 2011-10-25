@@ -19,7 +19,7 @@ public class cDVSTest20DisplayMethod extends DVSWithIntensityDisplayMethod {
 
     private cDVSTest20 cDVSChip = null;
     boolean registeredControlPanel = false;
-    private cDVSDisplayControlPanel controlPanel = null;
+    private cDVSTest20DisplayControlPanel controlPanel = null;
 
     public cDVSTest20DisplayMethod(cDVSTest20 chip) {
         super(chip.getCanvas());
@@ -67,7 +67,7 @@ public class cDVSTest20DisplayMethod extends DVSWithIntensityDisplayMethod {
             AEChip chip = (AEChip) getChipCanvas().getChip();
             AEViewer viewer = chip.getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
             JPanel imagePanel = viewer.getImagePanel();
-            imagePanel.add((controlPanel = new cDVSDisplayControlPanel(cDVSChip)), BorderLayout.SOUTH);
+            imagePanel.add((controlPanel = new cDVSTest20DisplayControlPanel(cDVSChip)), BorderLayout.SOUTH);
             registeredControlPanel = true;
         } catch (Exception e) {
             log.warning("could not register control panel: " + e);

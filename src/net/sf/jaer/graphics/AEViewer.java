@@ -943,8 +943,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 log.warning("null chip, not continuing");
                 return;
             }
-            chip.onRegistration();
-            aeChipClass = deviceClass;
+             aeChipClass = deviceClass;
             setPreferredAEChipClass(aeChipClass);
             // chip constructed above, should have renderer already constructed as well
             if (chip.getRenderer() != null && chip.getRenderer() instanceof Calibratible) {
@@ -1006,6 +1005,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
 //            getSupport().firePropertyChange("chip", oldChip, getChip());
             firePropertyChange(EVENT_CHIP, oldChip, getChip());
+           
+            chip.onRegistration();
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -1038,7 +1040,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         chipCanvas = chip.getCanvas();
         chipCanvas.setOpenGLEnabled(isOpenGLRenderingEnabled());
-        getImagePanel().add(chipCanvas.getCanvas());
+        getImagePanel().add(chipCanvas.getCanvas(), BorderLayout.CENTER);
 
 //        chipCanvas.getCanvas().invalidate();
         // find display menu reference and fill it with display menu for this canvas

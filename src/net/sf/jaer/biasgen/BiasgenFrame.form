@@ -167,51 +167,6 @@
             </MenuItem>
           </SubComponents>
         </Menu>
-        <Menu class="javax.swing.JMenu" name="helpMenu">
-          <Properties>
-            <Property name="mnemonic" type="int" value="72"/>
-            <Property name="text" type="java.lang.String" value="Help"/>
-          </Properties>
-          <SubComponents>
-            <MenuItem class="javax.swing.JMenuItem" name="helpMenuItem">
-              <Properties>
-                <Property name="mnemonic" type="int" value="72"/>
-                <Property name="text" type="java.lang.String" value="Help (online)"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="helpMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JSeparator" name="jSeparator2">
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="aboutMenuItem">
-              <Properties>
-                <Property name="mnemonic" type="int" value="65"/>
-                <Property name="text" type="java.lang.String" value="About"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="aboutMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-          </SubComponents>
-        </Menu>
-        <Menu class="javax.swing.JMenu" name="eepromMenu">
-          <Properties>
-            <Property name="text" type="java.lang.String" value="EEPROM"/>
-            <Property name="toolTipText" type="java.lang.String" value="Utilities for device EEPROM"/>
-          </Properties>
-          <SubComponents>
-            <MenuItem class="javax.swing.JMenuItem" name="cypressFX2EEPROMMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="CypressFX2EEPROM"/>
-                <Property name="toolTipText" type="java.lang.String" value="Utilities for programming CypressFX2 EEPROM"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="cypressFX2EEPROMMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-          </SubComponents>
-        </Menu>
       </SubComponents>
     </Menu>
   </NonVisualComponents>

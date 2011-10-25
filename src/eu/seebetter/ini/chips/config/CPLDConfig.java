@@ -34,7 +34,7 @@ public class CPLDConfig {
      * Writes the bits boolean[] so that they are set according to the bit position, e.g. for a bit if startBit=0, then bits[0] is set.
      *
      */
-    private void compute() {
+    private void computeBitsFromConfigValues() {
         if (minBit > 0) {
             return; // notifyChange yet, we haven't filled in bit 0 yet
         }
@@ -70,7 +70,7 @@ public class CPLDConfig {
             minBit = val.startBit;
         }
         cpldConfigValues.add(val);
-        compute();
+        computeBitsFromConfigValues();
     }
 
     /** Returns byte[] to send to uC to load into CPLD shift register.
@@ -83,7 +83,7 @@ public class CPLDConfig {
      * @return array to send to controller for shifting into CPLD shift register
      */
     public byte[] getBytes() {
-        compute();
+        computeBitsFromConfigValues();
         int nBytes = bits.length / 8;
         if (bits.length % 8 != 0) {
             nBytes++;

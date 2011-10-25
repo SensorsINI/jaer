@@ -25,29 +25,10 @@ import java.util.prefs.Preferences;
  *
  * @author tobi
  */
-public class SeeBetter1011HardwareInterface extends CypressFX2Biasgen implements  cDVSTestADCHardwareInterface, ScannerHardwareInterface {
+public class SeeBetter1011HardwareInterface extends CypressFX2Biasgen {
 
-    static Preferences cdvshwprefs = Preferences.userNodeForPackage(SeeBetter1011HardwareInterface.class); // TODO should really come from Chip instance, not this class
     /** The USB product ID of this device */
-    static public final short PID = (short) 0x840A;
-    private boolean adcEnabled = cdvshwprefs.getBoolean("cDVSTestHardwareInterface.adcEnabled", true);
-    private int TrackTime =  cdvshwprefs.getInt("cDVSTestHardwareInterface.TrackTime", 50),
-            RefOnTime = cdvshwprefs.getInt("cDVSTestHardwareInterface.RefOnTime", 20),
-            RefOffTime =  cdvshwprefs.getInt("cDVSTestHardwareInterface.RefOffTime", 20),
-            IdleTime =  cdvshwprefs.getInt("cDVSTestHardwareInterface.IdleTime", 10);
-    private boolean Select5Tbuffer = cdvshwprefs.getBoolean("cDVSTestHardwareInterface.Select5Tbuffer", true);
-    private boolean UseCalibration = cdvshwprefs.getBoolean("cDVSTestHardwareInterface.UseCalibration", false);
-    private boolean scanContinuouslyEnabled = cdvshwprefs.getBoolean("cDVSTestHardwareInterface.scanContinuouslyEnabled", true);
-    private int scanX = cdvshwprefs.getInt("cDVSTestHardwareInterface.scanX", 0);
-    private int scanY = cdvshwprefs.getInt("cDVSTestHardwareInterface.scanY", 0);
-    private int ADCchannel = cdvshwprefs.getInt("cDVSTestHardwareInterface.ADCchannel", 3);
-    private static final int ADCchannelshift = 5;
-    private static final short ADCconfig = (short) 0x100;   //normal power mode, single ended, sequencer unused : (short) 0x908;
-    private final static short ADCconfigLength = (short) 12;
-
-    public static final String
-            EVENT_SELECT_5T_BUFFER="Select5Tbuffer",
-            EVENT_USE_CALIBRATION="UseCalibration";
+    static public final short PID = (short) 0x840B;
 
     /** Creates a new instance of CypressFX2Biasgen */
     public SeeBetter1011HardwareInterface(int devNumber) {
@@ -57,7 +38,6 @@ public class SeeBetter1011HardwareInterface extends CypressFX2Biasgen implements
     @Override
     public void open() throws HardwareInterfaceException {
         super.open();
-        sendADCConfiguration();
     }
 
 
@@ -76,278 +56,6 @@ public class SeeBetter1011HardwareInterface extends CypressFX2Biasgen implements
         super.sendBiasBytes(bytes);
     }
 
-    public void setTrackTime(int trackTimeUs) {
-        try {
-            int old=this.TrackTime;
-            TrackTime = trackTimeUs;  // TODO bound values here
-            cdvshwprefs.putInt("cDVSTestHardwareInterface.TrackTime", TrackTime);
-            getSupport().firePropertyChange(EVENT_TRACK_TIME,old,TrackTime);
-            sendADCConfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
-
-    public void setIdleTime(int trackTimeUs) {
-        try {
-             int old=this.IdleTime;
-           IdleTime = trackTimeUs;// TODO bound values here
-            cdvshwprefs.putInt("cDVSTestHardwareInterface.IdleTime", IdleTime);
-            getSupport().firePropertyChange(EVENT_IDLE_TIME,old,IdleTime);
-            sendADCConfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
-
-    public void setRefOnTime(int trackTimeUs) {
-        try {
-            int old=this.RefOnTime;
-            RefOnTime = trackTimeUs;// TODO bound values here
-            sendADCConfiguration();
-            cdvshwprefs.putInt("cDVSTestHardwareInterface.RefOnTime", RefOnTime);
-            getSupport().firePropertyChange(EVENT_REF_ON_TIME,old,RefOnTime);
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
-
-    public void setRefOffTime(int trackTimeUs) {
-        try {
-            int old=this.RefOffTime;
-            RefOffTime = trackTimeUs;// TODO bound values here
-            cdvshwprefs.putInt("cDVSTestHardwareInterface.RefOffTime", RefOffTime);
-            getSupport().firePropertyChange(EVENT_REF_OFF_TIME,old,RefOffTime);
-            sendADCConfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
-
-    public void setSelect5Tbuffer(boolean se) {
-        try {
-            boolean old=this.Select5Tbuffer;
-            Select5Tbuffer = se;
-            cdvshwprefs.putBoolean("cDVSTestHardwareInterface.Select5Tbuffer", Select5Tbuffer);
-            getSupport().firePropertyChange(EVENT_SELECT_5T_BUFFER, old, Select5Tbuffer);
-            sendADCConfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
-
-    public void setUseCalibration(boolean se) {
-        try {
-           boolean old=this.UseCalibration;
-             UseCalibration = se;
-            cdvshwprefs.putBoolean("cDVSTestHardwareInterface.UseCalibration", UseCalibration);
-          getSupport().firePropertyChange(EVENT_USE_CALIBRATION, old, UseCalibration);
-             sendADCConfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
-
-    /** On the cDVSTest chips, the channel 'mask' is actually just the single channel that is digitized, not a mask for desired channels. 
-     * 
-     * @param chan the channel number, ranging 0-3
-     */
-    @Override
-    public void setADCChannel(int chan) {// TODO fix to proper mask with labeled ADC samples in returned data
-        try {
-            int old=this.ADCchannel;
-            if (chan < 0) {
-                chan = 0;
-            } else if (chan > 3) {
-                chan = 3;
-            }
-            ADCchannel = chan;
-            cdvshwprefs.putInt("cDVSTestHardwareInterface.ADCchannel", ADCchannel);
-         getSupport().firePropertyChange(EVENT_ADC_CHANNEL_MASK, old, ADCchannel);
-             sendADCConfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
-
-    /**
-     * @return the scanContinuouslyEnabled
-     */
-    public boolean isScanContinuouslyEnabled() {
-        return scanContinuouslyEnabled;
-    }
-
-    /**
-     * @param scanContinuouslyEnabled the scanContinuouslyEnabled to set
-     */
-    public void setScanContinuouslyEnabled(boolean scanContinuouslyEnabled) {
-        try {
-            boolean old=this.scanContinuouslyEnabled;
-            this.scanContinuouslyEnabled = scanContinuouslyEnabled;
-            cdvshwprefs.putBoolean("cDVSTestHardwareInterface.scanContinuouslyEnabled", scanContinuouslyEnabled);
-            getSupport().firePropertyChange(EVENT_SCAN_CONTINUOUSLY_ENABLED, old, this.scanContinuouslyEnabled);
-            sendADCConfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
-
-    /**
-     * @return the scanX
-     */
-    public int getScanX() {
-        return scanX;
-    }
-
-    public int getScanSizeX() {
-        return SeeBetter1011.SIZE_X_CDVS;
-    }
-
-    public int getScanSizeY() {
-        return SeeBetter1011.SIZE_Y_CDVS;
-    }
-
-
-    /**
-     * @param scanX the scanX to set
-     */
-    public void setScanX(int scanX) {
-        int old=this.scanX;
-        if (scanX < 0) {
-            scanX = 0;
-        } else if (scanX >= getScanSizeX()) {
-            scanX = getScanSizeX() - 1;
-        }
-        try {
-            this.scanX = scanX;
-            cdvshwprefs.putInt("cDVSTestHardwareInterface.scanX", scanX);
-            getSupport().firePropertyChange(EVENT_SCAN_X,old,this.scanX);
-            sendADCConfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
-
-    /**
-     * @return the scanY
-     */
-    public int getScanY() {
-        return scanY;
-    }
-
-    /**
-     * @param scanY the scanY to set
-     */
-    public void setScanY(int scanY) {
-       int old=this.scanY;
-         if (scanY < 0) {
-            scanY = 0;
-        } else if (scanY >= getScanSizeY()) {
-            scanY = getScanSizeY() - 1;
-        }
-        try {
-            this.scanY = scanY;
-            cdvshwprefs.putInt("cDVSTestHardwareInterface.scanY", scanY);
-           getSupport().firePropertyChange(EVENT_SCAN_Y,old,this.scanY);
-             sendADCConfiguration();
-        } catch (HardwareInterfaceException ex) {
-            log.warning(ex.toString());
-        }
-    }
-
-    private String getBitString(short value, short nSrBits) {
-        StringBuilder s = new StringBuilder();
-
-        int k = nSrBits - 1;
-        while (k >= 0) {
-            int x = value & (1 << k); // start with msb
-            boolean b = (x == 0); // get bit
-            s.append(b ? '0' : '1'); // append to string 0 or 1, string grows with msb on left
-            k--;
-        } // construct big endian string e.g. code=14, s='1011'
-        String bitString = s.toString();
-        return bitString;
-    }
-
-    @Override
-    synchronized public void sendADCConfiguration() throws HardwareInterfaceException {
-        short ADCword = (short) (ADCconfig | (getADCChannel() << ADCchannelshift));
-
-        int nBits = 0;
-
-        StringBuilder s = new StringBuilder();
-
-        // scanner control
-        final int SCANXY_NBITS = 6;
-        s.append(getBitString(isScanContinuouslyEnabled() ? (short) 1 : (short) 0, (short) 1));
-        s.append(getBitString((short) getScanX(), (short) SCANXY_NBITS));
-        s.append(getBitString((short) getScanY(), (short) SCANXY_NBITS));
-        nBits+=1+2*SCANXY_NBITS;
-        
-        // ADC params
-        s.append(getBitString((short) (getIdleTime() * 15), (short) 16)); // multiplication with 15 to get from us to clockcycles
-        nBits += 16;
-        s.append(getBitString((short) (getRefOffTime() * 15), (short) 16)); // multiplication with 15 to get from us to clockcycles
-        nBits += 16;
-        s.append(getBitString((short) (getRefOnTime() * 15), (short) 16)); // multiplication with 15 to get from us to clockcycles
-        nBits += 16;
-        s.append(getBitString((short) (getTrackTime() * 15), (short) 16)); // multiplication with 15 to get from us to clockcycles
-        nBits += 16;
-        s.append(getBitString(ADCword, ADCconfigLength));
-        nBits += ADCconfigLength;
-
-        // readout pathway
-        if (isUseCalibration()) {
-            s.append(getBitString((short) 1, (short) 1));
-        } else {
-            s.append(getBitString((short) 0, (short) 1));
-        }
-        nBits += 1;
-
-        if (isSelect5Tbuffer()) {
-            s.append(getBitString((short) 1, (short) 1));
-        } else {
-            s.append(getBitString((short) 0, (short) 1));
-        }
-        nBits += 1;
-
-        //s.reverse();
-        //System.out.println(s);
-
-        BigInteger bi = new BigInteger(s.toString(), 2);
-        byte[] byteArray = bi.toByteArray(); // finds minimal set of bytes in big endian format, with MSB as first element
-        // we need to pad out to nbits worth of bytes
-        int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 8->1, 9->2
-        byte[] bytes = new byte[nbytes];
-        System.arraycopy(byteArray, 0, bytes, nbytes - byteArray.length, byteArray.length);
-
-        this.sendVendorRequest(VENDOR_REQUEST_WRITE_CPLD_SR, (short) 0, (short) 0, bytes); // stops ADC running
-        setADCEnabled(isADCEnabled());
-    }
-
-    synchronized public void startADC() throws HardwareInterfaceException {
-        this.sendVendorRequest(VENDOR_REQUEST_RUN_ADC, (short) 1, (short) 0);
-    }
-
-    synchronized public void stopADC() throws HardwareInterfaceException {
-        this.sendVendorRequest(VENDOR_REQUEST_RUN_ADC, (short) 0, (short) 0);
-    }
-
-    public boolean isADCEnabled() {
-        return adcEnabled;
-    }
-
-    public void setADCEnabled(boolean yes) throws HardwareInterfaceException {
-        boolean old=this.adcEnabled;
-        this.adcEnabled = yes;
-        cdvshwprefs.putBoolean("cDVSTestHardwareInterface.adcEnabled", yes);
-        getSupport().firePropertyChange(EVENT_ADC_ENABLED, old, this.adcEnabled);
-        if (yes) {
-            startADC();
-        } else {
-            stopADC();
-        }
-    }
 
     @Override
     synchronized public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
@@ -418,10 +126,8 @@ public class SeeBetter1011HardwareInterface extends CypressFX2Biasgen implements
             throw new RuntimeException("device must be opened before sending this vendor request");
         }
         try {
-            stopADC();
             setChipReset(isChipReset());
             chipReset = !isChipReset();
-            startADC();
             this.sendVendorRequest(VENDOR_REQUEST_RESET_TIMESTAMPS);
         } catch (HardwareInterfaceException e) {
             log.warning("could not send vendor request to reset timestamps: " + e);
@@ -622,59 +328,9 @@ public class SeeBetter1011HardwareInterface extends CypressFX2Biasgen implements
         allocateAEBuffers();
 
         getAeReader().startThread(3); // arg is number of errors before giving up
-        startADC();
         HardwareInterfaceException.clearException();
     }
     boolean gotY = false; // TODO  hack for debugging state machine
-
-    /**
-     * @return the TrackTime
-     */
-    public int getTrackTime() {
-        return TrackTime;
-    }
-
-    /**
-     * @return the RefOnTime
-     */
-    public int getRefOnTime() {
-        return RefOnTime;
-    }
-
-    /**
-     * @return the RefOffTime
-     */
-    public int getRefOffTime() {
-        return RefOffTime;
-    }
-
-    /**
-     * @return the IdleTime
-     */
-    public int getIdleTime() {
-        return IdleTime;
-    }
-
-    /**
-     * @return the Select5Tbuffer
-     */
-    public boolean isSelect5Tbuffer() {
-        return Select5Tbuffer;
-    }
-
-    /**
-     * @return the UseCalibration
-     */
-    public boolean isUseCalibration() {
-        return UseCalibration;
-    }
-
-    /**
-     * @return the ADCchannel
-     */
-    public int getADCChannel() {
-        return ADCchannel;
-    }
 
     /**
      * @return the chipReset
