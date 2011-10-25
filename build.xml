@@ -82,8 +82,34 @@
         <copy file="SplashScreen.gif" todir="build/classes"/>
         </target>
     
+    <!--    The exe4j launcher target to build jAERViewer.exe with integrated java 6 splash screen. 
+            http://www.ej-technologies.com/products/exe4j/overview.html
+    -->
+    <target name="exe4j">
+        <echo message="Building exe4j jAERViewer.exe Windows launcher - embedding ico and setting SplashScreen in jAERViewer.exe"/>
+        <taskdef name="exe4j" classname="com.exe4j.Exe4JTask" classpath="../../exe4j/bin/ant.jar"/>
+        <exe4j projectfile="../../jaer.exe4j"/>
+    </target>
+    
+    <target name="winrun4j">
+         <echo message="If running Windows 7, building WinRun4J launcher - embedding jaer.ini in jAERViewer.exe"/>
+        <property name="executable-full-path" location="../../WinRun4J/RCEDIT.exe"/>
+        <exec os="Windows 7" dir="../.." executable="${executable-full-path}">
+            <arg value="/n"/>
+            <arg value="jAERViewer.exe"/>
+            <arg value="WinRun4J/jaer.ini"/>
+        </exec>
+        <echo message="If running Windows 7 - embedding icon jaer.ico in jAERViewer.exe"/>
+        <exec os="Windows 7" dir="../.." executable="${executable-full-path}">
+            <arg value="/a"/>
+            <arg value="jAERViewer.exe"/>
+            <arg value="WinRun4J/jaer.ico"/>
+        </exec>
+    </target>
+    
     <!-- builds the windows executable .exe launcher files -->
-    <target name="-post-jar" >
+<!--     or use winrun4j as depends to build with winrun4j-->
+    <target name="-post-jar" depends="exe4j"> 
         <!-- can use to pack swing layout libs into jar
         <jar update="true" destfile="${dist.jar}">
             <zipfileset src="${libs.swing-layout.classpath}"/>
@@ -98,19 +124,6 @@
         <jsmoothgen project="../../jSmoothExeLauncher/jAERViewer" skeletonroot="../../jSmoothExeLauncher/skeletons" />
         <jsmoothgen project="../../jSmoothExeLauncher/jAERTrayLauncher" skeletonroot="../../jSmoothExeLauncher/skeletons" />-->
 
-        <echo message="If running Windows 7, building WinRun4J launcher - embedding jaer.ini in jAERViewer.exe"/>
-        <property name="executable-full-path" location="../../WinRun4J/RCEDIT.exe"/>
-        <exec os="Windows 7" dir="../.." executable="${executable-full-path}">
-            <arg value="/n"/>
-            <arg value="jAERViewer.exe"/>
-            <arg value="WinRun4J/jaer.ini"/>
-        </exec>
-        <echo message="If running Windows 7 - embedding icon jaer.ico in jAERViewer.exe"/>
-        <exec os="Windows 7" dir="../.." executable="${executable-full-path}">
-            <arg value="/a"/>
-            <arg value="jAERViewer.exe"/>
-            <arg value="WinRun4J/jaer.ico"/>
-        </exec>
     </target>
     
     <!-- builds a zip of all the javadoc -->

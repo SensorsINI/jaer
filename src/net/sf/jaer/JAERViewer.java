@@ -35,6 +35,7 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.prefs.*;
 import javax.swing.*;
+import org.boris.winrun4j.*;
 
 /**
  * Used to show multiple chips simultaneously in separate instances of {@link net.sf.jaer.graphics.AEViewer}, each running
@@ -79,12 +80,13 @@ public class JAERViewer {
         Thread.UncaughtExceptionHandler handler = new LoggingThreadGroup("jAER UncaughtExceptionHandler");
         Thread.setDefaultUncaughtExceptionHandler(handler);
 
-        final SplashScreen splash = SplashScreen.getSplashScreen();
+        final java.awt.SplashScreen splash = java.awt.SplashScreen.getSplashScreen();
         if (splash != null) {
             new SplashHandler(splash);
         } else {
-            log.warning("no splash screen to animate");
+            log.warning("no Java 6 splash screen to animate");
         }
+        
 //        if(true){
 //        throw new RuntimeException("test exception");
 //        }
@@ -222,41 +224,6 @@ public class JAERViewer {
 
     }
 
-    private void splashUpdate() {
-//        try {
-//            if (splash != null) {
-//                Graphics2D g = splash.createGraphics();
-//                if (g == null) {
-//                    log.warning("g is null - no splash screen");
-//                } else {
-//
-//                    for (int i = 0; i < 100; i += 10) {
-//                        if (g == null) {
-//                            break;
-//                        }
-//                        g.setComposite(AlphaComposite.Clear);
-//                        g.fillRect(120, 140, 200, 40);
-//                        g.setPaintMode();
-//                        g.setColor(Color.BLACK);
-//                        g.drawString("Loading " + i + "% ...", 120, 150);
-//                        splash.update();
-//                        log.info("updated splash #" + i);
-//                        try {
-//                            Thread.sleep(2000);
-//                        } catch (InterruptedException e) {
-//                        }
-//                    }
-//
-//                }
-//                splash.close();
-//            } else {
-//                log.warning("no splash screen");
-//            }
-//        } catch (Exception e) {
-//            log.info("aborting splash screen update, probably because appliation started. (Caught " + e.toString() + ")");
-//        }
-    }
-
     private class SplashHandler extends java.util.logging.Handler {
 
         SplashScreen splashScreen;
@@ -264,7 +231,7 @@ public class JAERViewer {
         Logger logger = null;
         int cursor = 0;
 
-        public SplashHandler(SplashScreen splashScreen) {
+        public SplashHandler(java.awt.SplashScreen splashScreen) {
             if (splashScreen == null) {
                 log.warning("null splash screen passed in");
                 return;
