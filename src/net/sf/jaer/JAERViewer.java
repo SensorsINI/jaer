@@ -35,7 +35,6 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.prefs.*;
 import javax.swing.*;
-import org.boris.winrun4j.*;
 
 /**
  * Used to show multiple chips simultaneously in separate instances of {@link net.sf.jaer.graphics.AEViewer}, each running
