@@ -32,7 +32,7 @@ public class AEViewerLoggingHandler extends java.util.logging.Handler implements
     public AEViewerLoggingHandler(final AEViewer v) {
         viewer = v;
 //        statusFormatter = new AEViewerStatusFormatter();
-        consoleFormatter = new SimpleFormatter();
+        consoleFormatter = new AEConsoleFormatter();
         setFormatter(new AEViewerStatusFormatter());
         consoleWindow = new AEViewerConsoleOutputFrame();
         consoleWindow.getSupport().addPropertyChangeListener(this);
