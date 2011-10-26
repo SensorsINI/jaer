@@ -5,6 +5,7 @@ created 26 Oct 2008 for new cDVSTest chip
  */
 package eu.seebetter.ini.chips.seebetter1011;
 
+import ch.unizh.ini.jaer.chip.dvs320.SeeBetter1011_TemporaryDisplayControlPanel;
 import ch.unizh.ini.jaer.chip.retina.*;
 import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
 import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterfaceProxy;
@@ -42,6 +43,7 @@ import net.sf.jaer.biasgen.Pot.Sex;
 import net.sf.jaer.biasgen.Pot.Type;
 import net.sf.jaer.biasgen.VDAC.DAC;
 import net.sf.jaer.biasgen.VDAC.VPotGUIControl;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.util.ParameterControlPanel;
 import net.sf.jaer.util.RemoteControlCommand;
@@ -98,7 +100,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     /** The computed intensity value. */
     private float globalIntensity = 0;
     private CDVSLogIntensityFrameData frameData = new CDVSLogIntensityFrameData();
-    private SeeBettter1011Renderer cDVSRenderer = null;
+    private SeeBetter1011Renderer cDVSRenderer = null;
     private SeeBetter1011DisplayMethod cDVSDisplayMethod = null;
     private boolean displayLogIntensity;
     private boolean displayLogIntensityChangeEvents;
@@ -115,12 +117,12 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
         setEventExtractor(new SeeBetter1011Extractor(this));
 
-        setBiasgen(new SeeBetter1011.Biasgen(this));
+        setBiasgen(new SeeBetter1011.SeeBetterConfig(this));
 
         displayLogIntensity = getPrefs().getBoolean("displayLogIntensity", true);
         displayLogIntensityChangeEvents = getPrefs().getBoolean("displayLogIntensityChangeEvents", true);
 
-        setRenderer((cDVSRenderer = new SeeBettter1011Renderer(this)));
+        setRenderer((cDVSRenderer = new SeeBetter1011Renderer(this)));
 
         cDVSDisplayMethod = new SeeBetter1011DisplayMethod(this);
         getCanvas().addDisplayMethod(cDVSDisplayMethod);
@@ -131,19 +133,36 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
     @Override
     public void onDeregistration() {
-        cDVSDisplayMethod.unregisterControlPanel();
+        unregisterControlPanel();
     }
 
     @Override
     public void onRegistration() {
-        cDVSDisplayMethod.registerControlPanel();
+        registerControlPanel();
+    }
+    
+    SeeBetter1011DisplayControlPanel controlPanel = null;
+
+    public void registerControlPanel() {
+        try {
+            AEViewer viewer = getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
+            JPanel imagePanel = viewer.getImagePanel();
+            imagePanel.add((controlPanel = new SeeBetter1011DisplayControlPanel(this)), BorderLayout.SOUTH);
+            imagePanel.revalidate();
+        } catch (Exception e) {
+            log.warning("could not register control panel: " + e);
+        }
     }
 
-    /** Cleans up on renewal of chip. */
-    @Override
-    public void cleanup() {
-        super.cleanup();
-        cDVSDisplayMethod.unregisterControlPanel();
+    void unregisterControlPanel() {
+        try {
+            AEViewer viewer = getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
+            JPanel imagePanel = viewer.getImagePanel();
+            imagePanel.remove(controlPanel);
+            imagePanel.revalidate();
+        } catch (Exception e) {
+            log.warning("could not unregister control panel: " + e);
+        }
     }
 
     /** Creates a new instance of cDVSTest10
@@ -324,10 +343,10 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     @Override
     public void setHardwareInterface(final HardwareInterface hardwareInterface) {
         this.hardwareInterface = hardwareInterface;
-        SeeBetter1011.Biasgen bg;
+        SeeBetter1011.SeeBetterConfig bg;
         try {
             if (getBiasgen() == null) {
-                setBiasgen(bg = new SeeBetter1011.Biasgen(this));
+                setBiasgen(bg = new SeeBetter1011.SeeBetterConfig(this));
                 // now we can addConfigValue the control panel
 
             } else {
@@ -365,7 +384,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
      *
      * @author tobi
      */
-    public class Biasgen extends SeeBetterChipConfig {
+    public class SeeBetterConfig extends SeeBetterChipConfig {
 
         private final short ADC_CONFIG = (short) 0x100;   //normal power mode, single ended, sequencer unused : (short) 0x908;
         ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
@@ -401,10 +420,10 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         boolean dacPowered = getPrefs().getBoolean("Biasgen.DAC.powered", true);
         private CypressFX2 cypress = null;
 
-        /** Creates a new instance of Biasgen for cDVSTest with a given hardware interface
+        /** Creates a new instance of SeeBetterConfig for cDVSTest with a given hardware interface
          *@param chip the chip this biasgen belongs to
          */
-        public Biasgen(Chip chip) {
+        public SeeBetterConfig(Chip chip) {
             super(chip);
             setName("SeeBetter1011Biasgen");
 
@@ -552,7 +571,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
                 String tip = t.nextToken();
 
-                /*     public ConfigurableIPot32(Biasgen biasgen, String name, int shiftRegisterNumber,
+                /*     public ConfigurableIPot32(SeeBetterConfig biasgen, String name, int shiftRegisterNumber,
                 Type type, Sex sex, boolean lowCurrentModeEnabled, boolean enabled,
                 int bitValue, int bufferBitValue, int displayPosition, String tooltipString) {
                  */
@@ -565,58 +584,23 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             }
         }
 
-        /**
-         * Formats bits represented in a string as '0' or '1' as a byte array to be sent over the interface to the firmware, for loading
-         * in big endian bit order, in order of the bytes sent.
-         * <p>
-         * Because the firmware writes integral bytes are always an integral number of bytes returned it is important that the 
-         * bytes sent to the device are padded with leading bits 
-         * (at msbs of first byte) that are finally shifted out of the on-chip shift register.
-         * 
-         * Therefore <code>bitString2Bytes</code> should only be called ONCE, after the complete bit string has been assembled, unless it is known
-         * the other bits are an integral number of bytes.
-         * 
-         * @param bitString in msb to lsb order from left end, where msb will be in msb of first output byte
-         * @return array of bytes to send
-         */
-        protected byte[] bitString2Bytes(String bitString) {
-            int nBits = bitString.length();
-            // compute needed number of bytes
-            int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 4->1, 8->1, 9->2
-            byte[] byteArray = new byte[nbytes];
-            int bit = 0;
-            for (int bite = 0; bite < nbytes; bite++) { // for each byte
-                for (int i = 0; i < 8; i++) { // iterate over each bit of this byte
-                    byteArray[bite] = (byte) ((0xff&byteArray[bite]) << 1); // first left shift previous value, with 0xff to avoid sign extension
-                    if (bit < nBits && bitString.charAt(bit) == '1') { // if there is a 1 at this position of string (starting from left side) 
-                        // this conditional and loop structure ensures we count in bytes and that we left shift for each bit position in the byte, padding on the right with 0's
-                        byteArray[bite] |= 1; // put a 1 at the lsb of the byte
-                    }
-                    bit++; // go to next bit of string to the right
-
-                }
-            }
-            return byteArray;
-        }
-        
-        
         /** Vendor request command understood by the cochleaAMS1c firmware in connection with  VENDOR_REQUEST_SEND_BIAS_BYTES */
-        public final short CMD_IPOT = 1, CMD_RESET_EQUALIZER = 2,
-                CMD_SCANNER = 3, CMD_EQUALIZER = 4,
-                CMD_SETBIT = 5, CMD_VDAC = 6, CMD_INITDAC = 7,
+        public final short CMD_IPOT = 1,
+                CMD_SCANNER = 3,
+                CMD_SETBIT = 5,
                 CMD_CPLD_CONFIG = 8;
-        public final String[] CMD_NAMES = {"IPOT", "RESET_EQUALIZER", "SCANNER", "EQUALIZER", "SET_BIT", "VDAC", "INITDAC", "CPLD_CONFIG"};
+        public final String[] CMD_NAMES = {"IPOT",  "SCANNER",  "SET_BIT", "CPLD_CONFIG"};
         final byte[] emptyByteArray = new byte[0];
 
-        /** The central point for communication with HW from biasgen. All objects in Biasgen are Observables
-        and addConfigValue Biasgen.this as Observer. They then call notifyObservers when their state changes.
+        /** The central point for communication with HW from biasgen. All objects in SeeBetterConfig are Observables
+        and addConfigValue SeeBetterConfig.this as Observer. They then call notifyObservers when their state changes.
          * Objects such as adcProxy store preferences for ADC, and update should update the hardware registers accordingly.
          * @param observable IPot, Scanner, etc
          * @param object notifyChange used at present
          */
         @Override
         synchronized public void update(Observable observable, Object object) {  // thread safe to ensure gui cannot retrigger this while it is sending something
-//            if (!(observable instanceof CochleaAMS1c.Biasgen.Equalizer.EqualizerChannel)) {
+//            if (!(observable instanceof CochleaAMS1c.SeeBetterConfig.Equalizer.EqualizerChannel)) {
 //                log.info("Observable=" + observable + " Object=" + object);
 //            }
 //            if (cypress == null) { // TODO only really for debugging do we need to do even if no hardware
@@ -639,13 +623,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                         ind += b.length;
                     }
                     sendConfig(CMD_IPOT, 0, bytes); // the usual packing of ipots
-                } else if (observable instanceof VPot) {
-                    // There are 2 16-bit AD5391 DACs daisy chained; we need to send data for both 
-                    // to change one of them. We can send all zero bytes to the one we're notifyChange changing and it will notifyChange affect any channel
-                    // on that DAC. We also take responsibility to formatting all the bytes here so that they can just be piped out
-                    // surrounded by nSync low during the 48 bit write on the controller.
-                    VPot p = (VPot) observable;
-                    sendDAC(p);
+
                 } else if (observable instanceof TriStateablePortBit) { // tristateable should come first before configbit since it is subclass
                     TriStateablePortBit b = (TriStateablePortBit) observable;
                     byte[] bytes = {(byte) ((b.isSet() ? (byte) 1 : (byte) 0) | (b.isHiZ() ? (byte) 2 : (byte) 0))};
@@ -675,7 +653,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     runAdc.setChanged();
                     runAdc.notifyObservers();
                 } else {
-                    super.update(observable, object);  // super (Biasgen) handles others, e.g. masterbias
+                    super.update(observable, object);  // super (SeeBetterConfig) handles others, e.g. masterbias
                 }
             } catch (HardwareInterfaceException e) {
                 log.warning("On update() caught " + e.toString());
@@ -767,79 +745,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             }
         }
 
-        // sends VR to init DAC
-        public void initDAC() throws HardwareInterfaceException {
-            sendConfig(CMD_INITDAC, 0);
-        }
 
-        void sendDAC(VPot pot) throws HardwareInterfaceException {
-            int chan = pot.getChannel();
-            int value = pot.getBitValue();
-            byte[] b = new byte[6]; // 2*24=48 bits
-// original firmware code
-//            unsigned char dat1 = 0x00; //00 00 0000;
-//            unsigned char dat2 = 0xC0; //Reg1=1 Reg0=1 : Write output data
-//            unsigned char dat3 = 0x00;
-//
-//            dat1 |= (address & 0x0F);
-//            dat2 |= ((msb & 0x0F) << 2) | ((lsb & 0xC0)>>6) ;
-//            dat3 |= (lsb << 2) | 0x03; // DEBUG; the last 2 bits are actually don't care
-            byte msb = (byte) (0xff & ((0xf00 & value) >> 8));
-            byte lsb = (byte) (0xff & value);
-            byte dat1 = 0;
-            byte dat2 = (byte) 0xC0;
-            byte dat3 = 0;
-            dat1 |= (0xff & ((chan % 16) & 0xf));
-            dat2 |= ((msb & 0xf) << 2) | ((0xff & (lsb & 0xc0) >> 6));
-            dat3 |= (0xff & ((lsb << 2)));
-            if (chan < 16) { // these are first VPots in list; they need to be loaded first to isSet to the second DAC in the daisy chain
-                b[0] = dat1;
-                b[1] = dat2;
-                b[2] = dat3;
-                b[3] = 0;
-                b[4] = 0;
-                b[5] = 0;
-            } else { // second DAC VPots, loaded second to end up at start of daisy chain shift register
-                b[0] = 0;
-                b[1] = 0;
-                b[2] = 0;
-                b[3] = dat1;
-                b[4] = dat2;
-                b[5] = dat3;
-            }
-//            System.out.print(String.format("value=%-6d channel=%-6d ",value,chan));
-//            for(byte bi:b) System.out.print(String.format("%2h ", bi&0xff));
-//            System.out.println();
-            sendConfig(CMD_VDAC, 0, b); // value=CMD_VDAC, index=0, bytes as above
-        }
-
-        /** Sets the VDACs on the board to be powered or high impedance output. This is a global operation.
-         * 
-         * @param yes true to power up DACs
-         * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
-         */
-        public void setDACPowered(boolean yes) throws HardwareInterfaceException {
-            putPref("Biasgen.DAC.powered", yes);
-            byte[] b = new byte[6];
-            Arrays.fill(b, (byte) 0);
-            final byte up = (byte) 9, down = (byte) 8;
-            if (yes) {
-                b[0] = up;
-                b[3] = up; // sends 09 00 00 to each DAC which is soft powerup
-            } else {
-                b[0] = down;
-                b[3] = down;
-            }
-            sendConfig(CMD_VDAC, 0, b);
-        }
-
-        /** Returns the DAC powered state
-         * 
-         * @return true if powered up
-         */
-        public boolean isDACPowered() {
-            return dacPowered;
-        }
 
         /**
          *
@@ -890,34 +796,47 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
          * Bytes are loaded starting with the first byte from formatConfigurationBytes (element 0). Therefore the last bit in the on-chip shift register (the one
          * that is furthest away from the bit input pin) should be in the msb of the first byte returned by formatConfigurationBytes.
          * @return byte array to be sent, which will be loaded into the chip starting with element 0 msb.
-         * @param biasgen this Biasgen
+         * @param biasgen this SeeBetterConfig
          */
-        @Override
-        public byte[] formatConfigurationBytes(net.sf.jaer.biasgen.Biasgen biasgen) {
+        @Override 
+        public byte[] formatConfigurationBytes(Biasgen biasgen) {
             ByteBuffer bb = ByteBuffer.allocate(1000);
+
+            // must return integral number of bytes and on-chip biasgen must be integral number of bytes, by method contract
             byte[] biasBytes = super.formatConfigurationBytes(biasgen);
-            byte[] configBytes = allMuxes.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
-            bb.put(configBytes);
+
+
+            String configBitsBits = configBits.getBitString();
+            String muxBitsBits = allMuxes.getBitString(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
+
+            byte[] muxAndConfigBytes = bitString2Bytes((configBitsBits + muxBitsBits)); // returns bytes padded at end
+
+            bb.put(muxAndConfigBytes); // loaded first to go to far end of shift register
 
             // 256 value (8 bit) VDAC for amplifier reference
             byte vdac = (byte) thermometerDAC.getBitValue(); //Byte.valueOf("9");
             bb.put(vdac);   // VDAC needs 8 bits
             bb.put(biasBytes);
 
+            // the 4 shifted sources, each 2 bytes
             for (ShiftedSourceBias ss : ssBiases) {
                 bb.put(ss.getBinaryRepresentation());
             }
 
-            byte[] configBitBytes = configBits.formatConfigurationBytes(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
-            bb.put(configBitBytes);
-
-
+            // make buffer for all output bytes
             byte[] allBytes = new byte[bb.position()];
-            bb.flip();
-            bb.get(allBytes);
+            bb.flip(); // flips to read them out in order of putting them in, i.e., get configBitBytes first
+            bb.get(allBytes); // we write these in vendor request
 
+            StringBuilder sb = new StringBuilder("bytes sent to FX2 to be loaded big endian for each byte in order \n");
+            for (byte b : allBytes) {
+                sb.append(String.format("%02x ", b));
+            }
+            log.info(sb.toString());
             return allBytes; // configBytes may be padded with extra bits to make up a byte, board needs to know this to chop off these bits
         }
+        
+        
         /** the change in current from an increase* or decrease* call */
         public final float RATIO = 1.05f;
         /** the minimum on/diff or diff/off current allowed by decreaseThreshold */
@@ -1021,39 +940,39 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
             @Override
             public int getScanX() {
-                return Biasgen.this.scanX.get();
+                return SeeBetterConfig.this.scanX.get();
             }
 
             @Override
             public boolean isScanContinuouslyEnabled() {
-                return Biasgen.this.scanContinuouslyEnabled.isSet();
+                return SeeBetterConfig.this.scanContinuouslyEnabled.isSet();
             }
 
             @Override
             public void setScanContinuouslyEnabled(boolean scanContinuouslyEnabled) {
                 super.setScanContinuouslyEnabled(scanContinuouslyEnabled);
-                Biasgen.this.scanContinuouslyEnabled.set(scanContinuouslyEnabled);
+                SeeBetterConfig.this.scanContinuouslyEnabled.set(scanContinuouslyEnabled);
             }
 
             @Override
             public void setScanX(int scanX) {
                 super.setScanX(scanX);
-                Biasgen.this.scanX.set(scanX);
+                SeeBetterConfig.this.scanX.set(scanX);
             }
 
             @Override
             public void preferenceChange(PreferenceChangeEvent e) {
-//                if (e.getKey().equals("CochleaAMS1c.Biasgen.Scanner.currentStage")) {
+//                if (e.getKey().equals("CochleaAMS1c.SeeBetterConfig.Scanner.currentStage")) {
 //                    setCurrentStage(Integer.parseInt(e.getNewValue()));
-//                } else if (e.getKey().equals("CochleaAMS1c.Biasgen.Scanner.currentStage")) {
+//                } else if (e.getKey().equals("CochleaAMS1c.SeeBetterConfig.Scanner.currentStage")) {
 //                    setContinuousScanningEnabled(Boolean.parseBoolean(e.getNewValue()));
 //                }
             }
 
             @Override
             public void loadPreference() {
-                setScanX(Biasgen.this.scanX.get());
-                setScanContinuouslyEnabled(Biasgen.this.scanContinuouslyEnabled.isSet());
+                setScanX(SeeBetterConfig.this.scanX.get());
+                setScanContinuouslyEnabled(SeeBetterConfig.this.scanContinuouslyEnabled.isSet());
             }
 
             @Override
@@ -1067,12 +986,50 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
             @Override
             public void update(Observable o, Object arg) {
-                if (o == Biasgen.this.scanContinuouslyEnabled) {
-                    setScanContinuouslyEnabled(Biasgen.this.scanContinuouslyEnabled.isSet());
-                } else if (o == Biasgen.this.scanX) {
-                    setScanX(Biasgen.this.scanX.get());
+                if (o == SeeBetterConfig.this.scanContinuouslyEnabled) {
+                    setScanContinuouslyEnabled(SeeBetterConfig.this.scanContinuouslyEnabled.isSet());
+                } else if (o == SeeBetterConfig.this.scanX) {
+                    setScanX(SeeBetterConfig.this.scanX.get());
                 }
             }
+        }
+
+       /**
+         * Formats bits represented in a string as '0' or '1' as a byte array to be sent over the interface to the firmware, for loading
+         * in big endian bit order, in order of the bytes sent starting with byte 0.
+         * <p>
+         * Because the firmware writes integral bytes it is important that the 
+         * bytes sent to the device are padded with leading bits 
+         * (at msbs of first byte) that are finally shifted out of the on-chip shift register.
+         * 
+         * Therefore <code>bitString2Bytes</code> should only be called ONCE, after the complete bit string has been assembled, unless it is known
+         * the other bits are an integral number of bytes.
+         * 
+         * @param bitString in msb to lsb order from left end, where msb will be in msb of first output byte
+         * @return array of bytes to send
+         */
+        protected byte[] bitString2Bytes(String bitString) {
+            int nbits = bitString.length();
+            // compute needed number of bytes
+            int nbytes = (nbits % 8 == 0) ? (nbits / 8) : (nbits / 8 + 1); // 4->1, 8->1, 9->2
+            // for simplicity of following, left pad with 0's right away to get integral byte string
+            int npad=nbytes*8-nbits;
+            String pad=new String(new char[npad]).replace("\0", "0"); // http://stackoverflow.com/questions/1235179/simple-way-to-repeat-a-string-in-java
+            bitString=pad+bitString;
+            byte[] byteArray = new byte[nbytes];
+            int bit = 0;
+            for (int bite = 0; bite < nbytes; bite++) { // for each byte
+                for (int i = 0; i < 8; i++) { // iterate over each bit of this byte
+                    byteArray[bite] = (byte) ((0xff & byteArray[bite]) << 1); // first left shift previous value, with 0xff to avoid sign extension
+                    if (bitString.charAt(bit) == '1') { // if there is a 1 at this position of string (starting from left side) 
+                        // this conditional and loop structure ensures we count in bytes and that we left shift for each bit position in the byte, padding on the right with 0's
+                        byteArray[bite] |= 1; // put a 1 at the lsb of the byte
+                    }
+                    bit++; // go to next bit of string to the right
+
+                }
+            }
+            return byteArray;
         }
 
         /** Bits on the on-chip shift register but not an output mux control, added to end of shift register. Control
@@ -1133,7 +1090,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 void selectWithoutNotify(boolean v) {
                     value = v;
                     try {
-                        sendConfiguration(SeeBetter1011.Biasgen.this);
+                        sendConfiguration(SeeBetter1011.SeeBetterConfig.this);
                     } catch (HardwareInterfaceException ex) {
                         log.warning("selecting output: " + ex);
                     }
@@ -1168,43 +1125,29 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     b.storePreference();
                 }
             }
-
             /** Returns the bit string to send to the firmware to load a bit sequence for the config bits in the shift register.
              * 
-             * Bytes sent to FX2 are loaded big endian into shift register (msb first) and here returned string has msb at left-most position, i.e. left end of string.
-             * @return string of 0 and 1 with first element of configBits at left hand end, and ending with padded 0s.
+             * Bytes sent to FX2 are loaded big endian into shift register (msb first). 
+             * Here returned string has named config bits at right end and unused bits at left end. Right most character is pullupX.
+             * Think of the entire on-chip shift register laid out from right to left with input at right end and extra config bits at left end.
+             * Bits are loaded in order of bit string here starting from left end (the unused registers)
+             * 
+             * @return string of 0 and 1 with first element of configBits at right hand end, and starting with padding bits to fill unused registers.
              */
             String getBitString() {
                 StringBuilder s = new StringBuilder();
                 // iterate over list
-                for (int i = 0; i < configBits.length; i++) {
-                    s.append(configBits[i].value ? "1" : "0");
-                }
                 for (int i = 0; i < TOTAL_NUM_BITS - configBits.length; i++) {
                     s.append("1"); // loaded first into unused parts of final shift register
                 }
-                log.info(s.length() + " configBits=" + s);
+                for (int i = configBits.length-1; i >=0; i--) {
+                    s.append(configBits[i].value ? "1" : "0");
+                }
+                log.info(s.length() + " extra config bits with unused registers at left end =" + s);
                 return s.toString();
             }
 
-            byte[] formatConfigurationBytes() {
-                String s = getBitString(); // in msb to lsb order from left end
-                int nBits = s.length();
-                int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 8->1, 9->2
-                byte[] byteArray = new byte[nbytes];
-                int bit = 0;
-                for (int bite = 0; bite < nbytes; bite++) {
-                    for (int i = 0; i < 8; i++) {
-                        if (s.charAt(bit) == '1') {
-                            byteArray[bite] |= 1;
-                        }
-                       byteArray[bite] = (byte) ((0xff&byteArray[bite]) << 1); // then left shift the byte, and with 0xff to avoid sign extension
-                      bit++;
-                    }
-                }
-                return byteArray;
-            }
-
+ 
             JPanel makeControlPanel() {
                 JPanel pan = new JPanel();
                 pan.setLayout(new BoxLayout(pan, BoxLayout.Y_AXIS));
@@ -1255,7 +1198,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             void selectWithoutNotify(int i) {
                 selectedChannel = i;
                 try {
-                    sendConfiguration(SeeBetter1011.Biasgen.this);
+                    sendConfiguration(SeeBetter1011.SeeBetterConfig.this);
                 } catch (HardwareInterfaceException ex) {
                     log.warning("selecting output: " + ex);
                 }
@@ -1412,27 +1355,17 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             OutputMux[] vmuxes = {new VoltageOutputMux(1), new VoltageOutputMux(2), new VoltageOutputMux(3), new VoltageOutputMux(4)};
             OutputMux[] dmuxes = {new LogicMux(1), new LogicMux(2), new LogicMux(3), new LogicMux(4), new LogicMux(5)};
 
-            byte[] formatConfigurationBytes() {
+            String getBitString() {
                 int nBits = 0;
                 StringBuilder s = new StringBuilder();
                 for (OutputMux m : this) {
                     s.append(m.getBitString());
                     nBits += m.nSrBits;
                 }
-                BigInteger bi = new BigInteger(s.toString(), 2);
-                byte[] byteArray = bi.toByteArray(); // finds minimal set of bytes in big endian format, with MSB as first element
-                // we need to pad out to nbits worth of bytes
-                int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 8->1, 9->2
-                byte[] bytes = new byte[nbytes];
-                System.arraycopy(byteArray, 0, bytes, nbytes - byteArray.length, byteArray.length);
-                //System.out.println(String.format("%d bytes holding %d actual bits", bytes.length, nBits));
-//                for (int i=0;i<nbytes;i++)
-//                {
-//                  System.out.println("byte " + i + " : " + Integer.toHexString(bytes[i]));
-//                }
-                return bytes;
-            }
 
+                return s.toString();
+            }
+ 
             AllMuxes() {
 
                 addAll(Arrays.asList(dmuxes)); // 5 logic muxes, first in list since at end of chain - bits must be sent first, before any biasgen bits

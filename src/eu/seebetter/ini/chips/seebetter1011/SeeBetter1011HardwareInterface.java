@@ -21,7 +21,7 @@ import java.math.BigInteger;
 import java.util.prefs.Preferences;
 
 /**
- * Adds functionality of cDVSTest retina test chips to base classes for Cypress FX2 interface.
+ * Adds functionality of SeeBetter10/11 retina test chips to base classes for Cypress FX2 interface.
  *
  * @author tobi
  */
@@ -35,13 +35,7 @@ public class SeeBetter1011HardwareInterface extends CypressFX2Biasgen {
         super(devNumber);
     }
 
-    @Override
-    public void open() throws HardwareInterfaceException {
-        super.open();
-    }
-
-
-    /** Overrides sendConfiguration to use this bias generator to format the data
+     /** Overrides sendConfiguration to use this bias generator to format the data
      * 
      * @param biasgen the DVS320 biasgen which knows how to format the bias and bit configuration.
      * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException

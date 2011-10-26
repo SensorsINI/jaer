@@ -20,7 +20,7 @@ public abstract class AbstractConfigValue extends Observable implements Preferen
     protected String name;
     protected String tip;
     protected String key = "AbstractConfigValue";
-    SeeBetter1011.Biasgen outer;
+    SeeBetter1011.SeeBetterConfig outer;
     protected Preferences prefs;
     protected Chip chip;
 

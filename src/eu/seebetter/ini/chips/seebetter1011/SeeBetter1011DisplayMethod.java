@@ -13,7 +13,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.graphics.AEViewer;
 
 /**
- * Displays data from CDVS chips.
+ * Displays data from SeeBetter test chip SeeBetter10/11.
  * @author Tobi
  */
 public class SeeBetter1011DisplayMethod extends DVSWithIntensityDisplayMethod {

@@ -27,11 +27,11 @@ public class SeeBetter1011OutputControlPanel extends javax.swing.JPanel {
     static Logger log = Logger.getLogger("cDVSTest30ControlPanel");
     class OutputSelectionAction extends AbstractAction implements Observer {
 
-        SeeBetter1011.Biasgen.OutputMux mux;
+        SeeBetter1011.SeeBetterConfig.OutputMux mux;
         int channel;
         JRadioButton button;
 
-        OutputSelectionAction(SeeBetter1011.Biasgen.OutputMux m, int i) {
+        OutputSelectionAction(SeeBetter1011.SeeBetterConfig.OutputMux m, int i) {
             super(m.getChannelName(i));
             mux = m;
             channel = i;
@@ -69,9 +69,9 @@ public class SeeBetter1011OutputControlPanel extends javax.swing.JPanel {
             return;
         }
         panelBuilt = true;
-        SeeBetter1011.Biasgen biasgen = (SeeBetter1011.Biasgen) chip.getBiasgen();
-        SeeBetter1011.Biasgen.AllMuxes muxes = biasgen.allMuxes;
-        for (SeeBetter1011.Biasgen.OutputMux m : muxes) {
+        SeeBetter1011.SeeBetterConfig biasgen = (SeeBetter1011.SeeBetterConfig) chip.getBiasgen();
+        SeeBetter1011.SeeBetterConfig.AllMuxes muxes = biasgen.allMuxes;
+        for (SeeBetter1011.SeeBetterConfig.OutputMux m : muxes) {
             JPanel p = new JPanel();
             p.setAlignmentY(0);
             p.setBorder(new TitledBorder(m.getName()));
