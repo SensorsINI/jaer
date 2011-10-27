@@ -305,6 +305,11 @@ public class Chip2DRenderer implements Observer {
     public int getSelectedPixelEventCount() {
         return selectedPixelEventCount;
     }
+    
+    /** Sets the selected pixel event count to zero. */
+    protected void resetSelectedPixelEventCount(){
+        selectedPixelEventCount=0;
+    }
 
     public void update(Observable o, Object arg) {
         if (o instanceof Chip2D) {

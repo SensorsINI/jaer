@@ -38,7 +38,7 @@ public class VariableThresholdRenderer extends RetinaRenderer {
         checkPixmapAllocation();
         float[] f = getPixmapArray();
         float a;
-        selectedPixelEventCount = 0; // init it for this packet
+        resetSelectedPixelEventCount();
         try {
             if (!accumulateEnabled) {
                 resetFrame(.5f); // also sets grayValue

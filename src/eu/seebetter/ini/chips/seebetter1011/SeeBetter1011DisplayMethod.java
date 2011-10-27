@@ -20,7 +20,6 @@ public class SeeBetter1011DisplayMethod extends DVSWithIntensityDisplayMethod {
 
     private SeeBetter1011 cDVSChip = null;
     boolean registeredControlPanel = false;
-    private SeeBetter1011OutputControlPanel controlPanel = null;
 
     public SeeBetter1011DisplayMethod(SeeBetter1011 chip) {
         super(chip.getCanvas());
@@ -56,29 +55,7 @@ public class SeeBetter1011DisplayMethod extends DVSWithIntensityDisplayMethod {
         gl.glEnd();
     }
 
-    public void registerControlPanel() {
-        try {
-            AEChip chip = (AEChip) getChipCanvas().getChip();
-            AEViewer viewer = chip.getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
-            JPanel imagePanel = viewer.getImagePanel();
-            imagePanel.add((controlPanel = new SeeBetter1011OutputControlPanel(cDVSChip)), BorderLayout.SOUTH);
-            registeredControlPanel = true;
-        } catch (Exception e) {
-            log.warning("could not register control panel: " + e);
-        }
-    }
-
-    void unregisterControlPanel() {
-        try {
-            AEChip chip = (AEChip) getChipCanvas().getChip();
-            AEViewer viewer = chip.getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
-            JPanel imagePanel = viewer.getImagePanel();
-            imagePanel.remove(controlPanel);
-            registeredControlPanel = false;
-        } catch (Exception e) {
-            log.warning("could not unregister control panel: " + e);
-        }
-    }
+ 
 
     public void setDisplayLogIntensityChangeEvents(boolean displayLogIntensityChangeEvents) {
         cDVSChip.setDisplayLogIntensityChangeEvents(displayLogIntensityChangeEvents);

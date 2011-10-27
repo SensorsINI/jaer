@@ -17,16 +17,11 @@ import java.io.StringWriter;
 import java.util.logging.*;
 
 /**
- * Defines logging format for status messages in jAER.
+ * A super short logging formatter intended for status fields.
  * @author tobi
  */
 public class AEViewerStatusFormatter extends Formatter{
     
-    // Line separator string.  This is the value of the line.separator
-    // property at the moment that the SimpleFormatter was created.
-    private String lineSeparator = (String) java.security.AccessController.doPrivileged(
-               new sun.security.action.GetPropertyAction("line.separator"));
-
     /**
      * Format the given LogRecord.
      * @param record the log record to be formatted.

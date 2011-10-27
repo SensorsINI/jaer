@@ -171,7 +171,7 @@ public class AEChipRenderer extends Chip2DRenderer {
         checkPixmapAllocation();
         float[] f = getPixmapArray();
         float a;
-        selectedPixelEventCount = 0; // init it for this packet
+        resetSelectedPixelEventCount(); // init it for this packet
         boolean ignorePolarity = isIgnorePolarityEnabled();
         try {
             if (packet.getNumCellTypes() > 2) {
@@ -543,13 +543,24 @@ public class AEChipRenderer extends Chip2DRenderer {
     public boolean isSubsamplingEnabled() {
         return subsamplingEnabled;
     }
+    
+    /** Plays a single spike click and increments the selectedPixelEventCount counter 
+     * 
+     * @param type 0 to play left, 1 to play right
+     */
     protected void playSpike(int type) {
         spikeSound.play(type);
         selectedPixelEventCount++;
     }
+    
+    /** Sets whether to ignore event polarity when rendering so that all event types increase brightness
+     * 
+     * @param ignorePolarityEnabled true to ignore
+     */
     public void setIgnorePolarityEnabled(boolean ignorePolarityEnabled) {
         this.ignorePolarityEnabled = ignorePolarityEnabled;
     }
+    
     /**@param colorMode the rendering method, e.g. gray, red/green opponency, time encoded.
      */
     public synchronized void setColorMode(ColorMode colorMode) {

@@ -186,8 +186,10 @@ public class IPot extends Pot implements Cloneable, Observer, RemoteControlled {
      */
     public void update(Observable observable, Object obj) {
         if(observable instanceof Masterbias){
-            setChanged();
-            notifyObservers();
+            if(obj!=Masterbias.EVENT_POWERDOWN){ // only inform listening pots to update their GUI when needed
+                setChanged();
+                notifyObservers();
+            }
         }
     }
     

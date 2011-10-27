@@ -302,34 +302,35 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         }
     }
 
-    /** called when observable (masterbias) calls notifyObservers. 
+    /** Handles observable (e.g. masterbias, IPots) call setChanged() and notifyObservers(). 
     Sets the powerDown state. 
-    If there is not a batch edit occuring, opens device if not open and calls sendConfiguration.
+    If there is not a batch edit occurring, opens device if not open and calls sendConfiguration.
      */
     public void update(Observable observable, Object object) {
 //        if(observable!=masterbias) {
 //            log.warning("Biasgen.update(): unknown observable "+observable);
 //            return;
 //        }
-        if (object != null && object.equals("powerDownEnabled")) {
+        if ( (observable instanceof Masterbias) && object != null && object==Masterbias.EVENT_POWERDOWN) {
 //            log.info("Biasgen.update(): setting powerdown");
             try {
                 if (!isBatchEditOccurring()) {
                     if (!isOpen()) {
                         open();
                     }
-                    hardwareInterface.setPowerDown(masterbias.isPowerDownEnabled());
+                    if(hardwareInterface!=null) hardwareInterface.setPowerDown(masterbias.isPowerDownEnabled());
                 }
             } catch (HardwareInterfaceException e) {
                 log.warning("error setting powerDown: " + e);
             }
-        } else {
+        }
+        else {
             try {
                 if (!isBatchEditOccurring()) {
                     if (!isOpen()) {
                         open();
                     }
-                    hardwareInterface.sendConfiguration(this);
+                    if(hardwareInterface!=null) hardwareInterface.sendConfiguration(this);
                 }
             } catch (HardwareInterfaceException e) {
                 log.warning("error sending pot values: " + e);
@@ -374,17 +375,25 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         }
     }
 
+    /** Returns number of pots in the IPotArray.
+     * 
+     * @return number of Pot instances
+     * @see #getPotArray() 
+     */
     public int getNumPots() {
         return getPotArray().getNumPots();
     }
 
+    /** Closes the HardwareInterface
+     * 
+     */
     public void close() {
         if (hardwareInterface != null) {
             hardwareInterface.close();
         }
     }
 
-    /** flashes the the ipot values onto the hardware interface.
+    /** flashes the the IPot values onto the hardware interface.
      *@param biasgen the bias generator object.
      * This parameter is necessary because the same method is used in the hardware interface,
      * which doesn't know about the particular bias generator instance.
@@ -399,7 +408,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         }
     }
 
-    /** opens the first available hardware interface found */
+    /** oOpens the first available hardware interface found */
     public void open() throws HardwareInterfaceException {
         // tobi removed automatic open of any available interface for biasgen since the addition of the UDPInteface hardware interface,
         // which would open this interface and throw an exception.
@@ -419,7 +428,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         hardwareInterface.open();
     }
 
-    /** sends the ipot values over the hardware interface if there is not a batch edit occuring.
+    /** Sends the IPot values over the hardware interface if there is not a batch edit occuring.
      *@param biasgen the bias generator object.
      * This parameter is necessary because the same method is used in the hardware interface,
      * which doesn't know about the particular bias generator instance.
@@ -437,7 +446,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         }
     }
 
-    /** This method formats and returns a byte array of configuration information (e.g. biases, scanner or diagnostic bits) that
+    /** Formats and returns a byte array of configuration information (e.g. biases, scanner or diagnostic bits) that
      * can be sent over the hardware interface using {@link #sendConfiguration}. This method delegates the task of formatting these
      * bytes to the Biasgen object rather than the more generic HardwareInterface. 
      * <p>

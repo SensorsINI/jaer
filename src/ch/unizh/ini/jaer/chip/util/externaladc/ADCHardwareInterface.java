@@ -39,7 +39,7 @@ public interface ADCHardwareInterface {
 
     public boolean isADCEnabled();
 
-    public void setADCEnabled(boolean yes) throws HardwareInterfaceException;
+    public void setADCEnabled(boolean yes) throws HardwareInterfaceException ;
 
     public void setADCChannel(int chan);
 
@@ -50,7 +50,11 @@ public interface ADCHardwareInterface {
 
     public void startADC() throws HardwareInterfaceException;
 
-    public void stopADC() throws HardwareInterfaceException;
+    public void stopADC()  throws HardwareInterfaceException;
 
-    public void sendADCConfiguration() throws HardwareInterfaceException;
+    public void sendADCConfiguration() throws HardwareInterfaceException ;
+    
+//    public boolean isSequencingEnabled(); // not in general used
+//    
+//    public void setSequencingEnabled(boolean yes);
 }

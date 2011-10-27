@@ -388,7 +388,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen implements  cDV
     }
 
     synchronized private void setChipReset(final boolean reset) throws HardwareInterfaceException {
-
+        this.chipReset=reset;
         if (gUsbIo == null) {
             throw new RuntimeException("device must be opened before sending this vendor request");
         }
@@ -424,8 +424,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen implements  cDV
         try {
             boolean adc=isADCEnabled();
             stopADC();
-            setChipReset(isChipReset());
-            chipReset = !isChipReset();
+            setChipReset(!chipReset);
             if (adc) {
                     startADC();
             }

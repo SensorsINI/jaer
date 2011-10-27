@@ -6,9 +6,6 @@
  */
 package eu.seebetter.ini.chips.seebetter1011;
 
-import ch.unizh.ini.jaer.chip.dvs320.cDVSTestADCHardwareInterface;
-import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterface;
-import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
@@ -17,8 +14,6 @@ import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
 import javax.swing.ProgressMonitor;
 import java.io.*;
-import java.math.BigInteger;
-import java.util.prefs.Preferences;
 
 /**
  * Adds functionality of SeeBetter10/11 retina test chips to base classes for Cypress FX2 interface.
@@ -35,99 +30,20 @@ public class SeeBetter1011HardwareInterface extends CypressFX2Biasgen {
         super(devNumber);
     }
 
-     /** Overrides sendConfiguration to use this bias generator to format the data
+
+
+    /** Overridden to use PortBit powerDown in biasgen
      * 
-     * @param biasgen the DVS320 biasgen which knows how to format the bias and bit configuration.
-     * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
+     * @param powerDown true to power off masterbias
+     * @throws HardwareInterfaceException 
      */
     @Override
-    public synchronized void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
-        byte[] bytes = biasgen.formatConfigurationBytes(biasgen);
-        if (bytes == null) {
-            log.warning("null byte array - not sending");
-            return;
-        }
-        super.sendBiasBytes(bytes);
-    }
-
-
-    @Override
     synchronized public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
-        //        System.out.println("BiasgenUSBInterface.setPowerDown("+powerDown+")");
-        //        if(!powerDown)
-        //            setPowerDownSingle(true);
-        setPowerDownSingle(powerDown);
-    }
-
-    synchronized private void setPowerDownSingle(final boolean powerDown) throws HardwareInterfaceException {
-
-        if (gUsbIo == null) {
-            throw new RuntimeException("device must be opened before sending this vendor request");
-        }
-        USBIO_CLASS_OR_VENDOR_REQUEST vendorRequest = new USBIO_CLASS_OR_VENDOR_REQUEST();
-        int result;
-        //        System.out.println("sending bias bytes");
-        USBIO_DATA_BUFFER dataBuffer = new USBIO_DATA_BUFFER(0); // no data, control is in setupdat
-        vendorRequest.Request = VENDOR_REQUEST_SET_ARRAY_RESET;
-        vendorRequest.Type = UsbIoInterface.RequestTypeVendor;
-        vendorRequest.Recipient = UsbIoInterface.RecipientDevice;
-        vendorRequest.RequestTypeReservedBits = 0;
-        vendorRequest.Index = 0;  // meaningless for this request
-
-        vendorRequest.Value = (short) (powerDown ? 1 : 0);  // this is the request bit, if powerDown true, send value 1, false send value 0
-
-        dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
-        result = gUsbIo.classOrVendorOutRequest(dataBuffer, vendorRequest);
-        if (result != de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_SUCCESS) {
-            throw new HardwareInterfaceException("setPowerDown: unable to send: " + UsbIo.errorText(result));
-        }
-        HardwareInterfaceException.clearException();
-
-    }
-
-    synchronized private void setChipReset(final boolean reset) throws HardwareInterfaceException {
-
-        if (gUsbIo == null) {
-            throw new RuntimeException("device must be opened before sending this vendor request");
-        }
-        USBIO_CLASS_OR_VENDOR_REQUEST vendorRequest = new USBIO_CLASS_OR_VENDOR_REQUEST();
-        int result;
-        //        System.out.println("sending bias bytes");
-        USBIO_DATA_BUFFER dataBuffer = new USBIO_DATA_BUFFER(0); // no data, control is in setupdat
-        vendorRequest.Request = VENDOR_REQUEST_SET_ARRAY_RESET;
-        vendorRequest.Type = UsbIoInterface.RequestTypeVendor;
-        vendorRequest.Recipient = UsbIoInterface.RecipientDevice;
-        vendorRequest.RequestTypeReservedBits = 0;
-        vendorRequest.Index = 0;  // meaningless for this request
-
-        vendorRequest.Value = (short) (reset ? 1 : 0);  // this is the request bit, if powerDown true, send value 1, false send value 0
-
-        dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
-        result = gUsbIo.classOrVendorOutRequest(dataBuffer, vendorRequest);
-        if (result != de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_SUCCESS) {
-            throw new HardwareInterfaceException("setChipReset: unable to send: " + UsbIo.errorText(result));
-        }
-        HardwareInterfaceException.clearException();
-    }
-
-    @Override
-    synchronized public void resetTimestamps() {
-        log.info(this + ".resetTimestamps(): zeroing timestamps");
-
-
-        // send vendor request for device to reset timestamps
-        if (gUsbIo == null) {
-            throw new RuntimeException("device must be opened before sending this vendor request");
-        }
-        try {
-            setChipReset(isChipReset());
-            chipReset = !isChipReset();
-            this.sendVendorRequest(VENDOR_REQUEST_RESET_TIMESTAMPS);
-        } catch (HardwareInterfaceException e) {
-            log.warning("could not send vendor request to reset timestamps: " + e);
+        if(chip!=null && chip instanceof SeeBetter1011){
+            SeeBetter1011.SeeBetterConfig sb=(SeeBetter1011.SeeBetterConfig)chip.getBiasgen();
+            sb.powerDown.set(powerDown);
         }
     }
-    private boolean chipReset = false;
 
     private byte[] parseHexData(String firmwareFile) throws IOException {
 
@@ -326,14 +242,6 @@ public class SeeBetter1011HardwareInterface extends CypressFX2Biasgen {
     }
     boolean gotY = false; // TODO  hack for debugging state machine
 
-    /**
-     * @return the chipReset
-     */
-    public boolean isChipReset() {
-        return chipReset;
-    }
-
-
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
     public class RetinaAEReader extends CypressFX2.AEReader {
 
@@ -447,6 +355,7 @@ public class SeeBetter1011HardwareInterface extends CypressFX2Biasgen {
                                     buffer.overrunOccuredFlag = true; // throw away events if we have overrun the output arrays
                                 } else {
                                     if ((dataword & SeeBetter1011.ADDRESS_TYPE_MASK) == SeeBetter1011.ADDRESS_TYPE_ADC) {
+                                        System.out.println(dataword);
                                         addresses[eventCounter] = dataword;
                                         timestamps[eventCounter] = currentts;  // ADC event gets last timestamp
                                         eventCounter++;

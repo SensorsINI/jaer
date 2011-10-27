@@ -47,7 +47,7 @@ public class PSEyeModelRetinaRenderer extends RetinaRenderer {
         sizeX = chip.getSizeX();
         final boolean showColorChange = psEye.isColorMode();
         final boolean showLogIntensityChange = true;
-        selectedPixelEventCount = 0; // init it for this packet
+        resetSelectedPixelEventCount();
         try {
             if (!accumulateEnabled) {
                 resetFrame(.5f);

@@ -1517,7 +1517,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 nullifyHardware();
 
             } catch (Exception e) {
-                log.warning(e.getMessage());
+                log.warning(e.toString());
+                e.printStackTrace();
                 if (aemon != null) {
                     log.info("closing Monitor" + aemon);
                     aemon.close();

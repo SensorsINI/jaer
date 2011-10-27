@@ -358,7 +358,7 @@ public class ConfigurableIPotRev0 extends IPot {
             String key = e.getKey();
             if(!key.startsWith(base)) return;
             String val = e.getNewValue();
-            log.info("key="+key+" value="+val);
+//            log.info("key="+key+" value="+val);
             if (key.equals(base + KEY_BITVALUE)) {
                 if(getBitValue()!=Integer.parseInt(val)){
                     log.info("bit value change from preferences");

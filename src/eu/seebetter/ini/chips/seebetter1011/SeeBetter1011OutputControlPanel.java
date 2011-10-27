@@ -5,9 +5,10 @@
  */
 package eu.seebetter.ini.chips.seebetter1011;
 
+import eu.seebetter.ini.chips.seebetter1011.SeeBetter1011.SeeBetterConfig.OutputMux;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Logger;
@@ -43,7 +44,7 @@ public class SeeBetter1011OutputControlPanel extends javax.swing.JPanel {
         }
 
         public void actionPerformed(ActionEvent e) {
-             mux.selectWithoutNotify(channel);
+           mux.select(channel);
            log.info("Selected " + mux);
         }
 
@@ -70,8 +71,8 @@ public class SeeBetter1011OutputControlPanel extends javax.swing.JPanel {
         }
         panelBuilt = true;
         SeeBetter1011.SeeBetterConfig biasgen = (SeeBetter1011.SeeBetterConfig) chip.getBiasgen();
-        SeeBetter1011.SeeBetterConfig.AllMuxes muxes = biasgen.allMuxes;
-        for (SeeBetter1011.SeeBetterConfig.OutputMux m : muxes) {
+        ArrayList<OutputMux> muxes = biasgen.allMuxes.muxes;
+        for (OutputMux m : muxes) {
             JPanel p = new JPanel();
             p.setAlignmentY(0);
             p.setBorder(new TitledBorder(m.getName()));

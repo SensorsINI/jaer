@@ -152,6 +152,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
         sexComboBox = new javax.swing.JComboBox();
         typeComboBox = new javax.swing.JComboBox();
         currentLevelComboBox = new javax.swing.JComboBox();
+        biasSliderPanel = new javax.swing.JPanel();
         biasSlider = new javax.swing.JSlider();
         biasTextField = new javax.swing.JTextField();
         bufferBiasPanel = new javax.swing.JPanel();
@@ -192,12 +193,13 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
         flagsPanel.setMaximumSize(new java.awt.Dimension(32767, 16));
         flagsPanel.setLayout(new javax.swing.BoxLayout(flagsPanel, javax.swing.BoxLayout.X_AXIS));
 
-        biasEnabledComboBox.setFont(new java.awt.Font("Tahoma", 0, 8));
+        biasEnabledComboBox.setFont(new java.awt.Font("Tahoma", 0, 8)); // NOI18N
         biasEnabledComboBox.setMaximumRowCount(3);
         biasEnabledComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Enabled", "Weakly disabled" }));
         biasEnabledComboBox.setToolTipText("Disable to turn off bias");
         biasEnabledComboBox.setMaximumSize(new java.awt.Dimension(80, 20));
-        biasEnabledComboBox.setMinimumSize(new java.awt.Dimension(50, 14));
+        biasEnabledComboBox.setMinimumSize(new java.awt.Dimension(20, 14));
+        biasEnabledComboBox.setPreferredSize(new java.awt.Dimension(30, 15));
         biasEnabledComboBox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 biasEnabledComboBoxActionPerformed(evt);
@@ -222,6 +224,8 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
         typeComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Normal", "Cascode" }));
         typeComboBox.setToolTipText("Normal or Cascode (extra diode-connected fet)");
         typeComboBox.setMaximumSize(new java.awt.Dimension(80, 20));
+        typeComboBox.setMinimumSize(new java.awt.Dimension(20, 14));
+        typeComboBox.setPreferredSize(new java.awt.Dimension(30, 15));
         typeComboBox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 typeComboBoxActionPerformed(evt);
@@ -234,6 +238,8 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
         currentLevelComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Normal current", "Low current" }));
         currentLevelComboBox.setToolTipText("Normal or low current (shifted source)");
         currentLevelComboBox.setMaximumSize(new java.awt.Dimension(80, 20));
+        currentLevelComboBox.setMinimumSize(new java.awt.Dimension(20, 14));
+        currentLevelComboBox.setPreferredSize(new java.awt.Dimension(30, 15));
         currentLevelComboBox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 currentLevelComboBoxActionPerformed(evt);
@@ -243,12 +249,15 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
 
         add(flagsPanel);
 
+        biasSliderPanel.setPreferredSize(new java.awt.Dimension(150, 15));
+        biasSliderPanel.setLayout(new javax.swing.BoxLayout(biasSliderPanel, javax.swing.BoxLayout.LINE_AXIS));
+
         biasSlider.setToolTipText("Slide to adjust bias");
         biasSlider.setValue(0);
         biasSlider.setAlignmentX(0.0F);
         biasSlider.setMaximumSize(new java.awt.Dimension(32767, 16));
         biasSlider.setMinimumSize(new java.awt.Dimension(36, 10));
-        biasSlider.setPreferredSize(new java.awt.Dimension(300, 25));
+        biasSlider.setPreferredSize(new java.awt.Dimension(150, 10));
         biasSlider.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mousePressed(java.awt.event.MouseEvent evt) {
                 biasSliderMousePressed(evt);
@@ -262,10 +271,10 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
                 biasSliderStateChanged(evt);
             }
         });
-        add(biasSlider);
+        biasSliderPanel.add(biasSlider);
 
         biasTextField.setColumns(6);
-        biasTextField.setFont(new java.awt.Font("Courier New", 0, 11));
+        biasTextField.setFont(new java.awt.Font("Courier New", 0, 11)); // NOI18N
         biasTextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         biasTextField.setText("value");
         biasTextField.setToolTipText("Enter bias current here. Up and Down arrows change values. Shift to increment/decrement bit value.");
@@ -296,9 +305,13 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
                 valueTextFieldKeyPressed(evt);
             }
         });
-        add(biasTextField);
+        biasSliderPanel.add(biasTextField);
+
+        add(biasSliderPanel);
 
         bufferBiasPanel.setMaximumSize(new java.awt.Dimension(32767, 16));
+        bufferBiasPanel.setMinimumSize(new java.awt.Dimension(40, 15));
+        bufferBiasPanel.setPreferredSize(new java.awt.Dimension(30, 15));
         bufferBiasPanel.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
                 bufferBiasPanelformMouseEntered(evt);
@@ -314,7 +327,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
         bufferBiasSlider.setAlignmentX(0.0F);
         bufferBiasSlider.setMaximumSize(new java.awt.Dimension(32767, 50));
         bufferBiasSlider.setMinimumSize(new java.awt.Dimension(36, 10));
-        bufferBiasSlider.setPreferredSize(new java.awt.Dimension(50, 10));
+        bufferBiasSlider.setPreferredSize(new java.awt.Dimension(40, 10));
         bufferBiasSlider.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mousePressed(java.awt.event.MouseEvent evt) {
                 bufferBiasSliderMousePressed(evt);
@@ -840,6 +853,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JComboBox biasEnabledComboBox;
     private javax.swing.JSlider biasSlider;
+    private javax.swing.JPanel biasSliderPanel;
     private javax.swing.JTextField biasTextField;
     private javax.swing.JTextField bitPatternTextField;
     private javax.swing.JPanel bufferBiasPanel;

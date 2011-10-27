@@ -65,7 +65,7 @@ public class BinocularRenderer extends AEChipRenderer{
             }
         }
         checkPixmapAllocation();
-        selectedPixelEventCount = 0; // init it for this packet
+        resetSelectedPixelEventCount();
         float a;
         float step = 1f / ( colorScale ); // amount to step rendering gray level up or down for each event
         float[] f = getPixmapArray();

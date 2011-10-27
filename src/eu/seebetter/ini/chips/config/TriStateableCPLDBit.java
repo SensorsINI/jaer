@@ -30,7 +30,6 @@ public class TriStateableCPLDBit extends CPLDBit implements ConfigTristate {
      */
     public TriStateableCPLDBit(Chip chip, int valBit, int hiZBit, String name, String tip, Tristate def) {
         super(chip, valBit,name,tip,def.isHigh());
-        this.outer = outer;
         this.def = def;
         this.hiZBit = hiZBit;
         hiZKey = super.key.concat("TriStateableCPLDBit." + name + ".hiZEnabled");

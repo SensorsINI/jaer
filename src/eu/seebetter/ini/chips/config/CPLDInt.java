@@ -48,7 +48,7 @@ public class CPLDInt extends CPLDConfigValue implements ConfigInt {
 
     @Override
     public String toString() {
-        return String.format("CPLDInt name=%s value=%d", name, value);
+        return String.format("CPLDInt (%d bits) name=%s value=%d", endBit-startBit+1, name, value);
     }
 
     @Override

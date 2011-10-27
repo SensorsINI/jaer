@@ -13,14 +13,14 @@ import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.chip.Chip;
 
 /**
- *
+ * Top level configuration value. This is an Observable so changes to the value will inform Observers listening to this.
+ * 
  * @author tobi
  */
 public abstract class AbstractConfigValue extends Observable implements PreferenceChangeListener, HasPreference {
     protected String name;
     protected String tip;
     protected String key = "AbstractConfigValue";
-    SeeBetter1011.SeeBetterConfig outer;
     protected Preferences prefs;
     protected Chip chip;
 
@@ -32,8 +32,6 @@ public abstract class AbstractConfigValue extends Observable implements Preferen
      * @param tip tooltip
      */
     public AbstractConfigValue(Chip chip, String name, String tip) {
-        this.outer = outer;
-        this.outer = outer;
         this.name = name;
         this.tip = tip;
         this.chip=chip;
