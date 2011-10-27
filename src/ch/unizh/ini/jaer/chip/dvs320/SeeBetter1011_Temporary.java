@@ -5,6 +5,8 @@
 package ch.unizh.ini.jaer.chip.dvs320;
 
 import java.awt.BorderLayout;
+import java.util.ArrayList;
+import java.util.Arrays;
 import javax.swing.JPanel;
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.Chip;
@@ -65,6 +67,7 @@ public class SeeBetter1011_Temporary extends cDVSTest30 {
         public SB10TmpBiasgen(Chip chip) {
             super(chip);
             configBits = new ExtraOnChipConfigBits();
+            allMuxes = new AllMuxesSB1011();
         }
 
         /** Bits on the on-chip shift register but not an output mux control, added to end of shift register. Control
@@ -116,6 +119,103 @@ public class SeeBetter1011_Temporary extends cDVSTest30 {
                 }
                 log.info(s.length() + " extra config bits with unused registers at left end =" + s);
                 return s.toString();
+            }
+        }
+        
+        // the output muxes
+        class AllMuxesSB1011 extends cDVSTest30.cDVSTestBiasgen.AllMuxes {
+            
+            
+            
+            @Override
+            String getBitString() {
+                int nBits = 0;
+                StringBuilder s = new StringBuilder();
+                for (OutputMux m : this) {
+                    s.append(m.getBitString());
+                    nBits += m.nSrBits;
+                }
+
+                return s.toString();
+            }
+
+            AllMuxesSB1011() {
+
+                dmuxes[0].setName("DigMux4");
+                dmuxes[1].setName("DigMux3");
+                dmuxes[2].setName("DigMux2");
+                dmuxes[3].setName("DigMux1");
+                dmuxes[4].setName("DigMux0");
+
+                for (int i = 0; i < 5; i++) {
+                    dmuxes[i].put(0, "nRxcolE");
+                    dmuxes[i].put(1, "nAxcolE");
+                    dmuxes[i].put(2, "nRY0");
+                    dmuxes[i].put(3, "AY0");
+                    dmuxes[i].put(4, "nAX0");
+                    dmuxes[i].put(5, "nRXon");
+                    dmuxes[i].put(6, "arbtopR");
+                    dmuxes[i].put(7, "arbtopA");
+                    dmuxes[i].put(8, "FF1");
+                    dmuxes[i].put(9, "Acol");
+                    dmuxes[i].put(10, "Rcol");
+                    dmuxes[i].put(11, "Rrow");
+                    dmuxes[i].put(12, "RxcolG");
+                    dmuxes[i].put(13, "nArow");
+
+                }
+
+                    dmuxes[0].put(14, "nResetRxcol");
+                    dmuxes[0].put(15, "nArowBottom");
+                    dmuxes[1].put(14, "AY1right");
+                    dmuxes[1].put(15, "nRY1right");
+                    dmuxes[2].put(14, "AY1right");
+                    dmuxes[2].put(15, "nRY1right");
+                    dmuxes[3].put(14, "FF2");
+                    dmuxes[3].put(15, "RCarb");
+                    dmuxes[4].put(14, "FF2");
+                    dmuxes[4].put(15, "RCarb");
+
+                vmuxes[0].setName("AnaMux3");
+                vmuxes[1].setName("AnaMux2");
+                vmuxes[2].setName("AnaMux1");
+                vmuxes[3].setName("AnaMux0");
+                
+                vmuxes[0].put(0, "readout");
+                vmuxes[0].put(1, "Vmem");
+                vmuxes[0].put(2, "Vdiff_18ls");
+                vmuxes[0].put(3, "pr33sf");
+                vmuxes[0].put(4, "pd33cas");
+                vmuxes[0].put(5, "Vdiff_sDVS");
+                vmuxes[0].put(6, "log_bDVS");
+                vmuxes[0].put(7, "Vdiff_bDVS");
+
+                vmuxes[1].put(0, "DiffAmpOut");
+                vmuxes[1].put(1, "Vdiff_old");
+                vmuxes[1].put(2, "pr18ls");
+                vmuxes[1].put(3, "pd33sf");
+                vmuxes[1].put(4, "casnode_33sf");
+                vmuxes[1].put(5, "fb_sDVS");
+                vmuxes[1].put(6, "prbuf_bDVS");
+                vmuxes[1].put(7, "PhC_buffered");
+
+                vmuxes[2].put(0, "InPh");
+                vmuxes[2].put(1, "pr_old");
+                vmuxes[2].put(2, "pd18ls");
+                vmuxes[2].put(3, "nReset_33sf");
+                vmuxes[2].put(4, "Vdiff_33cas");
+                vmuxes[2].put(5, "pd_sDVS");
+                vmuxes[2].put(6, "pr_bDVS");
+                vmuxes[2].put(7, "Acol");
+
+                vmuxes[3].put(0, "refcurrent");
+                vmuxes[3].put(1, "pd_old");
+                vmuxes[3].put(2, "nReset_18ls");
+                vmuxes[3].put(3, "Vdiff_33sf");
+                vmuxes[3].put(4, "pr33cas");
+                vmuxes[3].put(5, "pr_sDVS");
+                vmuxes[3].put(6, "pd_bDVS");
+                vmuxes[3].put(7, "IFneuronReset");
             }
         }
     }
