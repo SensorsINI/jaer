@@ -422,10 +422,13 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen implements  cDV
             throw new RuntimeException("device must be opened before sending this vendor request");
         }
         try {
+            boolean adc=isADCEnabled();
             stopADC();
             setChipReset(isChipReset());
             chipReset = !isChipReset();
-            startADC();
+            if (adc) {
+                    startADC();
+            }
             this.sendVendorRequest(VENDOR_REQUEST_RESET_TIMESTAMPS);
         } catch (HardwareInterfaceException e) {
             log.warning("could not send vendor request to reset timestamps: " + e);

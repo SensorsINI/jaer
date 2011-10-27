@@ -1100,10 +1100,19 @@ public class cDVSTest30 extends AETemporalConstastRetina implements HasIntensity
                     dmuxes[i].put(11, "Rrow");
                     dmuxes[i].put(12, "RxcolG");
                     dmuxes[i].put(13, "nArow");
-                    dmuxes[i].put(14, "FF2");
-                    dmuxes[i].put(15, "RCarb");
+
                 }
 
+                    dmuxes[0].put(14, "nResetRxcol");
+                    dmuxes[0].put(15, "nArowBottom");
+                    dmuxes[1].put(14, "AY1right");
+                    dmuxes[1].put(15, "nRY1right");
+                    dmuxes[2].put(14, "AY1right");
+                    dmuxes[2].put(15, "nRY1right");
+                    dmuxes[3].put(14, "FF2");
+                    dmuxes[3].put(15, "RCarb");
+                    dmuxes[4].put(14, "FF2");
+                    dmuxes[4].put(15, "RCarb");
 
                 vmuxes[0].setName("AnaMux3");
                 vmuxes[1].setName("AnaMux2");
