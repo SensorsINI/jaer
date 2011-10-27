@@ -85,7 +85,7 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
      * @param msg
      */
     @Override
-    public void updateCore(UpdateMessage msg) {
+    synchronized protected void updateCore(UpdateMessage msg) {
         super.updateCore(msg);
 
         DisparityUpdater du = ((BlurringFilterStereo) bfilter).disparityUpdater;
@@ -195,7 +195,7 @@ public class BlurringFilterStereoTracker extends BlurringFilter2DTracker{
                     c.updatePath(t, ((BlurringFilterStereo) bfilter).disparityUpdater.getGlobalDisparity());
                 else
                     c.updatePath(t, ((BlurringFilterStereo) bfilter).disparityUpdater.getDisparity(c.getClusterNumber()));
-                c.setMinimumClusterSize(getMinimumClusterSizePixels() + (int)c.getDisparity(1));
+                c.setMinimumClusterSize(Math.min(getMinimumClusterSizePixels() + (int)c.getDisparity(1)/2, getMaximumClusterSizePixels()));
                 c.setUpdated(ClusterUpdateStatus.NOT_UPDATED); // resets update status
             }
         }

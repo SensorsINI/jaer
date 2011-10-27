@@ -135,7 +135,7 @@ public class BlurringFilterStereo extends BlurringFilter2D{
             BinocularEvent ev = (BinocularEvent)in.getEvent(i);
 
             // updates lastTime
-            lastTime = ev.getTimestamp();
+            lastTime = ev.timestamp;
 
             // updates event histograms in disparity updater
             disparityUpdater.addEvent(ev);

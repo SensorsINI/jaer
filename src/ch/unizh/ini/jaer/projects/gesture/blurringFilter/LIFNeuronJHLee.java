@@ -36,27 +36,27 @@ public class LIFNeuronJHLee {
     /**
      * This is the last in timestamp ticks that the neuron was updated, by an event
      */
-    protected int lastEventTimestamp;
+    protected int lastEventTimestamp = 0;
 
     /**
      * maximum time constant of membrane potentail
      */
-    protected float tauMP;
+    protected float tauMP = 0;
 
     /**
      * threshold
      */
-    protected float thresholdMP;
+    protected float thresholdMP = 0;
 
     /**
      * amount of membrane potential that decreases after firing
      */
-    protected float MPDecreaseArterFiringPercentTh;
+    protected float MPDecreaseArterFiringPercentTh = 0;
 
     /**
      * number of spikes fired since
      */
-    protected int numSpikes;
+    protected int numSpikes = 0;
 
     /**
      * refractory period
@@ -148,15 +148,6 @@ public class LIFNeuronJHLee {
         this.tauMP = tauMP;
         this.thresholdMP = thresholdMP;
         this.MPDecreaseArterFiringPercentTh = MPDecreaseArterFiringPercentTh;
-
-        // resets initially variable parameters
-        membranePotential = 0;
-        numSpikes = 0;
-        lastEventTimestamp = 0;
-        refractoryPeriod = 0;
-        adaptationParam = 0;
-        lastAboveThresholdTimestamp = -1;
-        lastSpikeTimestamp = 0;
     }
 
     @Override

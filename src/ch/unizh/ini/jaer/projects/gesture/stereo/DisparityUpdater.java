@@ -154,7 +154,6 @@ public class DisparityUpdater extends EventFilter2D implements FrameAnnotater, O
 
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-        System.out.println("filterPacket in  DisparityUpdater");
         return in;
     }
 

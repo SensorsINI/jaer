@@ -774,9 +774,6 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             // draw cluster rectangle
             drawBox(gl,x,y,(int)maxRadius);
             
-            if(x == 0 && y == 0)
-                System.out.println("hey");
-
             gl.glPointSize(PATH_POINT_SIZE);
 
             ArrayList<ClusterPathPoint> points = path;

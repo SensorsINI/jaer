@@ -306,7 +306,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
     public void update(Observable o, Object arg) {
         if (o == this) {
             UpdateMessage msg = (UpdateMessage) arg;
-            updateNeurons(msg.timestamp); // at least once per packet update list
+            updateNeuronGroups(msg.timestamp); // at least once per packet update list
         } else if (o instanceof AEChip) {
             initFilter();
         }
@@ -396,7 +396,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         /**
          * firing type of a neuron. One of {SILENT, FIRING_ISOLATED, FIRING_WITH_NEIGHBOR, FIRING_ON_BORDER, FIRING_INSIDE}
          */
-        FiringType firingType;
+        FiringType firingType = FiringType.SILENT;
 
         /**
          * Tag to identify the group which the neuron belongs to.
@@ -436,11 +436,6 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             // sets invariable parameters
             this.index.setLocation(index);
             this.location.setLocation(location);
-
-            setFiringType(FiringType.SILENT);
-            groupTag = -1;
-            membranePotential = 0;
-            numFiringNeighbors = 0;
         }
 
 
@@ -450,10 +445,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
             // updates neighbors when the first spike is out
             if(numSpikes == 1 && lastSpikeTimestamp == event.timestamp){
-                for(int i = 0; i<neighbor.size(); i++){
-                    int nid = neighbor.get(i);
+                for(int nid : neighbor)
                     lifNeurons.get(nid).increaseNumFiringNeighbors();
-                }
 
                 neuronsFiring.add(this);
                 neuronsToBePostProcessed.add(this);
@@ -482,16 +475,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         */
         @Override
         public void reset() {
-            setFiringType(FiringType.SILENT);
-            resetGroupTag();
-            membranePotential = 0;
+            super.reset();
+            firingType = FiringType.SILENT;
+            groupTag = -1;
             numFiringNeighbors = 0;
-            lastEventTimestamp = 0;
-            numSpikes = 0;
-            refractoryPeriod = 0;
-            adaptationParam = 0;
-            lastAboveThresholdTimestamp = -1;
-            lastSpikeTimestamp = 0;
         }
         
         /** Draws the neuron using OpenGL.
@@ -550,10 +537,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @param groupTag
          */
         private void setFiringTypeToBorder(int groupTag) {
-            if (this.firingType != FiringType.FIRING_INSIDE) {
+            if (this.firingType == FiringType.FIRING_WITH_NEIGHBOR) {
                 setFiringType(FiringType.FIRING_ON_BORDER);
+                setGroupTag(groupTag);
             }
-            setGroupTag(groupTag);
         }
 
         /**
@@ -562,13 +549,14 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * @return
          */
         public void postProcessing() {
+            mpOffset = numSpikes;
+            
             if(numSpikes == 0)
                 firingType = FiringType.SILENT;
-            
-            mpOffset = numSpikes;
+            else
+                numSpikes = 0;
 
             groupTag = -1;
-            numSpikes = 0;
             numFiringNeighbors = 0;
         }
 
@@ -707,29 +695,29 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          * location of the group in chip pixels.
          * Center of member neurons location weighted by their membranePotential.
          */
-        public Point2D.Float location = new Point2D.Float();
+        public Point2D.Float location = new Point2D.Float(-1, -1);
 
         /**
          * Sum of the membranePotential of all member neurons.
          */
-        protected float totalMP;
+        protected float totalMP = 0;
 
         /**
          * This is the last time in timestamp ticks that the group was updated by an event.
          * The largest one among the lastUpdateTime of all member neurons becomes groups's lastEventTimestamp.
          */
-        protected int lastEventTimestamp;
+        protected int lastEventTimestamp = 0;
         
         /** Parameters to represent the area of the group.
          * minX(Y) : minimum X(Y) among the locations of member neurons
          * maxX(Y) : maximum X(Y) among the locations of member neurons
          */
-        protected float minX, maxX, minY, maxY;
+        protected float minX = 0, maxX = 0, minY = 0, maxY = 0;
 
         /**
          *Group number (index)
          */
-        protected int tag;
+        protected int tag = -1;
 
         /**
          *Indicates if this group is hitting edge
@@ -763,7 +751,8 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          */
         public NeuronGroup() {
             memberNeurons = new ArrayList();
-            reset();
+            minX = chip.getSizeX();
+            minY = chip.getSizeX();
         }
 
         /**
@@ -791,6 +780,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             minY = chip.getSizeX();
             hitEdge = false;
             matched = false;
+            lastEventTimestamp = 0;
         }
 
         /**
@@ -818,12 +808,16 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                         break;
                 }
             }
+            
+            // doesn't have to add an idle or negative MP neuron
+            if(effectiveMP <= 0)
+                return;
 
             // if this is the first one
             if (tag < 0) {
-                if(virtualGroup)
+                if(virtualGroup) // sets arbitrary tag for a virtual neuron
                     tag = numOfNeuronsX*numOfNeuronsY;
-                else
+                else // uses the neuron's group tag
                     tag = newNeuron.getGroupTag();
 
                 lastEventTimestamp = newNeuron.getLastEventTimestamp();
@@ -835,24 +829,21 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                     return;
 
                 float prevMP = totalMP;
-                float leakyFactor;
+                float leakyFactor = 1;
 
                 if (lastEventTimestamp < newNeuron.getLastEventTimestamp()) {
                     leakyFactor = (float) Math.exp(((float) lastEventTimestamp - newNeuron.getLastEventTimestamp()) / MPTimeConstantUs);
-                    totalMP = effectiveMP + prevMP * leakyFactor;
-                    if(totalMP > 0){
-                        location.x = (newNeuron.location.x * effectiveMP + location.x * prevMP * leakyFactor) / (totalMP);
-                        location.y = (newNeuron.location.y * effectiveMP + location.y * prevMP * leakyFactor) / (totalMP);
-                    }
-
                     lastEventTimestamp = newNeuron.getLastEventTimestamp();
+                    prevMP *= leakyFactor;
                 } else {
                     leakyFactor = (float) Math.exp(((float) newNeuron.getLastEventTimestamp() - lastEventTimestamp) / MPTimeConstantUs);
-                    totalMP = prevMP + effectiveMP * leakyFactor;
-                    if(totalMP > 0){
-                        location.x = (newNeuron.location.x * effectiveMP * leakyFactor + location.x * prevMP) / (totalMP);
-                        location.y = (newNeuron.location.y * effectiveMP * leakyFactor + location.y * prevMP) / (totalMP);
-                    }
+                    effectiveMP *= leakyFactor;
+                }
+                
+                totalMP = prevMP + effectiveMP;
+                if(totalMP > 0){
+                    location.x = (newNeuron.location.x * effectiveMP + location.x * prevMP) / (totalMP);
+                    location.y = (newNeuron.location.y * effectiveMP + location.y * prevMP) / (totalMP);
                 }
             }
             
@@ -874,6 +865,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
                 hitEdge = true;
             }
 
+            // adds to the list of members
             memberNeurons.add(newNeuron);
 
         }
@@ -1200,17 +1192,12 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
 
 
     /**
-     * Updates all neurons at time t.
-     *
-     * Checks if the neuron is firing.
-     * Checks if the neuron has (a) simultaneously firing neighbor(s).
-     * Checks if the neuron belongs to a group.
-     * Set the neuron's firing type based on the test results.
+     * Updates neuron groups at time t.
      *
      * @param t
      */
-    synchronized protected void updateNeurons(int t) {
-        // makes the list of firing neurons and neuron groups empty before update
+    synchronized protected void updateNeuronGroups(int t) {
+        // makes neuron groups empty before update
         neuronGroups.clear();
         // resets number of group before starting update
         numOfGroup = 0;
@@ -1545,7 +1532,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         for (LIFNeuron n : lifNeurons) {
             n.reset();
         }
-
+        
         lastTime = 0;
         neuronGroups.clear();
         numOfGroup = 0;
@@ -1766,7 +1753,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             yIndexEnd = numOfNeuronsY - 1;
 
         Point2D.Float centerIndex = new Point2D.Float( 0.5f*(xIndexStart+xIndexEnd), 0.5f*(yIndexStart+yIndexEnd));
-        float indexRadius = Math.max(0.6f*(xIndexEnd - xIndexStart), 0.6f*(yIndexEnd - yIndexStart));
+        float indexRadius = Math.max(0.7f*(xIndexEnd - xIndexStart), 0.7f*(yIndexEnd - yIndexStart));
         for(int x = xIndexStart; x <= xIndexEnd; x++){
             for(int y = yIndexStart; y <= yIndexEnd; y++){
                 if(centerIndex.distance(x, y) < indexRadius)
