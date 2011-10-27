@@ -2117,18 +2117,27 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
             HashMap<Cluster, Float> distanceMap = distMappingTable.get(ng);
             if(distanceMap.size() > 0){
                 // selects the closest one
-                float distance = chip.getSizeX();
+                float minDist = chip.getSizeX();
                 Cluster closestCluster = null;
 
                 Iterator<Cluster> itr = distanceMap.keySet().iterator();
                 while(itr.hasNext()){
                     Cluster cl = itr.next();
-                    if(distanceMap.get(cl).floatValue() < distance)
+                    if(distanceMap.get(cl).floatValue() < minDist){
                         closestCluster = cl;
+                        minDist = distanceMap.get(cl).floatValue();
+                    }
                 }
 
-                if(crossMapping.get(closestCluster) == null)
+                NeuronGroup closestNg = crossMapping.get(closestCluster);
+                if(closestNg == null){
                     crossMapping.put(closestCluster, ng);
+                } else {
+                    if(closestCluster.distanceTo(ng) < closestCluster.distanceTo(closestNg)){
+                        crossMapping.put(closestCluster, ng);
+                        ngListForPrune.remove(closestNg);
+                    }
+                }
 
                 ngListForPrune.add(ng);
             }
@@ -2204,7 +2213,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
 
                             // updates clusters
                             if(ng1 != null){
-                                if(ng1 == ng2){ // if c1 and c2 are wanting the same group, see the distance
+                                if(ng1 == ng2){ // if c1 and c2 want the same group, see the distance
                                     if(c1.distanceTo(ng1) < c2.distanceTo(ng2)){ // Must keep order, c1 first
                                         c1.trackClosestGroup(ngCollection, defaultUpdateInterval);
                                         c2.trackClosestGroup(ngCollection, defaultUpdateInterval);
@@ -2310,7 +2319,18 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
      * @param msg
      */
     protected void subthresholdUpdateTracking(Cluster c, UpdateMessage msg){
+        Point2D.Float prePos = new Point2D.Float(c.location.x, c.location.y);
         c.doSubThTracking(getRefLocation(c, null, msg), msg.timestamp, calRadius(c), true);
+        if(maxNumClusters != NUM_CLUSTERS.SINGLE){
+            for(Cluster cl:clusters){
+                if(cl != c){
+                    float radiusSum = c.maxRadius+cl.maxRadius;
+                    if(c.distanceTo(cl) < radiusSum/2){
+                        c.setLocation(prePos);
+                    }
+                }
+            }
+        }
     }
 
     /**
