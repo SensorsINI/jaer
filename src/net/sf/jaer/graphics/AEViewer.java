@@ -1506,7 +1506,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (!blankDeviceMessageShown) {
                     log.info(bd.getMessage() + " supressing further blank device messages");
                     blankDeviceMessageShown = true;
-                    int v = JOptionPane.showConfirmDialog(this, "Blank Cypress FX2 found (" + aemon + "). Do you want to open the Cypress FX2 Programming utility?");
+                    int v = JOptionPane.showConfirmDialog(this, "<html>Blank Cypress FX2 found (" + aemon + "). Do you want to open the Cypress FX2 Programming utility?<p>Otherwise set the default firmware in the USB menu to download desired firmware to RAM for CypressFX2 devices");
 
                     if (v == JOptionPane.YES_OPTION) {
                         CypressFX2EEPROM instance = new CypressFX2EEPROM();
@@ -1841,7 +1841,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 statisticsLabel.setText("Choose desired HardwareInterface from Interface menu");
 //                                setPlayMode(PlayMode.WAITING); // we don't need to set it again
                                 try {
-                                    Thread.sleep(300);
+                                    Thread.sleep(600);
                                 } catch (InterruptedException e) {
                                     log.info("WAITING interrupted");
                                 }
