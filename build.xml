@@ -109,7 +109,9 @@
     
     <!-- builds the windows executable .exe launcher files -->
 <!--     or use winrun4j as depends to build with winrun4j-->
-    <target name="-post-jar" depends="exe4j"> 
+<!--uncomment following line and comment second line to run exe4j to rebuild the exe. Not normally needed unless classpath is changed.-->
+<!--    <target name="-post-jar" depends="exe4j"> -->
+    <target name="-post-jar" > 
         <!-- can use to pack swing layout libs into jar
         <jar update="true" destfile="${dist.jar}">
             <zipfileset src="${libs.swing-layout.classpath}"/>
