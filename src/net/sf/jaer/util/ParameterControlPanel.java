@@ -471,7 +471,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             });
         }
     }
-    final float factor = 1.51f, wheelFactor = 1.05f; // factors to change by with arrow and mouse wheel
+    final float factor = 2.04f, wheelFactor = 1.05f; // factors to change by with arrow and mouse wheel.  int factor big enough to change at least 1 count from 1
 
     class BooleanControl extends JPanel implements HasSetter {
 
