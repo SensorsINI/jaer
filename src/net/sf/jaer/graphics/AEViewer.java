@@ -1477,11 +1477,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         if (chip.getBiasgen() != null && !chip.getBiasgen().isInitialized()) {
                             chip.getBiasgen().showUnitializedBiasesWarningDialog(this);
                         }
-                        if (bg == null) {
-                            log.warning(chip + " is BiasgenHardwareInterface but has null biasgen object, not setting biases");
-                        } else {
-                            chip.getBiasgen().sendConfiguration(chip.getBiasgen());
-                        }
+                        // TODO tobi commented out this redundant call , must check that devices still work correctly
+//                        if (bg == null) {
+//                            log.warning(chip + " is BiasgenHardwareInterface but has null biasgen object, not setting biases");
+//                        } else {
+//                            chip.getBiasgen().sendConfiguration(chip.getBiasgen());
+//                        }
                     }
 
                     if (chip.getHardwareInterface() != null && chip.getHardwareInterface() instanceof AESequencerInterface) {
@@ -1837,7 +1838,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }
                             openAEMonitor();
                             if (aemon == null || !aemon.isOpen()) {
-                                statisticsLabel.setText("Choose interface from Interface menu");
+                                statisticsLabel.setText("Choose desired HardwareInterface from Interface menu");
 //                                setPlayMode(PlayMode.WAITING); // we don't need to set it again
                                 try {
                                     Thread.sleep(300);
@@ -5058,8 +5059,8 @@ private void setDefaultFirmwareMenuItemActionPerformed(java.awt.event.ActionEven
     dialog.setVisible(true);
     int v = dialog.getReturnStatus();
     if (v == CypressFX2FirmwareFilennameChooserOkCancelDialog.RET_OK) {
-        CypressFX2.setDefaultFirmwareBixFileForBlankDevice(dialog.getLastFile());
-        log.info("set default firmware file to " + CypressFX2.getDefaultFirmwareBixFileForBlankDevice());
+        getChip().setDefaultFirmwareBixFileForBlankDevice(dialog.getLastFile());
+        log.info("set default firmware file to " + getChip().getDefaultFirmwareBixFileForBlankDevice());
     }
 }//GEN-LAST:event_setDefaultFirmwareMenuItemActionPerformed
 

@@ -69,6 +69,11 @@ public class Chip extends Observable {
 //        Chip.preferredHardwareInterface=clazz;
 //    }
     
+     /** Default firmware file for blank devices. 
+     * For CypressFX2-based USB devices, this file must be a bix (raw binary) firmware file, not an iic or hex file */
+    protected  String defaultFirmwareBixFileForBlankDevice = getPrefs().get("CypressFX2.defaultFirmwareBixFileForBlankDevice", null);
+
+    
     /** The remote control allows control of this Chip via a UDP connection
      * 
      */
@@ -203,5 +208,23 @@ public class Chip extends Observable {
     public void setRemoteControl(RemoteControl remoteControl) {
         this.remoteControl = remoteControl;
     }
+    
+    /** Returns some default firmware file for soft-download to device.  Default is null.
+     * 
+     * @return full (or relative to start folder "java") path to firmware .bix file for Cypress FX2 based devices.
+     */
+       public  String getDefaultFirmwareBixFileForBlankDevice() {
+        return defaultFirmwareBixFileForBlankDevice;
+    }
+
+   /** Sets some default firmware file for soft-download to device.  
+     * 
+     * @return full (or relative to start folder "java") path to firmware .bix file for Cypress FX2 based devices.
+     */
+   public  void setDefaultFirmwareBixFileForBlankDevice(String aDefaultFirmwareBixFileForBlankDevice) {
+        this.defaultFirmwareBixFileForBlankDevice = aDefaultFirmwareBixFileForBlankDevice;
+        getPrefs().put("CypressFX2.defaultFirmwareBixFileForBlankDevice", defaultFirmwareBixFileForBlankDevice);
+    }
+
 
 }

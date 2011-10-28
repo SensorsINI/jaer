@@ -442,24 +442,24 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 
         }
 
-        /** sends the ipot values over the hardware interface if there is not a batch edit occuring.
-         *@param biasgen the bias generator object.
-         * This parameter is necessary because the same method is used in the hardware interface,
-         * which doesn't know about the particular bias generator instance.
-         *@throws HardwareInterfaceException if there is a hardware error. If there is no interface, prints a message and just returns.
-         *@see #startBatchEdit
-         *@see #endBatchEdit
-         **/
-        public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
-            if (hardwareInterface == null) {
-//            log.warning("Biasgen.sendIPotValues(): no hardware interface");
-                return;
-            }
-            if (!isBatchEditOccurring() && hardwareInterface != null) {
-//            log.info("calling hardwareInterface.sendConfiguration");
-//            hardwareInterface.se(this);
-            }
-        }
+//        /** sends the ipot values over the hardware interface if there is not a batch edit occuring.
+//         *@param biasgen the bias generator object.
+//         * This parameter is necessary because the same method is used in the hardware interface,
+//         * which doesn't know about the particular bias generator instance.
+//         *@throws HardwareInterfaceException if there is a hardware error. If there is no interface, prints a message and just returns.
+//         *@see #startBatchEdit
+//         *@see #endBatchEdit
+//         **/
+//        public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
+//            if (hardwareInterface == null) {
+////            log.warning("Biasgen.sendIPotValues(): no hardware interface");
+//                return;
+//            }
+//            if (!isBatchEditOccurring() && hardwareInterface != null) {
+////            log.info("calling hardwareInterface.sendConfiguration");
+////            hardwareInterface.se(this);
+//            }
+//        }
         /** the change in current from an increase* or decrease* call */
         public final float RATIO = 1.05f;
         /** the minimum on/diff or diff/off current allowed by decreaseThreshold */
