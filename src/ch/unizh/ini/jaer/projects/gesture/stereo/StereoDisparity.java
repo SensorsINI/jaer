@@ -20,16 +20,16 @@ public class StereoDisparity {
     /**
      * id
      */
-    int id;
+    int id = 0;
 
     /**
      * mass histogram of the left eye
      */
-    protected ArrayList<Bins> histogramLeft;
+    protected ArrayList<Bins> histogramLeft = null;
     /**
      * mass histogram of the right eye
      */
-    protected ArrayList<Bins> histogramRight;
+    protected ArrayList<Bins> histogramRight = null;
     /**
      * estimated disparity values
      */
@@ -88,28 +88,28 @@ public class StereoDisparity {
     /**
      * low pass filter
      */
-    LowpassFilter lpf = new LowpassFilter();
+    protected LowpassFilter lpf = new LowpassFilter();
 
 
     /**
      * chip size in x-axis
      */
-    protected int size;
+    protected int size = 128;
 
     /**
      * time constant of leaky mass in the mass histogram
      */
-    protected int massTimeConstantUs;
+    protected int massTimeConstantUs = 10000;
 
     /**
      * mass below this value will be set to zero
      */
-    protected float massThreshold;
+    protected float massThreshold = 0;
 
     /**
      * maximum allowed disparity in fraction of Chipsize
      */
-    protected float maxDisparityFractionChipsizeX;
+    protected float maxDisparityFractionChipsizeX = 0;
 
     /**
      * Class to store the statistics of each point of x-axis.
@@ -120,15 +120,13 @@ public class StereoDisparity {
         /**
          * bins of histogram. Mass increases by 1 as every sigle event comes in, and decays exponentially as time passes.
          */
-        protected double mass;
+        protected double mass = 0;
         /**
          * Timestamp of the last event constributed to the bins
          */
-        protected int lastUpdateTime;
+        protected int lastUpdateTime = 0;
 
-        Bins(){
-            mass = 0; // a leaky mass
-            lastUpdateTime = 0; // timestamp of the last event
+        public Bins(){
         }
 
         /** returns the mass at time t
@@ -177,29 +175,29 @@ public class StereoDisparity {
         /**
          * disparity in Pixels
          */
-        public float disparity;
+        public float disparity = 0;
         /**
          * timestamp
          */
-        public int timestamp;
+        public int timestamp = 0;
 
         /**
          * true if the disparity estimation was a success
          */
-        public boolean valid;
+        public boolean valid = false;
 
-        Disparity(){
+        public Disparity(){
             disparity = -size;
             timestamp = 0;
             valid = false;
         }
 
-        Disparity(float disparity, int timestamp, boolean validity){
+        public Disparity(float disparity, int timestamp, boolean validity){
             this();
             setDisparity(disparity, timestamp, validity);
         }
 
-        Disparity(Disparity disp){
+        public Disparity(Disparity disp){
             this();
             setDisparity(disp.disparity, disp.timestamp, disp.valid);
         }
@@ -249,7 +247,7 @@ public class StereoDisparity {
         }
     }
 
-    StereoDisparity(int id, int chipSize, int massTimeConstantUs, float massThreshold, float maxDisparityFractionChipsizeX, float initialDisparity, int initialTimestamp){
+    public StereoDisparity(int id, int chipSize, int massTimeConstantUs, float massThreshold, float maxDisparityFractionChipsizeX, float initialDisparity, int initialTimestamp){
         this.id = id;
         size = chipSize;
 
@@ -260,8 +258,7 @@ public class StereoDisparity {
         this.massThreshold = massThreshold;
         this.maxDisparityFractionChipsizeX = maxDisparityFractionChipsizeX;
 
-        checkAreaRectangle = new Rectangle(0, 0, size, size);
-        lpf.setTauMs(50);
+        lpf.setTauMs(30);
 
         reset(initialDisparity, initialTimestamp);
     }
@@ -334,8 +331,8 @@ public class StereoDisparity {
         ArrayList<Double> right = null;
 
         // smoothes histograms using moving average filter
-        left = movingAverageFiltering(histogramLeft, 1);
-        right = movingAverageFiltering(histogramRight, 1);
+        left = movingAverageFiltering(histogramLeft, 3, timestamp);
+        right = movingAverageFiltering(histogramRight, 3, timestamp);
 
         // if there's too small number of valid data, do not update the disparity
         // movingAvergaeFiltering method adds information of valid number of data at the end of the output arraylist
@@ -347,26 +344,21 @@ public class StereoDisparity {
             right.remove(size);
 
             // gets the median distance bewteen histograms
-            float md = (float)findMedianDistance();
+            float md = (float)findMedianDistance(timestamp);
 
-            //if there is no previous data, sets the current disparity with maxXC.x
+            //if there is no previous data, sets the current disparity with md
             if(preDis.getDisparity() == -size){
                 currentDisparity.setDisparity(md, timestamp, true);
             } else { // if there's previous data
-                if(md == size) // not valid because the cluster is  hitting edge
-                    md = preDis.disparity;
-                else if(md == -size){ // not valid because large mass difference between left and right
-                    currentDisparity.setDisparity(md, timestamp, true);
-                    return;
-                } else {
-
-                }
-
-                float deltaDisMD = (float) Math.abs(md - preDis.disparity);
-                if(deltaDisMD > maxDisparityChangePixels && enableMaxDisparityChange)
+                if(md == size || md == -size) { // not valid
                     currentDisparity.setDisparity(preDis.disparity, timestamp, false);
-                else
-                    currentDisparity.setDisparity(md, timestamp, true);
+                } else {
+                    float deltaDisMD = (float) Math.abs(md - preDis.disparity);
+                    if(deltaDisMD > maxDisparityChangePixels && enableMaxDisparityChange)
+                        currentDisparity.setDisparity(preDis.disparity, timestamp, false);
+                    else
+                        currentDisparity.setDisparity(md, timestamp, true);
+                }
             }
         }
     }
@@ -426,7 +418,7 @@ public class StereoDisparity {
      *  -size : not valid because large mass difference between left and right
      *  otherwise : disparity between left and right
      */
-    private double findMedianDistance(){
+    private double findMedianDistance(int timestamp){
         double lsum = 0;
         double rsum = 0;
         double lpsum = 0;
@@ -471,14 +463,14 @@ public class StereoDisparity {
 
         // calculates the median value of the histogram of left eye
         for(int i=leftStartPos; i<leftEndPos; i++){
-            double lmass = histogramLeft.get(i).getMassNow(lastTimestamp);
+            double lmass = histogramLeft.get(i).getMassNow(timestamp);
             lsum += lmass;
             lpsum += lmass*i;
         }
 
         // calculates the median value of the histogram of right eye
         for(int i=rightStartPos; i<rightEndPos; i++){
-            double rmass = histogramRight.get(i).getMassNow(lastTimestamp);
+            double rmass = histogramRight.get(i).getMassNow(timestamp);
             rsum += rmass;
             rpsum += rmass*i;
         }
@@ -635,7 +627,7 @@ public class StereoDisparity {
       * @param winSize
       * @return
       */
-    private ArrayList<Double> movingAverageFiltering(ArrayList<Bins> histogram, int winSize){
+    private ArrayList<Double> movingAverageFiltering(ArrayList<Bins> histogram, int winSize, int timestamp){
         ArrayList<Double> ret = new ArrayList<Double>(size+1);
 
         int numValid = 0;
@@ -645,17 +637,17 @@ public class StereoDisparity {
        for(int k=0; k<size; k++){
            if(k==0){
                for(int j=0; j<halfWinSize; j++)
-                   massSum += histogram.get(j).getMassNow(lastTimestamp);
+                   massSum += histogram.get(j).getMassNow(timestamp);
                av = massSum/halfWinSize;
            } else if (k<=halfWinSize){
-               massSum += histogram.get(k+halfWinSize-1).getMassNow(lastTimestamp);
+               massSum += histogram.get(k+halfWinSize-1).getMassNow(timestamp);
                av = massSum/(k+halfWinSize);
            } else if(k <= size - halfWinSize) {
-               massSum += histogram.get(k+halfWinSize-1).getMassNow(lastTimestamp);
-               massSum -= histogram.get(k-halfWinSize).getMassNow(lastTimestamp);
+               massSum += histogram.get(k+halfWinSize-1).getMassNow(timestamp);
+               massSum -= histogram.get(k-halfWinSize).getMassNow(timestamp);
                av = massSum/winSize;
            } else {
-               massSum -= histogram.get(k-halfWinSize).getMassNow(lastTimestamp);
+               massSum -= histogram.get(k-halfWinSize).getMassNow(timestamp);
                av = massSum/(halfWinSize+size-k);
            }
 
@@ -860,11 +852,22 @@ public class StereoDisparity {
      * @return prevDisparity
      */
     public float getDisparity(){
-        if(prevDisparities == null) return 0;
-        if(prevDisparities.isEmpty()) return 0;
-        if(prevDisparities.getLast() == null) return 0;
+        if(prevDisparities == null || prevDisparities.isEmpty() || prevDisparities.getLast() == null) 
+            return -size;
 
         return prevDisparities.getLast().getDisparity();
+    }
+    
+    /**
+     * returns true is the lastest disparity is valid
+     * @return n
+     */
+    public boolean isDisparityValid(){
+        boolean ret = false;
+        if(prevDisparities == null || prevDisparities.isEmpty() || prevDisparities.getLast() == null) 
+            return ret;
+
+        return prevDisparities.getLast().isValid();
     }
 
     /**

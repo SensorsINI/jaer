@@ -752,7 +752,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
         public NeuronGroup() {
             memberNeurons = new ArrayList();
             minX = chip.getSizeX();
-            minY = chip.getSizeX();
+            minY = chip.getSizeY();
         }
 
         /**
@@ -777,7 +777,7 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
             memberNeurons.clear();
             maxX = maxY = 0;
             minX = chip.getSizeX();
-            minY = chip.getSizeX();
+            minY = chip.getSizeY();
             hitEdge = false;
             matched = false;
             lastEventTimestamp = 0;
@@ -994,6 +994,10 @@ public class BlurringFilter2D extends EventFilter2D implements FrameAnnotater, O
          */
         public float getOutterRadiusPixels() {
             return Math.max(Math.max(Math.abs(location.x - minX), Math.abs(location.x - maxX)), Math.max(Math.abs(location.y - minY), Math.abs(location.y - maxY)));
+        }
+        
+        public float getMeanRadiusPixels(){
+            return (Math.abs(maxX - minX) + Math.abs(maxY - minY))/2;
         }
 
         /**

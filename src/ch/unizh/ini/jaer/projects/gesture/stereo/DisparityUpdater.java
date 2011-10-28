@@ -83,7 +83,7 @@ public class DisparityUpdater extends EventFilter2D implements FrameAnnotater, O
     /**
      * chip size in x-axis which is obtained by the method stereoChip.getLeft().getSizeX()
      */
-    protected int size;
+    protected int size = 128;
 
     /**
      * stereo vergence for global disparity
@@ -181,7 +181,7 @@ public class DisparityUpdater extends EventFilter2D implements FrameAnnotater, O
             for(StereoDisparity sd : clusterDisparity.values()){
                 sd.updateDisparity(msg.timestamp);
                 // if the updated disparity if not valid, replaces it with the global disparity
-                if(sd.getDisparity() == -size || Math.abs(sd.getDisparity() - globalDisparity.getDisparity()) > size/5)
+                if(!sd.isDisparityValid() && globalDisparity.isDisparityValid() && Math.abs(sd.getDisparity() - globalDisparity.getDisparity()) > size/5)
                     sd.setDisparity(globalDisparity.getDisparity(), msg.timestamp);
             }
         } else {

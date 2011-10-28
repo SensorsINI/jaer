@@ -67,34 +67,29 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         /**
          * total number of events
          */
-        public int totalNumOfEvents;
+        public int totalNumOfEvents = 0;
         /**
          * number of events from left eye
          * x: # of On events
          * y: # of Off events
          */
-        public Point leftNumOfEvents;
+        public Point leftNumOfEvents = new Point(0, 0);
         /**
          * number of events from right eye
          * x: # of On events
          * y: # of Off events
          */
-        public Point rightNumOfEvents;
+        public Point rightNumOfEvents = new Point(0, 0);
         /**
          * event ratio
          */
-        public Point2D.Float leftEventRaio;
+        public Point2D.Float leftEventRaio = new Point2D.Float(1, 1);
         /**
          * event ratio
          */
-        public Point2D.Float rightEventRaio;
+        public Point2D.Float rightEventRaio = new Point2D.Float(1, 1);
 
-        EventRatio(){
-            totalNumOfEvents = 0;
-            leftNumOfEvents = new Point(0, 0);
-            rightNumOfEvents = new Point(0, 0);
-            leftEventRaio = new Point2D.Float(1, 1);
-            rightEventRaio = new Point2D.Float(1, 1);
+        public EventRatio(){
         }
     }
 
@@ -130,7 +125,8 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         checkOutputPacketEventType(in);
         OutputEventIterator oei=out.outputIterator();
 
-        EventRatio er = calculateEventRatio(in);
+//        EventRatio er = calculateEventRatio(in);
+        EventRatio er = null;
         for(int i=0; i<in.getSize(); i++){
             BinocularEvent ev = (BinocularEvent)in.getEvent(i);
 
@@ -243,7 +239,7 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         int subIndexX = (int) (evx / halfReceptiveFieldSizePixels);
         if (subIndexX == numOfNeuronsX)
             subIndexX--;
-        int subIndexY = (int) (ev.getY() / halfReceptiveFieldSizePixels);
+        int subIndexY = (int) (ev.y / halfReceptiveFieldSizePixels);
         if (subIndexY == numOfNeuronsY)
             subIndexY--;
 
@@ -292,21 +288,21 @@ public class BlurringFilterStereo extends BlurringFilter2D{
             if(ev.polarity == Polarity.On){
                 mainEye = leftCellMassOnEvent;
                 secondaryEye = rightCellMassOnEvent;
-                retVal = (er.leftEventRaio.x + er.rightEventRaio.x)/2;
+//                retVal = (er.leftEventRaio.x + er.rightEventRaio.x)/2;
             } else {
                 mainEye = leftCellMassOffEvent;
                 secondaryEye = rightCellMassOffEvent;
-                retVal = (er.leftEventRaio.y + er.rightEventRaio.y)/2;
+//                retVal = (er.leftEventRaio.y + er.rightEventRaio.y)/2;
             }
         } else {
             if(ev.polarity == Polarity.On){
                 mainEye = rightCellMassOnEvent;
                 secondaryEye = leftCellMassOnEvent;
-                retVal = (er.leftEventRaio.x + er.rightEventRaio.x)/2;
+//                retVal = (er.leftEventRaio.x + er.rightEventRaio.x)/2;
             }else {
                 mainEye = rightCellMassOffEvent;
                 secondaryEye = leftCellMassOffEvent;
-                retVal = (er.leftEventRaio.y + er.rightEventRaio.y)/2;
+//                retVal = (er.leftEventRaio.y + er.rightEventRaio.y)/2;
             }
         }
 
@@ -323,11 +319,11 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         // calcuates weight
         float binocluarAssociationMassThreshold = getMPThreshold() * binocluarAssMassThresholdPercentTh / 100.0f;
         if(!activateNonoverlapingArea)
-            retVal *= (1- (float) Math.exp(-secondaryEye.get(index)/binocluarAssociationMassThreshold));
+            retVal *= (1 - (float) Math.exp(-secondaryEye.get(index)/binocluarAssociationMassThreshold));
         else{
             int halfDisparity = (int) (disparityUpdater.getVergenceDisparity()/2);
-            if(ev.x > halfDisparity && ev.x < chip.getSizeX() - halfDisparity)
-                retVal *= (1- (float) Math.exp(-secondaryEye.get(index)/binocluarAssociationMassThreshold));
+            if(ev.x >= halfDisparity && ev.x < chip.getSizeX() - halfDisparity)
+                retVal *= (1 - (float) Math.exp(-secondaryEye.get(index)/binocluarAssociationMassThreshold));
         }
 
         return retVal;
