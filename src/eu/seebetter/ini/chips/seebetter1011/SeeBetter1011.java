@@ -10,12 +10,9 @@ import ch.unizh.ini.jaer.chip.retina.*;
 import eu.seebetter.ini.chips.*;
 import eu.seebetter.ini.chips.cDVSEvent;
 import eu.seebetter.ini.chips.config.*;
-import java.awt.event.ActionEvent;
 import java.util.Observer;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
-import javax.swing.AbstractAction;
-import javax.swing.Action;
 import javax.swing.JRadioButton;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.biasgen.*;
@@ -24,7 +21,7 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.hardwareinterface.*;
 import java.awt.BorderLayout;
-import java.awt.Dimension;
+import java.awt.Component;
 import java.awt.FlowLayout;
 import java.nio.ByteBuffer;
 import java.text.ParseException;
@@ -33,7 +30,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Observable;
 import java.util.StringTokenizer;
-import javax.swing.AbstractButton;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
@@ -812,15 +808,11 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             adcScannerLogPanel.add(new ParameterControlPanel(scanner));
             adcScannerLogPanel.add(new ParameterControlPanel(logReadoutControl));
             
-//            Dimension d=new Dimension(500, 50);
-            JPanel moreConfig=new JPanel();
+            JPanel moreConfig=new JPanel(new BorderLayout());
             
-//            moreConfig.setLayout(new BoxLayout(moreConfig,BoxLayout.Y_AXIS));
-            moreConfig.setLayout(new FlowLayout(FlowLayout.LEADING));
-            JPanel extraPanel;
-            moreConfig.add(extraPanel=extraOnchipConfigBits.makeControlPanel());
-            extraPanel.setBorder(new TitledBorder("Extra on-chip configuration bits"));
-//            extraPanel.setPreferredSize(d);
+            JPanel extraPanel=extraOnchipConfigBits.makeControlPanel();
+            extraPanel.setBorder(new TitledBorder("Extra on-chip bits"));
+            moreConfig.add(extraPanel, BorderLayout.WEST);
             
             JPanel portBitsPanel=new JPanel();
             portBitsPanel.setLayout(new BoxLayout(portBitsPanel,BoxLayout.Y_AXIS));
@@ -829,9 +821,9 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 portBitsPanel.add(new JRadioButton(p.getAction()));
             }
             portBitsPanel.setBorder(new TitledBorder("Cypress FX2 port bits"));
-//            portBitsPanel.setPreferredSize(d);
             
-            moreConfig.add(portBitsPanel);
+            moreConfig.add(portBitsPanel, BorderLayout.CENTER);
+            
             bgTabbedPane.addTab("More config", moreConfig);
 
             bPanel.add(bgTabbedPane, BorderLayout.CENTER);
@@ -1212,6 +1204,10 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 return s.toString();
             }
 
+            /** Returns a control panel for setting the bits, using the Actions
+             * 
+             * @return the panel, with BoxLayout.Y_AXIS layout
+             */
             JPanel makeControlPanel() {
                 JPanel pan = new JPanel();
                 pan.setLayout(new BoxLayout(pan, BoxLayout.Y_AXIS));
