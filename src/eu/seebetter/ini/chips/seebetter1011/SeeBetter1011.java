@@ -432,7 +432,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             addConfigValue(runCpld);
             addConfigValue(runAdc);
             addConfigValue(powerDown);
-            addConfigValue(powerDown);
             addConfigValue(nCPLDReset);
    
             // cpld shift register stuff
