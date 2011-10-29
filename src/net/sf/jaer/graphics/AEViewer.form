@@ -862,6 +862,7 @@
                 <Property name="toolTipText" type="java.lang.String" value="Sets the firmware that is downloaded to a blank CypressFX2"/>
               </Properties>
               <Events>
+                <EventHandler event="mouseEntered" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="setDefaultFirmwareMenuItemMouseEntered"/>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setDefaultFirmwareMenuItemActionPerformed"/>
               </Events>
             </MenuItem>

@@ -2193,7 +2193,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      */
     public String showFirmwareFilenameDialog() {
         String filename = null;
-        CypressFX2FirmwareFilennameChooserOkCancelDialog dialog = new CypressFX2FirmwareFilennameChooserOkCancelDialog(chip != null ? chip.getAeViewer() : null, true);
+        CypressFX2FirmwareFilennameChooserOkCancelDialog dialog = new CypressFX2FirmwareFilennameChooserOkCancelDialog(chip != null ? chip.getAeViewer() : null, true,chip);
         dialog.setVisible(true);
         int ret = dialog.getReturnStatus();
         if (ret == CypressFX2FirmwareFilennameChooserOkCancelDialog.RET_OK) {

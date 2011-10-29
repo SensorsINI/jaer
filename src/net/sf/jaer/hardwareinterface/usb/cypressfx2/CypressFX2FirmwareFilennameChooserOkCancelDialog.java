@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.swing.JFileChooser;
+import net.sf.jaer.chip.Chip;
 
 /**
  * A dialog for choosing a firmware file.
@@ -25,11 +26,18 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
     public static final int RET_CANCEL = 0;
     /** A return status code - returned if OK button has been pressed */
     public static final int RET_OK = 1;
+    private Chip chip;
 
-    /** Creates new form CypressFX2FirmwareFilennameChooserOkCancelDialog */
-    public CypressFX2FirmwareFilennameChooserOkCancelDialog(java.awt.Frame parent, boolean modal) {
+    /** Creates new form CypressFX2FirmwareFilennameChooserOkCancelDialog.
+     * 
+     * @param parent enclosing Frame.
+     * @param modal true to block other GUI input while open.
+     * @param chip from where we get the default firmware, or null if you want to use the last file chosen.
+     */
+    public CypressFX2FirmwareFilennameChooserOkCancelDialog(java.awt.Frame parent, boolean modal, Chip chip) {
         super(parent, modal);
         initComponents();
+        this.chip=chip;
         filenameTextField.setText(getLastFile());
         filenameTextField.setToolTipText(filenameTextField.getText());
     }
@@ -39,10 +47,16 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
      * @return the full path to the file.
      */
     public String getLastFile(){
-        return prefs.get("CypressFX2FirmwareFilennameChooserOkCancelDialog.lastFile", null);
+        if(chip!=null) return chip.getDefaultFirmwareBixFileForBlankDevice();
+        else return prefs.get("CypressFX2FirmwareFilennameChooserOkCancelDialog.lastFile", null);
     }
     
+    /** Sets the last file and sets it in the Chip object if it is not null.
+     * 
+     * @param f the full or relative path to the file, relative to starting folder.
+     */
     public void setLastFile(String f){
+        if(chip!=null) chip.setDefaultFirmwareBixFileForBlankDevice(f);
         prefs.put("CypressFX2FirmwareFilennameChooserOkCancelDialog.lastFile", f);
     }
     
@@ -201,7 +215,7 @@ private void chooseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-
     public static void main(String args[]) {
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
-                CypressFX2FirmwareFilennameChooserOkCancelDialog dialog = new CypressFX2FirmwareFilennameChooserOkCancelDialog(new javax.swing.JFrame(), true);
+                CypressFX2FirmwareFilennameChooserOkCancelDialog dialog = new CypressFX2FirmwareFilennameChooserOkCancelDialog(new javax.swing.JFrame(), true, new Chip());
                 dialog.addWindowListener(new java.awt.event.WindowAdapter() {
                     public void windowClosing(java.awt.event.WindowEvent e) {
                         System.exit(0);

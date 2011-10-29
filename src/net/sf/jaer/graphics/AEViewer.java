@@ -78,6 +78,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public static String HELP_URL_JAVADOC;
     public static String HELP_USER_GUIDE_USB2_MINI = "/doc/USBAERmini2userguide.pdf";
     public static String HELP_USER_GUIDE_AER_CABLING = "/doc/AER Hardware and cabling.pdf";
+    private static final String SET_DEFAULT_FIRMWARE_FOR_BLANK_DEVICE = "Set default firmware for blank device...";
 
     /** Utility method to return a URL to a file in the installation.
      * 
@@ -3540,6 +3541,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setDefaultFirmwareMenuItem.setMnemonic('f');
         setDefaultFirmwareMenuItem.setText("Set default firmware for blank device...");
         setDefaultFirmwareMenuItem.setToolTipText("Sets the firmware that is downloaded to a blank CypressFX2");
+        setDefaultFirmwareMenuItem.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                setDefaultFirmwareMenuItemMouseEntered(evt);
+            }
+        });
         setDefaultFirmwareMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 setDefaultFirmwareMenuItemActionPerformed(evt);
@@ -5056,7 +5062,7 @@ private void reopenSocketInputStreamMenuItemActionPerformed(java.awt.event.Actio
 }//GEN-LAST:event_reopenSocketInputStreamMenuItemActionPerformed
 
 private void setDefaultFirmwareMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setDefaultFirmwareMenuItemActionPerformed
-    CypressFX2FirmwareFilennameChooserOkCancelDialog dialog = new CypressFX2FirmwareFilennameChooserOkCancelDialog(this, true);
+    CypressFX2FirmwareFilennameChooserOkCancelDialog dialog = new CypressFX2FirmwareFilennameChooserOkCancelDialog(this, true,getChip());
     dialog.setVisible(true);
     int v = dialog.getReturnStatus();
     if (v == CypressFX2FirmwareFilennameChooserOkCancelDialog.RET_OK) {
@@ -5204,6 +5210,15 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
         }
     }
 }//GEN-LAST:event_openSocketOutputStreamMenuItemActionPerformed
+
+    private void setDefaultFirmwareMenuItemMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_setDefaultFirmwareMenuItemMouseEntered
+        if(chip!=null){
+            String s="<html>"+SET_DEFAULT_FIRMWARE_FOR_BLANK_DEVICE+"<br> (currently "+chip.getDefaultFirmwareBixFileForBlankDevice()+")";
+            if(!s.equals(setDefaultFirmwareMenuItem.getToolTipText())){
+                setDefaultFirmwareMenuItem.setToolTipText(s);
+            }
+        }
+    }//GEN-LAST:event_setDefaultFirmwareMenuItemMouseEntered
 
     /** Returns desired frame rate of FrameRater
      * 
