@@ -1161,32 +1161,32 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             public ExtraOnChipConfigBits() {
                 hasPreferencesList.add(this);
             }
-            ExtraConfigBit pullupX = new ExtraConfigBit("useStaticPullupX", 0, "turn on static pullup for X addresses (columns)"),
-                    pullupY = new ExtraConfigBit("useStaticPullupY", 1, "turn on static pullup for Y addresses (rows)"),
-                    delayY0 = new ExtraConfigBit("delayY0", 2, "RC delay columns, 1x"),
-                    delayY1 = new ExtraConfigBit("delayY1", 3, "RC delay columns, 2x"),
-                    delayY2 = new ExtraConfigBit("delayY2", 4, "RC delay columns 4x"),
-                    delayX0 = new ExtraConfigBit("delayX0", 5, "RC delay rows, 1x"),
-                    delayX1 = new ExtraConfigBit("delayX1", 6, "RC delay rows, 2x"),
-                    delayX2 = new ExtraConfigBit("delayX2", 7, "RC delay rows, 4x"),
-                    sDVSReset = new ExtraConfigBit("sDVSReset", 8, "holds sensitive DVS (sDVS) array in reset"),
-                    bDVSReset = new ExtraConfigBit("bDVSReset", 9, "holds big DVS + log intensity (bDVS) array in reset"),
-                    ros = new ExtraConfigBit("ROS", 10, "reset on scan enabled"),
-                    delaySM0 = new ExtraConfigBit("delaySM0", 11, "adds delay to state machine, 1x"),
-                    delaySM1 = new ExtraConfigBit("delaySM1", 12, "adds delay to state machine, 2x"),
-                    delaySM2 = new ExtraConfigBit("delaySM2", 13, "adds delay to state machine, 4x");
-            ExtraConfigBit[] bits = {pullupX, pullupY, delayY0, delayY1, delayY2, delayX0, delayX1, delayX2, sDVSReset, bDVSReset, ros, delaySM0, delaySM1, delaySM2};
+            OnchipConfigBit pullupX = new OnchipConfigBit(SeeBetter1011.this,"useStaticPullupX", 0, "turn on static pullup for X addresses (columns)", false),
+                    pullupY = new OnchipConfigBit(SeeBetter1011.this,"useStaticPullupY", 1, "turn on static pullup for Y addresses (rows)",true),
+                    delayY0 = new OnchipConfigBit(SeeBetter1011.this,"delayY0", 2, "RC delay columns, 1x",false),
+                    delayY1 = new OnchipConfigBit(SeeBetter1011.this,"delayY1", 3, "RC delay columns, 2x",false),
+                    delayY2 = new OnchipConfigBit(SeeBetter1011.this,"delayY2", 4, "RC delay columns 4x",false),
+                    delayX0 = new OnchipConfigBit(SeeBetter1011.this,"delayX0", 5, "RC delay rows, 1x",false),
+                    delayX1 = new OnchipConfigBit(SeeBetter1011.this,"delayX1", 6, "RC delay rows, 2x",false),
+                    delayX2 = new OnchipConfigBit(SeeBetter1011.this,"delayX2", 7, "RC delay rows, 4x",false),
+                    sDVSReset = new OnchipConfigBit(SeeBetter1011.this,"sDVSReset", 8, "holds sensitive DVS (sDVS) array in reset",false),
+                    bDVSReset = new OnchipConfigBit(SeeBetter1011.this,"bDVSReset", 9, "holds big DVS + log intensity (bDVS) array in reset",false),
+                    ros = new OnchipConfigBit(SeeBetter1011.this,"ROS", 10, "reset on scan enabled",false),
+                    delaySM0 = new OnchipConfigBit(SeeBetter1011.this,"delaySM0", 11, "adds delay to state machine, 1x",false),
+                    delaySM1 = new OnchipConfigBit(SeeBetter1011.this,"delaySM1", 12, "adds delay to state machine, 2x",false),
+                    delaySM2 = new OnchipConfigBit(SeeBetter1011.this,"delaySM2", 13, "adds delay to state machine, 4x",false);
+            OnchipConfigBit[] bits = {pullupX, pullupY, delayY0, delayY1, delayY2, delayX0, delayX1, delayX2, sDVSReset, bDVSReset, ros, delaySM0, delaySM1, delaySM2};
 
             @Override
             public void loadPreference() {
-                for (ExtraConfigBit b : bits) {
+                for (OnchipConfigBit b : bits) {
                     b.loadPreference();
                 }
             }
 
             @Override
             public void storePreference() {
-                for (ExtraConfigBit b : bits) {
+                for (OnchipConfigBit b : bits) {
                     b.storePreference();
                 }
             }
@@ -1207,7 +1207,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     s.append("1"); // loaded first into unused parts of final shift register
                 }
                 for (int i = bits.length - 1; i >= 0; i--) {
-                    s.append(bits[i].value ? "1" : "0");
+                    s.append(bits[i].isSet() ? "1" : "0");
                 }
                 log.info(s.length() + " extra config bits with unused registers at left end =" + s);
                 return s.toString();
@@ -1216,71 +1216,14 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             JPanel makeControlPanel() {
                 JPanel pan = new JPanel();
                 pan.setLayout(new BoxLayout(pan, BoxLayout.Y_AXIS));
-                for (ExtraConfigBit b : bits) {
-                    JRadioButton but = new JRadioButton(b.action);
-                    but.setSelected(b.value);
+                for (OnchipConfigBit b : bits) {
+                    JRadioButton but = new JRadioButton(b.getAction());
                     pan.add(but);
                 }
                 return pan;
             }
 
-            /** One bit of extra configuration */
-            public class ExtraConfigBit implements HasPreference {
-
-                private int position;
-                private boolean value = false;
-                private SelectAction action = new SelectAction();
-                private String name;
-
-                /** Makes a new on-chip extra config bit.
-                 * 
-                 * @param name label
-                 * @param position along shift register. Each loaded bit produces complementary output pair that is tapped off inside chip. We load positive (uncomplemented) value here.
-                 * @param desc tooltip and hint
-                 */
-                ExtraConfigBit(String name, int position, String desc) {
-                    this.name = name;
-                    this.position = position;
-                    action.putValue(Action.SHORT_DESCRIPTION, desc);
-                    action.putValue(Action.NAME, name);
-                }
-
-                private String key() {
-                    return SeeBetter1011.this.getClass().getSimpleName() + "." + name + "." + name + ".value";
-                }
-
-                @Override
-                public void loadPreference() {
-                    select(getPrefs().getBoolean(key(), false));
-                }
-
-                @Override
-                public void storePreference() {
-                    getPrefs().putBoolean(key(), value);
-                }
-
-                /** Sets the value and notifies observers of ExtraOnChipConfigBits
-                 * 
-                 * @param yes the new value
-                 */
-                public void select(boolean yes) {
-                    if (this.value != yes) {
-                        setChanged();
-                    }
-                    this.value = yes;
-                    setChanged();
-                    notifyObservers();
-                }
-
-                class SelectAction extends AbstractAction {
-
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        select(!value);
-                    }
-                }
-            }
-        } // ExtraOnChipConfigBits
+           } // ExtraOnChipConfigBits
 
         /** A mux for selecting output on the on-chip configuration/biasgen shift register. */
         class OutputMux extends Observable implements HasPreference, RemoteControlled {

@@ -29,6 +29,7 @@ public class AbstractConfigBit extends AbstractConfigValue implements ConfigBit 
         prefs.addPreferenceChangeListener(this);
         action.putValue(Action.SHORT_DESCRIPTION, tip);
         action.putValue(Action.NAME, name);
+        action.putValue(Action.SELECTED_KEY,value);
     }
 
     /** Sets the value and notifies observers if it changes.
@@ -41,6 +42,7 @@ public class AbstractConfigBit extends AbstractConfigValue implements ConfigBit 
             setChanged();
         }
         this.value = value;
+        action.putValue(Action.SELECTED_KEY, value);
 //                log.info("set " + this + " to value=" + value+" notifying "+countObservers()+" observers");
         notifyObservers();
     }
