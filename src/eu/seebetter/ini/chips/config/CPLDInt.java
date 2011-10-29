@@ -16,14 +16,23 @@ public class CPLDInt extends CPLDConfigValue implements ConfigInt {
     volatile int value;
     int def;
 
-    public CPLDInt(Chip chip, int startBit, int endBit, String name, String tip, int def) {
-        super(chip, startBit, endBit, name, tip);
-        this.startBit = startBit;
-        this.endBit = endBit;
+    /** Makes a new int value on the CPLD shift register.  The int has up to 32 bits. It occupies some bit positions.
+     * 
+     * @param chip enclosing chip, where preferences come from
+     * @param msb the most significant bit position
+     * @param lsb least significant
+     * @param name name
+     * @param tip tool-tip
+     * @param def default value
+     */
+    public CPLDInt(Chip chip, int msb, int lsb, String name, String tip, int def) {
+        super(chip, lsb, msb, name, tip);
+        this.lsb = lsb;
+        this.msb = msb;
         this.def = def;
         key = "CPLDInt." + name;
-        if (endBit - startBit != 15) {
-            throw new Error("wrong number of bits (only counted " + (endBit - startBit + 1) + ") but there should be 16 in " + this);
+        if (msb - lsb != 15) {
+            log.warning("only counted " + (msb - lsb + 1) + " bits, but there should usually be 16 in a CPLDInt like we are (" + this+")");
         }
         loadPreference();
     }
@@ -48,7 +57,7 @@ public class CPLDInt extends CPLDConfigValue implements ConfigInt {
 
     @Override
     public String toString() {
-        return String.format("CPLDInt (%d bits) name=%s value=%d", endBit-startBit+1, name, value);
+        return String.format("CPLDInt (%d bits %d to %d) name=%s value=%d", msb-lsb+1, lsb, msb, name, value);
     }
 
     @Override
@@ -68,5 +77,13 @@ public class CPLDInt extends CPLDConfigValue implements ConfigInt {
     @Override
     public void storePreference() {
         prefs.putInt(key, value); // will eventually call pref change listener which will call set again
+    }
+    
+    public int getMax(){
+        return 1<<nBits-1;
+    }
+    
+    public int getMin(){
+        return 0;
     }
 }

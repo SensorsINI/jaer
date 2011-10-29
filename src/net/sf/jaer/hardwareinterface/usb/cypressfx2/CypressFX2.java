@@ -2129,15 +2129,14 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      *a dialog is shown that user can use to program the VID/PID of the device.
      *<p>
      *In addition, there is a problem if firmware is downloaded more than once to an FX2LP device between hard resets. Therefore if this method detects
-     *that the device has string identitifers, it assumes the firmware has already been downloaded.
+     *that the device has string identifiers, it assumes the firmware has already been downloaded.
      *
      *
      * Firmware file is loaded as a resource from the jar archive.
      */
     synchronized void downloadFirmwareBinaryToBlankDevice() throws HardwareInterfaceException {
 
-        log.info("downloading binary firmware to CypressFX2 RAM (volatile, on-chip) memory");
-
+ 
         //  firmware load variables
         byte[] fwBuffer; // buffer to hold contents of firmware file (binary 8051 code)
 
@@ -2145,11 +2144,12 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
         String firmwareFilename = getChip()==null? null: getChip().getDefaultFirmwareBixFileForBlankDevice();
         if (firmwareFilename == null) {
-            log.warning("firmwareFilename=null, please set a default binary firmware file for RAM download");
-            return;
+//            log.warning("firmwareFilename=null, please set a default binary firmware file for RAM download");
+            throw new BlankDeviceException("firmwareFilename=null, please set a default binary firmware file for RAM download");
         }
 
-        try {
+        log.info("downloading binary firmware "+firmwareFilename+" to CypressFX2 RAM (volatile, on-chip) memory");
+       try {
             fwBuffer = loadBinaryFirmwareFile(firmwareFilename);
         } catch (IOException e) {
             close();

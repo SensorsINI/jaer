@@ -44,6 +44,22 @@ public class SeeBetter1011HardwareInterface extends CypressFX2Biasgen {
             sb.powerDown.set(powerDown);
         }
     }
+    
+    /** Overridden to use reset timestamps command ('0' in viewer window) to do a chip reset as well
+     * 
+     */
+        @Override
+    synchronized public void resetTimestamps() {
+        super.resetTimestamps();
+        if(chip!=null && chip instanceof SeeBetter1011){
+            SeeBetter1011.SeeBetterConfig sb=(SeeBetter1011.SeeBetterConfig)chip.getBiasgen();
+            sb.nChipReset.set(true);
+            sb.nChipReset.set(false);
+        }
+        
+    }
+    private boolean chipReset = false;
+
 
     private byte[] parseHexData(String firmwareFile) throws IOException {
 
@@ -355,11 +371,10 @@ public class SeeBetter1011HardwareInterface extends CypressFX2Biasgen {
                                     buffer.overrunOccuredFlag = true; // throw away events if we have overrun the output arrays
                                 } else {
                                     if ((dataword & SeeBetter1011.ADDRESS_TYPE_MASK) == SeeBetter1011.ADDRESS_TYPE_ADC) {
-                                        System.out.println(dataword);
                                         addresses[eventCounter] = dataword;
                                         timestamps[eventCounter] = currentts;  // ADC event gets last timestamp
                                         eventCounter++;
-                                        //      System.out.println("ADC word: " + (dataword&SeeBetter1011.ADC_DATA_MASK));
+//                                              System.out.println("ADC word: " + (dataword&SeeBetter1011.ADC_DATA_MASK));
                                     } else if ((buf[i + 1] & Xmask) == Xmask) {////  received an X address, write out event to addresses/timestamps output arrays
                                         // x adddress
                                         //xadd = (buf[i] & 0xff);  //

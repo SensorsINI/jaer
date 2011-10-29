@@ -376,7 +376,10 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
      */
     public class SeeBetterConfig extends SeeBetterChipConfig { // extends Config to give us containers for various configuration data
 
+        /** Number of ADC clock cycles per us, for converting from GUIs to config values */
         public static final int ADC_CLK_CYCLES_PER_US = 15;
+        /** VR for handling all configuration changes in firmware */
+        public static final byte VR_WRITE_CONFIG = (byte) 0xB8;
         ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
         private ConfigurableIPot32 pcas, diffOn, diffOff, diff, red, blue, amp;
         private ConfigurableIPot32 refr, pr, foll;
@@ -395,26 +398,27 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         private PortBit runAdc = new PortBit(SeeBetter1011.this, "c0", "runAdc", "High to run ADC", true);
         // portE
         /** Bias generator power down bit */
-        public PortBit powerDown = new PortBit(SeeBetter1011.this, "e2", "powerDown", "High to disable master bias and tie biases to default rails", true);
+        PortBit powerDown = new PortBit(SeeBetter1011.this, "e2", "powerDown", "High to disable master bias and tie biases to default rails", false);
+        PortBit nChipReset = new PortBit(SeeBetter1011.this, "e3", "nChipReset", "Low to reset AER circuits and hold pixels in reset, High to run", true); // shouldn't need to manipulate from host
+        PortBit nCPLDReset = new PortBit(SeeBetter1011.this, "e7", "nCPLDReset", "Low to reset CPLD", true);// shouldn't need to manipulate from host
         //
         // adc and scanner configurations are stored in scanner and adc; updates to here should update CPLD config below
         // CPLD shift register contents specified here by CPLDInt and CPLDBit
         private CPLDBit use5TBuffer = new CPLDBit(SeeBetter1011.this, 0, "use5TBuffer", "enables 5T OTA vs Source-Follower in-pixel buffer", true);
         private CPLDBit useCalibration = new CPLDBit(SeeBetter1011.this, 1, "useCalibration", "enables on-chip per-pixel calibration current after log intenisty sample", true);
-        private CPLDInt adcTrackTime = new CPLDInt(SeeBetter1011.this, 2, 17, "adcTrackTime", "ADC track time in clock cycles which are 15 cycles/us", 0);
-        private CPLDInt adcRefOnTime = new CPLDInt(SeeBetter1011.this, 18, 33, "adcRefOnTime", "ADC Reference ON time in clock cycles which are 15 cycles/us", 0);
-        private CPLDInt adcRefOffTime = new CPLDInt(SeeBetter1011.this, 34, 49, "adcRefOffTime", "ADC Reference OFF time in clock cycles which are 15 cycles/us", 0);
-        private CPLDInt adcIdleTime = new CPLDInt(SeeBetter1011.this, 50, 65, "adcIdleTime", "ADC idle time after last acquisition in clock cycles which are 15 cycles/us", 0);
-        private CPLDInt scanY = new CPLDInt(SeeBetter1011.this, 66, 81, "scanY", "cochlea tap to monitor when not scanning continuously", 0);
-        private CPLDInt scanX = new CPLDInt(SeeBetter1011.this, 82, 97, "scanX", "cochlea tap to monitor when not scanning continuously", 0);
-        private CPLDBit scanContinuouslyEnabled = new CPLDBit(SeeBetter1011.this, 98, "scanContinuouslyEnabled", "enables continuous scanning of on-chip scanner", false);
+        private CPLDInt adcConfig = new CPLDInt(SeeBetter1011.this, 13, 2, "adcConfig", "ADC configuration bits; computed by ADC with channel and sequencing parameters", 0);
+        private CPLDInt adcTrackTime = new CPLDInt(SeeBetter1011.this, 29, 14, "adcTrackTime", "ADC track time in clock cycles which are 15 cycles/us", 0);
+        private CPLDInt adcRefOnTime = new CPLDInt(SeeBetter1011.this, 45, 30, "adcRefOnTime", "ADC Reference ON time in clock cycles which are 15 cycles/us", 0);
+        private CPLDInt adcRefOffTime = new CPLDInt(SeeBetter1011.this, 61, 46, "adcRefOffTime", "ADC Reference OFF time in clock cycles which are 15 cycles/us", 0);
+        private CPLDInt adcIdleTime = new CPLDInt(SeeBetter1011.this, 77, 62, "adcIdleTime", "ADC idle time after last acquisition in clock cycles which are 15 cycles/us", 0);
+        private CPLDInt scanY = new CPLDInt(SeeBetter1011.this, 83, 78, "scanY", "cochlea tap to monitor when not scanning continuously", 0);
+        private CPLDInt scanX = new CPLDInt(SeeBetter1011.this, 89, 84, "scanX", "cochlea tap to monitor when not scanning continuously", 0);
+        private CPLDBit scanContinuouslyEnabled = new CPLDBit(SeeBetter1011.this, 90, "scanContinuouslyEnabled", "enables continuous scanning of on-chip scanner", false);
         //
         // lists of ports and CPLD config
         private ADC adc;
         private Scanner scanner;
         private LogReadoutControl logReadoutControl;
-        boolean dacPowered = getPrefs().getBoolean("Biasgen.DAC.powered", true);
-        private CypressFX2 cypress = null;
 
         /** Creates a new instance of SeeBetterConfig for cDVSTest with a given hardware interface
          *@param chip the chip this biasgen belongs to
@@ -432,6 +436,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             addConfigValue(powerDown);
 
             // cpld shift register stuff
+            addConfigValue(adcConfig);
             addConfigValue(adcTrackTime);
             addConfigValue(adcIdleTime);
             addConfigValue(use5TBuffer);
@@ -489,7 +494,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             thermometerDAC.addObserver(this);
 
             setPotArray(new IPotArray(this));
-            
+
             // on SeeBetter1011 pots are as follows starting from input end of shift register
             try {
                 addIPot("DiffBn,n,normal,differencing amp");
@@ -534,9 +539,10 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             logReadoutControl = new LogReadoutControl();
 
             scanner = new Scanner(SeeBetter1011.this);
-            scanner.addObserver(this);
-
+//            scanner.addObserver(this);
+            setBatchEditOccurring(true);
             loadPreferences();
+            setBatchEditOccurring(false);
 
         } // constructor
 
@@ -622,6 +628,11 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         @Override
         public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
 
+            if(isBatchEditOccurring()){
+                log.info("batch edit occurring, not sending configuration yet");
+                return;
+            }
+            log.info("sending full configuration");
             // on-chip shift register
             byte[] bytes = formatConfigurationBytes(this);
             if (bytes == null) {
@@ -635,7 +646,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
             // CPLD registers
             update(adc, null);
-            update(scanner, null);
+//            update(scanner, null);
 
             // enables acquisition
             update(runCpld, null);
@@ -654,6 +665,9 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             // value is the type of update
             // index is sometimes used for 16 bitmask updates
             // bytes are the rest of data
+            if (isBatchEditOccurring()) {
+                return;
+            }
             try {
                 if (observable instanceof IPot || observable instanceof AllMuxes || observable instanceof ExtraOnChipConfigBits || observable instanceof VPot || observable instanceof ShiftedSourceBias) { // must send all of the onchip shift register values to replace shift register contents
                     // handle everything on the on-chip shift register 
@@ -673,11 +687,12 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 } else if (observable instanceof CPLDConfigValue) {
                     sendCPLDConfig();
                 } else if (observable instanceof ADC) {
-                    sendCPLDConfig();
-                    update(runAdc, null);
-                } else if(observable instanceof Scanner){
-                    sendCPLDConfig();
-                }else {
+                    sendCPLDConfig(); // CPLD register updates on device side save and restore the RUN_ADC flag
+//                    update(runAdc, null);
+                } //                else if (observable instanceof Scanner) {
+                //                    sendCPLDConfig();
+                //                } 
+                else {
                     super.update(observable, object);  // super (SeeBetterConfig) handles others, e.g. masterbias
                 }
             } catch (HardwareInterfaceException e) {
@@ -690,7 +705,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             sendConfig(CMD_CPLD_CONFIG, 0, bytes);
         }
 
-        /** convenience method for sending configuration to hardware. Sends vendor request VENDOR_REQUEST_SEND_BIAS_BYTES with subcommand cmd, index index and bytes bytes.
+        /** convenience method for sending configuration to hardware. Sends vendor request VR_WRITE_CONFIG with subcommand cmd, index index and bytes bytes.
          * 
          * @param cmd the subcommand to set particular configuration, e.g. CMD_CPLD_CONFIG
          * @param index unused
@@ -702,7 +717,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             StringBuilder sb = new StringBuilder(String.format("sending config cmd=0x%X (%s) index=0x%X with %d bytes", cmd.code, cmd.name, index, bytes.length));
             if (bytes == null || bytes.length == 0) {
             } else {
-                int max = 8;
+                int max = 50;
                 if (bytes.length < max) {
                     max = bytes.length;
                 }
@@ -718,7 +733,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             }
 //            log.info(String.format("sending command vendor request cmd=%d, index=%d, and %d bytes", cmd, index, bytes.length));
             if (getHardwareInterface() != null && getHardwareInterface() instanceof CypressFX2) {
-                ((CypressFX2) getHardwareInterface()).sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff & cmd.code), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
+                ((CypressFX2) getHardwareInterface()).sendVendorRequest(VR_WRITE_CONFIG, (short) (0xffff & cmd.code), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
             }
         }
 
@@ -741,6 +756,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     hp.loadPreference();
                 }
             }
+          
             if (ssBiases != null) {
                 for (ShiftedSourceBias ss : ssBiases) {
                     ss.loadPreferences();
@@ -779,7 +795,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             bPanel = new JPanel();
             bPanel.setLayout(new BorderLayout());
             bgTabbedPane = new JTabbedPane();
-
+            setBatchEditOccurring(true); // stop updates on building panel
             JPanel combinedBiasShiftedSourcePanel = new JPanel();
             combinedBiasShiftedSourcePanel.setLayout(new BoxLayout(combinedBiasShiftedSourcePanel, BoxLayout.Y_AXIS));
             combinedBiasShiftedSourcePanel.add(super.buildControlPanel());
@@ -790,15 +806,21 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             combinedBiasShiftedSourcePanel.add(new VPotGUIControl(thermometerDAC));
             bgTabbedPane.addTab("Biases", combinedBiasShiftedSourcePanel);
             bgTabbedPane.addTab("Output control", new SeeBetter1011OutputControlPanel(SeeBetter1011.this));
-            bgTabbedPane.addTab("ADC control", new ParameterControlPanel(adc));
-            bgTabbedPane.addTab("Log intensity readout", new ParameterControlPanel(logReadoutControl));
-            bgTabbedPane.addTab("Scanner",new ParameterControlPanel(scanner));
+            JPanel adcScannerLogPanel = new JPanel();
+            adcScannerLogPanel.setLayout(new BoxLayout(adcScannerLogPanel, BoxLayout.Y_AXIS));
+            bgTabbedPane.add("Analog output",adcScannerLogPanel);
+            adcScannerLogPanel.add(new ParameterControlPanel(adc));
+            adcScannerLogPanel.add(new ParameterControlPanel(scanner));
+            adcScannerLogPanel.add(new ParameterControlPanel(logReadoutControl));
             bgTabbedPane.addTab("More config", extraOnchipConfigBits.makeControlPanel());
-         
+
             bPanel.add(bgTabbedPane, BorderLayout.CENTER);
             // only select panel after all added
-            bgTabbedPane.setSelectedIndex(getPrefs().getInt("SeeBetter1011.bgTabbedPaneSelectedIndex", 0));
-            
+            try {
+                bgTabbedPane.setSelectedIndex(getPrefs().getInt("SeeBetter1011.bgTabbedPaneSelectedIndex", 0));
+            } catch (IndexOutOfBoundsException e) {
+                bgTabbedPane.setSelectedIndex(0);
+            }
             // add listener to store last selected tab
             bgTabbedPane.addMouseListener(new java.awt.event.MouseAdapter() {
 
@@ -807,6 +829,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     tabbedPaneMouseClicked(evt);
                 }
             });
+            setBatchEditOccurring(false);
 
             return bPanel;
         }
@@ -860,7 +883,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             bb.flip(); // flips to read them out in order of putting them in, i.e., get configBitBytes first
             bb.get(allBytes); // we write these in vendor request
 
-            StringBuilder sb = new StringBuilder("bytes sent to FX2 to be loaded big endian for each byte in order \n");
+            StringBuilder sb = new StringBuilder(allBytes.length + " bytes sent to FX2 to be loaded big endian into on-chip shift register for each byte in order \n");
             for (byte b : allBytes) {
                 sb.append(String.format("%02x ", b));
             }
@@ -870,7 +893,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
         /** Controls the log intensity readout by wrapping the relevant bits */
         public class LogReadoutControl {
- 
+
             public boolean isSelect5Tbuffer() {
                 return use5TBuffer.isSet();
             }
@@ -906,6 +929,10 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
         public class ADC extends Observable {
 
+            private final int ADCchannelshift = 5;
+            private final short ADCconfig = (short) 0x100;   //normal power mode, single ended, sequencer unused : (short) 0x908;
+            int channel = getPrefs().getInt("ADC.channel", 0);
+
             public boolean isADCEnabled() {
                 return runAdc.isSet();
             }
@@ -929,86 +956,89 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             public void setTrackTime(int timeUs) {
                 adcTrackTime.set(timeUs * ADC_CLK_CYCLES_PER_US);
             }
+
+            public int getAdcChannel() {
+                return channel;
+            }
+
+            public void setAdcChannel(int chan) {
+                if (chan <= 0) {
+                    chan = 0;
+                } else if (chan > 3) {
+                    chan = 3;
+                }
+                if (this.channel != chan) {
+                    setChanged();
+                }
+                this.channel = chan;
+                getPrefs().putInt("ADC.channel", chan);
+                adcConfig.set((ADCconfig | (chan << ADCchannelshift)));
+                notifyObservers();
+            }
         }
 
         /** Extends base scanner class to control the relevant bits and parameters of the hardware */
-        public class Scanner extends ScannerHardwareInterfaceProxy implements PreferenceChangeListener, HasPreference, Observer {
+        public class Scanner implements PreferenceChangeListener, HasPreference, Observer {
 
-            public final int nstages = 64;
-            public final int minPeriod = 10; // to avoid FX2 getting swamped by interrupts for scanclk
-            public final int maxPeriod = 255;
+            private final int minScanX = 0;
+            private final int maxScanX = 63;
+            private final int minScanY = 0;
+            private final int maxScanY = 63;
 
             public Scanner(SeeBetter1011 chip) {
-                super(chip);
                 loadPreference();
                 getPrefs().addPreferenceChangeListener(this);
-                hasPreferencesList.add(this);
+                hasPreferencesList.add(this); // not really used since all preferences are in the CPLD configuration bits used here
             }
 
-            public int getPeriod() {
-                return adc.getIdleTime() + adc.getTrackTime();
-            }
-
-            /** Sets the scan rate using the ADC idleTime setting, indirectly. 
-             * 
-             * @param period 
-             */
-            public void setPeriod(int period) {
-                boolean old = adc.isADCEnabled();
-                adc.setADCEnabled(false);
-                adc.setIdleTime(period); // TODO fix period units using track time + conversion time + idleTime
-                if (old) {
-                    adc.setADCEnabled(old);
-                }
-            }
-
-            @Override
+//            public int getPeriod() {
+//                return adc.getIdleTime() + adc.getTrackTime();
+//            }
+//            /** Sets the scan rate using the ADC idleTime setting, indirectly. 
+//             * 
+//             * @param period 
+//             */
+//            public void setPeriod(int period) {
+//                boolean old = adc.isADCEnabled();
+//                adc.setADCEnabled(false);
+//                adc.setIdleTime(period); // TODO fix period units using track time + conversion time + idleTime
+//                if (old) {
+//                    adc.setADCEnabled(old);
+//                }
+//            }
             public void setScanX(int scanX) {
-                super.setScanX(scanX);
                 SeeBetterConfig.this.scanX.set(scanX);
             }
 
-            @Override
             public int getScanX() {
                 return SeeBetterConfig.this.scanX.get();
             }
 
-            @Override
             public void setScanY(int scanX) {
-                super.setScanY(scanY);
                 SeeBetterConfig.this.scanY.set(scanX);
             }
 
-            @Override
             public int getScanY() {
                 return SeeBetterConfig.this.scanY.get();
             }
 
-            @Override
             public boolean isScanContinuouslyEnabled() {
                 return SeeBetterConfig.this.scanContinuouslyEnabled.isSet();
             }
 
-            @Override
             public void setScanContinuouslyEnabled(boolean scanContinuouslyEnabled) {
-                super.setScanContinuouslyEnabled(scanContinuouslyEnabled);
                 SeeBetterConfig.this.scanContinuouslyEnabled.set(scanContinuouslyEnabled);
             }
 
-            @Override
             public void preferenceChange(PreferenceChangeEvent e) {
-//                if (e.getKey().equals("CochleaAMS1c.SeeBetterConfig.Scanner.currentStage")) {
-//                    setCurrentStage(Integer.parseInt(e.getNewValue()));
-//                } else if (e.getKey().equals("CochleaAMS1c.SeeBetterConfig.Scanner.currentStage")) {
-//                    setContinuousScanningEnabled(Boolean.parseBoolean(e.getNewValue()));
-//                }
             }
 
             @Override
             public void loadPreference() {
-                setScanX(SeeBetterConfig.this.scanX.get());
-                setScanY(SeeBetterConfig.this.scanY.get());
-                setScanContinuouslyEnabled(SeeBetterConfig.this.scanContinuouslyEnabled.isSet());
+                // ocnfig loads itself
+//                setScanX(SeeBetterConfig.this.scanX.get());
+//                setScanY(SeeBetterConfig.this.scanY.get());
+//                setScanContinuouslyEnabled(SeeBetterConfig.this.scanContinuouslyEnabled.isSet());
             }
 
             @Override
@@ -1017,18 +1047,46 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
             @Override
             public String toString() {
-                return "Scanner{" + "x=" + getScanX() + " y="+getScanY()+" scanContinuouslyEnabled=" + isScanContinuouslyEnabled() + " period=" + getPeriod() + '}';
+                return "Scanner{" + "x=" + getScanX() + " y=" + getScanY() + " scanContinuouslyEnabled=" + isScanContinuouslyEnabled() + '}';
             }
 
             @Override
             public void update(Observable o, Object arg) {
-                if (o == SeeBetterConfig.this.scanContinuouslyEnabled) {
-                    setScanContinuouslyEnabled(SeeBetterConfig.this.scanContinuouslyEnabled.isSet());
-                } else if (o == SeeBetterConfig.this.scanX) {
-                    setScanX(SeeBetterConfig.this.scanX.get());
-                } else if (o == SeeBetterConfig.this.scanY) {
-                    setScanX(SeeBetterConfig.this.scanY.get());
-                }
+//                if (o == SeeBetterConfig.this.scanContinuouslyEnabled) {
+//                    setScanContinuouslyEnabled(SeeBetterConfig.this.scanContinuouslyEnabled.isSet());
+//                } else if (o == SeeBetterConfig.this.scanX) {
+//                    setScanX(SeeBetterConfig.this.scanX.get());
+//                } else if (o == SeeBetterConfig.this.scanY) {
+//                    setScanX(SeeBetterConfig.this.scanY.get());
+//                }
+            }
+
+            /**
+             * @return the minScanX
+             */
+            public int getMinScanX() {
+                return minScanX;
+            }
+
+            /**
+             * @return the maxScanX
+             */
+            public int getMaxScanX() {
+                return maxScanX;
+            }
+
+            /**
+             * @return the minScanY
+             */
+            public int getMinScanY() {
+                return minScanY;
+            }
+
+            /**
+             * @return the maxScanY
+             */
+            public int getMaxScanY() {
+                return maxScanY;
             }
         } // Scanner
 

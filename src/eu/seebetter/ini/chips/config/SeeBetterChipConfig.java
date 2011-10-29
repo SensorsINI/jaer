@@ -6,6 +6,7 @@ package eu.seebetter.ini.chips.config;
 
 import java.util.ArrayList;
 import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.IPotGroup;
 import net.sf.jaer.chip.Chip;
 
 /**
@@ -13,12 +14,12 @@ import net.sf.jaer.chip.Chip;
  * 
  * @author tobi
  */
-public class SeeBetterChipConfig extends Biasgen {
+public class SeeBetterChipConfig extends Biasgen implements HasPreference {
 
     /** Active container for CPLD configuration, which know how to format the data for the CPLD shift register.
      * 
      */
-    protected CPLDConfig cpldConfig = new CPLDConfig();
+    protected CPLDShiftRegister cpldConfig = new CPLDShiftRegister();
     /** List of configuration values
      * 
      */
@@ -35,30 +36,65 @@ public class SeeBetterChipConfig extends Biasgen {
     public SeeBetterChipConfig(Chip chip) {
         super(chip);
     }
-    
+
     /** Adds a value, adding it to the appropriate internal containers, and adding this as an observer of the value.
      * 
      * @param value some configuration value
      */
-    public void addConfigValue(AbstractConfigValue value){
-        if(value==null) return;
+    public void addConfigValue(AbstractConfigValue value) {
+        if (value == null) {
+            return;
+        }
         configValues.add(value);
-        if(value instanceof CPLDConfigValue){
-            cpldConfig.add((CPLDConfigValue)value);
-        }else if(value instanceof PortBit){
-            portBits.add((PortBit)value);
+        if (value instanceof CPLDConfigValue) {
+            cpldConfig.add((CPLDConfigValue) value);
+        } else if (value instanceof PortBit) {
+            portBits.add((PortBit) value);
         }
         value.addObserver(this);
+        log.info("Added " + value);
     }
-    
+
     /** Clears all lists of configuration values.
      * @see AbstractConfigValue
      * 
      */
-    public void clearConfigValues(){
+    public void clearConfigValues() {
         cpldConfig.clear();
         configValues.clear();
         portBits.clear();
         cpldConfigValues.clear();
+    }
+
+    @Override
+    public void loadPreference() {
+        super.loadPreferences();
+        if (configValues != null) {
+            for (AbstractConfigValue v : configValues) {
+                v.loadPreference();
+            }
+        }
+    }
+
+    @Override
+    public void storePreference() {
+        super.storePreferences();
+        if (configValues != null) {
+            for (AbstractConfigValue v : configValues) {
+                v.storePreference();
+            }
+        }
+    }
+
+    @Override
+    public void loadPreferences() { // from Biasgen
+        super.loadPreferences();
+        loadPreference(); // from HasPreference
+    }
+
+    @Override
+    public void storePreferences() {
+        super.storePreferences();
+        storePreference(); // from HasPreference
     }
 }

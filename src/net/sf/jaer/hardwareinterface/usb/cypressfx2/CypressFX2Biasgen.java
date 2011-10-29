@@ -138,7 +138,7 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
             dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
             result=gUsbIo.classOrVendorOutRequest(dataBuffer,vendorRequest);
             if(result!= de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_SUCCESS ){
-                throw new HardwareInterfaceException("sendBiasBytes: Unable to send: "+gUsbIo.errorText(result));
+                throw new HardwareInterfaceException("sendBiasBytes: Unable to send to device "+this+": "+gUsbIo.errorText(result));
             }
             numLeft-=xferLength;
             index+=xferLength;

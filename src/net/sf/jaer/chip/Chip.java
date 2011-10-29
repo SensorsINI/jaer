@@ -36,6 +36,8 @@ import net.sf.jaer.util.RemoteControl;
  */
 @Description("Base class for all devices/chips etc.")
 public class Chip extends Observable {
+    /** Preferences key for blank device filename */
+    public static final String DEFAULT_FIRMWARE_BIX_FILE_FOR_BLANK_DEVICE = "CypressFX2Blank.defaultFirmwareBixFileForBlankDevice";
     
      
     private Preferences prefs=Preferences.userNodeForPackage(Chip.class);    
@@ -71,7 +73,7 @@ public class Chip extends Observable {
     
      /** Default firmware file for blank devices. 
      * For CypressFX2-based USB devices, this file must be a bix (raw binary) firmware file, not an iic or hex file */
-    protected  String defaultFirmwareBixFileForBlankDevice = getPrefs().get("CypressFX2.defaultFirmwareBixFileForBlankDevice", null);
+    protected  String defaultFirmwareBixFileForBlankDevice=null;
 
     
     /** The remote control allows control of this Chip via a UDP connection
@@ -97,6 +99,7 @@ public class Chip extends Observable {
 //        } catch (BackingStoreException ex) {
 //            log.warning(ex.toString());
 //        }
+       defaultFirmwareBixFileForBlankDevice  = getPrefs().get(DEFAULT_FIRMWARE_BIX_FILE_FOR_BLANK_DEVICE, null);
        try {
             remoteControl = new RemoteControl();
             log.info("Created "+remoteControl+" for control of "+this);
@@ -123,7 +126,8 @@ public class Chip extends Observable {
     }
 
 
-    /** This empty method can be called to clean up if the Chip is no longer used or need to uninstall some registered GUI elements or clean up memory. */
+    /** This empty method can be called to clean up if the Chip is no longer 
+     * used or need to un-install some registered GUI elements or clean up memory. */
     public void cleanup(){
 
     }
@@ -213,7 +217,7 @@ public class Chip extends Observable {
      * 
      * @return full (or relative to start folder "java") path to firmware .bix file for Cypress FX2 based devices.
      */
-       public  String getDefaultFirmwareBixFileForBlankDevice() {
+    public  String getDefaultFirmwareBixFileForBlankDevice() {
         return defaultFirmwareBixFileForBlankDevice;
     }
 
@@ -223,7 +227,7 @@ public class Chip extends Observable {
      */
    public  void setDefaultFirmwareBixFileForBlankDevice(String aDefaultFirmwareBixFileForBlankDevice) {
         this.defaultFirmwareBixFileForBlankDevice = aDefaultFirmwareBixFileForBlankDevice;
-        getPrefs().put("CypressFX2.defaultFirmwareBixFileForBlankDevice", defaultFirmwareBixFileForBlankDevice);
+        getPrefs().put(DEFAULT_FIRMWARE_BIX_FILE_FOR_BLANK_DEVICE, defaultFirmwareBixFileForBlankDevice);
     }
 
 

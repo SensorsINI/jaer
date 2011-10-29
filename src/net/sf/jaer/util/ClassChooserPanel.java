@@ -708,11 +708,13 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void availFilterTextFieldKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_availFilterTextFieldKeyTyped
+        if(availClassesListModel==null) return;
         String s = availFilterTextField.getText();
         availClassesListModel.filter(s);
     }//GEN-LAST:event_availFilterTextFieldKeyTyped
 
     private void availFilterTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_availFilterTextFieldActionPerformed
+        if(availClassesListModel==null) return;
         String s = availFilterTextField.getText();
         availClassesListModel.filter(s);
     }//GEN-LAST:event_availFilterTextFieldActionPerformed

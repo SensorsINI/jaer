@@ -4,31 +4,38 @@
  */
 package eu.seebetter.ini.chips.config;
 
+import java.util.logging.Logger;
 import java.util.prefs.PreferenceChangeEvent;
 import net.sf.jaer.chip.Chip;
 
 /**
- * Base class for configuration value on the CPLD.
+ * Base class for configuration value on the CPLD. Values are stored on a shift register on the CPLD and are
+ * loaded big-endian so that the first bit loaded is the msb and the last the lsb; i.e., the bits are loaded
+ * from the lsb end (the right end if the bits are thought to be strung out like a binary number from left to right).
+ * 
  * @author tobi
  */
 public class CPLDConfigValue extends AbstractConfigValue {
-    protected int startBit;
-    protected int endBit;
+    /** Least significant bit position */
+    protected int lsb;
+    /** Most significant bit position */
+    protected int msb;
     protected int nBits = 8;
+    protected static final Logger log=Logger.getLogger("CPLDConfigValue");
 
     /**
      * Makes an abstract value.
      * 
      * @param chip Preferences source
-     * @param startBit first bit in shift register
-     * @param endBit last bit
+     * @param lsb first bit in shift register
+     * @param msb last bit
      * @param name 
      * @param tip 
      */
     public CPLDConfigValue(Chip chip, int startBit, int endBit, String name, String tip) {
         super(chip, name, tip);
-        this.startBit = startBit;
-        this.endBit = endBit;
+        this.lsb = startBit;
+        this.msb = endBit;
         nBits = endBit - startBit + 1;
     }
 
@@ -46,7 +53,7 @@ public class CPLDConfigValue extends AbstractConfigValue {
 
     @Override
     public String toString() {
-        return "CPLDConfigValue{" + "name=" + name + " startBit=" + startBit + "endBit=" + endBit + "nBits=" + nBits + '}';
+        return "CPLDConfigValue{" + "name=" + name + " startBit=" + lsb + "endBit=" + msb + "nBits=" + nBits + '}';
     }
     
 }

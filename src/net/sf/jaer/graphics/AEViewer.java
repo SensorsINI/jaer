@@ -1514,6 +1514,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         instance.setVisible(true);
                     }
                 }
+                log.warning(bd.toString());
                 aemon.close();
                 nullifyHardware();
 

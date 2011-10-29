@@ -318,13 +318,17 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen implements  cDV
         //System.out.println(s);
 
         BigInteger bi = new BigInteger(s.toString(), 2);
-        System.out.println(s.length()+" CPLD bits="+s);
         byte[] byteArray = bi.toByteArray(); // finds minimal set of bytes in big endian format, with MSB as first element
         // we need to pad out to nbits worth of bytes
         int nbytes = (nBits % 8 == 0) ? (nBits / 8) : (nBits / 8 + 1); // 8->1, 9->2
         byte[] bytes = new byte[nbytes];
         System.arraycopy(byteArray, 0, bytes, nbytes - byteArray.length, byteArray.length);
 
+        System.out.print(s.length()+" CPLD bits="+s+" bytes=");
+        for(byte b:bytes){
+            System.out.print(String.format("%2x ",b));
+        }
+        System.out.println("");
         this.sendVendorRequest(VENDOR_REQUEST_WRITE_CPLD_SR, (short) 0, (short) 0, bytes); // stops ADC running
         setADCEnabled(isADCEnabled());
     }

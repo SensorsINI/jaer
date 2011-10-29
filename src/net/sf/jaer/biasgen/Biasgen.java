@@ -43,10 +43,12 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
     private String name = null;
     /** The hardware interface for this Biasgen object */
     protected BiasgenHardwareInterface hardwareInterface = null;
-    private boolean batchEditOccurring = false;
+    private int batchEditOccurring = 0; // counter for nested batch edits
     private Chip chip;
+    
     private Preferences prefs;
-    private static Logger log = Logger.getLogger("Biasgen");
+    /** Can be used for subclass logging */
+    protected static final Logger log = Logger.getLogger("Biasgen");
     private ArrayList<IPotGroup> iPotGroups = new ArrayList<IPotGroup>(); // groups of pots
 
     /**
@@ -523,16 +525,17 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      *@see #endBatchEdit
      */
     public boolean isBatchEditOccurring() {
-        return batchEditOccurring;
+        return batchEditOccurring>0;
     }
 
-    /** sets boolean to flag batch edit occuring
-     *@param batchEditOccurring true to signal that it is occuring
+    /** sets boolean to flag batch edit occurring. Handles nested batch edits by internal use of a counter. When the counter reaches 0 the edit has ended.
+     *@param batchEditOccurring true to signal that it is occurring
      *@see #startBatchEdit
      *@see #endBatchEdit
      */
     public void setBatchEditOccurring(boolean batchEditOccurring) {
-        this.batchEditOccurring = batchEditOccurring;
+        this.batchEditOccurring = this.batchEditOccurring+(batchEditOccurring?1:-1);
+        if(this.batchEditOccurring<0) this.batchEditOccurring=0;
 //        log.info("batchEditOccurring="+batchEditOccurring);
     }
 
