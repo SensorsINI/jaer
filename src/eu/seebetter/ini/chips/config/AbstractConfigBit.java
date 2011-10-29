@@ -4,9 +4,10 @@
  */
 package eu.seebetter.ini.chips.config;
 
-import eu.seebetter.ini.chips.config.ConfigBit;
+import java.awt.event.ActionEvent;
 import java.util.prefs.PreferenceChangeEvent;
-import java.util.prefs.Preferences;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 import net.sf.jaer.chip.Chip;
 
 /**
@@ -14,8 +15,11 @@ import net.sf.jaer.chip.Chip;
  * @author tobi
  */
 public class AbstractConfigBit extends AbstractConfigValue implements ConfigBit {
+
     protected volatile boolean value;
     protected boolean def; // default preference value
+    /** This Action can be used in GUIs */
+    private SelectAction action = new SelectAction();
 
     // default preference value
     public AbstractConfigBit(Chip chip, String name, String tip, boolean def) {
@@ -23,15 +27,21 @@ public class AbstractConfigBit extends AbstractConfigValue implements ConfigBit 
         this.def = def;
         loadPreference();
         prefs.addPreferenceChangeListener(this);
+        action.putValue(Action.SHORT_DESCRIPTION, tip);
+        action.putValue(Action.NAME, name);
     }
 
+    /** Sets the value and notifies observers if it changes.
+     * 
+     * @param value the new value
+     */
     @Override
     public void set(boolean value) {
         if (this.value != value) {
             setChanged();
         }
         this.value = value;
-        //                log.info("set " + this + " to value=" + value+" notifying "+countObservers()+" observers");
+//                log.info("set " + this + " to value=" + value+" notifying "+countObservers()+" observers");
         notifyObservers();
     }
 
@@ -63,5 +73,27 @@ public class AbstractConfigBit extends AbstractConfigValue implements ConfigBit 
     public String toString() {
         return String.format("AbstractConfigBit name=%s key=%s value=%s", name, key, value);
     }
-    
+
+    /**
+     * @return the action
+     */
+    public SelectAction getAction() {
+        return action;
+    }
+
+    /**
+     * @param action the action to set
+     */
+    public void setAction(SelectAction action) {
+        this.action = action;
+    }
+
+    /** This action toggles the bit */
+    public class SelectAction extends AbstractAction {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            set(!value);
+        }
+    }
 }

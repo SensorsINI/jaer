@@ -21,7 +21,7 @@ public abstract class AbstractConfigValue extends Observable implements Preferen
     protected String name;
     protected String tip;
     protected String key = "AbstractConfigValue";
-    protected Preferences prefs;
+    final protected Preferences prefs;
     protected Chip chip;
 
     /**

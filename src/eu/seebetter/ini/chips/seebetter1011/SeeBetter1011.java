@@ -6,16 +6,11 @@ created 26 Oct 2008 for new cDVSTest chip
  */
 package eu.seebetter.ini.chips.seebetter1011;
 
-import ch.unizh.ini.jaer.chip.dvs320.SeeBetter1011_TemporaryDisplayControlPanel;
 import ch.unizh.ini.jaer.chip.retina.*;
-import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterface;
-import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
-import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterfaceProxy;
 import eu.seebetter.ini.chips.*;
 import eu.seebetter.ini.chips.cDVSEvent;
 import eu.seebetter.ini.chips.config.*;
 import java.awt.event.ActionEvent;
-import java.util.Iterator;
 import java.util.Observer;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
@@ -29,7 +24,8 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.hardwareinterface.*;
 import java.awt.BorderLayout;
-import java.math.BigInteger;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.nio.ByteBuffer;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -37,9 +33,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Observable;
 import java.util.StringTokenizer;
+import javax.swing.AbstractButton;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
+import javax.swing.border.TitledBorder;
 import net.sf.jaer.Description;
 import net.sf.jaer.biasgen.Pot.Sex;
 import net.sf.jaer.biasgen.Pot.Type;
@@ -434,7 +432,9 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             addConfigValue(runCpld);
             addConfigValue(runAdc);
             addConfigValue(powerDown);
-
+            addConfigValue(powerDown);
+            addConfigValue(nCPLDReset);
+   
             // cpld shift register stuff
             addConfigValue(adcConfig);
             addConfigValue(adcTrackTime);
@@ -812,7 +812,28 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             adcScannerLogPanel.add(new ParameterControlPanel(adc));
             adcScannerLogPanel.add(new ParameterControlPanel(scanner));
             adcScannerLogPanel.add(new ParameterControlPanel(logReadoutControl));
-            bgTabbedPane.addTab("More config", extraOnchipConfigBits.makeControlPanel());
+            
+//            Dimension d=new Dimension(500, 50);
+            JPanel moreConfig=new JPanel();
+            
+//            moreConfig.setLayout(new BoxLayout(moreConfig,BoxLayout.Y_AXIS));
+            moreConfig.setLayout(new FlowLayout(FlowLayout.LEADING));
+            JPanel extraPanel;
+            moreConfig.add(extraPanel=extraOnchipConfigBits.makeControlPanel());
+            extraPanel.setBorder(new TitledBorder("Extra on-chip configuration bits"));
+//            extraPanel.setPreferredSize(d);
+            
+            JPanel portBitsPanel=new JPanel();
+            portBitsPanel.setLayout(new BoxLayout(portBitsPanel,BoxLayout.Y_AXIS));
+            for(PortBit p:portBits){
+                
+                portBitsPanel.add(new JRadioButton(p.getAction()));
+            }
+            portBitsPanel.setBorder(new TitledBorder("Cypress FX2 port bits"));
+//            portBitsPanel.setPreferredSize(d);
+            
+            moreConfig.add(portBitsPanel);
+            bgTabbedPane.addTab("More config", moreConfig);
 
             bPanel.add(bgTabbedPane, BorderLayout.CENTER);
             // only select panel after all added
