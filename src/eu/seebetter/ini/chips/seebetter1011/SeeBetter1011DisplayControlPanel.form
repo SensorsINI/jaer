@@ -425,7 +425,7 @@
                 <Component class="javax.swing.JSlider" name="gainSlider">
                   <Properties>
                     <Property name="maximum" type="int" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
-                      <Connection code="cDVSTest20.MAX_ADC/100" type="code"/>
+                      <Connection code="SeeBetter1011.MAX_ADC/100" type="code"/>
                     </Property>
                     <Property name="toolTipText" type="java.lang.String" value="Sets the gain applied to ADC count. Gain=1 scales full count to white when offset=0. Gain=MAX_ADC scales a single count to full white when offset=0."/>
                   </Properties>
@@ -452,7 +452,7 @@
                 <Component class="javax.swing.JSlider" name="offsetSlider">
                   <Properties>
                     <Property name="maximum" type="int" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
-                      <Connection code="cDVSTest20.MAX_ADC" type="code"/>
+                      <Connection code="SeeBetter1011.MAX_ADC" type="code"/>
                     </Property>
                     <Property name="toolTipText" type="java.lang.String" value="Sets the offset subtracted from ADC count. Gain=1 scales full count to white when offset=0. Offset shifts black point to offset count value."/>
                   </Properties>

@@ -11,7 +11,8 @@
 
 package eu.seebetter.ini.chips.seebetter1011;
 
-import ch.unizh.ini.jaer.chip.dvs320.*;
+import eu.seebetter.ini.chips.seebetter1011.SeeBetter1011.SeeBetter1011DisplayMethod;
+import eu.seebetter.ini.chips.seebetter1011.SeeBetter1011.SeeBetter1011Renderer;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -36,9 +37,9 @@ public class SeeBetter1011DisplayControlPanel extends javax.swing.JPanel impleme
         this.renderer=(SeeBetter1011Renderer)chip.getRenderer();
         initComponents();
         renderer.getSupport().addPropertyChangeListener(AEChipRenderer.COLOR_SCALE, this);
-        renderer.getSupport().addPropertyChangeListener(cDVSTest30Renderer.AGC_VALUES, this);
-        renderer.getSupport().addPropertyChangeListener(cDVSTest30Renderer.LOG_INTENSITY_GAIN, this);
-        renderer.getSupport().addPropertyChangeListener(cDVSTest30Renderer.LOG_INTENSITY_OFFSET, this);
+        renderer.getSupport().addPropertyChangeListener(SeeBetter1011.SeeBetter1011Renderer.AGC_VALUES, this);
+        renderer.getSupport().addPropertyChangeListener(SeeBetter1011.SeeBetter1011Renderer.LOG_INTENSITY_GAIN, this);
+        renderer.getSupport().addPropertyChangeListener(SeeBetter1011.SeeBetter1011Renderer.LOG_INTENSITY_OFFSET, this);
     }
 
     /** This method is called from within the constructor to
@@ -256,7 +257,7 @@ public class SeeBetter1011DisplayControlPanel extends javax.swing.JPanel impleme
 
         gainLabel.setText("gain");
 
-        gainSlider.setMaximum(cDVSTest20.MAX_ADC/100);
+        gainSlider.setMaximum(SeeBetter1011.MAX_ADC/100);
         gainSlider.setToolTipText("Sets the gain applied to ADC count. Gain=1 scales full count to white when offset=0. Gain=MAX_ADC scales a single count to full white when offset=0.");
 
         binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${logIntensityGain}"), gainSlider, org.jdesktop.beansbinding.BeanProperty.create("value"));
@@ -270,7 +271,7 @@ public class SeeBetter1011DisplayControlPanel extends javax.swing.JPanel impleme
 
         offsetLabel.setText("offset");
 
-        offsetSlider.setMaximum(cDVSTest20.MAX_ADC);
+        offsetSlider.setMaximum(SeeBetter1011.MAX_ADC);
         offsetSlider.setToolTipText("Sets the offset subtracted from ADC count. Gain=1 scales full count to white when offset=0. Offset shifts black point to offset count value.");
 
         binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${logIntensityOffset}"), offsetSlider, org.jdesktop.beansbinding.BeanProperty.create("value"));
@@ -621,14 +622,14 @@ public class SeeBetter1011DisplayControlPanel extends javax.swing.JPanel impleme
     public void propertyChange(PropertyChangeEvent evt) {
         if(evt.getPropertyName()==AEChipRenderer.COLOR_SCALE){
             colorScaleSpinner.setValue((Integer)evt.getNewValue());
-        }else if(evt.getPropertyName()==cDVSTest30Renderer.AGC_VALUES){
+        }else if(evt.getPropertyName()==SeeBetter1011.SeeBetter1011Renderer.AGC_VALUES){
             Point2D.Float f=(Point2D.Float)evt.getNewValue();
             minTF.setText(String.format("%.0f",f.x));
             maxTF.setText(String.format("%.0f",f.y));
             gainAGCTF.setText(String.format("%.0f",SeeBetter1011.MAX_ADC/(f.y-f.x)));
-        }else if(evt.getPropertyName()==cDVSTest30Renderer.LOG_INTENSITY_GAIN){
+        }else if(evt.getPropertyName()==SeeBetter1011.SeeBetter1011Renderer.LOG_INTENSITY_GAIN){
             gainSlider.setValue(renderer.getLogIntensityGain());
-        }else if(evt.getPropertyName()==cDVSTest30Renderer.LOG_INTENSITY_OFFSET){
+        }else if(evt.getPropertyName()==SeeBetter1011.SeeBetter1011Renderer.LOG_INTENSITY_OFFSET){
             offsetSlider.setValue(renderer.getLogIntensityOffset());
         }
     }

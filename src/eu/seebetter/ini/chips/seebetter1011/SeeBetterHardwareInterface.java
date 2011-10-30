@@ -20,13 +20,13 @@ import java.io.*;
  *
  * @author tobi
  */
-public class SeeBetter1011HardwareInterface extends CypressFX2Biasgen {
+public class SeeBetterHardwareInterface extends CypressFX2Biasgen {
 
     /** The USB product ID of this device */
     static public final short PID = (short) 0x840B;
 
     /** Creates a new instance of CypressFX2Biasgen */
-    public SeeBetter1011HardwareInterface(int devNumber) {
+    public SeeBetterHardwareInterface(int devNumber) {
         super(devNumber);
     }
 
@@ -45,23 +45,6 @@ public class SeeBetter1011HardwareInterface extends CypressFX2Biasgen {
         }
     }
     
-    /** Overridden to use reset timestamps command ('0' in viewer window) to do a chip reset as well
-     * 
-     */
-        @Override
-    synchronized public void resetTimestamps() {
-        super.resetTimestamps();
-        if(chip!=null && chip instanceof SeeBetter1011){
-            SeeBetter1011.SeeBetterConfig sb=(SeeBetter1011.SeeBetterConfig)chip.getBiasgen();
-            sb.nChipReset.set(!sb.nChipReset.isSet()); // each ts reset toggles DVS reset state
-            log.info(sb.nChipReset.toString());
-//            sb.nChipReset.set(false);
-        }
-        
-    }
-    private boolean chipReset = false;
-
-
     private byte[] parseHexData(String firmwareFile) throws IOException {
 
         byte[] fwBuffer;
@@ -387,7 +370,7 @@ public class SeeBetter1011HardwareInterface extends CypressFX2Biasgen {
 //                                        if (doubleY)
 //                                        {
 //                                            doubleY=false;
-//                                            System.out.println(yonlycons+ " Y addresses consecutively recieved in SeeBetter1011HardwareInterface, total y only: "+ yonlycount); // this printout makes display very jerky!!!
+//                                            System.out.println(yonlycons+ " Y addresses consecutively recieved in SeeBetterHardwareInterface, total y only: "+ yonlycount); // this printout makes display very jerky!!!
 //                                            yonlycons=0;
 //                                        }
                                     } else {// y address
