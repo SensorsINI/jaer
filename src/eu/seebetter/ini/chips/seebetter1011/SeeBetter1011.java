@@ -21,13 +21,12 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.hardwareinterface.*;
 import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.FlowLayout;
 import java.nio.ByteBuffer;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Observable;
 import java.util.StringTokenizer;
 import javax.swing.BoxLayout;
@@ -429,7 +428,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             addConfigValue(runAdc);
             addConfigValue(powerDown);
             addConfigValue(nCPLDReset);
-   
+
             // cpld shift register stuff
             addConfigValue(adcConfig);
             addConfigValue(adcTrackTime);
@@ -538,6 +537,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             setBatchEditOccurring(true);
             loadPreferences();
             setBatchEditOccurring(false);
+            byte[] b = formatConfigurationBytes(this);
 
         } // constructor
 
@@ -623,7 +623,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         @Override
         public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
 
-            if(isBatchEditOccurring()){
+            if (isBatchEditOccurring()) {
                 log.info("batch edit occurring, not sending configuration yet");
                 return;
             }
@@ -751,7 +751,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     hp.loadPreference();
                 }
             }
-          
+
             if (ssBiases != null) {
                 for (ShiftedSourceBias ss : ssBiases) {
                     ss.loadPreferences();
@@ -803,27 +803,27 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             bgTabbedPane.addTab("Output control", new SeeBetter1011OutputControlPanel(SeeBetter1011.this));
             JPanel adcScannerLogPanel = new JPanel();
             adcScannerLogPanel.setLayout(new BoxLayout(adcScannerLogPanel, BoxLayout.Y_AXIS));
-            bgTabbedPane.add("Analog output",adcScannerLogPanel);
+            bgTabbedPane.add("Analog output", adcScannerLogPanel);
             adcScannerLogPanel.add(new ParameterControlPanel(adc));
             adcScannerLogPanel.add(new ParameterControlPanel(scanner));
             adcScannerLogPanel.add(new ParameterControlPanel(logReadoutControl));
-            
-            JPanel moreConfig=new JPanel(new BorderLayout());
-            
-            JPanel extraPanel=extraOnchipConfigBits.makeControlPanel();
+
+            JPanel moreConfig = new JPanel(new BorderLayout());
+
+            JPanel extraPanel = extraOnchipConfigBits.makeControlPanel();
             extraPanel.setBorder(new TitledBorder("Extra on-chip bits"));
             moreConfig.add(extraPanel, BorderLayout.WEST);
-            
-            JPanel portBitsPanel=new JPanel();
-            portBitsPanel.setLayout(new BoxLayout(portBitsPanel,BoxLayout.Y_AXIS));
-            for(PortBit p:portBits){
-                
+
+            JPanel portBitsPanel = new JPanel();
+            portBitsPanel.setLayout(new BoxLayout(portBitsPanel, BoxLayout.Y_AXIS));
+            for (PortBit p : portBits) {
+
                 portBitsPanel.add(new JRadioButton(p.getAction()));
             }
             portBitsPanel.setBorder(new TitledBorder("Cypress FX2 port bits"));
-            
+
             moreConfig.add(portBitsPanel, BorderLayout.CENTER);
-            
+
             bgTabbedPane.addTab("More config", moreConfig);
 
             bPanel.add(bgTabbedPane, BorderLayout.CENTER);
@@ -865,13 +865,33 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             if (getPotArray() == null) {
                 return null; // array not yet contructed, we were called here by super()
             }            // must return integral number of bytes and on-chip biasgen must be integral number of bytes, by method contract
-            ByteBuffer potbytes = ByteBuffer.allocate(300);
+//            ByteBuffer potbytes = ByteBuffer.allocate(300);
 
 
-            for (Pot p : getPotArray().getPots()) {
-                potbytes.put(p.getBinaryRepresentation());
+            IPotArray ipots = (IPotArray) potArray;
+
+            byte[] bytes = new byte[potArray.getNumPots() * 8];
+            int byteIndex = 0;
+
+
+            Iterator i = ipots.getShiftRegisterIterator();
+            while (i.hasNext()) {
+                // for each bias starting with the first one (the one closest to the ** END ** of the shift register
+                // we get the binary representation in byte[] form and from MSB ro LSB stuff these values into the byte array
+                IPot iPot = (IPot) i.next();
+                byte[] thisBiasBytes = iPot.getBinaryRepresentation();
+                System.arraycopy(thisBiasBytes, 0, bytes, byteIndex, thisBiasBytes.length);
+                byteIndex += thisBiasBytes.length;
             }
-            potbytes.flip(); // written in order 
+            byte[] potbytes = new byte[byteIndex];
+            System.arraycopy(bytes, 0, potbytes, 0, byteIndex);
+
+
+
+//        for (Pot p : getPotArray().getPots()) {
+//                potbytes.put(p.getBinaryRepresentation());
+//            }
+//            potbytes.flip(); // written in order 
 
             String configBitsBits = extraOnchipConfigBits.getBitString();
             String muxBitsBits = allMuxes.getBitString(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
@@ -1152,20 +1172,20 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             public ExtraOnChipConfigBits() {
                 hasPreferencesList.add(this);
             }
-            OnchipConfigBit pullupX = new OnchipConfigBit(SeeBetter1011.this,"useStaticPullupX", 0, "turn on static pullup for X addresses (columns)", false),
-                    pullupY = new OnchipConfigBit(SeeBetter1011.this,"useStaticPullupY", 1, "turn on static pullup for Y addresses (rows)",true),
-                    delayY0 = new OnchipConfigBit(SeeBetter1011.this,"delayY0", 2, "RC delay columns, 1x",false),
-                    delayY1 = new OnchipConfigBit(SeeBetter1011.this,"delayY1", 3, "RC delay columns, 2x",false),
-                    delayY2 = new OnchipConfigBit(SeeBetter1011.this,"delayY2", 4, "RC delay columns 4x",false),
-                    delayX0 = new OnchipConfigBit(SeeBetter1011.this,"delayX0", 5, "RC delay rows, 1x",false),
-                    delayX1 = new OnchipConfigBit(SeeBetter1011.this,"delayX1", 6, "RC delay rows, 2x",false),
-                    delayX2 = new OnchipConfigBit(SeeBetter1011.this,"delayX2", 7, "RC delay rows, 4x",false),
-                    sDVSReset = new OnchipConfigBit(SeeBetter1011.this,"sDVSReset", 8, "holds sensitive DVS (sDVS) array in reset",false),
-                    bDVSReset = new OnchipConfigBit(SeeBetter1011.this,"bDVSReset", 9, "holds big DVS + log intensity (bDVS) array in reset",false),
-                    ros = new OnchipConfigBit(SeeBetter1011.this,"ROS", 10, "reset on scan enabled",false),
-                    delaySM0 = new OnchipConfigBit(SeeBetter1011.this,"delaySM0", 11, "adds delay to state machine, 1x",false),
-                    delaySM1 = new OnchipConfigBit(SeeBetter1011.this,"delaySM1", 12, "adds delay to state machine, 2x",false),
-                    delaySM2 = new OnchipConfigBit(SeeBetter1011.this,"delaySM2", 13, "adds delay to state machine, 4x",false);
+            OnchipConfigBit pullupX = new OnchipConfigBit(SeeBetter1011.this, "useStaticPullupX", 0, "turn on static pullup for X addresses (columns)", false),
+                    pullupY = new OnchipConfigBit(SeeBetter1011.this, "useStaticPullupY", 1, "turn on static pullup for Y addresses (rows)", true),
+                    delayY0 = new OnchipConfigBit(SeeBetter1011.this, "delayY0", 2, "RC delay columns, 1x", false),
+                    delayY1 = new OnchipConfigBit(SeeBetter1011.this, "delayY1", 3, "RC delay columns, 2x", false),
+                    delayY2 = new OnchipConfigBit(SeeBetter1011.this, "delayY2", 4, "RC delay columns 4x", false),
+                    delayX0 = new OnchipConfigBit(SeeBetter1011.this, "delayX0", 5, "RC delay rows, 1x", false),
+                    delayX1 = new OnchipConfigBit(SeeBetter1011.this, "delayX1", 6, "RC delay rows, 2x", false),
+                    delayX2 = new OnchipConfigBit(SeeBetter1011.this, "delayX2", 7, "RC delay rows, 4x", false),
+                    sDVSReset = new OnchipConfigBit(SeeBetter1011.this, "sDVSReset", 8, "holds sensitive DVS (sDVS) array in reset", false),
+                    bDVSReset = new OnchipConfigBit(SeeBetter1011.this, "bDVSReset", 9, "holds big DVS + log intensity (bDVS) array in reset", false),
+                    ros = new OnchipConfigBit(SeeBetter1011.this, "ROS", 10, "reset on scan enabled", false),
+                    delaySM0 = new OnchipConfigBit(SeeBetter1011.this, "delaySM0", 11, "adds delay to state machine, 1x", false),
+                    delaySM1 = new OnchipConfigBit(SeeBetter1011.this, "delaySM1", 12, "adds delay to state machine, 2x", false),
+                    delaySM2 = new OnchipConfigBit(SeeBetter1011.this, "delaySM2", 13, "adds delay to state machine, 4x", false);
             OnchipConfigBit[] bits = {pullupX, pullupY, delayY0, delayY1, delayY2, delayX0, delayX1, delayX2, sDVSReset, bDVSReset, ros, delaySM0, delaySM1, delaySM2};
 
             @Override
@@ -1217,8 +1237,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 }
                 return pan;
             }
-
-           } // ExtraOnChipConfigBits
+        } // ExtraOnChipConfigBits
 
         /** A mux for selecting output on the on-chip configuration/biasgen shift register. */
         class OutputMux extends Observable implements HasPreference, RemoteControlled {
