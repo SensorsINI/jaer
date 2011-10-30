@@ -171,7 +171,7 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
        
         Iterator i=ipots.getShiftRegisterIterator();
         while(i.hasNext()){
-            // for each bias starting with the first one (the one closest to the ** END ** of the shift register
+            // for each bias starting with the first one (the one closest to the ** FAR END ** of the shift register
             // we get the binary representation in byte[] form and from MSB ro LSB stuff these values into the byte array
             IPot iPot=(IPot)i.next();
             byte[] thisBiasBytes=iPot.getBinaryRepresentation();
