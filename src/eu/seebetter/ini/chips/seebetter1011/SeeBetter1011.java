@@ -10,7 +10,10 @@ import ch.unizh.ini.jaer.chip.retina.*;
 import eu.seebetter.ini.chips.*;
 import eu.seebetter.ini.chips.cDVSEvent;
 import eu.seebetter.ini.chips.config.*;
+import java.awt.event.ActionEvent;
 import java.util.Observer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
 import javax.swing.JRadioButton;
@@ -21,6 +24,7 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.hardwareinterface.*;
 import java.awt.BorderLayout;
+import java.awt.event.ActionListener;
 import java.nio.ByteBuffer;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -30,6 +34,7 @@ import java.util.Iterator;
 import java.util.Observable;
 import java.util.StringTokenizer;
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.border.TitledBorder;
@@ -491,7 +496,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
             // on SeeBetter1011 pots are as follows starting from input end of shift register
             try {
-                addIPot("DiffBn,n,normal,differencing amp");
+                addIPot("DiffBn,n,normal,differencing amp"); // at input end of shift register
                 addIPot("OnBn,n,normal,DVS brighter threshold");
                 addIPot("OffBn,n,normal,DVS darker threshold");
                 addIPot("PrOTABp,p,normal,Photoreceptor OTA used in bDVS pixels"); // TODO what's this?
@@ -506,13 +511,13 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 addIPot("AERxEBn,n,normal,Handshake state machine pulldown bias current");
                 addIPot("AEPuXBp,p,normal,AER column pullup");
                 addIPot("AEPuYBp,p,normal,AER row pullup");
-                addIPot("IFThrBn,n,normal,Integrate and fire intensity neuroon threshold");
+                addIPot("IFThrBn,n,normal,Integrate and fire intensity neuron threshold");
                 addIPot("IFRefrBn,n,normal,Integrate and fire intensity neuron refractory period bias current");
                 addIPot("PadFollBn,n,normal,Follower-pad buffer bias current");
                 addIPot("ROGateBn,n,normal,Bias voltage for log readout transistor ");
                 addIPot("ROCasBnc,n,cascode,Bias voltage for log readout cascode ");
                 addIPot("RefCurrentBn,n,normal,Reference current for log readout ");
-                addIPot("LocalBufBn,n,normal,Local OTA voltage follower buffer bias current");
+                addIPot("LocalBufBn,n,normal,Local OTA voltage follower buffer bias current"); // at far end of shift register
             } catch (Exception e) {
                 throw new Error(e.toString());
             }
@@ -635,16 +640,17 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             }
             sendConfig(CMD_IPOT, 0, bytes); // the usual packing of ipots with other such as shifted sources, on-chip voltage dac, and diagnotic mux output and extra configuration
 
-            // port bits
-            update(powerDown, null);
-            update(runAdc, null);
+//            // port bits
+//            for(PortBit b:portBits){
+//                if(b!=nCPLDReset) update(b, null);
+//            }
 
             // CPLD registers
             update(adc, null);
 //            update(scanner, null);
 
             // enables acquisition
-            update(runCpld, null);
+//            update(runCpld, null);
         }
 
         /** The central point for communication with HW from biasgen. All objects in SeeBetterConfig are Observables
@@ -823,7 +829,23 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             portBitsPanel.setBorder(new TitledBorder("Cypress FX2 port bits"));
 
             moreConfig.add(portBitsPanel, BorderLayout.CENTER);
+            
+            JPanel specialButtons=new JPanel();
+            JButton resendButton=new JButton("sendConfiguration");
+            resendButton.addActionListener(new ActionListener(){
 
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    try {
+                        sendConfiguration(SeeBetterConfig.this);
+                    } catch (HardwareInterfaceException ex) {
+                        log.warning(ex.toString());
+                    }
+                }
+                
+            });
+            specialButtons.add(resendButton,BorderLayout.CENTER);
+            moreConfig.add(specialButtons,BorderLayout.NORTH);
             bgTabbedPane.addTab("More config", moreConfig);
 
             bPanel.add(bgTabbedPane, BorderLayout.CENTER);
@@ -882,6 +904,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 byte[] thisBiasBytes = iPot.getBinaryRepresentation();
                 System.arraycopy(thisBiasBytes, 0, bytes, byteIndex, thisBiasBytes.length);
                 byteIndex += thisBiasBytes.length;
+//                log.info("added bytes for "+iPot);
             }
             byte[] potbytes = new byte[byteIndex];
             System.arraycopy(bytes, 0, potbytes, 0, byteIndex);

@@ -53,8 +53,9 @@ public class SeeBetter1011HardwareInterface extends CypressFX2Biasgen {
         super.resetTimestamps();
         if(chip!=null && chip instanceof SeeBetter1011){
             SeeBetter1011.SeeBetterConfig sb=(SeeBetter1011.SeeBetterConfig)chip.getBiasgen();
-            sb.nChipReset.set(true);
-            sb.nChipReset.set(false);
+            sb.nChipReset.set(!sb.nChipReset.isSet()); // each ts reset toggles DVS reset state
+            log.info(sb.nChipReset.toString());
+//            sb.nChipReset.set(false);
         }
         
     }
