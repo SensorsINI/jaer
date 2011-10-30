@@ -14,11 +14,21 @@ import java.util.*;
  *
  * @author tobi
  */
-public class IPotArray extends PotArray {
+public class IPotArray extends PotArray implements Iterable<IPot>{
     
     /** Creates a new instance of IPotArray */
     public IPotArray(Biasgen biasgen) {
         super(biasgen);
+    }
+
+    /** Returns an iterator in shift register order, starting from far end of shift register, 
+     * since bits are loaded so that first bit loaded ends up at this position.
+     * 
+     * @return the ShiftRegisterIterator
+     */
+    @Override
+    public Iterator<IPot> iterator() {
+        return new ShiftRegisterIterator();
     }
     
     /** Provides pots in order of loading to the shift register, used in hardware interfaces to load bits.
@@ -67,7 +77,9 @@ public class IPotArray extends PotArray {
         }
     }
     
-    /** returns an Iterator that iterates over the pots in the order of their shift register location, ordered from low to high
+    /** Returns an Iterator that iterates over the pots in the order of their shift register location, ordered from low to high,
+     * starting with the far end of the shift register, furthest from the bit input. 
+     * @return the iterator
      */
     public ShiftRegisterIterator getShiftRegisterIterator() {
         return new ShiftRegisterIterator();
