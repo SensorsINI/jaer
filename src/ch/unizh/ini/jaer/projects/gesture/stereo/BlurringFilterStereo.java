@@ -130,9 +130,14 @@ public class BlurringFilterStereo extends BlurringFilter2D{
         for(int i=0; i<in.getSize(); i++){
             BinocularEvent ev = (BinocularEvent)in.getEvent(i);
 
+            if(lastTime > ev.timestamp){
+                resetFilter();
+                return in;
+            }
+            
             // updates lastTime
             lastTime = ev.timestamp;
-
+            
             // updates event histograms in disparity updater
             disparityUpdater.addEvent(ev);
 
@@ -356,9 +361,12 @@ public class BlurringFilterStereo extends BlurringFilter2D{
     public void resetFilter() {
 //        getEnclosedFilterChain().reset();
         super.resetFilter();
+        disparityUpdater.resetFilter();
         for(int i=0; i<numOfNeuronsX*numOfNeuronsY; i++){
             leftCellMassOnEvent.set(i, 0.0f);
             rightCellMassOnEvent.set(i, 0.0f);
+            leftCellMassOffEvent.set(i, 0.0f);
+            rightCellMassOffEvent.set(i, 0.0f);
         }
     }
 

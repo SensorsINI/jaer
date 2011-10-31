@@ -133,6 +133,7 @@ public class DisparityUpdater extends EventFilter2D implements FrameAnnotater, O
     @Override
     public void resetFilter() {
         globalDisparity.reset(0, -1);
+        clusterDisparity.clear();
         disparityForAnnotation = globalDisparity;
         disparityForVergence = globalDisparity;
         lastTimestamp = -1;
@@ -162,6 +163,10 @@ public class DisparityUpdater extends EventFilter2D implements FrameAnnotater, O
      * @param be
      */
     public void addEvent(BinocularEvent be){
+        if(lastTimestamp > be.timestamp){
+            resetFilter();
+            return;
+        }
         lastTimestamp = be.timestamp;
         globalDisparity.updateHistogram(be);
         for(StereoDisparity sd : clusterDisparity.values()){
