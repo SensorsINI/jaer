@@ -83,7 +83,6 @@ public class SeeBetter1011DisplayControlPanel extends javax.swing.JPanel impleme
         offTF = new javax.swing.JTextField();
         jPanel2 = new javax.swing.JPanel();
         logIntensityChangeCB = new javax.swing.JCheckBox();
-        colorChangeCB = new javax.swing.JCheckBox();
         colorScaleSpinner = new javax.swing.JSpinner();
         jLabel3 = new javax.swing.JLabel();
         jPanel3 = new javax.swing.JPanel();
@@ -99,7 +98,7 @@ public class SeeBetter1011DisplayControlPanel extends javax.swing.JPanel impleme
         logIntensityCB.setText("Show log intensity data");
         logIntensityCB.setToolTipText("Shows the scanned out static log intensity values.");
 
-        org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${displayMethod.displayLogIntensity}"), logIntensityCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
+        org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.displayLogIntensity}"), logIntensityCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
         invertADCvaluesCB.setText("Invert ADC values");
@@ -364,19 +363,12 @@ public class SeeBetter1011DisplayControlPanel extends javax.swing.JPanel impleme
         logIntensityChangeCB.setText("Show log intensity change events");
         logIntensityChangeCB.setToolTipText("Show log intensity change (temporal contrast) Brighter and Darker events.");
 
-        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${displayMethod.displayLogIntensityChangeEvents}"), logIntensityChangeCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
-        bindingGroup.addBinding(binding);
-
-        colorChangeCB.setText("Show color change events");
-        colorChangeCB.setToolTipText("Shows color change events, Redder and Bluer");
-
-        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${displayMethod.displayColorChangeEvents}"), colorChangeCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
+        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.displayLogIntensityChangeEvents}"), logIntensityChangeCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
         colorScaleSpinner.setToolTipText("Sets the full scale (white or black) event count.");
 
-        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${colorScale}"), colorScaleSpinner, org.jdesktop.beansbinding.BeanProperty.create("value"), "colorScale");
-        binding.setValidator(valid);
+        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.renderer.colorScale}"), colorScaleSpinner, org.jdesktop.beansbinding.BeanProperty.create("value"), "colorScale");
         bindingGroup.addBinding(binding);
 
         jLabel3.setText("Full scale events");
@@ -389,7 +381,6 @@ public class SeeBetter1011DisplayControlPanel extends javax.swing.JPanel impleme
                 .addContainerGap()
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(logIntensityChangeCB)
-                    .addComponent(colorChangeCB)
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addComponent(jLabel3)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -400,15 +391,11 @@ public class SeeBetter1011DisplayControlPanel extends javax.swing.JPanel impleme
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addComponent(logIntensityChangeCB, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(colorChangeCB, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGap(25, 25, 25)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(colorScaleSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel3)))
         );
-
-        jPanel2Layout.linkSize(javax.swing.SwingConstants.VERTICAL, new java.awt.Component[] {colorChangeCB, logIntensityChangeCB});
 
         jPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder("Global intensity"));
 
@@ -525,7 +512,6 @@ public class SeeBetter1011DisplayControlPanel extends javax.swing.JPanel impleme
     private javax.swing.JButton applyButton;
     private javax.swing.JButton calibButton;
     private javax.swing.JButton calibData2Button;
-    private javax.swing.JCheckBox colorChangeCB;
     private javax.swing.JSpinner colorScaleSpinner;
     private javax.swing.JPanel displayControlPanel;
     private javax.swing.JTextField gainAGCTF;
@@ -640,20 +626,5 @@ public class SeeBetter1011DisplayControlPanel extends javax.swing.JPanel impleme
     public SeeBetter1011Renderer getRenderer() {
         return renderer;
     }
-
-    private class Valid extends Validator{
-
-        @Override
-        public Validator.Result validate(Object t) {
-            if(!(t instanceof Integer) || (Integer)t<1){
-                return new Result(null,"color scale must be >0"); // TODO does nothing!
-            }
-            return null;
-        }
-
-    }
-
-    private Valid valid=new Valid();
-
 
 }

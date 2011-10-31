@@ -2154,7 +2154,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         } catch (IOException e) {
             close();
             log.warning(e.getMessage());
-            throw new HardwareInterfaceException("can't load binary Cypress FX2 firmware file " + firmwareFilename);
+            throw new BlankDeviceException("can't load binary Cypress FX2 firmware file " + firmwareFilename);
         }
 
         set8051Reset(true);

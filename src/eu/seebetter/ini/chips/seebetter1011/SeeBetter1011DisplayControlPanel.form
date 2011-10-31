@@ -138,7 +138,7 @@
                 <Property name="toolTipText" type="java.lang.String" value="Shows the scanned out static log intensity values."/>
               </Properties>
               <BindingProperties>
-                <BindingProperty name="selected" source="Form" sourcePath="${displayMethod.displayLogIntensity}" target="logIntensityCB" targetPath="selected" updateStrategy="0" immediately="false"/>
+                <BindingProperty name="selected" source="Form" sourcePath="${chip.displayLogIntensity}" target="logIntensityCB" targetPath="selected" updateStrategy="0" immediately="false"/>
               </BindingProperties>
             </Component>
             <Component class="javax.swing.JCheckBox" name="invertADCvaluesCB">
@@ -491,7 +491,6 @@
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Component id="logIntensityChangeCB" alignment="0" min="-2" max="-2" attributes="0"/>
-                          <Component id="colorChangeCB" alignment="0" min="-2" max="-2" attributes="0"/>
                           <Group type="102" alignment="0" attributes="0">
                               <Component id="jLabel3" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
@@ -505,10 +504,8 @@
             <DimensionLayout dim="1">
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" alignment="0" attributes="0">
-                      <Component id="logIntensityChangeCB" linkSize="1" min="-2" pref="23" max="-2" attributes="0"/>
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Component id="colorChangeCB" linkSize="1" min="-2" pref="23" max="-2" attributes="0"/>
-                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="logIntensityChangeCB" min="-2" pref="23" max="-2" attributes="0"/>
+                      <EmptySpace min="-2" pref="25" max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="3" attributes="0">
                           <Component id="colorScaleSpinner" alignment="3" min="-2" max="-2" attributes="0"/>
                           <Component id="jLabel3" alignment="3" min="-2" max="-2" attributes="0"/>
@@ -524,16 +521,7 @@
                 <Property name="toolTipText" type="java.lang.String" value="Show log intensity change (temporal contrast) Brighter and Darker events."/>
               </Properties>
               <BindingProperties>
-                <BindingProperty name="selected" source="Form" sourcePath="${displayMethod.displayLogIntensityChangeEvents}" target="logIntensityChangeCB" targetPath="selected" updateStrategy="0" immediately="false"/>
-              </BindingProperties>
-            </Component>
-            <Component class="javax.swing.JCheckBox" name="colorChangeCB">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Show color change events"/>
-                <Property name="toolTipText" type="java.lang.String" value="Shows color change events, Redder and Bluer"/>
-              </Properties>
-              <BindingProperties>
-                <BindingProperty name="selected" source="Form" sourcePath="${displayMethod.displayColorChangeEvents}" target="colorChangeCB" targetPath="selected" updateStrategy="0" immediately="false"/>
+                <BindingProperty name="selected" source="Form" sourcePath="${chip.displayLogIntensityChangeEvents}" target="logIntensityChangeCB" targetPath="selected" updateStrategy="0" immediately="false"/>
               </BindingProperties>
             </Component>
             <Component class="javax.swing.JSpinner" name="colorScaleSpinner">
@@ -541,10 +529,7 @@
                 <Property name="toolTipText" type="java.lang.String" value="Sets the full scale (white or black) event count."/>
               </Properties>
               <BindingProperties>
-                <BindingProperty name="value" source="Form" sourcePath="${colorScale}" target="colorScaleSpinner" targetPath="value" updateStrategy="0" immediately="false">
-                  <Property name="validator" type="org.jdesktop.beansbinding.Validator" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
-                    <Connection code="valid" type="code"/>
-                  </Property>
+                <BindingProperty name="value" source="Form" sourcePath="${chip.renderer.colorScale}" target="colorScaleSpinner" targetPath="value" updateStrategy="0" immediately="false">
                   <Property name="name" type="java.lang.String" value="colorScale"/>
                 </BindingProperty>
               </BindingProperties>

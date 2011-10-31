@@ -1505,9 +1505,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             } catch (BlankDeviceException bd) {
                 if (!blankDeviceMessageShown) {
-                    log.info(bd.getMessage() + " supressing further blank device messages");
+                    log.info(bd.getMessage() + " suppressing further blank device messages");
                     blankDeviceMessageShown = true;
-                    int v = JOptionPane.showConfirmDialog(this, "<html>Blank Cypress FX2 found (" + aemon + "). Do you want to open the Cypress FX2 Programming utility?<p>Otherwise set the default firmware in the USB menu to download desired firmware to RAM for CypressFX2 devices");
+                    int v = JOptionPane.showConfirmDialog(this, "<html>Blank Cypress FX2 found (" + aemon + "). <br>Caught exception "+bd.getMessage()+".<br>Do you want to open the Cypress FX2 Programming utility?<p>Otherwise set the default firmware in the USB menu to download desired firmware to RAM for CypressFX2 devices");
 
                     if (v == JOptionPane.YES_OPTION) {
                         CypressFX2EEPROM instance = new CypressFX2EEPROM();

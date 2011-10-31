@@ -124,7 +124,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     public static final int MAX_ADC = (int) ((1 << 12) - 1);
     /** The computed intensity value. */
     private float globalIntensity = 0;
-    private CDVSLogIntensityFrameData frameData = new CDVSLogIntensityFrameData();
+    private LogIntensityFrameData frameData = new LogIntensityFrameData();
     private SeeBetter1011Renderer cDVSRenderer = null;
     private SeeBetter1011DisplayMethod cDVSDisplayMethod = null;
     private boolean displayLogIntensity;
@@ -211,7 +211,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     /**
      * @return the frameData
      */
-    public CDVSLogIntensityFrameData getFrameData() {
+    public LogIntensityFrameData getFrameData() {
         return frameData;
     }
 
@@ -1738,12 +1738,10 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
      */
     public class SeeBetter1011DisplayMethod extends DVSWithIntensityDisplayMethod {
 
-        private SeeBetter1011 cDVSChip = null;
         boolean registeredControlPanel = false;
 
         public SeeBetter1011DisplayMethod(SeeBetter1011 chip) {
             super(chip.getCanvas());
-            this.cDVSChip = chip;
         }
 
         @Override
@@ -1775,21 +1773,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             gl.glEnd();
         }
 
-        public void setDisplayLogIntensityChangeEvents(boolean displayLogIntensityChangeEvents) {
-            cDVSChip.setDisplayLogIntensityChangeEvents(displayLogIntensityChangeEvents);
-        }
-
-        public void setDisplayLogIntensity(boolean displayLogIntensity) {
-            cDVSChip.setDisplayLogIntensity(displayLogIntensity);
-        }
-
-        public boolean isDisplayLogIntensityChangeEvents() {
-            return cDVSChip.isDisplayLogIntensityChangeEvents();
-        }
-
-        public boolean isDisplayLogIntensity() {
-            return cDVSChip.isDisplayLogIntensity();
-        }
+      
     }
 
     /**
@@ -1882,7 +1866,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     }
                 }
                 if (displayLogIntensity) {
-                    CDVSLogIntensityFrameData b = cDVSChip.getFrameData();
+                    LogIntensityFrameData b = cDVSChip.getFrameData();
                     try {
                         b.acquire(); // gets the lock to prevent buffer swapping during display
                         float[] pm = getPixmapArray();
@@ -2093,13 +2077,15 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
     /**
      * 
-     * Holds the frame of log intensity values to be display for a cDVS chip with log intensity readout.
+     * Holds the frame of log intensity values to be display for a chip with log intensity readout.
      * Double-buffers the frame data with a locking mechanism.
      * @author Tobi
      */
-    public class CDVSLogIntensityFrameData {
+    public class LogIntensityFrameData {
 
-        public final int WIDTH = BDVSArray.width, HEIGHT = BDVSArray.height;
+        
+        /** The scanner is 16 wide by 32 high  */
+        public final int WIDTH = BDVSArray.width, HEIGHT = BDVSArray.height; // width is BDVS pixels not scanner registers
         private final int NUMSAMPLES = WIDTH * HEIGHT;
         private int timestamp = 0; // timestamp of starting sample
         private int[] data1 = new int[NUMSAMPLES], data2 = new int[NUMSAMPLES];
@@ -2119,17 +2105,24 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             semaphore.release();
         }
 
+        /** Gets the sample at a given pixel address (not scanner address) 
+         * 
+         * @param x pixel x
+         * @param y pixel y
+         * @return  value from ADC
+         */
         public int get(int x, int y) {
+            final int idx = y + WIDTH * x; // values are written by row for each column (row parallel readout in this chip, with columns addressed one by one)
             if (invertADCvalues) {
                 if (useOffChipCalibration) {
-                    return MAX_ADC - (int) (gain[y + WIDTH * x] * (currentReadingBuffer[y + WIDTH * x] - offset[y + WIDTH * x]));
+                    return MAX_ADC - (int) (gain[idx] * (currentReadingBuffer[idx] - offset[idx]));
                 }
-                return MAX_ADC - currentReadingBuffer[y + WIDTH * x];
+                return MAX_ADC - currentReadingBuffer[idx];
             } else {
                 if (useOffChipCalibration) {
-                    return ((int) gain[y + WIDTH * x] * (currentReadingBuffer[y + WIDTH * x] - offset[y + WIDTH * x]));
+                    return ((int) gain[idx] * (currentReadingBuffer[idx] - offset[idx]));
                 }
-                return currentReadingBuffer[y + WIDTH * x];
+                return currentReadingBuffer[idx];
             }
         }
 
