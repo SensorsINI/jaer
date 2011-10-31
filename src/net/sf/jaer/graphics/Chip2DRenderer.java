@@ -124,8 +124,11 @@ public class Chip2DRenderer implements Observer {
             pixmap = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
         }
     }
+    /** The gray value. */
     protected float grayValue = 0;
+    /** The mouse-selected x pixel location, from left. */
     protected short xsel = -1;
+    /** The mouse selected y pixel location, from bottom. */
     protected short ysel = -1;
     /** The count of spikes in the "selected" pixel. Rendering methods are responsible for maintaining this */
     protected int selectedPixelEventCount = 0;

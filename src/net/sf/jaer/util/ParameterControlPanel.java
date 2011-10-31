@@ -158,7 +158,9 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //            add(new JPanel()); // to fill vertical space in GridLayout
             add(Box.createVerticalGlue()); // to fill space at bottom - not needed
         // when clazz fires a property change event, we getString called here and we update all our controls
-//        getClazz().getPropertyChangeSupport().addPropertyChangeListener(this);
+//            if(f instanceof PropertyChangeListener){
+//        ((PropertyChangeListener)f).getPropertyChangeSupport().addPropertyChangeListener(this);
+//                }
         ToolTipManager.sharedInstance().setDismissDelay(10000); // to show tips
         revalidate();
     }
@@ -281,17 +283,12 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                             control = new FloatSliderControl(getClazz(), p, params);
                         } else {
                             control = new FloatControl(getClazz(), p);
-
                         }
                         myadd(control, name, inherited);
                     } else if (c == Boolean.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
-
-
-
                         control = new BooleanControl(getClazz(), p);
                         myadd(control, name, inherited);
                     } else if (c == String.class && p.getReadMethod() != null && p.getWriteMethod() != null) {
-
                         control = new StringControl(getClazz(), p);
                         myadd(control, name, inherited);
                     } else if (c != null && c.isEnum() && p.getReadMethod() != null && p.getWriteMethod() != null) {
@@ -303,13 +300,10 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //                    if (control != null) {
 //                        control.setToolTipText(getClazz().getPropertyTooltip(name));
 //                    }
-
-
                 } catch (Exception e) {
                     log.warning(e + " caught on property " + p.getName() + " from class " + clazz);
                 }
             }
-
             groupContainerMap = null;
 //             sortedControls=null;
         } catch (Exception e) {

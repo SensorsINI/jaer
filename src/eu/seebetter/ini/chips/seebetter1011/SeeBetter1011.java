@@ -84,29 +84,29 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
 @Description("SeeBetter10 and 11 test chips")
 public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntensity {
 
+    /** Describes size of array of pixels on the chip, in the pixels address space */
     public static class PixelArray extends Rectangle{
         int pitch;
-        boolean oddColumns;
 
-        public PixelArray(int pitch, boolean oddColumns, int x, int y, int width, int height) {
+        /** Makes a new description. Assumes that Extractor already right shifts address to remove even and odd distinction of addresses.
+         * 
+         * @param pitch pitch of pixels in raw AER address space
+         * @param x left corner origin x location of pixel in its address space
+         * @param y bottom origin of array in its address space 
+         * @param width width in pixels
+         * @param height height in pixels.
+         */
+        public PixelArray(int pitch, int x, int y, int width, int height) {
             super(x, y, width, height);
             this.pitch = pitch;
-            this.oddColumns = oddColumns;
         }
-        
     }
     
-//    public static final int SIZEX_TOTAL = 140;
-//    public static final int SIZE_Y = 64;
-//    public static final int SIZE_Y_LARGE_PIXELS = 32;
-//    public static final int SIZE_X_BDVS=32;
-//    public static final int SIZE_X_LARGE_PIXELS = 32;
-//    public static final int SIZE_X_DVS = 64;
-    public static final PixelArray EntirePixelArray=new PixelArray(1,false,0,0,128,64);
-    public static final PixelArray LargePixelArray=new PixelArray(2,true,0,0,64,32);
-    public static final PixelArray BDVSArray=new PixelArray(2,true, 0, 0, 32, 32);
-    public static final PixelArray SDVSArray=new PixelArray(2,false, 32, 0, 32, 32);
-    public static final PixelArray DVSArray=new PixelArray(1,false, 64, 0, 64, 64);
+    public static final PixelArray EntirePixelArray=new PixelArray(1,0,0,128,64);
+    public static final PixelArray LargePixelArray=new PixelArray(2,0,0,32,32);
+    public static final PixelArray BDVSArray=new PixelArray(2, 0, 0, 16, 32);
+    public static final PixelArray SDVSArray=new PixelArray(2, 16, 0, 16, 32);
+    public static final PixelArray DVSArray=new PixelArray(1, 64, 0, 64, 64);
     
     // following define bit masks for various hardware data types. 
     // The hardware interface translateEvents method packs the raw device data into 32 bit 'addresses' and timestamps.
@@ -317,7 +317,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                         e.x = (short) (((data & XMASK) >>> XSHIFT));
                         e.y = (short) ((data & YMASK) >>> YSHIFT);
 
-                        if (e.x < LargePixelArray.width) { // cDVS pixel array // *2 because size is defined to be 32 and event types are still different x's
+                        if (e.x < LargePixelArray.width*LargePixelArray.pitch) { // cDVS pixel array // *2 because size is defined to be 32 and event types are still different x's
                             e.x = (short) (e.x >>> 1);
                             e.y = (short) (e.y >>> 1); // cDVS array is clumped into 32x32
                         } 
@@ -660,12 +660,20 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             runAdc.set(false);
             // CPLD registers
             update(adc, null);
-            runAdc.set(true);
             nCPLDReset.set(true);
+            runAdc.set(true);
             runCpld.set(true); // AER aquisition
             nChipReset.set(true); // unreset chip
         }
 
+        /** Momentarily puts the pixels and on-chip AER logic in reset and then releases the reset.
+         * 
+         */
+        private void resetChip() {
+            nChipReset.set(false);
+            nChipReset.set(true);
+        }
+        
         /** The central point for communication with HW from biasgen. All objects in SeeBetterConfig are Observables
          * and addConfigValue SeeBetterConfig.this as Observer. They then call notifyObservers when their state changes.
          * Objects such as adcProxy store preferences for ADC, and update should update the hardware registers accordingly.
@@ -837,7 +845,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             JPanel portBitsPanel = new JPanel();
             portBitsPanel.setLayout(new BoxLayout(portBitsPanel, BoxLayout.Y_AXIS));
             for (PortBit p : portBits) {
-
                 portBitsPanel.add(new JRadioButton(p.getAction()));
             }
             portBitsPanel.setBorder(new TitledBorder("Cypress FX2 port bits"));
@@ -847,9 +854,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             final Action sendConfigAction = new AbstractAction("Send configuration") {
 
                 {
-                    // Set tool tip text
                     putValue(Action.SHORT_DESCRIPTION, "Sends the complete configuration again");
-
                 }
 
                 // This method is called when the action is invoked
@@ -863,23 +868,19 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 }
             };
 
-
             final Action resetChipAction = new AbstractAction("Reset chip") {
 
                 {
                     putValue(Action.SHORT_DESCRIPTION, "Resets the pixels and the AER logic momentarily");
-
                 }
 
-                // This method is called when the action is invoked
                 @Override
                 public void actionPerformed(ActionEvent evt) {
-                    nChipReset.set(false);
-                    nChipReset.set(true);
+                    resetChip();
                 }
             };
             JPanel specialButtons = new JPanel();
-            specialButtons.setLayout(new BoxLayout(specialButtons, BoxLayout.Y_AXIS));
+            specialButtons.setLayout(new BoxLayout(specialButtons, BoxLayout.X_AXIS));
             specialButtons.add(new JButton(sendConfigAction));
             specialButtons.add(new JButton(resetChipAction));
             moreConfig.add(specialButtons, BorderLayout.NORTH);
@@ -1744,45 +1745,40 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     resetFrame(.5f);
                 }
                 step = 1f / (colorScale);
-                for (Object obj : packet) {
-                    PolarityEvent e = (PolarityEvent) obj;
-                    int type = e.getType();
-                    if (e.x == xsel && e.y == ysel) {
-                        playSpike(type);
-                    }
-                    if (isLargePixelArray(e)) { // address is in large pixel array
-                        int x = e.x, y = e.y;
-                        switch (e.polarity) {
-                            case On:
-                                if (showLogIntensityChange) {
+                if (showLogIntensityChange) {
+                    for (Object obj : packet) {
+                        PolarityEvent e = (PolarityEvent) obj;
+                        int type = e.getType();
+                        if (e.x == xsel && e.y == ysel) {
+                            playSpike(type);
+                        }
+                        if (isLargePixelArray(e)) { // address is in large pixel array
+                            int x = e.x, y = e.y;
+                            switch (e.polarity) {
+                                case On:
                                     changeCDVSPixel(x, y, f, brighter, step);
-                                }
-                                break;
-                            case Off:
-                                if (showLogIntensityChange) {
+                                    break;
+                                case Off:
                                     changeCDVSPixel(x, y, f, darker, step);
-                                }
-                                break;
-                        }
-                    } else { // address is in DVS arrays
-                        if (!showLogIntensityChange) {
-                            continue;
-                        }
-                        int ind = getPixMapIndex(e.x, e.y);
-                        switch (e.polarity) {
-                            case On:
-                                f[ind] += step;
-                                f[ind + 1] += step;
-                                f[ind + 2] += step;
-                                break;
-                            case Off:
-                                f[ind] -= step;
-                                f[ind + 1] -= step;
-                                f[ind + 2] -= step;
+                                    break;
+                            }
+                        } else { // address is in DVS arrays
+                            int ind = getPixMapIndex(e.x, e.y);
+                            switch (e.polarity) {
+                                case On:
+                                    f[ind] += step;
+                                    f[ind + 1] += step;
+                                    f[ind + 2] += step;
+                                    break;
+                                case Off:
+                                    f[ind] -= step;
+                                    f[ind + 1] -= step;
+                                    f[ind + 2] -= step;
+                            }
                         }
                     }
                 }
-                if (isDisplayLogIntensity()) {
+                if (displayLogIntensity) {
                     CDVSLogIntensityFrameData b = cDVSChip.getFrameData();
                     try {
                         b.acquire(); // gets the lock to prevent buffer swapping during display
@@ -1824,7 +1820,10 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             pixmap.rewind();
         }
 
-        /** x,y refer to 32x32 space of cDVS pixels but rendering space for cDVS is 64x64 */
+        /** Changes all 4 pixmap locations for each large pixel affected by this event. 
+         * x,y refer to space of large pixels each of which is 2x2 block of pixmap pixels
+         * 
+         */
         private void changeCDVSPixel(int x, int y, float[] f, float[] c, float step) {
             int ind;
             ind = 3 * (2 * x + 2 * y * sizeX);
