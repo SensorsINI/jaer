@@ -11,14 +11,9 @@ import eu.seebetter.ini.chips.*;
 import eu.seebetter.ini.chips.config.*;
 import eu.seebetter.ini.chips.seebetter1011.SeeBetter1011.SeeBetter1011DisplayMethod;
 import eu.seebetter.ini.chips.seebetter1011.SeeBetter1011.SeeBetter1011Renderer;
-import eu.seebetter.ini.chips.seebetter1011.SeeBetter1011.SeeBetterConfig.OutputMux;
 import java.awt.event.ActionEvent;
 import java.awt.geom.Point2D.Float;
 import java.util.Observer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.prefs.PreferenceChangeEvent;
-import java.util.prefs.PreferenceChangeListener;
 import javax.swing.JRadioButton;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.biasgen.*;
@@ -27,10 +22,9 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.hardwareinterface.*;
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.awt.Insets;
 import java.awt.Rectangle;
-import java.awt.event.ActionListener;
+import java.beans.PropertyChangeSupport;
 import java.nio.ByteBuffer;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -46,12 +40,9 @@ import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
-import javax.swing.Icon;
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
-import javax.swing.KeyStroke;
 import javax.swing.border.TitledBorder;
 import net.sf.jaer.Description;
 import net.sf.jaer.biasgen.Pot.Sex;
@@ -85,7 +76,8 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
 public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntensity {
 
     /** Describes size of array of pixels on the chip, in the pixels address space */
-    public static class PixelArray extends Rectangle{
+    public static class PixelArray extends Rectangle {
+
         int pitch;
 
         /** Makes a new description. Assumes that Extractor already right shifts address to remove even and odd distinction of addresses.
@@ -101,13 +93,11 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             this.pitch = pitch;
         }
     }
-    
-    public static final PixelArray EntirePixelArray=new PixelArray(1,0,0,128,64);
-    public static final PixelArray LargePixelArray=new PixelArray(2,0,0,32,32);
-    public static final PixelArray BDVSArray=new PixelArray(2, 0, 0, 16, 32);
-    public static final PixelArray SDVSArray=new PixelArray(2, 16, 0, 16, 32);
-    public static final PixelArray DVSArray=new PixelArray(1, 64, 0, 64, 64);
-    
+    public static final PixelArray EntirePixelArray = new PixelArray(1, 0, 0, 128, 64);
+    public static final PixelArray LargePixelArray = new PixelArray(2, 0, 0, 32, 32);
+    public static final PixelArray BDVSArray = new PixelArray(2, 0, 0, 16, 32);
+    public static final PixelArray SDVSArray = new PixelArray(2, 16, 0, 16, 32);
+    public static final PixelArray DVSArray = new PixelArray(1, 64, 0, 64, 64);
     // following define bit masks for various hardware data types. 
     // The hardware interface translateEvents method packs the raw device data into 32 bit 'addresses' and timestamps.
     // timestamps are unwrapped and timestamp resets are handled in translateEvents. Addresses are filled with either AE or ADC data.
@@ -313,14 +303,14 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                         PolarityEvent e = (PolarityEvent) outItr.nextOutput();
                         e.address = data & EVENT_ADDRESS_MASK;
                         e.timestamp = (timestamps[i]);
-                        e.polarity = (data&1)==1?PolarityEvent.Polarity.On:PolarityEvent.Polarity.Off;
+                        e.polarity = (data & 1) == 1 ? PolarityEvent.Polarity.On : PolarityEvent.Polarity.Off;
                         e.x = (short) (((data & XMASK) >>> XSHIFT));
                         e.y = (short) ((data & YMASK) >>> YSHIFT);
 
-                        if (e.x < LargePixelArray.width*LargePixelArray.pitch) { // cDVS pixel array // *2 because size is defined to be 32 and event types are still different x's
+                        if (e.x < LargePixelArray.width * LargePixelArray.pitch) { // cDVS pixel array // *2 because size is defined to be 32 and event types are still different x's
                             e.x = (short) (e.x >>> 1);
                             e.y = (short) (e.y >>> 1); // cDVS array is clumped into 32x32
-                        } 
+                        }
                     }
                 } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
                     // if scanner is stopped on one place, then we never get a start bit. we then limit the number of samples
@@ -396,7 +386,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
         private ConfigurableIPot32 pcas, diffOn, diffOff, diff, red, blue, amp;
         private ConfigurableIPot32 refr, pr, foll;
-        SeeBetter1011OutputControlPanel controlPanel;
         AllMuxes allMuxes = null; // the output muxes
         private ShiftedSourceBias ssn, ssp, ssnMid, sspMid;
         private ShiftedSourceBias[] ssBiases = new ShiftedSourceBias[4];
@@ -673,7 +662,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             nChipReset.set(false);
             nChipReset.set(true);
         }
-        
+
         /** The central point for communication with HW from biasgen. All objects in SeeBetterConfig are Observables
          * and addConfigValue SeeBetterConfig.this as Observer. They then call notifyObservers when their state changes.
          * Objects such as adcProxy store preferences for ADC, and update should update the hardware registers accordingly.
@@ -828,7 +817,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(sspMid));
             combinedBiasShiftedSourcePanel.add(new VPotGUIControl(thermometerDAC));
             bgTabbedPane.addTab("Biases", combinedBiasShiftedSourcePanel);
-            bgTabbedPane.addTab("Output control", new SeeBetter1011OutputControlPanel(SeeBetter1011.this));
+            bgTabbedPane.addTab("Output MUX control", allMuxes.buildControlPanel());
             JPanel adcScannerLogPanel = new JPanel();
             adcScannerLogPanel.setLayout(new BoxLayout(adcScannerLogPanel, BoxLayout.Y_AXIS));
             bgTabbedPane.add("Analog output", adcScannerLogPanel);
@@ -988,7 +977,15 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         }
 
         /** Controls the log intensity readout by wrapping the relevant bits */
-        public class LogReadoutControl {
+        public class LogReadoutControl implements Observer {
+
+            public final String EVENT_REF_ON_TIME = "refOnTime", EVENT_REF_OFF_TIME = "refOffTime", EVENT_SELECT_5T = "select5Tbuffer", EVENT_USE_CALIBRATION = "useCalibration";
+            private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
+
+            public LogReadoutControl() {
+                adcRefOffTime.addObserver(this);
+                adcRefOnTime.addObserver(this);
+            }
 
             public boolean isSelect5Tbuffer() {
                 return use5TBuffer.isSet();
@@ -1021,19 +1018,39 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             public int getRefOffTime() {
                 return adcRefOffTime.get() / ADC_CLK_CYCLES_PER_US;
             }
+
+            @Override
+            public void update(Observable o, Object arg) {
+                // TODO
+            }
+
+            /**
+             * @return the propertyChangeSupport
+             */
+            public PropertyChangeSupport getPropertyChangeSupport() {
+                return propertyChangeSupport;
+            }
         }
 
-        public class ADC extends Observable {
+        public class ADC extends Observable implements Observer {
 
             private final int ADCchannelshift = 5;
             private final short ADCconfig = (short) 0x100;   //normal power mode, single ended, sequencer unused : (short) 0x908;
             int channel = getPrefs().getInt("ADC.channel", 0);
+            public final String EVENT_ADC_ENABLED = "adcEnabled", EVENT_IDLE_TIME = "idleTime", EVENT_TRACK_TIME = "trackTime", EVENT_ADC_CHANNEL = "adcChannel";
+            private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
 
-            public boolean isADCEnabled() {
+            public ADC() {
+                runAdc.addObserver(this);
+                adcIdleTime.addObserver(this);
+                adcTrackTime.addObserver(this);
+            }
+
+            public boolean isAdcEnabled() {
                 return runAdc.isSet();
             }
 
-            public void setADCEnabled(boolean yes) {
+            public void setAdcEnabled(boolean yes) {
                 runAdc.set(yes);
             }
 
@@ -1071,37 +1088,42 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 adcConfig.set((ADCconfig | (chan << ADCchannelshift)));
                 notifyObservers();
             }
+
+            @Override
+            public void update(Observable o, Object arg) {
+                setChanged();
+                notifyObservers(arg);
+                if (o == runAdc) {
+                    propertyChangeSupport.firePropertyChange(EVENT_ADC_ENABLED, null, runAdc.isSet());
+                } // TODO
+            }
+
+            /**
+             * @return the propertyChangeSupport
+             */
+            public PropertyChangeSupport getPropertyChangeSupport() {
+                return propertyChangeSupport;
+            }
         }
 
         /** Extends base scanner class to control the relevant bits and parameters of the hardware */
-        public class Scanner implements PreferenceChangeListener, HasPreference, Observer {
+        public class Scanner extends Observable implements Observer {
 
             private final int minScanX = 0;
             private final int maxScanX = 63;
             private final int minScanY = 0;
             private final int maxScanY = 63;
+            public final String EVENT_SCANX = "scanX";
+            public final String EVENT_SCANY = "scanY";
+            public final String EVENT_SCAN_CONTINUOUSLY = "scanContinuouslyEnabled";
+            private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
 
             public Scanner(SeeBetter1011 chip) {
-                loadPreference();
-                getPrefs().addPreferenceChangeListener(this);
-                hasPreferencesList.add(this); // not really used since all preferences are in the CPLD configuration bits used here
+                scanX.addObserver(this);
+                scanY.addObserver(this);
+                scanContinuouslyEnabled.addObserver(this);
             }
 
-//            public int getPeriod() {
-//                return adc.getIdleTime() + adc.getTrackTime();
-//            }
-//            /** Sets the scan rate using the ADC idleTime setting, indirectly. 
-//             * 
-//             * @param period 
-//             */
-//            public void setPeriod(int period) {
-//                boolean old = adc.isADCEnabled();
-//                adc.setADCEnabled(false);
-//                adc.setIdleTime(period); // TODO fix period units using track time + conversion time + idleTime
-//                if (old) {
-//                    adc.setADCEnabled(old);
-//                }
-//            }
             public void setScanX(int scanX) {
                 SeeBetterConfig.this.scanX.set(scanX);
             }
@@ -1126,35 +1148,23 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 SeeBetterConfig.this.scanContinuouslyEnabled.set(scanContinuouslyEnabled);
             }
 
-            public void preferenceChange(PreferenceChangeEvent e) {
-            }
-
-            @Override
-            public void loadPreference() {
-                // ocnfig loads itself
-//                setScanX(SeeBetterConfig.this.scanX.get());
-//                setScanY(SeeBetterConfig.this.scanY.get());
-//                setScanContinuouslyEnabled(SeeBetterConfig.this.scanContinuouslyEnabled.isSet());
-            }
-
-            @Override
-            public void storePreference() {
-            }
-
             @Override
             public String toString() {
                 return "Scanner{" + "x=" + getScanX() + " y=" + getScanY() + " scanContinuouslyEnabled=" + isScanContinuouslyEnabled() + '}';
             }
 
+            /** Notifies observers with the argument from the configuration value */
             @Override
             public void update(Observable o, Object arg) {
-//                if (o == SeeBetterConfig.this.scanContinuouslyEnabled) {
-//                    setScanContinuouslyEnabled(SeeBetterConfig.this.scanContinuouslyEnabled.isSet());
-//                } else if (o == SeeBetterConfig.this.scanX) {
-//                    setScanX(SeeBetterConfig.this.scanX.get());
-//                } else if (o == SeeBetterConfig.this.scanY) {
-//                    setScanX(SeeBetterConfig.this.scanY.get());
-//                }
+                setChanged();
+                notifyObservers(arg);
+                if (o == scanContinuouslyEnabled) {
+                    getPropertyChangeSupport().firePropertyChange(EVENT_SCAN_CONTINUOUSLY, null, scanContinuouslyEnabled.isSet());
+                } else if (o == scanY) {
+                    getPropertyChangeSupport().firePropertyChange(EVENT_SCANY, null, scanY.get());
+                } else if (o == scanX) {
+                    getPropertyChangeSupport().firePropertyChange(EVENT_SCANX, null, scanX.get());
+                }
             }
 
             /**
@@ -1183,6 +1193,13 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
              */
             public int getMaxScanY() {
                 return maxScanY;
+            }
+
+            /**
+             * @return the propertyChangeSupport
+             */
+            public PropertyChangeSupport getPropertyChangeSupport() {
+                return propertyChangeSupport;
             }
         } // Scanner
 
@@ -1232,7 +1249,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
             final int TOTAL_NUM_BITS = 24;  // number of these bits on this chip, at end of biasgen shift register
             boolean value = false;
-           OnchipConfigBit pullupX = new OnchipConfigBit(SeeBetter1011.this, "useStaticPullupX", 0, "turn on static pullup for X addresses (columns)", false),
+            OnchipConfigBit pullupX = new OnchipConfigBit(SeeBetter1011.this, "useStaticPullupX", 0, "turn on static pullup for X addresses (columns)", false),
                     pullupY = new OnchipConfigBit(SeeBetter1011.this, "useStaticPullupY", 1, "turn on static pullup for Y addresses (rows)", true),
                     delayY0 = new OnchipConfigBit(SeeBetter1011.this, "delayY0", 2, "RC delay columns, 1x", false),
                     delayY1 = new OnchipConfigBit(SeeBetter1011.this, "delayY1", 3, "RC delay columns, 2x", false),
@@ -1248,14 +1265,14 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     delaySM2 = new OnchipConfigBit(SeeBetter1011.this, "delaySM2", 13, "adds delay to state machine, 4x", false);
             OnchipConfigBit[] bits = {pullupX, pullupY, delayY0, delayY1, delayY2, delayX0, delayX1, delayX2, sDVSReset, bDVSReset, ros, delaySM0, delaySM1, delaySM2};
 
-
             public ExtraOnChipConfigBits() {
                 hasPreferencesList.add(this);
-                for(OnchipConfigBit b:bits){
+                for (OnchipConfigBit b : bits) {
                     b.addObserver(this);
                 }
             }
-             @Override
+
+            @Override
             public void loadPreference() {
                 for (OnchipConfigBit b : bits) {
                     b.loadPreference();
@@ -1307,191 +1324,9 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
             @Override
             public void update(Observable o, Object arg) {
-                SeeBetterConfig.this.update(o,arg); // pass update up to biasgen
+                SeeBetterConfig.this.update(o, arg); // pass update up to biasgen
             }
         } // ExtraOnChipConfigBits
-
-        /** A MUX for selecting output on the on-chip configuration/biasgen shift register. */
-        class OutputMux extends Observable implements HasPreference, RemoteControlled {
-
-            int nSrBits;
-            int nInputs;
-            OutputMap map;
-            private String name = "OutputMux";
-            int selectedChannel = -1; // defaults to no input selected in the case of voltage and current, and channel 0 in the case of logic
-            String bitString = null;
-            final String CMD_SELECTMUX = "selectMux_";
-
-            /**
-             *  A set of output mux channels.
-             * @param nsr number of shift register bits
-             * @param nin number of input ports to mux
-             * @param m the map where the info is stored
-             */
-            OutputMux(int nsr, int nin, OutputMap m) {
-                nSrBits = nsr;
-                nInputs = nin;
-                map = m;
-                hasPreferencesList.add(this);
-            }
-
-            @Override
-            public String toString() {
-                return "OutputMux name=" + name + " nSrBits=" + nSrBits + " nInputs=" + nInputs + " selectedChannel=" + selectedChannel + " channelName=" + getChannelName(selectedChannel) + " code=" + getCode(selectedChannel) + " getBitString=" + bitString;
-            }
-
-            void select(int i) {
-                if (this.selectedChannel != i) {
-                    setChanged();
-                }
-                this.selectedChannel = i;
-                notifyObservers();
-            }
-
-            void put(int k, String name) { // maps from channel to string name
-                map.put(k, name);
-            }
-
-            OutputMap getMap() {
-                return map;
-            }
-
-            int getCode(int i) { // returns shift register binary code for channel i
-                return map.get(i);
-            }
-
-            /** Returns the bit string to send to the firmware to load a bit sequence for this mux in the shift register;
-             * bits are loaded big endian, msb first but returned string has msb at right-most position, i.e. end of string.
-             * @return big endian string e.g. code=11, s='1011', code=7, s='0111' for nSrBits=4.
-             */
-            String getBitString() {
-                StringBuilder s = new StringBuilder();
-                int code = selectedChannel != -1 ? getCode(selectedChannel) : 0; // code 0 if no channel selected
-                int k = nSrBits - 1;
-                while (k >= 0) {
-                    int x = code & (1 << k); // start with msb
-                    boolean b = (x == 0); // get bit
-                    s.append(b ? '0' : '1'); // append to string 0 or 1, string grows with msb on left
-                    k--;
-                } // construct big endian string e.g. code=14, s='1011'
-                bitString = s.toString();
-                return bitString;
-            }
-
-            String getChannelName(int i) { // returns this channel name
-                return map.nameMap.get(i);
-            }
-
-            public String getName() { // returns name of entire mux
-                return name;
-            }
-
-            public void setName(String name) {
-                this.name = name;
-            }
-
-            private String key() {
-                return "cDVSTest." + getClass().getSimpleName() + "." + name + ".selectedChannel";
-            }
-
-            @Override
-            public void loadPreference() {
-                select(getPrefs().getInt(key(), -1));
-            }
-
-            @Override
-            public void storePreference() {
-                getPrefs().putInt(key(), selectedChannel);
-            }
-
-            /** Command is e.g. "selectMux_Currents 1".
-             *
-             * @param command the first token which dispatches the command here for this class of Mux.
-             * @param input the command string.
-             * @return some informative string for debugging bad commands.
-             */
-            @Override
-            public String processRemoteControlCommand(RemoteControlCommand command, String input) {
-                String[] t = input.split("\\s");
-                if (t.length < 2) {
-                    return "? " + this + "\n";
-                } else {
-                    String s = t[0], a = t[1];
-                    try {
-                        select(Integer.parseInt(a));
-                        return this + "\n";
-                    } catch (NumberFormatException e) {
-                        log.warning("Bad number format: " + input + " caused " + e);
-                        return e.toString() + "\n";
-                    } catch (Exception ex) {
-                        log.warning(ex.toString());
-                        return ex.toString();
-                    }
-                }
-            }
-//            public void preferenceChange(PreferenceChangeEvent evt) {
-//                if(evt.getKey().equals(key())){
-//                    select(Integer.parseInt(evt.getNewValue()));
-//                }
-//            }
-        } // OutputMux
-
-        class OutputMap extends HashMap<Integer, Integer> {
-
-            HashMap<Integer, String> nameMap = new HashMap<Integer, String>();
-
-            void put(int k, int v, String name) {
-                put(k, v);
-                nameMap.put(k, name);
-            }
-
-            void put(int k, String name) {
-                nameMap.put(k, name);
-            }
-        }
-
-        class VoltageOutputMap extends OutputMap {
-
-            final void put(int k, int v) {
-                put(k, v, "Voltage " + k);
-            }
-
-            VoltageOutputMap() {
-                put(0, 1);
-                put(1, 3);
-                put(2, 5);
-                put(3, 7);
-                put(4, 9);
-                put(5, 11);
-                put(6, 13);
-                put(7, ADC_CLK_CYCLES_PER_US);
-            }
-        }
-
-        class DigitalOutputMap extends OutputMap {
-
-            DigitalOutputMap() {
-                for (int i = 0; i < 16; i++) {
-                    put(i, i, "DigOut " + i);
-                }
-            }
-        }
-
-        class VoltageOutputMux extends OutputMux {
-
-            VoltageOutputMux(int n) {
-                super(4, 8, new VoltageOutputMap());
-                setName("Voltages" + n);
-            }
-        }
-
-        class LogicMux extends OutputMux {
-
-            LogicMux(int n) {
-                super(4, 16, new DigitalOutputMap());
-                setName("LogicSignals" + n);
-            }
-        }
 
         /** the output multiplexors for on-chip diagnostic output */
         public class AllMuxes extends Observable implements Observer {
@@ -1499,6 +1334,189 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             OutputMux[] vmuxes = {new VoltageOutputMux(1), new VoltageOutputMux(2), new VoltageOutputMux(3), new VoltageOutputMux(4)};
             OutputMux[] dmuxes = {new LogicMux(1), new LogicMux(2), new LogicMux(3), new LogicMux(4), new LogicMux(5)};
             ArrayList<OutputMux> muxes = new ArrayList();
+            MuxControlPanel controlPanel = null;
+
+            /** A MUX for selecting output on the on-chip configuration/biasgen shift register. */
+            class OutputMux extends Observable implements HasPreference, RemoteControlled {
+
+                int nSrBits;
+                int nInputs;
+                OutputMap map;
+                private String name = "OutputMux";
+                int selectedChannel = -1; // defaults to no input selected in the case of voltage and current, and channel 0 in the case of logic
+                String bitString = null;
+                final String CMD_SELECTMUX = "selectMux_";
+
+                /**
+                 *  A set of output mux channels.
+                 * @param nsr number of shift register bits
+                 * @param nin number of input ports to mux
+                 * @param m the map where the info is stored
+                 */
+                OutputMux(int nsr, int nin, OutputMap m) {
+                    nSrBits = nsr;
+                    nInputs = nin;
+                    map = m;
+                    hasPreferencesList.add(this);
+                }
+
+                @Override
+                public String toString() {
+                    return "OutputMux name=" + name + " nSrBits=" + nSrBits + " nInputs=" + nInputs + " selectedChannel=" + selectedChannel + " channelName=" + getChannelName(selectedChannel) + " code=" + getCode(selectedChannel) + " getBitString=" + bitString;
+                }
+
+                void select(int i) {
+                    if (this.selectedChannel != i) {
+                        setChanged();
+                    }
+                    this.selectedChannel = i;
+                    notifyObservers();
+                }
+
+                void put(int k, String name) { // maps from channel to string name
+                    map.put(k, name);
+                }
+
+                OutputMap getMap() {
+                    return map;
+                }
+
+                int getCode(int i) { // returns shift register binary code for channel i
+                    return map.get(i);
+                }
+
+                /** Returns the bit string to send to the firmware to load a bit sequence for this mux in the shift register;
+                 * bits are loaded big endian, msb first but returned string has msb at right-most position, i.e. end of string.
+                 * @return big endian string e.g. code=11, s='1011', code=7, s='0111' for nSrBits=4.
+                 */
+                String getBitString() {
+                    StringBuilder s = new StringBuilder();
+                    int code = selectedChannel != -1 ? getCode(selectedChannel) : 0; // code 0 if no channel selected
+                    int k = nSrBits - 1;
+                    while (k >= 0) {
+                        int x = code & (1 << k); // start with msb
+                        boolean b = (x == 0); // get bit
+                        s.append(b ? '0' : '1'); // append to string 0 or 1, string grows with msb on left
+                        k--;
+                    } // construct big endian string e.g. code=14, s='1011'
+                    bitString = s.toString();
+                    return bitString;
+                }
+
+                String getChannelName(int i) { // returns this channel name
+                    return map.nameMap.get(i);
+                }
+
+                public String getName() { // returns name of entire mux
+                    return name;
+                }
+
+                public void setName(String name) {
+                    this.name = name;
+                }
+
+                private String key() {
+                    return getClass().getSimpleName() + "." + name + ".selectedChannel";
+                }
+
+                @Override
+                public void loadPreference() {
+                    select(getPrefs().getInt(key(), -1));
+                }
+
+                @Override
+                public void storePreference() {
+                    getPrefs().putInt(key(), selectedChannel);
+                }
+
+                /** Command is e.g. "selectMux_Currents 1".
+                 *
+                 * @param command the first token which dispatches the command here for this class of Mux.
+                 * @param input the command string.
+                 * @return some informative string for debugging bad commands.
+                 */
+                @Override
+                public String processRemoteControlCommand(RemoteControlCommand command, String input) {
+                    String[] t = input.split("\\s");
+                    if (t.length < 2) {
+                        return "? " + this + "\n";
+                    } else {
+                        String s = t[0], a = t[1];
+                        try {
+                            select(Integer.parseInt(a));
+                            return this + "\n";
+                        } catch (NumberFormatException e) {
+                            log.warning("Bad number format: " + input + " caused " + e);
+                            return e.toString() + "\n";
+                        } catch (Exception ex) {
+                            log.warning(ex.toString());
+                            return ex.toString();
+                        }
+                    }
+                }
+//            public void preferenceChange(PreferenceChangeEvent evt) {
+//                if(evt.getKey().equals(key())){
+//                    select(Integer.parseInt(evt.getNewValue()));
+//                }
+//            }
+            } // OutputMux
+
+            class OutputMap extends HashMap<Integer, Integer> {
+
+                HashMap<Integer, String> nameMap = new HashMap<Integer, String>();
+
+                void put(int k, int v, String name) {
+                    put(k, v);
+                    nameMap.put(k, name);
+                }
+
+                void put(int k, String name) {
+                    nameMap.put(k, name);
+                }
+            }
+
+            class VoltageOutputMap extends OutputMap {
+
+                final void put(int k, int v) {
+                    put(k, v, "Voltage " + k);
+                }
+
+                VoltageOutputMap() {
+                    put(0, 1);
+                    put(1, 3);
+                    put(2, 5);
+                    put(3, 7);
+                    put(4, 9);
+                    put(5, 11);
+                    put(6, 13);
+                    put(7, ADC_CLK_CYCLES_PER_US);
+                }
+            }
+
+            class DigitalOutputMap extends OutputMap {
+
+                DigitalOutputMap() {
+                    for (int i = 0; i < 16; i++) {
+                        put(i, i, "DigOut " + i);
+                    }
+                }
+            }
+
+            class VoltageOutputMux extends OutputMux {
+
+                VoltageOutputMux(int n) {
+                    super(4, 8, new VoltageOutputMap());
+                    setName("Voltages" + n);
+                }
+            }
+
+            class LogicMux extends OutputMux {
+
+                LogicMux(int n) {
+                    super(4, 16, new DigitalOutputMap());
+                    setName("LogicSignals" + n);
+                }
+            }
 
             String getBitString() {
                 int nBits = 0;
@@ -1541,48 +1559,63 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     dmuxes[i].put(11, "Rrow");
                     dmuxes[i].put(12, "RxcolG");
                     dmuxes[i].put(13, "nArow");
-                    dmuxes[i].put(14, "FF2");
-                    dmuxes[i].put(ADC_CLK_CYCLES_PER_US, "RCarb");
+
                 }
 
+                dmuxes[0].put(14, "nResetRxcol");
+                dmuxes[0].put(15, "nArowBottom");
+                dmuxes[1].put(14, "AY1right");
+                dmuxes[1].put(15, "nRY1right");
+                dmuxes[2].put(14, "AY1right");
+                dmuxes[2].put(15, "nRY1right");
+                dmuxes[3].put(14, "FF2");
+                dmuxes[3].put(15, "RCarb");
+                dmuxes[4].put(14, "FF2");
+                dmuxes[4].put(15, "RCarb");
 
                 vmuxes[0].setName("AnaMux3");
                 vmuxes[1].setName("AnaMux2");
                 vmuxes[2].setName("AnaMux1");
                 vmuxes[3].setName("AnaMux0");
 
-                for (int i = 0; i < 4; i++) {
-                    vmuxes[i].put(0, "readout");
-                    vmuxes[i].put(1, "DiffAmpOut");
-                    vmuxes[i].put(2, "InPh");
-                }
+                vmuxes[0].put(0, "readout");
+                vmuxes[0].put(1, "Vmem");
+                vmuxes[0].put(2, "Vdiff_18ls");
+                vmuxes[0].put(3, "pr33sf");
+                vmuxes[0].put(4, "pd33cas");
+                vmuxes[0].put(5, "Vdiff_sDVS");
+                vmuxes[0].put(6, "log_bDVS");
+                vmuxes[0].put(7, "Vdiff_bDVS");
 
-                vmuxes[0].put(3, "refcurrent");
-                vmuxes[0].put(4, "DiffAmpRef");
-                vmuxes[0].put(5, "log");
-                vmuxes[0].put(6, "Vt");
-                vmuxes[0].put(7, "top");
+                vmuxes[1].put(0, "DiffAmpOut");
+                vmuxes[1].put(1, "Vdiff_old");
+                vmuxes[1].put(2, "pr18ls");
+                vmuxes[1].put(3, "pd33sf");
+                vmuxes[1].put(4, "casnode_33sf");
+                vmuxes[1].put(5, "fb_sDVS");
+                vmuxes[1].put(6, "prbuf_bDVS");
+                vmuxes[1].put(7, "PhC_buffered");
 
-                vmuxes[1].put(3, "refcurrent");
-                vmuxes[1].put(4, "DiffAmpRef");
-                vmuxes[1].put(5, "log");
-                vmuxes[1].put(6, "Vt");
-                vmuxes[1].put(7, "top");
+                vmuxes[2].put(0, "InPh");
+                vmuxes[2].put(1, "pr_old");
+                vmuxes[2].put(2, "pd18ls");
+                vmuxes[2].put(3, "nReset_33sf");
+                vmuxes[2].put(4, "Vdiff_33cas");
+                vmuxes[2].put(5, "pd_sDVS");
+                vmuxes[2].put(6, "pr_bDVS");
+                vmuxes[2].put(7, "Acol");
 
-                vmuxes[2].put(3, "phi1");
-                vmuxes[2].put(4, "phi2");
-                vmuxes[2].put(5, "Vcoldiff");
-                vmuxes[2].put(6, "Vs");
-                vmuxes[2].put(7, "sum");
-
-                vmuxes[3].put(3, "phi1");
-                vmuxes[3].put(4, "phi2");
-                vmuxes[3].put(5, "Vcoldiff");
-                vmuxes[3].put(6, "Vs");
-                vmuxes[3].put(7, "sum");
+                vmuxes[3].put(0, "refcurrent");
+                vmuxes[3].put(1, "pd_old");
+                vmuxes[3].put(2, "nReset_18ls");
+                vmuxes[3].put(3, "Vdiff_33sf");
+                vmuxes[3].put(4, "pr33cas");
+                vmuxes[3].put(5, "pr_sDVS");
+                vmuxes[3].put(6, "pd_bDVS");
+                vmuxes[3].put(7, "IFneuronReset");
             }
 
-            /** Passes on notifies from muxes
+            /** Passes on notifies from MUX's
              * 
              * @param o ignored
              * @param arg passed on to Observers
@@ -1591,6 +1624,76 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             public void update(Observable o, Object arg) {
                 setChanged();
                 notifyObservers(arg);
+            }
+
+            public MuxControlPanel buildControlPanel() {
+                return new MuxControlPanel();
+            }
+
+            /**
+             * Control panel for cDVSTest10 diagnostic output configuration.
+             * @author  tobi
+             */
+            public class MuxControlPanel extends javax.swing.JPanel {
+
+                class OutputSelectionAction extends AbstractAction implements Observer {
+
+                    OutputMux mux;
+                    int channel;
+                    JRadioButton button;
+
+                    OutputSelectionAction(OutputMux m, int i) {
+                        super(m.getChannelName(i));
+                        mux = m;
+                        channel = i;
+                        m.addObserver(this);
+                    }
+
+                    void setButton(JRadioButton b) {
+                        button = b;
+                    }
+
+                    public void actionPerformed(ActionEvent e) {
+                        mux.select(channel);
+                        log.info("Selected " + mux);
+                    }
+
+                    public void update(Observable o, Object arg) {
+                        if (channel == mux.selectedChannel) {
+                            button.setSelected(true);
+                        }
+                    }
+                }
+
+                /** Creates new form control panel for this chip.
+                 * 
+                 * @param chip the chip
+                 */
+                public MuxControlPanel() {
+                    for (OutputMux m : muxes) {
+                        JPanel p = new JPanel();
+                        p.setAlignmentY(0);
+                        p.setBorder(new TitledBorder(m.getName()));
+                        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+                        ButtonGroup group = new ButtonGroup();
+                        final Insets insets = new Insets(0, 0, 0, 0);
+                        for (int i = 0; i < m.nInputs; i++) {
+
+                            JRadioButton b = new JRadioButton();
+                            OutputSelectionAction action = new OutputSelectionAction(m, i);
+                            b.setAction(action);
+                            action.setButton(b);
+                            b.setSelected(i == m.selectedChannel);
+                            b.setFont(b.getFont().deriveFont(10f));
+                            b.setToolTipText(b.getText());
+                            b.setMargin(insets);
+//                b.setMinimumSize(new Dimension(30, 14));
+                            group.add(b);
+                            p.add(b);
+                        }
+                        add(p);
+                    }
+                }
             }
         } // AllMuxes
     } // SeeBetterConfig
@@ -2165,85 +2268,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
          */
         public void setTwoPointCalibration(boolean twoPointCalibration) {
             this.twoPointCalibration = twoPointCalibration;
-        }
-    }
-
-    /**
-     * Control panel for cDVSTest10 diagnostic output configuration.
-     * @author  tobi
-     */
-    public class SeeBetter1011OutputControlPanel extends javax.swing.JPanel {
-
-        class OutputSelectionAction extends AbstractAction implements Observer {
-
-            SeeBetter1011.SeeBetterConfig.OutputMux mux;
-            int channel;
-            JRadioButton button;
-
-            OutputSelectionAction(SeeBetter1011.SeeBetterConfig.OutputMux m, int i) {
-                super(m.getChannelName(i));
-                mux = m;
-                channel = i;
-                m.addObserver(this);
-            }
-
-            void setButton(JRadioButton b) {
-                button = b;
-            }
-
-            public void actionPerformed(ActionEvent e) {
-                mux.select(channel);
-                log.info("Selected " + mux);
-            }
-
-            public void update(Observable o, Object arg) {
-                if (channel == mux.selectedChannel) {
-                    button.setSelected(true);
-                }
-            }
-        }
-        SeeBetter1011 chip;
-        boolean panelBuilt = false;
-
-        /** Creates new form control panel for this chip.
-         * 
-         * @param chip the chip
-         */
-        public SeeBetter1011OutputControlPanel(SeeBetter1011 chip) {
-            this.chip = chip;
-        }
-
-        void buildPanel() {
-            if (panelBuilt) {
-                return;
-            }
-            panelBuilt = true;
-            SeeBetter1011.SeeBetterConfig biasgen = (SeeBetter1011.SeeBetterConfig) chip.getBiasgen();
-            ArrayList<OutputMux> muxes = biasgen.allMuxes.muxes;
-            for (OutputMux m : muxes) {
-                JPanel p = new JPanel();
-                p.setAlignmentY(0);
-                p.setBorder(new TitledBorder(m.getName()));
-                p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-                ButtonGroup group = new ButtonGroup();
-                final Insets insets = new Insets(0, 0, 0, 0);
-                for (int i = 0; i < m.nInputs; i++) {
-
-                    JRadioButton b = new JRadioButton();
-                    OutputSelectionAction action = new OutputSelectionAction(m, i);
-                    b.setAction(action);
-                    action.setButton(b);
-                    b.setSelected(i == m.selectedChannel);
-                    b.setFont(b.getFont().deriveFont(10f));
-                    b.setToolTipText(b.getText());
-                    b.setMargin(insets);
-//                b.setMinimumSize(new Dimension(30, 14));
-                    group.add(b);
-                    p.add(b);
-                }
-                add(p);
-            }
-            validate();
         }
     }
 }

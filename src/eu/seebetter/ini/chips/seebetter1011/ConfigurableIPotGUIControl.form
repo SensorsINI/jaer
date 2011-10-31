@@ -40,11 +40,11 @@
               <EmptySpace min="-2" max="-2" attributes="0"/>
               <Component id="currentLevelComboBox" min="-2" pref="84" max="-2" attributes="0"/>
               <EmptySpace type="unrelated" min="-2" max="-2" attributes="0"/>
-              <Component id="biasSlider" pref="86" max="32767" attributes="0"/>
+              <Component id="biasSlider" pref="165" max="32767" attributes="0"/>
               <EmptySpace min="-2" max="-2" attributes="0"/>
               <Component id="biasTextField" min="-2" max="-2" attributes="0"/>
               <EmptySpace type="unrelated" min="-2" max="-2" attributes="0"/>
-              <Component id="bufferBiasSlider" pref="36" max="32767" attributes="0"/>
+              <Component id="bufferBiasSlider" min="-2" pref="51" max="-2" attributes="0"/>
               <EmptySpace min="-2" max="-2" attributes="0"/>
               <Component id="bufferBiasTextField" min="-2" max="-2" attributes="0"/>
               <EmptySpace type="unrelated" min="-2" max="-2" attributes="0"/>

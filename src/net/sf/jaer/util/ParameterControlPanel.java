@@ -13,6 +13,7 @@ import java.beans.Introspector;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.*;
 import javax.swing.BoxLayout;
@@ -137,11 +138,15 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
     private java.util.ArrayList<JComponent> controls = new ArrayList<JComponent>();
     private HashMap<String, Container> groupContainerMap = new HashMap();
     private JPanel inheritedPanel = null;
-
+    PropertyChangeSupport support=null;
     public ParameterControlPanel() {
         initComponents();
     }
 
+    /** Builds a new panel around the Object f
+     * 
+     * @param f 
+     */
     public ParameterControlPanel(Object f) {
         setClazz(f);
         initComponents();
@@ -157,7 +162,14 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         addIntrospectedControls();
 //            add(new JPanel()); // to fill vertical space in GridLayout
             add(Box.createVerticalGlue()); // to fill space at bottom - not needed
-        // when clazz fires a property change event, we getString called here and we update all our controls
+        try {
+            // when clazz fires a property change event, propertyChangeEvent is called here and we update all our controls
+            Method m=f.getClass().getMethod("getPropertyChangeSupport", (Class[])null);
+            support=(PropertyChangeSupport)m.invoke(f, (Object[]) null);
+            support.addPropertyChangeListener(this);
+        } catch (Exception ex) {
+            
+        } 
 //            if(f instanceof PropertyChangeListener){
 //        ((PropertyChangeListener)f).getPropertyChangeSupport().addPropertyChangeListener(this);
 //                }
@@ -691,6 +703,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         int initValue = 0, nval;
         final JTextField tf;
 
+        @Override
         public void set(Object o) {
             if (o instanceof Integer) {
                 Integer b = (Integer) o;
@@ -736,6 +749,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             add(tf);
             tf.addActionListener(new ActionListener() {
 
+                @Override
                 public void actionPerformed(ActionEvent e) {
                     try {
                         int y = Integer.parseInt(
@@ -752,6 +766,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             });
             tf.addKeyListener(new java.awt.event.KeyAdapter() {
 
+                @Override
                 public void keyPressed(java.awt.event.KeyEvent evt) {
                     try {
                         Integer x = (Integer) r.invoke(clazz);
