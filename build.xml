@@ -86,7 +86,7 @@
             http://www.ej-technologies.com/products/exe4j/overview.html
     -->
     <target name="exe4j">
-        <echo message="Building exe4j jAERViewer.exe Windows launcher - embedding ico and setting SplashScreen in jAERViewer.exe"/>
+        <echo message="Building exe4j jAERViewer.exe Windows launcher - embedding ico and setting SplashScreen in jAERViewer.exe. Don't worry if this task fails for you unless you have changed the classpath. jAERViewer.exe does not normally need to be rebuilt."/>
         <taskdef name="exe4j" classname="com.exe4j.Exe4JTask" classpath="../../exe4j/bin/ant.jar" />
         <exe4j projectfile="../../jaer.exe4j" requirelicense="true"/>
     </target>
