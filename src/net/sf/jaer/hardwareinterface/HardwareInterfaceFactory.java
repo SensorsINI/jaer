@@ -60,8 +60,8 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
     private HardwareInterfaceFactory() {
         if (UsbIoUtilities.isLibraryLoaded()) {
             pnp = new PnPNotify(this);
-            pnp.enablePnPNotification(SiLabs_USBIO_C8051F3xxFactory.GUID);
-            pnp.enablePnPNotification(USBIOHardwareInterfaceFactory.GUID);
+//            pnp.enablePnPNotification(SiLabs_USBIO_C8051F3xxFactory.GUID);
+//            pnp.enablePnPNotification(USBIOHardwareInterfaceFactory.GUID);
         }
     }
 
