@@ -1337,7 +1337,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             MuxControlPanel controlPanel = null;
 
             /** A MUX for selecting output on the on-chip configuration/biasgen shift register. */
-            class OutputMux extends Observable implements HasPreference, RemoteControlled {
+            public class OutputMux extends Observable implements HasPreference, RemoteControlled {
 
                 int nSrBits;
                 int nInputs;
@@ -1665,7 +1665,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     }
                 }
 
-                /** Creates new form control panel for this chip.
+                /** Creates new control panel for this MUX
                  * 
                  * @param chip the chip
                  */
@@ -1679,10 +1679,9 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                         final Insets insets = new Insets(0, 0, 0, 0);
                         for (int i = 0; i < m.nInputs; i++) {
 
-                            JRadioButton b = new JRadioButton();
                             OutputSelectionAction action = new OutputSelectionAction(m, i);
-                            b.setAction(action);
-                            action.setButton(b);
+                            JRadioButton b = new JRadioButton(action);
+                            action.setButton(b); // needed to update button state
                             b.setSelected(i == m.selectedChannel);
                             b.setFont(b.getFont().deriveFont(10f));
                             b.setToolTipText(b.getText());
