@@ -2122,7 +2122,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         set8051Reset(false);
     }
 
-    /** downloads firmware to FX2 RAM. adapted from John Arthur's example, which comes from Cypress example.
+    /** Downloads firmware to FX2 RAM. adapted from John Arthur's example in Kwabena Boahen's lab at Stanford, which comes from Cypress example.
      * Firmware file is a binary file produced by uVision2 (Keil) from source code for firmware.
      *<p>
      *Firmware that is actually downloaded depends on discovered PID of device. If the PID is discovered to be a bare CypressFX2, then
@@ -2131,10 +2131,13 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      *In addition, there is a problem if firmware is downloaded more than once to an FX2LP device between hard resets. Therefore if this method detects
      *that the device has string identifiers, it assumes the firmware has already been downloaded.
      *
-     *
-     * Firmware file is loaded as a resource from the jar archive.
+     *<p>
+     * Firmware file is loaded either from the file system or as a resource from the jar archive.
+     * 
+     * @throws BlankDeviceException if device is blank or firmware file is not found.
+     * @throws HardwareInterfaceException if there is an error during download
      */
-    synchronized void downloadFirmwareBinaryToBlankDevice() throws HardwareInterfaceException {
+    public synchronized void downloadFirmwareBinaryToBlankDevice() throws HardwareInterfaceException {
 
  
         //  firmware load variables
