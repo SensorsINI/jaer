@@ -18,8 +18,9 @@ import net.sf.jaer.chip.Chip;
  * @author  tobi
  */
 public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swing.JDialog {
-    public static final String defaultRelativeFirmwarePath="/net/sf/jaer/hardwareinterface/usb/cypressfx2";
-    
+
+    /** The path relative to starting folder of CypressFX2 firmware files */
+    public static final String DEFAULT_RELATIVE_FIRMWARE_PATH = "../../deviceFirmwarePCBLayout/CypressFX2";
     static Logger log = Logger.getLogger("CypressFX2FirmwareFilennameChooserOkCancelDialog");
     static Preferences prefs = Preferences.userNodeForPackage(CypressFX2FirmwareFilennameChooserOkCancelDialog.class);
     /** A return status code - returned if Cancel button has been pressed */
@@ -37,7 +38,7 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
     public CypressFX2FirmwareFilennameChooserOkCancelDialog(java.awt.Frame parent, boolean modal, Chip chip) {
         super(parent, modal);
         initComponents();
-        this.chip=chip;
+        this.chip = chip;
         filenameTextField.setText(getLastFile());
         filenameTextField.setToolTipText(filenameTextField.getText());
     }
@@ -46,20 +47,25 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
      * Defaults to the last one selected or null if none has ever been selected.
      * @return the full path to the file.
      */
-    public String getLastFile(){
-        if(chip!=null) return chip.getDefaultFirmwareBixFileForBlankDevice();
-        else return prefs.get("CypressFX2FirmwareFilennameChooserOkCancelDialog.lastFile", null);
+    public String getLastFile() {
+        if (chip != null) {
+            return chip.getDefaultFirmwareBixFileForBlankDevice();
+        } else {
+            return prefs.get("CypressFX2FirmwareFilennameChooserOkCancelDialog.lastFile", null);
+        }
     }
-    
+
     /** Sets the last file and sets it in the Chip object if it is not null.
      * 
      * @param f the full or relative path to the file, relative to starting folder.
      */
-    public void setLastFile(String f){
-        if(chip!=null) chip.setDefaultFirmwareBixFileForBlankDevice(f);
+    public void setLastFile(String f) {
+        if (chip != null) {
+            chip.setDefaultFirmwareBixFileForBlankDevice(f);
+        }
         prefs.put("CypressFX2FirmwareFilennameChooserOkCancelDialog.lastFile", f);
     }
-    
+
     /** @return the return status of this dialog - one of RET_OK or RET_CANCEL */
     public int getReturnStatus() {
         return returnStatus;
@@ -101,7 +107,7 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
             }
         });
 
-        infoLabel.setText("<html>Choose the .bix firmware file you wish to download to this device.<p>These files are usually located in either the folder <em>deviceFirmwarePCBLayout</em> or the package <em>ch.unizh.ini.caviar.hardwareinterface.usb</em><html>");
+        infoLabel.setText("<html>Choose the .bix firmware file you wish to download to this device.<p>These files are usually located in either the folder <em>deviceFirmwarePCBLayout</em> or the package <em>sf.net.jaersf.net.jaersf.net.jaer</em><html>");
 
         filenameTextField.setText("The chosen file");
         filenameTextField.addActionListener(new java.awt.event.ActionListener() {
@@ -125,12 +131,12 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(infoLabel)
+                    .addComponent(infoLabel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                             .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(filenameTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 572, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(filenameTextField, javax.swing.GroupLayout.DEFAULT_SIZE, 807, Short.MAX_VALUE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                             .addComponent(chooseButton)
                             .addComponent(cancelButton))))
@@ -142,8 +148,8 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(infoLabel)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(infoLabel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(filenameTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -151,8 +157,7 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(cancelButton)
-                    .addComponent(okButton))
-                .addContainerGap(25, Short.MAX_VALUE))
+                    .addComponent(okButton)))
         );
 
         pack();
@@ -177,29 +182,34 @@ private void filenameTextFieldActionPerformed(java.awt.event.ActionEvent evt) {/
     if (!f.exists()) {
         filenameTextField.selectAll();
         filenameTextField.setForeground(Color.RED);
-    }else{
+    } else {
         filenameTextField.setForeground(Color.BLACK);
     }
 }//GEN-LAST:event_filenameTextFieldActionPerformed
 
 private void chooseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chooseButtonActionPerformed
-    
-    String startFolder=filenameTextField.getText();
-    if(startFolder.equals("")){
-        startFolder=System.getProperty("user.dir")+defaultRelativeFirmwarePath;
+
+    String startFolder = filenameTextField.getText();
+    File f = new File(startFolder);
+    if (!f.exists()) {
+        startFolder = getLastFile();
     }
-    JFileChooser chooser=new JFileChooser(startFolder);
+    f = new File(startFolder);
+    if (!f.exists()) {
+        startFolder = System.getProperty("user.dir") + File.separator+DEFAULT_RELATIVE_FIRMWARE_PATH;
+    }
+    JFileChooser chooser = new JFileChooser(startFolder);
     chooser.setApproveButtonText("Choose");
     chooser.setFileFilter(new FirmwareFileFilter());
     chooser.setMultiSelectionEnabled(false);
     int returnVal = chooser.showOpenDialog(this);
-    if(returnVal == JFileChooser.APPROVE_OPTION) {
-            try {
-                filenameTextField.setText(chooser.getSelectedFile().getCanonicalPath());
-                filenameTextField.setToolTipText(filenameTextField.getText());
-            } catch (IOException ex) {
-                log.warning(ex.toString());
-            }
+    if (returnVal == JFileChooser.APPROVE_OPTION) {
+        try {
+            filenameTextField.setText(chooser.getSelectedFile().getCanonicalPath());
+            filenameTextField.setToolTipText(filenameTextField.getText());
+        } catch (IOException ex) {
+            log.warning(ex.toString());
+        }
     }
 }//GEN-LAST:event_chooseButtonActionPerformed
 
@@ -210,13 +220,15 @@ private void chooseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-
     }
 
     /**
-    * @param args the command line arguments
-    */
+     * @param args the command line arguments
+     */
     public static void main(String args[]) {
         java.awt.EventQueue.invokeLater(new Runnable() {
+
             public void run() {
                 CypressFX2FirmwareFilennameChooserOkCancelDialog dialog = new CypressFX2FirmwareFilennameChooserOkCancelDialog(new javax.swing.JFrame(), true, new Chip());
                 dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+
                     public void windowClosing(java.awt.event.WindowEvent e) {
                         System.exit(0);
                     }
@@ -227,7 +239,6 @@ private void chooseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-
             }
         });
     }
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton cancelButton;
     private javax.swing.JButton chooseButton;
@@ -235,18 +246,21 @@ private void chooseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-
     private javax.swing.JLabel infoLabel;
     private javax.swing.JButton okButton;
     // End of variables declaration//GEN-END:variables
-
     private int returnStatus = RET_CANCEL;
-    
-       private class FirmwareFileFilter extends javax.swing.filechooser.FileFilter{
+
+    private class FirmwareFileFilter extends javax.swing.filechooser.FileFilter {
 
         @Override
         public boolean accept(File f) {
-            if(f.isDirectory()) return true;
-            String s=f.getName().toLowerCase();
+            if (f.isDirectory()) {
+                return true;
+            }
+            String s = f.getName().toLowerCase();
 //            if(s.endsWith(".hex")) return true;  // we only download binaries uniformly in CypressFX2, not hex files which are handled separately. TODO fix this handling
 //            if(s.endsWith(".iic")) return true;
-            if(s.endsWith(".bix")) return true;
+            if (s.endsWith(".bix")) {
+                return true;
+            }
             return false;
         }
 
@@ -254,6 +268,5 @@ private void chooseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-
         public String getDescription() {
             return "Cypress firmware file (hex, iic or bix)";
         }
-        
     }
 }
