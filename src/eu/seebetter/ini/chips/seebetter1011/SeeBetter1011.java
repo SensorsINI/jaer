@@ -1675,11 +1675,13 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                         button = b;
                     }
 
+                    @Override
                     public void actionPerformed(ActionEvent e) {
                         mux.select(channel);
                         log.info("Selected " + mux);
                     }
 
+                    @Override
                     public void update(Observable o, Object arg) {
                         if (channel == mux.selectedChannel) {
                             button.setSelected(true);
@@ -1759,8 +1761,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
      */
     public class SeeBetter1011DisplayMethod extends DVSWithIntensityDisplayMethod {
 
-        boolean registeredControlPanel = false;
-
         public SeeBetter1011DisplayMethod(SeeBetter1011 chip) {
             super(chip.getCanvas());
         }
@@ -1779,7 +1779,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             rect(gl, 96, 0, 32, 32);
             rect(gl, 96, 32, 32, 32);
             rect(gl, 64, 32, 32, 32);
-            rect(gl, 140, 0, 2, 64); /// whole chip + extra to right
+//            rect(gl, 128, 0, 2, 64); /// whole chip + extra to right
 
         }
 
@@ -1959,7 +1959,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 }
                 autoScaleFrame(f);
             } catch (IndexOutOfBoundsException e) {
-                e.printStackTrace();
                 log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type?");
             }
             pixmap.rewind();
@@ -2019,7 +2018,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
         private float adc01normalized(int count) {
             if (!agcEnabled) {
-                float v = (float) (logIntensityGain * (count - logIntensityOffset)) / cDVSChip.MAX_ADC;
+                float v = (float) (logIntensityGain * (count - logIntensityOffset)) / MAX_ADC;
                 return v;
             } else {
                 Float filter2d = agcFilter.getValue2d();
@@ -2094,8 +2093,8 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             int old = this.logIntensityGain;
             if (logIntensityGain < 1) {
                 logIntensityGain = 1;
-            } else if (logIntensityGain > cDVSChip.MAX_ADC) {
-                logIntensityGain = cDVSChip.MAX_ADC;
+            } else if (logIntensityGain > MAX_ADC) {
+                logIntensityGain = MAX_ADC;
             }
             this.logIntensityGain = logIntensityGain;
             chip.getPrefs().putInt("logIntensityGain", logIntensityGain);
@@ -2121,8 +2120,8 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             int old = this.logIntensityOffset;
             if (logIntensityOffset < 0) {
                 logIntensityOffset = 0;
-            } else if (logIntensityOffset > cDVSChip.MAX_ADC) {
-                logIntensityOffset = cDVSChip.MAX_ADC;
+            } else if (logIntensityOffset > MAX_ADC) {
+                logIntensityOffset = MAX_ADC;
             }
             this.logIntensityOffset = logIntensityOffset;
             chip.getPrefs().putInt("logIntensityOffset", logIntensityOffset);
