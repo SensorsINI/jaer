@@ -44,7 +44,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
     static final Logger log=Logger.getLogger("SiLabsC8051F320_USBIO_ServoController");
     
     /** driver GUID (Globally unique ID, for this USB driver instance */
-    public final static String GUID  = "{3B15398D-1EF2-44d7-A6B8-74A3FCCD29BF}"; // tobi generated in pasadena july 2006
+    public final static String GUID  = "{3B15398D-1EF2-44D7-A6B8-74A3FCCD29BF}"; // tobi generated in pasadena july 2006
     
     /** The vendor ID */
     static public final short VID=(short)0x0547;

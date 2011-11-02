@@ -5068,7 +5068,7 @@ private void setDefaultFirmwareMenuItemActionPerformed(java.awt.event.ActionEven
     dialog.setVisible(true);
     int v = dialog.getReturnStatus();
     if (v == CypressFX2FirmwareFilennameChooserOkCancelDialog.RET_OK) {
-        getChip().setDefaultFirmwareBixFileForBlankDevice(dialog.getLastFile());
+        getChip().setDefaultFirmwareBixFileForBlankDevice(dialog.getChosenFile());
         log.info("set default firmware file to " + getChip().getDefaultFirmwareBixFileForBlankDevice());
     }
 }//GEN-LAST:event_setDefaultFirmwareMenuItemActionPerformed

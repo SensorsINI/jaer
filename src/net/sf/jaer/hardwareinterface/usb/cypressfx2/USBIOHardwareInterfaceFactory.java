@@ -47,9 +47,9 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
     USBIOHardwareInterfaceFactory() {
         if (UsbIoUtilities.isLibraryLoaded()) {
             pnp = new PnPNotify(this);
-            int status = pnp.enablePnPNotification(GUID);
-            if (status != USBIO_ERR_SUCCESS) {
-                log.warning("Could not enable PnP notification for GUID " + GUID + "got error " + UsbIo.errorText(status));
+            int status = pnp.enablePnPNotification(USBIOHardwareInterfaceFactory.GUID);
+            if (status != UsbIoErrorCodes.USBIO_ERR_SUCCESS) {
+                log.warning("Could not enable PnP notification for GUID " + GUID + ", got error " + UsbIo.errorText(status));
             }
         }
     }

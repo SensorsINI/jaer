@@ -12,12 +12,13 @@ package net.sf.jaer.hardwareinterface;
 import cl.eye.CLEyeHardwareInterfaceFactory;
 import de.thesycon.usbio.PnPNotify;
 import de.thesycon.usbio.PnPNotifyInterface;
+import de.thesycon.usbio.UsbIo;
+import de.thesycon.usbio.UsbIoErrorCodes;
 import java.util.*;
 import java.lang.reflect.*;
 import java.util.logging.Logger;
 import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
 
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.USBIOHardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.linux.HardwareInterfaceFactoryLinux;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabs_USBIO_C8051F3xxFactory;
@@ -25,7 +26,6 @@ import net.sf.jaer.hardwareinterface.usb.usbaermapper.USBAERatcFactory;
 import net.sf.jaer.hardwareinterface.udp.*;
 
 import net.sf.jaer.hardwareinterface.serial.*;
-import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320;
 
 /**
  * This class builds a list of all available devices and lets you get one of them.
@@ -60,8 +60,15 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
     private HardwareInterfaceFactory() {
         if (UsbIoUtilities.isLibraryLoaded()) {
             pnp = new PnPNotify(this);
-//            pnp.enablePnPNotification(SiLabs_USBIO_C8051F3xxFactory.GUID);
-//            pnp.enablePnPNotification(USBIOHardwareInterfaceFactory.GUID);
+            int status;
+            status = pnp.enablePnPNotification(SiLabs_USBIO_C8051F3xxFactory.GUID);
+            if (status != UsbIoErrorCodes.USBIO_ERR_SUCCESS) {
+                log.warning("Could not enable PnP notification for GUID " + SiLabs_USBIO_C8051F3xxFactory.GUID + ", got error " + UsbIo.errorText(status));
+            }
+            pnp.enablePnPNotification(USBIOHardwareInterfaceFactory.GUID);
+            if (status != UsbIoErrorCodes.USBIO_ERR_SUCCESS) {
+                log.warning("Could not enable PnP notification for GUID " + USBIOHardwareInterfaceFactory.GUID + ", got error " + UsbIo.errorText(status));
+            }
         }
     }
 

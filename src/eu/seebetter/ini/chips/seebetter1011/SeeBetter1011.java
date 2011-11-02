@@ -226,6 +226,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         }
     }
 
+    int pixcnt=0; // TODO debug
     /** The event extractor. Each pixel has two polarities 0 and 1.
      * There is one extra neuron which signals absolute intensity.
      * <p>
@@ -315,16 +316,18 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     // the pixels are read out from the chip in column parallel, starting from top left corner of BDVS array.
                     if ((data & ADC_START_BIT) == ADC_START_BIT) {
                         // the view loop thread (or hardware interface thread in case of real time mode)
-                        // here just resets the write counter to start overwriting the current data.
-                        // The rendering thread (which could be the view loop also) 
-                        // later swaps the reading and writing buffers so that it renders 
-                        // from this buffer while new data goes into the other buffer.
-                        getFrameData().resetWriteCounter();  
+                        // here swaps the buffers to write to the other buffer.
+                        // The reading thread (could be same one) reads from the one that was previously written to.
+                        // The reading thread acquires the lock during reading to prevent the other thread from swapping during read.
+                        // Likewise, swapBuffers also acquires the lock during swap to prevent a swap during reading of the data.
+                        getFrameData().swapBuffers(); // so possibly other thread writes to the other buffer
                         getFrameData().setTimestamp(timestamps[i]);
-//                        System.out.println("start bit detected");
+                        System.out.println("SeeBetter1011: start bit detected");
+                        pixcnt=0; // TODO debug
                     }
                     getFrameData().put(data & ADC_DATA_MASK);
-//                    System.out.println("adcdata="+(data & ADC_DATA_MASK));
+                    System.out.print((data & ADC_DATA_MASK)+"\t"); // TODO debug
+                    if((++pixcnt)%32==0) System.out.println("");  // TODO debug
                 }
 
             }
@@ -1792,7 +1795,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         }
     }
 
-    private LogIntensityFrameData getFrameData() {
+    public LogIntensityFrameData getFrameData() {
         return frameEventPacket.getFrameData();
     }
 
@@ -1916,7 +1919,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 }
                 if (displayLogIntensity && getFrameData().isNewData()) {
                     LogIntensityFrameData b = getFrameData();
-                    b.swapBuffers(); // so possibly other thread writes to the other buffer
                     try {
                         b.acquire(); // gets the lock to prevent buffer swapping during display
                         float[] pm = getPixmapArray();
@@ -2148,7 +2150,9 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         private Semaphore semaphore = new Semaphore(1);
         private volatile boolean dataWrittenSinceLastSwap=false;        /** Readers should access the current reading buffer. */
 
-        /** Acquire this semaphore to prevent buffer swapping. */
+        /** Acquire this semaphore to prevent buffer swapping. 
+         @see #release()
+         */
         public void acquire() {
             semaphore.acquireUninterruptibly();
         }
@@ -2195,7 +2199,12 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             }
         }
 
-        /** Swaps the current writing and reading buffers after acquiring the lock. */
+        /** Swaps the current writing and reading buffers after acquiring the lock and then releasing it.
+         The writing thread should use this to safely swap buffers to the other buffer so that the reading thread doesn't
+         * have data changed out from under it (if it has used acquire() to grab the lock).
+         * The reading thread should not call swapBuffers, just acquire() and release().
+         * 
+         */
         public void swapBuffers() {
             acquire();
 //            System.out.println("on swapBuffers count="+writeCounter);
