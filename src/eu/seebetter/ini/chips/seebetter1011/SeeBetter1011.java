@@ -226,7 +226,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         }
     }
 
-    int pixcnt=0; // TODO debug
+//    int pixcnt=0; // TODO debug
     /** The event extractor. Each pixel has two polarities 0 and 1.
      * There is one extra neuron which signals absolute intensity.
      * <p>
@@ -322,12 +322,12 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                         // Likewise, swapBuffers also acquires the lock during swap to prevent a swap during reading of the data.
                         getFrameData().swapBuffers(); // so possibly other thread writes to the other buffer
                         getFrameData().setTimestamp(timestamps[i]);
-                        System.out.println("SeeBetter1011: start bit detected");
-                        pixcnt=0; // TODO debug
+//                        System.out.println("SeeBetter1011: start bit detected"); // TODO debug
+//                        pixcnt=0; // TODO debug
                     }
                     getFrameData().put(data & ADC_DATA_MASK);
                     System.out.print((data & ADC_DATA_MASK)+"\t"); // TODO debug
-                    if((++pixcnt)%32==0) System.out.println("");  // TODO debug
+//                    if((++pixcnt)%32==0) System.out.println("");  // TODO debug
                 }
 
             }
