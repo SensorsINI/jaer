@@ -2034,7 +2034,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     numEvents = packet.getSize();
                     numFilteredEvents = packet.getSize();
 
-                    if (numFilteredEvents == 0 && !isRenderBlankFramesEnabled()) {
+                    if (packet.isEmpty() && !isRenderBlankFramesEnabled()) {
 //                        log.info("blank frame, not rendering it");
                         fpsDelay();
                         continue;
