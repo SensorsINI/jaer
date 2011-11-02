@@ -74,6 +74,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** PropertyChangeEvent */
     public static final String EVENT_PLAYMODE = "playmode", EVENT_FILEOPEN = "fileopen", EVENT_STOPME = "stopme", EVENT_CHIP = "chip", EVENT_PAUSED = "paused", EVENT_TIMESTAMPS_RESET = "timestampsReset";
     public static String HELP_URL_USER_GUIDE = "http://jaer.wiki.sourceforge.net";
+    public static String HELP_URL_HELP_FORUM = "https://sourceforge.net/projects/jaer/forums/forum/631958";
     public static String HELP_URL_JAVADOC_WEB = "http://jaer.sourceforge.net/javadoc";
     public static String HELP_URL_JAVADOC;
     public static String HELP_USER_GUIDE_USB2_MINI = "/doc/USBAERmini2userguide.pdf";
@@ -584,7 +585,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         // additional help
         try {
-            addHelpURLItem(HELP_URL_USER_GUIDE, "jAER wiki and user guide", "Opens the jAER wiki");
+            addHelpURLItem(HELP_URL_USER_GUIDE, "jAER wiki and user guide", "Opens the jAER wiki and user guide");
+            addHelpURLItem(HELP_URL_HELP_FORUM, "jAER help forum", "Opens the Help Forum on sourceforge.  Post your questions and look for answers there.");
             addHelpURLItem(HELP_URL_JAVADOC_WEB, "jAER javadoc", "jAER online javadoc (probably out of date)");
 
             addHelpItem(new JSeparator());
