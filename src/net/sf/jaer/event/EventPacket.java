@@ -529,6 +529,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 //    }
 //
     /** Returns the number of events in the packet.
+     * If the packet has extra data not consisting of events this method could return 0 but there could still be data, e.g. sampled ADC data, image frames, etc.
      *
      * @return size in events.
      */
@@ -536,7 +537,8 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return size;
     }
 
-    /** Reports if the packet is empty.
+    /** Reports if the packet is empty. The default implementation reports true if size in events is zero, but subclasses can override this method
+     * to report true if associated data exists.
      *
      * @return true if empty.
      */
