@@ -33,38 +33,17 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
      * 
      * @param parent enclosing Frame.
      * @param modal true to block other GUI input while open.
-     * @param chip from where we get the default firmware, or null if you want to use the last file chosen.
+     * @param chip from where we get the default firmware, or null if you want to use a default location
      */
     public CypressFX2FirmwareFilennameChooserOkCancelDialog(java.awt.Frame parent, boolean modal, Chip chip) {
         super(parent, modal);
         initComponents();
         this.chip = chip;
-        filenameTextField.setText(getLastFile());
+        filenameTextField.setText(chip.getDefaultFirmwareBixFileForBlankDevice());
         filenameTextField.setToolTipText(filenameTextField.getText());
     }
 
-    /** The chosen file selected by the user.
-     * Defaults to the last one selected or null if none has ever been selected.
-     * @return the full path to the file.
-     */
-    public String getLastFile() {
-        if (chip != null) {
-            return chip.getDefaultFirmwareBixFileForBlankDevice();
-        } else {
-            return prefs.get("CypressFX2FirmwareFilennameChooserOkCancelDialog.lastFile", null);
-        }
-    }
-
-    /** Sets the last file and sets it in the Chip object if it is not null.
-     * 
-     * @param f the full or relative path to the file, relative to starting folder.
-     */
-    public void setLastFile(String f) {
-        if (chip != null) {
-            chip.setDefaultFirmwareBixFileForBlankDevice(f);
-        }
-        prefs.put("CypressFX2FirmwareFilennameChooserOkCancelDialog.lastFile", f);
-    }
+   
 
     /** @return the return status of this dialog - one of RET_OK or RET_CANCEL */
     public int getReturnStatus() {
@@ -164,7 +143,6 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
     }// </editor-fold>//GEN-END:initComponents
 
     private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okButtonActionPerformed
-        setLastFile(filenameTextField.getText());
         doClose(RET_OK);
     }//GEN-LAST:event_okButtonActionPerformed
 
@@ -190,12 +168,7 @@ private void filenameTextFieldActionPerformed(java.awt.event.ActionEvent evt) {/
 private void chooseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chooseButtonActionPerformed
 
     String startFolder = filenameTextField.getText();
-    File f = new File(startFolder);
-    if (!f.exists()) {
-        startFolder = getLastFile();
-    }
-    f = new File(startFolder);
-    if (!f.exists()) {
+    if(startFolder==null || !(new File(startFolder).exists())){
         startFolder = System.getProperty("user.dir") + File.separator+DEFAULT_RELATIVE_FIRMWARE_PATH;
     }
     JFileChooser chooser = new JFileChooser(startFolder);
@@ -247,6 +220,14 @@ private void chooseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-
     private javax.swing.JButton okButton;
     // End of variables declaration//GEN-END:variables
     private int returnStatus = RET_CANCEL;
+
+    /** Returns the chosen file path
+     * 
+     * @return the full path to the file
+     */
+    public String getChosenFile() {
+        return filenameTextField.getText();
+    }
 
     private class FirmwareFileFilter extends javax.swing.filechooser.FileFilter {
 
