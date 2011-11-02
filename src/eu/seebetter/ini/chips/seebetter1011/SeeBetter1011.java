@@ -1784,6 +1784,8 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         }
 
         private void rect(GL gl, float x, float y, float w, float h) {
+            gl.glPushMatrix();
+            gl.glTranslatef(-.5f, -.5f, 0);
             gl.glLineWidth(2f);
             gl.glColor3f(1, 1, 1);
             gl.glBegin(GL.GL_LINE_LOOP);
@@ -1792,6 +1794,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             gl.glVertex2f(x + w, y + h);
             gl.glVertex2f(x, y + h);
             gl.glEnd();
+            gl.glPopMatrix();
         }
     }
 
