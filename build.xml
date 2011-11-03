@@ -125,7 +125,7 @@
          build the exe in the jar build. 
         <jsmoothgen project="../../jSmoothExeLauncher/jAERViewer" skeletonroot="../../jSmoothExeLauncher/skeletons" />
         <jsmoothgen project="../../jSmoothExeLauncher/jAERTrayLauncher" skeletonroot="../../jSmoothExeLauncher/skeletons" />-->
-
+        <echo message="Having trouble building?  See the Help Forum for jAER at https://sourceforge.net/projects/jaer/forums/forum/631958 or the jAER wiki at https://sourceforge.net/apps/trac/jaer/wiki"/>
     </target>
     
     <!-- builds a zip of all the javadoc -->
