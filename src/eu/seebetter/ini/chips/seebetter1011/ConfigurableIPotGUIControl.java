@@ -100,7 +100,6 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
 //            typeLabel.setText(pot.getType().toString());
 //            sexLabel.setText(pot.getSex().toString());
             sexComboBox.setSelectedItem(pot.getSex().toString());
-            bitPatternTextField.setColumns(pot.getNumBits() + 1);
 
 //            sliderAndValuePanel.setVisible(true);
             pot.loadPreferences(); // to get around slider value change
@@ -155,10 +154,9 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
         biasTextField = new javax.swing.JTextField();
         bufferBiasSlider = new javax.swing.JSlider();
         bufferBiasTextField = new javax.swing.JTextField();
-        bitPatternTextField = new javax.swing.JTextField();
 
         setMaximumSize(new java.awt.Dimension(131243, 25));
-        setPreferredSize(new java.awt.Dimension(809, 20));
+        setPreferredSize(new java.awt.Dimension(544, 20));
         addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
                 formMouseEntered(evt);
@@ -177,7 +175,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
             }
         });
 
-        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12));
+        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12)); // NOI18N
         nameLabel.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
         nameLabel.setText("name");
         nameLabel.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
@@ -185,7 +183,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
         nameLabel.setMinimumSize(new java.awt.Dimension(50, 15));
         nameLabel.setPreferredSize(new java.awt.Dimension(70, 15));
 
-        sexComboBox.setFont(new java.awt.Font("Tahoma", 0, 8));
+        sexComboBox.setFont(new java.awt.Font("Tahoma", 0, 8)); // NOI18N
         sexComboBox.setMaximumRowCount(3);
         sexComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "N", "P" }));
         sexComboBox.setToolTipText("N or P type current");
@@ -196,7 +194,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
             }
         });
 
-        biasEnabledComboBox.setFont(new java.awt.Font("Tahoma", 0, 8));
+        biasEnabledComboBox.setFont(new java.awt.Font("Tahoma", 0, 8)); // NOI18N
         biasEnabledComboBox.setMaximumRowCount(3);
         biasEnabledComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Enabled", "Weakly disabled" }));
         biasEnabledComboBox.setToolTipText("Disable to turn off bias");
@@ -209,7 +207,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
             }
         });
 
-        typeComboBox.setFont(new java.awt.Font("Tahoma", 0, 8));
+        typeComboBox.setFont(new java.awt.Font("Tahoma", 0, 8)); // NOI18N
         typeComboBox.setMaximumRowCount(3);
         typeComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Normal", "Cascode" }));
         typeComboBox.setToolTipText("Normal or Cascode (extra diode-connected fet)");
@@ -222,7 +220,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
             }
         });
 
-        currentLevelComboBox.setFont(new java.awt.Font("Tahoma", 0, 8));
+        currentLevelComboBox.setFont(new java.awt.Font("Tahoma", 0, 8)); // NOI18N
         currentLevelComboBox.setMaximumRowCount(3);
         currentLevelComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Normal current", "Low current" }));
         currentLevelComboBox.setToolTipText("Normal or low current (shifted source)");
@@ -238,7 +236,8 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
         biasSlider.setToolTipText("Slide to adjust bias");
         biasSlider.setValue(0);
         biasSlider.setAlignmentX(0.0F);
-        biasSlider.setPreferredSize(null);
+        biasSlider.setPreferredSize(new java.awt.Dimension(75, 23));
+        biasSlider.setRequestFocusEnabled(false);
         biasSlider.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mousePressed(java.awt.event.MouseEvent evt) {
                 biasSliderMousePressed(evt);
@@ -254,7 +253,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
         });
 
         biasTextField.setColumns(6);
-        biasTextField.setFont(new java.awt.Font("Courier New", 0, 11));
+        biasTextField.setFont(new java.awt.Font("Courier New", 0, 11)); // NOI18N
         biasTextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         biasTextField.setText("value");
         biasTextField.setToolTipText("Enter bias current here. Up and Down arrows change values. Shift to increment/decrement bit value.");
@@ -305,7 +304,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
         });
 
         bufferBiasTextField.setColumns(6);
-        bufferBiasTextField.setFont(new java.awt.Font("Courier New", 0, 11));
+        bufferBiasTextField.setFont(new java.awt.Font("Courier New", 0, 11)); // NOI18N
         bufferBiasTextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         bufferBiasTextField.setText("value");
         bufferBiasTextField.setToolTipText("Enter buffer bias current here. Up and Down arrows change values. Shift to increment/decrement bit value.");
@@ -336,15 +335,6 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
             }
         });
 
-        bitPatternTextField.setColumns(10);
-        bitPatternTextField.setEditable(false);
-        bitPatternTextField.setFont(new java.awt.Font("Monospaced", 0, 10));
-        bitPatternTextField.setText("bitPattern");
-        bitPatternTextField.setToolTipText("bit value as bits");
-        bitPatternTextField.setMaximumSize(new java.awt.Dimension(32767, 16));
-        bitPatternTextField.setMinimumSize(new java.awt.Dimension(11, 15));
-        bitPatternTextField.setPreferredSize(new java.awt.Dimension(71, 15));
-
         org.jdesktop.layout.GroupLayout layout = new org.jdesktop.layout.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
@@ -352,40 +342,36 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
             .add(layout.createSequentialGroup()
                 .add(nameLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 80, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(sexComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 31, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .add(sexComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 34, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(biasEnabledComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 51, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .add(biasEnabledComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 42, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(typeComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 61, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .add(typeComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 41, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(currentLevelComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 84, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
-                .add(biasSlider, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 165, Short.MAX_VALUE)
+                .add(currentLevelComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 42, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(biasSlider, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 112, Short.MAX_VALUE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(biasTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(bufferBiasSlider, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 51, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(bufferBiasTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
-                .add(bitPatternTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 51, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
+                .add(bufferBiasTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(layout.createSequentialGroup()
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.CENTER)
                     .add(nameLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 22, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                    .add(biasSlider, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .add(sexComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 22, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                     .add(biasEnabledComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 22, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                     .add(typeComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 22, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                     .add(currentLevelComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 22, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(biasSlider, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .add(biasTextField, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 23, Short.MAX_VALUE)
                     .add(bufferBiasSlider, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 23, Short.MAX_VALUE)
-                    .add(bufferBiasTextField, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 23, Short.MAX_VALUE)
-                    .add(bitPatternTextField, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 23, Short.MAX_VALUE))
-                .addContainerGap())
+                    .add(bufferBiasTextField, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 23, Short.MAX_VALUE))
+                .add(12, 12, 12))
         );
     }// </editor-fold>//GEN-END:initComponents
 
@@ -732,11 +718,6 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         biasSlider.setValue(sliderValueFromBitValue());
         biasTextField.setText(engFormat.format(pot.getCurrent()));
 
-        if (bitPatternTextField.isVisible() != bitViewEnabled) {
-            bitPatternTextField.setVisible(bitViewEnabled);
-            rr();
-        }
-        bitPatternTextField.setText(pot.toBitPatternString());
 
         bufferBiasSlider.setValue(bufferSliderValueFromBitValue());
         bufferBiasTextField.setText(engFormat.format(pot.getBufferCurrent()));
@@ -846,7 +827,6 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.JComboBox biasEnabledComboBox;
     private javax.swing.JSlider biasSlider;
     private javax.swing.JTextField biasTextField;
-    private javax.swing.JTextField bitPatternTextField;
     private javax.swing.JSlider bufferBiasSlider;
     private javax.swing.JTextField bufferBiasTextField;
     private javax.swing.JComboBox currentLevelComboBox;
@@ -855,27 +835,6 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.JComboBox typeComboBox;
     // End of variables declaration//GEN-END:variables
 
-    public JTextField getBitPatternTextField() {
-        return this.bitPatternTextField;
-    }
-
-    public static boolean isBitValueEnabled() {
-        return ConfigurableIPotGUIControl.bitValueEnabled;
-    }
-
-    public static void setBitValueEnabled(final boolean bitValueEnabled) {
-        ConfigurableIPotGUIControl.bitValueEnabled = bitValueEnabled;
-        prefs.putBoolean("ConfigurableIPot.bitValueEnabled", bitValueEnabled);
-    }
-
-    public static boolean isBitViewEnabled() {
-        return ConfigurableIPotGUIControl.bitViewEnabled;
-    }
-
-    public static void setBitViewEnabled(final boolean bitViewEnabled) {
-        ConfigurableIPotGUIControl.bitViewEnabled = bitViewEnabled;
-        prefs.putBoolean("ConfigurableIPot.bitViewEnabled", bitViewEnabled);
-    }
 
     public static boolean isValueEnabled() {
         return ConfigurableIPotGUIControl.valueEnabled;
