@@ -14,6 +14,7 @@ import eu.seebetter.ini.chips.seebetter1011.SeeBetter1011.SeeBetter1011Renderer;
 import java.awt.event.ActionEvent;
 import java.awt.geom.Point2D.Float;
 import java.util.Observer;
+import java.util.prefs.PreferenceChangeEvent;
 import javax.swing.JRadioButton;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.biasgen.*;
@@ -25,6 +26,11 @@ import java.awt.BorderLayout;
 import java.awt.Insets;
 import java.awt.Rectangle;
 import java.beans.PropertyChangeSupport;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -34,6 +40,7 @@ import java.util.Iterator;
 import java.util.Observable;
 import java.util.StringTokenizer;
 import java.util.concurrent.Semaphore;
+import java.util.prefs.PreferenceChangeListener;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.AbstractAction;
@@ -197,6 +204,11 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         setHardwareInterface(hardwareInterface);
     }
 
+//        @Override
+//    public AEFileInputStream constuctFileInputStream(File file) throws IOException {
+//        return new SeeBetterFileInputStream(file);
+//    }
+//
     @Override
     public float getIntensity() {
         return globalIntensity;
@@ -326,7 +338,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 //                        pixcnt=0; // TODO debug
                     }
                     getFrameData().put(data & ADC_DATA_MASK);
-                    System.out.print((data & ADC_DATA_MASK)+"\t"); // TODO debug
+//                    System.out.print((data & ADC_DATA_MASK)+"\t"); // TODO debug
 //                    if((++pixcnt)%32==0) System.out.println("");  // TODO debug
                 }
 
@@ -1820,15 +1832,16 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
         @Override
         public boolean isEmpty() {
-            if(!frameData.isNewData() && super.isEmpty()) return true;
+            if (!frameData.isNewData() && super.isEmpty()) {
+                return true;
+            }
             return false;
         }
 
         @Override
         public String toString() {
-            return "FrameEventPacket{" + "frameData=" + frameData + " " +super.toString() +'}';
+            return "FrameEventPacket{" + "frameData=" + frameData + " " + super.toString() + '}';
         }
-        
     }
 
     /**
@@ -2138,7 +2151,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
      * Double-buffers the frame data with a locking mechanism.
      * @author Tobi
      */
-    public class LogIntensityFrameData {
+    public class LogIntensityFrameData implements HasPreference {
 
         /** The scanner is 16 wide by 32 high  */
         public final int WIDTH = BDVSArray.width, HEIGHT = BDVSArray.height; // width is BDVS pixels not scanner registers
@@ -2150,10 +2163,20 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         private int[] currentWritingBuffer = data2;
         private int writeCounter = 0;
         private Semaphore semaphore = new Semaphore(1);
-        private volatile boolean dataWrittenSinceLastSwap=false;        /** Readers should access the current reading buffer. */
+        private volatile boolean dataWrittenSinceLastSwap = false;
+        private int[] calibData1 = new int[NUMSAMPLES];
+        private int[] calibData2 = new int[NUMSAMPLES];
+        private float[] gain = new float[NUMSAMPLES];
+        private int[] offset = new int[NUMSAMPLES];
 
+
+        public LogIntensityFrameData() {
+            loadPreference();
+        }
+
+        /** Readers should access the current reading buffer. */
         /** Acquire this semaphore to prevent buffer swapping. 
-         @see #release()
+        @see #release()
          */
         public void acquire() {
             semaphore.acquireUninterruptibly();
@@ -2195,14 +2218,14 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 return;
             }
             currentWritingBuffer[writeCounter++] = val;
-            dataWrittenSinceLastSwap=true;
+            dataWrittenSinceLastSwap = true;
             if (writeCounter == NUMSAMPLES) {
                 writeCounter = 0;
             }
         }
 
         /** Swaps the current writing and reading buffers after acquiring the lock and then releasing it.
-         The writing thread should use this to safely swap buffers to the other buffer so that the reading thread doesn't
+        The writing thread should use this to safely swap buffers to the other buffer so that the reading thread doesn't
          * have data changed out from under it (if it has used acquire() to grab the lock).
          * The reading thread should not call swapBuffers, just acquire() and release().
          * 
@@ -2214,7 +2237,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             currentReadingBuffer = currentWritingBuffer;
             writeCounter = 0;
             currentWritingBuffer = tmp;
-            dataWrittenSinceLastSwap=false;
+            dataWrittenSinceLastSwap = false;
             release();
         }
 
@@ -2251,6 +2274,8 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         }
 
         public void calculateCalibration() {
+            if(calibData1==null) calibData1=new int[NUMSAMPLES];
+            if(calibData2==null) calibData2=new int[NUMSAMPLES];
             if (twoPointCalibration) {
                 int mean1 = getMean(calibData1);
                 int mean2 = getMean(calibData2);
@@ -2265,11 +2290,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 subtractMean(calibData1, offset);
             }
         }
-        private int[] calibData1 = new int[NUMSAMPLES];
-        private int[] calibData2 = new int[NUMSAMPLES];
-        private float[] gain = new float[NUMSAMPLES];
-        private int[] offset = new int[NUMSAMPLES];
-
         /**
          * uses the current writing buffer as calibration data and subtracts the mean
          */
@@ -2278,6 +2298,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             System.arraycopy(currentWritingBuffer, 0, calibData1, 0, NUMSAMPLES);
             release();
             calculateCalibration();
+            storePreference();
         }
 
         public void setCalibData2() {
@@ -2285,6 +2306,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             System.arraycopy(currentWritingBuffer, 0, calibData2, 0, NUMSAMPLES);
             release();
             calculateCalibration();
+            storePreference();
             //substractMean();
         }
 
@@ -2343,9 +2365,154 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         }
 
         public void resetWriteCounter() {
-            writeCounter=0;
+            writeCounter = 0;
         }
-        
-        
+        final String CALIB1_KEY = "LogIntensityFrameData.calibData1", CALIB2_KEY = "LogIntensityFrameData.calibData2";
+
+        private void putArray(int[] array, String key) {
+            if(array==null || key==null){
+                log.warning("null array or key");
+                return;
+            }
+            try {
+                // Serialize to a byte array
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                ObjectOutput out = new ObjectOutputStream(bos);
+                out.writeObject(array);
+                out.close();
+
+                // Get the bytes of the serialized object
+                byte[] buf = bos.toByteArray();
+                getPrefs().putByteArray(key, buf);
+            } catch (Exception e) {
+                log.warning(e.toString());
+            }
+
+        }
+
+        private int[] getArray(String key) {
+            int[] ret = null;
+            try {
+                byte[] bytes = getPrefs().getByteArray(key, null);
+                if (bytes != null) {
+                    ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
+                    ret = (int[]) in.readObject();
+                    in.close();
+                }
+            } catch (Exception e) {
+                log.warning(e.toString());
+            }
+            return ret;
+        }
+
+        @Override
+        public void loadPreference() {
+            calibData1=getArray(CALIB1_KEY);
+            calibData2=getArray(CALIB2_KEY);
+            calculateCalibration();
+        }
+
+        @Override
+        public void storePreference() {
+            putArray(calibData1,CALIB1_KEY);
+            putArray(calibData2,CALIB2_KEY);
+        }
+
     }
+//    /**
+//     * Reads raw data files written from the CLCamera, so they can be played back.
+//     * @author Tobi
+//     */
+//    public class SeeBetterFileInputStream extends AEFileInputStream {
+//
+//        /** Packets can hold this many frames at most. */
+//        public static final int MAX_FRAMES = 20;
+//        /** Assumed number of pixels in each frame, each event holding the RGB data in address field of raw event. */
+//        public static final int NPIXELS = 320 * 240; // TODO assumes QVGA, can be obtained from CameraModel in principle, but only QVGA models for now
+//        /** Assumed frame interval in ms */
+//        public static final int FRAME_INTERVAL_MS = 15;
+//
+//        public SeeBetterFileInputStream(File f) throws IOException {
+//            super(f);
+//            packet.ensureCapacity(NPIXELS * MAX_FRAMES);
+//        }
+//
+//        /** Overrides to read image frames rather than events. 
+//         * The events are extracted by the PSEyeCLModelRetina event extractor.
+//         * 
+//         * @param nframes the number of frames to read
+//         * @return
+//         * @throws IOException 
+//         */
+//        @Override
+//        public synchronized AEPacketRaw readPacketByNumber(int nframes) throws IOException {
+//            if (!firstReadCompleted) {
+//                fireInitPropertyChange();
+//            }
+//            int[] addr = packet.getAddresses();
+//            int[] ts = packet.getTimestamps();
+//            int oldPosition = position();
+//            EventRaw ev;
+//            int count = 0;
+//            for (int frame = 0; frame < nframes; frame++) {
+//                for (int i = 0; i < NPIXELS; i++) {
+//                    ev = readEventForwards();
+//                    addr[count] = ev.address;
+//                    ts[count] = ev.timestamp;
+////                if(ev.timestamp!=0)System.out.println("count="+count+" ev.timetamp="+ev.timestamp);
+//                    count++;
+//                }
+//            }
+//            packet.setNumEvents(count);
+//            getSupport().firePropertyChange(AEInputStream.EVENT_POSITION, oldPosition, position());
+//            return packet;
+////        return new AEPacketRaw(addr,ts);
+//        }
+//
+//        /** Reads the next n frames, computed from dt/1000/FRAME_INTERVAL_MS
+//         * 
+//         * @param dt the time in us.
+//         * @return some number of frames of image data, computed from dt, but at least 1.
+//         * @throws IOException on IO exception
+//         */
+//        @Override
+//        public synchronized AEPacketRaw readPacketByTime(int dt) throws IOException {
+//            int nframes = dt / 1000 / FRAME_INTERVAL_MS;
+//            if (nframes < 1) {
+//                nframes = 1;
+//            }
+//
+//            return readPacketByNumber(nframes);
+//        }
+//        private EventRaw tmpEvent = new EventRaw();
+//
+//        /** Reads the next frame forwards.
+//         * @throws EOFException at end of file
+//         * @throws NonMonotonicTimeException
+//         * @throws WrappedTimeException
+//         */
+//        private EventRaw readEventForwards() throws IOException {
+//            try {
+//                tmpEvent.address = byteBuffer.getInt();;
+//                tmpEvent.timestamp = byteBuffer.getInt();;
+//                position++;
+//
+//                return tmpEvent;
+//            } catch (BufferUnderflowException e) {
+//                try {
+//                    mapNextChunk();
+//                    return readEventForwards();
+//                } catch (IOException eof) {
+//                    byteBuffer = null;
+//                    System.gc(); // all the byteBuffers have referred to mapped files and use up all memory, now free them since we're at end of file anyhow
+//                    getSupport().firePropertyChange(AEInputStream.EVENT_EOF, position(), position());
+//                    throw new EOFException("reached end of file");
+//                }
+//            } catch (NullPointerException npe) {
+//                rewind();
+//                return readEventForwards();
+//            } finally {
+//            }
+//        }
+//    }
 }
