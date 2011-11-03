@@ -137,6 +137,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     private boolean displayLogIntensity;
     private boolean displayLogIntensityChangeEvents;
     SeeBetter1011DisplayControlPanel displayControlPanel = null;
+    private boolean useOffChipCalibration = getPrefs().getBoolean("useOffChipCalibration", false);
 
     /** Creates a new instance of cDVSTest10.  */
     public SeeBetter1011() {
@@ -209,6 +210,17 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 //        return new SeeBetterFileInputStream(file);
 //    }
 //
+    /** Returns the measured global intensity from the global intensity neuron processed events.
+     * The intensity is computed from the ISIs in us of the intensity neuron from 
+     * <pre>
+     * if (dt > 50) {
+           avdt = 0.05f * dt + 0.95f * avdt; // avg over time
+           setIntensity(1000f / avdt); // ISI of this much, e.g. 1ms, gives intensity 1
+       }
+     * </pre>
+     * 
+     * @return an average spike rate in kHz. Note this breaks the interface contract which calls for 0-1 value.
+     */
     @Override
     public float getIntensity() {
         return globalIntensity;
@@ -218,7 +230,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     public void setIntensity(float f) {
         globalIntensity = f;
     }
-    private boolean useOffChipCalibration = false;
 
     /**
      * @return the useOffChipCalibration
@@ -232,6 +243,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
      */
     public void setUseOffChipCalibration(boolean useOffChipCalibration) {
         this.useOffChipCalibration = useOffChipCalibration;
+        getPrefs().putBoolean("useOffChipCalibration",useOffChipCalibration);
         getFrameData().setUseOffChipCalibration(useOffChipCalibration);
         if (useOffChipCalibration) {
             getFrameData().setCalibData1();
