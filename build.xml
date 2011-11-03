@@ -5,8 +5,7 @@
 <project name="jAER" default="default" basedir=".">
     <description>Builds, tests, and runs the project jAER</description>
     <import file="nbproject/build-impl.xml"/>
-    <echo message="build.xml project opened"/>
-    <!--
+     <!--
 
     There exist several targets which are by default empty and which can be 
     used for execution of your tasks. These targets are usually executed 
@@ -125,7 +124,12 @@
          build the exe in the jar build. 
         <jsmoothgen project="../../jSmoothExeLauncher/jAERViewer" skeletonroot="../../jSmoothExeLauncher/skeletons" />
         <jsmoothgen project="../../jSmoothExeLauncher/jAERTrayLauncher" skeletonroot="../../jSmoothExeLauncher/skeletons" />-->
-        <echo message="Having trouble building?  See the Help Forum for jAER at https://sourceforge.net/projects/jaer/forums/forum/631958 or the jAER wiki at https://sourceforge.net/apps/trac/jaer/wiki"/>
+   <echo message="build.xml project opened"/>
+           <echo> Having trouble building or running?  
+            See the Help Forum for jAER at https://sourceforge.net/projects/jaer/forums/forum/631958
+            or the jAER wiki at https://sourceforge.net/apps/trac/jaer/wiki
+        </echo>
+ 
     </target>
     
     <!-- builds a zip of all the javadoc -->
