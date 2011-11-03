@@ -1826,6 +1826,14 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         return frameEventPacket.getFrameData();
     }
 
+    /** This event class is used in the extractor to hold data from the sensor so that it can be logged to files and played back here.
+     * It extends 
+     */
+    public class SeeBetterPolarityADCEvent extends PolarityEvent{
+        
+    }
+    
+    
     /** Extends EventPacket to add the log intensity frame data */
     public class FrameEventPacket extends EventPacket {
 
