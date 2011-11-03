@@ -101,36 +101,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         }
     }
 
-    /** This event class is used in the extractor to hold data from the sensor 
-     * so that it can be logged to files and played back here. It adds the ADC sample value.
-     * This event has the usual timestamp in us.
-     */
-    public class PolarityADCSampleEvent extends PolarityEvent {
 
-        /** The ADC sample value */
-        protected int adcSample = 0;
-
-        /**
-         * @return the adcSample
-         */
-        public int getAdcSample() {
-            return adcSample;
-        }
-
-        /**
-         * @param adcSample the adcSample to set
-         */
-        public void setAdcSample(int adcSample) {
-            this.adcSample = adcSample;
-        }
-
-        @Override
-        public void copyFrom(BasicEvent src) {
-            PolarityADCSampleEvent e = (PolarityADCSampleEvent) src;
-            super.copyFrom(src);
-            adcSample = e.getAdcSample();
-        }
-    }
     public static final PixelArray EntirePixelArray = new PixelArray(1, 0, 0, 128, 64);
     public static final PixelArray LargePixelArray = new PixelArray(2, 0, 0, 32, 32);
     public static final PixelArray BDVSArray = new PixelArray(2, 0, 0, 16, 32);
@@ -351,7 +322,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     } else {
                         PolarityADCSampleEvent e = (PolarityADCSampleEvent) outItr.nextOutput();
                         e.adcSample = -1; // TODO hack to mark as not an ADC sample
-                        e.address = data & EVENT_ADDRESS_MASK;
+                        e.address = data;
                         e.timestamp = (timestamps[i]);
                         e.polarity = (data & 1) == 1 ? PolarityADCSampleEvent.Polarity.On : PolarityADCSampleEvent.Polarity.Off;
                         e.x = (short) (((data & XMASK) >>> XSHIFT));
@@ -388,6 +359,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     PolarityADCSampleEvent e = (PolarityADCSampleEvent) outItr.nextOutput();
                     e.adcSample = data;
                     e.timestamp = (timestamps[i]);
+                    e.address=data;
                 }
 
             }
