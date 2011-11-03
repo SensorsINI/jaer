@@ -100,6 +100,37 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             this.pitch = pitch;
         }
     }
+
+    /** This event class is used in the extractor to hold data from the sensor 
+     * so that it can be logged to files and played back here. It adds the ADC sample value.
+     * This event has the usual timestamp in us.
+     */
+    public class PolarityADCSampleEvent extends PolarityEvent {
+
+        /** The ADC sample value */
+        protected int adcSample = 0;
+
+        /**
+         * @return the adcSample
+         */
+        public int getAdcSample() {
+            return adcSample;
+        }
+
+        /**
+         * @param adcSample the adcSample to set
+         */
+        public void setAdcSample(int adcSample) {
+            this.adcSample = adcSample;
+        }
+
+        @Override
+        public void copyFrom(BasicEvent src) {
+            PolarityADCSampleEvent e = (PolarityADCSampleEvent) src;
+            super.copyFrom(src);
+            adcSample = e.getAdcSample();
+        }
+    }
     public static final PixelArray EntirePixelArray = new PixelArray(1, 0, 0, 128, 64);
     public static final PixelArray LargePixelArray = new PixelArray(2, 0, 0, 32, 32);
     public static final PixelArray BDVSArray = new PixelArray(2, 0, 0, 16, 32);
@@ -131,7 +162,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     public static final int MAX_ADC = (int) ((1 << 12) - 1);
     /** The computed intensity value. */
     private float globalIntensity = 0;
-    private FrameEventPacket frameEventPacket = new FrameEventPacket(PolarityEvent.class);
+    private FrameEventPacket frameEventPacket = new FrameEventPacket(PolarityADCSampleEvent.class);
     private SeeBetter1011Renderer cDVSRenderer = null;
     private SeeBetter1011DisplayMethod cDVSDisplayMethod = null;
     private boolean displayLogIntensity;
@@ -142,7 +173,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     /** Creates a new instance of cDVSTest10.  */
     public SeeBetter1011() {
         setName("SeeBetter1011");
-        setEventClass(PolarityEvent.class);
+        setEventClass(PolarityADCSampleEvent.class);
         setSizeX(EntirePixelArray.width);
         setSizeY(EntirePixelArray.height);
         setNumCellTypes(3); // two are polarity and last is intensity
@@ -214,9 +245,9 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
      * The intensity is computed from the ISIs in us of the intensity neuron from 
      * <pre>
      * if (dt > 50) {
-           avdt = 0.05f * dt + 0.95f * avdt; // avg over time
-           setIntensity(1000f / avdt); // ISI of this much, e.g. 1ms, gives intensity 1
-       }
+    avdt = 0.05f * dt + 0.95f * avdt; // avg over time
+    setIntensity(1000f / avdt); // ISI of this much, e.g. 1ms, gives intensity 1
+    }
      * </pre>
      * 
      * @return an average spike rate in kHz. Note this breaks the interface contract which calls for 0-1 value.
@@ -243,7 +274,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
      */
     public void setUseOffChipCalibration(boolean useOffChipCalibration) {
         this.useOffChipCalibration = useOffChipCalibration;
-        getPrefs().putBoolean("useOffChipCalibration",useOffChipCalibration);
+        getPrefs().putBoolean("useOffChipCalibration", useOffChipCalibration);
         getFrameData().setUseOffChipCalibration(useOffChipCalibration);
         if (useOffChipCalibration) {
             getFrameData().setCalibData1();
@@ -318,10 +349,11 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                         lastIntenTs = timestamps[i];
 
                     } else {
-                        PolarityEvent e = (PolarityEvent) outItr.nextOutput();
+                        PolarityADCSampleEvent e = (PolarityADCSampleEvent) outItr.nextOutput();
+                        e.adcSample = -1; // TODO hack to mark as not an ADC sample
                         e.address = data & EVENT_ADDRESS_MASK;
                         e.timestamp = (timestamps[i]);
-                        e.polarity = (data & 1) == 1 ? PolarityEvent.Polarity.On : PolarityEvent.Polarity.Off;
+                        e.polarity = (data & 1) == 1 ? PolarityADCSampleEvent.Polarity.On : PolarityADCSampleEvent.Polarity.Off;
                         e.x = (short) (((data & XMASK) >>> XSHIFT));
                         e.y = (short) ((data & YMASK) >>> YSHIFT);
 
@@ -352,6 +384,10 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     getFrameData().put(data & ADC_DATA_MASK);
 //                    System.out.print((data & ADC_DATA_MASK)+"\t"); // TODO debug
 //                    if((++pixcnt)%32==0) System.out.println("");  // TODO debug
+                    // adc sample data is saved in the packet so that we can most easily log it and play it back
+                    PolarityADCSampleEvent e = (PolarityADCSampleEvent) outItr.nextOutput();
+                    e.adcSample = data;
+                    e.timestamp = (timestamps[i]);
                 }
 
             }
@@ -383,27 +419,14 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     }
 
     /**
-     * Describes ConfigurableIPots on cDVSTest retina chip as well as the other configuration bits which control, for example, which
+     * Describes ConfigurableIPots as well as the other configuration bits which control, for example, which
      * outputs are selected. These are all configured by a single shared shift register.
      * <p>
      * With Rx=82k, measured Im=2uA. With Rx=27k, measured Im=8uA.
      * <p>
      * cDVSTest has a pair of shared shifted sources, one for n-type and one for p-type. These sources supply a regulated voltaqe near the power rail.
-     * The shifted sources are programed by bits at the start of the global shared shift register.
-     *
-     * <p>
-     * TODO check following javadoc
-     *
-     * The pr, foll, and refr biases use the lowpower bias for their p src bias and the pr, foll and refr pfets
-     * all have their psrcs wired to this shifted p src bias. Also, the pr, foll and refr biases also drive the same
-     * shifted psrc bias with their own shifted psrc bias. Therefore all 4 of these biases (pr, foll, refr, and lowpower) should
-     * have the same bufferbias bits. This constraint is enforced by software.
-     * <p>
-     * The output configuration bits follow the bias values and consist of 12 bits that select 3 outputs.
-     * <nl>
-     * <li> Bits 0-3 select the current output.
-     * <li> 5 copies of digital Bits 4-8 select the digital output.
-     * <li> Bits
+     * The shifted sources are programmed by bits at the start of the global shared shift register.
+     * They are not used on this SeeBetter10/11 chip.
      *
      * @author tobi
      */
@@ -1826,14 +1849,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         return frameEventPacket.getFrameData();
     }
 
-    /** This event class is used in the extractor to hold data from the sensor so that it can be logged to files and played back here.
-     * It extends 
-     */
-    public class SeeBetterPolarityADCEvent extends PolarityEvent{
-        
-    }
-    
-    
     /** Extends EventPacket to add the log intensity frame data */
     public class FrameEventPacket extends EventPacket {
 
@@ -1892,7 +1907,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             logIntensityOffset = chip.getPrefs().getInt("logIntensityOffset", 0);
         }
 
-        private boolean isLargePixelArray(PolarityEvent e) {
+        private boolean isLargePixelArray(PolarityADCSampleEvent e) {
             return e.x < LargePixelArray.width;
         }
 
@@ -1907,8 +1922,8 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 return;
             }
             this.packet = packet;
-            if (packet.getEventClass() != PolarityEvent.class) {
-                log.warning("wrong input event class, got " + packet.getEventClass() + " but we need to have " + PolarityEvent.class);
+            if (packet.getEventClass() != PolarityADCSampleEvent.class) {
+                log.warning("wrong input event class, got " + packet.getEventClass() + " but we need to have " + PolarityADCSampleEvent.class);
                 return;
             }
             checkPixmapAllocation();
@@ -1922,7 +1937,8 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 step = 1f / (colorScale);
                 if (showLogIntensityChange) {
                     for (Object obj : packet) {
-                        PolarityEvent e = (PolarityEvent) obj;
+                        PolarityADCSampleEvent e = (PolarityADCSampleEvent) obj;
+                        if(e.adcSample>0) continue; // TODO hack to not treat adc samples as AER events
                         int type = e.getType();
                         if (e.x == xsel && e.y == ysel) { // TODO xsel ysel are in screen array pixels not the 2x2 pixels of BDVS and SDVS
                             playSpike(type);
@@ -1954,6 +1970,9 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     }
                 }
                 if (displayLogIntensity && getFrameData().isNewData()) {
+                    // adc sample is actually is in the events, but the extractor (for historical reasons) 
+                    // writes it to the LogIntensityFrameData object
+                    // which we use here.
                     LogIntensityFrameData b = getFrameData();
                     try {
                         b.acquire(); // gets the lock to prevent buffer swapping during display
@@ -2189,7 +2208,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         private float[] gain = new float[NUMSAMPLES];
         private int[] offset = new int[NUMSAMPLES];
 
-
         public LogIntensityFrameData() {
             loadPreference();
         }
@@ -2294,8 +2312,12 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         }
 
         public void calculateCalibration() {
-            if(calibData1==null) calibData1=new int[NUMSAMPLES];
-            if(calibData2==null) calibData2=new int[NUMSAMPLES];
+            if (calibData1 == null) {
+                calibData1 = new int[NUMSAMPLES];
+            }
+            if (calibData2 == null) {
+                calibData2 = new int[NUMSAMPLES];
+            }
             if (twoPointCalibration) {
                 int mean1 = getMean(calibData1);
                 int mean2 = getMean(calibData2);
@@ -2310,6 +2332,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 subtractMean(calibData1, offset);
             }
         }
+
         /**
          * uses the current writing buffer as calibration data and subtracts the mean
          */
@@ -2390,7 +2413,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         final String CALIB1_KEY = "LogIntensityFrameData.calibData1", CALIB2_KEY = "LogIntensityFrameData.calibData2";
 
         private void putArray(int[] array, String key) {
-            if(array==null || key==null){
+            if (array == null || key == null) {
                 log.warning("null array or key");
                 return;
             }
@@ -2427,17 +2450,16 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
         @Override
         public void loadPreference() {
-            calibData1=getArray(CALIB1_KEY);
-            calibData2=getArray(CALIB2_KEY);
+            calibData1 = getArray(CALIB1_KEY);
+            calibData2 = getArray(CALIB2_KEY);
             calculateCalibration();
         }
 
         @Override
         public void storePreference() {
-            putArray(calibData1,CALIB1_KEY);
-            putArray(calibData2,CALIB2_KEY);
+            putArray(calibData1, CALIB1_KEY);
+            putArray(calibData2, CALIB2_KEY);
         }
-
     }
 //    /**
 //     * Reads raw data files written from the CLCamera, so they can be played back.
