@@ -1236,7 +1236,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         ButtonGroup bg = new ButtonGroup();
         interfaceMenu.removeAll();
 
-        //create a list of available hardware interfaces
+        //create a list of available hardware interfaces from enumerated devices 
         int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable(); // TODO this rebuilds the entire list of hardware
         StringBuilder sb = new StringBuilder("adding menu items for ").append(Integer.toString(n)).append(" interfaces");
         boolean choseOneButton = false;
@@ -1356,6 +1356,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         boolean addedSep = false;
         // make items for HardwareInterfaceChooserFactory factories
+        // these HardwareInterfaceFactories allow choice of multiple alternative interfaces, e.g. for a serial port or network interface
         for (Class c : HardwareInterfaceFactory.factories) {
             if (HardwareInterfaceChooserFactory.class.isAssignableFrom(c)) {
                 log.log(Level.INFO, "found hardware chooser class {0}", c);
