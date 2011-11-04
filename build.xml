@@ -66,7 +66,6 @@
     nbproject/build-impl.xml file. 
 
     -->
-    
     <!-- override clean to not delete dist dir, because this messes up svn -->
     <target name="-do-clean" depends="init">
         <delete dir="${build.dir}"/>
@@ -74,19 +73,35 @@
     
     <!-- makes sure that the build version is written to the jar -->
     <target name="-pre-jar" depends="setBuildVersion,copySplashImage" >
+        <echo message="build.xml project opened"/>
+        <echo> Having trouble building or running?  
+            See the Help Forum for jAER at https://sourceforge.net/projects/jaer/forums/forum/631958
+            or the jAER wiki at https://sourceforge.net/apps/trac/jaer/wiki
+        </echo>
     </target>
     
+    <target name="checkos">
+        <condition property="isWindows" value="true">
+            <os family="windows" />
+        </condition>
+
+        <condition property="isLinux" value="true">
+            <os family="unix" />
+        </condition>
+    </target>
+
+
     <!--    copy splash image to src tree so that it gets into main jar-->
     <target name="copySplashImage">
         <copy file="SplashScreen.gif" todir="build/classes"/>
-        </target>
+    </target>
     
     <!--    The exe4j launcher target to build jAERViewer.exe with integrated java 6 splash screen. 
             http://www.ej-technologies.com/products/exe4j/overview.html
     -->
-    <target name="exe4j">
+    <target name="exe4j" depends="checkos" if="isWindows">
         <echo message="Building exe4j jAERViewer.exe Windows launcher - embedding ico and setting SplashScreen in jAERViewer.exe. Don't worry if this task fails for you unless you have changed the classpath. jAERViewer.exe does not normally need to be rebuilt."/>
-        <taskdef name="exe4j" classname="com.exe4j.Exe4JTask" classpath="../../exe4j/bin/ant.jar" />
+        <taskdef name="exe4j" classname="com.exe4j.Exe4JTask" classpath="../../exe4j/bin/ant.jar" onerror="report"/>
         <exe4j projectfile="../../jaer.exe4j" requirelicense="true"/>
     </target>
     
@@ -124,11 +139,6 @@
          build the exe in the jar build. 
         <jsmoothgen project="../../jSmoothExeLauncher/jAERViewer" skeletonroot="../../jSmoothExeLauncher/skeletons" />
         <jsmoothgen project="../../jSmoothExeLauncher/jAERTrayLauncher" skeletonroot="../../jSmoothExeLauncher/skeletons" />-->
-   <echo message="build.xml project opened"/>
-           <echo> Having trouble building or running?  
-            See the Help Forum for jAER at https://sourceforge.net/projects/jaer/forums/forum/631958
-            or the jAER wiki at https://sourceforge.net/apps/trac/jaer/wiki
-        </echo>
  
     </target>
     
