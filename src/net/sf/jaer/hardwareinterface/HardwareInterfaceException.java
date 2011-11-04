@@ -17,16 +17,33 @@ public class HardwareInterfaceException extends java.lang.Exception {
     
     static private Set exceptionListeners = Collections.synchronizedSet(new HashSet<ExceptionListener>());
     
-    /** Creates a new instance of USBAEMonException */
+    /** Creates a new instance of HardwareInterfaceException
+     * 
+     */
     public HardwareInterfaceException() {
         super();
         sendException(this);
     }
     
+    /** Creates a new instance of HardwareInterfaceException with a message
+     * 
+     * @param s the message
+     */
     public HardwareInterfaceException(String s){
         super(s);
         sendException(this);
     }
+
+    /** Creates a new instance of HardwareInterfaceException with a message and cause
+     * 
+     * @param s the message
+     * @param cause the cause
+     */
+     public HardwareInterfaceException(String message, Throwable cause) {
+        super(message, cause);
+    }
+    
+    
     
     private void sendException(Exception x) {
         if (exceptionListeners.size() == 0) {
