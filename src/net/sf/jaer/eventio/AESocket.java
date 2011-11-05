@@ -183,8 +183,8 @@ public class AESocket implements AESocketSettings{
         int[] ts=packet.getTimestamps();
         for(int i=0;i<n;i++){
             if (this.isSwapBytesEnabled()){
-            dos.writeInt(swapBitOrder(normalize(ts[i])));
-            dos.writeInt(swapBitOrder(a[i]));
+            dos.writeInt(swapByteOrder(normalize(ts[i])));
+            dos.writeInt(swapByteOrder(a[i]));
             } else {
             dos.writeInt(normalize(ts[i]));
             dos.writeInt(a[i]);
@@ -216,7 +216,7 @@ public class AESocket implements AESocketSettings{
         return tt;
 
     }
-    private static int swapBitOrder(int value) {
+    private static int swapByteOrder(int value) {
         int b1 = (value >> 0) & 0xff;
         int b2 = (value >> 8) & 0xff;
         int b3 = (value >> 16) & 0xff;
@@ -247,13 +247,15 @@ public class AESocket implements AESocketSettings{
         }
     }
 
-    /** reads next event, but if there is a timeout, socket is closed */
+    /** reads next event, but if there is a timeout, socket is closed
+     @return the raw event
+     */
     private EventRaw readEventForwards() throws IOException{
         int ts=0;
         int addr=0;
         if(isSwapBytesEnabled()){
-            addr=this.swapBitOrder(dis.readInt());
-            ts=this.swapBitOrder(normalize(dis.readInt()));
+            addr=this.swapByteOrder(dis.readInt());
+            ts=this.swapByteOrder(normalize(dis.readInt()));
         } else {
             addr=dis.readInt();
             ts=normalize(dis.readInt());
@@ -415,7 +417,7 @@ public class AESocket implements AESocketSettings{
         return hostname;
     }
 
-    /** Sets the preferred host:port string. Set on sucessful completion of input stream connection. */
+    /** Sets the preferred host:port string. Set on successful completion of input stream connection. */
     public void setHost(String host){
         this.hostname=host;
         prefs.put("AESocket.hostname",host);
@@ -437,7 +439,9 @@ public class AESocket implements AESocketSettings{
         return "AESocket to host="+hostname+":"+portNumber;
     }
 
-    /** returns the underlying Socket */
+    /** Returns the underlying Socket 
+     @return the socket
+     */
     public Socket getSocket(){
         return socket;
     }
@@ -477,10 +481,19 @@ public class AESocket implements AESocketSettings{
 
     }
 
+   /** Says whether stream is buffered locally 
+     * 
+     * @return  true if using buffered streams
+     */    
     @Override
     public boolean isUseBufferedStreams(){
         return useBufferedStreams;
     }
+    
+    /** Sets whether stream is buffered locally 
+     * 
+     * @param useBufferedStreams true to use buffered streams
+     */
     @Override
     synchronized public void setUseBufferedStreams(boolean useBufferedStreams){
         if(useBufferedStreams!=this.useBufferedStreams && (dis!=null || dos!=null)){
@@ -491,9 +504,19 @@ public class AESocket implements AESocketSettings{
         this.useBufferedStreams=useBufferedStreams;
         prefs.putBoolean("AESocket.useBufferedStreams",useBufferedStreams);
     }
+    
+    /** Says whether output stream is flushed on each write
+     * 
+     * @return true if stream is being flushed
+     */
     public boolean isFlushPackets(){
         return flushPackets;
     }
+    
+    /** Sets whether data output stream is flushed after each write
+     * 
+     * @param flushPackets true to flush stream on each write
+     */
     public void setFlushPackets(boolean flushPackets){
         this.flushPackets=flushPackets;
         prefs.putBoolean("AESocket.flushPackets",flushPackets);

@@ -1375,7 +1375,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         @Override
                         public void actionPerformed(ActionEvent e) {
                             JDialog fac = inst.getInterfaceChooser(chip);
-                            ((JDialog) inst.getInterfaceChooser(chip)).setVisible(true);
+                            fac.setVisible(true);
                             if (inst.getChosenHardwareInterface() != null) {
                                 HardwareInterface hw = inst.getChosenHardwareInterface();
                                 if (chip.getHardwareInterface() == null || !hw.toString().equals(chip.getHardwareInterface().toString())) {
@@ -1387,6 +1387,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 }
                                 log.info("setting new interface " + hw);
                                 chip.setHardwareInterface(hw);
+                                if(e.getSource() instanceof JMenuItem){
+                                    JMenuItem item=(JMenuItem)e.getSource();
+                                    item.setSelected(true); // doesn't work because menu is contantly rebuilt TODO
+                                }
                             }
                         }
                     });

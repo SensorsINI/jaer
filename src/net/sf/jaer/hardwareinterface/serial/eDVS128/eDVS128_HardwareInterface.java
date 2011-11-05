@@ -4,10 +4,8 @@
  */
 package net.sf.jaer.hardwareinterface.serial.eDVS128;
 
-import java.io.*;
 import java.beans.*;
 import java.util.Observable;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.*;
 
@@ -15,10 +13,7 @@ import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.hardwareinterface.*;
-import net.sf.jaer.hardwareinterface.serial.*;
 
-import gnu.io.CommPort;
-import gnu.io.CommPortIdentifier;
 import gnu.io.SerialPort;
 
 import java.io.IOException;
@@ -30,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Observer;
 
 import ch.unizh.ini.jaer.chip.retina.DVS128;
+import java.net.Socket;
 
 /**
  * Interface to eDVS128 camera.
@@ -80,86 +76,79 @@ P          - enter reprogramming mode
  * 
  * @author lou, tobi
  */
-public class eDVS128_HardwareInterface implements SerialInterface, HardwareInterface, AEMonitorInterface, BiasgenHardwareInterface, Observer {
+public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorInterface, BiasgenHardwareInterface, Observer {
 
-    public static final int BAUD_RATE = 4000000;
-    protected static Preferences prefs = Preferences.userNodeForPackage(eDVS128_HardwareInterface.class);
+    private static Preferences prefs = Preferences.userNodeForPackage(eDVS128_HardwareInterface.class);
     public PropertyChangeSupport support = new PropertyChangeSupport(this);
-    protected Logger log = Logger.getLogger("eDVS128");
-    protected AEChip chip;
+    static Logger log = Logger.getLogger("eDVS128");
+    private AEChip chip;
     /** Amount by which we need to divide the received timestamp values to get us timestamps. */
     public final int TICK_DIVIDER = 1;
-    protected AEPacketRaw lastEventsAcquired = new AEPacketRaw();
+    private AEPacketRaw lastEventsAcquired = new AEPacketRaw();
     public static final int AE_BUFFER_SIZE = 100000; // should handle 5Meps at 30FPS
-    protected int aeBufferSize = prefs.getInt("eDVS128.aeBufferSize", AE_BUFFER_SIZE);
-    protected int interfaceNumber = 0;
-    public static boolean isOpen = false;
-    public static boolean eventAcquisitionEnabled = false;
-    public static boolean overrunOccuredFlag = false;
-    protected byte cHighBitMask = (byte) 0x80;
-    protected byte cLowerBitsMask = (byte) 0x7F;
-    int eventCounter = 0;
-    int bCalibrated = 0;
+    private int aeBufferSize = prefs.getInt("eDVS128.aeBufferSize", AE_BUFFER_SIZE);
+    private static boolean isOpen = false;
+    private static boolean eventAcquisitionEnabled = false;
+    private static boolean overrunOccuredFlag = false;
+    private byte cHighBitMask = (byte) 0x80;
+    private byte cLowerBitsMask = (byte) 0x7F;
+    private int eventCounter = 0;
+    private int bCalibrated = 0;
     protected String devicName;
-    protected InputStream retina;
-    protected OutputStream retinaVendor;
+    private InputStream inputStream;
+    private OutputStream outputStream;
     public final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE = new PropertyChangeEvent(this, "NewEvents", null, null);
-    protected AEPacketRawPool aePacketRawPool = new AEPacketRawPool();
+    private AEPacketRawPool aePacketRawPool = new AEPacketRawPool();
     private int lastshortts = 0;
     private final int NUM_BIASES = 12; // number of biases, to renumber biases for bias command
     private boolean DEBUG = false;
+    SerialPort serialPort;
+    Socket socket;
 
-    public eDVS128_HardwareInterface(String deviceName) throws FileNotFoundException {
-        try {
-            CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(deviceName);
+    /** Constructs a new eDVS128_HardwareInterface using the input and output stream supplied. The other arguments should only have one non-null entry and 
+     * are used to properly close the interface.
+     * @param inputStream
+     * @param outputStream
+     * @param serialPort
+     * @param socket 
+     */
+    public eDVS128_HardwareInterface(InputStream inputStream, OutputStream outputStream, SerialPort serialPort, Socket socket) {
+        this.inputStream = inputStream;
+        this.outputStream = outputStream;
+        this.serialPort=serialPort;
+        this.socket=socket;
+        if(socket!=null && serialPort!=null) log.warning(serialPort+" and "+socket+" are both supplied which is an error");
+        
+    }
 
-            if (portIdentifier.isCurrentlyOwned()) {
-                log.warning("Error: Port " + deviceName + " is currently in use by " + portIdentifier.getCurrentOwner());
-            } else {
-                CommPort commPort = portIdentifier.open(this.getClass().getName(), 2000);
-
-                if (commPort instanceof SerialPort) {
-                    SerialPort serialPort = (SerialPort) commPort;
-                    serialPort.setSerialPortParams(BAUD_RATE, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
-                    serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_RTSCTS_IN);
-                    serialPort.setFlowControlMode(serialPort.FLOWCONTROL_RTSCTS_OUT);
-
-                    retina = serialPort.getInputStream();
-                    retinaVendor = serialPort.getOutputStream();
-
-                }
-            }
-        } catch (Exception e) {
-            log.warning("When trying to construct an interface on port " + deviceName + " caught " + e.toString());
-            throw new FileNotFoundException("Port " + deviceName + " already owned by another process?");
-        } catch (Error er) {
-            log.warning("Caught error " + er.toString() + "; this usually means port is owned by another process");
-            throw new FileNotFoundException("Port " + deviceName + " already owned by another process?");
+    /** Writes a string (adding \n if needed) and flushes the socket's output stream */
+    private void write(String s) throws IOException {
+        if (s == null) {
+            return;
         }
-
-
+        if (!s.endsWith("\n")) {
+            s = s + "\n";
+        }
+        byte[] b = s.getBytes();
+        outputStream.write(b, 0, b.length);
+        outputStream.flush();
     }
 
     @Override
     public void open() throws HardwareInterfaceException {
 
-        if (retinaVendor == null) {
-            throw new HardwareInterfaceException("no serial interface to open");
+        if (outputStream == null) {
+            throw new HardwareInterfaceException("no interface to open; outputStream=null");
         }
 
         if (!isOpen) {
             try {
-                String s = "!E1\n";
-                byte[] b = s.getBytes();
-                retinaVendor.write(b, 0, 4);
-
-                s = "E+\n";
-                b = s.getBytes();
-                retinaVendor.write(b, 0, 3);
-
+                write("1"); // turn on LED on eDVS board (not wifi board)
+                write("!E1"); // data format, as in serial port interrface
+                setEventAcquisitionEnabled(true);
                 isOpen = true;
             } catch (Exception e) {
-                e.printStackTrace();
+                throw new HardwareInterfaceException("could not open", e);
             }
         }
     }
@@ -169,18 +158,28 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
         return true;
     }
 
+    /** Closes the interface. The interface cannot be reopened without constructing a new instance.
+     * 
+     */
     @Override
     public void close() {
-        if (retinaVendor == null) {
+        if (!isOpen) {
             return;
         }
         try {
-           isOpen = false;
-            String s = "E-\n";
-            byte[] b = s.getBytes();
-            retinaVendor.write(b, 0, 3);
-        } catch (Exception e) {
-            e.printStackTrace();
+            isOpen = false;
+            setEventAcquisitionEnabled(false);
+            write("0"); // turn off LED on eDVS board (not wifi board)
+            inputStream.close();
+            outputStream.close();
+            
+            if(serialPort!=null){
+                serialPort.close();
+            }else if(socket!=null){
+                socket.close();
+            }
+        } catch (Exception ex) {
+            log.warning(ex.toString());
         }
     }
 
@@ -238,6 +237,12 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
 
     @Override
     public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
+        try {
+            if(enable) write("E+"); else write("E-");
+        } catch (IOException ex) {
+            log.warning(ex.toString());
+            throw new HardwareInterfaceException("couldn't write command to start or stop event sending",ex);
+        }
         if (enable) {
             startAEReader();
         } else {
@@ -319,7 +324,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
             switch (cmd) {
                 case 1:
                     byte[] command = new byte[]{'E', '+', '\r', '\n'};
-                    retinaVendor.write(command, 0, 4);
+                    outputStream.write(command, 0, 4);
                     break;
 
                 case 2:
@@ -369,7 +374,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
 
     @Override
     public String toString() {
-        return "Serial: eDVS128";
+        return "eDVS128_HardwareInterface with inputStream=" + inputStream + " outputStream=" + outputStream;
     }
     protected boolean running = true;
     final int WRAP = 0x10000; // amount of timestamp wrap to add for each overflow of 1 bit timestamps
@@ -412,7 +417,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
     synchronized public void update(Observable o, Object arg) {
 
         if (o instanceof IPot) {
-            if (retinaVendor == null) {
+            if (outputStream == null) {
                 log.warning("no connection; null serial device");
                 return;
             }
@@ -429,14 +434,14 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
                 log.warning("sending " + b.length + " bytes, might not fit in eDVS LPC2016 16-byte buffer");
             }
             try {
-                retinaVendor.write(b, 0, b.length);
+                outputStream.write(b, 0, b.length);
             } catch (IOException ex) {
                 log.warning(ex.toString());
             }
             s = "!BF\n";
             b = s.getBytes();
             try {
-                retinaVendor.write(b, 0, b.length);
+                outputStream.write(b, 0, b.length);
             } catch (IOException ex) {
                 log.warning(ex.toString());
             }
@@ -464,7 +469,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
 
             while (running) {
                 try {
-                    len = retina.available();
+                    len = inputStream.available();
                     if (len == 0) {
                         try {
                             Thread.sleep(10);
@@ -473,10 +478,10 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
                         }
                         continue;
                     }
-                    length = retina.read(buffer, 0, len - (len % 4));
+                    length = inputStream.read(buffer, 0, len - (len % 4));
 //                           System.out.println(length);
                 } catch (IOException e) {
-                    log.warning("Aborting AEReader because caught exception "+e);
+                    log.warning("Aborting AEReader because caught exception " + e);
                     e.printStackTrace();
                     close();
                     return;
@@ -486,7 +491,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
 
                 if (len > 3) { // TODO what if len<=3?  e.g. for part of an event that was sent
 //                    try {
-//                        length = retina.read(buffer, 0, len - (len % 4));
+//                        length = inputStream.read(buffer, 0, len - (len % 4));
 //                    } catch (IOException e) {
 //                        e.printStackTrace();
 //                    }
@@ -534,8 +539,8 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
                             long len1 = 0;
                             try {
                                 while (length1 != nDump) {
-                                    //len = retina.read(buffer, length1, nDump - length1);
-                                    len1 = retina.skip(nDump - length1);
+                                    //len = inputStream.read(buffer, length1, nDump - length1);
+                                    len1 = inputStream.skip(nDump - length1);
                                     length1 = length1 + len1;
                                 }
                             } catch (IOException e) {
@@ -555,10 +560,7 @@ public class eDVS128_HardwareInterface implements SerialInterface, HardwareInter
                     aePacketRawPool.reset();
                     timestampsReset = false;
                 }
-
             }
-
-
         }
 
         /**

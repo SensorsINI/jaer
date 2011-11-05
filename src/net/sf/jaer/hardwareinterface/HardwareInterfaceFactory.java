@@ -9,6 +9,7 @@
  */
 package net.sf.jaer.hardwareinterface;
 
+import net.sf.jaer.hardwareinterface.serial.eDVS128.eDVS128_InterfaceFactory;
 import cl.eye.CLEyeHardwareInterfaceFactory;
 import de.thesycon.usbio.PnPNotify;
 import de.thesycon.usbio.PnPNotifyInterface;
@@ -52,7 +53,7 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
         USBAERatcFactory.class,
         UDPInterfaceFactory.class,
         CLEyeHardwareInterfaceFactory.class,
-        EmbeddedDVSSerialPortChooserFactory.class,
+        eDVS128_InterfaceFactory.class,
     }; 
     private static HardwareInterfaceFactory instance = new HardwareInterfaceFactory();
 
