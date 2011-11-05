@@ -442,8 +442,8 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         private CPLDInt adcRefOnTime = new CPLDInt(SeeBetter1011.this, 45, 30, "adcRefOnTime", "ADC Reference ON time in clock cycles which are 15 cycles/us", 0);
         private CPLDInt adcRefOffTime = new CPLDInt(SeeBetter1011.this, 61, 46, "adcRefOffTime", "ADC Reference OFF time in clock cycles which are 15 cycles/us", 0);
         private CPLDInt adcIdleTime = new CPLDInt(SeeBetter1011.this, 77, 62, "adcIdleTime", "ADC idle time after last acquisition in clock cycles which are 15 cycles/us", 0);
-        private CPLDInt scanY = new CPLDInt(SeeBetter1011.this, 83, 78, "scanY", "cochlea tap to monitor when not scanning continuously", 0);
-        private CPLDInt scanX = new CPLDInt(SeeBetter1011.this, 89, 84, "scanX", "cochlea tap to monitor when not scanning continuously", 0);
+        private CPLDInt scanY = new CPLDInt(SeeBetter1011.this, 83, 78, "scanY", "cochlea tap to monitor when not scanning continuously", 1);
+        private CPLDInt scanX = new CPLDInt(SeeBetter1011.this, 89, 84, "scanX", "cochlea tap to monitor when not scanning continuously", 1);
         private CPLDBit scanContinuouslyEnabled = new CPLDBit(SeeBetter1011.this, 90, "scanContinuouslyEnabled", "enables continuous scanning of on-chip scanner", false);
         //
         // lists of ports and CPLD config
@@ -1155,9 +1155,9 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         public class Scanner extends Observable implements Observer {
 
             private final int minScanX = 0;
-            private final int maxScanX = 63;
+            private final int maxScanX = 15;
             private final int minScanY = 0;
-            private final int maxScanY = 63;
+            private final int maxScanY = 31;
             public final String EVENT_SCANX = "scanX";
             public final String EVENT_SCANY = "scanY";
             public final String EVENT_SCAN_CONTINUOUSLY = "scanContinuouslyEnabled";
