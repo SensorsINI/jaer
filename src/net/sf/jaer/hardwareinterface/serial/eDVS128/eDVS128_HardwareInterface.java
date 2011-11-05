@@ -175,8 +175,10 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
             
             if(serialPort!=null){
                 serialPort.close();
+                serialPort=null;
             }else if(socket!=null){
                 socket.close();
+                socket=null;
             }
         } catch (Exception ex) {
             log.warning(ex.toString());

@@ -125,6 +125,10 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
 
     @Override
     public JDialog getInterfaceChooser(AEChip chip) {
+        setTitle("Choose interface for "+chip);
+        if(chip!=null && chip.getAeViewer()!=null){
+            setLocationRelativeTo(chip.getAeViewer());
+        }
         return this;
     }
 
@@ -341,7 +345,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
     /** timeout in ms for connection attempts */
     public static final int CONNECTION_TIMEOUT_MS = 3000;
     /** timeout in ms for read/write attempts */
-    public static final int SO_TIMEOUT = 1; // 1 means we should timeout as soon as there are no more events in the datainputstream
+    public static final int SO_TIMEOUT = 30; // 1 means we should timeout as soon as there are no more events in the datainputstream
 
     private void doCloseSocket(int retStatus) {
         switch (retStatus) {
@@ -357,10 +361,10 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                     socket.setSendBufferSize(TCP_SEND_BUFFER_SIZE_BYTES);
                     socket.setSoTimeout(SO_TIMEOUT);
                     socket.connect(new InetSocketAddress(host, tcpport), CONNECTION_TIMEOUT_MS);
-                    if (socket.getReceiveBufferSize() != TCP_RECEIVE_BUFFER_SIZE_BYTES) {
+                    if (socket.getSendBufferSize() != TCP_SEND_BUFFER_SIZE_BYTES) {
                         log.warning("requested sendBufferSize=" + TCP_SEND_BUFFER_SIZE_BYTES + " but got sendBufferSize=" + socket.getSendBufferSize());
                     }
-                    if (socket.getSendBufferSize() != TCP_RECEIVE_BUFFER_SIZE_BYTES) {
+                    if (socket.getReceiveBufferSize() != TCP_RECEIVE_BUFFER_SIZE_BYTES) {
                         log.warning("requested receiveBufferSize=" + TCP_RECEIVE_BUFFER_SIZE_BYTES + " but got receiveBufferSize=" + socket.getReceiveBufferSize());
                     }
                     Runtime.getRuntime().addShutdownHook(new Thread() {
