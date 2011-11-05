@@ -946,7 +946,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 log.warning("null chip, not continuing");
                 return;
             }
-             aeChipClass = deviceClass;
+            aeChipClass = deviceClass;
             setPreferredAEChipClass(aeChipClass);
             // chip constructed above, should have renderer already constructed as well
             if (chip.getRenderer() != null && chip.getRenderer() instanceof Calibratible) {
@@ -1008,7 +1008,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
 //            getSupport().firePropertyChange("chip", oldChip, getChip());
             firePropertyChange(EVENT_CHIP, oldChip, getChip());
-           
+
             chip.onRegistration();
 
         } catch (Exception e) {
@@ -1315,44 +1315,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                     }
                 });
-                // set the button on for the actual interface of the chip if there is one already
-                if (chip != null) {
-                    HardwareInterface chipInterface = chip.getHardwareInterface();
-                    //            if (chipInterface != null) {
-                    ////                log.info("chip.getHardwareInterface="+chip.getHardwareInterface());
-                    //            }
-                    //            if (hw != null) {
-                    ////                log.info("hw="+hw);
-                    //            }
-                    //check if device in menu is already one assigned to this chip, by String comparison. Checking by object doesn't work because
-                    // new device objects are created by HardwareInterfaceFactory's'
-                    if (chipInterface != null && hw != null && chipInterface.toString().equals(hw.toString())) {
-                        interfaceButton.setSelected(true);
-                        choseOneButton = true;
-                    }
-                }
                 //            if(chip!=null && chip.getHardwareInterface()==hw) b.setSelected(true);
                 sb.append("\n").append(hw.toString());
             }
-        }
-        // make a 'none' item (only there is no interface)
-        if (!choseOneButton) {
-            JRadioButtonMenuItem noneInterfaceButton = new JRadioButtonMenuItem("None");
-            noneInterfaceButton.putClientProperty("HardwareInterface", null);
-            interfaceMenu.add(noneInterfaceButton);
-            bg.add(noneInterfaceButton);
-            noneInterfaceButton.addActionListener(new ActionListener() {
-
-                public void actionPerformed(ActionEvent evt) {
-                    //                log.info("selected null interface");
-                    if (chip.getHardwareInterface() != null) {
-                        chip.getHardwareInterface().close();
-                    }
-                    chip.setHardwareInterface(null);
-                }
-            });
-            interfaceMenu.add(new JSeparator());
-            noneInterfaceButton.setSelected(true);
         }
         boolean addedSep = false;
         // make items for HardwareInterfaceFactoryChooserDialog factories
@@ -1367,9 +1332,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 try {
                     Method m = (c.getMethod("instance")); // get singleton instance of factory
                     final HardwareInterfaceFactoryChooserDialog inst = (HardwareInterfaceFactoryChooserDialog) m.invoke(c);
-                    JMenuItem mi = new JMenuItem(inst.getGUID());
+                    JRadioButtonMenuItem mi = new JRadioButtonMenuItem(inst.getGUID());
                     mi.setToolTipText("Shows a chooser dialog for making this type of HardwareInterface");
                     interfaceMenu.add(mi);
+                    bg.add(mi);
                     mi.addActionListener(new ActionListener() {
 
                         @Override
@@ -1387,8 +1353,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 }
                                 log.info("setting new interface " + hw);
                                 chip.setHardwareInterface(hw);
-                                if(e.getSource() instanceof JMenuItem){
-                                    JMenuItem item=(JMenuItem)e.getSource();
+                                if (e.getSource() instanceof JMenuItem) {
+                                    JMenuItem item = (JMenuItem) e.getSource();
                                     item.setSelected(true); // doesn't work because menu is contantly rebuilt TODO
                                 }
                             }
@@ -1400,7 +1366,47 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
 
             }
+        }
+        // make a 'none' item (only there is no interface) // TOTO tobi changed to always make one
+        JRadioButtonMenuItem noneInterfaceButton = new JRadioButtonMenuItem("None");
+        noneInterfaceButton.putClientProperty("HardwareInterface", null);
+        interfaceMenu.add(new JSeparator());
+        interfaceMenu.add(noneInterfaceButton);
+        bg.add(noneInterfaceButton);
+        noneInterfaceButton.addActionListener(new ActionListener() {
 
+            public void actionPerformed(ActionEvent evt) {
+                //                log.info("selected null interface");
+                if (chip.getHardwareInterface() != null) {
+                    chip.getHardwareInterface().close();
+                }
+                chip.setHardwareInterface(null);
+            }
+        });
+        interfaceMenu.add(new JSeparator());
+        noneInterfaceButton.setSelected(true);
+        if (chip != null && chip.getHardwareInterface() != null) {
+            choseOneButton = false;
+            String chipInterface = chip.getHardwareInterface().toString();
+            for (Component c : interfaceMenu.getMenuComponents()) {
+                if (!(c instanceof JMenuItem)) {
+                    continue;
+                }
+                JMenuItem item = (JMenuItem) c;
+                // set the button on for the actual interface of the chip if there is one already
+                //            if (chipInterface != null) {
+                ////                log.info("chip.getHardwareInterface="+chip.getHardwareInterface());
+                //            }
+                //            if (hw != null) {
+                ////                log.info("hw="+hw);
+                //            }
+                //check if device in menu is already one assigned to this chip, by String comparison. Checking by object doesn't work because
+                // new device objects are created by HardwareInterfaceFactory's'
+                if (item.getText().equals(chipInterface)) {
+                    interfaceButton.setSelected(true);
+                    choseOneButton = true;
+                }
+            }
         }
         log.info(sb.toString());
 
@@ -1514,7 +1520,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (!blankDeviceMessageShown) {
                     log.info(bd.getMessage() + " suppressing further blank device messages");
                     blankDeviceMessageShown = true;
-                    int v = JOptionPane.showConfirmDialog(this, "<html>Blank Cypress FX2 found (" + aemon + "). <br>Caught exception "+bd.getMessage()+".<br>Do you want to open the Cypress FX2 Programming utility?<p>Otherwise set the default firmware in the USB menu to download desired firmware to RAM for CypressFX2 devices");
+                    int v = JOptionPane.showConfirmDialog(this, "<html>Blank Cypress FX2 found (" + aemon + "). <br>Caught exception " + bd.getMessage() + ".<br>Do you want to open the Cypress FX2 Programming utility?<p>Otherwise set the default firmware in the USB menu to download desired firmware to RAM for CypressFX2 devices");
 
                     if (v == JOptionPane.YES_OPTION) {
                         CypressFX2EEPROM instance = new CypressFX2EEPROM();
@@ -4151,7 +4157,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        }
 //    }
 //    Statistics statistics;
-
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
         log.info("window closing");
         if (biasgenFrame != null && !biasgenFrame.isModificationsSaved()) {
@@ -5069,7 +5074,7 @@ private void reopenSocketInputStreamMenuItemActionPerformed(java.awt.event.Actio
 }//GEN-LAST:event_reopenSocketInputStreamMenuItemActionPerformed
 
 private void setDefaultFirmwareMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setDefaultFirmwareMenuItemActionPerformed
-    CypressFX2FirmwareFilennameChooserOkCancelDialog dialog = new CypressFX2FirmwareFilennameChooserOkCancelDialog(this, true,getChip());
+    CypressFX2FirmwareFilennameChooserOkCancelDialog dialog = new CypressFX2FirmwareFilennameChooserOkCancelDialog(this, true, getChip());
     dialog.setVisible(true);
     int v = dialog.getReturnStatus();
     if (v == CypressFX2FirmwareFilennameChooserOkCancelDialog.RET_OK) {
@@ -5219,9 +5224,9 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
 }//GEN-LAST:event_openSocketOutputStreamMenuItemActionPerformed
 
     private void setDefaultFirmwareMenuItemMouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_setDefaultFirmwareMenuItemMouseEntered
-        if(chip!=null){
-            String s="<html>"+SET_DEFAULT_FIRMWARE_FOR_BLANK_DEVICE+"<br> (currently "+chip.getDefaultFirmwareBixFileForBlankDevice()+")";
-            if(!s.equals(setDefaultFirmwareMenuItem.getToolTipText())){
+        if (chip != null) {
+            String s = "<html>" + SET_DEFAULT_FIRMWARE_FOR_BLANK_DEVICE + "<br> (currently " + chip.getDefaultFirmwareBixFileForBlankDevice() + ")";
+            if (!s.equals(setDefaultFirmwareMenuItem.getToolTipText())) {
                 setDefaultFirmwareMenuItem.setToolTipText(s);
             }
         }
