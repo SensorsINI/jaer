@@ -48,6 +48,7 @@ import javax.swing.Action;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.border.TitledBorder;
@@ -170,11 +171,14 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     @Override
     public void onDeregistration() {
         unregisterControlPanel();
+        getAeViewer().removeHelpItem(help1);
     }
 
+    JComponent help1=null;
     @Override
     public void onRegistration() {
         registerControlPanel();
+        help1=getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/tretina/pcb/cDVSTest/cDVSTest.pdf", "cDVSTest PCB design", "shows pcb design");
     }
 
     private void registerControlPanel() {

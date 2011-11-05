@@ -52,7 +52,7 @@ import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import spread.*;
 import cl.eye.*;
 import java.net.MalformedURLException;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceChooserFactory;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryChooserDialog;
 
 /**
  * This is the main jAER interface to the user. The main event loop "ViewLoop" is here; see ViewLoop.run(). AEViewer shows AE chip live view and allows for controlling view and recording and playing back events from files and network connections.
@@ -1355,10 +1355,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             noneInterfaceButton.setSelected(true);
         }
         boolean addedSep = false;
-        // make items for HardwareInterfaceChooserFactory factories
+        // make items for HardwareInterfaceFactoryChooserDialog factories
         // these HardwareInterfaceFactories allow choice of multiple alternative interfaces, e.g. for a serial port or network interface
         for (Class c : HardwareInterfaceFactory.factories) {
-            if (HardwareInterfaceChooserFactory.class.isAssignableFrom(c)) {
+            if (HardwareInterfaceFactoryChooserDialog.class.isAssignableFrom(c)) {
                 log.log(Level.INFO, "found hardware chooser class {0}", c);
                 if (!addedSep) {
                     interfaceMenu.add(new JSeparator());
@@ -1366,7 +1366,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
                 try {
                     Method m = (c.getMethod("instance")); // get singleton instance of factory
-                    final HardwareInterfaceChooserFactory inst = (HardwareInterfaceChooserFactory) m.invoke(c);
+                    final HardwareInterfaceFactoryChooserDialog inst = (HardwareInterfaceFactoryChooserDialog) m.invoke(c);
                     JMenuItem mi = new JMenuItem(inst.getGUID());
                     mi.setToolTipText("Shows a chooser dialog for making this type of HardwareInterface");
                     interfaceMenu.add(mi);
@@ -5480,7 +5480,7 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
      * @param s the text of the menu. If null, returns null.
      * @return the menu, if there is one, or null if not found.
      */
-    public JMenu getJMenu(String s) {
+    public JMenu getMenu(String s) {
         if (s == null) {
             return null;
         }
@@ -5499,7 +5499,7 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
      *
      * @param menu the menu
      */
-    public void setMenuItem(JMenu menu) {
+    public void setMenu(JMenu menu) {
         JMenuBar b = getJMenuBar();
         int n = b.getMenuCount();
         // check for existing and replace

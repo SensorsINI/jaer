@@ -28,16 +28,16 @@ import javax.swing.JDialog;
 import javax.swing.KeyStroke;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceChooserFactory;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryChooserDialog;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
-import net.sf.jaer.hardwareinterface.serial.eDVS128.eDVS128_HardwareInterface;
+import net.sf.jaer.hardwareinterface.serial.eDVS128.eDVS128_SerialPortHardwareInterface;
 
 /**
  * Allows choice of serial port for eDVS interface.
  * @author tobi
  */
-public class EmbeddedDVSSerialPortChooserFactory extends javax.swing.JDialog implements HardwareInterfaceChooserFactory {
+public class EmbeddedDVSSerialPortChooserFactory extends javax.swing.JDialog implements HardwareInterfaceFactoryChooserDialog {
 
     private static final Logger log = Logger.getLogger("USBIOHardwareInterfaceFactory");
     /** A return status code - returned if Cancel button has been pressed */
@@ -48,7 +48,7 @@ public class EmbeddedDVSSerialPortChooserFactory extends javax.swing.JDialog imp
     int lastPortIndex = prefs.getInt("EmbeddedDVSSerialPortChooserFactory.lastPortIndex", 0);
     // singleton
     private static EmbeddedDVSSerialPortChooserFactory instance = new EmbeddedDVSSerialPortChooserFactory();
-    private eDVS128_HardwareInterface chosenInterface = null;
+    private eDVS128_SerialPortHardwareInterface chosenInterface = null;
     private static final String RESCAN="-rescan-";
 
     /** Creates new form EmbeddedDVSSerialPortChooserFactory */
@@ -252,7 +252,7 @@ public class EmbeddedDVSSerialPortChooserFactory extends javax.swing.JDialog imp
                 prefs.putInt("EmbeddedDVSSerialPortChooserFactory.lastPortIndex", lastPortIndex);
                 String s = (String) o;
                 try {
-                    chosenInterface = new eDVS128_HardwareInterface(s);
+                    chosenInterface = new eDVS128_SerialPortHardwareInterface(s);
                 } catch (FileNotFoundException ex) {
                     log.warning("Serial port "+s+" not found: " + ex.toString());
                 }
