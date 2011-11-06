@@ -13,10 +13,9 @@ package net.sf.jaer.hardwareinterface.serial.eDVS128;
 import gnu.io.CommPort;
 import gnu.io.CommPortIdentifier;
 import gnu.io.SerialPort;
+import java.awt.Cursor;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Enumeration;
@@ -37,21 +36,24 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 
 /**
- * Allows choice of serial port for eDVS interface.
+ * Factory dialog for interfaces to eDVS cameras.
  * @author tobi
  */
 public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements HardwareInterfaceFactoryChooserDialog {
 
-    static Preferences prefs = Preferences.userNodeForPackage(eDVS128_InterfaceFactory.class);
+    private static Preferences prefs = Preferences.userNodeForPackage(eDVS128_InterfaceFactory.class);
     private static final Logger log = Logger.getLogger("eDVS128");
+    /** The baud rate used by the eDVS FTDI serial port interface */
     public static final int SERIAL_BAUD_RATE = 4000000;
+    /** The address of the eDVS as it is configured to be assigned at INI on WLAN-INI. */
     public static final String HOST = "192.168.91.62";
+    /** The default TCP port address of the wifi interface */
     public static final int TCP_PORT = 56000;
     /** A return status code - returned if Cancel button has been pressed */
     public static final int RET_CANCEL = 0;
     /** A return status code - returned if OK button has been pressed */
     public static final int RET_OK = 1;
-    int lastSerialPortIndex = prefs.getInt("eDVS128_InterfaceFactory.lastPortIndex", 0);
+    private int lastSerialPortIndex = prefs.getInt("eDVS128_InterfaceFactory.lastPortIndex", 0);
     // singleton
     private static eDVS128_InterfaceFactory instance = new eDVS128_InterfaceFactory();
     private HardwareInterface chosenInterface = null;
@@ -71,7 +73,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         actionMap.put(cancelName, new AbstractAction() {
 
             public void actionPerformed(ActionEvent e) {
-                doCloseSerialPort(RET_CANCEL);
+                doCloseCancel();
             }
         });
         refreshSerialPortList();
@@ -79,19 +81,20 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         portTF.setText(prefs.get("eDVS128_InterfaceFactory.TCP_PORT", Integer.toString(TCP_PORT)));
 
     }
-
     private HashMap<String, HardwareInterface> closemap = new HashMap();
 
     private void closePrevious(String s) {
         HardwareInterface c = closemap.get(s);
-        if(c==null) return;
+        if (c == null) {
+            return;
+        }
         try {
             c.close();
         } catch (Exception e) {
             log.warning(e.toString());
         }
         closemap.remove(s);
-        log.info("closed old interface "+s+" = "+c);
+        log.info("closed old interface " + s + " = " + c);
     }
 
     /** Use this singleton instance to make new interfaces */
@@ -125,8 +128,8 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
 
     @Override
     public JDialog getInterfaceChooser(AEChip chip) {
-        setTitle("Choose interface for "+chip);
-        if(chip!=null && chip.getAeViewer()!=null){
+        setTitle("Choose interface for " + chip);
+        if (chip != null && chip.getAeViewer() != null) {
             setLocationRelativeTo(chip.getAeViewer());
         }
         return this;
@@ -163,6 +166,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         jLabel3 = new javax.swing.JLabel();
         okSocketButton = new javax.swing.JButton();
         jLabel4 = new javax.swing.JLabel();
+        defaultsButton = new javax.swing.JButton();
 
         setTitle("Serial Port Chooser");
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -181,6 +185,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         jPanel1.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
 
         portCB.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        portCB.setToolTipText("The COM port. Select -rescan- to scan for COM ports.");
         portCB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 portCBActionPerformed(evt);
@@ -188,13 +193,14 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         });
 
         okSerPortButton.setText("Open serial port interface");
+        okSerPortButton.setToolTipText("Tries to open the serial port");
         okSerPortButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 okSerPortButtonActionPerformed(evt);
             }
         });
 
-        jLabel1.setText("<html>Choose the serial port of the eDVS.<br>It is usually the first of a large numbered pair of ports.");
+        jLabel1.setText("<html>If you are using the USB interface, then the eDVS will appear on a COM port. <p>Choose the serial port of the eDVS.<br>It is usually the first of a large numbered pair of ports.");
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -203,7 +209,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(portCB, 0, 283, Short.MAX_VALUE)
+                    .addComponent(portCB, 0, 370, Short.MAX_VALUE)
                     .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(okSerPortButton, javax.swing.GroupLayout.Alignment.TRAILING))
                 .addContainerGap())
@@ -226,18 +232,30 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
 
         jLabel2.setText("Hostname or IP address");
 
-        portTF.setText("jTextField1");
+        hostTF.setToolTipText("The host IP address or hostname");
 
-        jLabel3.setText("Port");
+        portTF.setText("jTextField1");
+        portTF.setToolTipText("Choose the TCP port - default is 56000");
+
+        jLabel3.setText("TCP port");
 
         okSocketButton.setText("Open network interface");
+        okSocketButton.setToolTipText("Tries to open the TCP socket. ");
         okSocketButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 okSocketButtonActionPerformed(evt);
             }
         });
 
-        jLabel4.setText("<html>Choose the host and port of the eDVS.");
+        jLabel4.setText("<html>If you are using an eDVS with wifi, choose the host and port<br> of the eDVS here and then click Open network interface. <p>The eDVS is typically configured to connect to a particular <br>hardcoded SSID with WEP and accepts a DHCP address.");
+
+        defaultsButton.setText("Defaults");
+        defaultsButton.setToolTipText("Enters default values");
+        defaultsButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                defaultsButtonActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
@@ -253,9 +271,12 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(portTF, javax.swing.GroupLayout.PREFERRED_SIZE, 69, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(hostTF, javax.swing.GroupLayout.DEFAULT_SIZE, 164, Short.MAX_VALUE)))
+                            .addComponent(hostTF, javax.swing.GroupLayout.DEFAULT_SIZE, 251, Short.MAX_VALUE)))
                     .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(okSocketButton, javax.swing.GroupLayout.Alignment.TRAILING))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
+                        .addComponent(defaultsButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(okSocketButton)))
                 .addContainerGap())
         );
         jPanel2Layout.setVerticalGroup(
@@ -271,7 +292,9 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                     .addComponent(jLabel3)
                     .addComponent(portTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(okSocketButton)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(okSocketButton)
+                    .addComponent(defaultsButton))
                 .addContainerGap())
         );
 
@@ -282,16 +305,12 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addContainerGap(252, Short.MAX_VALUE)
-                        .addComponent(cancelButton)))
+                    .addComponent(cancelButton, javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                        .addComponent(jPanel2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(jPanel1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -310,7 +329,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
     }// </editor-fold>//GEN-END:initComponents
 
     private void okSerPortButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okSerPortButtonActionPerformed
-        doCloseSerialPort(RET_OK);
+        doChooseSerial(RET_OK);
     }//GEN-LAST:event_okSerPortButtonActionPerformed
 
     private void cancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelButtonActionPerformed
@@ -330,8 +349,13 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
     }//GEN-LAST:event_portCBActionPerformed
 
     private void okSocketButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okSocketButtonActionPerformed
-        doCloseSocket(RET_OK);
+        doChooseSocket(RET_OK);
     }//GEN-LAST:event_okSocketButtonActionPerformed
+
+    private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
+        hostTF.setText(HOST);
+        portTF.setText(Integer.toString(TCP_PORT));
+    }//GEN-LAST:event_defaultsButtonActionPerformed
 
     private void doCloseCancel() {
         returnStatus = RET_CANCEL;
@@ -343,14 +367,17 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
     public static final int TCP_SEND_BUFFER_SIZE_BYTES = 1024;
     public static final boolean DEFAULT_USE_BUFFERED_STREAM = false;
     /** timeout in ms for connection attempts */
-    public static final int CONNECTION_TIMEOUT_MS = 3000;
+    public static final int CONNECTION_TIMEOUT_MS = 1000;
     /** timeout in ms for read/write attempts */
     public static final int SO_TIMEOUT = 30; // 1 means we should timeout as soon as there are no more events in the datainputstream
 
-    private void doCloseSocket(int retStatus) {
+    private void doChooseSocket(int retStatus) {
+        boolean success = false;
         switch (retStatus) {
             case RET_OK:
                 try {
+                    setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+
                     String host = hostTF.getText();
                     closePrevious(host);
                     int tcpport = Integer.parseInt(portTF.getText());
@@ -378,27 +405,35 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                             }
                         }
                     });
-                    chosenInterface = new eDVS128_HardwareInterface(socket.getInputStream(), socket.getOutputStream(),null,socket);
+                    chosenInterface = new eDVS128_HardwareInterface(socket.getInputStream(), socket.getOutputStream(), null, socket);
                     closemap.put(host, chosenInterface);
+                    success = true;
                 } catch (Exception e) {
                     log.warning(e.toString());
                     JOptionPane.showMessageDialog(this, e.toString(), "eDVS128_HardwareInterface", JOptionPane.WARNING_MESSAGE);
                     chosenInterface = null;
+                } finally {
+                    setCursor(Cursor.getDefaultCursor());
                 }
                 break;
             default:
                 chosenInterface = null;
+                success = true;
         }
         returnStatus = retStatus;
-        setVisible(false);
-        dispose();
+        if (success) {
+            setVisible(false);
+            dispose();
+        }
     }
 
-    private void doCloseSerialPort(int retStatus) {
+    private void doChooseSerial(int retStatus) {
+        boolean success = false;
         returnStatus = retStatus;
         chosenInterface = null;
         if (retStatus == RET_OK) {
             // make interface based on chosen serial port
+            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             Object o = portCB.getSelectedItem();
             if (o == null || !(o instanceof String)) {
                 log.warning("Selected item " + o + " is not a String, can't use it to make eDVS128_HardwareInterface");
@@ -412,7 +447,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
 
                     if (portIdentifier.isCurrentlyOwned()) {
                         log.warning("Port " + serialPortName + " is currently in use by " + portIdentifier.getCurrentOwner());
-                    } 
+                    }
                     {
                         CommPort commPort = portIdentifier.open(this.getClass().getName(), 2000);
 
@@ -422,8 +457,9 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                             serialPort.setFlowControlMode(SerialPort.FLOWCONTROL_RTSCTS_IN);
                             serialPort.setFlowControlMode(serialPort.FLOWCONTROL_RTSCTS_OUT);
 
-                            chosenInterface = new eDVS128_HardwareInterface(serialPort.getInputStream(), serialPort.getOutputStream(),serialPort,null);
+                            chosenInterface = new eDVS128_HardwareInterface(serialPort.getInputStream(), serialPort.getOutputStream(), serialPort, null);
                             closemap.put(serialPortName, chosenInterface);
+                            success = true;
                         }
                     }
                 } catch (Exception e) {
@@ -432,14 +468,19 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                 } catch (Error er) {
                     log.warning("Caught error " + er.toString() + "; this can mean port is owned by another process");
                     JOptionPane.showMessageDialog(this, "Caught error " + er.toString() + "; this usually means port is owned by another process", "eDVS128_HardwareInterface", JOptionPane.WARNING_MESSAGE);
+                } finally {
+                    setCursor(Cursor.getDefaultCursor());
                 }
             }
-            setVisible(false);
-            dispose();
+            if (success) {
+                setVisible(false);
+                dispose();
+            }
         }
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton cancelButton;
+    private javax.swing.JButton defaultsButton;
     private javax.swing.JTextField hostTF;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;

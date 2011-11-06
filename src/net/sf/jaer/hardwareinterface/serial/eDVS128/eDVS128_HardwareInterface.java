@@ -28,10 +28,10 @@ import ch.unizh.ini.jaer.chip.retina.DVS128;
 import java.net.Socket;
 
 /**
- * Interface to eDVS128 camera.
- * 
+ * Interface to eDVS128 cameras via FTDI serial port or wifi TCP socket.
+ * <p>
  * This camera uses 4Mbaud 8 bits 1 stop no parity with RTS/CTS.
- * 
+ * <p>
  * The camera returns the following help
  * <pre>
  * DVS128 - LPC2106/01 Interface Board, 1.1: July 27, 2011.
