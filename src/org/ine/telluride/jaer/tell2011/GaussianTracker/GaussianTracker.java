@@ -82,8 +82,8 @@ public class GaussianTracker extends EventFilter2D implements FrameAnnotater {
         }
 
         init_queue();
-        targetX = new int[queueLength];
-        targetY = new int[queueLength];
+//        targetX = new int[queueLength];
+//        targetY = new int[queueLength];
 
     }
 

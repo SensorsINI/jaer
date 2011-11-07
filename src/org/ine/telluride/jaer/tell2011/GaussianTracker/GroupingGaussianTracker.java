@@ -45,61 +45,61 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
     private boolean passAllSpikes = getBoolean("passAllSpikes", true);
 
     /** Time constant for Leaky Integrator Neurons */
-    protected float tau=getPrefs().getFloat("tau",20.0f);
+    protected float tau=getFloat("tau",20.0f);
 
    /** Leak potential for Leaky Integrator Neurons */
-    protected float vleak=getPrefs().getFloat("vleak",0.0f);
+    protected float vleak=getFloat("vleak",0.0f);
 
    /** Reset potential for Leaky Integrator Neurons */
-    protected float vreset=getPrefs().getFloat("vreset",0.0f);
+    protected float vreset=getFloat("vreset",0.0f);
 
     /** Scaling of a synaptic input spike */
-    protected float spikeAmplitude = getPrefs().getFloat("spikeAmplitude",1.0f);
+    protected float spikeAmplitude = getFloat("spikeAmplitude",1.0f);
 
     /** Start weights for recurrent connections */
-    protected float startw = getPrefs().getFloat("startw", 1.0f);
+    protected float startw = getFloat("startw", 1.0f);
 
     /** Size of receptive field */
-    protected float recField = getPrefs().getFloat("recField",30.0f);
+    protected float recField = getFloat("recField",30.0f);
 
     /** Coherence learning rate */
-    protected float coherenceRate = getPrefs().getFloat("coherenceRate", 1e-7f);
+    protected float coherenceRate = getFloat("coherenceRate", 1e-7f);
 
     /** Color update rate */
-    protected float colorRate = getPrefs().getFloat("colorRate",0.01f);
+    protected float colorRate = getFloat("colorRate",0.01f);
 
     /** Synaptic learning rate */
-    protected float alpha = getPrefs().getFloat("alpha",0.001f);
+    protected float alpha = getFloat("alpha",0.001f);
 
     /** Mean activation update rate for neurons */
-    protected float lambda = getPrefs().getFloat("lambda",0.01f);
+    protected float lambda = getFloat("lambda",0.01f);
 
     /** Weight reduction for neurons firing in different receptive fields */
-    protected float reduceW = getPrefs().getFloat("reduceW", 0.1f);
+    protected float reduceW = getFloat("reduceW", 0.1f);
 
     /** Draw connections between cluster centers */
-    protected boolean drawConnections = getPrefs().getBoolean("drawConnections", true);
+    protected boolean drawConnections = getBoolean("drawConnections", true);
 
     /** Use learned weights for spring-forces */
-    protected boolean useLearning = getPrefs().getBoolean("useLearning",false);
+    protected boolean useLearning = getBoolean("useLearning",false);
 
     /** Drawing threshold */
-    protected float drawThresh = getPrefs().getFloat("drawThresh", 0.5f);
+    protected float drawThresh = getFloat("drawThresh", 0.5f);
 
     /** Kernel time constant for update */
-    protected float kernelConst = getPrefs().getFloat("kernelConst", 0.0005f);
+    protected float kernelConst = getFloat("kernelConst", 0.0005f);
 
     /** Kernel offset to have also negative updates */
-    protected float kernelOffset = getPrefs().getFloat("kernelOffset",0.5f);
+    protected float kernelOffset = getFloat("kernelOffset",0.5f);
 
     /** Learning rate for synaptic update */
-    protected float timingAlpha = getPrefs().getFloat("timingAlpha", 1e-5f);
+    protected float timingAlpha = getFloat("timingAlpha", 1e-5f);
 
     /** Minimum connectivity for a neuron to not be randomly moved */
-    protected float minConnectivity = getPrefs().getFloat("minConnectivity", 0.0f);
+    protected float minConnectivity = getFloat("minConnectivity", 0.0f);
 
     /** Pass output spikes from connected clusters */
-    protected boolean spikeConnected = getPrefs().getBoolean("spikeConnected", true);
+    protected boolean spikeConnected = getBoolean("spikeConnected", true);
 
 
     // Weight histogram
@@ -495,7 +495,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
     }
 
     synchronized public void setVleak(float vleak) {
-        getPrefs().putFloat("vleak",vleak);
+        putFloat("vleak",vleak);
 
         this.vleak = vleak;
         if (neurons != null) {
@@ -510,7 +510,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
     }
 
     synchronized public void setVreset(float vreset) {
-        getPrefs().putFloat("vreset",vreset);
+        putFloat("vreset",vreset);
 
         this.vreset = vreset;
         if (neurons != null) {
@@ -525,7 +525,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
     }
 
     synchronized public void setTau(float tau) {
-        getPrefs().putFloat("tau",tau);
+        putFloat("tau",tau);
 
         this.tau = tau;
         if (neurons != null) {
@@ -540,7 +540,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
     }
 
     public void setSpikeAmplitude(float spikeAmplitude) {
-        getPrefs().putFloat("spikeAmplitude",spikeAmplitude);
+        putFloat("spikeAmplitude",spikeAmplitude);
 
         this.spikeAmplitude = spikeAmplitude;
     }
@@ -551,7 +551,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
 
     synchronized public void setPassAllSpikes(boolean passAllSpikes) {
         this.passAllSpikes = passAllSpikes;
-        getPrefs().putBoolean("passAllSpikes", passAllSpikes);
+        putBoolean("passAllSpikes", passAllSpikes);
     }
 
     public float getRecField() {
@@ -560,7 +560,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
 
     synchronized public void setRecField(float recField) {
         this.recField = recField;
-        getPrefs().putFloat("recField", recField);
+        putFloat("recField", recField);
     }
 
     public float getCoherenceRate() {
@@ -569,7 +569,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
 
     synchronized public void setCoherenceRate(float coherenceRate) {
         this.coherenceRate = coherenceRate;
-        getPrefs().putFloat("coherenceRate",coherenceRate);
+        putFloat("coherenceRate",coherenceRate);
     }
 
     public float getColorRate() {
@@ -578,7 +578,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
 
     synchronized public void setColorRate(float colorRate) {
         this.colorRate = colorRate;
-        getPrefs().putFloat("colorRate", colorRate);
+        putFloat("colorRate", colorRate);
     }
 
     public float getLambda() {
@@ -587,7 +587,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
 
     synchronized public void setLambda(float lambda) {
         this.lambda = lambda;
-        getPrefs().putFloat("lambda", lambda);
+        putFloat("lambda", lambda);
     }
 
     public float getAlpha() {
@@ -596,7 +596,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
 
     synchronized public void setAlpha(float alpha) {
         this.alpha = alpha;
-        getPrefs().putFloat("alpha",alpha);
+        putFloat("alpha",alpha);
     }
 
     public float getReduceW() {
@@ -605,7 +605,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
 
     synchronized public void setReduceW(float reduceW) {
         this.reduceW = reduceW;
-        getPrefs().putFloat("reduceW", reduceW);
+        putFloat("reduceW", reduceW);
     }
 
     public boolean isDrawConnections() {
@@ -614,7 +614,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
 
     synchronized public void setDrawConnections(boolean drawConnections) {
         this.drawConnections = drawConnections;
-        getPrefs().putBoolean("drawConnection", drawConnections);
+        putBoolean("drawConnection", drawConnections);
     }
 
     public boolean isUseLearning() {
@@ -623,7 +623,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
 
     synchronized public void setUseLearning(boolean useLearning) {
         this.useLearning = useLearning;
-        getPrefs().putBoolean("useLearning", useLearning);
+        putBoolean("useLearning", useLearning);
     }
 
     public float getDrawThresh() {
@@ -632,7 +632,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
 
     synchronized public void setDrawThresh(float drawThresh) {
         this.drawThresh = drawThresh;
-        getPrefs().putFloat("drawThresh",drawThresh);
+        putFloat("drawThresh",drawThresh);
     }
 
     public float getKernelConst() {
@@ -641,7 +641,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
 
     synchronized public void setKernelConst(float kernelConst) {
         this.kernelConst = kernelConst;
-        getPrefs().putFloat("kernelConst", kernelConst);
+        putFloat("kernelConst", kernelConst);
     }
 
     public float getKernelOffset() {
@@ -650,7 +650,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
 
     synchronized public void setKernelOffset(float kernelOffset) {
         this.kernelOffset = kernelOffset;
-        getPrefs().putFloat("kernelOffset", kernelOffset);
+        putFloat("kernelOffset", kernelOffset);
     }
 
     public float getMinConnectivity() {
@@ -659,7 +659,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
 
     synchronized public void setMinConnectivity(float minConnectivity) {
         this.minConnectivity = minConnectivity;
-        getPrefs().putFloat("minConnectivity", minConnectivity);
+        putFloat("minConnectivity", minConnectivity);
     }
 
 
@@ -687,7 +687,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
 
     synchronized public void setTimingAlpha(float timingAlpha) {
         this.timingAlpha = timingAlpha;
-        getPrefs().putFloat("timingAlpha", timingAlpha);
+        putFloat("timingAlpha", timingAlpha);
     }
 
     public boolean isSpikeConnected() {
@@ -696,7 +696,7 @@ public class GroupingGaussianTracker extends EventFilter2D implements FrameAnnot
 
     synchronized public void setSpikeConnected(boolean spikeConnected) {
         this.spikeConnected = spikeConnected;
-        getPrefs().putBoolean("spikeConnected",spikeConnected);
+        putBoolean("spikeConnected",spikeConnected);
     }
 
 

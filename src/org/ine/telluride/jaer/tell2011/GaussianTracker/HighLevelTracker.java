@@ -24,13 +24,13 @@ import net.sf.jaer.graphics.FrameAnnotater;
 public class HighLevelTracker extends EventFilter2D implements FrameAnnotater{
 
     // Number of high level regions
-    private int numRegions = prefs().getInt("numRegions", 5);
+    private int numRegions = getInt("numRegions", 5);
 
     // Learning rate for online updates
-    private float alpha = prefs().getFloat("alpha", 0.01f);
+    private float alpha = getFloat("alpha", 0.01f);
 
     // Initial radius of regions
-    private float initRadius = prefs().getFloat("initRadius", 15.0f);
+    private float initRadius = getFloat("initRadius", 15.0f);
 
     private float noiseThreshold = getFloat("noiseThreshold",0.0001f);
 
@@ -124,7 +124,7 @@ public class HighLevelTracker extends EventFilter2D implements FrameAnnotater{
         secondLevel.setTau(20.0f);
         secondLevel.setVleak(0.0f);
         secondLevel.setVreset(0.0f);
-        secondLevel.setDrawConnections(true);
+        secondLevel.setDrawConnections(false);
         secondLevel.setDrawThresh(0.5f);
         secondLevel.setPassAllSpikes(false);
         secondLevel.getGaussTracker().setDrawCircles(false);
@@ -736,7 +736,7 @@ public class HighLevelTracker extends EventFilter2D implements FrameAnnotater{
 
     synchronized public void setAlpha(float alpha) {
         this.alpha = alpha;
-        getPrefs().putFloat("alpha", alpha);
+        putFloat("alpha", alpha);
     }
 
     public float getInitRadius() {
@@ -745,7 +745,7 @@ public class HighLevelTracker extends EventFilter2D implements FrameAnnotater{
 
     synchronized public void setInitRadius(float initRadius) {
         this.initRadius = initRadius;
-        getPrefs().putFloat("initRadius", initRadius);
+        putFloat("initRadius", initRadius);
     }
 
     public int getNumRegions() {
@@ -754,7 +754,7 @@ public class HighLevelTracker extends EventFilter2D implements FrameAnnotater{
 
     synchronized public void setNumRegions(int numRegions) {
         this.numRegions = numRegions;
-        getPrefs().putFloat("numRegions",numRegions);
+        putInt("numRegions",numRegions);
         createRegions();
     }
 
@@ -764,7 +764,7 @@ public class HighLevelTracker extends EventFilter2D implements FrameAnnotater{
 
     public void setNoiseThreshold(float noiseThreshold) {
         this.noiseThreshold = noiseThreshold;
-        getPrefs().putFloat("noiseThreshold", noiseThreshold);
+        putFloat("noiseThreshold", noiseThreshold);
     }
 
     public float getGaussRadius() {
@@ -773,7 +773,7 @@ public class HighLevelTracker extends EventFilter2D implements FrameAnnotater{
 
     synchronized public void setGaussRadius(float gaussRadius) {
         this.gaussRadius = gaussRadius;
-        getPrefs().putFloat("gaussRadius", gaussRadius);
+        putFloat("gaussRadius", gaussRadius);
 
         if ((circleX != null) && (circleY != null)) {
             for (int i=0; i<=N; i++) {
@@ -789,7 +789,7 @@ public class HighLevelTracker extends EventFilter2D implements FrameAnnotater{
 
     synchronized public void setRepellConst(float repellConst) {
         this.repellConst = repellConst;
-        getPrefs().putFloat("repellConst", repellConst);
+        putFloat("repellConst", repellConst);
     }
 
     public float getParallelTolerance() {
@@ -798,7 +798,7 @@ public class HighLevelTracker extends EventFilter2D implements FrameAnnotater{
 
     synchronized public void setParallelTolerance(float parallelTolerance) {
         this.parallelTolerance = parallelTolerance;
-        getPrefs().putFloat("parallelTolerance",parallelTolerance);
+        putFloat("parallelTolerance",parallelTolerance);
     }
 
     public float getConnectThresh() {
@@ -807,7 +807,7 @@ public class HighLevelTracker extends EventFilter2D implements FrameAnnotater{
 
     synchronized public void setConnectThresh(float connectThresh) {
         this.connectThresh = connectThresh;
-        getPrefs().putFloat("connectThresh", connectThresh);
+        putFloat("connectThresh", connectThresh);
 
     }
 
@@ -817,7 +817,7 @@ public class HighLevelTracker extends EventFilter2D implements FrameAnnotater{
 
     synchronized public void setBondStrength(float bondStrength) {
         this.bondStrength = bondStrength;
-        getPrefs().putFloat("bondStrength", bondStrength);
+        putFloat("bondStrength", bondStrength);
     }
 
     public int getQueueLength() {
