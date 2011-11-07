@@ -189,7 +189,7 @@
                     <Property name="toolTipText" type="java.lang.String" value="Use off-chip calibration"/>
                   </Properties>
                   <BindingProperties>
-                    <BindingProperty name="selected" source="Form" sourcePath="${chip.useOffChipCalibration}" target="offchipCalibCB" targetPath="selected" updateStrategy="0" immediately="false"/>
+                    <BindingProperty name="selected" source="Form" sourcePath="${chip.frameData.useOffChipCalibration}" target="offchipCalibCB" targetPath="selected" updateStrategy="0" immediately="false"/>
                   </BindingProperties>
                 </Component>
                 <Component class="javax.swing.JButton" name="calibButton">

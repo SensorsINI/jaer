@@ -140,7 +140,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     private boolean displayLogIntensity;
     private boolean displayLogIntensityChangeEvents;
     SeeBetter1011DisplayControlPanel displayControlPanel = null;
-    private boolean useOffChipCalibration = getPrefs().getBoolean("useOffChipCalibration", false);
+        private LogIntensityFrameData frameData = new LogIntensityFrameData();
 
     /** Creates a new instance of cDVSTest10.  */
     public SeeBetter1011() {
@@ -237,25 +237,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         globalIntensity = f;
     }
 
-    /**
-     * @return the useOffChipCalibration
-     */
-    public boolean isUseOffChipCalibration() {
-        return useOffChipCalibration;
-    }
-
-    /**
-     * @param useOffChipCalibration the useOffChipCalibration to set
-     */
-    public void setUseOffChipCalibration(boolean useOffChipCalibration) {
-        this.useOffChipCalibration = useOffChipCalibration;
-        getPrefs().putBoolean("useOffChipCalibration", useOffChipCalibration);
-        getFrameData().setUseOffChipCalibration(useOffChipCalibration);
-        if (useOffChipCalibration) {
-            getFrameData().setCalibData1();
-        }
-    }
-
+ 
 //    int pixcnt=0; // TODO debug
     /** The event extractor. Each pixel has two polarities 0 and 1.
      * There is one extra neuron which signals absolute intensity.
@@ -1828,8 +1810,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     /** Extends EventPacket to add the log intensity frame data */
     public class FrameEventPacket extends EventPacket {
 
-        private LogIntensityFrameData frameData = new LogIntensityFrameData();
-
+ 
         public FrameEventPacket(Class eventClass) {
             super(eventClass);
         }
@@ -2036,14 +2017,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             return cDVSChip.isDisplayLogIntensity();
         }
 
-        public void setUseOffChipCalibration(boolean useOffChipCalibration) {
-            cDVSChip.setUseOffChipCalibration(useOffChipCalibration);
-        }
-
-        public boolean isUseOffChipCalibration() {
-            return cDVSChip.isUseOffChipCalibration();
-        }
-
         private float adc01normalized(int count) {
             if (!agcEnabled) {
                 float v = (float) (logIntensityGain * (count - logIntensityOffset)) / MAX_ADC;
@@ -2183,6 +2156,9 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         private int[] calibData2 = new int[NUMSAMPLES];
         private float[] gain = new float[NUMSAMPLES];
         private int[] offset = new int[NUMSAMPLES];
+        private boolean useOffChipCalibration = getPrefs().getBoolean("useOffChipCalibration", false);
+        private boolean invertADCvalues = getPrefs().getBoolean("invertADCvalues",false);
+        private boolean twoPointCalibration = getPrefs().getBoolean("twoPointCalibration",false);
 
         public LogIntensityFrameData() {
             loadPreference();
@@ -2269,9 +2245,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         public void setTimestamp(int timestamp) {
             this.timestamp = timestamp;
         }
-        private boolean invertADCvalues = false;
-        private boolean useOffChipCalibration = false;
-        private boolean twoPointCalibration = false;
 
         /**
          * @return the useOffChipCalibration
@@ -2285,6 +2258,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
          */
         public void setUseOffChipCalibration(boolean useOffChipCalibration) {
             this.useOffChipCalibration = useOffChipCalibration;
+            getPrefs().putBoolean("useOffChipCalibration", useOffChipCalibration);
         }
 
         public void calculateCalibration() {
@@ -2358,6 +2332,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
          */
         public void setInvertADCvalues(boolean invertADCvalues) {
             this.invertADCvalues = invertADCvalues;
+            getPrefs().putBoolean("invertADCvalues",invertADCvalues);
         }
 
         /**
@@ -2372,6 +2347,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
          */
         public void setTwoPointCalibration(boolean twoPointCalibration) {
             this.twoPointCalibration = twoPointCalibration;
+            getPrefs().putBoolean("twoPointCalibration",twoPointCalibration);
         }
 
         public boolean isNewData() {

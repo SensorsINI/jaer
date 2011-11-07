@@ -110,7 +110,7 @@ public class SeeBetter1011DisplayControlPanel extends javax.swing.JPanel impleme
         offchipCalibCB.setText("Off-chip");
         offchipCalibCB.setToolTipText("Use off-chip calibration");
 
-        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.useOffChipCalibration}"), offchipCalibCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
+        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.frameData.useOffChipCalibration}"), offchipCalibCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
         calibButton.setText("Store dark");
