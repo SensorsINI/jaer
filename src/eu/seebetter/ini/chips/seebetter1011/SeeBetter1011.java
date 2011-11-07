@@ -7,6 +7,7 @@ created 26 Oct 2008 for new cDVSTest chip
 package eu.seebetter.ini.chips.seebetter1011;
 
 import ch.unizh.ini.jaer.chip.retina.*;
+import com.sun.opengl.util.j2d.TextRenderer;
 import eu.seebetter.ini.chips.*;
 import eu.seebetter.ini.chips.config.*;
 import eu.seebetter.ini.chips.seebetter1011.SeeBetter1011.SeeBetter1011DisplayMethod;
@@ -14,7 +15,6 @@ import eu.seebetter.ini.chips.seebetter1011.SeeBetter1011.SeeBetter1011Renderer;
 import java.awt.event.ActionEvent;
 import java.awt.geom.Point2D.Float;
 import java.util.Observer;
-import java.util.prefs.PreferenceChangeEvent;
 import javax.swing.JRadioButton;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.biasgen.*;
@@ -23,6 +23,7 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.hardwareinterface.*;
 import java.awt.BorderLayout;
+import java.awt.Font;
 import java.awt.Insets;
 import java.awt.Rectangle;
 import java.beans.PropertyChangeSupport;
@@ -40,7 +41,6 @@ import java.util.Iterator;
 import java.util.Observable;
 import java.util.StringTokenizer;
 import java.util.concurrent.Semaphore;
-import java.util.prefs.PreferenceChangeListener;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.AbstractAction;
@@ -101,8 +101,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             this.pitch = pitch;
         }
     }
-
-
     public static final PixelArray EntirePixelArray = new PixelArray(1, 0, 0, 128, 64);
     public static final PixelArray LargePixelArray = new PixelArray(2, 0, 0, 32, 32);
     public static final PixelArray BDVSArray = new PixelArray(2, 0, 0, 16, 32);
@@ -140,7 +138,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     private boolean displayLogIntensity;
     private boolean displayLogIntensityChangeEvents;
     SeeBetter1011DisplayControlPanel displayControlPanel = null;
-        private LogIntensityFrameData frameData = new LogIntensityFrameData();
+    private LogIntensityFrameData frameData = new LogIntensityFrameData();
 
     /** Creates a new instance of cDVSTest10.  */
     public SeeBetter1011() {
@@ -173,12 +171,12 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         unregisterControlPanel();
         getAeViewer().removeHelpItem(help1);
     }
+    JComponent help1 = null;
 
-    JComponent help1=null;
     @Override
     public void onRegistration() {
         registerControlPanel();
-        help1=getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/tretina/pcb/cDVSTest/cDVSTest.pdf", "cDVSTest PCB design", "shows pcb design");
+        help1 = getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/tretina/pcb/cDVSTest/cDVSTest.pdf", "cDVSTest PCB design", "shows pcb design");
     }
 
     private void registerControlPanel() {
@@ -237,7 +235,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         globalIntensity = f;
     }
 
- 
 //    int pixcnt=0; // TODO debug
     /** The event extractor. Each pixel has two polarities 0 and 1.
      * There is one extra neuron which signals absolute intensity.
@@ -345,7 +342,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     PolarityADCSampleEvent e = (PolarityADCSampleEvent) outItr.nextOutput();
                     e.adcSample = data;
                     e.timestamp = (timestamps[i]);
-                    e.address=data;
+                    e.address = data;
                 }
 
             }
@@ -517,7 +514,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 addIPot("PrOTABp,p,normal,Photoreceptor OTA used in bDVS pixels"); // TODO what's this?
                 addIPot("PrCasBnc,n,cascode,Photoreceptor cascode (when used in pixel type bDVS sDVS and some of the small DVS pixels)");
                 addIPot("RODiffAmpBn,n,normal,Log intensity readout OTA bias current");
-                addIPot("PrLvlShiftBn,p,cascode,Photoreceptor level shifter bias");
+                addIPot("PrLvlShiftBn,p,cascode,Photoreceptor level shifter bias in pixel_DVS_ls pixel - not used otherwise");
                 addIPot("PixInvBn,n,normal,Pixel request inversion static inverter bias");
                 addIPot("PrBp,p,normal,Photoreceptor bias current");
                 addIPot("PrSFBp,p,normal,Photoreceptor follower bias current (when used in pixel type)");
@@ -1766,29 +1763,35 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
      */
     public class SeeBetter1011DisplayMethod extends DVSWithIntensityDisplayMethod {
 
+        private TextRenderer renderer = null;
+
         public SeeBetter1011DisplayMethod(SeeBetter1011 chip) {
             super(chip.getCanvas());
         }
 
         @Override
         public void display(GLAutoDrawable drawable) {
+            if (renderer == null) {
+                renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 18), true, true);
+                renderer.setColor(1, 1, 1, 0.3f);
+            }
             super.display(drawable);
             GL gl = drawable.getGL();
             gl.glLineWidth(2f);
             gl.glColor3f(1, 1, 1);
             // draw boxes around arrays
 
-            rect(gl, 0, 0, 32, 64); // big DVS + log
-            rect(gl, 32, 0, 32, 64);  // sDVS sensitive DVS
-            rect(gl, 64, 0, 32, 32); // DVS arrays
-            rect(gl, 96, 0, 32, 32);
-            rect(gl, 96, 32, 32, 32);
-            rect(gl, 64, 32, 32, 32);
+            rect(gl, 0, 0, 32, 64, "bDVS"); // big DVS + log
+            rect(gl, 32, 0, 32, 64, "sDVS");  // sDVS sensitive DVS
+            rect(gl, 64, 0, 32, 32, "33sf"); // DVS arrays
+            rect(gl, 96, 0, 32, 32, "old");
+            rect(gl, 96, 32, 32, 32, "18ls");
+            rect(gl, 64, 32, 32, 32, "33cas");
 //            rect(gl, 128, 0, 2, 64); /// whole chip + extra to right
 
         }
 
-        private void rect(GL gl, float x, float y, float w, float h) {
+        private void rect(GL gl, float x, float y, float w, float h, String txt) {
             gl.glPushMatrix();
             gl.glTranslatef(-.5f, -.5f, 0);
             gl.glLineWidth(2f);
@@ -1799,6 +1802,9 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             gl.glVertex2f(x + w, y + h);
             gl.glVertex2f(x, y + h);
             gl.glEnd();
+            renderer.begin3DRendering();
+            renderer.draw3D(txt, x, y, 0, .4f); // x,y,z, scale factor
+            renderer.end3DRendering();
             gl.glPopMatrix();
         }
     }
@@ -1810,7 +1816,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     /** Extends EventPacket to add the log intensity frame data */
     public class FrameEventPacket extends EventPacket {
 
- 
         public FrameEventPacket(Class eventClass) {
             super(eventClass);
         }
@@ -1895,7 +1900,9 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 if (showLogIntensityChange) {
                     for (Object obj : packet) {
                         PolarityADCSampleEvent e = (PolarityADCSampleEvent) obj;
-                        if(e.adcSample>0) continue; // TODO hack to not treat adc samples as AER events
+                        if (e.adcSample > 0) {
+                            continue; // TODO hack to not treat adc samples as AER events
+                        }
                         int type = e.getType();
                         if (e.x == xsel && e.y == ysel) { // TODO xsel ysel are in screen array pixels not the 2x2 pixels of BDVS and SDVS
                             playSpike(type);
@@ -2157,8 +2164,8 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         private float[] gain = new float[NUMSAMPLES];
         private int[] offset = new int[NUMSAMPLES];
         private boolean useOffChipCalibration = getPrefs().getBoolean("useOffChipCalibration", false);
-        private boolean invertADCvalues = getPrefs().getBoolean("invertADCvalues",false);
-        private boolean twoPointCalibration = getPrefs().getBoolean("twoPointCalibration",false);
+        private boolean invertADCvalues = getPrefs().getBoolean("invertADCvalues", false);
+        private boolean twoPointCalibration = getPrefs().getBoolean("twoPointCalibration", false);
 
         public LogIntensityFrameData() {
             loadPreference();
@@ -2332,7 +2339,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
          */
         public void setInvertADCvalues(boolean invertADCvalues) {
             this.invertADCvalues = invertADCvalues;
-            getPrefs().putBoolean("invertADCvalues",invertADCvalues);
+            getPrefs().putBoolean("invertADCvalues", invertADCvalues);
         }
 
         /**
@@ -2347,7 +2354,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
          */
         public void setTwoPointCalibration(boolean twoPointCalibration) {
             this.twoPointCalibration = twoPointCalibration;
-            getPrefs().putBoolean("twoPointCalibration",twoPointCalibration);
+            getPrefs().putBoolean("twoPointCalibration", twoPointCalibration);
         }
 
         public boolean isNewData() {
