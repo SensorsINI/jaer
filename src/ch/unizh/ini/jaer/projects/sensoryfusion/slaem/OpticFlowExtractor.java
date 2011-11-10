@@ -24,7 +24,9 @@ import net.sf.jaer.graphics.FrameAnnotater;
 public class OpticFlowExtractor extends EventFilter2D implements Observer, FrameAnnotater{
     public int sizeX, sizeY, sizeX2, sizeY2;
     public int eventNr;
-    int length = 3;
+	public int lastTs;
+	float maxD;
+    int length = 10;
     public OpticFlowVector[][] vectors;
     public Vector<OpticFlowVector> activeVectors;
     //global vectors
@@ -83,7 +85,8 @@ public class OpticFlowExtractor extends EventFilter2D implements Observer, Frame
         int pX = e.x;
         int pY = e.y;
         vectors[e.x][e.y].lastTs = e.timestamp;
-        for(int dx=-1; dx<=1; dx++){
+        lastTs = e.timestamp;
+		for(int dx=-1; dx<=1; dx++){
             for(int dy=-1; dy<=1; dy++){
                 int x = pX+dx;
                 int y = pY+dy;
@@ -116,12 +119,15 @@ public class OpticFlowExtractor extends EventFilter2D implements Observer, Frame
     }
     
     public void cleanVectors(){
+		int acceptableTs = lastTs-maxDeltaTs;
         for(int x=0; x<sizeX; x++){
             for(int y=0; y<sizeY; y++){
-                vectors[x][y].reset();
+                if(vectors[x][y].lastUpdate<acceptableTs){
+					activeVectors.remove(vectors[x][y]);
+					vectors[x][y].reset();
+				}
             }
         }
-        activeVectors.clear();
     }
     
     public class OpticFlowVector{
@@ -145,7 +151,8 @@ public class OpticFlowExtractor extends EventFilter2D implements Observer, Frame
         
         public void draw(GL gl){
             gl.glBegin(GL.GL_LINES);
-            UnitVector d = getUnitVector();
+            //UnitVector d = getUnitVector();
+			NormalizedVector d = getNormalizedVector();
             gl.glVertex2f(xPos,yPos);
             gl.glVertex2f(xPos + d.x * length,yPos + d.y * length);
             gl.glEnd();
@@ -165,6 +172,24 @@ public class OpticFlowExtractor extends EventFilter2D implements Observer, Frame
                 this.y=y;
             }
         }
+		
+		public NormalizedVector getNormalizedVector(){
+			return new NormalizedVector(xComp, yComp);
+		}
+		
+		public final class NormalizedVector{
+			public float x, y;
+			NormalizedVector(float x, float y){
+				if(x > maxD){
+					maxD = x;
+				}
+				if(y > maxD){
+					maxD = y;
+				}
+				this.x = x/maxD;
+				this.y = y/maxD;
+			}
+		}
         
     }
     
