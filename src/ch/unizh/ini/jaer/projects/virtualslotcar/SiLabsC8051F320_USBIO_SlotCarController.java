@@ -99,11 +99,8 @@ public class SiLabsC8051F320_USBIO_SlotCarController implements UsbIoErrorCodes,
      * device in the list.
      */
     public SiLabsC8051F320_USBIO_SlotCarController() {
-        interfaceNumber=0;
-        if(UsbIoUtilities.isLibraryLoaded()){
-            pnp=new PnPNotify(this);
-            pnp.enablePnPNotification(GUID);
-        }
+        interfaceNumber = 0;
+        UsbIoUtilities.enablePnPNotification(this, GUID);
         Runtime.getRuntime().addShutdownHook(new Thread(){
             @Override
             public void run(){

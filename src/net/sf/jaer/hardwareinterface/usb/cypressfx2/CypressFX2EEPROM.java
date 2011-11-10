@@ -18,6 +18,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import java.util.logging.*;
 import javax.swing.filechooser.FileFilter;
+import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
 
 /**
  * Utility GUI for dealing with CypressFX2 EEPROM stuff. Using this rudimentary tool, you can scan for USBIO devices. If the device is virgin (not had
@@ -50,10 +51,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     public CypressFX2EEPROM() {
         initComponents();
         setButtonsEnabled(false);
-        // note the PNP notification will only check for device after the user unplugs it and replugs it (or just plugs it in). Initial check
-        // is not done because this can lead to problems with cycles
-        pnp = new PnPNotify(this);
-        pnp.enablePnPNotification(CypressFX2.GUID);
+        UsbIoUtilities.enablePnPNotification(this,CypressFX2.GUID);
         filenameTextField.setText(prefs.get("CypressFX2EEPROM.filename", ""));
         filenameTextField.setToolTipText(prefs.get("CypressFX2EEPROM.filename", ""));
         CPLDfilenameField.setText(prefs.get("CypressFX2EEPROM_CPLD.filename", ""));
@@ -1019,7 +1017,7 @@ private void closeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-F
     // for bug in USBIO 2.30, need both cases, one for interface and other for JNI
     synchronized public void onAdd() {
         log.info("device added - not taking any action");
-//        scanForUsbIoDevices();
+        scanForUsbIoDevices();
     }
 
     synchronized public void onRemove() {

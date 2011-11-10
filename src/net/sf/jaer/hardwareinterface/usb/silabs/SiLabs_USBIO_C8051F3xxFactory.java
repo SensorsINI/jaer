@@ -58,11 +58,8 @@ public class SiLabs_USBIO_C8051F3xxFactory implements
      singleton.
      */
     private SiLabs_USBIO_C8051F3xxFactory() {
-        if(UsbIoUtilities.isLibraryLoaded()){
-            pnp=new PnPNotify(this);
-            pnp.enablePnPNotification(GUID);
-            buildUsbIoList();
-        }
+        UsbIoUtilities.enablePnPNotification(this, GUID);
+        buildUsbIoList();
     }
     
     /** Returns the singleton instance that is used to construct instances

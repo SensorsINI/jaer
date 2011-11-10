@@ -16,6 +16,7 @@ import net.sf.jaer.hardwareinterface.*;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
 import java.util.*;
+import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
 
 /**
  * Makes OpticalFlowHardwareInterface's.
@@ -47,8 +48,7 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
 
     /** private constructor for this singleton class.*/
     private OpticalFlowHardwareInterfaceFactory() {
-        pnp=new PnPNotify(this);
-        pnp.enablePnPNotification(GUID);
+        UsbIoUtilities.enablePnPNotification(this,GUID);
         buildUsbIoList();
         emptyCache();
     }

@@ -90,6 +90,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         }
         try {
             c.close();
+            Thread.sleep(300); // wait added because perhaps it helps close serial port TODO check this
         } catch (Exception e) {
             log.warning(e.toString());
         }
@@ -458,8 +459,11 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                             serialPort.setFlowControlMode(serialPort.FLOWCONTROL_RTSCTS_OUT);
 
                             chosenInterface = new eDVS128_HardwareInterface(serialPort.getInputStream(), serialPort.getOutputStream(), serialPort, null);
+                            portIdentifier.addPortOwnershipListener((eDVS128_HardwareInterface)chosenInterface);
                             closemap.put(serialPortName, chosenInterface);
                             success = true;
+                        } else{
+                            log.warning("commPort is not a SerialPort");
                         }
                     }
                 } catch (Exception e) {

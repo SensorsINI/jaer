@@ -59,18 +59,8 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
 
     /** Creates a new instance of HardwareInterfaceFactory, private because this is a singleton factory class */
     private HardwareInterfaceFactory() {
-        if (UsbIoUtilities.isLibraryLoaded()) {
-            pnp = new PnPNotify(this);
-            int status;
-            status = pnp.enablePnPNotification(SiLabs_USBIO_C8051F3xxFactory.GUID);
-            if (status != UsbIoErrorCodes.USBIO_ERR_SUCCESS) {
-                log.warning("Could not enable PnP notification for GUID " + SiLabs_USBIO_C8051F3xxFactory.GUID + ", got error " + UsbIo.errorText(status));
-            }
-            pnp.enablePnPNotification(USBIOHardwareInterfaceFactory.GUID);
-            if (status != UsbIoErrorCodes.USBIO_ERR_SUCCESS) {
-                log.warning("Could not enable PnP notification for GUID " + USBIOHardwareInterfaceFactory.GUID + ", got error " + UsbIo.errorText(status));
-            }
-        }
+        UsbIoUtilities.enablePnPNotification(this, SiLabs_USBIO_C8051F3xxFactory.GUID);
+        UsbIoUtilities.enablePnPNotification(this, USBIOHardwareInterfaceFactory.GUID);
     }
 
     /** Use this instance to access the methods, e.g. <code>HardwareInterfaceFactory.instance().getNumInterfacesAvailable()</code>.

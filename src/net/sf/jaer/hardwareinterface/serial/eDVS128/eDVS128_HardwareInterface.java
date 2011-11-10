@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Observer;
 
 import ch.unizh.ini.jaer.chip.retina.DVS128;
+import gnu.io.CommPortOwnershipListener;
 import java.net.Socket;
 
 /**
@@ -76,7 +77,7 @@ P          - enter reprogramming mode
  * 
  * @author lou, tobi
  */
-public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorInterface, BiasgenHardwareInterface, Observer {
+public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorInterface, BiasgenHardwareInterface, Observer, CommPortOwnershipListener {
 
     private static Preferences prefs = Preferences.userNodeForPackage(eDVS128_HardwareInterface.class);
     public PropertyChangeSupport support = new PropertyChangeSupport(this);
@@ -109,16 +110,15 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
      * are used to properly close the interface.
      * @param inputStream
      * @param outputStream
-     * @param serialPort
-     * @param socket 
+     * @param serialPort - either supply this
+     * @param socket - or supply this (not both)
      */
     public eDVS128_HardwareInterface(InputStream inputStream, OutputStream outputStream, SerialPort serialPort, Socket socket) {
         this.inputStream = inputStream;
         this.outputStream = outputStream;
         this.serialPort=serialPort;
         this.socket=socket;
-        if(socket!=null && serialPort!=null) log.warning(serialPort+" and "+socket+" are both supplied which is an error");
-        
+        if(socket!=null && serialPort!=null) throw new Error(serialPort+" and "+socket+" are both supplied which is an error");
     }
 
     /** Writes a string (adding \n if needed) and flushes the socket's output stream */
@@ -450,6 +450,22 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
         }
     }
 
+    @Override
+    public void ownershipChange(int type) {
+        switch (type) {
+            case CommPortOwnershipListener.PORT_OWNED:
+                log.info("We got the port");
+                break;
+            case CommPortOwnershipListener.PORT_UNOWNED:
+                log.info("We've just lost our port ownership");
+                break;
+            case CommPortOwnershipListener.PORT_OWNERSHIP_REQUESTED:
+                log.info("Someone is asking our port's ownership; we will close() ourselves");
+                close();
+                break;
+        }
+    }
+
     public class AEReader extends Thread implements Runnable {
 
         private byte[] buffer = null;
@@ -671,7 +687,7 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
             reset();
         }
 
-        /** Swaps read and write buffers in preparation for reading last captured bufffer of events.
+        /** Swaps read and write buffers in preparation for reading last captured buffer of events.
          * 
          */
         synchronized final void swap() {

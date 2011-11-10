@@ -92,10 +92,7 @@ public class DrummerServer extends javax.swing.JFrame implements RemoteControlle
         initComponents();
         highPosSlider.setMaximum(MAX_SLIDER);
         lowPosSlider.setMaximum(MAX_SLIDER);
-        if ( UsbIoUtilities.isLibraryLoaded() ){
-            pnp = new PnPNotify(this);
-            pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
-        }
+        UsbIoUtilities.enablePnPNotification(this,SiLabsC8051F320_USBIO_ServoController.GUID);
         try{
             remoteControl = new RemoteControl();
             remoteControl.addCommandListener(this,"beat intMs0 intMs1 ....","defines a beat pattern for a single drumstick");

@@ -95,12 +95,10 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
 
     public SiLabsC8051F320_USBIO_DVS128(int interfaceNumber) {
         this.interfaceNumber = interfaceNumber;
-        if (UsbIoUtilities.isLibraryLoaded()) {
-            pnp = new PnPNotify(this);
-            pnp.enablePnPNotification(GUID);
-        }
+        UsbIoUtilities.enablePnPNotification(this, GUID);
         Runtime.getRuntime().addShutdownHook(new Thread() {
 
+            @Override
             public void run() {
                 if (isOpen()) {
                     close();

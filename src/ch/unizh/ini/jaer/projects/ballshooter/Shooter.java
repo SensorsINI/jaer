@@ -16,6 +16,7 @@ import java.util.*;
 import java.util.logging.*;
 import javax.swing.*;
 import javax.swing.event.*;
+import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
 
 /**
  * The telluride basketball shooter robot class (can be run on its own as a GUI)
@@ -43,9 +44,7 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
         try
         {
             System.loadLibrary("USBIOJAVA");
-            pnp=new PnPNotify(this);
-            pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
-            pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
+            UsbIoUtilities.enablePnPNotification(this,SiLabsC8051F320_USBIO_ServoController.GUID);
         }
         catch(java.lang.UnsatisfiedLinkError e)
         {
@@ -78,9 +77,7 @@ public class Shooter extends javax.swing.JFrame implements PnPNotifyInterface
         try
         {
             System.loadLibrary("USBIOJAVA");
-            pnp=new PnPNotify(this);
-            pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
-            pnp.enablePnPNotification(SiLabsC8051F320_USBIO_ServoController.GUID);
+            UsbIoUtilities.enablePnPNotification(this,SiLabsC8051F320_USBIO_ServoController.GUID);
         }
         catch(java.lang.UnsatisfiedLinkError e)
         {

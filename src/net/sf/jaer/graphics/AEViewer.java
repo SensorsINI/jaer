@@ -3458,11 +3458,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 interfaceMenuMenuSelected(evt);
             }
         });
-        interfaceMenu.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                interfaceMenuActionPerformed(evt);
-            }
-        });
 
         refreshInterfaceMenuItem.setText("Refresh");
         refreshInterfaceMenuItem.addComponentListener(new java.awt.event.ComponentAdapter() {
@@ -4184,14 +4179,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void newViewerMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_newViewerMenuItemActionPerformed
         new AEViewer(jaerViewer).setVisible(true);
     }//GEN-LAST:event_newViewerMenuItemActionPerformed
-
-    private void interfaceMenuMenuSelected(javax.swing.event.MenuEvent evt) {//GEN-FIRST:event_interfaceMenuMenuSelected
-        buildInterfaceMenu();
-    }//GEN-LAST:event_interfaceMenuMenuSelected
-
-    private void interfaceMenuActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_interfaceMenuActionPerformed
-        buildInterfaceMenu();
-    }//GEN-LAST:event_interfaceMenuActionPerformed
 
     private void saveImageSequenceMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveImageSequenceMenuItemActionPerformed
         if (canvasFileWriter.writingMovieEnabled) {
@@ -5231,6 +5218,10 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
             }
         }
     }//GEN-LAST:event_setDefaultFirmwareMenuItemMouseEntered
+
+    private void interfaceMenuMenuSelected(javax.swing.event.MenuEvent evt) {//GEN-FIRST:event_interfaceMenuMenuSelected
+
+        buildInterfaceMenu();     }//GEN-LAST:event_interfaceMenuMenuSelected
 
     /** Returns desired frame rate of FrameRater
      * 

@@ -19,6 +19,7 @@ import java.awt.event.*;
 import java.io.*;
 import java.net.URL;
 import java.util.logging.*;
+import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
 
 /**
  * Launches JAEViewer when an AE device is plugged in or on menu actions.
@@ -121,8 +122,7 @@ public class JAERTrayLauncher implements PnPNotifyInterface {
             System.err.println("TrayIcon could not be added.");
         }
         
-        pnp=new PnPNotify(this);
-        pnp.enablePnPNotification(CypressFX2TmpdiffRetinaHardwareInterface.GUID);
+        UsbIoUtilities.enablePnPNotification(this,CypressFX2TmpdiffRetinaHardwareInterface.GUID);
         
     }
     

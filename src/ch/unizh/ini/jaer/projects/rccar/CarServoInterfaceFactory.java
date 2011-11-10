@@ -50,11 +50,8 @@ public class CarServoInterfaceFactory implements
      singleton.
      */
     private CarServoInterfaceFactory() {
-        if(UsbIoUtilities.isLibraryLoaded()){
-            pnp=new PnPNotify(this);
-            pnp.enablePnPNotification(GUID);
-            buildUsbIoList();
-        }
+       UsbIoUtilities.enablePnPNotification(this,GUID);
+       buildUsbIoList();
     }
     
     /** Returns the singleton instance that is used to construct instances

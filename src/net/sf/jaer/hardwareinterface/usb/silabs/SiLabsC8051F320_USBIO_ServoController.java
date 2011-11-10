@@ -102,12 +102,10 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      * device in the list.
      */
     public SiLabsC8051F320_USBIO_ServoController() {
-        interfaceNumber=0;
-        if(UsbIoUtilities.isLibraryLoaded()){
-            pnp=new PnPNotify(this);
-            pnp.enablePnPNotification(GUID);
-        }
-        Runtime.getRuntime().addShutdownHook(new Thread(){
+        interfaceNumber = 0;
+        UsbIoUtilities.enablePnPNotification(this, GUID);
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+
             @Override
             public void run(){
                 if(isOpen()){

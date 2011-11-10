@@ -55,13 +55,9 @@ public class ServoInterfaceFactory implements
      singleton.
      */
     private ServoInterfaceFactory() {
-        if(UsbIoUtilities.isLibraryLoaded()){
-            pnp=new PnPNotify(this);
-            pnp.enablePnPNotification(GUID);
-            buildUsbIoList();
-        }
+        UsbIoUtilities.enablePnPNotification(this, GUID);
     }
-    
+
     /** Returns the singleton instance that is used to construct instances
      @return singleton instance
      */
