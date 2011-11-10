@@ -12,10 +12,12 @@ package net.sf.jaer.hardwareinterface.serial.eDVS128;
 
 import gnu.io.CommPort;
 import gnu.io.CommPortIdentifier;
+import gnu.io.PortInUseException;
 import gnu.io.SerialPort;
 import java.awt.Cursor;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Enumeration;
@@ -49,6 +51,16 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
     public static final String HOST = "192.168.91.62";
     /** The default TCP port address of the wifi interface */
     public static final int TCP_PORT = 56000;
+    
+   public static final int TCP_RECEIVE_BUFFER_SIZE_BYTES = 8192;
+    public static final int TCP_SEND_BUFFER_SIZE_BYTES = 1024;
+    public static final boolean DEFAULT_USE_BUFFERED_STREAM = false;
+    /** timeout in ms for connection attempts */
+    public static final int CONNECTION_TIMEOUT_MS = 3000;
+    /** timeout in ms for read/write attempts */
+    public static final int SO_TIMEOUT = 100; // 1 means we should timeout as soon as there are no more events in the datainputstream
+
+    
     /** A return status code - returned if Cancel button has been pressed */
     public static final int RET_CANCEL = 0;
     /** A return status code - returned if OK button has been pressed */
@@ -84,18 +96,19 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
     private HashMap<String, HardwareInterface> closemap = new HashMap();
 
     private void closePrevious(String s) {
-        HardwareInterface c = closemap.get(s);
-        if (c == null) {
+        HardwareInterface hardwareInterface = closemap.get(s);
+        if (hardwareInterface == null) {
             return;
         }
         try {
-            c.close();
+            hardwareInterface.close();
+            log.info("closed old interface " + s + " = " + hardwareInterface);
             Thread.sleep(300); // wait added because perhaps it helps close serial port TODO check this
         } catch (Exception e) {
             log.warning(e.toString());
         }
         closemap.remove(s);
-        log.info("closed old interface " + s + " = " + c);
+        hardwareInterface=null;
     }
 
     /** Use this singleton instance to make new interfaces */
@@ -364,14 +377,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         dispose();
 
     }
-    public static final int TCP_RECEIVE_BUFFER_SIZE_BYTES = 8192;
-    public static final int TCP_SEND_BUFFER_SIZE_BYTES = 1024;
-    public static final boolean DEFAULT_USE_BUFFERED_STREAM = false;
-    /** timeout in ms for connection attempts */
-    public static final int CONNECTION_TIMEOUT_MS = 1000;
-    /** timeout in ms for read/write attempts */
-    public static final int SO_TIMEOUT = 30; // 1 means we should timeout as soon as there are no more events in the datainputstream
-
+ 
     private void doChooseSocket(int retStatus) {
         boolean success = false;
         switch (retStatus) {
@@ -447,9 +453,8 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                     CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(serialPortName);
 
                     if (portIdentifier.isCurrentlyOwned()) {
-                        log.warning("Port " + serialPortName + " is currently in use by " + portIdentifier.getCurrentOwner());
-                    }
-                    {
+                        throw new IOException("Port " + serialPortName + " is currently in use by " + portIdentifier.getCurrentOwner());
+                    }else{
                         CommPort commPort = portIdentifier.open(this.getClass().getName(), 2000);
 
                         if (commPort instanceof SerialPort) {
@@ -459,8 +464,9 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                             serialPort.setFlowControlMode(serialPort.FLOWCONTROL_RTSCTS_OUT);
 
                             chosenInterface = new eDVS128_HardwareInterface(serialPort.getInputStream(), serialPort.getOutputStream(), serialPort, null);
-                            portIdentifier.addPortOwnershipListener((eDVS128_HardwareInterface)chosenInterface);
+//                            portIdentifier.addPortOwnershipListener((eDVS128_HardwareInterface)chosenInterface);  // doesn't work because port ownership change nofication is not implemented in our native library
                             closemap.put(serialPortName, chosenInterface);
+                            serialPort=null;
                             success = true;
                         } else{
                             log.warning("commPort is not a SerialPort");

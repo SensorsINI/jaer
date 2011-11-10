@@ -1343,14 +1343,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             JDialog fac = inst.getInterfaceChooser(chip);
                             fac.setVisible(true);
                             if (inst.getChosenHardwareInterface() != null) {
-                                HardwareInterface hw = inst.getChosenHardwareInterface();
-                                if (chip.getHardwareInterface() == null || !hw.toString().equals(chip.getHardwareInterface().toString())) {
-                                    // close interface on chip if there is one and it's open
-                                    if (chip.getHardwareInterface() != null && chip.getHardwareInterface().isOpen()) {
-                                        log.info("before opening new interface, closing " + chip.getHardwareInterface().toString());
-                                        chip.getHardwareInterface().close();
-                                    }
+                                // close interface on chip if there is one and it's open
+                                if (chip.getHardwareInterface() != null ) {
+                                    log.info("before opening new interface, closing " + chip.getHardwareInterface().toString());
+                                    chip.getHardwareInterface().close();
+                                    aemon=null; // TODO aemon is a bad hack
                                 }
+                                HardwareInterface hw = inst.getChosenHardwareInterface();
                                 log.info("setting new interface " + hw);
                                 chip.setHardwareInterface(hw);
                                 if (e.getSource() instanceof JMenuItem) {

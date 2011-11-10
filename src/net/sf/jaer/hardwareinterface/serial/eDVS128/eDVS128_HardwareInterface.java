@@ -6,6 +6,7 @@ package net.sf.jaer.hardwareinterface.serial.eDVS128;
 
 import java.beans.*;
 import java.util.Observable;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.*;
 
@@ -77,7 +78,7 @@ P          - enter reprogramming mode
  * 
  * @author lou, tobi
  */
-public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorInterface, BiasgenHardwareInterface, Observer, CommPortOwnershipListener {
+public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorInterface, BiasgenHardwareInterface, Observer/*, CommPortOwnershipListener */ {
 
     private static Preferences prefs = Preferences.userNodeForPackage(eDVS128_HardwareInterface.class);
     public PropertyChangeSupport support = new PropertyChangeSupport(this);
@@ -88,7 +89,7 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
     private AEPacketRaw lastEventsAcquired = new AEPacketRaw();
     public static final int AE_BUFFER_SIZE = 100000; // should handle 5Meps at 30FPS
     private int aeBufferSize = prefs.getInt("eDVS128.aeBufferSize", AE_BUFFER_SIZE);
-    private static boolean isOpen = false;
+    private static boolean isOpen = false; // confuses things
     private static boolean eventAcquisitionEnabled = false;
     private static boolean overrunOccuredFlag = false;
     private byte cHighBitMask = (byte) 0x80;
@@ -116,13 +117,19 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
     public eDVS128_HardwareInterface(InputStream inputStream, OutputStream outputStream, SerialPort serialPort, Socket socket) {
         this.inputStream = inputStream;
         this.outputStream = outputStream;
-        this.serialPort=serialPort;
-        this.socket=socket;
-        if(socket!=null && serialPort!=null) throw new Error(serialPort+" and "+socket+" are both supplied which is an error");
+        this.serialPort = serialPort;
+        this.socket = socket;
+        if (socket != null && serialPort != null) {
+            throw new Error(serialPort + " and " + socket + " are both supplied which is an error");
+        }
     }
 
-    /** Writes a string (adding \n if needed) and flushes the socket's output stream */
-    private void write(String s) throws IOException {
+    /** Writes a string (adding \n if needed) and flushes the socket's output stream 
+     * 
+     * @param s the string to write
+     * @throws IOException 
+     */
+    synchronized private void write(String s) throws IOException {
         if (s == null) {
             return;
         }
@@ -142,6 +149,7 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
         }
 
         if (!isOpen) {
+            log.info("opening");
             try {
                 write("1"); // turn on LED on eDVS board (not wifi board)
                 write("!E1"); // data format, as in serial port interrface
@@ -164,22 +172,26 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
     @Override
     public void close() {
         if (!isOpen) {
+            log.info("already closed");
             return;
         }
         try {
-            isOpen = false;
-            setEventAcquisitionEnabled(false);
             write("0"); // turn off LED on eDVS board (not wifi board)
+            setEventAcquisitionEnabled(false);
+            getAeReader().join();
             inputStream.close();
             outputStream.close();
-            
-            if(serialPort!=null){
+
+            if (serialPort != null) {
+                serialPort.removeEventListener();
                 serialPort.close();
-                serialPort=null;
-            }else if(socket!=null){
+                serialPort = null;
+//                serialPort=null;
+            } else if (socket != null) {
                 socket.close();
-                socket=null;
+                socket = null;
             }
+            isOpen = false;
         } catch (Exception ex) {
             log.warning(ex.toString());
         }
@@ -240,10 +252,14 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
     @Override
     public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
         try {
-            if(enable) write("E+"); else write("E-");
+            if (enable) {
+                write("E+");
+            } else {
+                write("E-");
+            }
         } catch (IOException ex) {
             log.warning(ex.toString());
-            throw new HardwareInterfaceException("couldn't write command to start or stop event sending",ex);
+            throw new HardwareInterfaceException("couldn't write command to start or stop event sending", ex);
         }
         if (enable) {
             startAEReader();
@@ -362,6 +378,16 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
     @Override
     public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         // comes here when bias values should be sent, but we don't know which one should be sent from this call.
+        try {
+            if (biasgen instanceof DVS128.Biasgen) {
+                DVS128.Biasgen b2 = (DVS128.Biasgen) biasgen;
+                for (Pot p : b2.getPotArray().getPots()) {
+                    sendPot((IPot) p);
+                }
+            }
+        } catch (IOException ex) {
+            log.warning(ex.toString());
+        }
     }
 
     @Override
@@ -403,15 +429,7 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
         if (getAeReader() != null) {
             // close device
             getAeReader().finish();
-            setAeReader(null);
-            releaseInterface();
         }
-    }
-
-    synchronized void claimInterface() {
-    }
-
-    synchronized public void releaseInterface() {
     }
 
     /** Called when notifyObservers is called in Observable we are watching, e.g. biasgen */
@@ -419,53 +437,53 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
     synchronized public void update(Observable o, Object arg) {
 
         if (o instanceof IPot) {
-            if (outputStream == null) {
-                log.warning("no connection; null serial device");
-                return;
-            }
-            IPot p = (IPot) o;
-            int v = p.getBitValue();
-            int n = NUM_BIASES - 1 - p.getShiftRegisterNumber(); // eDVS firmware numbers in reverse order from DVS firmware, we want shift register 0 to become 11 on the eDVS
-            String s = String.format("!B%d=%d\n", n, v); // LPC210 has 16-byte serial buffer, hopefully fits
-            if (DEBUG) {
-                log.info("sending command " + s + " for pot " + p + " at bias position " + n);
-            }
-            // note that eDVS must have rev1 firmware for BF command to work.
-            byte[] b = s.getBytes();
-            if (b.length > 16) {
-                log.warning("sending " + b.length + " bytes, might not fit in eDVS LPC2016 16-byte buffer");
-            }
             try {
-                outputStream.write(b, 0, b.length);
-            } catch (IOException ex) {
-                log.warning(ex.toString());
-            }
-            s = "!BF\n";
-            b = s.getBytes();
-            try {
-                outputStream.write(b, 0, b.length);
+                if (outputStream == null) {
+                    log.warning("no connection; null serial device");
+                    return;
+                }
+                IPot p = (IPot) o;
+
+                sendPot(p);
             } catch (IOException ex) {
                 log.warning(ex.toString());
             }
         }
     }
 
-    @Override
-    public void ownershipChange(int type) {
-        switch (type) {
-            case CommPortOwnershipListener.PORT_OWNED:
-                log.info("We got the port");
-                break;
-            case CommPortOwnershipListener.PORT_UNOWNED:
-                log.info("We've just lost our port ownership");
-                break;
-            case CommPortOwnershipListener.PORT_OWNERSHIP_REQUESTED:
-                log.info("Someone is asking our port's ownership; we will close() ourselves");
-                close();
-                break;
+    private void sendPot(IPot p) throws IOException {
+        int v = p.getBitValue();
+        int n = NUM_BIASES - 1 - p.getShiftRegisterNumber(); // eDVS firmware numbers in reverse order from DVS firmware, we want shift register 0 to become 11 on the eDVS
+        String s = String.format("!B%d=%d", n, v); // LPC210 has 16-byte serial buffer, hopefully fits
+        if (DEBUG) {
+            log.info("sending command " + s + " for pot " + p + " at bias position " + n);
         }
+        // note that eDVS must have rev1 firmware for BF command to work.
+        byte[] b = s.getBytes();
+        if (s.length() > 16) {
+            log.warning("sending " + s.length() + " bytes, might not fit in eDVS LPC2016 16-byte buffer");
+        }
+        write(s);
+        s = "!BF";
+        write(s);
     }
 
+    // doesn't work because native ownership change notification is not implemented in 2011 in our RXTX
+//    @Override
+//    public void ownershipChange(int type) {
+//        switch (type) {
+//            case CommPortOwnershipListener.PORT_OWNED:
+//                log.info("We got the port");
+//                break;
+//            case CommPortOwnershipListener.PORT_UNOWNED:
+//                log.info("We've just lost our port ownership");
+//                break;
+//            case CommPortOwnershipListener.PORT_OWNERSHIP_REQUESTED:
+//                log.info("Someone is asking our port's ownership; we will close() ourselves");
+//                close();
+//                break;
+//        }
+//    }
     public class AEReader extends Thread implements Runnable {
 
         private byte[] buffer = null;
@@ -485,23 +503,25 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
             int length = 0;
             int len = 0;
 
+//            int count=0;
             while (running) {
                 try {
-                    len = inputStream.available();
+                    len = monitor.inputStream.available();
                     if (len == 0) {
                         try {
                             Thread.sleep(10);
+//                            System.out.print(".");
+//                            if(count++%80==0) System.out.print("\n"+count+"\t");
                         } catch (InterruptedException ex) {
                             log.warning("sleep interrupted while waiting events");
                         }
                         continue;
                     }
-                    length = inputStream.read(buffer, 0, len - (len % 4));
+                    length = monitor.inputStream.read(buffer, 0, len - (len % 4));
 //                           System.out.println(length);
                 } catch (IOException e) {
                     log.warning("Aborting AEReader because caught exception " + e);
                     e.printStackTrace();
-                    close();
                     return;
                 }
 
@@ -549,7 +569,7 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
                                 nDump = 1;
                                 break;
                             default:
-                                log.info("Achtung, error");
+                                log.warning("offset value should not be " + offset);
                         }
 
                         if (nDump != 0) {
@@ -558,7 +578,7 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
                             try {
                                 while (length1 != nDump) {
                                     //len = inputStream.read(buffer, length1, nDump - length1);
-                                    len1 = inputStream.skip(nDump - length1);
+                                    len1 = monitor.inputStream.skip(nDump - length1);
                                     length1 = length1 + len1;
                                 }
                             } catch (IOException e) {
@@ -579,6 +599,7 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
                     timestampsReset = false;
                 }
             }
+            log.info("reader thread ending");
         }
 
         /**
@@ -586,6 +607,7 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
          */
         synchronized public void finish() {
             running = false;
+            interrupt();
         }
 
         synchronized public void resetTimestamps() {
