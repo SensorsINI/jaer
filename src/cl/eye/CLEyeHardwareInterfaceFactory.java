@@ -4,6 +4,7 @@
  */
 package cl.eye;
 
+import de.thesycon.usbio.PnPNotifyInterface;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
@@ -21,18 +22,25 @@ import java.awt.Graphics;
  * 
  * @author tobi
  */
-public class CLEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryInterface{
+public class CLEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryInterface, PnPNotifyInterface{
+    /** The GUID associated with jAERs Code Labs driver installation for the PS Eye camera.*/
+    public static final String GUID = "{4b4803fb-ff80-41bd-ae22-1d40defb0d01}";
     final static Logger log=Logger.getLogger("CLEye");
     private static CLEyeHardwareInterfaceFactory instance = new CLEyeHardwareInterfaceFactory(); // singleton
     private HardwareInterface[] interfaces;
     
-   private CLEyeHardwareInterfaceFactory(){
-       if(CLCamera.isLibraryLoaded()) {
-           this.interfaces = new HardwareInterface[CLCamera.cameraCount()];
-           for ( int i = 0; i < this.interfaces.length; i++ ) {
-               this.interfaces[i] = new CLRetinaHardwareInterface(i);
-           }
-       }
+   private CLEyeHardwareInterfaceFactory(){ // TODO doesn't support PnP, only finds cameras plugged in on construction at JVM startup.
+       buildList();
+       UsbIoUtilities.enablePnPNotification(this, GUID); // TODO doesn't do anything since we are not using UsbIo driver for the PS Eye. Doesn't hurt however so will leave in in case we can get equivalent functionality.
+    }
+
+    private void buildList() {
+        if(CLCamera.isLibraryLoaded()) { // TODO only does this once on construction, never again
+            this.interfaces = new HardwareInterface[CLCamera.cameraCount()];
+            for ( int i = 0; i < this.interfaces.length; i++ ) {
+                this.interfaces[i] = new CLRetinaHardwareInterface(i);
+            }
+        }
     }
     
     /** @return singleton instance used to construct CLCameras. */
@@ -73,7 +81,7 @@ public class CLEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryIn
 
     @Override
     public String getGUID() {
-        return "{4b4803fb-ff80-41bd-ae22-1d40defb0d01}"; // taken from working installation
+        return GUID; // taken from working installation
     }
     
     
@@ -148,6 +156,18 @@ public class CLEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryIn
         } catch (HardwareInterfaceException ex) {
             Logger.getLogger(CLEyeHardwareInterfaceFactory.class.getName()).log(Level.SEVERE, null, ex);
         }
+    }
+
+    @Override
+    public void onAdd() {
+        log.info("camera added, rebuilding list of cameras");
+        buildList();
+    }
+
+    @Override
+    public void onRemove() {
+        log.info("camera removed, rebuilding list of cameras");
+        buildList();
     }
     
 }
