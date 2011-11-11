@@ -139,6 +139,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     private boolean displayLogIntensityChangeEvents;
     SeeBetter1011DisplayControlPanel displayControlPanel = null;
     private LogIntensityFrameData frameData = new LogIntensityFrameData();
+    private SeeBetterConfig config;
 
     /** Creates a new instance of cDVSTest10.  */
     public SeeBetter1011() {
@@ -152,7 +153,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
         setEventExtractor(new SeeBetter1011Extractor(this));
 
-        setBiasgen(new SeeBetter1011.SeeBetterConfig(this));
+        setBiasgen(config=new SeeBetter1011.SeeBetterConfig(this));
 
         displayLogIntensity = getPrefs().getBoolean("displayLogIntensity", true);
         displayLogIntensityChangeEvents = getPrefs().getBoolean("displayLogIntensityChangeEvents", true);
@@ -709,7 +710,15 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     byte[] bytes = {b.isSet() ? (byte) 1 : (byte) 0};
                     sendConfig(CMD_SETBIT, b.getPortbit(), bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]=value (1,0)
                 } else if (observable instanceof CPLDConfigValue) {
-                    sendCPLDConfig();
+                    if (observable == scanX || observable == scanY) {
+                        boolean oldadc = runAdc.isSet();
+                        runAdc.set(false);
+                        sendCPLDConfig();
+                        runAdc.set(true);
+                        runAdc.set(oldadc);
+                    } else {
+                        sendCPLDConfig();
+                    }
                 } else if (observable instanceof ADC) {
                     sendCPLDConfig(); // CPLD register updates on device side save and restore the RUN_ADC flag
 //                    update(runAdc, null);
@@ -1275,12 +1284,12 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             boolean value = false;
             OnchipConfigBit pullupX = new OnchipConfigBit(SeeBetter1011.this, "useStaticPullupX", 0, "turn on static pullup for X addresses (columns)", false),
                     pullupY = new OnchipConfigBit(SeeBetter1011.this, "useStaticPullupY", 1, "turn on static pullup for Y addresses (rows)", true),
-                    delayY0 = new OnchipConfigBit(SeeBetter1011.this, "delayY0", 2, "RC delay columns, 1x", false),
-                    delayY1 = new OnchipConfigBit(SeeBetter1011.this, "delayY1", 3, "RC delay columns, 2x", false),
-                    delayY2 = new OnchipConfigBit(SeeBetter1011.this, "delayY2", 4, "RC delay columns 4x", false),
-                    delayX0 = new OnchipConfigBit(SeeBetter1011.this, "delayX0", 5, "RC delay rows, 1x", false),
-                    delayX1 = new OnchipConfigBit(SeeBetter1011.this, "delayX1", 6, "RC delay rows, 2x", false),
-                    delayX2 = new OnchipConfigBit(SeeBetter1011.this, "delayX2", 7, "RC delay rows, 4x", false),
+                    delayY0 = new OnchipConfigBit(SeeBetter1011.this, "delayY0", 2, "RC delay rows, 1x", false),
+                    delayY1 = new OnchipConfigBit(SeeBetter1011.this, "delayY1", 3, "RC delay rows, 2x", false),
+                    delayY2 = new OnchipConfigBit(SeeBetter1011.this, "delayY2", 4, "RC delay rows 4x", false),
+                    delayX0 = new OnchipConfigBit(SeeBetter1011.this, "delayX0", 5, "RC delay columns, 1x", false),
+                    delayX1 = new OnchipConfigBit(SeeBetter1011.this, "delayX1", 6, "RC delay columns, 2x", false),
+                    delayX2 = new OnchipConfigBit(SeeBetter1011.this, "delayX2", 7, "RC delay columns, 4x", false),
                     sDVSReset = new OnchipConfigBit(SeeBetter1011.this, "sDVSReset", 8, "holds sensitive DVS (sDVS) array in reset", false),
                     bDVSReset = new OnchipConfigBit(SeeBetter1011.this, "bDVSReset", 9, "holds big DVS + log intensity (bDVS) array in reset", false),
                     ros = new OnchipConfigBit(SeeBetter1011.this, "ROS", 10, "reset on scan enabled", false),
@@ -1773,7 +1782,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         public void display(GLAutoDrawable drawable) {
             if (renderer == null) {
                 renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 18), true, true);
-                renderer.setColor(1, 1, 1, 0.3f);
+                renderer.setColor(1, .2f, .2f, 0.4f);
             }
             super.display(drawable);
             GL gl = drawable.getGL();
@@ -1788,7 +1797,10 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             rect(gl, 96, 32, 32, 32, "18ls");
             rect(gl, 64, 32, 32, 32, "33cas");
 //            rect(gl, 128, 0, 2, 64); /// whole chip + extra to right
-
+            // show scanned pixel if we are not continuously scanning
+            if (!config.scanContinuouslyEnabled.isSet()) {
+                rect(gl, 2*config.scanX.get(), 2*config.scanY.get(), 2, 2, null); // 2* because pixel pitch is 2 pixels for bDVS array
+            }
         }
 
         private void rect(GL gl, float x, float y, float w, float h, String txt) {
@@ -1802,9 +1814,12 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             gl.glVertex2f(x + w, y + h);
             gl.glVertex2f(x, y + h);
             gl.glEnd();
-            renderer.begin3DRendering();
-            renderer.draw3D(txt, x, y, 0, .4f); // x,y,z, scale factor
-            renderer.end3DRendering();
+            // label arrays
+            if (txt != null) {
+                renderer.begin3DRendering();
+                renderer.draw3D(txt, x, y, 0, .4f); // x,y,z, scale factor
+                renderer.end3DRendering();
+            }
             gl.glPopMatrix();
         }
     }
@@ -1904,8 +1919,16 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                             continue; // TODO hack to not treat adc samples as AER events
                         }
                         int type = e.getType();
-                        if (e.x == xsel && e.y == ysel) { // TODO xsel ysel are in screen array pixels not the 2x2 pixels of BDVS and SDVS
-                            playSpike(type);
+                        if (xsel >= 0 && ysel >= 0) {
+                            int xs = xsel, ys = ysel;
+                            if (xs < 32) {
+                                xs >>= 1;
+                                ys >>= 1;
+                            }
+
+                            if (e.x == xs && e.y == ys) { // TODO xsel ysel are in screen array pixels not the 2x2 pixels of BDVS and SDVS
+                                playSpike(type);
+                            }
                         }
                         if (isLargePixelArray(e)) { // address is in large pixel array
                             int x = e.x, y = e.y;
@@ -1959,7 +1982,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                                     v = 1;
                                 }
                                 float[] vv = {v, v, v};
-                                changeCDVSPixel(x, y, pm, vv, 1);
+                                changeCDVSPixel(x, y, pm, vv, .5f);
                             }
 //                            System.out.println("");
                         }
@@ -2033,6 +2056,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 float offset = filter2d.x;
                 float range = (filter2d.y - filter2d.x);
                 float v = ((count - offset)) / range;
+//                System.out.println("offset="+offset+" range="+range+" count="+count+" v="+v);
                 return v;
             }
         }
