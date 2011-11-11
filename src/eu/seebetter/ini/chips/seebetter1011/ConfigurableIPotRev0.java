@@ -341,8 +341,10 @@ public class ConfigurableIPotRev0 extends IPot {
     @Override
     public void loadPreferences(){
         String s=prefsKey()+SEP;
-        bitValue=prefs.getInt(s+KEY_BITVALUE,0);
-        bufferBitValue=prefs.getInt(s+KEY_BUFFER_BITVALUE,ConfigurableIPotRev0.maxBuffeBitValue);
+        int v=prefs.getInt(s+KEY_BITVALUE,0);
+        setBitValue(v);
+        int bv=prefs.getInt(s+KEY_BUFFER_BITVALUE,ConfigurableIPotRev0.maxBuffeBitValue);
+        setBufferBitValue(bv);
         setEnabled(prefs.getBoolean(s+KEY_ENABLED, true));
         setLowCurrentModeEnabled(prefs.getBoolean(s+KEY_LOWCURRENT_ENABLED, false));
         setSex(Pot.Sex.valueOf(prefs.get(s+KEY_SEX, Sex.N.toString())));

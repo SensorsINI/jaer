@@ -270,8 +270,11 @@ public class ShiftedSourceBias extends IPot {
     @Override
     public final void loadPreferences() {
         String s = prefsKey() + SEP;
-        bitValue = prefs.getInt(s + KEY_BITVALUE, 0);
-        bufferBitValue = prefs.getInt(s + KEY_BUFFER_BITVALUE, maxBufferBitValue);
+        
+        int bv = prefs.getInt(s + KEY_BITVALUE, 0);
+        setBitValue(bv);
+        int bbv = prefs.getInt(s + KEY_BUFFER_BITVALUE, maxBufferBitValue);
+        setBufferBitValue(bbv);
         setOperatingMode(OperatingMode.valueOf(prefs.get(s + KEY_OPERATINGMODE, OperatingMode.ShiftedSource.toString())));
         setVoltageLevel(VoltageLevel.valueOf(prefs.get(s + KEY_VOLTAGELEVEL, VoltageLevel.SplitGate.toString())));
         setModified(false);

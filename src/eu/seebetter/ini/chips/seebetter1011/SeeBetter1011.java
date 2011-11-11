@@ -33,6 +33,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -153,7 +154,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
         setEventExtractor(new SeeBetter1011Extractor(this));
 
-        setBiasgen(config=new SeeBetter1011.SeeBetterConfig(this));
+        setBiasgen(config = new SeeBetter1011.SeeBetterConfig(this));
 
         displayLogIntensity = getPrefs().getBoolean("displayLogIntensity", true);
         displayLogIntensityChangeEvents = getPrefs().getBoolean("displayLogIntensityChangeEvents", true);
@@ -393,8 +394,6 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         /** VR for handling all configuration changes in firmware */
         public static final byte VR_WRITE_CONFIG = (byte) 0xB8;
         ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
-        private ConfigurableIPot32 pcas, diffOn, diffOff, diff, red, blue, amp;
-        private ConfigurableIPot32 refr, pr, foll;
         AllMuxes allMuxes = null; // the output muxes
         private ShiftedSourceBias ssn, ssp, ssnMid, sspMid;
         private ShiftedSourceBias[] ssBiases = new ShiftedSourceBias[4];
@@ -660,7 +659,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 log.info("batch edit occurring, not sending configuration yet");
                 return;
             }
-            log.info("sending full configuration");
+//            log.info("sending full configuration");
             if (!sendOnchipConfig()) {
                 return;
             }
@@ -695,7 +694,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             if (isBatchEditOccurring()) {
                 return;
             }
-            log.info("update with " + observable);
+//            log.info("update with " + observable);
             try {
                 if (observable instanceof IPot || observable instanceof AllMuxes || observable instanceof OnchipConfigBit || observable instanceof VPot || observable instanceof ShiftedSourceBias) { // must send all of the onchip shift register values to replace shift register contents
                     sendOnchipConfig();
@@ -747,18 +746,18 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
          */
         void sendConfig(ConfigCmd cmd, int index, byte[] bytes) throws HardwareInterfaceException {
 
-            StringBuilder sb = new StringBuilder(String.format("sending config cmd=0x%X (%s) index=0x%X with %d bytes", cmd.code, cmd.name, index, bytes.length));
+//            StringBuilder sb = new StringBuilder(String.format("sending config cmd=0x%X (%s) index=0x%X with %d bytes", cmd.code, cmd.name, index, bytes.length));
             if (bytes == null || bytes.length == 0) {
             } else {
                 int max = 50;
                 if (bytes.length < max) {
                     max = bytes.length;
                 }
-                sb.append(" = ");
-                for (int i = 0; i < max; i++) {
-                    sb.append(String.format("%X, ", bytes[i]));
-                }
-                log.info(sb.toString());
+//                sb.append(" = ");
+//                for (int i = 0; i < max; i++) {
+//                    sb.append(String.format("%X, ", bytes[i]));
+//                }
+//                log.info(sb.toString());
             } // end debug
 
             if (bytes == null) {
@@ -993,11 +992,11 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             bb.flip(); // flips to read them out in order of putting them in, i.e., get configBitBytes first
             bb.get(allBytes); // we write these in vendor request
 
-            StringBuilder sb = new StringBuilder(allBytes.length + " bytes sent to FX2 to be loaded big endian into on-chip shift register for each byte in order \n");
-            for (byte b : allBytes) {
-                sb.append(String.format("%02x ", b));
-            }
-            log.info(sb.toString());
+//            StringBuilder sb = new StringBuilder(allBytes.length + " bytes sent to FX2 to be loaded big endian into on-chip shift register for each byte in order \n");
+//            for (byte b : allBytes) {
+//                sb.append(String.format("%02x ", b));
+//            }
+//            log.info(sb.toString());
             return allBytes; // configBytes may be padded with extra bits to make up a byte, board needs to know this to chop off these bits
         }
 
@@ -1337,7 +1336,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 for (int i = bits.length - 1; i >= 0; i--) {
                     s.append(bits[i].isSet() ? "1" : "0");
                 }
-                log.info(s.length() + " extra config bits with unused registers at left end =" + s);
+//                log.info(s.length() + " extra config bits with unused registers at left end =" + s);
                 return s.toString();
             }
 
@@ -1799,7 +1798,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 //            rect(gl, 128, 0, 2, 64); /// whole chip + extra to right
             // show scanned pixel if we are not continuously scanning
             if (!config.scanContinuouslyEnabled.isSet()) {
-                rect(gl, 2*config.scanX.get(), 2*config.scanY.get(), 2, 2, null); // 2* because pixel pitch is 2 pixels for bDVS array
+                rect(gl, 2 * config.scanX.get(), 2 * config.scanY.get(), 2, 2, null); // 2* because pixel pitch is 2 pixels for bDVS array
             }
         }
 
@@ -1864,7 +1863,8 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     public class SeeBetter1011Renderer extends RetinaRenderer {
 
         private SeeBetter1011 cDVSChip = null;
-        private final float[] redder = {1, 0, 0}, bluer = {0, 0, 1}, brighter = {1, 1, 1}, darker = {-1, -1, -1};
+//        private final float[] redder = {1, 0, 0}, bluer = {0, 0, 1}, greener={0,1,0}, brighter = {1, 1, 1}, darker = {-1, -1, -1};
+        private final float[] redder = {1, 0, 0}, bluer = {0, 0, 1}, greener = {0, 1, 0}, brighter = {1, 0, 0}, darker = {0, 1, 0};
         private int sizeX = 1;
         private LowpassFilter2d agcFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
         private boolean agcEnabled;
@@ -1886,6 +1886,39 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
         private boolean isLargePixelArray(PolarityADCSampleEvent e) {
             return e.x < LargePixelArray.width;
+        }
+
+        /** Overridden to make gray buffer special for bDVS array */
+        @Override
+        protected void resetPixmapGrayLevel(float value) {
+            checkPixmapAllocation();
+            final int n = 3 * chip.getNumPixels();
+            boolean madebuffer = false;
+            if (grayBuffer == null || grayBuffer.capacity() != n) {
+                grayBuffer = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
+                madebuffer = true;
+            }
+            if (madebuffer || value != grayValue) {
+                grayBuffer.rewind();
+                for (int y = 0; y < sizeY; y++) {
+                    for (int x = 0; x < sizeX; x++) {
+                        if (x < BDVSArray.width*2) {
+                            grayBuffer.put(0);
+                            grayBuffer.put(0);
+                            grayBuffer.put(0);
+                        } else {
+                            grayBuffer.put(value);
+                            grayBuffer.put(value);
+                            grayBuffer.put(value);
+                        }
+                    }
+                }
+                grayBuffer.rewind();
+            }
+            System.arraycopy(grayBuffer.array(), 0, pixmap.array(), 0, n);
+            pixmap.rewind();
+            pixmap.limit(n);
+//        pixmapGrayValue = grayValue;
         }
 
         @Override
@@ -1919,14 +1952,14 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                             continue; // TODO hack to not treat adc samples as AER events
                         }
                         int type = e.getType();
-                        if (xsel >= 0 && ysel >= 0) {
+                        if (xsel >= 0 && ysel >= 0) { // find correct mouse pixel interpretation to make sounds for large pixels
                             int xs = xsel, ys = ysel;
                             if (xs < 32) {
                                 xs >>= 1;
                                 ys >>= 1;
                             }
 
-                            if (e.x == xs && e.y == ys) { // TODO xsel ysel are in screen array pixels not the 2x2 pixels of BDVS and SDVS
+                            if (e.x == xs && e.y == ys) {
                                 playSpike(type);
                             }
                         }
@@ -1982,7 +2015,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                                     v = 1;
                                 }
                                 float[] vv = {v, v, v};
-                                changeCDVSPixel(x, y, pm, vv, .5f);
+                                changeCDVSPixel(x, y, pm, vv, 1);
                             }
 //                            System.out.println("");
                         }
@@ -2188,7 +2221,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         private float[] gain = new float[NUMSAMPLES];
         private int[] offset = new int[NUMSAMPLES];
         private boolean useOffChipCalibration = getPrefs().getBoolean("useOffChipCalibration", false);
-        private boolean invertADCvalues = getPrefs().getBoolean("invertADCvalues", false);
+        private boolean invertADCvalues = getPrefs().getBoolean("invertADCvalues", true); // true by default for log output which goes down with increasing intensity
         private boolean twoPointCalibration = getPrefs().getBoolean("twoPointCalibration", false);
 
         public LogIntensityFrameData() {

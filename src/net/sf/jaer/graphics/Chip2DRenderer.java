@@ -92,9 +92,15 @@ public class Chip2DRenderer implements Observer {
 //    }
 //    private float pixmapGrayValue = 0;
 
-    private FloatBuffer grayBuffer;
+    /** Buffer from whence the pixmap gray values come, ordered by RGB/row/col. The first 3 elements are the RBB float values of the LL pixel (x=0,y=0). The next 3 are
+     * the RGB of the second pixel from the left in the bottom row (x=1,y=0). Pixel (0,1) is at position starting at 3*(chip.getSizeX()). */
+    protected FloatBuffer grayBuffer;
 
-    private void resetPixmapGrayLevel(float value) {
+    /** Resets the pixmap values to a gray level 
+     * 
+     * @param value 0-1 gray value.
+     */
+    protected void resetPixmapGrayLevel(float value) {
         checkPixmapAllocation();
         final int n = 3 * chip.getNumPixels();
         boolean madebuffer = false;
