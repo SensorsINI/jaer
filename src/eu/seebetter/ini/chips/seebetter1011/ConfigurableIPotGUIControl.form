@@ -10,8 +10,6 @@
     </Property>
   </Properties>
   <Events>
-    <EventHandler event="mouseEntered" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="formMouseEntered"/>
-    <EventHandler event="mouseExited" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="formMouseExited"/>
     <EventHandler event="ancestorAdded" listener="javax.swing.event.AncestorListener" parameters="javax.swing.event.AncestorEvent" handler="formAncestorAdded"/>
   </Events>
   <AuxValues>
@@ -199,7 +197,6 @@
         <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
           <Dimension value="[75, 23]"/>
         </Property>
-        <Property name="requestFocusEnabled" type="boolean" value="false"/>
       </Properties>
       <Events>
         <EventHandler event="mousePressed" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="biasSliderMousePressed"/>
