@@ -147,6 +147,7 @@ public class PSEyeCLModelRetina extends AEChip {
         setSizeX(320);
         setSizeY(240);
         setNumCellTypes(4);
+        setName("PSEyeCLModelRetina");
         lastBrightnessValues = new int[sizeX * sizeY];
         lastHueValues = new int[sizeX * sizeY];
         setEventExtractor(new EventExtractor(this));
