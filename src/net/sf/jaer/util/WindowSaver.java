@@ -90,7 +90,8 @@ public class WindowSaver implements AWTEventListener {
 //                            "Window settings");
 //        }
         boolean resize=false; // set true if window is too big for screen
-        String name=frame.getName();
+        String name=frame.getTitle().replaceAll(" ", "");
+//        String name=frame.getName();
         if(!isPreference(name+".x")) {
             // if the window has not been sized, then don't set its size
 //            log.info("no preference saved for "+name+".x");

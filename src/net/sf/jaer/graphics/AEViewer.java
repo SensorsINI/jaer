@@ -505,7 +505,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setName("AEViewer");
 
         initComponents();
-        setTitleAccordingToState();
         playerControls = new AePlayerAdvancedControlsPanel(this);
         playerControlPanel.add(playerControls, BorderLayout.NORTH);
         this.jaerViewer = jaerViewer;
@@ -667,6 +666,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } catch (SocketException ex) {
             log.warning(ex.toString());
         }
+        setTitleAccordingToState();
 
     }
 
