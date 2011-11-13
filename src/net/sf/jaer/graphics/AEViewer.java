@@ -11,6 +11,7 @@ import edu.stanford.ejalbert.BrowserLauncher;
 import java.net.SocketException;
 import java.net.URI;
 import java.net.URL;
+import javax.swing.Timer;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
@@ -2274,6 +2275,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    private javax.swing.Timer statusTimer=null;
+    
     /** Sets the viewer's status message at the bottom of the window.
      *
      * @param s the string
@@ -2285,14 +2288,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             public void run() {
                 statusTextField.setText(s);
                 statusTextField.setToolTipText(s);
+                if(statusTimer!=null) statusTimer.stop();
+                statusTimer = new javax.swing.Timer(1000, new ActionListener() {
+
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        setStatusColor(Color.gray);
+                    }
+                });
+                statusTimer.setRepeats(false);
+                statusTimer.setCoalesce(true);
+                statusTimer.start();
             }
         });
-//      try{
-//            statusTextField.setText(s);
-//            statusTextField.setToolTipText(s);
-//        } catch ( Throwable e ){
-//            log.warning(e.toString()); // the interrupt on viewloop.run() can cause error to be thrown on setting text labels when the label is trying to obtain a lock
-//        }
     }
     private float lastTimeExpansionFactor = 1;
 
@@ -2308,8 +2316,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      *
      * @param c
      */
-    public void setStatusColor(Color c) {
-        statusTextField.setForeground(c);
+    public void setStatusColor(final Color c) {
+        SwingUtilities.invokeLater(new Runnable(){
+            @Override
+            public void run(){
+                statusTextField.setForeground(c);
+            }
+        });
     }
 
     public void exceptionOccurred(Exception x, Object source) {
