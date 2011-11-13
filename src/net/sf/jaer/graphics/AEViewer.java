@@ -1230,10 +1230,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * Various specialized interfaces customize the code below.
      */
     private synchronized void buildInterfaceMenu() {
-//        if ( !isWindows() ){ // TODO not really anymore with linux interface to retinas
-//            return;
-//        }
-//        System.out.println("AEViewer.buildInterfaceMenu");
         ButtonGroup bg = new ButtonGroup();
         interfaceMenu.removeAll();
 
@@ -1248,52 +1244,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 continue;
             } // in case it disappeared
 
-            if (CLRetinaHardwareInterface.class.isInstance(hw)) { // TODO better to make some kind of plugin mechanism to handle these exceptions.
-                int numModes = ((CLRetinaHardwareInterface) hw).numModes;
-                CLCamera.CameraMode currentMode = ((CLRetinaHardwareInterface) hw).getCameraMode();
-                JMenu hwSubMenu = new JMenu(hw.toString());
-                hwSubMenu.getPopupMenu().setLightWeightPopupEnabled(false);// make visible on GLCanvas
-                ButtonGroup sbg = new ButtonGroup();
-                for (int j = 0; j < numModes; j++) {
-                    CLCamera.CameraMode cameraMode = CLCamera.CameraMode.values()[j];
-                    interfaceButton = new JRadioButtonMenuItem(cameraMode.toString());
-                    interfaceButton.putClientProperty("HardwareInterfaceNumber", new Integer(i));
-                    interfaceButton.putClientProperty("CameraModeNumber", new Integer(j));
-                    hwSubMenu.add(interfaceButton);
-                    sbg.add(interfaceButton);
-                    interfaceButton.addActionListener(new ActionListener() {
 
-                        public void actionPerformed(ActionEvent evt) {
-                            JRadioButtonMenuItem comp = (JRadioButtonMenuItem) evt.getSource();
-                            int interfaceNumber = (Integer) comp.getClientProperty("HardwareInterfaceNumber");
-                            int modeNumber = (Integer) comp.getClientProperty("CameraModeNumber");
-                            if (chip.getHardwareInterface() != null && chip.getHardwareInterface().isOpen()) {
-                                log.info("closing " + chip.getHardwareInterface().toString());
-                                chip.getHardwareInterface().close();
-                            }
-                            HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(interfaceNumber);
-                            log.info("selected interface " + evt.getActionCommand() + " with HardwareInterface number" + interfaceNumber + " which is " + hw);
-                            try {
-                                ((CLRetinaHardwareInterface) hw).setCameraMode(modeNumber);
-                            } catch (HardwareInterfaceException camException) {
-                                log.warning("couldn't set CameraMode, caught " + camException);
-                            }
-                            chip.setHardwareInterface(hw);
-                            try {
-                                hw.open();
-                            } catch (Exception e) {
-                                log.warning(e.getMessage());
-                            }
-                        }
-                    });
-                    if (i == 0 && currentMode == cameraMode) {
-                        interfaceButton.setSelected(true);
-                    }
-                }
-                interfaceMenu.add(hwSubMenu);
-                choseOneButton = true;
-            } else if ((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip))
+            if ((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip))
                     || (UDPInterface.class.isInstance(hw) && NetworkChip.class.isInstance(chip))) {
+                // if the chip is a normal AEChip with regular (not network) hardware interface, and the interface is not a network interface,
+                // then add a menu item to select this interface.  
                 interfaceButton = new JRadioButtonMenuItem(hw.toString());
                 interfaceButton.putClientProperty("HardwareInterfaceNumber", new Integer(i));
                 interfaceMenu.add(interfaceButton);
@@ -1321,7 +1276,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
         boolean addedSep = false;
-        // make items for HardwareInterfaceFactoryChooserDialog factories
+        // now make items for HardwareInterfaceFactoryChooserDialog factories
         // these HardwareInterfaceFactories allow choice of multiple alternative interfaces, e.g. for a serial port or network interface
         for (Class c : HardwareInterfaceFactory.factories) {
             if (HardwareInterfaceFactoryChooserDialog.class.isAssignableFrom(c)) {
@@ -1333,7 +1288,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 try {
                     Method m = (c.getMethod("instance")); // get singleton instance of factory
                     final HardwareInterfaceFactoryChooserDialog inst = (HardwareInterfaceFactoryChooserDialog) m.invoke(c);
-                    JRadioButtonMenuItem mi = new JRadioButtonMenuItem(inst.getGUID());
+                    JRadioButtonMenuItem mi = new JRadioButtonMenuItem(inst.getName());
                     mi.setToolTipText("Shows a chooser dialog for making this type of HardwareInterface");
                     interfaceMenu.add(mi);
                     bg.add(mi);

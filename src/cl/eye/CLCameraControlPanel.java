@@ -16,9 +16,7 @@ import java.awt.BorderLayout;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Logger;
-import javax.swing.ComboBoxModel;
 import javax.swing.DefaultComboBoxModel;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
  * Controls camera and event generation parameters.
@@ -44,13 +42,8 @@ public class CLCameraControlPanel extends javax.swing.JPanel implements Observer
     }
 
     private boolean checkHardware() {
-        try {
-            hardware = (CLRetinaHardwareInterface) chip.getHardwareInterface();
-            return true;
-        } catch (Exception e) {
-            log.warning(e.toString());
-            return false;
-        }
+        hardware = (CLRetinaHardwareInterface) chip.getHardwareInterface();
+        return hardware!=null;
     }
 
     /** This method is called from within the constructor to

@@ -36,7 +36,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 public class CLCamera extends Observable implements HardwareInterface {
 
     protected final static Logger log = Logger.getLogger("CLEye");
-    protected static Preferences prefs=Preferences.userNodeForPackage(CLCamera.class);
+//    protected static Preferences prefs=Preferences.userNodeForPackage(CLCamera.class);
     /** Set true if library was loaded successfully. */
     private static boolean libraryLoaded = false;
     /** Name of the dll for the Windows native part of the JNI for CLCamera. */
@@ -60,7 +60,7 @@ public class CLCamera extends Observable implements HardwareInterface {
             ;
     
     public  final static int numModes = CameraMode.values().length;
-    private CameraMode cameraMode = null; 
+    private CameraMode cameraMode = CameraMode.QVGA_COLOR_60; 
     // static methods
 
     static {
@@ -200,11 +200,13 @@ public class CLCamera extends Observable implements HardwareInterface {
      * 
      */
     public CLCamera() {
-        try{
-            cameraMode=CameraMode.valueOf(prefs.get("CLCamera.cameraMode",CameraMode.QVGA_MONO_60.toString()));
-        } catch(Exception e){
-            cameraMode=CameraMode.QVGA_MONO_60; // default;
-        }
+        // don't use or set prefs here, leave that to use of this interface. Bad idea to split preferences between classes.
+        
+//        try{
+//            cameraMode=CameraMode.valueOf(prefs.get("CLCamera.cameraMode",CameraMode.QVGA_MONO_60.toString()));
+//        } catch(Exception e){
+//            cameraMode=CameraMode.QVGA_MONO_60; // default;
+//        }
     }
 
     /** Constructs instance to open the cameraIndex camera
@@ -377,9 +379,14 @@ public class CLCamera extends Observable implements HardwareInterface {
     synchronized public void setCameraMode(CameraMode cameraMode) throws HardwareInterfaceException {
         if(this.cameraMode!=cameraMode) setChanged();
         this.cameraMode = cameraMode;
-        prefs.put("CLCamera.cameraMode",cameraMode.toString());
+//        prefs.put("CLCamera.cameraMode",cameraMode.toString());   we don't use or set any preferences here
         if(isOpen()){
             close();
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException ex) {
+                log.info("Interrupted");
+            }
             open();
         }
         notifyObservers(EVENT_CAMERA_MODE);

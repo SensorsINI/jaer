@@ -28,4 +28,16 @@ public interface HardwareInterfaceFactoryChooserDialog extends HardwareInterface
      */
     public HardwareInterface getChosenHardwareInterface();
     
+    /** The name of this hardware interface chooser, e.g. "Jack Green's fantastic thingy" 
+     * 
+     * @return the short name
+     */
+    public String getName();
+    
+    /** A description, used for tool-tips. 
+     * 
+     * @return the description
+     */
+    public String getDescription();
+    
 }

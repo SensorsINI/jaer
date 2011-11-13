@@ -78,6 +78,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         super();
         setModal(true);
         initComponents();
+        setName("eDVS hardware interface chooser");
 
         // Close the dialog when Esc is pressed
         String cancelName = "cancel";
@@ -532,5 +533,10 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         }
         portCB.setSelectedIndex(lastSerialPortIndex);
 
+    }
+
+    @Override
+    public String getDescription() {
+        return "eDVS camera chooser, either for serial port or wifi interfaces";
     }
 }

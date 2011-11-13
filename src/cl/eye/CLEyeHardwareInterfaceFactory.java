@@ -7,6 +7,8 @@ package cl.eye;
 import de.thesycon.usbio.PnPNotifyInterface;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JDialog;
+import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
@@ -17,6 +19,7 @@ import javax.swing.JPanel;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.awt.Graphics;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryChooserDialog;
 /**
  * Constructs CLEye hardware interfaces.
  * 
@@ -169,5 +172,7 @@ public class CLEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryIn
         log.info("camera removed, rebuilding list of cameras");
         buildList();
     }
+
+
     
 }

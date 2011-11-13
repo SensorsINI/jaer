@@ -4,27 +4,23 @@
  */
 package cl.eye;
 
-import ch.unizh.ini.jaer.chip.dollbrain.ColorEvent;
 import ch.unizh.ini.jaer.chip.dvs320.cDVSEvent;
 import ch.unizh.ini.jaer.projects.thresholdlearner.TemporalContrastEvent;
 import cl.eye.CLCamera.CameraMode;
-import cl.eye.CLCamera.InvalidParameterException;
 import java.io.File;
 import java.io.IOException;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Random;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.ArrayList;
+import java.util.prefs.PreferenceChangeEvent;
+import java.util.prefs.PreferenceChangeListener;
 import javax.swing.JPanel;
 import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
-import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.chip.TypedEventExtractor;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -41,7 +37,7 @@ import org.jdesktop.beansbinding.Validator;
  * @author Tobi Delbruck and Mat Lubelski
  */
 @Description("AE retina using the PS-Eye Playstation camera")
-public class PSEyeCLModelRetina extends AEChip {
+public class PSEyeCLModelRetina extends AEChip implements PreferenceChangeListener {
 
     /**
      * @return the retinaModel
@@ -57,10 +53,14 @@ public class PSEyeCLModelRetina extends AEChip {
         if (this.retinaModel != retinaModel) {
             setChanged();
             log.info("setting retinaModel=" + retinaModel);
+            this.retinaModel = retinaModel;
         }
-        this.retinaModel = retinaModel;
-        getPrefs().put("PSEyeModelRetina.retinaModel", retinaModel.toString());
         notifyObservers(EVENT_RETINA_MODEL);
+    }
+
+    @Override
+    public void preferenceChange(PreferenceChangeEvent evt) {
+        getBiasgen().loadPreferences();
     }
 
     /** Possible models of retina computation.
@@ -92,27 +92,22 @@ public class PSEyeCLModelRetina extends AEChip {
     // in the frame interval to avoid synchrounous bursts of background events
     private int[] lastEventTimes = null;
     // camera values
-    private int gain = getPrefs().getInt("PSEyeModelRetina.gain", 30);
-    private int exposure = getPrefs().getInt("PSEyeModelRetina.exposure", 511);
-    private boolean autoGainEnabled = getPrefs().getBoolean("PSEyeModelRetina.autoGainEnabled", true);
-    private boolean autoExposureEnabled = getPrefs().getBoolean("PSEyeModelRetina.autoExposureEnabled", true);
+    private int gain;
+    private int exposure;
+    private boolean autoGainEnabled;
+    private boolean autoExposureEnabled;
     // statistical parameters
-    private float sigmaThreshold = getPrefs().getFloat("PSEyeModelRetina.sigmaThreshold", 0);
-    private float backgroundEventRatePerPixelHz = getPrefs().getFloat("PSEyeModelRetina.backgroundEventRatePerPixelHz", 0);
+    private float sigmaThreshold;
+    private float backgroundEventRatePerPixelHz;
     private Random bgRandom = new Random();
-    /* added into CLCamera.cameraMode
-    private int frameRate = getPrefs().getInt("PSEyeModelRetina.frameRate", 120);
-     */
-    //
-    //
     // for brightness change
-    private int brightnessChangeThreshold = getPrefs().getInt("PSEyeModelRetina.brightnessChangeThreshold", 10);
+    private int brightnessChangeThreshold ;
     // whether we use log intensity change or linear change
-    private boolean logIntensityMode = getPrefs().getBoolean("PSEyeModelRetina.logIntensityMode", false);
+    private boolean logIntensityMode ;
     // for log mode, where the lin-log transisition sample value is
-    private int linLogTransitionValue = getPrefs().getInt("PSEyeModelRetina.linLogTransitionValue", 15);
+    private int linLogTransitionValue;
     // for hue change
-    private int hueChangeThreshold = getPrefs().getInt("PSEyeModelRetina.hueChangeThreshold", 20);
+    private int hueChangeThreshold ;
     /** Observable events; This event is fired when the parameter is changed. */
     public static final String EVENT_HUE_CHANGE_THRESHOLD = "hueChangeThreshold",
             EVENT_BRIGHTNESS_CHANGE_THRESHOLD = "brightnessChangeThreshold",
@@ -130,7 +125,7 @@ public class PSEyeCLModelRetina extends AEChip {
     //      
     //        
     private boolean initialized = false; // used to avoid writing events for all pixels of first frame of data
-    private boolean linearInterpolateTimeStamp = getPrefs().getBoolean("PSEyeModelRetina.linearInterpolateTimeStamp", false);
+    private boolean linearInterpolateTimeStamp;
     private int lastFrameTimestamp;
 //    private PolarityEvent tempEvent = new PolarityEvent();
     private BasicEvent tempEvent = new BasicEvent();
@@ -153,12 +148,7 @@ public class PSEyeCLModelRetina extends AEChip {
         setEventExtractor(new EventExtractor(this));
         setEventClass(cDVSEvent.class);
         setBiasgen(new Controls(this));
-        String defModel = RetinaModel.RatioBtoRG.toString();
-        try {
-            retinaModel = RetinaModel.valueOf(getPrefs().get("PSEyeModelRetina.retinaModel", defModel));
-        } catch (Exception e) {
-            retinaModel = RetinaModel.RatioBtoRG;
-        }
+
         setRenderer((renderer = new PSEyeModelRetinaRenderer(this)));
         fillLogMapping();
         fillSigmaThresholds();
@@ -168,6 +158,8 @@ public class PSEyeCLModelRetina extends AEChip {
             lastEventTimes[i] = r.nextInt(16000); // initialize to random time in 16ms
         }
         r = null;
+        getPrefs().addPreferenceChangeListener(this);
+        loadPreferences();
         cameraObserver = new Observer() {
 
             @Override
@@ -197,25 +189,60 @@ public class PSEyeCLModelRetina extends AEChip {
         };
     }
 
+    public void loadPreferences() {
+        setGain(getPrefs().getInt("PSEyeModelRetina.gain", 30));
+        setExposure(getPrefs().getInt("PSEyeModelRetina.exposure", 511));
+        setAutoGainEnabled(getPrefs().getBoolean("PSEyeModelRetina.autoGainEnabled", true));
+        setAutoExposureEnabled(getPrefs().getBoolean("PSEyeModelRetina.autoExposureEnabled", true));
+        setSigmaThreshold(getPrefs().getFloat("PSEyeModelRetina.sigmaThreshold", 0));
+        setBackgroundEventRatePerPixelHz(getPrefs().getFloat("PSEyeModelRetina.backgroundEventRatePerPixelHz", 0));
+        setBrightnessChangeThreshold(getPrefs().getInt("PSEyeModelRetina.brightnessChangeThreshold", 10));
+        setLogIntensityMode(getPrefs().getBoolean("PSEyeModelRetina.logIntensityMode", false));
+        setLinLogTransitionValue(getPrefs().getInt("PSEyeModelRetina.linLogTransitionValue", 15));
+        setHueChangeThreshold(getPrefs().getInt("PSEyeModelRetina.hueChangeThreshold", 20));
+        setLinearInterpolateTimeStamp(getPrefs().getBoolean("PSEyeModelRetina.linearInterpolateTimeStamp", false));
+        String defModel = RetinaModel.RatioBtoRG.toString();
+        try {
+            setRetinaModel(RetinaModel.valueOf(getPrefs().get("PSEyeModelRetina.retinaModel", defModel)));
+        } catch (Exception e) {
+            setRetinaModel(RetinaModel.RatioBtoRG);
+        }
+    }
+
+    public void storePreferences() {
+        getPrefs().putInt("PSEyeModelRetina.gain", gain);
+        getPrefs().putInt("PSEyeModelRetina.exposure", exposure);
+        getPrefs().putBoolean("PSEyeModelRetina.autoGainEnabled", autoGainEnabled);
+        getPrefs().putBoolean("PSEyeModelRetina.autoExposureEnabled", autoExposureEnabled);
+        getPrefs().putFloat("PSEyeModelRetina.sigmaThreshold", sigmaThreshold);
+        getPrefs().putFloat("PSEyeModelRetina.backgroundEventRatePerPixelHz", backgroundEventRatePerPixelHz);
+        getPrefs().putInt("PSEyeModelRetina.brightnessChangeThreshold", brightnessChangeThreshold);
+        getPrefs().putInt("PSEyeModelRetina.hueChangeThreshold", hueChangeThreshold);
+        getPrefs().putBoolean("PSEyeModelRetina.logIntensityMode", logIntensityMode);
+        getPrefs().putInt("PSEyeModelRetina.linLogTransitionValue", linLogTransitionValue);
+        getPrefs().putBoolean("PSEyeModelRetina.linearInterpolateTimeStamp", linearInterpolateTimeStamp);
+        getPrefs().put("PSEyeModelRetina.retinaModel", retinaModel.toString());
+    }
+
     @Override
     public void setHardwareInterface(HardwareInterface hardwareInterface) {
         if (hardwareInterface != null && (hardwareInterface instanceof CLRetinaHardwareInterface)) {
 //        super.setHardwareInterface(hardwareInterface);
-            
+
             try {
-                if(this.hardwareInterface!=null && (this.hardwareInterface instanceof CLRetinaHardwareInterface)){
+                if (this.hardwareInterface != null && (this.hardwareInterface instanceof CLRetinaHardwareInterface)) {
                     ((CLRetinaHardwareInterface) hardwareInterface).deleteObserver(cameraObserver);
                 }
-                 super.setHardwareInterface(hardwareInterface);
-               CLRetinaHardwareInterface hw = (CLRetinaHardwareInterface) hardwareInterface;
+                super.setHardwareInterface(hardwareInterface);
+                CLRetinaHardwareInterface hw = (CLRetinaHardwareInterface) hardwareInterface;
                 hw.addObserver(cameraObserver); // we update our state depending on how camera is setup.
                 hw.setCameraMode(getCameraMode());
                 colorMode = (hw.getCameraMode().color == CLCamera.CLEYE_COLOR_PROCESSED); // sets whether input is color or not
             } catch (Exception ex) {
                 log.warning(ex.toString());
             }
-        }else{
-            log.warning("tried to set HardwareInterface to not a CLRetinaHardwareInterface: "+hardwareInterface);
+        } else {
+            log.warning("tried to set HardwareInterface to not a CLRetinaHardwareInterface: " + hardwareInterface);
         }
     }
 
@@ -252,9 +279,8 @@ public class PSEyeCLModelRetina extends AEChip {
         }
         if (this.hueChangeThreshold != hueChangeThreshold) {
             setChanged();
+            this.hueChangeThreshold = hueChangeThreshold;
         }
-        this.hueChangeThreshold = hueChangeThreshold;
-        getPrefs().putInt("PSEyeModelRetina.hueChangeThreshold", hueChangeThreshold);
         notifyObservers(EVENT_HUE_CHANGE_THRESHOLD);
     }
 
@@ -271,9 +297,8 @@ public class PSEyeCLModelRetina extends AEChip {
     public void setLogIntensityMode(boolean logIntensityMode) {
         if (this.logIntensityMode != logIntensityMode) {
             setChanged();
+            this.logIntensityMode = logIntensityMode;
         }
-        this.logIntensityMode = logIntensityMode;
-        getPrefs().putBoolean("PSEyeModelRetina.logIntensityMode", logIntensityMode);
         notifyObservers(EVENT_LOG_INTENSITY_MODE);
     }
 
@@ -295,10 +320,9 @@ public class PSEyeCLModelRetina extends AEChip {
         }
         if (this.linLogTransitionValue != linLogTransitionValue) {
             setChanged();
+            this.linLogTransitionValue = linLogTransitionValue;
         }
-        this.linLogTransitionValue = linLogTransitionValue;
         fillLogMapping();
-        getPrefs().putInt("PSEyeModelRetina.linLogTransitionValue", linLogTransitionValue);
         notifyObservers(EVENT_LINLOG_TRANSITION_VALUE);
     }
 
@@ -370,6 +394,15 @@ public class PSEyeCLModelRetina extends AEChip {
             super.open();
             PSEyeCLModelRetina.this.sendConfiguration();
 
+        }
+
+        @Override
+        public void loadPreferences() {
+            PSEyeCLModelRetina.this.loadPreferences(); // delegate to Chip object
+        }
+
+        public void storePreferences() {
+           PSEyeCLModelRetina.this.storePreferences();
         }
     }
 
@@ -639,9 +672,8 @@ public class PSEyeCLModelRetina extends AEChip {
         }
         if (this.gain != gain) {
             setChanged();
+            this.gain = gain;
         }
-        this.gain = gain;
-        getPrefs().putInt("PSEyeModelRetina.gain", gain);
         sendConfiguration();
         notifyObservers(EVENT_GAIN);
     }
@@ -664,9 +696,8 @@ public class PSEyeCLModelRetina extends AEChip {
         }
         if (this.exposure != exposure) {
             setChanged();
+            this.exposure = exposure;
         }
-        this.exposure = exposure;
-        getPrefs().putInt("PSEyeModelRetina.exposure", exposure);
         sendConfiguration();
         notifyObservers(EVENT_EXPOSURE);
     }
@@ -710,9 +741,8 @@ public class PSEyeCLModelRetina extends AEChip {
     public void setAutoGainEnabled(boolean autoGainEnabled) {
         if (this.autoGainEnabled != autoGainEnabled) {
             setChanged();
+            this.autoGainEnabled = autoGainEnabled;
         }
-        this.autoGainEnabled = autoGainEnabled;
-        getPrefs().putBoolean("PSEyeModelRetina.autoGainEnabled", autoGainEnabled);
         sendConfiguration();
         notifyObservers(EVENT_AUTO_GAIN);
     }
@@ -730,9 +760,8 @@ public class PSEyeCLModelRetina extends AEChip {
     public void setAutoExposureEnabled(boolean autoExposureEnabled) {
         if (this.autoExposureEnabled != autoExposureEnabled) {
             setChanged();
+            this.autoExposureEnabled = autoExposureEnabled;
         }
-        this.autoExposureEnabled = autoExposureEnabled;
-        getPrefs().putBoolean("PSEyeModelRetina.autoExposureEnabled", autoExposureEnabled);
         sendConfiguration();
         notifyObservers(EVENT_AUTOEXPOSURE);
     }
@@ -755,9 +784,8 @@ public class PSEyeCLModelRetina extends AEChip {
         }
         if (this.brightnessChangeThreshold != brightnessChangeThreshold) {
             setChanged();
+            this.brightnessChangeThreshold = brightnessChangeThreshold;
         }
-        this.brightnessChangeThreshold = brightnessChangeThreshold;
-        getPrefs().putInt("PSEyeModelRetina.brightnessChangeThreshold", brightnessChangeThreshold);
         notifyObservers(EVENT_BRIGHTNESS_CHANGE_THRESHOLD);
     }
 
@@ -774,9 +802,8 @@ public class PSEyeCLModelRetina extends AEChip {
     synchronized public void setLinearInterpolateTimeStamp(boolean linearInterpolateTimeStamp) {
         if (this.linearInterpolateTimeStamp != linearInterpolateTimeStamp) {
             setChanged();
+            this.linearInterpolateTimeStamp = linearInterpolateTimeStamp;
         }
-        this.linearInterpolateTimeStamp = linearInterpolateTimeStamp;
-        getPrefs().putBoolean("PSEyeModelRetina.linearInterpolateTimeStamp", linearInterpolateTimeStamp);
         notifyObservers(EVENT_LINEAR_INTERPOLATE_TIMESTAMP);
     }
 
@@ -806,6 +833,7 @@ public class PSEyeCLModelRetina extends AEChip {
             setChanged();
         }
         cl.setCameraMode(mode);
+        sendConfiguration();
         notifyObservers(EVENT_CAMERA_MODE);
     }
 
@@ -866,10 +894,9 @@ public class PSEyeCLModelRetina extends AEChip {
         }
         if (this.sigmaThreshold != sigmaThreshold) {
             setChanged();
+            this.sigmaThreshold = sigmaThreshold;
         }
-        this.sigmaThreshold = sigmaThreshold;
         fillSigmaThresholds();
-        getPrefs().putFloat("PSEyeModelRetina.sigmaThreshold", sigmaThreshold);
         notifyObservers(EVENT_SIGMA_THRESHOLD);
     }
 
@@ -891,9 +918,8 @@ public class PSEyeCLModelRetina extends AEChip {
         }
         if (this.backgroundEventRatePerPixelHz != backgroundEventRatePerPixelHz) {
             setChanged();
+            this.backgroundEventRatePerPixelHz = backgroundEventRatePerPixelHz;
         }
-        this.backgroundEventRatePerPixelHz = backgroundEventRatePerPixelHz;
-        getPrefs().putFloat("PSEyeModelRetina.backgroundEventRatePerPixelHz", backgroundEventRatePerPixelHz);
         notifyObservers(EVENT_BACKGROUND_EVENT_RATE);
     }
 }
