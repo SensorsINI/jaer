@@ -47,16 +47,16 @@ public class PotPanel extends javax.swing.JPanel implements FocusListener {
 //    }
 
     private void addBorderSetter(final JComponent s) {
-        if(s instanceof JTextField || s instanceof JSlider || s instanceof JComboBox){
-                s.setFocusable(true);// sliders and combo boxes not normally focusable
+        if (s instanceof JTextField || s instanceof JSlider || s instanceof JComboBox || s instanceof AbstractButton) {
+            s.setFocusable(true);// sliders and combo boxes not normally focusable
             s.addFocusListener(this);
 //            log.info("added border setter for "+s.getClass().getSimpleName());
-        }else if(s instanceof Container){
-            Component[] components=s.getComponents();
-            for(Component c:components){
+        } else if (s instanceof Container) {
+            Component[] components = s.getComponents();
+            for (Component c : components) {
 //                log.info("possibly adding border setter for "+c.getClass().getSimpleName());
-                if(c instanceof JComponent){
-                    addBorderSetter((JComponent)c);
+                if (c instanceof JComponent) {
+                    addBorderSetter((JComponent) c);
                 }
             }
         }
@@ -156,12 +156,8 @@ public class PotPanel extends javax.swing.JPanel implements FocusListener {
         for(JComponent c:componentList){
             if(c==potControl){
                 c.setBorder(selectedBorder);
-//                Dimension d=c.getPreferredSize();
-//                c.setPreferredSize(new Dimension(d.width,d.height+2));
             }else{
                 c.setBorder(unselectedBorder);
-//                 Dimension d=c.getPreferredSize();
-//                c.setPreferredSize(new Dimension(d.width,d.height-2));
            }
         }
     }

@@ -7,6 +7,7 @@ created 26 Oct 2008 for new cDVSTest chip
 package eu.seebetter.ini.chips.seebetter1011;
 
 import ch.unizh.ini.jaer.chip.retina.*;
+import ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing.Resetter;
 import com.sun.opengl.util.j2d.TextRenderer;
 import eu.seebetter.ini.chips.*;
 import eu.seebetter.ini.chips.config.*;
@@ -49,6 +50,7 @@ import javax.swing.Action;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
@@ -253,6 +255,9 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
      */
     public class SeeBetter1011Extractor extends RetinaExtractor {
 
+        private long lastEventTime=System.currentTimeMillis();
+        private final long AUTO_RESET_TIMEOUT_MS=1000;
+        
         // according to  D:\Users\tobi\Documents\avlsi-svn\db\Firmware\cDVSTest20\cDVSTest_dataword_spec.pdf
 //        public static final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0x000,  YSHIFT = 12,  INTENSITYMASK = 0x40000;
         private int lastIntenTs = 0;
@@ -277,7 +282,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 return out;
             }
             int n = in.getNumEvents(); //addresses.length;
-
+  
             int skipBy = 1;
             if (isSubSamplingEnabled()) {
                 while (n / skipBy > getSubsampleThresholdEventCount()) {
@@ -291,7 +296,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             // at this point the raw data from the USB IN packet has already been digested to extract timestamps, including timestamp wrap events and timestamp resets.
             // The datas array holds the data, which consists of a mixture of AEs and ADC values.
             // Here we extract the datas and leave the timestamps alone.
-
+            boolean gotAEREvent=false;
             for (int i = 0; i < n; i++) {  // TODO implement skipBy
                 int data = datas[i];
 
@@ -317,6 +322,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                             e.x = (short) (e.x >>> 1);
                             e.y = (short) (e.y >>> 1); // cDVS array is clumped into 32x32
                         }
+                        gotAEREvent=true;
                     }
                 } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
                     // if scanner is stopped on one place, then we never get a start bit. we then limit the number of samples
@@ -348,6 +354,12 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 }
 
             }
+            if (gotAEREvent) {
+                lastEventTime = System.currentTimeMillis();
+            } else if (config.autoResetEnabled && config.nChipReset.isSet() && System.currentTimeMillis() - lastEventTime > AUTO_RESET_TIMEOUT_MS) {
+                config.resetChip();
+            }
+
             return out;
         } // extractPacket
     } // extractor
@@ -429,6 +441,8 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         private ADC adc;
         private Scanner scanner;
         private LogReadoutControl logReadoutControl;
+        // other options
+        private boolean autoResetEnabled; // set in loadPreferences
 
         /** Creates a new instance of SeeBetterConfig for cDVSTest with a given hardware interface
          *@param chip the chip this biasgen belongs to
@@ -623,6 +637,22 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             return true;
         }
 
+        /**
+         * @return the autoResetEnabled
+         */
+        public boolean isAutoResetEnabled() {
+            return autoResetEnabled;
+        }
+
+        /**
+         * @param autoResetEnabled the autoResetEnabled to set
+         */
+        public void setAutoResetEnabled(boolean autoResetEnabled) {
+            if(this.autoResetEnabled!=autoResetEnabled) setChanged();
+            this.autoResetEnabled = autoResetEnabled;
+            notifyObservers();
+        }
+
         /** Command sent to firmware by vendor request */
         public class ConfigCmd {
 
@@ -674,6 +704,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
          * 
          */
         private void resetChip() {
+            log.info("resetting AER communication");
             nChipReset.set(false);
             nChipReset.set(true);
         }
@@ -797,6 +828,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             if (thermometerDAC != null) {
                 thermometerDAC.loadPreferences();
             }
+            setAutoResetEnabled(getPrefs().getBoolean("autoResetEnabled", false));
         }
 
         @Override
@@ -813,6 +845,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             if (thermometerDAC != null) {
                 thermometerDAC.storePreferences();
             }
+            getPrefs().putBoolean("autoResetEnabled",autoResetEnabled);
         }
 
         /**
@@ -839,10 +872,23 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     resetChip();
                 }
             };
+
+            final Action autoResetAction = new AbstractAction("Enable automatic chip reset") {
+
+                {
+                    putValue(Action.SHORT_DESCRIPTION, "Enables reset after no activity when nChipReset is inactive");
+                }
+
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    setAutoResetEnabled(!autoResetEnabled);
+                }
+            };
             JPanel specialButtons = new JPanel();
             specialButtons.setLayout(new BoxLayout(specialButtons, BoxLayout.X_AXIS));
 //            specialButtons.add(new JButton(sendConfigAction));
             specialButtons.add(new JButton(resetChipAction));
+            specialButtons.add(new JCheckBoxMenuItem(autoResetAction));
             bPanel.add(specialButtons, BorderLayout.NORTH);
 
             bgTabbedPane = new JTabbedPane();
@@ -1902,7 +1948,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 grayBuffer.rewind();
                 for (int y = 0; y < sizeY; y++) {
                     for (int x = 0; x < sizeX; x++) {
-                        if (x < BDVSArray.width*2) {
+                        if (x < BDVSArray.width * 2) {
                             grayBuffer.put(0);
                             grayBuffer.put(0);
                             grayBuffer.put(0);
