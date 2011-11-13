@@ -14,6 +14,9 @@ package net.sf.jaer.graphics;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.logging.*;
 
 /**
@@ -22,13 +25,15 @@ import java.util.logging.*;
  */
 public class AEViewerStatusFormatter extends Formatter{
     
+    private DateFormat dateFormat=new SimpleDateFormat("kk:mm:ss ");
+    
     /**
      * Format the given LogRecord.
      * @param record the log record to be formatted.
      * @return a formatted log record
      */
     public synchronized String format(LogRecord record) {
-	StringBuffer sb = new StringBuffer();
+	StringBuffer sb = new StringBuffer(dateFormat.format(new Date()));
 	String message = formatMessage(record);
 	sb.append(message);
 	if (record.getThrown() != null) {
