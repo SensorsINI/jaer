@@ -20,6 +20,8 @@ import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.logging.Logger;
@@ -56,7 +58,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
     public static final int TCP_SEND_BUFFER_SIZE_BYTES = 1024;
     public static final boolean DEFAULT_USE_BUFFERED_STREAM = false;
     /** timeout in ms for connection attempts */
-    public static final int CONNECTION_TIMEOUT_MS = 3000;
+    public static final int CONNECTION_TIMEOUT_MS = 6000; // it takes substantial time to connect to eDVS
     /** timeout in ms for read/write attempts */
     public static final int SO_TIMEOUT = 100; // 1 means we should timeout as soon as there are no more events in the datainputstream
 
@@ -415,6 +417,11 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                     chosenInterface = new eDVS128_HardwareInterface(socket.getInputStream(), socket.getOutputStream(), null, socket);
                     closemap.put(host, chosenInterface);
                     success = true;
+                }catch(SocketTimeoutException e){
+                   log.warning(e.toString());
+                    JOptionPane.showMessageDialog(this, "Timeout on connect:" + e.toString(), "eDVS128_HardwareInterface", JOptionPane.WARNING_MESSAGE);
+                    chosenInterface = null;
+                   
                 } catch (Exception e) {
                     log.warning(e.toString());
                     JOptionPane.showMessageDialog(this, e.toString(), "eDVS128_HardwareInterface", JOptionPane.WARNING_MESSAGE);
