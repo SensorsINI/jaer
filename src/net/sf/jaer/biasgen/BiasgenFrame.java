@@ -30,7 +30,6 @@ import net.sf.jaer.util.RecentFiles;
  * The default construction delegates the job of populating the main panel to BiasgenPanel.
  * @author  tobi
  */
-
 public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditListener, ExceptionListener {
 
     static Preferences prefs = Preferences.userNodeForPackage(BiasgenFrame.class);
@@ -116,8 +115,8 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
                 }
             }
         });
-        setTitle(chip.getName()+" - "+lastFile.getName()+ " - Biases ");
-        saveMenuItem.setEnabled(false); // until we load or save a file
+        setTitle(chip.getName() + " - " + lastFile.getName() + " - Biases ");
+//        saveMenuItem.setEnabled(false); // until we load or save a file
         pack();
 
         defaultFolder = System.getProperty("user.dir");
@@ -240,7 +239,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         prefs.put("BiasgenFrame.lastFile", lastFile.toString());
         saveMenuItem.setEnabled(true);
         saveMenuItem.setText("Save " + currentFile.getName());
-        setTitle(chip.getName()+" - "+lastFile.getName()+ " - Biases ");
+        setTitle(chip.getName() + " - " + lastFile.getName() + " - Biases ");
     }
 
     /** Shows a dialog to choose a file to store preferences to. If the users successfully writes the file, then
@@ -250,28 +249,39 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
      * 
      */
     public boolean exportPreferencesDialog() {
-        JFileChooser chooser = new JFileChooser();
-        XMLFileFilter filter = new XMLFileFilter();
-        chooser.setFileFilter(filter);
-        chooser.setCurrentDirectory(lastFile);
-        chooser.setApproveButtonText("Save bias settings");
-        int retValue = chooser.showSaveDialog(this);
-        if(retValue==JFileChooser.CANCEL_OPTION){
-            return false;
-        }else if (retValue == JFileChooser.APPROVE_OPTION) {
-            try {
-                lastFile = chooser.getSelectedFile();
-                if (!lastFile.getName().endsWith(XMLFileFilter.EXTENSION)) {
-                    lastFile = new File(lastFile.getCanonicalPath() + XMLFileFilter.EXTENSION);
-                }
-                exportPreferencesToFile(lastFile);
-                prefs.put("BiasgenFrame.lastFile", lastFile.toString());
-                recentFiles.addFile(lastFile);
-                return true;
-            } catch (Exception fnf) {
-                setStatusMessage(fnf.getMessage());
-                java.awt.Toolkit.getDefaultToolkit().beep();
+        boolean done = false;
+        while (!done) {
+            JFileChooser chooser = new JFileChooser();
+            XMLFileFilter filter = new XMLFileFilter();
+            chooser.setFileFilter(filter);
+            chooser.setCurrentDirectory(lastFile);
+            chooser.setApproveButtonText("Export bias settings");
+            int retValue = chooser.showSaveDialog(this);
+            if (retValue == JFileChooser.CANCEL_OPTION) {
                 return false;
+            } else if (retValue == JFileChooser.APPROVE_OPTION) {
+                try {
+                    lastFile = chooser.getSelectedFile();
+                    if (!lastFile.getName().endsWith(XMLFileFilter.EXTENSION)) {
+                        lastFile = new File(lastFile.getCanonicalPath() + XMLFileFilter.EXTENSION);
+                    }
+                    if (lastFile.exists()) {
+                        int retVal = JOptionPane.showConfirmDialog(this, lastFile + " already exists, overwrite it?", "Overwrite file?", JOptionPane.OK_CANCEL_OPTION);
+                        if (retVal == JOptionPane.CANCEL_OPTION) {
+                            continue;
+                        }
+                    }
+                    exportPreferencesToFile(lastFile);
+                    done=true;
+                    prefs.put("BiasgenFrame.lastFile", lastFile.toString());
+                    recentFiles.addFile(lastFile);
+                    return true;
+                } catch (Exception fnf) {
+                    setStatusMessage(fnf.getMessage());
+                    log.warning(fnf.toString());
+                    java.awt.Toolkit.getDefaultToolkit().beep();
+                    return false;
+                }
             }
         }
         return true;
@@ -684,10 +694,14 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     }//GEN-LAST:event_loadMenuItemActionPerformed
 
     private void saveMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveMenuItemActionPerformed
+        if(currentFile==null || !currentFile.exists()){
+            exportPreferencesDialog();
+        }else{
         try {
             exportPreferencesToFile(currentFile);
         } catch (Exception e) {
             log.warning("Couldn't save to " + currentFile);
+        }
         }
     }//GEN-LAST:event_saveMenuItemActionPerformed
 
@@ -724,7 +738,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 private void prefsEditorMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_prefsEditorMenuItemActionPerformed
     org.bbg.prefs.Main.main(new String[2]); // run the http://javaprefs.googlepages.com/ preferences editor
 }//GEN-LAST:event_prefsEditorMenuItemActionPerformed
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenu biasMenu;
     private javax.swing.JMenu editMenu;
@@ -755,7 +768,8 @@ private void prefsEditorMenuItemActionPerformed(java.awt.event.ActionEvent evt) 
     private javax.swing.JMenuItem undoEditMenuItem;
     private javax.swing.ButtonGroup viewBiasesButtonGroup;
     // End of variables declaration//GEN-END:variables
-public static void main(String[] a) {
+
+    public static void main(String[] a) {
         HardwareInterface hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
         if (hw == null) {
             throw new RuntimeException("no hardware interface found");

@@ -219,8 +219,8 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      */
     public void storePreferences() {
         log.info("storing preferences to preferences tree");
-        potArray.storePreferences();
-        masterbias.storePreferences();
+        if(potArray!=null) potArray.storePreferences();
+        if(masterbias!=null) masterbias.storePreferences();
     }
 
     /** Use this method to put a value only if the value is different than the stored Preference value.
