@@ -78,8 +78,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public static String HELP_URL_HELP_FORUM = "https://sourceforge.net/projects/jaer/forums/forum/631958";
     public static String HELP_URL_JAVADOC_WEB = "http://jaer.sourceforge.net/javadoc";
     public static String HELP_URL_JAVADOC;
+    // note filenames cannot have spaces in them for browser to work easily, some problem with space encoding; %20 doesn't work as advertized.
     public static String HELP_USER_GUIDE_USB2_MINI = "/doc/USBAERmini2userguide.pdf";
-    public static String HELP_USER_GUIDE_AER_CABLING = "/doc/AER Hardware and cabling.pdf";
+    public static String HELP_USER_GUIDE_AER_CABLING = "/doc/AERHardwareAndCabling.pdf";
     private static final String SET_DEFAULT_FIRMWARE_FOR_BLANK_DEVICE = "Set default firmware for blank device...";
 
     /** Utility method to return a URL to a file in the installation.

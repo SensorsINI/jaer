@@ -50,12 +50,13 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
     private JMenu dvs128Menu = null;
     private JMenuItem arrayResetMenuItem = null, syncEnabledMenuItem = null;
     private JMenuItem setArrayResetMenuItem = null;
-    private PropertyChangeSupport support=new PropertyChangeSupport(this);
-    public static final String CMD_TWEAK_THESHOLD="threshold", CMD_TWEAK_ONOFF_BALANCE="balance", CMD_TWEAK_BANDWIDTH="bandwidth", CMD_TWEAK_MAX_FIRING_RATE="maxfiringrate";
+    private PropertyChangeSupport support = new PropertyChangeSupport(this);
+    public static final String CMD_TWEAK_THESHOLD = "threshold", CMD_TWEAK_ONOFF_BALANCE = "balance", CMD_TWEAK_BANDWIDTH = "bandwidth", CMD_TWEAK_MAX_FIRING_RATE = "maxfiringrate";
     private Biasgen dvs128Biasgen;
-    JComponent helpMenuItem=null;
-     public static final String HELP_URL_RETINA = "http://siliconretina.ini.uzh.ch";
-    
+    JComponent helpMenuItem1 = null, helpMenuItem2 = null;
+    public static final String HELP_URL_RETINA = "http://siliconretina.ini.uzh.ch";
+    public static final String USER_GUIDE_URL_RETINA = "http://siliconretina.ini.uzh.ch/wiki/doku.php?id=userguide";
+
     /** Creates a new instance of DVS128. No biasgen is constructed for this constructor, because there is no hardware interface defined. */
     public DVS128() {
         setName("DVS128");
@@ -77,8 +78,6 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 //        if(c!=null)c.setBorderSpacePixels(5);// make border smaller than default
     }
 
-    
-    
     /** Creates a new instance of DVS128
      * @param hardwareInterface an existing hardware interface. This constructor is preferred. It makes a new Biasgen object to talk to the on-chip biasgen.
      */
@@ -104,7 +103,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 public void actionPerformed(ActionEvent evt) {
                     HardwareInterface hw = getHardwareInterface();
                     if (hw == null || !(hw instanceof HasResettablePixelArray)) {
-                        log.warning("cannot reset pixels with hardware interface=" + hw + " (class " + (hw!=null?hw.getClass():null) + "), interface doesn't implement HasResettablePixelArray");
+                        log.warning("cannot reset pixels with hardware interface=" + hw + " (class " + (hw != null ? hw.getClass() : null) + "), interface doesn't implement HasResettablePixelArray");
                         return;
                     }
                     log.info("resetting pixels");
@@ -134,7 +133,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 
         if (syncEnabledMenuItem == null && getHardwareInterface() != null && getHardwareInterface() instanceof HasSyncEventOutput) {
             syncEnabledMenuItem = new JCheckBoxMenuItem("Enable sync event output");
-            syncEnabledMenuItem.setToolTipText("<html>Enables sync event generation on external IN pin rising edges (disables slave clock input).<br>Rising edges inject special sync events with bitmask "+HexString.toString(CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK)+" set<br>These events are not rendered but are logged and can be used to synchronize an external signal to the recorded data.");
+            syncEnabledMenuItem.setToolTipText("<html>Enables sync event generation on external IN pin rising edges (disables slave clock input).<br>Rising edges inject special sync events with bitmask " + HexString.toString(CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK) + " set<br>These events are not rendered but are logged and can be used to synchronize an external signal to the recorded data.");
             HasSyncEventOutput h = (HasSyncEventOutput) getHardwareInterface();
             syncEnabledMenuItem.setSelected(h.isSyncEventEnabled());
 
@@ -191,54 +190,57 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
     @Override
     public void onDeregistration() {
         super.onRegistration();
-        if(helpMenuItem==null) return;
-        if(getAeViewer()!=null) getAeViewer().removeHelpItem(helpMenuItem);
+        if (getAeViewer() == null) {
+            return;
+        }
+        getAeViewer().removeHelpItem(helpMenuItem1);
+        getAeViewer().removeHelpItem(helpMenuItem2);
     }
 
     @Override
     public void onRegistration() {
         super.onRegistration();
-        if(getAeViewer()!=null) helpMenuItem=getAeViewer().addHelpURLItem(HELP_URL_RETINA, "DVS128 wiki", "Opens user guide wiki for DVS128 silicon retina");
-        
+        if (getAeViewer() == null) {
+            return;
+        }
+        helpMenuItem1 = getAeViewer().addHelpURLItem(HELP_URL_RETINA, "DVS128 wiki", "Opens wiki for DVS128 silicon retina");
+        helpMenuItem2 = getAeViewer().addHelpURLItem(USER_GUIDE_URL_RETINA, "DVS128 user guide", "Opens user guide wiki for DVS128 silicon retina");
     }
-    
-    
 
     @Override
     public String processRemoteControlCommand(RemoteControlCommand command, String input) {
-        log.info("processing RemoteControlCommand "+command+" with input="+input);
-        if(command==null) return null;
-        String[] tokens=input.split(" ");
-        if(tokens.length<2){
-            return input+ ": unknown command - did you forget the argument?";
+        log.info("processing RemoteControlCommand " + command + " with input=" + input);
+        if (command == null) {
+            return null;
         }
-        if(tokens[1]==null || tokens[1].length()==0){
-           return input+ ": argument too short - need a number";
+        String[] tokens = input.split(" ");
+        if (tokens.length < 2) {
+            return input + ": unknown command - did you forget the argument?";
         }
-        float v=0;
-        try{
-            v=Float.parseFloat(tokens[1]);
-        }catch(NumberFormatException e){
-            return input+ ": bad argument? Caught "+ e.toString();
+        if (tokens[1] == null || tokens[1].length() == 0) {
+            return input + ": argument too short - need a number";
         }
-        String c=command.getCmdName();
-        if(c.equals(CMD_TWEAK_BANDWIDTH)){
+        float v = 0;
+        try {
+            v = Float.parseFloat(tokens[1]);
+        } catch (NumberFormatException e) {
+            return input + ": bad argument? Caught " + e.toString();
+        }
+        String c = command.getCmdName();
+        if (c.equals(CMD_TWEAK_BANDWIDTH)) {
             dvs128Biasgen.setBandwidthTweak(v);
-        }else if(c.equals(CMD_TWEAK_ONOFF_BALANCE)){
+        } else if (c.equals(CMD_TWEAK_ONOFF_BALANCE)) {
             dvs128Biasgen.setOnOffBalanceTweak(v);
-        }else if(c.equals(CMD_TWEAK_MAX_FIRING_RATE)){
+        } else if (c.equals(CMD_TWEAK_MAX_FIRING_RATE)) {
             dvs128Biasgen.setMaxFiringRateTweak(v);
-        }else if(c.equals(CMD_TWEAK_THESHOLD)){
+        } else if (c.equals(CMD_TWEAK_THESHOLD)) {
             dvs128Biasgen.setThresholdTweak(v);
-        }else {
-            return input+ ": unknown command";
+        } else {
+            return input + ": unknown command";
         }
-        return "successfully processed command "+input;
+        return "successfully processed command " + input;
     }
-    
-    
 
-    
     /** the event extractor for DVS128. DVS128 has two polarities 0 and 1. Here the polarity is flipped by the extractor so that the raw polarity 0 becomes 1
     in the extracted event. The ON events have raw polarity 0.
     1 is an ON event after event extraction, which flips the type. Raw polarity 1 is OFF event, which becomes 0 after extraction.
@@ -275,8 +277,8 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             extractPacket(in, out);
             return out;
         }
+        private int printedSyncBitWarningCount = 3;
 
-        private int printedSyncBitWarningCount=3;
         /**
          * Extracts the meaning of the raw events. This form is used to supply an output packet. This method is used for real time
          * event filtering using a buffer of output events local to data acquisition. An AEPacketRaw may contain multiple events,
@@ -312,35 +314,34 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             for (int i = 0; i < n; i += skipBy) { // TODO bug here?
                 int addr = a[i]; // TODO handle sync events from hardware correctly
                 if (addr > 0xefff) {
-                    if(printedSyncBitWarningCount>0){
-                        log.warning("raw address "+addr+" is >32767 (0xefff); either sync or stereo bit is set, clearing the msb");
+                    if (printedSyncBitWarningCount > 0) {
+                        log.warning("raw address " + addr + " is >32767 (0xefff); either sync or stereo bit is set, clearing the msb");
                         printedSyncBitWarningCount--;
-                        if(printedSyncBitWarningCount==0) log.warning("suppressing futher warnings about msb of raw address");
+                        if (printedSyncBitWarningCount == 0) {
+                            log.warning("suppressing futher warnings about msb of raw address");
+                        }
                     }
                     // TODO handle this by outputting SyncEvent's instead of PolarityEvent's. Some files recorded earlier in 2.0 format have the msb set by hardware.
                     // here we restrict the addresses to 32767 max.
-                    addr=addr&0xefff;
+                    addr = addr & 0xefff;
                 } else {
                     PolarityEvent e = (PolarityEvent) outItr.nextOutput();
-                    e.address=addr;
+                    e.address = addr;
                     e.timestamp = (timestamps[i]);
-                    
-                    
+
+
                     e.type = (byte) (1 - addr & 1);
                     e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
                     e.x = (short) (sxm - ((short) ((addr & XMASK) >>> XSHIFT)));
                     e.y = (short) ((addr & YMASK) >>> YSHIFT);
-                     
-                    
-                    
+
+
+
                 }
 
             }
         }
-
     }
-
-
 
     /** overrides the Chip setHardware interface to construct a biasgen if one doesn't exist already.
      * Sets the hardware interface and the bias generators hardware interface
@@ -370,7 +371,6 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 //    public void update(Observable o, Object arg) {
 //        log.info("DVS128: received update from Observable="+o+", arg="+arg);
 //    }
-
     /** Called when the AEViewer is set for this AEChip. Here we add the menu to the AEViewer.
      *
      * @param v the viewer
@@ -379,7 +379,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
     public void setAeViewer(AEViewer v) {
         super.setAeViewer(v);
         if (v != null) {
-            
+
             dvs128Menu = new JMenu("DVS128");
             dvs128Menu.getPopupMenu().setLightWeightPopupEnabled(false); // to paint on GLCanvas
             dvs128Menu.setToolTipText("Specialized menu for DVS128 chip");
@@ -392,7 +392,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
      * Describes IPots on DVS128 retina chip. These are configured by a shift register as shown here:
      *<p>
      *<img src="doc-files/tmpdiff128biasgen.gif" alt="tmpdiff128 shift register arrangement"/>
-
+    
     <p>
     This bias generator also offers an abstracted ChipControlPanel interface that is used for a simplified user interface.
      *
@@ -441,7 +441,6 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             loadPreferences();
 
         }
-
 //        /** sends the ipot values over the hardware interface if there is not a batch edit occuring.
 //         *@param biasgen the bias generator object.
 //         * This parameter is necessary because the same method is used in the hardware interface,
@@ -540,21 +539,24 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 
             return panel;
         }
-
-        private float bandwidth=1, maxFiringRate=1, threshold=1, onOffBalance=1;
+        private float bandwidth = 1, maxFiringRate = 1, threshold = 1, onOffBalance = 1;
 
         /** Tweaks bandwidth around nominal value.
          * 
          * @param val -1 to 1 range
          */
         public void setBandwidthTweak(float val) {
-            if(val>1)val=1; else if(val<-1) val=-1;
-            float old=bandwidth;
-            bandwidth=val;
+            if (val > 1) {
+                val = 1;
+            } else if (val < -1) {
+                val = -1;
+            }
+            float old = bandwidth;
+            bandwidth = val;
             final float MAX = 300;
             pr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
             sf.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
-            getSupport().firePropertyChange(DVSTweaks.BANDWIDTH,old,val);
+            getSupport().firePropertyChange(DVSTweaks.BANDWIDTH, old, val);
         }
 
         /**
@@ -563,41 +565,54 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
          * @param val  -1 to 1 range
          */
         public void setMaxFiringRateTweak(float val) {
-             if(val>1)val=1; else if(val<-1) val=-1;
-            float old=maxFiringRate;
-            maxFiringRate=val;
+            if (val > 1) {
+                val = 1;
+            } else if (val < -1) {
+                val = -1;
+            }
+            float old = maxFiringRate;
+            maxFiringRate = val;
             final float MAX = 300;
             refr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
-            getSupport().firePropertyChange(DVSTweaks.MAX_FIRING_RATE,old,val);
+            getSupport().firePropertyChange(DVSTweaks.MAX_FIRING_RATE, old, val);
         }
 
         /**
          *  Tweaks threshold, larger is higher threshold.
          * @param val  -1 to 1 range
-         */        public void setThresholdTweak(float val) {
-             if(val>1)val=1; else if(val<-1) val=-1;
-           float old=threshold;
-             final float MAX = 100;
-             threshold=val;
+         */
+        public void setThresholdTweak(float val) {
+            if (val > 1) {
+                val = 1;
+            } else if (val < -1) {
+                val = -1;
+            }
+            float old = threshold;
+            final float MAX = 100;
+            threshold = val;
             diffOn.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
             diffOff.changeByRatioFromPreferred(1 / PotTweakerUtilities.getRatioTweak(val, MAX));
-             getSupport().firePropertyChange(DVSTweaks.THRESHOLD,old,val);
+            getSupport().firePropertyChange(DVSTweaks.THRESHOLD, old, val);
 
-       }
+        }
 
-         /**
-          * Tweaks balance of on/off events. Increase for more ON events.
-          * 
-          * @param val -1 to 1 range. 
-          */
+        /**
+         * Tweaks balance of on/off events. Increase for more ON events.
+         * 
+         * @param val -1 to 1 range. 
+         */
         public void setOnOffBalanceTweak(float val) {
-             if(val>1)val=1; else if(val<-1) val=-1;
-            float old=onOffBalance;
-            onOffBalance=val;
+            if (val > 1) {
+                val = 1;
+            } else if (val < -1) {
+                val = -1;
+            }
+            float old = onOffBalance;
+            onOffBalance = val;
             final float MAX = 100;
             diff.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
-              getSupport().firePropertyChange(DVSTweaks.ON_OFF_BALANCE,old,val);
-       }
+            getSupport().firePropertyChange(DVSTweaks.ON_OFF_BALANCE, old, val);
+        }
 
         @Override
         public float getBandwidthTweak() {
@@ -620,8 +635,6 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         }
     } // DVS128Biasgen
 
-
-
     /**
      * Fires PropertyChangeEvents when biases are tweaked according to {@link ch.unizh.ini.jaer.chip.retina.DVSTweaks}.
      * 
@@ -630,5 +643,4 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
     public PropertyChangeSupport getSupport() {
         return support;
     }
-
 }
