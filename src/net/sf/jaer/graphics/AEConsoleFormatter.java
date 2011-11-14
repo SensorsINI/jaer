@@ -24,6 +24,7 @@ import java.util.logging.LogRecord;
 public class AEConsoleFormatter extends Formatter {
 
 
+    private DateFormat dateFormat=new SimpleDateFormat("kk:mm:ss ");
     // Line separator string.  This is the value of the line.separator
     // property at the moment that the SimpleFormatter was created.
     private String lineSeparator = System.getProperty("line.separator");
@@ -34,7 +35,9 @@ public class AEConsoleFormatter extends Formatter {
      * @return a formatted log record
      */
     public synchronized String format(LogRecord record) {
-	StringBuffer sb = new StringBuffer();
+        Date date=new Date();
+        String time=dateFormat.format(date);
+	StringBuffer sb = new StringBuffer(time);
 	sb.append(record.getLevel().getLocalizedName());
 	sb.append(": ");
 	if (record.getSourceClassName() != null) {	
