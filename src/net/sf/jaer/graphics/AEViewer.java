@@ -1235,7 +1235,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         //create a list of available hardware interfaces from enumerated devices 
         int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable(); // TODO this rebuilds the entire list of hardware
-        StringBuilder sb = new StringBuilder("adding menu items for ").append(Integer.toString(n)).append(" interfaces");
+//        StringBuilder sb = new StringBuilder("adding menu items for ").append(Integer.toString(n)).append(" interfaces");
         boolean choseOneButton = false;
         JRadioButtonMenuItem interfaceButton = null;
         for (int i = 0; i < n; i++) {
@@ -1272,7 +1272,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                 });
                 //            if(chip!=null && chip.getHardwareInterface()==hw) b.setSelected(true);
-                sb.append("\n").append(hw.toString());
+//                sb.append("\n").append(hw.toString());
             }
         }
         boolean addedSep = false;
@@ -1280,7 +1280,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // these HardwareInterfaceFactories allow choice of multiple alternative interfaces, e.g. for a serial port or network interface
         for (Class c : HardwareInterfaceFactory.factories) {
             if (HardwareInterfaceFactoryChooserDialog.class.isAssignableFrom(c)) {
-                log.log(Level.INFO, "found hardware chooser class {0}", c);
+//                log.log(Level.INFO, "found hardware chooser class {0}", c);
                 if (!addedSep) {
                     interfaceMenu.add(new JSeparator());
                     addedSep = true;
@@ -1343,6 +1343,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (chip != null && chip.getHardwareInterface() != null) {
             choseOneButton = false;
             String chipInterface = chip.getHardwareInterface().toString();
+//            System.out.println("chipInterface="+chipInterface);
             for (Component c : interfaceMenu.getMenuComponents()) {
                 if (!(c instanceof JMenuItem)) {
                     continue;
@@ -1357,13 +1358,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 //            }
                 //check if device in menu is already one assigned to this chip, by String comparison. Checking by object doesn't work because
                 // new device objects are created by HardwareInterfaceFactory's'
+//                System.out.println("item.getText()="+item.getText());
                 if (item.getText().equals(chipInterface)) {
-                    interfaceButton.setSelected(true);
+                    item.setSelected(true);
+//                    System.out.println("selected "+item.getText());
                     choseOneButton = true;
                 }
             }
         }
-        log.info(sb.toString());
+//        log.info(sb.toString());
 
         // TODO add menu item for choosers for things that cannot be easily enumerated like serial port devices, e.g. where enumeration is very expensive because
 
