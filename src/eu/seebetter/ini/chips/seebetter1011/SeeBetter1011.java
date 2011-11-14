@@ -354,9 +354,9 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                 }
 
             }
-            if (gotAEREvent) {
+            if (gotAEREvent ) {
                 lastEventTime = System.currentTimeMillis();
-            } else if (config.autoResetEnabled && config.nChipReset.isSet() && System.currentTimeMillis() - lastEventTime > AUTO_RESET_TIMEOUT_MS) {
+            } else if (config.autoResetEnabled && config.nChipReset.isSet() && System.currentTimeMillis() - lastEventTime > AUTO_RESET_TIMEOUT_MS && getAeViewer()!=null && getAeViewer().getPlayMode()==AEViewer.PlayMode.LIVE) {
                 config.resetChip();
             }
 
