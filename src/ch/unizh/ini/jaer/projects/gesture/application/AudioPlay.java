@@ -16,16 +16,18 @@ import javax.sound.sampled.LineListener;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.UnsupportedAudioFileException;
 
-/**
- *
- * @author source from http://www.java2s.com/Code/JavaAPI/javax.sound.sampled/AudioSystemgetAudioInputStreamFilefile.htm
- */
 
-public class AudioPlay{
+/**
+ *  original source from http://www.java2s.com/Code/JavaAPI/javax.sound.sampled/AudioSystemgetAudioInputStreamFilefile.htm
+ * 
+ * @author modified by Jun Haeng Lee  
+ */
+public class AudioPlay implements LineListener{
 
     private File soundFile;
     private Clip clip;
     private AudioInputStream ais;
+    private Line line;
 
     public AudioPlay(String wavfile){
         soundFile = new File(wavfile);
@@ -33,16 +35,13 @@ public class AudioPlay{
             System.err.println("Wave file not found: " + wavfile);
             return;
         }
-    }
-
-    public void start(){
         Line.Info linfo = new Line.Info(Clip.class);
         try{
-            Line line = AudioSystem.getLine(linfo);
+            line = AudioSystem.getLine(linfo);
             clip = (Clip) line;
             ais = AudioSystem.getAudioInputStream(soundFile);
             clip.open(ais);
-            clip.start();
+            clip.addLineListener(this);
         } catch (LineUnavailableException e1) {
             e1.printStackTrace();
             return;
@@ -54,4 +53,22 @@ public class AudioPlay{
             return;
         }
     }
+    
+    @Override
+     public void update(LineEvent le) {
+         LineEvent.Type type = le.getType();
+         if (type == LineEvent.Type.OPEN) {
+         } else if (type == LineEvent.Type.CLOSE) {
+         } else if (type == LineEvent.Type.START) {
+         } else if (type == LineEvent.Type.STOP) {
+             clip.setMicrosecondPosition(0);
+         }
+     }
+
+    public void start(){
+        clip.start();
+    }
+
 }
+
+
