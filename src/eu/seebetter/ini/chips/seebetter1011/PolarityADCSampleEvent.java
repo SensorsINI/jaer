@@ -10,13 +10,17 @@ import net.sf.jaer.event.PolarityEvent;
  */
 public class PolarityADCSampleEvent extends PolarityEvent {
 
-    /** The ADC sample value */
+    /** The ADC sample value. Has value -1 by convention for non-sample events. */
     protected int adcSample = 0;
+    
+    /** Set if this event is a start bit event, e.g. start of frame sample. */
+    protected boolean startOfFrame=false;
 
     public PolarityADCSampleEvent() {
     }
 
     /**
+     * The ADC sample value.
      * @return the adcSample
      */
     public int getAdcSample() {
@@ -24,10 +28,29 @@ public class PolarityADCSampleEvent extends PolarityEvent {
     }
 
     /**
+     * Sets the ADC sample value.
+     * 
      * @param adcSample the adcSample to set
      */
     public void setAdcSample(int adcSample) {
         this.adcSample = adcSample;
+    }
+
+    /**
+     * Flags if this sample is from the start of the frame.
+     * @return the startOfFrame
+     */
+    public boolean isStartOfFrame() {
+        return startOfFrame;
+    }
+
+    /**
+     * Flags if this sample is from the start of the frame.
+    * 
+     * @param startOfFrame the startOfFrame to set
+     */
+    public void setStartOfFrame(boolean startOfFrame) {
+        this.startOfFrame = startOfFrame;
     }
 
     @Override
@@ -35,5 +58,14 @@ public class PolarityADCSampleEvent extends PolarityEvent {
         PolarityADCSampleEvent e = (PolarityADCSampleEvent) src;
         super.copyFrom(src);
         adcSample = e.getAdcSample();
+        setStartOfFrame(e.isStartOfFrame());
+    }
+
+    /** Returns true if sample is non-negative.
+     * 
+     * @return true if this is an ADC sample
+     */
+    public boolean isAdcSample() {
+        return adcSample>=0;
     }
 }
