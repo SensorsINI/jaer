@@ -881,6 +881,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 
                 {
                     putValue(Action.SHORT_DESCRIPTION, "Enables reset after no activity when nChipReset is inactive");
+                    putValue(Action.SELECTED_KEY,isAutoResetEnabled());
                 }
 
                 @Override
@@ -1999,7 +2000,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     PolarityADCSampleEvent e = (PolarityADCSampleEvent) obj;
                     if (putADCData && e.isAdcSample()) { // hack to detect ADC sample events
                         // ADC 'event'
-                        frameData.put(e);
+                        frameData.putEvent(e);
                     } else if (displayLogIntensityChangeEvents && !e.isAdcSample()) {
                         // real AER event
                         int type = e.getType();
@@ -2060,7 +2061,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     }
                     if (agcEnabled && (minADC > 0 && maxADC > 0)) { // don't adapt to first frame which is all zeros
                         Float filter2d = agcFilter.filter2d(minADC, maxADC, frameData.getTimestamp());
-                        System.out.println("agc minmax=" + filter2d + " minADC=" + minADC + " maxADC=" + maxADC);
+//                        System.out.println("agc minmax=" + filter2d + " minADC=" + minADC + " maxADC=" + maxADC);
                         getSupport().firePropertyChange(AGC_VALUES, null, filter2d); // inform listeners (GUI) of new AGC min/max filterd log intensity values
                     }
 
@@ -2276,6 +2277,11 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         public LogIntensityFrameData() {
             loadPreference();
         }
+        
+        private int index(int x, int y){
+            final int idx = y + HEIGHT * x; 
+            return idx;
+        }
 
         /** Gets the sample at a given pixel address (not scanner address) 
          * 
@@ -2284,7 +2290,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
          * @return  value from ADC
          */
         public int get(int x, int y) {
-            final int idx = y + HEIGHT * x; // values are written by row for each column (row parallel readout in this chip, with columns addressed one by one)
+            final int idx = index(x,y); // values are written by row for each column (row parallel readout in this chip, with columns addressed one by one)
             if (invertADCvalues) {
                 if (useOffChipCalibration) {
                     return MAX_ADC - (int) (gain[idx] * (data[idx] - offset[idx]));
@@ -2298,13 +2304,16 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             }
         }
 
-        private void put(PolarityADCSampleEvent e) {
+        private void putEvent(PolarityADCSampleEvent e) {
             if(!e.isAdcSample() || e.timestamp==lasttimestamp) return;
             if(e.startOfFrame) {
                 resetWriteCounter();
                 setTimestamp(e.timestamp);
+            }else if(config.scanContinuouslyEnabled.isSet()){
+                putNextSampleValue(e.adcSample);
+            }else{
+                data[index(config.scanX.get(), config.scanY.get())]=e.adcSample;
             }
-            put(e.adcSample);
             lasttimestamp=e.timestamp; // so we don't put the same sample over and over again
         }
         
@@ -2312,7 +2321,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
          * Writes wrap around to the start position. 
          * @param val the sample
          */
-        private void put(int val) {
+        private void putNextSampleValue(int val) {
             if (writeCounter >= data.length) {
 //            log.info("buffer overflowed - missing start frame bit?");
                 return;
