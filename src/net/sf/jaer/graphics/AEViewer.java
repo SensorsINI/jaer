@@ -4720,7 +4720,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
 // if jaer viewer is logging synchronized data files, then just save the file where it was logged originally
 
-                if (confirmFilename && jaerViewer.getNumViewers() == 1) {
+                if (confirmFilename && !jaerViewer.isSyncEnabled()) {
                     JFileChooser chooser = new JFileChooser();
                     chooser.setCurrentDirectory(lastLoggingFolder);
                     chooser.setFileFilter(new DATFileFilter());
