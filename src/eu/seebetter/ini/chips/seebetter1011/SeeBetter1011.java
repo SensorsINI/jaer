@@ -352,6 +352,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     e.timestamp = (timestamps[i]);
                     e.address = data;
                     e.startOfFrame = (data & ADC_START_BIT) == ADC_START_BIT;
+                    e.x=-1; e.y=-1;
                 }
 
             }
@@ -1969,9 +1970,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             pixmap.limit(n);
 //        pixmapGrayValue = grayValue;
         }
-        private int minADC = Integer.MAX_VALUE, maxADC = Integer.MIN_VALUE;
-        private float[] logIntensityValues = new float[BDVSArray.height * BDVSArray.width];
-
+  
         @Override
         public synchronized void render(EventPacket packet) {
 
@@ -1993,11 +1992,12 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             if (!accumulateEnabled) {
                 resetFrame(.5f);
             }
-            try {
+            boolean putADCData=displayLogIntensity && !getAeViewer().isPaused(); // don't keep reputting the ADC data into buffer when paused and rendering packet over and over again
+           try {
                 step = 1f / (colorScale);
                 for (Object obj : packet) {
                     PolarityADCSampleEvent e = (PolarityADCSampleEvent) obj;
-                    if (displayLogIntensity && e.isAdcSample()) { // hack to detect ADC sample events
+                    if (putADCData && e.isAdcSample()) { // hack to detect ADC sample events
                         // ADC 'event'
                         frameData.put(e);
                     } else if (displayLogIntensityChangeEvents && !e.isAdcSample()) {
@@ -2041,8 +2041,8 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     }
                 }
                 if (displayLogIntensity) {
-                    minADC = Integer.MAX_VALUE;
-                    maxADC = Integer.MIN_VALUE;
+                    int minADC = Integer.MAX_VALUE;
+                    int maxADC = Integer.MIN_VALUE;
                     for (int y = 0; y < BDVSArray.height; y++) {
                         for (int x = 0; x < BDVSArray.width; x++) {
                             int count = frameData.get(x, y);
@@ -2271,7 +2271,8 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         private boolean useOffChipCalibration = getPrefs().getBoolean("useOffChipCalibration", false);
         private boolean invertADCvalues = getPrefs().getBoolean("invertADCvalues", true); // true by default for log output which goes down with increasing intensity
         private boolean twoPointCalibration = getPrefs().getBoolean("twoPointCalibration", false);
-
+        private int lasttimestamp=-1;
+        
         public LogIntensityFrameData() {
             loadPreference();
         }
@@ -2297,11 +2298,21 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             }
         }
 
+        private void put(PolarityADCSampleEvent e) {
+            if(!e.isAdcSample() || e.timestamp==lasttimestamp) return;
+            if(e.startOfFrame) {
+                resetWriteCounter();
+                setTimestamp(e.timestamp);
+            }
+            put(e.adcSample);
+            lasttimestamp=e.timestamp; // so we don't put the same sample over and over again
+        }
+        
         /** Put a value to the next writing position and increments the writingCounter. 
          * Writes wrap around to the start position. 
          * @param val the sample
          */
-        public void put(int val) {
+        private void put(int val) {
             if (writeCounter >= data.length) {
 //            log.info("buffer overflowed - missing start frame bit?");
                 return;
@@ -2490,14 +2501,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             putArray(calibData2, CALIB2_KEY);
         }
 
-        private void put(PolarityADCSampleEvent e) {
-            if(!e.isAdcSample()) return;
-            if(e.startOfFrame) {
-                resetWriteCounter();
-                setTimestamp(e.timestamp);
-            }
-            put(e.adcSample);
-        }
+
     }
 //    /**
 //     * Reads raw data files written from the CLCamera, so they can be played back.
