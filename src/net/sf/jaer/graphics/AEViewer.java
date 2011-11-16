@@ -2144,6 +2144,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                    if(packet.getSize()>2) ratekeps=(float)packet.getSize()/(float)dtMs;
 //                        thisTimeString = String.format("%5.3fs",getAePlayer().getTime() * 1e-6f); // hack here, we don't know timestamp from data file, we assume 1us
                         thisTime = packet.getLastTimestamp() * 1e-6f; // just use the raw timestamp from the data file, but this will not account for wrapping.
+// doesn't do the right thing when playing back by constant number of events
+//                        timeSliceString=String.format("%10ss",engFmt.format(getAePlayer().getTimesliceUs()*1e-6f));
                         break;
                     case REMOTE:
                         thisTime = packet.getLastTimestamp() * 1e-6f;
