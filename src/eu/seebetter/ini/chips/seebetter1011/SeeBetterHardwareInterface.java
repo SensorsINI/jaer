@@ -244,6 +244,7 @@ public class SeeBetterHardwareInterface extends CypressFX2Biasgen {
 
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
     public class RetinaAEReader extends CypressFX2.AEReader {
+        private static final int NONMONOTONIC_WARNING_COUNT = 30; // how many warnings to print after start or timestamp reset
 
         public RetinaAEReader(CypressFX2 cypress) throws HardwareInterfaceException {
             super(cypress);
@@ -303,9 +304,7 @@ public class SeeBetterHardwareInterface extends CypressFX2Biasgen {
         private int lasty = 0;
         private int currentts = 0;
         private int lastts = 0;
-        private int yonlycount=0;
-        private int yonlycons=0;
-        private boolean doubleY=false;
+        private int nonmonotonicTimestampWarningCount=NONMONOTONIC_WARNING_COUNT;
 
         @Override
         protected void translateEvents(UsbIoBuf b) {
@@ -398,6 +397,9 @@ public class SeeBetterHardwareInterface extends CypressFX2Biasgen {
                                 lastts = currentts;
                                 currentts = ((0x3f & buf[i + 1]) << 8) | (buf[i] & 0xff);
                                 currentts = (TICK_US * (currentts + wrapAdd));
+                                if(lastts>currentts && nonmonotonicTimestampWarningCount-->0){
+                                    log.warning("non-monotonic timestamp: currentts="+currentts+" lastts="+lastts+" currentts-lastts="+(currentts-lastts));
+                                }
                                 //           log.info("received timestamp");
                                 break;
                             case 2: // wrap
@@ -406,6 +408,7 @@ public class SeeBetterHardwareInterface extends CypressFX2Biasgen {
                                 //   log.info("wrap");
                                 break;
                             case 3: // ts reset event
+                                nonmonotonicTimestampWarningCount=NONMONOTONIC_WARNING_COUNT;
                                 this.resetTimestamps();
                                 //   log.info("timestamp reset");
                                 break;
