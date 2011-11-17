@@ -2250,7 +2250,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 statusTextField.setText(s);
                 statusTextField.setToolTipText(s);
                 if(statusTimer!=null) statusTimer.stop();
-                statusTimer = new javax.swing.Timer(1000, new ActionListener() {
+                statusTimer = new javax.swing.Timer(5000, new ActionListener() {
 
                     @Override
                     public void actionPerformed(ActionEvent e) {
