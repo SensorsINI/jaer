@@ -72,8 +72,8 @@ In addition, when A5EViewer is in PLAYBACK PlayMode, users can register as Prope
  */
 public class AEViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener, ExceptionListener, RemoteControlled {
 
-    /** PropertyChangeEvent */
-    public static final String EVENT_PLAYMODE = "playmode", EVENT_FILEOPEN = "fileopen", EVENT_STOPME = "stopme", EVENT_CHIP = "chip", EVENT_PAUSED = "paused", EVENT_TIMESTAMPS_RESET = "timestampsReset";
+    /** PropertyChangeEvent fired from this AEViewer*/
+    public static final String EVENT_PLAYMODE = "playmode", EVENT_FILEOPEN = "fileopen", EVENT_STOPME = "stopme", EVENT_CHIP = "chip", EVENT_PAUSED = "paused", EVENT_TIMESTAMPS_RESET = "timestampsReset", EVENT_CHECK_NONMONOTONIC_TIMESTAMPS="checkNonMonotonicTimestamps";
     public static String HELP_URL_USER_GUIDE = "http://jaer.wiki.sourceforge.net";
     public static String HELP_URL_HELP_FORUM = "https://sourceforge.net/projects/jaer/forums/forum/631958";
     public static String HELP_URL_JAVADOC_WEB = "http://jaer.sourceforge.net/javadoc";
@@ -5068,10 +5068,11 @@ private void checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerform
     if (aemon != null && aemon instanceof StereoPairHardwareInterface) {
         ((StereoPairHardwareInterface) aemon).setIgnoreTimestampNonmonotonicity(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
     }
+    firePropertyChange(EVENT_CHECK_NONMONOTONIC_TIMESTAMPS, null, checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
 }//GEN-LAST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
 
 private void syncEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_syncEnabledCheckBoxMenuItemActionPerformed
-    log.warning("no effect");
+    log.warning("no effect here - this event is handled by jAERViewer, not AEViewer");
 }//GEN-LAST:event_syncEnabledCheckBoxMenuItemActionPerformed
 
 private void showConsoleOutputButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showConsoleOutputButtonActionPerformed
