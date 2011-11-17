@@ -467,6 +467,10 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         return aeFileInputStream;
     }
 
+  /** Says if checking for non-monotonic timestamps in input file is enabled.
+     * 
+     * @return true if enabled.
+     */    
     public boolean isNonMonotonicTimeExceptionsChecked (){
         if ( aeFileInputStream == null ){
             return false;
@@ -474,6 +478,10 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         return aeFileInputStream.isNonMonotonicTimeExceptionsChecked();
     }
 
+    /** Enables or disables checking for non-monotonic timestamps in input file.
+     * 
+     * @param yes true to check and log exceptions (up to some limit)
+     */
     public void setNonMonotonicTimeExceptionsChecked (boolean yes){
         if ( aeFileInputStream == null ){
             log.warning("null fileAEInputStream");
