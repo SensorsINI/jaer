@@ -10,7 +10,13 @@
 
 package net.sf.jaer.chip;
 
+import ch.unizh.ini.jaer.chip.retina.DVS128;
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.logging.Level;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.Biasgen;
@@ -40,9 +46,23 @@ public class Chip extends Observable {
     public static final String DEFAULT_FIRMWARE_BIX_FILE_FOR_BLANK_DEVICE = "CypressFX2Blank.defaultFirmwareBixFileForBlankDevice";
     
      
-    private Preferences prefs=Preferences.userNodeForPackage(Chip.class);    
+    /** The root preferences for this Chip. 
+     * @see Chip#getPrefs()  
+     */
+    private Preferences prefs=Preferences.userNodeForPackage(Chip.class);  
+    
+    /** Preferences key which is used to store the preferences boolean that preferred values have been loaded at least
+     * once for this Chip.
+     */
+    public static final String PREFERENCES_LOADED_ONCE_KEY="defaultPreferencesWereLoaded";
+    
+    /** The default preferences file location for initial import of preferred values. By default it is null. */
+    private String defaultPreferencesFile=null;
 
-    /** The bias generator for this chip */
+    /** The bias generator for this chip or object that holds any other kind of configuration information. (Originally this was just the 
+     actual digital bias values, but since this original definition it has grealy expanded to include board-level configuration such
+     as scanner control, external ADC control, and control of off-chip DACs.
+     */
     protected Biasgen biasgen=null;
     
     /** A String name */
@@ -106,6 +126,37 @@ public class Chip extends Observable {
         } catch (IOException e) {
             log.warning("couldn't make remote control for "+this+" : "+e);
         }
+    }
+
+    /** Check if this Chip has default preferences, and if so and they have not yet been loaded, loads them into the Preferences node
+     * for this Chip. 
+     * <p>
+     * Warning: If this method is called in a Chip's constructor and previous preferences exist from before 
+     * the use of this method, they could be deleted because the key PREFERENCES_LOADED_ONCE_KEY has not yet been written to signal that
+     * preferences were loaded at least once. To use this method for existing Chip classes, the Chip's constructor can also call
+     * the Biasgen isInitalized method to check if any Pot has been set to a non-zero value.
+     * @see ch.unizh.ini.jaer.chip.retina.DVS128 for an example of use
+     * @see #getDefaultPreferencesFile() 
+     */
+    protected void maybeLoadDefaultPreferences() {
+        if(getDefaultPreferencesFile()!=null && !isDefaultPreferencesLoadedOnce()){
+             InputStream is = null;
+             try {
+                 log.warning("no default preferences were loaded so far - importing from "+getDefaultPreferencesFile()+" to Preferences node "+getPrefs());
+                 
+                 is = new BufferedInputStream(new FileInputStream(getDefaultPreferencesFile()));
+                 Preferences.importPreferences(is);  // this uses the Preferences object to load all preferences from the input stream which an xml file
+                 getPrefs().putBoolean(PREFERENCES_LOADED_ONCE_KEY, true);
+             } catch (Exception ex) {
+                 Logger.getLogger(Chip.class.getName()).log(Level.SEVERE, null, ex);
+             } finally {
+                 try {
+                     is.close();
+                 } catch (IOException ex) {
+                     Logger.getLogger(Chip.class.getName()).log(Level.SEVERE, null, ex);
+                 }
+             }
+         }
     }
     
     /** Creates a new instance of Chip */
@@ -188,7 +239,7 @@ public class Chip extends Observable {
     }
 
 
-    /** Returns the Preferences node for this Chip. 
+    /** Returns the Preferences node for this Chip. All preferred configuration should be stored and retrieved with this node.
      @return the node
      */
     public Preferences getPrefs() {
@@ -228,6 +279,36 @@ public class Chip extends Observable {
    public  void setDefaultFirmwareBixFileForBlankDevice(String aDefaultFirmwareBixFileForBlankDevice) {
         this.defaultFirmwareBixFileForBlankDevice = aDefaultFirmwareBixFileForBlankDevice;
         getPrefs().put(DEFAULT_FIRMWARE_BIX_FILE_FOR_BLANK_DEVICE, defaultFirmwareBixFileForBlankDevice);
+    }
+
+    /**
+    * This file, if not null, is used to import preferences if they have not been initialized.
+    * A Chip can set this path relative to the startup folder (in jAER the startup folder is host/java) to 
+    * automatically have preferences imported on first use. For example set the file path to "../../biasgenSettings/dvs128/DVS128Fast.xml".
+    * 
+     * @return the defaultPreferencesFile
+     */
+    public String getDefaultPreferencesFile() {
+        return defaultPreferencesFile;
+    }
+
+    /**
+     * This file, if not null, is used to import preferences if they have not been initialized.
+    * A Chip can set this path relative to the startup folder (in jAER the startup folder is host/java) to 
+    * automatically have preferences imported on first use.
+    * 
+     * @param defaultPreferencesFile the defaultPreferencesFile to set
+     */
+    public void setDefaultPreferencesFile(String defaultPreferencesFile) {
+        this.defaultPreferencesFile = defaultPreferencesFile;
+    }
+    
+    /** Returns true if default preferences were loaded at least once.
+     * 
+     * @return true if preferences were loaded.
+     */
+    public boolean isDefaultPreferencesLoadedOnce(){
+        return getPrefs().getBoolean(PREFERENCES_LOADED_ONCE_KEY, false);
     }
 
 
