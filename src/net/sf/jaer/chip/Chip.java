@@ -159,23 +159,6 @@ public class Chip extends Observable {
          }
     }
     
-    /** Creates a new instance of Chip */
-    public Chip(HardwareInterface hardwareInterface) {
-        this();
-        this.hardwareInterface=hardwareInterface;
-    }
-    
-    public Chip(Biasgen biasgen){
-        this();
-        this.biasgen=biasgen;
-    }
-    
-    public Chip(HardwareInterface hardwareInterface, Biasgen biasgen){
-        this();
-        this.biasgen=biasgen;
-        setHardwareInterface(hardwareInterface);
-    }
-
 
     /** This empty method can be called to clean up if the Chip is no longer 
      * used or need to un-install some registered GUI elements or clean up memory. */
