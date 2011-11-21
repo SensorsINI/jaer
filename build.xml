@@ -157,23 +157,15 @@
         <tstamp/>
        <delete file="../../jaer-runtime-*.zip" />
         <property name="runtimeZipFileName" value="../../jaer-runtime-${DSTAMP}.zip"/>
-        <zip destfile="${runtimeZipFileName}"
+        <zip destfile="${runtimeZipFileName}" level="9"
             comment="jAER runtime release ${DSTAMP}- see http://jaer.wiki.sourceforge.net">
             <zipfileset prefix="jAER-runtime" 
                         dir="../../"
-                        excludes="src/**, 
-                        blender/**, 
-                        **/javadoc/**,
-                        doc/**, 
-                        **/*.zip, 
-                        deviceOld/**, 
-                        host/java/build/**, 
-                        deviceFirmwarePCBLayout/**, 
+                        excludes="blender/**, 
+                         **/*.zip, 
+                         deviceFirmwarePCBLayout/**, 
                         jSmoothExeLauncher/**, 
-                        **/*.private, **/*.hprof, **/*.log, **/*.ncb,
-                        device/**,
-                        host/java/*.dat,
-                        host/java/dist/keystore"
+                        **/*.private, **/*.hprof, **/*.log, **/*.ncb"
             />
         </zip>
     </target>
