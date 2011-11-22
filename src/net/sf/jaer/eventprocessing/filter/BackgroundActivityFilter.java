@@ -85,6 +85,7 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
             BasicEvent i = (BasicEvent) e;
             ts = i.timestamp;
             short x = (short) (i.x >>> subsampleBy), y = (short) (i.y >>> subsampleBy);
+            if(x<0||y<0) continue;
             int lastt = lastTimestamps[x][y];
             int deltat = (ts - lastt);
             if (deltat < dt && lastt != DEFAULT_TIMESTAMP) {
