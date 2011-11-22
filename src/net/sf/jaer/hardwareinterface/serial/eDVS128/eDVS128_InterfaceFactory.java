@@ -397,7 +397,9 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                     socket.setReceiveBufferSize(TCP_RECEIVE_BUFFER_SIZE_BYTES);
                     socket.setSendBufferSize(TCP_SEND_BUFFER_SIZE_BYTES);
                     socket.setSoTimeout(SO_TIMEOUT);
+                    log.info("connecting to "+host+":"+tcpport);
                     socket.connect(new InetSocketAddress(host, tcpport), CONNECTION_TIMEOUT_MS);
+                    log.info("success connecting to "+host+":"+tcpport);
                     if (socket.getSendBufferSize() != TCP_SEND_BUFFER_SIZE_BYTES) {
                         log.warning("requested sendBufferSize=" + TCP_SEND_BUFFER_SIZE_BYTES + " but got sendBufferSize=" + socket.getSendBufferSize());
                     }

@@ -26,8 +26,10 @@ import java.util.ArrayList;
 import java.util.Observer;
 
 import ch.unizh.ini.jaer.chip.retina.DVS128;
-import gnu.io.CommPortOwnershipListener;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.net.Socket;
+import java.nio.CharBuffer;
 
 /**
  * Interface to eDVS128 cameras via FTDI serial port or wifi TCP socket.
@@ -103,9 +105,10 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
     private AEPacketRawPool aePacketRawPool = new AEPacketRawPool();
     private int lastshortts = 0;
     private final int NUM_BIASES = 12; // number of biases, to renumber biases for bias command
-    private boolean DEBUG = false;
+    private boolean DEBUG = true;
     SerialPort serialPort;
     Socket socket;
+    ArrayList<Pot> pots;
 
     /** Constructs a new eDVS128_HardwareInterface using the input and output stream supplied. The other arguments should only have one non-null entry and 
      * are used to properly close the interface.
@@ -130,6 +133,9 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
      * @throws IOException 
      */
     synchronized private void write(String s) throws IOException {
+        if (outputStream == null) {
+            throw new IOException("null output stream");
+        }
         if (s == null) {
             return;
         }
@@ -144,17 +150,52 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
     @Override
     public void open() throws HardwareInterfaceException {
 
+
         if (outputStream == null) {
             throw new HardwareInterfaceException("no interface to open; outputStream=null");
         }
 
         if (!isOpen) {
-            log.info("opening");
+            isOpen = true;
+            log.info("opening (resetting, turning LED steady ON and starting event transfer)");
+            if (chip == null || !(chip instanceof DVS128)) {
+                log.warning("null chip or AEChip is not instance of DVS128, cannot add this interface as listener for bias generator ipot changes");
+            } else {
+                addedBiasListeners = true;
+                DVS128 dvs128 = (DVS128) chip;
+                ArrayList<Pot> pots = dvs128.getBiasgen().getPotArray().getPots();
+                for (Pot p : pots) {
+                    p.addObserver(this); // TODO first send won't work
+                }
+            }
+//            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+//            CharBuffer buf = CharBuffer.allocate(1000);
             try {
+//                int avail = inputStream.available();
+//                if (reader.ready()) {
+//                    reader.read(buf); // clear buffer
+//                    log.info(buf.toString());
+//                }
+                write("R");
+                int wait = 10;
+                Thread.sleep(300);
+                
+//                while (!reader.ready() && wait-- > 0) {
+//                    Thread.sleep(100);
+//                }
+//                if (!reader.ready() || wait == 0) {
+//                    log.warning("eDVS did not return startup message after reset");
+//                }
+//                avail = inputStream.available();
+//                if (reader.ready()) {
+//                    buf.clear();
+//                    int nread = reader.read(buf);
+//                    log.info("Device sent after reset: " + buf.flip().toString());
+//                }
                 write("1"); // turn on LED on eDVS board (not wifi board)
                 write("!E1"); // data format, as in serial port interrface
+                sendAllBiases();
                 setEventAcquisitionEnabled(true);
-                isOpen = true;
             } catch (Exception e) {
                 throw new HardwareInterfaceException("could not open", e);
             }
@@ -176,11 +217,24 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
             return;
         }
         try {
+            if (chip != null && chip instanceof DVS128) {
+                DVS128 dvs128 = (DVS128) chip;
+                ArrayList<Pot> pots = dvs128.getBiasgen().getPotArray().getPots();
+                for (Pot p : pots) {
+                    p.deleteObserver(this); // TODO first send won't work
+                }
+            }
             write("0"); // turn off LED on eDVS board (not wifi board)
             setEventAcquisitionEnabled(false);
-            getAeReader().join();
-            inputStream.close();
-            outputStream.close();
+            if (getAeReader() != null) {
+                getAeReader().join();
+            }
+            if (inputStream != null) {
+                inputStream.close();
+            }
+            if (outputStream != null) {
+                outputStream.close();
+            }
 
             if (serialPort != null) {
                 serialPort.removeEventListener();
@@ -205,17 +259,6 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
     @Override
     public void setChip(AEChip chip) {
         this.chip = chip;
-        if (chip == null) {
-            return;
-        }
-        if (!addedBiasListeners && chip instanceof DVS128) {
-            addedBiasListeners = true;
-            DVS128 dvs128 = (DVS128) chip;
-            ArrayList<Pot> pots = dvs128.getBiasgen().getPotArray().getPots();
-            for (Pot p : pots) {
-                p.addObserver(this); // TODO first send won't work
-            }
-        }
     }
 
     @Override
@@ -378,15 +421,29 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
     @Override
     public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         // comes here when bias values should be sent, but we don't know which one should be sent from this call.
-        try {
-            if (biasgen instanceof DVS128.Biasgen) {
-                DVS128.Biasgen b2 = (DVS128.Biasgen) biasgen;
-                for (Pot p : b2.getPotArray().getPots()) {
-                    sendPot((IPot) p);
-                }
+//        try {
+//            if (biasgen instanceof DVS128.Biasgen) {
+//                DVS128.Biasgen b2 = (DVS128.Biasgen) biasgen;
+//                for (Pot p : b2.getPotArray().getPots()) {
+//                    sendPot((IPot) p);
+//                }
+//            }
+//        } catch (IOException ex) {
+//            log.warning(ex.toString());
+//        }
+    }
+
+    private void sendAllBiases() {
+        if (pots == null) {
+            return;
+        }
+        for (Pot p : pots) {
+            try {
+                sendPot((IPot) p);
+            } catch (IOException ex) {
+                log.warning(ex.toString());
+                break;
             }
-        } catch (IOException ex) {
-            log.warning(ex.toString());
         }
     }
 
@@ -435,11 +492,11 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
     /** Called when notifyObservers is called in Observable we are watching, e.g. biasgen */
     @Override
     synchronized public void update(Observable o, Object arg) {
-
+//        log.info("update from observable=" + o + " with arg=" + arg);
         if (o instanceof IPot) {
             try {
                 if (outputStream == null) {
-                    log.warning("no connection; null serial device");
+                    log.warning("no connection; null output stream");
                     return;
                 }
                 IPot p = (IPot) o;
@@ -452,6 +509,9 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
     }
 
     private void sendPot(IPot p) throws IOException {
+        if (!isOpen) {
+            return;
+        }
         int v = p.getBitValue();
         int n = NUM_BIASES - 1 - p.getShiftRegisterNumber(); // eDVS firmware numbers in reverse order from DVS firmware, we want shift register 0 to become 11 on the eDVS
         String s = String.format("!B%d=%d", n, v); // LPC210 has 16-byte serial buffer, hopefully fits
@@ -459,13 +519,11 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
             log.info("sending command " + s + " for pot " + p + " at bias position " + n);
         }
         // note that eDVS must have rev1 firmware for BF command to work.
-        byte[] b = s.getBytes();
         if (s.length() > 16) {
             log.warning("sending " + s.length() + " bytes, might not fit in eDVS LPC2016 16-byte buffer");
         }
         write(s);
-        s = "!BF";
-        write(s);
+        write("!bf"); // these commands are NOT echoed if the sensor is sending events "e+" except that a special confirmation event is sent.
     }
 
     // doesn't work because native ownership change notification is not implemented in 2011 in our RXTX
@@ -497,6 +555,8 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
             buffer = new byte[8192 * 4];//UsbUtil.unsignedInt(usbPipe.getUsbEndpoint().getUsbEndpointDescriptor().wMaxPacketSize())];
         }
 
+        @Override
+        @SuppressWarnings("SleepWhileInLoop")
         public void run() {
 
             int offset = 0;
@@ -536,6 +596,7 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
 
                     translateEvents_code(buffer, length);
 
+                    // what is this 'calibration'? TODO
                     if (bCalibrated == 0) {
                         int diff = 0;
                         if (length > 100) {
@@ -621,6 +682,11 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
     }
     private long lastWrapTime = 0;
 
+    /** Writes events from buffer to AEPacketRaw in buffer pool.
+     * 
+     * @param b data sent from camera
+     * @param bytesSent number of bytes in buffer that are valid
+     */
     protected void translateEvents_code(byte[] b, int bytesSent) {
         synchronized (aePacketRawPool) {
 
@@ -638,7 +704,8 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
             if (DEBUG) {
                 sb = new StringBuilder(String.format("%d events: Timestamp deltas are ", bytesSent / 4));
             }
-            for (int i = 0; i < bytesSent; i += 4) {
+            int i = 0;
+            while (i < bytesSent) {
                 /* event polarity is encoded in the msb of the second byte. i.e.
                 Byte0, bit 7:         always zero
                 Byte0, bits 6-0:   event address y
@@ -652,7 +719,8 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
                 int d_ = (0xff & b[i + 3]);
 
 //                if ( (y_ & 0x80) != 0){
-//                     System.out.println("Data not aligned!");
+//                     log.warning("Data not aligned - flushing rest of buffer");
+//                     break;
 //                }
 
                 if (eventCounter >= buffer.getCapacity()) {
@@ -678,6 +746,7 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
                 lastshortts = shortts;
 
                 eventCounter++;
+                i += 4; // event size in bytes
             }
             if (DEBUG) {
                 log.info(sb.toString());

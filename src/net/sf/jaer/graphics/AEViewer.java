@@ -1225,6 +1225,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    
     /** Builds list of attached hardware interfaces by asking the
      * hardware interface factories for the interfaces. Populates the Interface menu with these items,
     and with a "None" item to close and set the chip's HardwareInterface to null.
@@ -1343,7 +1344,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         noneInterfaceButton.setSelected(true);
         if (chip != null && chip.getHardwareInterface() != null) {
             choseOneButton = false;
-            String chipInterface = chip.getHardwareInterface().toString();
+            String chipInterface = chip.getHardwareInterface().getTypeName();
 //            System.out.println("chipInterface="+chipInterface);
             for (Component c : interfaceMenu.getMenuComponents()) {
                 if (!(c instanceof JMenuItem)) {

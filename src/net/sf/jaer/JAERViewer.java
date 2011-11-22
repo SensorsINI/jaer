@@ -265,7 +265,11 @@ public class JAERViewer {
             if (starty + cursor > d.height - textheight) {
                 cursor = 0;
             }
-            splashScreen.update();
+            try{
+                splashScreen.update();
+            }catch(IllegalStateException e){
+                System.err.println(e.toString());
+            }
 
         }
 
