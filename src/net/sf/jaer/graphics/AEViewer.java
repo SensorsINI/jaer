@@ -73,7 +73,7 @@ In addition, when A5EViewer is in PLAYBACK PlayMode, users can register as Prope
 public class AEViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener, ExceptionListener, RemoteControlled {
 
     /** PropertyChangeEvent fired from this AEViewer*/
-    public static final String EVENT_PLAYMODE = "playmode", EVENT_FILEOPEN = "fileopen", EVENT_STOPME = "stopme", EVENT_CHIP = "chip", EVENT_PAUSED = "paused", EVENT_TIMESTAMPS_RESET = "timestampsReset", EVENT_CHECK_NONMONOTONIC_TIMESTAMPS="checkNonMonotonicTimestamps";
+    public static final String EVENT_PLAYMODE = "playmode", EVENT_FILEOPEN = "fileopen", EVENT_STOPME = "stopme", EVENT_CHIP = "chip", EVENT_PAUSED = "paused", EVENT_TIMESTAMPS_RESET = "timestampsReset", EVENT_CHECK_NONMONOTONIC_TIMESTAMPS = "checkNonMonotonicTimestamps";
     public static String HELP_URL_USER_GUIDE = "http://jaer.wiki.sourceforge.net";
     public static String HELP_URL_HELP_FORUM = "https://sourceforge.net/projects/jaer/forums/forum/631958";
     public static String HELP_URL_JAVADOC_WEB = "http://jaer.sourceforge.net/javadoc";
@@ -1225,7 +1225,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
-    
     /** Builds list of attached hardware interfaces by asking the
      * hardware interface factories for the interfaces. Populates the Interface menu with these items,
     and with a "None" item to close and set the chip's HardwareInterface to null.
@@ -1302,10 +1301,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             fac.setVisible(true);
                             if (inst.getChosenHardwareInterface() != null) {
                                 // close interface on chip if there is one and it's open
-                                if (chip.getHardwareInterface() != null ) {
+                                if (chip.getHardwareInterface() != null) {
                                     log.info("before opening new interface, closing " + chip.getHardwareInterface().toString());
                                     chip.getHardwareInterface().close();
-                                    aemon=null; // TODO aemon is a bad hack
+                                    aemon = null; // TODO aemon is a bad hack
                                 }
                                 HardwareInterface hw = inst.getChosenHardwareInterface();
                                 log.info("setting new interface " + hw);
@@ -2236,9 +2235,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
     }
+    private javax.swing.Timer statusTimer = null;
 
-    private javax.swing.Timer statusTimer=null;
-    
     /** Sets the viewer's status message at the bottom of the window.
      *
      * @param s the string
@@ -2250,7 +2248,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             public void run() {
                 statusTextField.setText(s);
                 statusTextField.setToolTipText(s);
-                if(statusTimer!=null) statusTimer.stop();
+                if (statusTimer != null) {
+                    statusTimer.stop();
+                }
                 statusTimer = new javax.swing.Timer(5000, new ActionListener() {
 
                     @Override
@@ -2279,9 +2279,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @param c
      */
     public void setStatusColor(final Color c) {
-        SwingUtilities.invokeLater(new Runnable(){
+        SwingUtilities.invokeLater(new Runnable() {
+
             @Override
-            public void run(){
+            public void run() {
                 statusTextField.setForeground(c);
             }
         });
@@ -4674,12 +4675,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         String className =
                 chip.getClass().getSimpleName();
         int suffixNumber = 0;
+        // TODO replace with real serial number code in devices!
+        String serialNumber = "";
+        if (chip.getHardwareInterface() != null && chip.getHardwareInterface() instanceof USBInterface) {
+            USBInterface usb = (USBInterface) chip.getHardwareInterface();
+            if (usb.getStringDescriptors() != null && usb.getStringDescriptors().length == 3 && usb.getStringDescriptors()[2] != null) {
+                serialNumber = "-" + usb.getStringDescriptors()[2];
+            }
+        }
         boolean succeeded = false;
         String filename;
 
         do {
             // log files to tmp folder initially, later user will move or delete file on end of logging
-            filename = lastLoggingFolder + File.separator + className + "-" + dateString + "-" + suffixNumber + AEDataFile.DATA_FILE_EXTENSION;
+            filename = lastLoggingFolder + File.separator + className + "-" + dateString + serialNumber + "-" + suffixNumber + AEDataFile.DATA_FILE_EXTENSION;
             File lf = new File(filename);
             if (!lf.isFile()) {
                 succeeded = true;
