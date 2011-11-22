@@ -38,6 +38,7 @@ public interface USBInterface extends HardwareInterface {
    /** return the string USB descriptors for the device. By USB convention, the first string is the manufactuer, the second is product, and the last is the unique serial number.
     * The serial number may not be implemented, in which case a null string may be the third string or the length of the returned array may only be 2.
      *@return String[] of USB descriptors
+     * @see #getDID() 
      */
     public String[] getStringDescriptors();
     
@@ -54,7 +55,8 @@ public interface USBInterface extends HardwareInterface {
     public short getPID();
     
     /**@return DID (device ID). This is the firmware version number, not the serial number. A device may not set the firmware version number in it's descriptors. Returns 0 then. DVS128 
-     and the USBAERmini2 do have it.
+     and the USBAERmini2 do have a firmware serial number.  They also have a serial number as the third string descriptor.
+     * @see #getStringDescriptors() 
      */
     public short getDID();
     
