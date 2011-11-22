@@ -71,6 +71,12 @@
         <delete dir="${build.dir}"/>
     </target>
     
+   <target name="-pre-init">
+        <!-- Empty placeholder for easier customization. -->
+        <!-- You can override this target in the ../build.xml file. -->
+        <tstamp/>
+    </target>
+
     <!-- makes sure that the build version is written to the jar -->
     <target name="-pre-jar" depends="setBuildVersion,copySplashImage" >
         <echo message="build.xml project opened"/>
