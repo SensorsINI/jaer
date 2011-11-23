@@ -105,7 +105,7 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
     private AEPacketRawPool aePacketRawPool = new AEPacketRawPool();
     private int lastshortts = 0;
     private final int NUM_BIASES = 12; // number of biases, to renumber biases for bias command
-    private boolean DEBUG = true;
+    private boolean DEBUG = false;
     SerialPort serialPort;
     Socket socket;
     ArrayList<Pot> pots;
@@ -144,7 +144,8 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
         }
         byte[] b = s.getBytes();
         outputStream.write(b, 0, b.length);
-        outputStream.flush();
+//        outputStream.flush();
+        log.info("sent "+s);
     }
 
     @Override
@@ -168,33 +169,46 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
                     p.addObserver(this); // TODO first send won't work
                 }
             }
-//            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-//            CharBuffer buf = CharBuffer.allocate(1000);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            CharBuffer buf = CharBuffer.allocate(1000);
             try {
-//                int avail = inputStream.available();
-//                if (reader.ready()) {
-//                    reader.read(buf); // clear buffer
-//                    log.info(buf.toString());
-//                }
+                int avail = inputStream.available();
+                if (reader.ready()) {
+                    reader.read(buf); // clear buffer
+                    log.info(buf.toString());
+                }
                 write("R");
                 int wait = 10;
                 Thread.sleep(300);
                 
-//                while (!reader.ready() && wait-- > 0) {
-//                    Thread.sleep(100);
-//                }
-//                if (!reader.ready() || wait == 0) {
-//                    log.warning("eDVS did not return startup message after reset");
-//                }
-//                avail = inputStream.available();
-//                if (reader.ready()) {
-//                    buf.clear();
-//                    int nread = reader.read(buf);
-//                    log.info("Device sent after reset: " + buf.flip().toString());
-//                }
-                write("1"); // turn on LED on eDVS board (not wifi board)
+                while (!reader.ready() && wait-- > 0) {
+                    Thread.sleep(100);
+                }
+                if (!reader.ready() || wait == 0) {
+                    log.warning("eDVS did not return startup message after reset");
+                }
+                avail = inputStream.available();
+                if (reader.ready()) {
+                    buf.clear();
+                    int nread = reader.read(buf);
+                    log.info("Device sent after reset: " + buf.flip().toString());
+                }
                 write("!E1"); // data format, as in serial port interrface
                 sendAllBiases();
+                write("1"); // turn on LED on eDVS board (not wifi board)
+                wait=10;
+                 while (!reader.ready() && wait-- > 0) {
+                    Thread.sleep(100);
+                }
+                if (!reader.ready() || wait == 0) {
+                    log.warning("eDVS did not return any messages on sending biases");
+                }
+                avail = inputStream.available();
+                if (reader.ready()) {
+                    buf.clear();
+                    int nread = reader.read(buf);
+                    log.info("Device sent after sending biases: " + buf.flip().toString());
+                }              
                 setEventAcquisitionEnabled(true);
             } catch (Exception e) {
                 throw new HardwareInterfaceException("could not open", e);
@@ -226,9 +240,10 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
             }
             write("0"); // turn off LED on eDVS board (not wifi board)
             setEventAcquisitionEnabled(false);
-            if (getAeReader() != null) {
-                getAeReader().join();
-            }
+            // following commented because it deadlocks on RXTX read, which never seems to complete
+//            if (getAeReader() != null) {
+//                getAeReader().join();
+//            }
             if (inputStream != null) {
                 inputStream.close();
             }
@@ -294,7 +309,12 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
 
     @Override
     public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
-        try {
+        if (enable) {
+            startAEReader();
+        } else {
+            stopAEReader();
+        }
+         try {
             if (enable) {
                 write("E+");
             } else {
@@ -304,12 +324,7 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
             log.warning(ex.toString());
             throw new HardwareInterfaceException("couldn't write command to start or stop event sending", ex);
         }
-        if (enable) {
-            startAEReader();
-        } else {
-            stopAEReader();
-        }
-    }
+   }
 
     @Override
     public boolean isEventAcquisitionEnabled() {
@@ -421,6 +436,8 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
     @Override
     public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         // comes here when bias values should be sent, but we don't know which one should be sent from this call.
+        // generates a storm of biases on each bias change, so commented out for now. But this means the resend biases and revert biases buttons in BiasgenFrame don't do what we want.
+        
 //        try {
 //            if (biasgen instanceof DVS128.Biasgen) {
 //                DVS128.Biasgen b2 = (DVS128.Biasgen) biasgen;
@@ -454,7 +471,7 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
 
     @Override
     public byte[] formatConfigurationBytes(Biasgen biasgen) {
-        throw new UnsupportedOperationException("Not supported yet.");// TODO use this to send all biases at once?  yes, this is how the on-chip bias generator works
+        throw new UnsupportedOperationException("Not supported  or used for this device.");// TODO use this to send all biases at once?  yes, this is how the on-chip bias generator works
     }
 
     @Override
@@ -523,7 +540,12 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
             log.warning("sending " + s.length() + " bytes, might not fit in eDVS LPC2016 16-byte buffer");
         }
         write(s);
-        write("!bf"); // these commands are NOT echoed if the sensor is sending events "e+" except that a special confirmation event is sent.
+//        try {
+//            Thread.sleep(100);
+//        } catch (InterruptedException ex) {
+//            
+//        }
+        write("!BF"); // these commands are NOT echoed if the sensor is sending events "e+" except that a special confirmation event is sent.
     }
 
     // doesn't work because native ownership change notification is not implemented in 2011 in our RXTX
@@ -549,6 +571,7 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
 
         public AEReader(eDVS128_HardwareInterface monitor) {
             this.monitor = monitor;
+            setName("eDVS_AEReader");
             /* This is a list of all this interface's endpoints. */
             allocateAEBuffers();
 

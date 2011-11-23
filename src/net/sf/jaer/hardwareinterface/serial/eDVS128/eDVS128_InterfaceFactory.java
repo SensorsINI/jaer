@@ -53,16 +53,13 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
     public static final String HOST = "192.168.91.62";
     /** The default TCP port address of the wifi interface */
     public static final int TCP_PORT = 56000;
-    
-   public static final int TCP_RECEIVE_BUFFER_SIZE_BYTES = 8192;
+    public static final int TCP_RECEIVE_BUFFER_SIZE_BYTES = 8192;
     public static final int TCP_SEND_BUFFER_SIZE_BYTES = 1024;
     public static final boolean DEFAULT_USE_BUFFERED_STREAM = false;
     /** timeout in ms for connection attempts */
     public static final int CONNECTION_TIMEOUT_MS = 6000; // it takes substantial time to connect to eDVS
     /** timeout in ms for read/write attempts */
     public static final int SO_TIMEOUT = 100; // 1 means we should timeout as soon as there are no more events in the datainputstream
-
-    
     /** A return status code - returned if Cancel button has been pressed */
     public static final int RET_CANCEL = 0;
     /** A return status code - returned if OK button has been pressed */
@@ -72,6 +69,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
     private static eDVS128_InterfaceFactory instance = new eDVS128_InterfaceFactory();
     private HardwareInterface chosenInterface = null;
     private static final String RESCAN = "-rescan-";
+    private static final String LAST_SELECTED = "lastSelected";
 
     /** Creates new form eDVS128_InterfaceFactory */
     private eDVS128_InterfaceFactory() {
@@ -94,6 +92,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         refreshSerialPortList();
         hostTF.setText(prefs.get("eDVS128_InterfaceFactory.HOST", HOST));
         portTF.setText(prefs.get("eDVS128_InterfaceFactory.TCP_PORT", Integer.toString(TCP_PORT)));
+  
 
     }
     private HashMap<String, HardwareInterface> closemap = new HashMap();
@@ -111,7 +110,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
             log.warning(e.toString());
         }
         closemap.remove(s);
-        hardwareInterface=null;
+        hardwareInterface = null;
     }
 
     /** Use this singleton instance to make new interfaces */
@@ -187,6 +186,9 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
 
         setTitle("Serial Port Chooser");
         addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowActivated(java.awt.event.WindowEvent evt) {
+                formWindowActivated(evt);
+            }
             public void windowClosing(java.awt.event.WindowEvent evt) {
                 closeDialog(evt);
             }
@@ -374,17 +376,36 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         portTF.setText(Integer.toString(TCP_PORT));
     }//GEN-LAST:event_defaultsButtonActionPerformed
 
+    private void focusLast(){
+             //set last focus
+        String lastSelected=null;
+        if ((lastSelected=prefs.get(LAST_SELECTED, null)) != null) {
+            if(lastSelected.equals("doChooseSerial")){
+                okSerPortButton.requestFocusInWindow();
+            }else if(lastSelected.equals("doChooseSocket")){
+                okSocketButton.requestFocusInWindow();
+            }else if(lastSelected.equals("doCloseCancel")){
+                cancelButton.requestFocusInWindow();
+            }
+        }    
+        log.info("focused on "+lastSelected);
+    }
+    private void formWindowActivated(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowActivated
+            focusLast();
+    }//GEN-LAST:event_formWindowActivated
+
     private void doCloseCancel() {
+        prefs.put(LAST_SELECTED, "doCloseCancel");
         returnStatus = RET_CANCEL;
         setVisible(false);
         dispose();
-
     }
- 
+
     private void doChooseSocket(int retStatus) {
         boolean success = false;
         switch (retStatus) {
             case RET_OK:
+                prefs.put(LAST_SELECTED, "doChooseSerial");
                 try {
                     setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 
@@ -397,9 +418,9 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                     socket.setReceiveBufferSize(TCP_RECEIVE_BUFFER_SIZE_BYTES);
                     socket.setSendBufferSize(TCP_SEND_BUFFER_SIZE_BYTES);
                     socket.setSoTimeout(SO_TIMEOUT);
-                    log.info("connecting to "+host+":"+tcpport);
+                    log.info("connecting to " + host + ":" + tcpport);
                     socket.connect(new InetSocketAddress(host, tcpport), CONNECTION_TIMEOUT_MS);
-                    log.info("success connecting to "+host+":"+tcpport);
+                    log.info("success connecting to " + host + ":" + tcpport);
                     if (socket.getSendBufferSize() != TCP_SEND_BUFFER_SIZE_BYTES) {
                         log.warning("requested sendBufferSize=" + TCP_SEND_BUFFER_SIZE_BYTES + " but got sendBufferSize=" + socket.getSendBufferSize());
                     }
@@ -420,11 +441,11 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                     chosenInterface = new eDVS128_HardwareInterface(socket.getInputStream(), socket.getOutputStream(), null, socket);
                     closemap.put(host, chosenInterface);
                     success = true;
-                }catch(SocketTimeoutException e){
-                   log.warning(e.toString());
+                } catch (SocketTimeoutException e) {
+                    log.warning(e.toString());
                     JOptionPane.showMessageDialog(this, "Timeout on connect:" + e.toString(), "eDVS128_HardwareInterface", JOptionPane.WARNING_MESSAGE);
                     chosenInterface = null;
-                   
+
                 } catch (Exception e) {
                     log.warning(e.toString());
                     JOptionPane.showMessageDialog(this, e.toString(), "eDVS128_HardwareInterface", JOptionPane.WARNING_MESSAGE);
@@ -449,6 +470,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         returnStatus = retStatus;
         chosenInterface = null;
         if (retStatus == RET_OK) {
+            prefs.put(LAST_SELECTED, "doChooseSerial");
             // make interface based on chosen serial port
             setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             Object o = portCB.getSelectedItem();
@@ -464,7 +486,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
 
                     if (portIdentifier.isCurrentlyOwned()) {
                         throw new IOException("Port " + serialPortName + " is currently in use by " + portIdentifier.getCurrentOwner());
-                    }else{
+                    } else {
                         CommPort commPort = portIdentifier.open(this.getClass().getName(), 2000);
 
                         if (commPort instanceof SerialPort) {
@@ -476,9 +498,9 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                             chosenInterface = new eDVS128_HardwareInterface(serialPort.getInputStream(), serialPort.getOutputStream(), serialPort, null);
 //                            portIdentifier.addPortOwnershipListener((eDVS128_HardwareInterface)chosenInterface);  // doesn't work because port ownership change nofication is not implemented in our native library
                             closemap.put(serialPortName, chosenInterface);
-                            serialPort=null;
+                            serialPort = null;
                             success = true;
-                        } else{
+                        } else {
                             log.warning("commPort is not a SerialPort");
                         }
                     }
