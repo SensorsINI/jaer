@@ -727,7 +727,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void openHardwareIfNonambiguous() {
         // TODO doesn't open an AEMonitor if there is a ServoInterface plugged in.
         // Should check to see if there is only 1 AEMonitorInterface, but this check is not possible currently without opening the interface.
-        HardwareInterfaceFactory.instance().buildInterfaceList();
+//        HardwareInterfaceFactory.instance().buildInterfaceList(); // TODO this burns up a lot of heap memory because the PnpListeners 
         int ninterfaces = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
         if (ninterfaces > 1) {
             if (showMultipleInterfacesMessageCount++ % 100 == 0) {

@@ -7,6 +7,7 @@
  * Open. You can then make changes to the template in the Source Editor.
  */
 package net.sf.jaer.event;
+import java.util.logging.Level;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventprocessing.*;
 import java.lang.reflect.Array;
@@ -382,16 +383,21 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     
     /** Enlarges capacity by some factor, then copies all event references to the new packet */
     private void enlargeCapacity() {
-        log.info("enlarging capacity of "+this);
-        int ncapacity=capacity*2; // (capacity*3)/2+1;
-        Object oldData[]=elementData;
-        elementData=(E[]) new BasicEvent[ncapacity];
-        System.arraycopy(oldData, 0, elementData, 0, size);
-        oldData=null;
-        // capacity still is old capacity and we have already filled it to there with new events, now fill
-        // in up to new capacity with new events
-        fillWithDefaultEvents(capacity, ncapacity);
-        capacity=ncapacity;
+        try {
+            log.info("enlarging capacity of " + this);
+            int ncapacity = capacity * 2; // (capacity*3)/2+1;
+            Object oldData[] = elementData;
+            elementData = (E[]) new BasicEvent[ncapacity];
+            System.arraycopy(oldData, 0, elementData, 0, size);
+            oldData = null;
+            // capacity still is old capacity and we have already filled it to there with new events, now fill
+            // in up to new capacity with new events
+            fillWithDefaultEvents(capacity, ncapacity);
+            capacity = ncapacity;
+        } catch (OutOfMemoryError e) {
+            log.log(Level.WARNING, "{0}: could not enlarge packet capacity from {1}", new Object[]{e.toString(), capacity});
+            throw new ArrayIndexOutOfBoundsException("could not enlarge capacity from "+capacity);
+        }
     }
     
     /** Ensures packet has room for n events. The original events are retained and the new capacity is filled with default

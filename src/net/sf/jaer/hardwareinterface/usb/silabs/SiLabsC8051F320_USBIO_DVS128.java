@@ -49,7 +49,7 @@ import net.sf.jaer.util.HexString;
  * @author tobi
  */
 public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
-        UsbIoErrorCodes, PnPNotifyInterface, USBInterface, BiasgenHardwareInterface, AEMonitorInterface, ReaderBufferControl {
+        UsbIoErrorCodes, USBInterface, BiasgenHardwareInterface, AEMonitorInterface, ReaderBufferControl {
 
     @Override
     public String toString() {
@@ -95,16 +95,15 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
 
     public SiLabsC8051F320_USBIO_DVS128(int interfaceNumber) {
         this.interfaceNumber = interfaceNumber;
-        UsbIoUtilities.enablePnPNotification(this, GUID);
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-
-            @Override
-            public void run() {
-                if (isOpen()) {
-                    close();
-                }
-            }
-        });
+//        Runtime.getRuntime().addShutdownHook(new Thread() {
+//
+//            @Override
+//            public void run() {
+//                if (isOpen()) {
+//                    close();
+//                }
+//            }
+//        });  // TODO should not be needed to shutdown
     }
     /** the first USB string descriptor (Vendor name) (if available) */
     protected USB_STRING_DESCRIPTOR stringDescriptor1 = new USB_STRING_DESCRIPTOR();
@@ -329,7 +328,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
 
         int status;
         long gDevList = UsbIo.createDeviceList(GUID);
-        status = open(0, gDevList, GUID);
+        status = open(interfaceNumber, gDevList, GUID);
         if (status != USBIO_ERR_SUCCESS) {
             UsbIo.destroyDeviceList(gDevList);
             throw new HardwareInterfaceException("can't open USB device: " + UsbIo.errorText(status));
@@ -413,7 +412,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
         }
 
 
-        status = bind(0, (byte) ENDPOINT_IN, gDevList, GUID);  // binds this pipe (the reader) to the IN endpoint. We'll make another pipe to write config.
+        status = bind(interfaceNumber, (byte) ENDPOINT_IN, gDevList, GUID);  // binds this pipe (the reader) to the IN endpoint. We'll make another pipe to write config.
 
         if (status != USBIO_ERR_SUCCESS) {
             UsbIo.destroyDeviceList(gDevList);
@@ -430,7 +429,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
         startThread(3);  // start the reader thread of this 
 
         outPipe = new UsbIoPipe();  // make just a basic pipe for sync io for the biases/configuration
-        status = outPipe.bind(0, (byte) ENDPOINT_OUT, gDevList, GUID);
+        status = outPipe.bind(interfaceNumber, (byte) ENDPOINT_OUT, gDevList, GUID);
         if (status != USBIO_ERR_SUCCESS) {
             destroyDeviceList(gDevList);
             throw new HardwareInterfaceException("can't bind OUT pipe: " + UsbIo.errorText(status));
@@ -524,6 +523,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
         if (!wasNotAllocatedAlready) {
             log.warning("buffers were already allocated");
         }
+        aePacketRawPool=new AEPacketRawPool(SiLabsC8051F320_USBIO_DVS128.this);
         super.startThread(MaxIoErrorCount);
         T.setPriority(MONITOR_PRIORITY); // very important that this thread have priority or the acquisition will stall on device side for substantial amounts of time!
         T.setName("AEReader");
@@ -629,13 +629,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
         return null;
     }
 
-    public void onAdd() {
-        log.info("device added");
-    }
-
-    public void onRemove() {
-        log.info("device removed");
-    }
+ 
 
     /** Allocates internal memory for transferring data from reader to consumer, e.g. rendering. */
     protected void allocateAEBuffers() {
@@ -644,7 +638,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
         }
     }
     /** The pool of raw AE packets, used for data transfer */
-    private final AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
+    private AEPacketRawPool aePacketRawPool =null;
     /** the last events from {@link #acquireAvailableEventsFromDriver}, This packet is reused. */
     protected AEPacketRaw lastEventsAcquired = new AEPacketRaw();
     /**
