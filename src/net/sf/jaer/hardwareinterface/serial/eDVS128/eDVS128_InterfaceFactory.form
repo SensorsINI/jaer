@@ -8,7 +8,6 @@
     <SyntheticProperty name="formSizePolicy" type="int" value="1"/>
   </SyntheticProperties>
   <Events>
-    <EventHandler event="windowActivated" listener="java.awt.event.WindowListener" parameters="java.awt.event.WindowEvent" handler="formWindowActivated"/>
     <EventHandler event="windowClosing" listener="java.awt.event.WindowListener" parameters="java.awt.event.WindowEvent" handler="closeDialog"/>
   </Events>
   <AuxValues>
@@ -79,7 +78,11 @@
                   <Group type="103" groupAlignment="0" attributes="0">
                       <Component id="portCB" alignment="0" pref="370" max="32767" attributes="0"/>
                       <Component id="jLabel1" alignment="0" min="-2" max="-2" attributes="0"/>
-                      <Component id="okSerPortButton" alignment="1" min="-2" max="-2" attributes="0"/>
+                      <Group type="102" alignment="1" attributes="0">
+                          <Component id="refreshPortListButton" min="-2" max="-2" attributes="0"/>
+                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                          <Component id="okSerPortButton" min="-2" max="-2" attributes="0"/>
+                      </Group>
                   </Group>
                   <EmptySpace max="-2" attributes="0"/>
               </Group>
@@ -93,7 +96,10 @@
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="portCB" min="-2" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
-                  <Component id="okSerPortButton" min="-2" max="-2" attributes="0"/>
+                  <Group type="103" groupAlignment="3" attributes="0">
+                      <Component id="okSerPortButton" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="refreshPortListButton" alignment="3" min="-2" max="-2" attributes="0"/>
+                  </Group>
                   <EmptySpace max="-2" attributes="0"/>
               </Group>
           </Group>
@@ -130,8 +136,16 @@
         </Component>
         <Component class="javax.swing.JLabel" name="jLabel1">
           <Properties>
-            <Property name="text" type="java.lang.String" value="&lt;html&gt;If you are using the USB interface, then the eDVS will appear on a COM port. &lt;p&gt;Choose the serial port of the eDVS.&lt;br&gt;It is usually the first of a large numbered pair of ports."/>
+            <Property name="text" type="java.lang.String" value="&lt;html&gt;If you are using the USB interface, then the eDVS will appear on a COM port. &lt;p&gt;Choose the serial port of the eDVS.&lt;br&gt;It is usually the &lt;b&gt; lower numbered port&lt;/b&gt; of a large numbered pair of ports."/>
           </Properties>
+        </Component>
+        <Component class="javax.swing.JButton" name="refreshPortListButton">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="Refresh port list"/>
+          </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="refreshPortListButtonActionPerformed"/>
+          </Events>
         </Component>
       </SubComponents>
     </Container>
@@ -157,7 +171,11 @@
                           </Group>
                           <EmptySpace max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="0" attributes="0">
-                              <Component id="portTF" alignment="0" min="-2" pref="69" max="-2" attributes="0"/>
+                              <Group type="102" alignment="0" attributes="0">
+                                  <Component id="portTF" min="-2" pref="69" max="-2" attributes="0"/>
+                                  <EmptySpace min="-2" pref="52" max="-2" attributes="0"/>
+                                  <Component id="pingButton" min="-2" max="-2" attributes="0"/>
+                              </Group>
                               <Component id="hostTF" alignment="0" pref="251" max="32767" attributes="0"/>
                           </Group>
                       </Group>
@@ -185,6 +203,7 @@
                   <Group type="103" groupAlignment="3" attributes="0">
                       <Component id="jLabel3" alignment="3" min="-2" max="-2" attributes="0"/>
                       <Component id="portTF" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="pingButton" alignment="3" min="-2" max="-2" attributes="0"/>
                   </Group>
                   <EmptySpace max="-2" attributes="0"/>
                   <Group type="103" groupAlignment="3" attributes="0">
@@ -242,6 +261,15 @@
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="defaultsButtonActionPerformed"/>
+          </Events>
+        </Component>
+        <Component class="javax.swing.JButton" name="pingButton">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="Ping"/>
+            <Property name="toolTipText" type="java.lang.String" value="Ping this host to see if it is there"/>
+          </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="pingButtonActionPerformed"/>
           </Events>
         </Component>
       </SubComponents>

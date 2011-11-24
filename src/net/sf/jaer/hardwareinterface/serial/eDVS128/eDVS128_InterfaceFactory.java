@@ -12,21 +12,23 @@ package net.sf.jaer.hardwareinterface.serial.eDVS128;
 
 import gnu.io.CommPort;
 import gnu.io.CommPortIdentifier;
-import gnu.io.PortInUseException;
 import gnu.io.SerialPort;
 import java.awt.Cursor;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
+import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.swing.AbstractAction;
+import javax.swing.AbstractButton;
 import javax.swing.ActionMap;
 import javax.swing.InputMap;
 import javax.swing.JComponent;
@@ -89,10 +91,24 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                 doCloseCancel();
             }
         });
+//       String lastSelected = null;
+//       AbstractButton defaultButton=null;
+//        if ((lastSelected = prefs.get(LAST_SELECTED, null)) != null) {
+//            if (lastSelected.equals("doChooseSerial")) {
+//                defaultButton=okSerPortButton;
+//            } else if (lastSelected.equals("doChooseSocket")) {
+//                defaultButton=okSocketButton;
+//            } else if (lastSelected.equals("doCloseCancel")) {
+//                defaultButton=cancelButton;
+//            }
+//        }
+//        
+//
+//        getRootPane().registerKeyboardAction(new ButtonClickAction(preferrerdButton), KeyStroke.getKeyStroke(KeyEvent.VK_ENTER,0), JComponent.WHEN_IN_FOCUSED_WINDOW);
         refreshSerialPortList();
         hostTF.setText(prefs.get("eDVS128_InterfaceFactory.HOST", HOST));
         portTF.setText(prefs.get("eDVS128_InterfaceFactory.TCP_PORT", Integer.toString(TCP_PORT)));
-  
+        focusLast();
 
     }
     private HashMap<String, HardwareInterface> closemap = new HashMap();
@@ -175,6 +191,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         portCB = new javax.swing.JComboBox();
         okSerPortButton = new javax.swing.JButton();
         jLabel1 = new javax.swing.JLabel();
+        refreshPortListButton = new javax.swing.JButton();
         jPanel2 = new javax.swing.JPanel();
         jLabel2 = new javax.swing.JLabel();
         hostTF = new javax.swing.JTextField();
@@ -183,12 +200,10 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         okSocketButton = new javax.swing.JButton();
         jLabel4 = new javax.swing.JLabel();
         defaultsButton = new javax.swing.JButton();
+        pingButton = new javax.swing.JButton();
 
         setTitle("Serial Port Chooser");
         addWindowListener(new java.awt.event.WindowAdapter() {
-            public void windowActivated(java.awt.event.WindowEvent evt) {
-                formWindowActivated(evt);
-            }
             public void windowClosing(java.awt.event.WindowEvent evt) {
                 closeDialog(evt);
             }
@@ -219,7 +234,14 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
             }
         });
 
-        jLabel1.setText("<html>If you are using the USB interface, then the eDVS will appear on a COM port. <p>Choose the serial port of the eDVS.<br>It is usually the first of a large numbered pair of ports.");
+        jLabel1.setText("<html>If you are using the USB interface, then the eDVS will appear on a COM port. <p>Choose the serial port of the eDVS.<br>It is usually the <b> lower numbered port</b> of a large numbered pair of ports.");
+
+        refreshPortListButton.setText("Refresh port list");
+        refreshPortListButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                refreshPortListButtonActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -230,7 +252,10 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(portCB, 0, 370, Short.MAX_VALUE)
                     .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(okSerPortButton, javax.swing.GroupLayout.Alignment.TRAILING))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                        .addComponent(refreshPortListButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(okSerPortButton)))
                 .addContainerGap())
         );
         jPanel1Layout.setVerticalGroup(
@@ -241,7 +266,9 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(portCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(okSerPortButton)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(okSerPortButton)
+                    .addComponent(refreshPortListButton))
                 .addContainerGap())
         );
 
@@ -276,6 +303,14 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
             }
         });
 
+        pingButton.setText("Ping");
+        pingButton.setToolTipText("Ping this host to see if it is there");
+        pingButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                pingButtonActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
@@ -289,7 +324,10 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                             .addComponent(jLabel2))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(portTF, javax.swing.GroupLayout.PREFERRED_SIZE, 69, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGroup(jPanel2Layout.createSequentialGroup()
+                                .addComponent(portTF, javax.swing.GroupLayout.PREFERRED_SIZE, 69, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(52, 52, 52)
+                                .addComponent(pingButton))
                             .addComponent(hostTF, javax.swing.GroupLayout.DEFAULT_SIZE, 251, Short.MAX_VALUE)))
                     .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
@@ -309,7 +347,8 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel3)
-                    .addComponent(portTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(portTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(pingButton))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(okSocketButton)
@@ -376,23 +415,43 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         portTF.setText(Integer.toString(TCP_PORT));
     }//GEN-LAST:event_defaultsButtonActionPerformed
 
-    private void focusLast(){
-             //set last focus
-        String lastSelected=null;
-        if ((lastSelected=prefs.get(LAST_SELECTED, null)) != null) {
-            if(lastSelected.equals("doChooseSerial")){
-                okSerPortButton.requestFocusInWindow();
-            }else if(lastSelected.equals("doChooseSocket")){
-                okSocketButton.requestFocusInWindow();
-            }else if(lastSelected.equals("doCloseCancel")){
-                cancelButton.requestFocusInWindow();
+    private void refreshPortListButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshPortListButtonActionPerformed
+        refreshSerialPortList();
+    }//GEN-LAST:event_refreshPortListButtonActionPerformed
+
+    private void pingButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pingButtonActionPerformed
+           String host = hostTF.getText();
+         try {
+            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            InetAddress adr = Inet4Address.getByName(host);
+            try{
+                adr.isReachable(3000);
+                JOptionPane.showMessageDialog(this, host+" is reachable. However it may not be the eDVS!");
+            }catch(IOException notReachable){
+                JOptionPane.showMessageDialog(this, host+" is not reachable: "+notReachable.toString(), "Not reachable", JOptionPane.WARNING_MESSAGE);
             }
-        }    
-        log.info("focused on "+lastSelected);
+        } catch (UnknownHostException ex) {
+                  JOptionPane.showMessageDialog(this, host+" is unknown host: "+ex.toString(), "Host not found", JOptionPane.WARNING_MESSAGE);
+        } finally {
+            setCursor(Cursor.getDefaultCursor());
+        }
+
+    }//GEN-LAST:event_pingButtonActionPerformed
+
+    private void focusLast() {
+        //set last focus
+        String lastSelected = null;
+        if ((lastSelected = prefs.get(LAST_SELECTED, null)) != null) {
+            if (lastSelected.equals("doChooseSerial")) {
+                getRootPane().setDefaultButton(okSerPortButton);
+            } else if (lastSelected.equals("doChooseSocket")) {
+                getRootPane().setDefaultButton(okSocketButton);
+            } else if (lastSelected.equals("doCloseCancel")) {
+                getRootPane().setDefaultButton(cancelButton);
+            }
+        }
+        log.info("focused on " + lastSelected);
     }
-    private void formWindowActivated(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowActivated
-            focusLast();
-    }//GEN-LAST:event_formWindowActivated
 
     private void doCloseCancel() {
         prefs.put(LAST_SELECTED, "doCloseCancel");
@@ -532,8 +591,10 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
     private javax.swing.JPanel jPanel2;
     private javax.swing.JButton okSerPortButton;
     private javax.swing.JButton okSocketButton;
+    private javax.swing.JButton pingButton;
     private javax.swing.JComboBox portCB;
     private javax.swing.JTextField portTF;
+    private javax.swing.JButton refreshPortListButton;
     // End of variables declaration//GEN-END:variables
     private int returnStatus = RET_CANCEL;
 
