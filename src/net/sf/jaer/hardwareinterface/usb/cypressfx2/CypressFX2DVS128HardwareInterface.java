@@ -159,7 +159,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                         // this firmware version uses reset events to reset timestamps
                         this.resetTimestamps();
                         if (resetTimestampWarningCount < RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT || resetTimestampWarningCount % RESET_TIMESTAMPS_WARNING_INTERVAL == 0) {
-                            log.info(this + ".translateEvents got reset event from hardware, timestamp " + (0xffff & ((short) aeBuffer[i] & 0xff | ((short) aeBuffer[i + 1] & 0xff) << 8)));
+                            log.info(this + ".translateEvents got reset event from hardware, timestamp " + (0xffff & ((short) aeBuffer[i+2] & 0xff | ((short) aeBuffer[i + 3] & 0x3f) << 8)));
                         }
                         if (resetTimestampWarningCount == RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT) {
                             log.warning("will only print reset timestamps message every " + RESET_TIMESTAMPS_WARNING_INTERVAL + " times now\nCould it be that you are trying to inject sync events using the DVS128 IN pin?\nIf so, select the \"Enable sync events output\" option in the DVS128 menu");

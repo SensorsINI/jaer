@@ -26,7 +26,7 @@ public class LoggingWindow extends JFrame {
 
     final private JTextArea textArea = new JTextArea();
     /** Developer email addresses */
-    public static final String DEVELOPER_EMAIL = "tobidelbruck@users.sourceforge.net,rberner@users.sourceforge.net";
+    public static final String DEVELOPER_EMAIL = "tobidelbruck@users.sourceforge.net,bernerr@users.sourceforge.net";
 
     public LoggingWindow(String title, final int width,
             final int height) {

@@ -136,8 +136,8 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         }
 
         if (syncEnabledMenuItem == null && getHardwareInterface() != null && getHardwareInterface() instanceof HasSyncEventOutput) {
-            syncEnabledMenuItem = new JCheckBoxMenuItem("Enable sync event output");
-            syncEnabledMenuItem.setToolTipText("<html>Enables sync event generation on external IN pin rising edges (disables slave clock input).<br>Rising edges inject special sync events with bitmask " + HexString.toString(CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK) + " set<br>These events are not rendered but are logged and can be used to synchronize an external signal to the recorded data.");
+            syncEnabledMenuItem = new JCheckBoxMenuItem("Timestamp master / Enable sync event output");
+            syncEnabledMenuItem.setToolTipText("<html>Sets this device as timestamp master and enables sync event generation on external IN pin falling edges (disables slave clock input).<br>Falling edges inject special sync events with bitmask " + HexString.toString(CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK) + " set<br>These events are not rendered but are logged and can be used to synchronize an external signal to the recorded data.<br>If you are only using one camera, enable this option.<br>If you want to synchronize two DVS128, disable this option in one of the cameras and connect the OUT pin of the master to the IN pin of the slave and also connect the two GND pins.");
             HasSyncEventOutput h = (HasSyncEventOutput) getHardwareInterface();
             syncEnabledMenuItem.setSelected(h.isSyncEventEnabled());
 
