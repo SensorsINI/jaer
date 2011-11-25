@@ -30,7 +30,8 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
     
     public final static String FIRMWARE_FILENAME_DVS128_XSVF="/net/sf/jaer/hardwareinterface/usb/cypressfx2/dvs128CPLD.xsvf";
     private static Preferences prefs=Preferences.userNodeForPackage(CypressFX2DVS128HardwareInterface.class);
-    private boolean syncEventEnabled=prefs.getBoolean("CypressFX2DVS128HardwareInterface.syncEventEnabled", false);
+    private boolean syncEventEnabled=prefs.getBoolean("CypressFX2DVS128HardwareInterface.syncEventEnabled", true); // default is true so that device is the timestamp master by default, necessary after firmware rev 11
+    // if not, a device will not advance timestamps
 
 
     /** SYNC events are detected when this bit mask is detected in the input event stream.
