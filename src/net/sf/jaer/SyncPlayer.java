@@ -320,9 +320,13 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         int[] currentTimes = new int[getPlayingViewers().size()];
         int i = 0;
 //        System.out.print("current times ");
-        for (AEViewer v : getPlayingViewers()) {
-            currentTimes[i++] = v.aePlayer.getTime();
+        try {
+            for (AEViewer v : getPlayingViewers()) {
+                currentTimes[i++] = v.aePlayer.getTime();
 //            System.out.println(currentTimes[i-1]+" ");
+            }
+        } catch (ConcurrentModificationException e) {
+            log.warning("caught " + e.toString() + " when finding current packet times from all viewers");
         }
 //        System.out.println("");
         int maxtime = Integer.MIN_VALUE;
