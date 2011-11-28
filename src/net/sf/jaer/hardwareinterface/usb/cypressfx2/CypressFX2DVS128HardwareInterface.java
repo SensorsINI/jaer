@@ -178,7 +178,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                         timestamps[eventCounter]=(int)(TICK_US*(shortts+wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
 
                         if(timestamps[eventCounter]<lastTimestampTmp){
-                            log.info("nonmonotonic timestamp");
+                            log.info("nonmonotonic timestamp: lastTimestamp="+lastTimestampTmp+" timestamp="+timestamps[eventCounter]);
                         }
                         lastTimestampTmp=timestamps[eventCounter];
                         // this is USB2AERmini2 or StereoRetina board which have 1us timestamp tick
