@@ -295,7 +295,13 @@ public class StereoPairHardwareInterface implements AEMonitorInterface,ReaderBuf
             // here we order the events and only pass out an event from an interface if there is a later event from the other interface
             while ( !aeLeft.isEmpty() && !aeRight.isEmpty() ){
                 // while both packets still have events, pick the earliest event and write it out
-                int tsLeft = aeLeft.peekNextTimestamp(), tsRight = aeRight.peekNextTimestamp();
+                int tsLeft = aeLeft.peekNextTimestamp(), tsRight = aeRight.peekNextTimestamp(); // TODO if there is a big wrap in one interface then times can differ by 1 hour!
+                if((long)tsLeft*(long)tsRight<0) {
+                    log.warning("huge time difference between left and right eyes detected, flushing both eye event buffers");
+                    aeLeft.reset(null);
+                    aeRight.reset(null);
+                    return aeOut;
+                }
                 if ( tsLeft < tsRight ){
                     addEvent(aeLeft);
                     nleft++;
