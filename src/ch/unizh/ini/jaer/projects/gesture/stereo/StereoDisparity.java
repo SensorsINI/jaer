@@ -667,6 +667,8 @@ public class StereoDisparity {
     * resets histogram
     */
     private void resetHistogram(){
+        histogramLeft.clear();
+       histogramRight.clear(); // TODO added to avoid memory leak
         for(int i=0; i<size; i++){
             histogramLeft.add(new Bins());
             histogramRight.add(new Bins());
