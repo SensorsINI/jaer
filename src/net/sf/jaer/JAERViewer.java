@@ -199,7 +199,7 @@ public class JAERViewer {
 //            }
 //        }
         if (args.length > 0) {
-            log.info("starting with args[0]=" + args[0]);
+            log.info("starting with args[0]=" + args[0]+" in working directory="+System.getProperty("user.dir"));
             final File f = new File(args[0]);
             try {
                 JAERViewer jv = new JAERViewer();
