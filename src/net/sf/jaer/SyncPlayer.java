@@ -153,7 +153,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         stopPlayback();
         // first check to make sure that index file is really an index file, in case a viewer called it
         if (!indexFile.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION) && !indexFile.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)) {
-            log.warning(indexFile + " doesn\'t appear to be an index file pointing to a set of data files because it does't end with the correct extension (.aeidx or .index), opening it in the first viewer and setting sync enabled false");
+            log.info(indexFile + " doesn\'t appear to be an index file pointing to a set of data files because it does't end with the correct extension (.aeidx or .index), opening it in the first viewer and setting sync enabled false");
             AEViewer v = outer.getViewers().get(0);
             if (outer.isSyncEnabled()) {
                 JOptionPane.showMessageDialog(v, "<html>You are opening a single data file so synchronization has been disabled<br>To reenable, use File/Synchronization enabled</html>");
