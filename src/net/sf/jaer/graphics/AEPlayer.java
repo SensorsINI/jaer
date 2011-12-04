@@ -9,6 +9,8 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -217,6 +219,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
      */
     @Override
     public synchronized void startPlayback (File file) throws IOException{
+        log.info("starting playback with file="+file);
         super.startPlayback(file);
         if ( file == null || !file.isFile() ){
             throw new FileNotFoundException("file not found: " + file);
@@ -235,6 +238,18 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         }
 //            System.out.println("AEViewer.starting playback for DAT file "+file);
         outer.setCurrentFile(file);
+        int tries=10;
+        while(viewer.getChip()==null && tries-->0){
+            log.info("null AEChip in AEViewer, waiting... "+tries);
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException ex) {
+                break;
+            }
+        }
+        if(viewer.getChip()==null){
+            throw new IOException("chip is not set in AEViewer so we cannot contruct the file input stream for it");
+        }
         aeFileInputStream = viewer.getChip().constuctFileInputStream(file); // new AEFileInputStream(file);
         aeFileInputStream.setNonMonotonicTimeExceptionsChecked(outer.getCheckNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem().isSelected());
         aeFileInputStream.setTimestampResetBitmask(outer.getAeFileInputStreamTimestampResetBitmask());
