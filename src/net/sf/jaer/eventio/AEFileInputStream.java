@@ -242,7 +242,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             }
             ts-=timestampOffset; 
             // TODO fix extra event no matter what dt
-            if (ts > maxTimestamp) {
+            if (ts > maxTimestamp ) { // handle bigwrap this way
                 // push back event
                 position(position()-1); // we haven't updated our position field yet
                 ts=lastTs; // this is the one last read successfully 
@@ -462,9 +462,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                         i++;
                     } while ( mostRecentTimestamp < endTimestamp && i < addr.length  && mostRecentTimestamp >= startTimestamp ); // if time jumps backwards (e.g. timestamp reset during recording) then will read a huge number of events.
                 } else{ // read should wrap around
-//                    System.out.println("bigwrap started");
+                    log.info("bigwrap started");
                     do{
-                        ae = readEventForwards(endTimestamp);
+                        ae = readEventForwards();
                         if(ae==null) break;
                         addr[i] = ae.address;
                         ts[i] = ae.timestamp;
