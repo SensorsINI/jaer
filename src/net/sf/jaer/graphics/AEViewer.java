@@ -83,6 +83,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public static String HELP_USER_GUIDE_AER_CABLING = "/doc/AERHardwareAndCabling.pdf";
     private static final String SET_DEFAULT_FIRMWARE_FOR_BLANK_DEVICE = "Set default firmware for blank device...";
 
+    // set true to force null hardware (None in interface menu) even if only single interface 
+    private boolean nullInterface = false;
+    
     /** Utility method to return a URL to a file in the installation.
      * 
      * @param path relative to root of installation, e.g. "/doc/USBAERmini2userguide.pdf"
@@ -728,6 +731,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // TODO doesn't open an AEMonitor if there is a ServoInterface plugged in.
         // Should check to see if there is only 1 AEMonitorInterface, but this check is not possible currently without opening the interface.
 //        HardwareInterfaceFactory.instance().buildInterfaceList(); // TODO this burns up a lot of heap memory because the PnpListeners 
+        // check to see if null interface required instead
+        if (nullInterface) return;
+        
         int ninterfaces = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
         if (ninterfaces > 1) {
             if (showMultipleInterfacesMessageCount++ % 100 == 0) {
@@ -741,7 +747,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (NetworkChip.class.isInstance(chip)) {
                     log.info("opening unambiguous network device");
                     chip.setHardwareInterface(hw);
-                }
+                    }
             } else {
                 if (!NetworkChip.class.isInstance(chip)) {
                     log.info("setting hardware interface for unambiguous device to " + hw.toString());
@@ -1343,6 +1349,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     chip.getHardwareInterface().close();
                 }
                 chip.setHardwareInterface(null);
+                // force null interface
+                nullInterface = true;
             }
         });
         interfaceMenu.add(new JSeparator());
@@ -1370,6 +1378,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     item.setSelected(true);
 //                    System.out.println("selected "+item.getText());
                     choseOneButton = true;
+                    // normal interface selected
+                    nullInterface = false;
                 }
             }
         }
