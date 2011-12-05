@@ -238,11 +238,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         }
 //            System.out.println("AEViewer.starting playback for DAT file "+file);
         outer.setCurrentFile(file);
-        int tries=10;
+        int tries=20;
         while(viewer.getChip()==null && tries-->0){
             log.info("null AEChip in AEViewer, waiting... "+tries);
             try {
-                Thread.sleep(300);
+                Thread.sleep(500);
             } catch (InterruptedException ex) {
                 break;
             }
