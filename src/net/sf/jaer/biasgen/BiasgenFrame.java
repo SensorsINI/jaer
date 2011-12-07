@@ -826,4 +826,13 @@ private void prefsEditorMenuItemActionPerformed(java.awt.event.ActionEvent evt) 
         this.viewFunctionalBiasesEnabled = viewFunctionalBiasesEnabled;
         prefs.putBoolean("BiasgenFrame.viewFunctionalBiasesEnabled", viewFunctionalBiasesEnabled);
     }
+    
+    @Override
+    public void dispose() {
+        MenuListener[] listeners = PotGUIControl.viewMenu.getMenuListeners();
+        for (int i = 0; i < listeners.length; i++) {
+            PotGUIControl.viewMenu.removeMenuListener(listeners[i]);
+        }
+        super.dispose();
+    }
 }
