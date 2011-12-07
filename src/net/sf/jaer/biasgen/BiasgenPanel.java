@@ -19,15 +19,13 @@ public class BiasgenPanel extends javax.swing.JPanel {
     public Biasgen biasgen;
     MasterbiasPanel masterbiasPanel;
     PotPanel iPotPanel;
-    BiasgenFrame frame;
     
     /** Creates new form BiasgenPanel
      * @param biasgen the source of the parameters
      * @param frame the parent enclosing frame
      */
-    public BiasgenPanel(Biasgen biasgen, BiasgenFrame frame) {
+    public BiasgenPanel(Biasgen biasgen) {
         this.biasgen=biasgen;
-        this.frame=frame;
         if(biasgen==null) throw new RuntimeException("null biasgen while trying to construct BiasgenPanel");
         masterbiasPanel=new MasterbiasPanel(biasgen.getMasterbias());
         iPotPanel=new PotPanel(biasgen.getPotArray());
