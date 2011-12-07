@@ -88,17 +88,14 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      */
     public JPanel buildControlPanel() {
         startBatchEdit();
-        BiasgenFrame frame = null;
         if (chip instanceof AEChip) {
             AEViewer viewer = ((AEChip) chip).getAeViewer();
-            if (viewer != null) {
-                frame = viewer.getBiasgenFrame();
-            } else {
-                log.warning("no BiasgenFrame to build biasgen control panel for");
+            if (viewer == null) {
+                log.warning("no viewer to build biasgen control panel for"); // not sure if this is still necessary
                 return null;
             }
         }
-        JPanel panel = new BiasgenPanel(this, frame);    /// makes a panel for the pots and populates it, the frame handles undo support
+        JPanel panel = new BiasgenPanel(this);    /// makes a panel for the pots and populates it, the frame handles undo support
         try {
             endBatchEdit();
         } catch (HardwareInterfaceException e) {
