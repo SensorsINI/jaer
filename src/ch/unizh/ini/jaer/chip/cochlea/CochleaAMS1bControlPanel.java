@@ -104,7 +104,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
         biasgen.scanner.addObserver(this);
 
         biasgen.setPotArray(biasgen.ipots);
-        onchipBiasgenPanel.add(new BiasgenPanel(biasgen, chip.getAeViewer().getBiasgenFrame())); // TODO fix panel contructor to not need parent
+        onchipBiasgenPanel.add(new BiasgenPanel(biasgen));
 
         bufferBiasSlider.setMaximum(biasgen.bufferIPot.max);
         bufferBiasSlider.setMinimum(0);
@@ -113,7 +113,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
         biasgen.bufferIPot.addObserver(this);
 
         biasgen.setPotArray(biasgen.vpots);
-        offchipDACPanel.add(new BiasgenPanel(biasgen, chip.getAeViewer().getBiasgenFrame()));
+        offchipDACPanel.add(new BiasgenPanel(biasgen));
         for (CochleaAMS1b.Biasgen.ConfigBit bit : biasgen.configBits) {
             if (bit instanceof TriStateableConfigBit) {
                 TriStateableConfigBit b2 = (TriStateableConfigBit) bit;
