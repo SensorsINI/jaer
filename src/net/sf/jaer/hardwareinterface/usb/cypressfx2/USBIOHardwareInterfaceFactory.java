@@ -60,15 +60,17 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
         return instance;
     }
 
+    @Override
     synchronized public void onAdd() {
-        log.info("device added");
+        log.info("device added, rebuilding list");
         buildUsbIoList();
     }
 
+    @Override
     synchronized public void onRemove() {
         log.info("device removed");
         firstUse = false;
-//        buildUsbIoList();
+//        buildUsbIoList(); // TODO why no rebuild?
     }
     /** driver guid (Globally unique ID, for this USB driver instance */
     public final static String GUID = CypressFX2.GUID; // see guid.txt at root of CypressFX2USB2
@@ -127,6 +129,7 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
 //                    log.warning(UsbIo.errorText(status));
 //                } else {
                 usbioList.add(dev);
+                System.out.println("added "+dev);
 //                System.out.println(dev);
 //                }
                 dev.close();

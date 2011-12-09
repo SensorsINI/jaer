@@ -59,8 +59,8 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
 
     /** Creates a new instance of HardwareInterfaceFactory, private because this is a singleton factory class */
     private HardwareInterfaceFactory() {
-        UsbIoUtilities.enablePnPNotification(this, SiLabs_USBIO_C8051F3xxFactory.GUID);
-        UsbIoUtilities.enablePnPNotification(this, USBIOHardwareInterfaceFactory.GUID);
+//        UsbIoUtilities.enablePnPNotification(this, SiLabs_USBIO_C8051F3xxFactory.GUID); // TODO not needed since we rebuild list on each call for interfaces
+//        UsbIoUtilities.enablePnPNotification(this, USBIOHardwareInterfaceFactory.GUID);
     }
 
     /** Use this instance to access the methods, e.g. <code>HardwareInterfaceFactory.instance().getNumInterfacesAvailable()</code>.
@@ -87,7 +87,7 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
                     u = inst.getInterface(j); // for each one, construct the HardwareInterface and put it in a list
                     if(u==null) continue;
                     interfaceList.add(u);
-//                    System.out.println("HardwareInterfaceFactory.buildInterfaceList: added "+u);// TODO comment
+                    System.out.println("HardwareInterfaceFactory.buildInterfaceList: added "+u);// TODO comment
                 }
             } catch (NoSuchMethodException e) {
                 log.warning(factories[i] + " has no instance() method but it needs to be a singleton of this form");
@@ -109,7 +109,7 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
      */
     @Override
     synchronized public int getNumInterfacesAvailable() {
-//        buildInterfaceList(); // removed to make this call much cheaper
+        buildInterfaceList(); // removed to make this call much cheaper
         return interfaceList.size();
     }
 
