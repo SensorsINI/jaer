@@ -13,7 +13,7 @@ import java.util.List;
  * 
  * Uses Bartlett's method to reduce the variance of the periodogram.
  * 
- * Bartlett’s method consists of the following steps:
+ * Bartlett's method consists of the following steps:
  * - The original N point data segment is split up into K data segments of length M
  * - For each segment, compute the periodogram by computing the discrete Fourier 
  *   transform (DFT version which does not divide by M), then computing the squared 
