@@ -4,7 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter;
 
-import ch.unizh.ini.jaer.projects.spatioTemporalLEDTracker.util.FileHandler;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.util.FileHandler;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
