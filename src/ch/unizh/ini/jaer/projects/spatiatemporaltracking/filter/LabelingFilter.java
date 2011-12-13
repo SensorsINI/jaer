@@ -19,6 +19,7 @@ import java.util.Queue;
 import java.util.Set;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -31,6 +32,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  *
  * @author matthias
  */
+@Description("Groups events together according their spatial and temporal closeness")
 public class LabelingFilter extends EventFilter2D implements Observer, FrameAnnotater {
     
     /*
