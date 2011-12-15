@@ -223,7 +223,7 @@ public class Parameters {
         "Defines the required quality of the extracted signal to be accepted.",
         Type.Float,
         false,
-        0.9f);
+        0.8f);
     
     public static final Parameter NOISE_DURATION = new Parameter(
         "signal", 

@@ -38,9 +38,5 @@ public class SimpleFeatureCluster extends AbstractFeatureCluster {
     @Override
     public void reset() {
         super.reset();
-        
-        this.features.add(Features.Moment);
-        this.features.add(Features.Position);
-        this.features.add(Features.Assigned);
     }
 }

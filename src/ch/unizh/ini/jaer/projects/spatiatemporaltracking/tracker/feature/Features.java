@@ -37,4 +37,8 @@ public enum Features {
     VelocityPredictor,
     PositionPredictor,
     Occurance,
+    
+    InformationPath,
+    InformationVelocity,
+    InformationSignal
 }

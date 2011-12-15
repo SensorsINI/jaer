@@ -186,6 +186,12 @@ public class TransitionBasedSignalExtractor extends AbstractSignalExtractor {
                                                             c.getItem(this.signal, -1, Integer.MAX_VALUE));
                                 if (match > this.reliability) {
                                     this.signal = new SimpleSignal(this.signal);
+                                    
+                                    /*
+                                     * notifies the other extractors about the new signal.
+                                     */
+                                    this.features.getNotifier().notify(this.feature, timestamp);
+                                    
                                     this.store();
 
                                     return;

@@ -17,6 +17,9 @@ import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.impleme
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.velocity.SimpleVelocityExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.event.packet.SimplePacketEventExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.event.single.SimpleSingleEventExtractor;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.information.PathInformationExtractor;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.information.SignalInformationExtractor;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.information.VelocityInformationExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.prediction.acceleration.LowPassAngularAccelerationPredictor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.prediction.occurance.TemporalPatternOccurancePredictor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.prediction.position.DiscreteHeunPositionPredictor;
@@ -112,6 +115,13 @@ public class ConcreteFeatureExtractorFactory implements FeatureExtractorFactory 
                 return new DiscreteHeunPositionPredictor(this.manager, features, this.chip);
             case Occurance:
                 return new TemporalPatternOccurancePredictor(this.manager, features, this.chip);
+                
+            case InformationSignal:
+                return new SignalInformationExtractor(this.manager, features, this.chip);
+            case InformationPath:
+                return new PathInformationExtractor(this.manager, features, this.chip);
+            case InformationVelocity:
+                return new VelocityInformationExtractor(this.manager, features, this.chip);
             
         }
         return null;
