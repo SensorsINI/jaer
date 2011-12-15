@@ -26,6 +26,8 @@ import javax.swing.*;
 import javax.swing.JPanel;
 import net.sf.jaer.Description;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterface;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl.LEDState;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
 import net.sf.jaer.util.HexString;
@@ -51,6 +53,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
     private JMenu dvs128Menu = null;
     private JMenuItem arrayResetMenuItem = null, syncEnabledMenuItem = null;
     private JMenuItem setArrayResetMenuItem = null;
+    private JMenu ledMenu = null;
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     public static final String CMD_TWEAK_THESHOLD = "threshold", CMD_TWEAK_ONOFF_BALANCE = "balance", CMD_TWEAK_BANDWIDTH = "bandwidth", CMD_TWEAK_MAX_FIRING_RATE = "maxfiringrate";
     private Biasgen dvs128Biasgen;
@@ -77,7 +80,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         }
         //        ChipCanvas c = getCanvas();
         addObserver(this);
-   
+
         if (!dvs128Biasgen.isInitialized()) {
             maybeLoadDefaultPreferences();  // call *after* biasgen is built so that we check for unitialized biases as well.
         }//        if(c!=null)c.setBorderSpacePixels(5);// make border smaller than default
@@ -90,7 +93,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         this();
         setHardwareInterface(hardwareInterface);
     }
-
+    
     /** Updates AEViewer specialized menu items according to capabilities of HardwareInterface.
      *
      * @param o the observable, i.e. this Chip.
@@ -141,7 +144,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             syncEnabledMenuItem.setToolTipText("<html>Sets this device as timestamp master and enables sync event generation on external IN pin falling edges (disables slave clock input).<br>Falling edges inject special sync events with bitmask " + HexString.toString(CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK) + " set<br>These events are not rendered but are logged and can be used to synchronize an external signal to the recorded data.<br>If you are only using one camera, enable this option.<br>If you want to synchronize two DVS128, disable this option in one of the cameras and connect the OUT pin of the master to the IN pin of the slave and also connect the two GND pins.");
             HasSyncEventOutput h = (HasSyncEventOutput) getHardwareInterface();
             syncEnabledMenuItem.setSelected(h.isSyncEventEnabled());
-  
+
             syncEnabledMenuItem.addActionListener(new ActionListener() {
 
                 public void actionPerformed(ActionEvent evt) {
@@ -155,15 +158,62 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 }
             });
             dvs128Menu.add(syncEnabledMenuItem);
-          // show warning dialog (which can be suppressed) about this setting if sync disabled and we are the only camera, since
+            // show warning dialog (which can be suppressed) about this setting if sync disabled and we are the only camera, since
             // timestamps will not advance in this case
-            if(!h.isSyncEventEnabled() ){
-                WarningDialogWithDontShowPreference d=new WarningDialogWithDontShowPreference(null, false, "Timestamps disabled", 
-                        "<html>Timestamps may not advance if you are using the DVS128 as a standalone camera. <br>Use DVS128/Timestamp master / Enable sync event output to enable them."
-                        );
-                        d.setVisible(true);
+            if (!h.isSyncEventEnabled()) {
+                WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(null, false, "Timestamps disabled",
+                        "<html>Timestamps may not advance if you are using the DVS128 as a standalone camera. <br>Use DVS128/Timestamp master / Enable sync event output to enable them.");
+                d.setVisible(true);
             }
         }
+
+        if (ledMenu == null && getHardwareInterface() != null && getHardwareInterface() instanceof HasLEDControl) {
+            ledMenu = new JMenu("LED control");
+            ledMenu.setToolTipText("LED control");
+            final HasLEDControl h = (HasLEDControl) getHardwareInterface();
+            final JRadioButtonMenuItem ledOnBut=new JRadioButtonMenuItem("Turn LED on");
+            final JRadioButtonMenuItem ledOffBut=new JRadioButtonMenuItem("Turn LED off");
+            final JRadioButtonMenuItem ledFlashingBut=new JRadioButtonMenuItem("Make LED flash");
+            final ButtonGroup group=new ButtonGroup();
+            group.add(ledOnBut);
+            group.add(ledOffBut);
+            group.add(ledFlashingBut);
+            ledMenu.add(ledOffBut);
+            ledMenu.add(ledOnBut);
+            ledMenu.add(ledFlashingBut);
+            switch(h.getLEDState(0)){
+                case ON: ledOnBut.setSelected(true); break;
+                case OFF: ledOffBut.setSelected(true); break;
+                case FLASHING: ledFlashingBut.setSelected(true); break;
+            }
+            
+            ActionListener ledListener = new ActionListener() {
+
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                     HardwareInterface hw = getHardwareInterface();
+                    if (hw == null || !(hw instanceof HasLEDControl)) {
+                        log.warning("cannot set LED of " + hw + " (class " + hw.getClass() + "), interface doesn't implement HasLEDControl");
+                        return;
+                    }
+                    HasLEDControl h=(HasLEDControl)hw;
+                   if (e.getSource() == ledOffBut) {
+                        h.setLEDState(0, LEDState.OFF);
+                    } else if (e.getSource() == ledOnBut) {
+                        h.setLEDState(0, LEDState.ON);
+                    } else if (e.getSource() == ledFlashingBut) {
+                        h.setLEDState(0, LEDState.FLASHING);
+                    }
+                }
+            };
+            
+            ledOffBut.addActionListener(ledListener);
+            ledOnBut.addActionListener(ledListener);
+            ledFlashingBut.addActionListener(ledListener);
+
+            dvs128Menu.add(ledMenu);
+        }
+
 
         // if hw interface is not correct type then disable menu items
         if (getHardwareInterface() == null) {
@@ -175,6 +225,9 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             }
             if (syncEnabledMenuItem != null) {
                 syncEnabledMenuItem.setEnabled(false);
+            }
+            if (ledMenu != null) {
+                ledMenu.setEnabled(false);
             }
         } else {
             if (!(getHardwareInterface() instanceof HasResettablePixelArray)) {
@@ -195,7 +248,13 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             } else {
                 syncEnabledMenuItem.setEnabled(true);
             }
-
+            if (!(getHardwareInterface() instanceof HasLEDControl)) {
+                if (ledMenu != null) {
+                    ledMenu.setEnabled(false);
+                }
+            } else {
+                ledMenu.setEnabled(true);
+            }
         }
 
     }

@@ -26,14 +26,17 @@ import javax.swing.JOptionPane;
  * @author tobi/rapha
  */
 public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen implements
-        HasUpdatableFirmware, HasResettablePixelArray, HasSyncEventOutput {
+        HasUpdatableFirmware, HasResettablePixelArray, HasSyncEventOutput, HasLEDControl {
     
     public final static String FIRMWARE_FILENAME_DVS128_XSVF="/net/sf/jaer/hardwareinterface/usb/cypressfx2/dvs128CPLD.xsvf";
     private static Preferences prefs=Preferences.userNodeForPackage(CypressFX2DVS128HardwareInterface.class);
     private boolean syncEventEnabled=prefs.getBoolean("CypressFX2DVS128HardwareInterface.syncEventEnabled", true); // default is true so that device is the timestamp master by default, necessary after firmware rev 11
     // if not, a device will not advance timestamps
-
-
+    
+    /** Vendor request for setting LED */
+    public final byte VENDOR_REQUEST_LED=(byte) 0xCD;
+    private LEDState ledState=LEDState.UNKNOWN; // efferent copy, since we can't read it
+    
     /** SYNC events are detected when this bit mask is detected in the input event stream.
          @see HasSyncEventOutput
          */
@@ -94,6 +97,36 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
     }
 
     int lastTimestampTmp=0; // TODO debug remove
+
+    @Override
+    public int getNumLEDs() {
+        return 1;
+    }
+
+     @Override
+    public void setLEDState(int led, LEDState state) {
+        if(led!=0) throw new RuntimeException(led+" is not valid LED number; only 1 LED");
+      log.info("setting LED="+led+" to state="+state);
+
+      short cmd=0;
+      switch(state){
+          case OFF: cmd=0; break;
+          case ON: cmd=1; break;
+          case FLASHING: cmd=2; break;
+      }
+        try {
+            this.sendVendorRequest(this.VENDOR_REQUEST_LED, cmd, (byte)0);
+            ledState=state;
+        } catch (HardwareInterfaceException e) {
+            log.warning(e.toString());
+        }
+       
+    }
+
+    @Override
+    public LEDState getLEDState(int led) {
+        return ledState;
+    }
 
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
     public class RetinaAEReader extends CypressFX2.AEReader{

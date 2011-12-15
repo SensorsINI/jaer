@@ -235,7 +235,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //            e.printStackTrace();
             stringDescription = (getClass().getSimpleName() + ": Interface " + getInterfaceNumber());
         }
-        log.log(Level.INFO, "stringDescription={0}", stringDescription);
+//        log.log(Level.INFO, "stringDescription={0}", stringDescription);
     }
     /** The count of events acquired but not yet passed to user via acquireAvailableEventsFromDriver */
     protected int eventCounter = 0;  // counts events acquired but not yet passed to user

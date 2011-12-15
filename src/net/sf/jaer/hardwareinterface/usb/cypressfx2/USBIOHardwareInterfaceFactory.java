@@ -129,8 +129,7 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
 //                    log.warning(UsbIo.errorText(status));
 //                } else {
                 usbioList.add(dev);
-                System.out.println("added "+dev);
-//                System.out.println(dev);
+//                System.out.println("added "+dev);
 //                }
                 dev.close();
             }

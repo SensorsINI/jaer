@@ -87,7 +87,7 @@ public class HardwareInterfaceFactory extends HashSet<Class> implements Hardware
                     u = inst.getInterface(j); // for each one, construct the HardwareInterface and put it in a list
                     if(u==null) continue;
                     interfaceList.add(u);
-                    System.out.println("HardwareInterfaceFactory.buildInterfaceList: added "+u);// TODO comment
+//                    System.out.println("HardwareInterfaceFactory.buildInterfaceList: added "+u);// TODO comment
                 }
             } catch (NoSuchMethodException e) {
                 log.warning(factories[i] + " has no instance() method but it needs to be a singleton of this form");
