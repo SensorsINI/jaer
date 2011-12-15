@@ -40,8 +40,8 @@ public class SimpleCandidateCluster extends AbstractFeatureCluster implements Ca
         this.features.add(Features.Assigned);
         
         this.features.add(Features.InformationSignal);
-        //this.features.add(Features.InformationPath);
-        //this.features.add(Features.InformationVelocity);
+        this.features.add(Features.InformationPath);
+        this.features.add(Features.InformationVelocity);
     }
 
     @Override
