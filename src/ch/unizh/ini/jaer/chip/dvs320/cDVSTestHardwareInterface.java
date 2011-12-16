@@ -867,6 +867,7 @@ public class cDVSTestHardwareInterface extends CypressFX2Biasgen implements  cDV
                     buffer.setNumEvents(eventCounter);
                     // write capture size
                     buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
+                    buffer.systemModificationTimeNs = System.nanoTime();
 
                     //     log.info("packet size " + buffer.lastCaptureLength + " number of Y addresses " + numberOfY);
                     // if (NumberOfWrapEvents!=0) {

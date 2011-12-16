@@ -321,6 +321,7 @@ public class IVS128HardwareInterface extends CypressFX2 {
                 }
                 // write capture size
                 buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
+                buffer.systemModificationTimeNs = System.nanoTime();
             } // sync on aePacketRawPool
 
         }

@@ -962,6 +962,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
 
                 // write capture size
                 buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
+                    buffer.systemModificationTimeNs = System.nanoTime();
 
             // if (NumberOfWrapEvents!=0) {
             //System.out.println("Number of wrap events received: "+ NumberOfWrapEvents);

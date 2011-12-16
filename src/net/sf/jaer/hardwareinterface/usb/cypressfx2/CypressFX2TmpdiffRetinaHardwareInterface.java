@@ -213,6 +213,7 @@ public class CypressFX2TmpdiffRetinaHardwareInterface extends CypressFX2Biasgen 
             }
             // write capture size
             activeBuffer.lastCaptureLength = eventCounter - activeBuffer.lastCaptureIndex;
+                activeBuffer.systemModificationTimeNs=System.nanoTime();
 //            System.out.println("index="+activeBuffer.lastCaptureIndex+", length="+activeBuffer.lastCaptureLength);
         //            if(eventCounter<2){
         //                int j=i+1;

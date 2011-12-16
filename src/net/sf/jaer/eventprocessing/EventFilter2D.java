@@ -47,23 +47,28 @@ abstract public class EventFilter2D extends EventFilter {
         }
     }
 
-    /** checks out packet to make sure it is the same type as the 
+    /** Checks <code>out</code> packet to make sure it is the same type as the 
     input packet. This method is used for filters that must pass output
     that has same event type as input.
+     * <p>
+     * This method also copies fields from the input packet to the output packet, e.g. <code>systemModificationTimeNs</code>.
     @param in the input packet
     @see #out
      */
     protected void checkOutputPacketEventType(EventPacket in) {
         if (out != null && out.getEventClass() == in.getEventClass()) {
+            out.systemModificationTimeNs=in.systemModificationTimeNs;
             return;
         }
         out = new EventPacket(in.getEventClass());
     }
 
-    /** checks out packet to make sure it is the same type as the given class. This method is used for filters that must pass output
+    /** Checks <code>out</code>  packet to make sure it has the same type of events as the given class. 
+     * This method is used for filters that must pass output
     that has a particular output type.
     @param outClass the output packet.
-     */
+     @see #out
+    */
     protected void checkOutputPacketEventType(Class<? extends BasicEvent> outClass) {
         if (out == null || out.getEventClass() == null || out.getEventClass() != outClass) {
 //            Class oldClass=out.getEventClass();

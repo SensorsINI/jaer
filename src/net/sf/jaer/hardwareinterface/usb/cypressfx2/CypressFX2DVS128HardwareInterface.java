@@ -247,6 +247,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 
                 // write capture size
                 buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
+                buffer.systemModificationTimeNs=System.nanoTime();
 
                 // if (NumberOfWrapEvents!=0) {
                 //System.out.println("Number of wrap events received: "+ NumberOfWrapEvents);

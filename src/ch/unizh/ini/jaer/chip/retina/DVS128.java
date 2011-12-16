@@ -372,6 +372,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 return;
             }
             int n = in.getNumEvents(); //addresses.length;
+            out.systemModificationTimeNs=in.systemModificationTimeNs;
 
             int skipBy = 1;
             if (isSubSamplingEnabled()) {

@@ -124,7 +124,8 @@ public class CypressFX2StereoBoard extends CypressFX2Biasgen {
                 
                 // write capture size
                 buffer.lastCaptureLength=eventCounter-buffer.lastCaptureIndex;
-                
+                     buffer.systemModificationTimeNs = System.nanoTime();
+               
                 // if (NumberOfWrapEvents!=0) {
                 //System.out.println("Number of wrap events received: "+ NumberOfWrapEvents);
                 //}

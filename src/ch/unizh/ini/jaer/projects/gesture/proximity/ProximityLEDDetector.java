@@ -12,6 +12,8 @@ import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl;
 
 /**
@@ -28,15 +30,22 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer {
     public static final String PROXIMITY="proximity";
     private Timer ledTimer=null;
     private long periodMs=20;
+    private int timewindowMs=3;
+    private long lastLedChangeTimeNs;
+    private EventRateEstimator rateEstimator=null;
     
     
     public ProximityLEDDetector(AEChip chip) {
         super(chip);
+        rateEstimator=new EventRateEstimator(chip);
+        setEnclosedFilterChain(new FilterChain(chip));
+        getEnclosedFilterChain().add(rateEstimator);
         chip.addObserver(this);
     }
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
+        rateEstimator.filterPacket(in);
         return in;
         
     }
@@ -71,6 +80,7 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer {
 
     @Override
     public void resetFilter() {
+        getEnclosedFilterChain().reset();
     }
 
     @Override

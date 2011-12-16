@@ -73,10 +73,12 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     private E eventPrototype;
     private transient E[] elementData;
     private AEPacketRaw rawPacket=null;
-    /** The system timestamp of the EventPacket in us. This field is set when the packet is first started to be filled with events from hardware.
+    
+    /** The modification system timestamp of the EventPacket in ns, from System.nanoTime(). Some hardware interfaces set this field 
+     * when the packet is started to be filled with events from hardware.
      * This timestamp is not related to the event times of the events in the packet.
      */
-    protected int systemTimestampUs=0; 
+    public long systemModificationTimeNs=0; 
 
 
     /** Resets the time limiter for input iteration. After the timer times out

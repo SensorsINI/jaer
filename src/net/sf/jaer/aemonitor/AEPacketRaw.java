@@ -39,9 +39,12 @@ public class AEPacketRaw extends AEPacket {
     public int lastCaptureLength = 0;
     /** The raw AER addresses */
     public int[] addresses;
-    /** Signals that an overrun occured on this packet */
+    /** Signals that an overrun occurred on this packet */
     public boolean overrunOccuredFlag = false;
-    EventRaw event = new EventRaw();
+    /** An event, for internal use. */
+    private EventRaw event = new EventRaw();
+    /** The last modification time from System.nanoTime(). Not all hardware interfaces set this value. */
+    public long systemModificationTimeNs;
 
     /** Creates a new instance of AEPacketRaw with 0 capacity. */
     public AEPacketRaw() {
