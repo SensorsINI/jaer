@@ -7,7 +7,6 @@ created 26 Oct 2008 for new cDVSTest chip
 package eu.seebetter.ini.chips.seebetter20;
 
 import ch.unizh.ini.jaer.chip.retina.*;
-import ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing.Resetter;
 import com.sun.opengl.util.j2d.TextRenderer;
 import eu.seebetter.ini.chips.*;
 import eu.seebetter.ini.chips.config.*;
@@ -104,11 +103,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             this.pitch = pitch;
         }
     }
-    public static final PixelArray EntirePixelArray = new PixelArray(1, 0, 0, 128, 64);
-    public static final PixelArray LargePixelArray = new PixelArray(2, 0, 0, 32, 32);
-    public static final PixelArray BDVSArray = new PixelArray(2, 0, 0, 16, 32);
-    public static final PixelArray SDVSArray = new PixelArray(2, 16, 0, 16, 32);
-    public static final PixelArray DVSArray = new PixelArray(1, 64, 0, 64, 64);
+    public static final PixelArray EntirePixelArray = new PixelArray(1, 0, 0, 64, 32);
     // following define bit masks for various hardware data types. 
     // The hardware interface translateEvents method packs the raw device data into 32 bit 'addresses' and timestamps.
     // timestamps are unwrapped and timestamp resets are handled in translateEvents. Addresses are filled with either AE or ADC data.
@@ -138,10 +133,10 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
     private FrameEventPacket frameEventPacket = new FrameEventPacket(PolarityADCSampleEvent.class);
     private SeeBetter20Renderer cDVSRenderer = null;
     private SeeBetter20DisplayMethod cDVSDisplayMethod = null;
-    private boolean displayLogIntensity;
+    private boolean displayIntensity;
     private boolean displayLogIntensityChangeEvents;
     SeeBetter20DisplayControlPanel displayControlPanel = null;
-    private LogIntensityFrameData frameData = new LogIntensityFrameData();
+    private IntensityFrameData frameData = new IntensityFrameData();
     private SeeBetterConfig config;
 
     /** Creates a new instance of cDVSTest20.  */
@@ -158,7 +153,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 
         setBiasgen(config = new SeeBetter20.SeeBetterConfig(this));
 
-        displayLogIntensity = getPrefs().getBoolean("displayLogIntensity", true);
+        displayIntensity = getPrefs().getBoolean("displayLogIntensity", true);
         displayLogIntensityChangeEvents = getPrefs().getBoolean("displayLogIntensityChangeEvents", true);
 
         setRenderer((cDVSRenderer = new SeeBetter20Renderer(this)));
@@ -318,7 +313,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                         e.x = (short) (((data & XMASK) >>> XSHIFT));
                         e.y = (short) ((data & YMASK) >>> YSHIFT);
 
-                        if (e.x < LargePixelArray.width * LargePixelArray.pitch) { // cDVS pixel array // *2 because size is defined to be 32 and event types are still different x's
+                        if (e.x < EntirePixelArray.width * EntirePixelArray.pitch) { // cDVS pixel array // *2 because size is defined to be 32 and event types are still different x's
                             e.x = (short) (e.x >>> 1);
                             e.y = (short) (e.y >>> 1); // cDVS array is clumped into 32x32
                         }
@@ -1786,14 +1781,14 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
      * @return the displayLogIntensity
      */
     public boolean isDisplayLogIntensity() {
-        return displayLogIntensity;
+        return displayIntensity;
     }
 
     /**
      * @param displayLogIntensity the displayLogIntensity to set
      */
     public void setDisplayLogIntensity(boolean displayLogIntensity) {
-        this.displayLogIntensity = displayLogIntensity;
+        this.displayIntensity = displayLogIntensity;
         getPrefs().putBoolean("displayLogIntensity", displayLogIntensity);
         getAeViewer().interruptViewloop();
     }
@@ -1874,7 +1869,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         }
     }
 
-    public LogIntensityFrameData getFrameData() {
+    public IntensityFrameData getFrameData() {
         return frameEventPacket.getFrameData();
     }
 
@@ -1888,7 +1883,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         /**
          * @return the frameData
          */
-        public LogIntensityFrameData getFrameData() {
+        public IntensityFrameData getFrameData() {
             return frameData;
         }
 
@@ -1935,10 +1930,6 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             logIntensityOffset = chip.getPrefs().getInt("logIntensityOffset", 0);
         }
 
-        private boolean isLargePixelArray(PolarityADCSampleEvent e) {
-            return e.x < LargePixelArray.width;
-        }
-
         /** Overridden to make gray buffer special for bDVS array */
         @Override
         protected void resetPixmapGrayLevel(float value) {
@@ -1953,15 +1944,9 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 grayBuffer.rewind();
                 for (int y = 0; y < sizeY; y++) {
                     for (int x = 0; x < sizeX; x++) {
-                        if (x < BDVSArray.width * 2) {
-                            grayBuffer.put(0);
-                            grayBuffer.put(0);
-                            grayBuffer.put(0);
-                        } else {
-                            grayBuffer.put(value);
-                            grayBuffer.put(value);
-                            grayBuffer.put(value);
-                        }
+                        grayBuffer.put(value);
+                        grayBuffer.put(value);
+                        grayBuffer.put(value);
                     }
                 }
                 grayBuffer.rewind();
@@ -1993,7 +1978,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             if (!accumulateEnabled) {
                 resetFrame(.5f);
             }
-            boolean putADCData=displayLogIntensity && !getAeViewer().isPaused(); // don't keep reputting the ADC data into buffer when paused and rendering packet over and over again
+            boolean putADCData=displayIntensity && !getAeViewer().isPaused(); // don't keep reputting the ADC data into buffer when paused and rendering packet over and over again
            try {
                 step = 1f / (colorScale);
                 for (Object obj : packet) {
@@ -2006,46 +1991,29 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                         int type = e.getType();
                         if (xsel >= 0 && ysel >= 0) { // find correct mouse pixel interpretation to make sounds for large pixels
                             int xs = xsel, ys = ysel;
-                            if (xs < 32) {
-                                xs >>= 1;
-                                ys >>= 1;
-                            }
+                            xs >>= 1;
+                            ys >>= 1;
 
                             if (e.x == xs && e.y == ys) {
                                 playSpike(type);
                             }
                         }
-                        if (isLargePixelArray(e)) { // address is in large pixel array
-                            int x = e.x, y = e.y;
-                            switch (e.polarity) {
-                                case On:
-                                    changeCDVSPixel(x, y, pm, brighter, step);
-                                    break;
-                                case Off:
-                                    changeCDVSPixel(x, y, pm, darker, step);
-                                    break;
-                            }
-                        } else { // address is in DVS arrays
-                            int ind = getPixMapIndex(e.x, e.y);
-                            switch (e.polarity) {
-                                case On:
-                                    pm[ind] += step;
-                                    pm[ind + 1] += step;
-                                    pm[ind + 2] += step;
-                                    break;
-                                case Off:
-                                    pm[ind] -= step;
-                                    pm[ind + 1] -= step;
-                                    pm[ind + 2] -= step;
-                            }
+                        int x = e.x, y = e.y;
+                        switch (e.polarity) {
+                            case On:
+                                changeCDVSPixel(x, y, pm, brighter, step);
+                                break;
+                            case Off:
+                                changeCDVSPixel(x, y, pm, darker, step);
+                                break;
                         }
                     }
                 }
-                if (displayLogIntensity) {
+                if (displayIntensity) {
                     int minADC = Integer.MAX_VALUE;
                     int maxADC = Integer.MIN_VALUE;
-                    for (int y = 0; y < BDVSArray.height; y++) {
-                        for (int x = 0; x < BDVSArray.width; x++) {
+                    for (int y = 0; y < EntirePixelArray.height; y++) {
+                        for (int x = 0; x < EntirePixelArray.width; x++) {
                             int count = frameData.get(x, y);
                             if (agcEnabled) {
                                 if (count < minADC) {
@@ -2256,10 +2224,10 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
      * 
      * @author Tobi
      */
-    public class LogIntensityFrameData implements HasPreference {
+    public class IntensityFrameData implements HasPreference {
 
         /** The scanner is 16 wide by 32 high  */
-        public final int WIDTH = BDVSArray.width, HEIGHT = BDVSArray.height; // width is BDVS pixels not scanner registers
+        public final int WIDTH = EntirePixelArray.width, HEIGHT = EntirePixelArray.height; // width is BDVS pixels not scanner registers
         private final int NUMSAMPLES = WIDTH * HEIGHT;
         private int timestamp = 0; // timestamp of starting sample
         private int[] data = new int[NUMSAMPLES];
@@ -2274,7 +2242,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         private boolean twoPointCalibration = getPrefs().getBoolean("twoPointCalibration", false);
         private int lasttimestamp=-1;
         
-        public LogIntensityFrameData() {
+        public IntensityFrameData() {
             loadPreference();
         }
         

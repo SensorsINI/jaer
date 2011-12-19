@@ -89,7 +89,7 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
         jLabel4 = new javax.swing.JLabel();
         jSpinner1 = new javax.swing.JSpinner();
 
-        displayControlPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("SeeBetter10/11 Display"));
+        displayControlPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("SeeBetter20 Display"));
         displayControlPanel.setPreferredSize(new java.awt.Dimension(565, 300));
 
         jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Log intensity"));
