@@ -2035,7 +2035,7 @@ public class BlurringFilter2DTracker extends EventFilter2D implements FrameAnnot
         clusters.clear();
         clusterCounter = 0;
         try{
-            chip.getAeViewer().zeroTimestamps();
+            chip.getAeViewer().zeroTimestamps(); // TODO causes callback endless loop from propertychange event in AEViewer
         }catch(Exception e){
             log.warning(e.toString());
         }

@@ -43,6 +43,7 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
     private boolean servosEnabled = getPrefs().getBoolean("StereoWavingHandRobotDemo.servosEnabled",true);
     private float panOffset = getPrefs().getFloat("StereoWavingHandRobotDemo.panOffset",.5f);
     private float tiltOffset = getPrefs().getFloat("StereoWavingHandRobotDemo.tiltOffset",.5f);
+    private boolean resetCalled=false;
 
     /**
      * Constructor
@@ -79,10 +80,12 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
 
     @Override
     synchronized public void resetFilter (){
+        resetCalled=true; // prevents callback storm in propertyChange cauased by timestamp reset
         setPanTilt(.5f,.5f);
         filter.setInternalValue2d(.5f,.5f);
         setPanTilt(.5f,.5f);
         getEnclosedFilterChain().reset();
+        resetCalled=false;
     }
 
     private float clipServo (float f){
@@ -188,8 +191,8 @@ public class StereoWavingHandRobotDemo extends EventFilter2D implements FrameAnn
 
     public void propertyChange (PropertyChangeEvent evt){
         if ( evt.getSource().equals(chip.getAeViewer()) && evt.getPropertyName().equals(AEViewer.EVENT_TIMESTAMPS_RESET) ){
-            log.info("resetting filter after receiving timestamp reset event from AEViewr");
-            resetFilter();
+            log.info("resetting filter after receiving timestamp reset event from AEViewer");
+            if(!resetCalled) resetFilter();
         }
     }
 
