@@ -45,30 +45,10 @@ public class PSEyeBiasgen extends Biasgen {
     @Override
     public JPanel buildControlPanel() {
         startBatchEdit();
-        BiasgenFrame frame = null;
         JPanel panel = null;
         
         if (getChip() instanceof PSEyeModelChip) {
-            PSEyeModelChip chip = getChip();
-            AEViewer viewer = chip.getAeViewer();
-            if (viewer != null) {
-                frame = viewer.getBiasgenFrame();
-            } else {
-                log.warning("no BiasgenFrame to build PSEye control panel for");
-                return null;
-            }
-            
-            panel = new PSEyeBiasgenPanel(this, frame);
-            /*
-            GridBagConstraints gbc = new GridBagConstraints();
-            gbc.fill = GridBagConstraints.HORIZONTAL;
-            gbc.gridx = 0;
-            gbc.gridy = 0;
-            panel.add(chip), gbc);
-            gbc.gridy = 2;
-            panel.add(new PSEyeViewPanel(chip), gbc);
-            panel.revalidate();
-             */
+            panel = new PSEyeBiasgenPanel(this);
         }
         try {
             endBatchEdit();
