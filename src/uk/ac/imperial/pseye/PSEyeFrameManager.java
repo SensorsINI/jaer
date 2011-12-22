@@ -28,14 +28,14 @@ class PSEyeFrameManager {
     private PSEyeFrameProducer producer;
     /* flag to show producer/consumer running */
     protected volatile boolean running = false;
-    
+
     // service and return status for running data capture thread
     protected ExecutorService executor;
     protected Future<Boolean> status;
     
     protected PSEyeCamera camera;
-    /* current resolution - needed for Frame data size */
-    PSEyeCamera.Resolution resolution;
+    /* current frame size, volatile to ensure all frames of consistent size between threads */
+    public volatile int frameSize;
         
     private PSEyeFrameManager() 
     {
@@ -44,7 +44,7 @@ class PSEyeFrameManager {
 
         /* create initial frames */
         while (producerQueue.remainingCapacity() > 0)  {
-            pushFrame(new PSEyeFrame());
+            producerQueue.offer(new PSEyeFrame());
         }
     }
     
@@ -54,7 +54,7 @@ class PSEyeFrameManager {
                
     /* start producing frames */
     public void start() {
-        // can't do anythin if camera not set
+        // can't do anything if camera not set
         if (camera == null) {
             log.warning("Cannot start manager without first setting PSEyeCamera.");
             return;
@@ -114,11 +114,11 @@ class PSEyeFrameManager {
         
         // set size of all frames in producer queue
         int i = 0;
-        resolution = camera.getResolution();
+        frameSize = PSEyeCamera.FrameSizeMap.get(camera.getResolution());
         while (i < BUFFER_SIZE) {
             frame = producerQueue.poll();
             if (frame != null) {
-                frame.setResolution(resolution);
+                frame.setSize(frameSize);
                 producerQueue.offer(frame);
                 i++;
             }
