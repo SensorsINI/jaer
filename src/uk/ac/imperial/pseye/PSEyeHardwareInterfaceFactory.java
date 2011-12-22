@@ -29,11 +29,9 @@ public class PSEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryIn
     }
 
     private void buildList() {
-        if(PSEyeCamera.isLibraryLoaded()) { // TODO only does this once on construction, never again
-            this.interfaces = new HardwareInterface[PSEyeCamera.cameraCount()];
-            for ( int i = 0; i < this.interfaces.length; i++ ) {
-                this.interfaces[i] = new PSEyeHardwareInterface(i);
-            }
+        this.interfaces = new HardwareInterface[PSEyeCamera.cameraCount()];
+        for ( int i = 0; i < this.interfaces.length; i++ ) {
+            this.interfaces[i] = new PSEyeHardwareInterface(i);
         }
     }
     
@@ -66,7 +64,6 @@ public class PSEyeHardwareInterfaceFactory implements HardwareInterfaceFactoryIn
      */
     @Override
     public HardwareInterface getInterface(int n) throws HardwareInterfaceException {
-        if(!PSEyeCamera.isLibraryLoaded()) return null;
         if(getNumInterfacesAvailable() == 0 || getNumInterfacesAvailable() < n + 1) return null;
         return (PSEyeCamera) this.interfaces[n];
     }
