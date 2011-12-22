@@ -14,13 +14,12 @@ import java.awt.GridBagConstraints;
  */
 public class PSEyeBiasgenPanel extends JPanel {
     public PSEyeBiasgen biasgen;
-    BiasgenFrame frame;
     GridBagConstraints gbc = new GridBagConstraints();
     
-    public PSEyeBiasgenPanel(PSEyeBiasgen biasgen, BiasgenFrame frame) {
+    public PSEyeBiasgenPanel(PSEyeBiasgen biasgen) {
         this.biasgen = biasgen;
-        this.frame = frame;
-        if(biasgen == null) throw new RuntimeException("null biasgen while trying to construct BiasgenPanel");
+        if(biasgen == null) 
+            throw new RuntimeException("null biasgen while trying to construct BiasgenPanel");
         
         
         initComponents();
