@@ -23,7 +23,7 @@ public class PSEyeHardwareInterface extends PSEyeCamera implements AEMonitorInte
     private long startTimeUs = System.currentTimeMillis() * 1000;
     protected AEChip chip = null;
     protected PropertyChangeSupport support = new PropertyChangeSupport(this);
-    private AEPacketRaw packet = new AEPacketRaw(320 * 240);
+    private PSEyeFramePacketRaw packet = new PSEyeFramePacketRaw(320 * 240);
 
     public PSEyeHardwareInterface(int cameraIndex) {
         super(cameraIndex);
@@ -41,34 +41,53 @@ public class PSEyeHardwareInterface extends PSEyeCamera implements AEMonitorInte
      */
     @Override
     public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
+        // check manager running
+        if (!frameManager.running) return null;
+        
         // keep consuming until queue empty
         int nframes = frameManager.getFrameCount();
         if (nframes == 0) return null;
         
         PSEyeFrame frame = null;
         int count = 0;
-        int frameSize = 0;
+        packet.nFrames = 0;
+        int frameSize = frameManager.frameSize;
         // loop across available frames
         for (int i = 0; i < nframes; i++) {
             // load frame
             frame = frameManager.popFrame();
             if (frame != null) {
-                frameSize = frame.getSize();
+                // check to see if resolution change (unlikely but possible here)
+                if (frameSize != frame.getSize()) {
+                    // if already read frames of diffrent size, break
+                    // otherwise rest frame size and continue
+                    if (count > 0) 
+                        break;
+                    else
+                        frameSize = frame.getSize();
+                }
                 packet.ensureCapacity(count + frameSize);
                 
                 // copy frame data to passed array
                 frame.copyData(packet.getAddresses(), i * frameSize);
                 packet.getTimestamps()[i * frameSize] = (int) (frame.getTimeStamp() - startTimeUs);
+                packet.nFrames++;
                 
                 // put frame back into producer queue
                 frameManager.pushFrame(frame);
                 frameCounter++; // TODO notify AE listeners here or in thread acquiring frames
                 count += frameSize;
             }
+            // check to see if frame manager has been stopped
+            if (!frameManager.running) {
+                if (count > 0) break;
+                else return null;
+            }
         }
+        packet.frameSize = frameSize;
         packet.setNumEvents(count);
         support.firePropertyChange(newEventPropertyChange);
-        return packet;
+        return (AEPacketRaw) packet;
     }
 
     @Override
@@ -86,7 +105,7 @@ public class PSEyeHardwareInterface extends PSEyeCamera implements AEMonitorInte
      */
     @Override
     public AEPacketRaw getEvents() {
-        return packet;
+        return (AEPacketRaw) packet;
     }
 
     /** Resets the timestamps to the current system time in ms.
