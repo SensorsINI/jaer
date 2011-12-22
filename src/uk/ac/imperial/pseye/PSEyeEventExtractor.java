@@ -22,8 +22,7 @@ import java.util.Random;
  */
 abstract class PSEyeEventExtractor extends TypedEventExtractor<TemporalContrastEvent> {
     protected static final Logger log = Logger.getLogger("Chip");
-    public static final int MAX_EVENTS = 100000;
-    protected int maxFrameEvents;
+    public static final int MAX_EVENTS = 1000000;
     
     public static final long SIGMA_SEED = 20111126;
     protected double sigmaOnThreshold;
@@ -54,7 +53,6 @@ abstract class PSEyeEventExtractor extends TypedEventExtractor<TemporalContrastE
     protected int frameCount;
     protected int timeCount;
     
-    protected boolean shuffle = false;
     protected ArrayList<Integer> pixelIndices = new ArrayList<Integer>();
     protected int[] pixelValues;
     protected double[] previousValues;
@@ -74,11 +72,9 @@ abstract class PSEyeEventExtractor extends TypedEventExtractor<TemporalContrastE
     protected boolean isHardwareInterfaceEnabled() {
 
         hardwareInterface = null;
-        if (modelChip != null) {
-            if (modelChip.checkHardware()) {
-                hardwareInterface = (AEMonitorInterface) modelChip.getHardwareInterface();
-                return hardwareInterface.isEventAcquisitionEnabled();
-            }
+        if (modelChip != null && modelChip.checkHardware()) {
+            hardwareInterface = (AEMonitorInterface) modelChip.getHardwareInterface();
+            return hardwareInterface.isEventAcquisitionEnabled();
         }
         return false;
     }
@@ -90,8 +86,6 @@ abstract class PSEyeEventExtractor extends TypedEventExtractor<TemporalContrastE
         prefs.putDouble("sigmaOffDeviation", sigmaOffDeviation);
         
         prefs.putBoolean("linearInterpolateTimeStamp", linearInterpolateTimeStamp);
-        prefs.putBoolean("shuffle", shuffle);
-     
         prefs.putBoolean("logIntensityMode", logIntensityMode);
         prefs.putInt("linLogTransitionValue", linLogTransitionValue);
     }
@@ -103,8 +97,6 @@ abstract class PSEyeEventExtractor extends TypedEventExtractor<TemporalContrastE
         sigmaOffDeviation = prefs.getDouble("sigmaOffDeviation", 0.02);
         
         linearInterpolateTimeStamp = prefs.getBoolean("linearInterpolateTimeStamp", false);
-        shuffle = prefs.getBoolean("shuffle", false);
-     
         logIntensityMode = prefs.getBoolean("logIntensityMode", true);
         linLogTransitionValue = prefs.getInt("linLogTransitionValue", 15);
         
@@ -156,19 +148,18 @@ abstract class PSEyeEventExtractor extends TypedEventExtractor<TemporalContrastE
         if (!isHardwareInterfaceEnabled())
             return;
         
-        int nEvents = in.getNumEvents();
-        int nFrames = nEvents / nPixels;
-        
-        if (nFrames == 0) {
+        // check to see that framepacket has correct number of pixels
+        if (!(in instanceof PSEyeFramePacketRaw))
             return;
-        }
         
-        if (nEvents % nPixels != 0) {
-            log.warning("input packet does not appear to contain an integral number of frames of raw pixel data: there are " + nEvents + " pixel samples which is not a multiple of " + nPixels + " pixels");
-        }
+        PSEyeFramePacketRaw framePacket = (PSEyeFramePacketRaw) in;
+        if (framePacket.frameSize != nPixels)
+            return;
+        
+        int nFrames = framePacket.nFrames;
         
         pixelValues = in.getAddresses(); // pixel RGB values stored here by hardware interface
-        out.allocate(shuffle ? MAX_EVENTS : nPixels);
+        out.allocate(MAX_EVENTS);
         OutputEventIterator itr = out.outputIterator();
         
         //OutputEventIterator itr = out.outputIterator();
@@ -180,25 +171,22 @@ abstract class PSEyeEventExtractor extends TypedEventExtractor<TemporalContrastE
             out.setEventClass(cDVSEvent.class); // set the proper output event class to include color change events
         }
 
-        maxFrameEvents = MAX_EVENTS / nFrames;
         currentFrameTimestamp = 0;
         int pixelIndex;
+        eventCount = 0;
         for (int fr = 0; fr < nFrames; fr++) {
             // get timestamp for events in this frame
             if (initialised) {
                 currentFrameTimestamp = in.getTimestamp(fr * nPixels); // timestamps stored here, currently only first timestamp meaningful TODO multiple frames stored here
              
-                if (shuffle) {
-                    // shuffle the index list
-                    //Collections.shuffle(pixelIndices);
-                }
-                
                 Iterator<Integer> pixelIterator = pixelIndices.iterator();
-                eventCount = 0;
                 for (int i = 0; i < nPixels; i++) {
                     pixelIndex = pixelIterator.next();
                     createEvents(pixelIndex, itr);
-                    if (shuffle && eventCount >= maxFrameEvents) break;
+                    if (eventCount >= MAX_EVENTS) {
+                        log.warning("Maximum events (" + MAX_EVENTS +") exceeded ignoring further output");
+                        break;
+                    }
                 }
             }
             else {
@@ -225,7 +213,7 @@ abstract class PSEyeEventExtractor extends TypedEventExtractor<TemporalContrastE
     
     protected void outputEvents(cDVSEvent.EventType type, int number, OutputEventIterator itr, int x, int y) {
         for (int j = 0; j < number; j++) { // use down iterator as ensures latest timestamp as last event
-            if (shuffle && eventCount >= maxFrameEvents) break;
+            if (eventCount >= MAX_EVENTS) break;
             cDVSEvent e = (cDVSEvent) itr.nextOutput();
             e.x = (short) x;
             e.y = (short) (sy - y - 1); // flip y according to jAER with 0,0 at LL
