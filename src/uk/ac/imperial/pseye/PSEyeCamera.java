@@ -5,6 +5,9 @@ import java.util.EnumMap;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
+import java.nio.ByteBuffer;
+import java.util.Observable;
+import java.util.logging.Logger;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
@@ -16,10 +19,10 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * 
  * All functions that use camera instance will cause JVM crash if instance invalid.
  * 
- * Calling CLEyeCameraStart/Stop on a camera that is already started/stopped
+ * Calling PSEyeCameraStart/Stop on a camera that is already started/stopped
  * returns true.
  * 
- * Calling CLEyeCameraGetFrame with an undersized data array causes JVM crash
+ * Calling PSEyeCameraGetFrame with an undersized data array causes JVM crash
  * (oversized is fine), returns false if camera stopped or no frames available
  * (and wait time out exceeded).
  * 
@@ -40,10 +43,12 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * 
  * @author mlk
  */
-public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
-    private int cameraIndex = 0; // index of camera to open
+public class PSEyeCamera extends Observable implements HardwareInterface {
+    protected final static Logger log = Logger.getLogger("PSEye");
+    public final static PSEyeConstants constants = PSEyeConstants.INSTANCE;
+    private int index = -1; // index of camera to open
     private boolean isOpened = false;
-    
+  
    /* Observable events; This event enum is fired when the parameter is changed. */
     public static enum EVENT { 
         MODE,
@@ -66,8 +71,8 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
     private int frameRate = 15;
     
     /* store parameters so can be re-set after camera closed() */
-    private int gain = MIN_GAIN;
-    private int exposure = MIN_EXPOSURE;
+    private int gain = PSEyeConstants.MIN_GAIN;
+    private int exposure = PSEyeConstants.MIN_EXPOSURE;
     private boolean autoGainEnabled = true;
     private boolean autoExposureEnabled = false;
     
@@ -79,8 +84,8 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
     /* Map of local colour modes to CL colour modes */
     private static final EnumMap<Mode, Integer> CLModeMap = 
             new EnumMap<Mode, Integer>(Mode.class) {{
-                put(Mode.MONO, CLEYE_GRAYSCALE);
-                put(Mode.COLOUR, CLEYE_COLOR);
+                put(Mode.MONO, PSEyeConstants.MONO_RAW);
+                put(Mode.COLOUR, PSEyeConstants.COLOR_RAW);
     }};
     
     /* supported resolutions */
@@ -90,12 +95,12 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
     /* Map of local resolutions to CL resolutions */
     private static final EnumMap<Resolution, Integer> CLResolutionMap = 
             new EnumMap<Resolution, Integer>(Resolution.class) {{
-                put(Resolution.QVGA, CLEYE_QVGA);
-                put(Resolution.VGA, CLEYE_VGA);
+                put(Resolution.QVGA, PSEyeConstants.QVGA);
+                put(Resolution.VGA, PSEyeConstants.VGA);
     }};
     
     /* Map of frame size */
-    private static final EnumMap<Resolution, Integer> FrameSizeMap = 
+    public static final EnumMap<Resolution, Integer> FrameSizeMap = 
             new EnumMap<Resolution, Integer>(Resolution.class) {{
                 put(Resolution.QVGA, 320 * 240);
                 put(Resolution.VGA, 640 * 480);
@@ -104,42 +109,38 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
     /* Map of supported frame rates for each resolution */
     public static final EnumMap<Resolution, List<Integer>> supportedFrameRates = 
             new EnumMap<Resolution, List<Integer>>(Resolution.class) {{
-                put(Resolution.VGA, Arrays.asList(15, 30, 40, 50, 60, 75));
-                put(Resolution.QVGA, Arrays.asList(15, 30, 60, 75, 100, 125));
+                put(Resolution.VGA, Arrays.asList(1,1));
+                put(Resolution.QVGA, Arrays.asList(1, 2));
     }};        
 
-    /* Ranges of possible settings */
-    /* taken from driver documentation */
-    public static final int MIN_GAIN = 0;
-    public static final int MAX_GAIN = 79;
-    public static final int MIN_EXPOSURE = 0;
-    public static final int MAX_EXPOSURE = 511;
-    
     // Wrapper class for frame producer/consumer thread
     protected PSEyeFrameManager frameManager = PSEyeFrameManager.INSTANCE;
     protected boolean cameraStarted = false;
 
+    public native static int PSEyeGetCameraCount();
+    public native static String PSEyeGetCameraUUID(int index);
+    public native static boolean PSEyeCreateCamera(int index, int mode, int resolution, float framerate);
+    public native static boolean PSEyeDestroyCamera(int index);
+    public native static boolean PSEyeCameraStart(int index);
+    public native static boolean PSEyeCameraStop(int index);
+    public native static boolean PSEyeCameraLED(int index, boolean on);
+    public native static boolean PSEyeSetCameraParameter(int index, int param, int val);
+    public native static int PSEyeGetCameraParameter(int index, int param);
+    public native static boolean PSEyeCameraGetFrameDimensions(int index, int[] dimensions);
+    public native static boolean PSEyeCameraGetFrame(int index, ByteBuffer imgData, int timeout);
+    
     PSEyeCamera() {}
     
     /* Constructs instance to open the cameraIndex camera */
-    PSEyeCamera(int cameraIndex) {
+    PSEyeCamera(int index) {
         this();
         // check index valid and make singleton? mlk
-        this.cameraIndex = cameraIndex;
+        this.index = index;
     }
     
     @Override
     public String toString() {
-        return "PSEyeCamera{" + "cameraIndex=" + cameraIndex + 
-                ", mode=" + mode + 
-                ", resolution=" + resolution + 
-                ", frameRate=" + frameRate + 
-               ", cameraStarted=" + cameraStarted + '}';
-    }
-    
-    public static boolean isLibraryLoaded()
-    {
-        return CLCameraNew.IsLibraryLoaded();
+        return "PSEyeCamera(" + index + ")";
     }
     
     /* 
@@ -147,7 +148,7 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
      * Does not require a valid camera instance
      */
     public static int cameraCount() {
-        return CLCameraNew.cameraCount();
+        return PSEyeGetCameraCount();
     }
 
     /* 
@@ -156,50 +157,47 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
      */
     public static String cameraUUID(int index)
     {
-        return CLCameraNew.cameraUUID(index);
+        return PSEyeGetCameraUUID(index);
     }
 
-    @Override
-    public void dispose() {}
-        
-    @Override
-    synchronized public boolean createCamera(int cameraIndex, int mode, int resolution, int framerate)
+    synchronized public boolean createCamera(int index, int mode, int resolution, int framerate)
     {
-        cameraInstance = CLEyeCreateCamera(cameraIndex, mode, resolution, framerate);
-        if (cameraInstance != 0) {
+        this.index = index;
+        if (PSEyeCreateCamera(index, mode, resolution, framerate)) {
             // set all parameters to initial values
-            setCameraParam(CLEYE_GAIN, gain);
-            setCameraParam(CLEYE_EXPOSURE, exposure);
+            setCameraParam(PSEyeConstants.GAIN, gain);
+            setCameraParam(PSEyeConstants.EXPOSURE, exposure);
             
-            setCameraParam(CLEYE_AUTO_GAIN, autoGainEnabled ? 1 : 0);
-            setCameraParam(CLEYE_AUTO_EXPOSURE, autoExposureEnabled ? 1 : 0);
+            setCameraParam(PSEyeConstants.AUTO_GAIN, autoGainEnabled ? 1 : 0);
+            setCameraParam(PSEyeConstants.AUTO_EXPOSURE, autoExposureEnabled ? 1 : 0);
             
             // add this camera to frame manager
             frameManager.setCamera(this);
             return true;
         }
         else
+        {
+            this.index = -1;
             return false;
+        }
     }
     
-    synchronized public boolean createCamera(int cameraIndex, Mode mode, Resolution resolution, int framerate) {
-        return createCamera(cameraIndex, CLModeMap.get(mode), CLResolutionMap.get(resolution), framerate);
+    synchronized public boolean createCamera(int index, Mode mode, Resolution resolution, int framerate) {
+        return createCamera(index, CLModeMap.get(mode), CLResolutionMap.get(resolution), framerate);
     }
 
-    @Override
     synchronized public boolean destroyCamera() {
-        if (cameraInstance == 0) return true;
-        return CLEyeDestroyCamera(cameraInstance);
+        if (index < 0) return true;
+        return PSEyeDestroyCamera(index);
     }
     
     /* Starts the camera. */
-    @Override
     synchronized public boolean startCamera() {
-        if (cameraInstance == 0) return false;
+        if (index < 0) return false;
         if (cameraStarted) {
             return true;
         }
-        cameraStarted = CLEyeCameraStart(cameraInstance);
+        cameraStarted = PSEyeCameraStart(index);
         
         // start producer thread
         if (cameraStarted)
@@ -209,13 +207,12 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
     }
 
     /* Stops the camera */
-    @Override
     synchronized public boolean stopCamera() {
-        if (cameraInstance == 0) return false;
+        if (index < 0) return false;
         if (!cameraStarted) {
             return true;
         }
-        boolean stopped = CLEyeCameraStop(cameraInstance);
+        boolean stopped = PSEyeCameraStop(index);
         cameraStarted = false;
         
         // stop producer thread
@@ -224,7 +221,6 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
     }
     
     /* Gets non-timestamped frame data from capture thread */
-    @Override
     public boolean getCameraFrame(int[] imgData, int waitTimeout)
     {
         // return if camera not started
@@ -255,28 +251,27 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
     
     public boolean getCameraRawFrame(int[] imgData, int waitTimeout) {
         // check camera created and started and that passed array big enough to store data
-        if (cameraInstance == 0 || !cameraStarted || 
+        if (index < 0 || !cameraStarted || 
                 FrameSizeMap.get(resolution) > imgData.length) return false;
-        return CLEyeCameraGetFrame(cameraInstance, imgData, waitTimeout);
+        //return PSEyeCameraGetFrame(index, imgData, waitTimeout);
+        return true;
     }
 
-    @Override
     public boolean setCameraParam(int param, int val)
     {
-        if (cameraInstance == 0) return false;
-        return CLEyeSetCameraParameter(cameraInstance, param, val);
+        if (index < 0) return false;
+        return PSEyeSetCameraParameter(index, param, val);
     }
     
-    @Override
     public int getCameraParam(int param)
     {
-        if (cameraInstance == 0) return -1;
-        return CLEyeGetCameraParameter(cameraInstance, param);
+        if (index < 0) return -1;
+        return PSEyeGetCameraParameter(index, param);
     }
     
     @Override
     public String getTypeName() {
-        return "PSEye Camera";
+        return toString();
     }
 
     /* Closes the camera. */
@@ -292,7 +287,7 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
         if(!destroyed){
             log.warning("destroyCamera returned an error");
         }
-        cameraInstance = 0;
+        index = -1;
     }
 
     /* Opens the cameraIndex camera with some default settings and starts the camera. Set the frameRateHz before calling open(). */
@@ -301,7 +296,7 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
         if (isOpened) {
             return;
         }
-        boolean gotCam = createCamera(cameraIndex, mode, resolution, frameRate);
+        boolean gotCam = createCamera(index, mode, resolution, frameRate);
         if (!gotCam) {
             throw new HardwareInterfaceException("couldn't get camera");
         }
@@ -402,11 +397,11 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
     /* Sets the gain value. */
     synchronized public int setGain(int gain) throws HardwareInterfaceException, InvalidParameterException {
         if(gain != getGain()) {
-            if (gain < MIN_GAIN) {
-                throw new InvalidParameterException("tried to set gain < " + MIN_GAIN + " (" + gain + ")");
+            if (gain < PSEyeConstants.MIN_GAIN) {
+                throw new InvalidParameterException("tried to set gain < " + PSEyeConstants.MIN_GAIN + " (" + gain + ")");
             }
-            if (gain > MAX_GAIN) {
-                throw new InvalidParameterException("tried to set gain < " + MAX_GAIN + " (" + gain + ")");
+            if (gain > PSEyeConstants.MAX_GAIN) {
+                throw new InvalidParameterException("tried to set gain < " + PSEyeConstants.MAX_GAIN + " (" + gain + ")");
             }
             int lastGain = this.gain;
             this.gain = gain;
@@ -424,8 +419,8 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
     /* separated out as need to force a set when auto gain turned off */
     synchronized private void setGain() throws HardwareInterfaceException {
         // if camera exists and autogain not turned on set it's gain
-        if (cameraInstance != 0 && !isAutoGain()) {
-            if (!setCameraParam(CLEYE_GAIN, gain)) {
+        if (index >= 0 && !isAutoGain()) {
+            if (!setCameraParam(PSEyeConstants.GAIN, gain)) {
                 throw new HardwareInterfaceException("setting gain to " + gain);
             }
             // read gain of camera
@@ -439,19 +434,19 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
     /* Asks the driver for the gain value. */
     public int getGain() {
         // if camera exists query
-        if (cameraInstance != 0)
-            gain = getCameraParam(CLEYE_GAIN);
+        if (index >= 0)
+            gain = getCameraParam(PSEyeConstants.GAIN);
         return gain;
     }
 
     /* Sets the exposure value. */
     synchronized public int setExposure(int exp) throws HardwareInterfaceException, InvalidParameterException {
         if(exp != getExposure()) {
-            if (exp < MIN_EXPOSURE) {
-                throw new InvalidParameterException("tried to set exposure < " + MIN_EXPOSURE + " (" + exp + ")");
+            if (exp < PSEyeConstants.MIN_EXPOSURE) {
+                throw new InvalidParameterException("tried to set exposure < " + PSEyeConstants.MIN_EXPOSURE + " (" + exp + ")");
             }
-            if (exp > MAX_EXPOSURE) {
-                throw new InvalidParameterException("tried to set exposure < " + MAX_EXPOSURE + " (" + exp + ")");
+            if (exp > PSEyeConstants.MAX_EXPOSURE) {
+                throw new InvalidParameterException("tried to set exposure < " + PSEyeConstants.MAX_EXPOSURE + " (" + exp + ")");
             }
             int lastExposure = exposure;
             exposure = exp;
@@ -469,8 +464,8 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
     /* separated out as need to force a set when auto exposure turned off */
     synchronized private void setExposure() throws HardwareInterfaceException {
         // if camera exists and autoexposure not turned on set it's exposure
-        if (cameraInstance != 0 && !isAutoExposure()) {        
-            if (!setCameraParam(CLEYE_EXPOSURE, exposure)) {
+        if (index >= 0 && !isAutoExposure()) {        
+            if (!setCameraParam(PSEyeConstants.EXPOSURE, exposure)) {
                 throw new HardwareInterfaceException("setting exposure to " + exposure);
             }
             // read exposure of camera
@@ -484,8 +479,8 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
    /* Asks the driver for the exposure value. */
     public int getExposure() {
         // if camera exists query
-        if (cameraInstance != 0)
-            exposure = getCameraParam(CLEYE_EXPOSURE);
+        if (index >= 0)
+            exposure = getCameraParam(PSEyeConstants.EXPOSURE);
         return exposure;
     }
 
@@ -493,8 +488,8 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
     synchronized public boolean setAutoGain(boolean yes) throws HardwareInterfaceException, InvalidParameterException {
         if(yes != isAutoGain()) {
             // if camera exists set it's auto gain
-            if (cameraInstance != 0) {
-                if (!setCameraParam(CLEYE_AUTO_GAIN, yes ? 1 : 0)) {
+            if (index >= 0) {
+                if (!setCameraParam(PSEyeConstants.AUTO_GAIN, yes ? 1 : 0)) {
                     throw new HardwareInterfaceException("setting auto gain=" + yes);
                 }
                 // read auto gain of camera
@@ -514,8 +509,8 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
 
     public boolean isAutoGain() {
         // if camera exists query
-        if (cameraInstance != 0)
-            autoGainEnabled = getCameraParam(CLEYE_AUTO_GAIN) != 0;
+        if (index >= 0)
+            autoGainEnabled = getCameraParam(PSEyeConstants.AUTO_GAIN) != 0;
         return autoGainEnabled;
     }
 
@@ -523,8 +518,8 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
     synchronized public boolean setAutoExposure(boolean yes) throws HardwareInterfaceException, InvalidParameterException {
         if(yes != isAutoExposure()) {
             // if camera exists set it's auto exposure
-            if (cameraInstance != 0) {
-                if (!setCameraParam(CLEYE_AUTO_EXPOSURE, yes ? 1 : 0)) {
+            if (index >= 0) {
+                if (!setCameraParam(PSEyeConstants.AUTO_EXPOSURE, yes ? 1 : 0)) {
                     throw new HardwareInterfaceException("setting auto exposure=" + yes);
                 }
                 // read auto exposure of camera
@@ -543,8 +538,13 @@ public class PSEyeCamera extends CLCameraNew implements HardwareInterface {
 
     public boolean isAutoExposure() {
         // if camera exists query
-        if (cameraInstance != 0)
-            autoExposureEnabled = getCameraParam(CLEYE_AUTO_EXPOSURE) != 0;
+        if (index >= 0)
+            autoExposureEnabled = getCameraParam(PSEyeConstants.AUTO_EXPOSURE) != 0;
         return autoExposureEnabled; 
     }
+
+    public static void main (String arg[]) {
+        log.info(""+cameraCount());
+    }
+    
 }
