@@ -5,23 +5,19 @@ package uk.ac.imperial.pseye;
 class PSEyeFrame {
     private long timeStamp;
     private int[] data;
-    private PSEyeCamera.Resolution resolution = null;
+    private int size;
         
     public PSEyeFrame() {
     }
         
     public int getSize() {
-        switch (resolution) {
-            case VGA: return 640 * 480;
-            case QVGA:  return 320 * 240;
-            default: return 0; // should really raise an error
-        }
+        return size;
     }
     
-    public void setResolution(PSEyeCamera.Resolution resolution) {
-        if (resolution != this.resolution) {
-            this.resolution = resolution;
-            data = new int[getSize()];
+    public void setSize(int size) {
+        if (size != this.size) {
+            this.size = size;
+            data = new int[size];
         }
     }
     
