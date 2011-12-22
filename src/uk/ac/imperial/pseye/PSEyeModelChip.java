@@ -41,7 +41,6 @@ abstract class PSEyeModelChip extends AEChip implements PreferenceChangeListener
     private static boolean supportsAutoGain = true;
     private static boolean supportsAutoExposure = true;
 
-    private Observer modelObserver; // observes updates from the model
     PSEyeModelRenderer renderer = null;
     
     @Override
@@ -71,6 +70,15 @@ abstract class PSEyeModelChip extends AEChip implements PreferenceChangeListener
         getPrefs().addPreferenceChangeListener(this);
     }
 
+    /* needed to ensure listener deregistered on construction of
+     * an equivalent instance and so prevent a memory leak 
+     */
+    @Override
+    public void cleanup() {
+        super.cleanup();
+        getPrefs().removePreferenceChangeListener(this);
+    }
+    
     /* check to see if hardware interface set */
     protected boolean checkHardware() {
         return hardwareInterface != null && (hardwareInterface instanceof PSEyeHardwareInterface);
@@ -143,6 +151,13 @@ abstract class PSEyeModelChip extends AEChip implements PreferenceChangeListener
             } catch (Exception ex) {
                 log.warning(ex.toString());
             }
+        }
+        else if (hardwareInterface == null) {
+            if (checkHardware()) {
+                PSEyeCamera pseye = (PSEyeCamera) getHardwareInterface();
+                pseye.close();
+            }
+            super.setHardwareInterface(null);
         }
         else
             log.warning("tried to set HardwareInterface to not a PSEyeHardwareInterface: " + hardwareInterface);
@@ -454,19 +469,19 @@ abstract class PSEyeModelChip extends AEChip implements PreferenceChangeListener
     }
     
     public int getMinGain() {
-        return PSEyeCamera.MIN_GAIN;
+        return PSEyeConstants.MIN_GAIN;
     }
     
     public int getMaxGain() {
-        return PSEyeCamera.MAX_GAIN;
+        return PSEyeConstants.MAX_GAIN;
     }
     
     public int getMinExposure() {
-        return PSEyeCamera.MIN_EXPOSURE;
+        return PSEyeConstants.MIN_EXPOSURE;
     }
     
     public int getMaxExposure() {
-        return PSEyeCamera.MAX_EXPOSURE;
+        return PSEyeConstants.MAX_EXPOSURE;
     }
     
     public boolean getSupportsAutoGain () {
