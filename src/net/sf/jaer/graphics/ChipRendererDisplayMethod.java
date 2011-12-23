@@ -25,6 +25,11 @@ import javax.media.opengl.GLAutoDrawable;
  */
 public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayMethod2D {
 
+    
+    public final float SPECIAL_BAR_LOCATION_X=-5;
+    public final float SPECIAL_BAR_LOCATION_Y=0;
+    public final float SPECIAL_BAR_LINE_WIDTH=8;
+    
     /**
      * Creates a new instance of ChipRendererDisplayMethod
      */
@@ -135,5 +140,20 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
             gl.glEnd();
         }
         getChipCanvas().checkGLError(gl, glu, "after rendering frame of chip");
+        
+        if (renderer instanceof AEChipRenderer) {
+            AEChipRenderer r = (AEChipRenderer) renderer;
+            int n = r.getSpecialCount();
+            if (n > 0) {
+                gl.glColor3f(1, 1, 1);
+                gl.glLineWidth(SPECIAL_BAR_LINE_WIDTH);
+                gl.glBegin(GL.GL_LINE_STRIP);
+                gl.glVertex2f(SPECIAL_BAR_LOCATION_X, SPECIAL_BAR_LOCATION_Y);
+                gl.glVertex2f(SPECIAL_BAR_LOCATION_X, SPECIAL_BAR_LOCATION_Y + n);
+                gl.glEnd();
+                getChipCanvas().checkGLError(gl, glu, "after rendering special events");
+            }
+        }
+        
     }
 }

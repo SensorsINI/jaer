@@ -93,7 +93,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         this();
         setHardwareInterface(hardwareInterface);
     }
-    
+
     /** Updates AEViewer specialized menu items according to capabilities of HardwareInterface.
      *
      * @param o the observable, i.e. this Chip.
@@ -158,7 +158,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 }
             });
             dvs128Menu.add(syncEnabledMenuItem);
-            // show warning dialog (which can be suppressed) about this setting if sync disabled and we are the only camera, since
+            // show warning dialog (which can be suppressed) about this setting if special disabled and we are the only camera, since
             // timestamps will not advance in this case
             if (!h.isSyncEventEnabled()) {
                 WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(null, false, "Timestamps disabled",
@@ -171,33 +171,39 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             ledMenu = new JMenu("LED control");
             ledMenu.setToolTipText("LED control");
             final HasLEDControl h = (HasLEDControl) getHardwareInterface();
-            final JRadioButtonMenuItem ledOnBut=new JRadioButtonMenuItem("Turn LED on");
-            final JRadioButtonMenuItem ledOffBut=new JRadioButtonMenuItem("Turn LED off");
-            final JRadioButtonMenuItem ledFlashingBut=new JRadioButtonMenuItem("Make LED flash");
-            final ButtonGroup group=new ButtonGroup();
+            final JRadioButtonMenuItem ledOnBut = new JRadioButtonMenuItem("Turn LED on");
+            final JRadioButtonMenuItem ledOffBut = new JRadioButtonMenuItem("Turn LED off");
+            final JRadioButtonMenuItem ledFlashingBut = new JRadioButtonMenuItem("Make LED flash");
+            final ButtonGroup group = new ButtonGroup();
             group.add(ledOnBut);
             group.add(ledOffBut);
             group.add(ledFlashingBut);
             ledMenu.add(ledOffBut);
             ledMenu.add(ledOnBut);
             ledMenu.add(ledFlashingBut);
-            switch(h.getLEDState(0)){
-                case ON: ledOnBut.setSelected(true); break;
-                case OFF: ledOffBut.setSelected(true); break;
-                case FLASHING: ledFlashingBut.setSelected(true); break;
+            switch (h.getLEDState(0)) {
+                case ON:
+                    ledOnBut.setSelected(true);
+                    break;
+                case OFF:
+                    ledOffBut.setSelected(true);
+                    break;
+                case FLASHING:
+                    ledFlashingBut.setSelected(true);
+                    break;
             }
-            
+
             ActionListener ledListener = new ActionListener() {
 
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                     HardwareInterface hw = getHardwareInterface();
+                    HardwareInterface hw = getHardwareInterface();
                     if (hw == null || !(hw instanceof HasLEDControl)) {
                         log.warning("cannot set LED of " + hw + " (class " + hw.getClass() + "), interface doesn't implement HasLEDControl");
                         return;
                     }
-                    HasLEDControl h=(HasLEDControl)hw;
-                   if (e.getSource() == ledOffBut) {
+                    HasLEDControl h = (HasLEDControl) hw;
+                    if (e.getSource() == ledOffBut) {
                         h.setLEDState(0, LEDState.OFF);
                     } else if (e.getSource() == ledOnBut) {
                         h.setLEDState(0, LEDState.ON);
@@ -206,7 +212,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                     }
                 }
             };
-            
+
             ledOffBut.addActionListener(ledListener);
             ledOnBut.addActionListener(ledListener);
             ledFlashingBut.addActionListener(ledListener);
@@ -372,7 +378,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 return;
             }
             int n = in.getNumEvents(); //addresses.length;
-            out.systemModificationTimeNs=in.systemModificationTimeNs;
+            out.systemModificationTimeNs = in.systemModificationTimeNs;
 
             int skipBy = 1;
             if (isSubSamplingEnabled()) {
@@ -385,31 +391,30 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             int[] timestamps = in.getTimestamps();
             OutputEventIterator outItr = out.outputIterator();
             for (int i = 0; i < n; i += skipBy) { // TODO bug here?
-                int addr = a[i]; // TODO handle sync events from hardware correctly
-                if (addr > 0xefff) {
+                int addr = a[i]; // TODO handle special events from hardware correctly
+                PolarityEvent e = (PolarityEvent) outItr.nextOutput();
+                e.address = addr;
+                e.timestamp = (timestamps[i]);
+
+                if ((addr&0x8000)!=0) { // msb is set
+                    e.special = true;
+                    e.x = -1;
+                    e.y = -1;
+                    e.type = -1;
+                    e.polarity = PolarityEvent.Polarity.On;
                     if (printedSyncBitWarningCount > 0) {
-                        log.warning("raw address " + addr + " is >32767 (0xefff); either sync or stereo bit is set, clearing the msb");
+                        log.warning("raw address " + addr + " is >32767 (0xefff); either sync or stereo bit is set");
                         printedSyncBitWarningCount--;
                         if (printedSyncBitWarningCount == 0) {
                             log.warning("suppressing futher warnings about msb of raw address");
                         }
                     }
-                    // TODO handle this by outputting SyncEvent's instead of PolarityEvent's. Some files recorded earlier in 2.0 format have the msb set by hardware.
-                    // here we restrict the addresses to 32767 max.
-                    addr = addr & 0xefff;
                 } else {
-                    PolarityEvent e = (PolarityEvent) outItr.nextOutput();
-                    e.address = addr;
-                    e.timestamp = (timestamps[i]);
-
-
+                    e.special = false;
                     e.type = (byte) (1 - addr & 1);
                     e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
                     e.x = (short) (sxm - ((short) ((addr & XMASK) >>> XSHIFT)));
                     e.y = (short) ((addr & YMASK) >>> YSHIFT);
-
-
-
                 }
 
             }

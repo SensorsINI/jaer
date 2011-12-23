@@ -227,7 +227,7 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
             OutputEventIterator outItr = out.outputIterator();
             for (int i = 0; i < n; i += skipBy) {
 
-                int addr = a[i]; // TODO handle sync events from hardware correctly
+                int addr = a[i]; // TODO handle special events from hardware correctly
                 PolarityEvent e = (PolarityEvent) outItr.nextOutput();
                 e.timestamp = (timestamps[i]);
                 e.type = (byte) (1 - addr & 1);
@@ -300,7 +300,7 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
                     }
                 }
 
-                int addr = a[i]; // TODO handle sync events from hardware correctly
+                int addr = a[i]; // TODO handle special events from hardware correctly
                 PolarityEvent e = (PolarityEvent) outItr.nextOutput();
                 int cameraShift = (MAX_NUM_CAMERAS-1-cameraLocation) * CAM_WIDTH;
                 e.timestamp = (timestamps[i]);

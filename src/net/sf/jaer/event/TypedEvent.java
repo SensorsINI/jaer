@@ -16,30 +16,35 @@ package net.sf.jaer.event;
  * @author tobi
  */
 public class TypedEvent extends BasicEvent {
-    
+
     /** The type field of the event. Generally a small number representing the cell type. */
-    public byte type=0;
-    
+    public byte type = 0;
+
     /** Creates a new instance of TypedEvent */
     public TypedEvent() {
     }
-    
-    @Override public int getType(){
+
+    /** The type field of the event. Generally a small number representing the cell type.
+     * 
+     * @return the type
+     */
+    @Override
+    public int getType() {
         return type;
     }
-    
-    @Override public String toString(){
-        return super.toString()+" type="+type;
+
+    @Override
+    public String toString() {
+        return super.toString() + " type=" + type + " sync=" + special;
     }
-    
+
     /** copies fields from source event src to this event
-     @param src the event to copy from
+    @param src the event to copy from
      */
-    @Override public void copyFrom(BasicEvent src){
-        TypedEvent e=(TypedEvent)src;
+    @Override
+    public void copyFrom(BasicEvent src) {
+        TypedEvent e = (TypedEvent) src;
         super.copyFrom(e);
-        this.type=e.type;
+        this.type = e.type;
     }
-    
-    
 }

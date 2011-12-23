@@ -23,25 +23,40 @@ public class BasicEvent implements EventInterface<BasicEvent> {
 //    public int serial=-1;
     /** timestamp of event, by convention in us */
     public int timestamp;
-
     /** The raw address corresponding to the event which has originated in hardware and is associated here for purposes of low level IO to streams.
-     <p>
+    <p>
      * This address is generally not transformed by event filtering, so filters which transform events, e.g. by shifting them or rotating them, must handle
-     the transformation of the raw addresses. Event filters which simply remove events need not worry about this effect.
+    the transformation of the raw addresses. Event filters which simply remove events need not worry about this effect.
      */
     public int address;
-
     /** x address of event (horizontal coordinate, by convention starts at left of image) */
     public short x;
     /** y address of event (vertical coordinate, by convention starts at bottom of image) */
     public short y;
+    /** Indicates that this event is a special (e.g. synchronizing) event, e.g. originating from a separate hardware input pin or from a special source. */
+    public boolean special = false;
+
+    /**
+     * Indicates that this event is a special synchronizing event, e.g. originating from a separate hardware input pin or from the a special source.
+     * @return the special
+     */
+    public boolean isSpecial() {
+        return special;
+    }
+
+    /**
+     * Indicates that this event is a special (e.g. synchronizing) event, e.g. originating from a separate hardware input pin or from  a special source.
+     * @param special the special to set
+     */
+    public void setSpecial(boolean syncEvent) {
+        this.special = syncEvent;
+    }
 
     // TODO implement filteredAway in a consistent way across jAER so that the numbers of events and iteration are properly handled (big job)
 //    /** Marks whether event is filtered away; false is default value and filters can set true to mark
 //     the event as unused for further processing.
 //     */
 //    public boolean filteredAway=false;
-    
     /**
      * Creates a new instance of BasicEvent
      */
@@ -65,8 +80,9 @@ public class BasicEvent implements EventInterface<BasicEvent> {
         this.timestamp = e.timestamp;
         this.x = e.x;
         this.y = e.y;
-        this.address=e.address;
-//        this.filteredAway=e.filteredAway;
+        this.address = e.address;
+        this.special = e.special;
+        //        this.filteredAway=e.filteredAway;
     }
 
     /**
@@ -82,14 +98,14 @@ public class BasicEvent implements EventInterface<BasicEvent> {
      * @param timestamp the timestamp, by convention in us.
      * @param address the raw address
      */
-     public BasicEvent(int timestamp, int address){
-         this.address=address;
-         this.timestamp=timestamp;
-     }
+    public BasicEvent(int timestamp, int address) {
+        this.address = address;
+        this.timestamp = timestamp;
+    }
 
     public String toString() {
 //        return getClass().getSimpleName()+" serial="+serial+" timestamp="+timestamp+" x="+x+" y="+y;
-        return getClass().getSimpleName() + " timestamp=" + timestamp + " address="+address+" x=" + x + " y=" + y;
+        return getClass().getSimpleName() + " timestamp=" + timestamp + " address=" + address + " x=" + x + " y=" + y;
     }
 
     public int getNumCellTypes() {
@@ -148,7 +164,6 @@ public class BasicEvent implements EventInterface<BasicEvent> {
         gl.glColor3f(1, 1, 1);
         gl.glRectf(x, y, x + 1, y + 1);
     }
-
     // TODO implement this filteredAway in such a way that the count of events is properly maintained in a packet.
 //    /** True if an EventFilter has marked this event to be ignored */
 //    public boolean isFilteredAway() {

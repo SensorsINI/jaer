@@ -224,7 +224,7 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
                 int addr = a[i];
                 // TODO switch here depending on hw interface having this enabled.
 //                if (addr == HasSyncEventOutput.SYNC_ADDRESS) {
-//                    log.info("sync event at timestamp=" + timestamps[i]);
+//                    log.info("special event at timestamp=" + timestamps[i]);
 //                    continue; // TODO do something here?
 //                }
                 if (addr > 65534) {

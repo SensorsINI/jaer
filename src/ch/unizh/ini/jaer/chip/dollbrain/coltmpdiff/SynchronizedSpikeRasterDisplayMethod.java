@@ -29,9 +29,9 @@ import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * Shows events from a single or few chip addresses as a rastergram, synchronized by a special event.
- * Raster traces are drawn left to right, rastering down from top of display on each sync event.
+ * Raster traces are drawn left to right, rastering down from top of display on each special event.
  * 
- * The time is scaled so that the entire width of the screen is the time between sync events.
+ * The time is scaled so that the entire width of the screen is the time between special events.
  * @author tobi
  */
 public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implements DisplayMethod2D, GLEventListener, PropertyChangeListener, Observer {
@@ -170,10 +170,10 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
         // autoscale time to max interval between syncs.
         boolean redrawPrevious = false;
         for (Object o : ae) {
-            // while iterating through events, also compute sync interval max to set xscale.
-            //  if sync interval increases, store new maxTime and redraw all the spikes
+            // while iterating through events, also compute special interval max to set xscale.
+            //  if special interval increases, store new maxTime and redraw all the spikes
             SyncEvent ev = (SyncEvent) o;
-            if (ev.isSyncEvent()) {
+            if (ev.isSpecial()) {
                 int dt = ev.timestamp - lastSyncTime;
                 lastSyncTime = ev.timestamp;
                 if (dt > maxTime) {
@@ -186,11 +186,11 @@ public class SynchronizedSpikeRasterDisplayMethod extends DisplayMethod implemen
             redrawSpikes(drawable);
         }
         for (Object o : ae) {
-            // while iterating through events, also compute sync interval max to set xscale.
-            //  if sync interval increases, store new maxTime and redraw all the spikes
+            // while iterating through events, also compute special interval max to set xscale.
+            //  if special interval increases, store new maxTime and redraw all the spikes
             SyncEvent ev = (SyncEvent) o;
             int dt = ev.timestamp - lastSyncTime;
-            if (ev.isSyncEvent()) {
+            if (ev.isSpecial()) {
                 dt = 0;
                 lastSyncTime = ev.timestamp;
                 rasterNumber++;

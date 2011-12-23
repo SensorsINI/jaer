@@ -53,9 +53,9 @@ public class ColTmpDiff extends AEChip {
             if(in==null) return;
             int n=in.getNumEvents(); //addresses.length;
 
-            // SimpleMonitorBoard has sync from function generator tied to AE14. This sync goes up and down in a square wave.
-            // Therefore the real spike polarity is OR'ed with the sync phase.
-            // e.g. OFF spike is 0 when sync is low and 0x4000 when sync is high.
+            // SimpleMonitorBoard has special from function generator tied to AE14. This special goes up and down in a square wave.
+            // Therefore the real spike polarity is OR'ed with the special phase.
+            // e.g. OFF spike is 0 when special is low and 0x4000 when special is high.
 
             int[] a=in.getAddresses();
             int[] timestamps=in.getTimestamps();
@@ -67,7 +67,7 @@ public class ColTmpDiff extends AEChip {
                 SyncEvent e=(SyncEvent)outItr.nextOutput();
                 e.address=addr;
                 e.timestamp=(timestamps[i]);
-                e.x=(short)((addr==syncAddr)? 1:0); // silabs sends 0xfffe for sync event, turns into -2 in java, set x=1 for sync, x=0 for others
+                e.x=(short)((addr==syncAddr)? 1:0); // silabs sends 0xfffe for special event, turns into -2 in java, set x=1 for special, x=0 for others
                 e.y=0;
                 e.type=(byte)((addr==syncAddr)? SyncEvent.SYNC_TYPE:addr&1);
 
