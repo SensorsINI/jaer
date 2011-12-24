@@ -209,8 +209,8 @@ public class AEChipRenderer extends Chip2DRenderer {
                 step = 1f / (colorScale);
                 for (Object obj : packet) {
                     BasicEvent e = (BasicEvent) obj;
-                    if (e.isSpecial()) {
-                        setSpecialCount(getSpecialCount() + 1); // TODO optimate special count increment
+                    if (e.special) {
+                        setSpecialCount(specialCount + 1); // TODO optimize special count increment
                         continue;
                     }
                     int type = e.getType();
@@ -250,8 +250,8 @@ public class AEChipRenderer extends Chip2DRenderer {
                         for (Object obj : packet) {
                             BasicEvent e = (BasicEvent) obj;
                             int type = e.getType();
-                            if (e.isSpecial()) {
-                                setSpecialCount(getSpecialCount() + 1); // TODO optimate special count increment
+                            if (e.special) {
+                                setSpecialCount(specialCount + 1); // TODO optimate special count increment
                                 continue;
                             }
                             if (e.x == xsel && e.y == ysel) {
@@ -278,8 +278,8 @@ public class AEChipRenderer extends Chip2DRenderer {
                                 < numEvents; i += skipBy) {
                             BasicEvent e = packet.getEvent(i);
                             int type = e.getType();
-                            if (e.isSpecial()) {
-                                setSpecialCount(getSpecialCount() + 1); // TODO optimate special count increment
+                            if (e.special) {
+                                setSpecialCount(specialCount + 1); // TODO optimate special count increment
                                 continue;
                             }
                             if (e.x == xsel && e.y == ysel) {
@@ -308,8 +308,8 @@ public class AEChipRenderer extends Chip2DRenderer {
                                 < numEvents; i += skipBy) {
                             BasicEvent e = packet.getEvent(i);
                             int type = e.getType();
-                            if (e.isSpecial()) {
-                                setSpecialCount(getSpecialCount() + 1); // TODO optimate special count increment
+                            if (e.special) {
+                                setSpecialCount(specialCount + 1); // TODO optimate special count increment
                                 continue;
                             }
                             //System.out.println("x: " + e.x + "   y:" + e.y);
@@ -334,7 +334,7 @@ public class AEChipRenderer extends Chip2DRenderer {
                                 < numEvents; i += skipBy) {
                             BasicEvent e = packet.getEvent(i);
                             int type = e.getType();
-                            if (e.isSpecial()) {
+                            if (e.special) {
                                 setSpecialCount(getSpecialCount() + 1); // TODO optimate special count increment
                                 continue;
                             }
