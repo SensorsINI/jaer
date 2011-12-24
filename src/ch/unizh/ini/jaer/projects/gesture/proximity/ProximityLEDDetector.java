@@ -31,40 +31,47 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl;
  * @author tobi
  * @see #PROXIMITY
  */
-@Description("Proximity detection using flashing LED that illuminates nearby scene")
+@Description("Proximity detection using flashing LED that illuminates nearby objects")
 public class ProximityLEDDetector extends EventFilter2D implements Observer, FrameAnnotater {
 
-    private HasLEDControl ledControl = null;
-    private boolean proximityDetected = false;
-    /** Event that is fired on change of proximity */
-    public static final String PROXIMITY = "proximity";
-    private Timer ledTimer = null;
-    private EventRateEstimator rateEstimator = null;
-    private int lastLEDChangeTimestampUs = 0;
-    private boolean lastLEDOn = true;
-    private long lastCommandSentNs = 0;
-    private Histogram histOn = new Histogram(), histOff = new Histogram();
-    TextRenderer renderer;
     // parameters
     private int histNumBins = getInt("histNumBins", 10);
     private int histBinSizeUs = getInt("histBinSizeUs", 1000);
     private float histCountScale = getFloat("histCountScale", 0.1f);
     private long periodMs = getInt("periodMs", 20);
     protected int countThreshold = getInt("countThreshold", 100);
-    protected float maxCOV = getFloat("maxCOV", 1);
+    protected float maxDeviationMs = getFloat("maxDeviationMs",2);
+    // fields
+    private HasLEDControl ledControl = null;
+    private boolean proximityDetected = false;
+    /** Event that is fired on change of proximity */
+    public static final String PROXIMITY = "proximityDetected";
+    private Timer ledTimer = null;
+//    private EventRateEstimator rateEstimator = null;
+    private int lastLEDChangeTimestampUs = 0;
+    private boolean lastLEDOn = true;
+    private long lastCommandSentNs = 0;
+    private Histogram histOn = new Histogram(), histOff = new Histogram();
+    TextRenderer renderer;
 
     public ProximityLEDDetector(AEChip chip) {
         super(chip);
-        rateEstimator = new EventRateEstimator(chip);
-        setEnclosedFilterChain(new FilterChain(chip));
-        getEnclosedFilterChain().add(rateEstimator);
-        setPropertyTooltip("histCountScale", "count scale for histogram events after sync");
+//        rateEstimator = new EventRateEstimator(chip);
+//        setEnclosedFilterChain(new FilterChain(chip));
+//        getEnclosedFilterChain().add(rateEstimator);
+        setPropertyTooltip("histCountScale", "scale for delta time histogram counts after sync pulses");
+        setPropertyTooltip("histBinSizeUs", "histogram bin size in us after LED change");
+        setPropertyTooltip("histNumBins", "number of histogram bins");
+        setPropertyTooltip("maxDeviationMs", "maximum standard deviation in ms around mean delta time to consider events as resulting from LED change");
+        setPropertyTooltip("countThreshold", "min number of events to capture after LED change to consider for proximity detection");
+        setPropertyTooltip("periodMs", "LED flashing period in ms");
+        setPropertyTooltip("proximityDetected", "indicates detected proximity");
         chip.addObserver(this);
     }
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        rateEstimator.filterPacket(in);
+//        rateEstimator.filterPacket(in);
         for (BasicEvent o : in) {
             PolarityEvent e = (PolarityEvent) o;
             if (e.isSpecial()) { // got sync event indicating that camera has changed LED
@@ -190,33 +197,39 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer, Fra
     }
 
     /**
-     * @return the maxCOV
+     * @return the maxDeviationMs
      */
-    public float getMaxCOV() {
-        return maxCOV;
+    public float getMaxDeviationMs() {
+        return maxDeviationMs;
     }
 
     /**
-     * @param maxCOV the maxCOV to set
+     * @param maxDeviationMs the maxDeviationMs to set
      */
-    public void setMaxCOV(float maxCOV) {
-        this.maxCOV = maxCOV;
-        putFloat("maxCOV", maxCOV);
+    public void setMaxDeviationMs(float maxDeviationMs) {
+        this.maxDeviationMs = maxDeviationMs;
+        putFloat("maxDeviationMs", maxDeviationMs);
     }
 
     private class Histogram {
 
-        int[] counts = new int[getHistNumBins()];
+        int[] counts = null;
         int overflowCount = 0;
         float meanCount = 0, meanBin = 0, stdCount = 0, stdBin = 0;
         int sumCounts = 0;
 
         public Histogram() {
+            init();
         }
 
-        void init() {
-            counts = new int[getHistNumBins()];
+        private void init() {
+            counts = new int[histNumBins];
             overflowCount = 0;
+            meanCount = 0;
+            meanBin = 0;
+            stdCount = 0;
+            stdBin = 0;
+            sumCounts = 0;
         }
 
         synchronized void reset() {
@@ -256,7 +269,7 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer, Fra
 //            System.out.println("");
             gl.glEnd();
             renderer.begin3DRendering();
-            String s = String.format("count=%6.1f + %-6.1f bin=%6.1f+ %-6.1f", meanCount, stdCount, meanBin, stdBin);
+            String s = String.format("count=%6.1f + %-6.1f mean dt=%6.1f+ %-6.1f ms", meanCount, stdCount, histBinSizeUs*meanBin/1000, histBinSizeUs*stdBin/1000);
             final float scale = .2f;
             renderer.draw3D(s, x, y - 5, 0, scale);
 //        Rectangle2D bounds=renderer.getBounds(s);
@@ -267,12 +280,17 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer, Fra
         synchronized void computeStats() {
             sumCounts = 0;
             int sumCounts2 = 0;
-            int weightedCount = 0;
+            float weightedCount = 0;
             for (int i = 0; i < histNumBins; i++) {
+//                if (i == histNumBins / 2) {
+//                    counts[i] = 10;
+//                } else {
+//                    counts[i] = 10; // TODO debug
+//                }
                 int b = counts[i];
                 sumCounts += b;
                 sumCounts2 += b * b;
-                int wb = counts[i] * i;
+                float wb = counts[i] * (.5f+i);
                 weightedCount += wb;
             }
             meanCount = (float) sumCounts / histNumBins;
@@ -288,7 +306,7 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer, Fra
             } else {
                 float sumSq = 0;
                 for (int i = 0; i < histNumBins; i++) {
-                    float dev = (i - meanBin);
+                    float dev = (i+0.5f - meanBin);
                     float dev2 = dev * dev;
                     sumSq += counts[i] * dev2;
                 }
@@ -314,7 +332,7 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer, Fra
             if (sumCounts < countThreshold) {
                 return false;
             }
-            if (covBin() > maxCOV) {
+            if (stdBin*histBinSizeUs/1000 > maxDeviationMs) {
                 return false;
             }
             if (meanBin * histBinSizeUs > 5000) { // TODO make parameter
@@ -358,7 +376,7 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer, Fra
 
     @Override
     public void resetFilter() {
-        getEnclosedFilterChain().reset();
+//        getEnclosedFilterChain().reset();
         histOn.reset();
         histOff.reset();
     }

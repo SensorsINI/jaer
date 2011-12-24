@@ -35,7 +35,7 @@ public class TypedEvent extends BasicEvent {
 
     @Override
     public String toString() {
-        return super.toString() + " type=" + type + " sync=" + special;
+        return super.toString() + " type=" + type;
     }
 
     /** copies fields from source event src to this event
