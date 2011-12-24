@@ -104,8 +104,7 @@ public class BasicEvent implements EventInterface<BasicEvent> {
     }
 
     public String toString() {
-//        return getClass().getSimpleName()+" serial="+serial+" timestamp="+timestamp+" x="+x+" y="+y;
-        return getClass().getSimpleName() + " timestamp=" + timestamp + " address=" + address + " x=" + x + " y=" + y;
+        return getClass().getSimpleName() + " timestamp=" + timestamp + " address=" + address + " x=" + x + " y=" + y+" special="+special;
     }
 
     public int getNumCellTypes() {
