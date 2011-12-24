@@ -83,12 +83,18 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
         int sy = chip.getSizeY() - 1;
         for (Object e : in) {
             BasicEvent i = (BasicEvent) e;
+            if (i.special) {
+                BasicEvent o = (BasicEvent) outItr.nextOutput();
+                o.copyFrom(i);
+            }
             ts = i.timestamp;
             short x = (short) (i.x >>> subsampleBy), y = (short) (i.y >>> subsampleBy);
-            if(x<0||y<0) continue;
+            if ((x < 0 || y < 0)) {
+                continue;
+            }
             int lastt = lastTimestamps[x][y];
             int deltat = (ts - lastt);
-            if (i.special || (deltat < dt && lastt != DEFAULT_TIMESTAMP)) {
+            if ((deltat < dt && lastt != DEFAULT_TIMESTAMP)) {
                 //System.out.println("x: "+i.x+" x: "+i.y+" dt: "+dt);
                 BasicEvent o = (BasicEvent) outItr.nextOutput();
 //                    m.invoke(o,i);
@@ -169,7 +175,9 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
     }
 
     void resetLastTimestamps() {
-        if(lastTimestamps==null) return;
+        if (lastTimestamps == null) {
+            return;
+        }
         for (int i = 0; i < lastTimestamps.length; i++) {
             Arrays.fill(lastTimestamps[i], DEFAULT_TIMESTAMP);
         }
