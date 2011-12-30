@@ -404,11 +404,11 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         public static final byte VR_WRITE_CONFIG = (byte) 0xB8;
         ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
         AllMuxes allMuxes = null; // the output muxes
-        private ShiftedSourceBias ssn, ssp, ssnMid, sspMid;
-        private ShiftedSourceBias[] ssBiases = new ShiftedSourceBias[4];
+        private ShiftedSourceBiasCF ssn, ssp, ssnMid, sspMid;
+        private ShiftedSourceBiasCF[] ssBiases = new ShiftedSourceBiasCF[2];
         private VPot thermometerDAC;
         ExtraOnChipConfigBits extraOnchipConfigBits = null;
-        int pos = 0;
+        int address = 0;
         JPanel bPanel;
         JTabbedPane bgTabbedPane;
         // portA
@@ -477,34 +477,22 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             getMasterbias().addObserver(this); // changes to masterbias come back to update() here
 
             // shifted sources (not used on SeeBetter10/11)
-            ssn = new ShiftedSourceBias(this);
+            ssn = new ShiftedSourceBiasCF(this);
             ssn.setSex(Pot.Sex.N);
             ssn.setName("SSN");
             ssn.setTooltipString("n-type shifted source that generates a regulated voltage near ground");
             ssn.addObserver(this);
+            ssn.setAddress(21);
 
-            ssp = new ShiftedSourceBias(this);
+            ssp = new ShiftedSourceBiasCF(this);
             ssp.setSex(Pot.Sex.P);
             ssp.setName("SSP");
             ssp.setTooltipString("p-type shifted source that generates a regulated voltage near Vdd");
             ssp.addObserver(this);
+            ssp.setAddress(20);
 
-            ssnMid = new ShiftedSourceBias(this);
-            ssnMid.setSex(Pot.Sex.N);
-            ssnMid.setName("SSNMid");
-            ssnMid.setTooltipString("n-type shifted source that generates a regulated voltage inside rail, about 2 diode drops from ground");
-            ssnMid.addObserver(this);
-
-            sspMid = new ShiftedSourceBias(this);
-            sspMid.setSex(Pot.Sex.P);
-            sspMid.setName("SSPMid");
-            sspMid.setTooltipString("p-type shifted source that generates a regulated voltage about 2 diode drops from Vdd");
-            sspMid.addObserver(this);
-
-            ssBiases[0] = ssnMid;
             ssBiases[1] = ssn;
-            ssBiases[2] = sspMid;
-            ssBiases[3] = ssp;
+            ssBiases[0] = ssp;
 
 
             // DAC object for simple voltage DAC
@@ -515,32 +503,29 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             thermometerDAC = new VPot(SeeBetter20.this, "LogAmpRef", dac, 0, Type.NORMAL, Sex.N, 9, 0, "Voltage DAC for log intensity switched cap amplifier");
             thermometerDAC.addObserver(this);
 
-            setPotArray(new IPotArray(this));
+            setPotArray(new AddressedIPotArray(this));
 
             // on SeeBetter20 pots are as follows starting from input end of shift register
             try {
-                addIPot("DiffBn,n,normal,differencing amp"); // at input end of shift register
-                addIPot("OnBn,n,normal,DVS brighter threshold");
-                addIPot("OffBn,n,normal,DVS darker threshold");
-                addIPot("PrOTABp,p,normal,Photoreceptor OTA used in bDVS pixels"); // TODO what's this?
-                addIPot("PrCasBnc,n,cascode,Photoreceptor cascode (when used in pixel type bDVS sDVS and some of the small DVS pixels)");
-                addIPot("RODiffAmpBn,n,normal,Log intensity readout OTA bias current");
-                addIPot("PrLvlShiftBn,p,cascode,Photoreceptor level shifter bias in pixel_DVS_ls pixel - not used otherwise");
-                addIPot("PixInvBn,n,normal,Pixel request inversion static inverter bias");
-                addIPot("PrBp,p,normal,Photoreceptor bias current");
-                addIPot("PrSFBp,p,normal,Photoreceptor follower bias current (when used in pixel type)");
-                addIPot("RefrBp,p,normal,DVS refractory period current");
-                addIPot("AEPdBn,n,normal,Request encoder pulldown static current");
-                addIPot("AERxEBn,n,normal,Handshake state machine pulldown bias current");
-                addIPot("AEPuXBp,p,normal,AER column pullup");
-                addIPot("AEPuYBp,p,normal,AER row pullup");
-                addIPot("IFThrBn,n,normal,Integrate and fire intensity neuron threshold");
-                addIPot("IFRefrBn,n,normal,Integrate and fire intensity neuron refractory period bias current");
-                addIPot("PadFollBn,n,normal,Follower-pad buffer bias current");
-                addIPot("ROGateBn,n,normal,Bias voltage for log readout transistor ");
-                addIPot("ROCasBnc,n,cascode,Bias voltage for log readout cascode ");
-                addIPot("RefCurrentBn,n,normal,Reference current for log readout ");
-                addIPot("LocalBufBn,n,normal,Local OTA voltage follower buffer bias current"); // at far end of shift register
+                addAIPot("DiffBn,n,normal,differencing amp"); // at input end of shift register
+                addAIPot("OnBn,n,normal,DVS brighter threshold");
+                addAIPot("OffBn,n,normal,DVS darker threshold");
+                addAIPot("ApsCasEpc,p,cascode,xxx"); // TODO what's this?
+                addAIPot("PrCasBnc,n,cascode,Photoreceptor cascode (when used in pixel type bDVS sDVS and some of the small DVS pixels)");
+                addAIPot("ApsROSF,n,normal,APS readout source follower bias");
+                addAIPot("LocalBufBn,n,normal,xxx"); // TODO what's this?
+                addAIPot("PixInvBn,n,normal,Pixel request inversion static inverter bias");
+                addAIPot("PrBp,p,normal,Photoreceptor bias current");
+                addAIPot("PrSFBp,p,normal,Photoreceptor follower bias current (when used in pixel type)");
+                addAIPot("RefrBp,p,normal,DVS refractory period current");
+                addAIPot("AEPdBn,n,normal,Request encoder pulldown static current");
+                addAIPot("AERxEBn,n,normal,Handshake state machine pulldown bias current");
+                addAIPot("AEPuXBp,p,normal,AER column pullup");
+                addAIPot("AEPuYBp,p,normal,AER row pullup");
+                addAIPot("IFThrBn,n,normal,Integrate and fire intensity neuron threshold");
+                addAIPot("IFRefrBn,n,normal,Integrate and fire intensity neuron refractory period bias current");
+                addAIPot("PadFollBn,n,normal,Follower-pad buffer bias current");
+                addAIPot("apsOverflowLevel,n,normal,special overflow level bias ");
             } catch (Exception e) {
                 throw new Error(e.toString());
             }
@@ -568,13 +553,13 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             byte[] b = formatConfigurationBytes(this);
 
         } // constructor
-
-        /** Quick addConfigValue of a pot from a string description, comma delimited
+        
+         /** Quick addConfigValue of an addressed pot from a string description, comma delimited
          * 
          * @param s , e.g. "Amp,n,normal,DVS ON threshold"; separate tokens for name,sex,type,tooltip\nsex=n|p, type=normal|cascode
          * @throws ParseException Error
          */
-        private void addIPot(String s) throws ParseException {
+        private void addAIPot(String s) throws ParseException {
             try {
                 String d = ",";
                 StringTokenizer t = new StringTokenizer(s, d);
@@ -611,9 +596,9 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 int bitValue, int bufferBitValue, int displayPosition, String tooltipString) {
                  */
 
-                getPotArray().addPot(new ConfigurableIPot32(this, name, pos++,
+                getPotArray().addPot(new AddressedIPotCF(this, name, address++,
                         type, sex, false, true,
-                        ConfigurableIPot32.maxBitValue / 2, ConfigurableIPot32.maxBuffeBitValue, pos, tip));
+                        AddressedIPotCF.maxCoarseBitValue / 2, AddressedIPotCF.maxFineBitValue, address, tip));
             } catch (Exception e) {
                 throw new Error(e.toString());
             }
@@ -625,12 +610,31 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
          * @return false if not sent because bytes are not yet initialized
          */
         private boolean sendOnchipConfig() throws HardwareInterfaceException {
+            //biases
+            if(getPotArray() == null){
+                return false;
+            }
+            AddressedIPotArray ipots = (AddressedIPotArray) potArray;
+            Iterator i = ipots.getShiftRegisterIterator();
+            while(i.hasNext()){
+                AddressedIPot iPot = (AddressedIPot) i.next();
+                if(!sendAIPot(iPot))return false;
+            }
+            
+            //shifted sources
+            for (ShiftedSourceBiasCF ss : ssBiases) {
+                if(!sendAIPot(ss))return false;
+            }   
+            
+            //diagnose SR
+            String configBitsBits = extraOnchipConfigBits.getBitString();
+            String muxBitsBits = allMuxes.getBitString(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
 
-            byte[] bytes = formatConfigurationBytes(this);
-            if (bytes == null) {
+            byte[] muxAndConfigBytes = bitString2Bytes((configBitsBits + muxBitsBits)); // returns bytes padded at end
+            if (muxAndConfigBytes == null) {
                 return false; // not ready yet, called by super
             }
-            sendConfig(CMD_IPOT, 0, bytes); // the usual packing of ipots with other such as shifted sources, on-chip voltage dac, and diagnotic mux output and extra configuration
+            sendConfig(CMD_CHIP_CONFIG, 0, muxAndConfigBytes);
             return true;
         }
 
@@ -670,10 +674,12 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         }
         /** Vendor request command understood by the firmware in connection with  VENDOR_REQUEST_SEND_BIAS_BYTES */
         public final ConfigCmd CMD_IPOT = new ConfigCmd(1, "IPOT"),
+                CMD_AIPOT = new ConfigCmd(2, "AIPOT"),
                 CMD_SCANNER = new ConfigCmd(3, "SCANNER"),
+                CMD_CHIP_CONFIG = new ConfigCmd(4, "CHIP"),
                 CMD_SETBIT = new ConfigCmd(5, "SETBIT"),
                 CMD_CPLD_CONFIG = new ConfigCmd(8, "CPLD");
-        public final String[] CMD_NAMES = {"IPOT", "SCANNER", "SET_BIT", "CPLD_CONFIG"};
+        public final String[] CMD_NAMES = {"IPOT", "AIPOT", "SCANNER", "SET_BIT", "CPLD_CONFIG"};
         final byte[] emptyByteArray = new byte[0];
 
         /** Sends complete configuration to hardware by calling several updates with objects
@@ -688,7 +694,8 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 log.info("batch edit occurring, not sending configuration yet");
                 return;
             }
-//            log.info("sending full configuration");
+            
+            log.info("sending full configuration");
             if (!sendOnchipConfig()) {
                 return;
             }
@@ -697,6 +704,15 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             for (PortBit b : portBits) {
                 update(b, null);
             }
+        }
+        
+        private boolean sendAIPot(AddressedIPot pot) throws HardwareInterfaceException{
+            byte[] bytes = pot.getBinaryRepresentation();
+            if (bytes == null) {
+                return false; // not ready yet, called by super
+            }
+            sendConfig(CMD_AIPOT, 0, bytes); // the usual packing of ipots with other such as shifted sources, on-chip voltage dac, and diagnotic mux output and extra configuration
+            return true;
         }
 
         /** Momentarily puts the pixels and on-chip AER logic in reset and then releases the reset.
@@ -751,10 +767,9 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 } else if (observable instanceof ADC) {
                     sendCPLDConfig(); // CPLD register updates on device side save and restore the RUN_ADC flag
 //                    update(runAdc, null);
-                } //                else if (observable instanceof Scanner) {
-                //                    sendCPLDConfig();
-                //                } 
-                else {
+                } else if (observable instanceof AddressedIPot) { 
+                    sendAIPot((AddressedIPot)observable);
+                } else {
                     super.update(observable, object);  // super (SeeBetterConfig) handles others, e.g. masterbias
                 }
             } catch (HardwareInterfaceException e) {
@@ -820,7 +835,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             }
 
             if (ssBiases != null) {
-                for (ShiftedSourceBias ss : ssBiases) {
+                for (ShiftedSourceBiasCF ss : ssBiases) {
                     ss.loadPreferences();
                 }
             }
@@ -837,7 +852,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 hp.storePreference();
             }
             if (ssBiases != null) {
-                for (ShiftedSourceBias ss : ssBiases) {
+                for (ShiftedSourceBiasCF ss : ssBiases) {
                     ss.storePreferences();
                 }
             }
@@ -896,10 +911,8 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             JPanel combinedBiasShiftedSourcePanel = new JPanel();
             combinedBiasShiftedSourcePanel.setLayout(new BoxLayout(combinedBiasShiftedSourcePanel, BoxLayout.Y_AXIS));
             combinedBiasShiftedSourcePanel.add(super.buildControlPanel());
-            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(ssn));
-            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(ssp));
-            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(ssnMid));
-            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControls(sspMid));
+            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssn));
+            combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssp));
             combinedBiasShiftedSourcePanel.add(new VPotGUIControl(thermometerDAC));
             bgTabbedPane.addTab("Biases", combinedBiasShiftedSourcePanel);
             bgTabbedPane.addTab("Output MUX control", allMuxes.buildControlPanel());
@@ -980,71 +993,71 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
          * @return byte array to be sent, which will be loaded into the chip starting with element 0 msb.
          * @param biasgen this SeeBetterConfig
          */
-        @Override
-        public byte[] formatConfigurationBytes(Biasgen biasgen) {
-            ByteBuffer bb = ByteBuffer.allocate(1000);
-
-            if (getPotArray() == null) {
-                return null; // array not yet contructed, we were called here by super()
-            }            // must return integral number of bytes and on-chip biasgen must be integral number of bytes, by method contract
-//            ByteBuffer potbytes = ByteBuffer.allocate(300);
-
-
-            IPotArray ipots = (IPotArray) potArray;
-
-            byte[] bytes = new byte[potArray.getNumPots() * 8];
-            int byteIndex = 0;
-
-
-            Iterator i = ipots.getShiftRegisterIterator();
-            while (i.hasNext()) {
-                // for each bias starting with the first one (the one closest to the ** END ** of the shift register
-                // we get the binary representation in byte[] form and from MSB ro LSB stuff these values into the byte array
-                IPot iPot = (IPot) i.next();
-                byte[] thisBiasBytes = iPot.getBinaryRepresentation();
-                System.arraycopy(thisBiasBytes, 0, bytes, byteIndex, thisBiasBytes.length);
-                byteIndex += thisBiasBytes.length;
-//                log.info("added bytes for "+iPot);
-            }
-            byte[] potbytes = new byte[byteIndex];
-            System.arraycopy(bytes, 0, potbytes, 0, byteIndex);
-
-
-
-//        for (Pot p : getPotArray().getPots()) {
-//                potbytes.put(p.getBinaryRepresentation());
+//        @Override
+//        public byte[] formatConfigurationBytes(Biasgen biasgen) {
+//            ByteBuffer bb = ByteBuffer.allocate(1000);
+//
+//            if (getPotArray() == null) {
+//                return null; // array not yet contructed, we were called here by super()
+//            }            // must return integral number of bytes and on-chip biasgen must be integral number of bytes, by method contract
+////            ByteBuffer potbytes = ByteBuffer.allocate(300);
+//
+//
+//            AddressedIPotArray ipots = (AddressedIPotArray) potArray;
+//
+//            byte[] bytes = new byte[potArray.getNumPots() * 8];
+//            int byteIndex = 0;
+//
+//
+//            Iterator i = ipots.getShiftRegisterIterator();
+//            while (i.hasNext()) {
+//                // for each bias starting with the first one (the one closest to the ** END ** of the shift register
+//                // we get the binary representation in byte[] form and from MSB ro LSB stuff these values into the byte array
+//                AddressedIPot iPot = (AddressedIPot) i.next();
+//                byte[] thisBiasBytes = iPot.getBinaryRepresentation();
+//                System.arraycopy(thisBiasBytes, 0, bytes, byteIndex, thisBiasBytes.length);
+//                byteIndex += thisBiasBytes.length;
+////                log.info("added bytes for "+iPot);
 //            }
-//            potbytes.flip(); // written in order 
-
-            String configBitsBits = extraOnchipConfigBits.getBitString();
-            String muxBitsBits = allMuxes.getBitString(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
-
-            byte[] muxAndConfigBytes = bitString2Bytes((configBitsBits + muxBitsBits)); // returns bytes padded at end
-
-            bb.put(muxAndConfigBytes); // loaded first to go to far end of shift register
-
-            // 256 value (8 bit) VDAC for amplifier reference
-            byte vdac = (byte) thermometerDAC.getBitValue(); //Byte.valueOf("9");
-            bb.put(vdac);   // VDAC needs 8 bits
-            bb.put(potbytes);
-
-            // the 4 shifted sources, each 2 bytes
-            for (ShiftedSourceBias ss : ssBiases) {
-                bb.put(ss.getBinaryRepresentation());
-            }
-
-            // make buffer for all output bytes
-            byte[] allBytes = new byte[bb.position()];
-            bb.flip(); // flips to read them out in order of putting them in, i.e., get configBitBytes first
-            bb.get(allBytes); // we write these in vendor request
-
-//            StringBuilder sb = new StringBuilder(allBytes.length + " bytes sent to FX2 to be loaded big endian into on-chip shift register for each byte in order \n");
-//            for (byte b : allBytes) {
-//                sb.append(String.format("%02x ", b));
+//            byte[] potbytes = new byte[byteIndex];
+//            System.arraycopy(bytes, 0, potbytes, 0, byteIndex);
+//
+//
+//
+////        for (Pot p : getPotArray().getPots()) {
+////                potbytes.put(p.getBinaryRepresentation());
+////            }
+////            potbytes.flip(); // written in order 
+//
+//            String configBitsBits = extraOnchipConfigBits.getBitString();
+//            String muxBitsBits = allMuxes.getBitString(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
+//
+//            byte[] muxAndConfigBytes = bitString2Bytes((configBitsBits + muxBitsBits)); // returns bytes padded at end
+//
+//            bb.put(muxAndConfigBytes); // loaded first to go to far end of shift register
+//
+//            // 256 value (8 bit) VDAC for amplifier reference
+//            byte vdac = (byte) thermometerDAC.getBitValue(); //Byte.valueOf("9");
+//            bb.put(vdac);   // VDAC needs 8 bits
+//            bb.put(potbytes);
+//
+//            // the 4 shifted sources, each 2 bytes
+//            for (ShiftedSourceBiasCF ss : ssBiases) {
+//                bb.put(ss.getBinaryRepresentation());
 //            }
-//            log.info(sb.toString());
-            return allBytes; // configBytes may be padded with extra bits to make up a byte, board needs to know this to chop off these bits
-        }
+//
+//            // make buffer for all output bytes
+//            byte[] allBytes = new byte[bb.position()];
+//            bb.flip(); // flips to read them out in order of putting them in, i.e., get configBitBytes first
+//            bb.get(allBytes); // we write these in vendor request
+//
+////            StringBuilder sb = new StringBuilder(allBytes.length + " bytes sent to FX2 to be loaded big endian into on-chip shift register for each byte in order \n");
+////            for (byte b : allBytes) {
+////                sb.append(String.format("%02x ", b));
+////            }
+////            log.info(sb.toString());
+//            return allBytes; // configBytes may be padded with extra bits to make up a byte, board needs to know this to chop off these bits
+//        }
 
         /** Controls the log intensity readout by wrapping the relevant bits */
         public class LogReadoutControl implements Observer {

@@ -104,11 +104,11 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     /** the Masterbias supplying reference current to this IPot */
     transient public Masterbias masterbias = null;
     /** the number for bytes of 8 bits for this ipot */
-    protected int numBytes = 3;
+    protected int numBytes = 2;
     /** the number of bits of resolution for this bias. This number is used to compute the max bit value and also for
     computing the number of bits or bytes to send to a device
      */
-    protected int numBits = 24;
+    protected int numBits = 16;
     /** flag for modified (from preference value). */
     private boolean modified = false;
 
