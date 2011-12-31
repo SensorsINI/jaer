@@ -174,9 +174,9 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
      */
     public void setRefBitValue(int refBitValue) {
         int oldBitValue = this.refBitValue;
-        this.refBitValue = clippedRefBitValue(regBitValue);
+        this.refBitValue = clippedRefBitValue(refBitValue);
         updateBitValue();
-        if (regBitValue != oldBitValue) {
+        if (refBitValue != oldBitValue) {
             setChanged();
             notifyObservers(this);
         }
@@ -254,7 +254,7 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
      */
     @Override
     public byte[] getBinaryRepresentation() {
-        int n = 2;
+        int n = 3; //two plus address
         if (bytes == null) {
             bytes = new byte[n];
         }
@@ -263,6 +263,7 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
         for (int i = bytes.length - 1; i >= 0; i--) {
             bytes[k++] = (byte) (0xff & (val >>> (i * 8)));
         }
+        bytes[0]=(byte)(0xFF & address);
         return bytes;
     }
 

@@ -29,25 +29,27 @@
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="0" attributes="0">
               <Component id="nameLabel" min="-2" pref="89" max="-2" attributes="0"/>
-              <EmptySpace max="-2" attributes="0"/>
+              <EmptySpace min="-2" max="-2" attributes="0"/>
               <Component id="sexComboBox" min="-2" pref="34" max="-2" attributes="0"/>
-              <EmptySpace max="-2" attributes="0"/>
+              <EmptySpace min="-2" max="-2" attributes="0"/>
               <Component id="biasEnabledComboBox" min="-2" pref="42" max="-2" attributes="0"/>
               <EmptySpace min="-2" max="-2" attributes="0"/>
               <Component id="typeComboBox" min="-2" pref="41" max="-2" attributes="0"/>
               <EmptySpace min="-2" max="-2" attributes="0"/>
               <Component id="currentLevelComboBox" min="-2" pref="42" max="-2" attributes="0"/>
               <EmptySpace type="unrelated" max="-2" attributes="0"/>
-              <Component id="coarseBiasSlider" pref="71" max="32767" attributes="0"/>
+              <Component id="coarseBiasSlider" min="-2" max="-2" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
               <Component id="coarseBiasTextField" min="-2" max="-2" attributes="0"/>
+              <EmptySpace max="-2" attributes="0"/>
+              <Component id="fineBiasSlider" pref="51" max="32767" attributes="0"/>
               <EmptySpace type="unrelated" max="-2" attributes="0"/>
-              <Component id="fineBiasSlider" min="-2" pref="109" max="-2" attributes="0"/>
-              <EmptySpace min="-2" pref="2" max="-2" attributes="0"/>
               <Component id="fineBiasTextField" min="-2" max="-2" attributes="0"/>
-              <EmptySpace type="unrelated" max="-2" attributes="0"/>
-              <Component id="totalBiasTextField" min="-2" pref="38" max="-2" attributes="0"/>
-              <EmptySpace min="-2" pref="10" max="-2" attributes="0"/>
+              <EmptySpace max="-2" attributes="0"/>
+              <Component id="totalCurrentTextField" min="-2" pref="50" max="-2" attributes="0"/>
+              <EmptySpace max="-2" attributes="0"/>
+              <Component id="totalBiasTextField" min="-2" pref="104" max="-2" attributes="0"/>
+              <EmptySpace min="-2" max="-2" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -58,6 +60,7 @@
           <Component id="coarseBiasTextField" alignment="2" pref="23" max="32767" attributes="0"/>
           <Component id="fineBiasSlider" alignment="2" pref="23" max="32767" attributes="1"/>
           <Component id="fineBiasTextField" alignment="2" pref="23" max="32767" attributes="2"/>
+          <Component id="totalCurrentTextField" alignment="2" min="-2" max="-2" attributes="0"/>
           <Component id="totalBiasTextField" alignment="2" min="-2" max="-2" attributes="0"/>
           <Component id="biasEnabledComboBox" alignment="2" min="-2" pref="22" max="-2" attributes="2"/>
           <Component id="typeComboBox" alignment="2" min="-2" pref="22" max="-2" attributes="2"/>
@@ -266,7 +269,16 @@
     <Component class="javax.swing.JTextField" name="totalBiasTextField">
       <Properties>
         <Property name="editable" type="boolean" value="false"/>
-        <Property name="text" type="java.lang.String" value="total"/>
+        <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
+          <Font name="Tahoma" size="10" style="0"/>
+        </Property>
+        <Property name="text" type="java.lang.String" value="BitPatter"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JTextField" name="totalCurrentTextField">
+      <Properties>
+        <Property name="editable" type="boolean" value="false"/>
+        <Property name="text" type="java.lang.String" value="totalCurrent"/>
       </Properties>
     </Component>
   </SubComponents>

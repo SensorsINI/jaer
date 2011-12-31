@@ -9,7 +9,6 @@ package eu.seebetter.ini.chips.seebetter20;
 
 import java.util.prefs.PreferenceChangeEvent;
 import net.sf.jaer.biasgen.*;
-import net.sf.jaer.biasgen.IPot;
 import javax.swing.JComponent;
 import net.sf.jaer.util.RemoteControlCommand;
 
@@ -193,13 +192,14 @@ public class AddressedIPotCF extends AddressedIPot {
      * @param bufferBitValue the value which has maxBuffeBitValue as maximum and specifies fraction of master bias
      */
     public void setFineBitValue(int fineBitValue) {
-        int oldBitValue=this.coarseBitValue;
-        this.coarseBitValue=clippedFineBitValue(coarseBitValue);
+        int oldBitValue=this.fineBitValue;
+        this.fineBitValue=clippedFineBitValue(fineBitValue);
         updateBitValue();
-        if(coarseBitValue!=oldBitValue) {
+        if(fineBitValue!=oldBitValue) {
             setChanged();
             notifyObservers(this);
         }
+        //log.info("set fine bits: "+getFineBitValue());
     }
     
     /** returns clipped value of potential new value for buffer bit value, constrained by limits of hardware.
@@ -222,6 +222,7 @@ public class AddressedIPotCF extends AddressedIPot {
      * @param bufferBitValue the value which has maxBuffeBitValue as maximum and specifies fraction of master bias
      */
     public void setCoarseBitValue(int coarseBitValue) {
+        //log.info("set coarse bits: "+coarseBitValue);
         int oldBitValue=this.coarseBitValue;
         this.coarseBitValue=clippedCoarseBitValue(coarseBitValue);
         updateBitValue();
@@ -229,6 +230,7 @@ public class AddressedIPotCF extends AddressedIPot {
             setChanged();
             notifyObservers(this);
         }
+        //log.info("coarse bits set: "+getCoarseBitValue());
     }
     
     /** returns clipped value of potential new value for buffer bit value, constrained by limits of hardware.
@@ -260,12 +262,18 @@ public class AddressedIPotCF extends AddressedIPot {
         this.bitValue = fineBitValue+(int)(coarseBitValue << (numFineBits)); 
     }
     
+    @Override
+    public int getBitValue(){
+        this.bitValue = fineBitValue+(int)(coarseBitValue << (numFineBits));
+        String hex = String.format("%02X",bitValue);
+        //log.info("AIPot "+this.getName()+" bit value "+hex);
+        return bitValue;
+    }
+    
     /** TODO compute real current
      * @return current in amps */
     public float getTotalCurrent(){
-        float im=masterbias.getCurrent();
-        float i=im*getCoarseBitValue()/getMaxCoarseBitValue();
-        return i;
+        return getFineCurrent()+getCoarseCurrent();
     }
     
     /** sets the bit value based on desired current and {@link #masterbias} current.
@@ -289,12 +297,16 @@ public class AddressedIPotCF extends AddressedIPot {
     /** TODO: real calculations
      */
     public float setFineCurrent(float current){
-        //
+        float im=getCoarseCurrent();
+        float r=current/im;
+        setFineBitValue(Math.round(r*maxFineBitValue));
         return getFineCurrent();
     }
     
     public float getFineCurrent(){
-        return 0;
+        float im=getCoarseCurrent();
+        float i=im*getFineBitValue()/getMaxFineBitValue();
+        return i;
     }
     
     
@@ -360,24 +372,24 @@ public class AddressedIPotCF extends AddressedIPot {
         sh=Integer.numberOfTrailingZeros(bitCoarseMask);
         ret|=coarseBitValue<<sh;
         
-     //   System.out.println(toString() + " byte repres " + Integer.toHexString(ret));
+        //System.out.println(toString() + " byte repres " + Integer.toHexString(ret));
         
         return ret;
     }
     
     private byte[] bytes=null;
     
-    @Override
     public byte[] getBinaryRepresentation() {
-        int n=4;
+        int n=3;
         if(bytes==null) bytes=new byte[n];
         int val=computeBinaryRepresentation();
         int k=0;
         for(int i=bytes.length-1;i>=0;i--){
             bytes[k++]=(byte)(0xff&(val>>>(i*8)));
         }
+        bytes[0]=(byte)(0xff&address);
         return bytes;
-    }
+   }
     
     
     
@@ -419,6 +431,7 @@ public class AddressedIPotCF extends AddressedIPot {
         setCoarseBitValue(v);
         v=prefs.getInt(s+KEY_BITVALUE_FINE,0);
         setFineBitValue(v);
+        updateBitValue();
         setEnabled(prefs.getBoolean(s+KEY_ENABLED, true));
         setLowCurrentModeEnabled(prefs.getBoolean(s+KEY_LOWCURRENT_ENABLED, false));
         setSex(Pot.Sex.valueOf(prefs.get(s+KEY_SEX, Sex.N.toString())));

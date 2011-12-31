@@ -20,7 +20,7 @@ import javax.swing.*;
  */
 public class AddressedIPotGUIControl extends JPanel {
      
-    //private AddressedIPotSliderTextControl sliderTextControl=null;
+    private AddressedIPotSliderTextControl sliderTextControl=null;
     private PotGUIControl generalControls=null;
     private AddressedIPot pot;
     
@@ -32,8 +32,8 @@ public class AddressedIPotGUIControl extends JPanel {
         setLayout(new BoxLayout(this,BoxLayout.X_AXIS));
         getInsets().set(0, 0, 0, 0);
         generalControls=new PotGUIControl(pot);
-        //sliderTextControl=new AddressedIPotSliderTextControl(pot);
-        //generalControls.getSliderAndValuePanel().add(sliderTextControl);
+        sliderTextControl=new AddressedIPotSliderTextControl(pot);
+        generalControls.getSliderAndValuePanel().add(sliderTextControl);
         add(generalControls);
         revalidate();
     }

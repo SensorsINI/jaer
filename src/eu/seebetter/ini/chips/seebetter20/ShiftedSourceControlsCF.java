@@ -48,7 +48,7 @@ public class ShiftedSourceControlsCF extends javax.swing.JPanel implements Obser
     public static boolean sexEnabled = prefs.getBoolean("ConfigurableIPot.sexEnabled", true);
     public static boolean typeEnabled = prefs.getBoolean("ConfigurableIPot.typeEnabled", true);
     private boolean addedUndoListener = false;
-    private boolean dontProcessBiasSlider = false, dontProcessBufferBiasSlider = false;
+    private boolean dontProcessRefSlider = false, dontProcessRegBiasSlider = false;
 
     // see java tuturial http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
     // and http://java.sun.com/docs/books/tutorial/uiswing/components/formattedtextfield.html
@@ -73,8 +73,8 @@ public class ShiftedSourceControlsCF extends javax.swing.JPanel implements Obser
             pot.loadPreferences(); // to get around slider value change
             pot.addObserver(this); // when pot changes, so does this gui control view
         }
-        dontProcessBufferBiasSlider = true;
-        regBiasSlider.setMaximum(ConfigurableIPotRev0.maxBuffeBitValue - 1); // TODO replace with getter,  needed to prevent extraneous callbacks
+        regBiasSlider.setMaximum(pot.maxRegBitValue - 1); // TODO replace with getter,  needed to prevent extraneous callbacks
+        refBiasSlider.setMaximum(pot.maxRefBitValue - 1);
         updateAppearance();  // set controls up with values from ipot
         allInstances.add(this);
     }
@@ -316,8 +316,8 @@ public class ShiftedSourceControlsCF extends javax.swing.JPanel implements Obser
 
         // 4. to avoid this, we use dontProcessSlider flag to not update slider from change event handler.
 
-        if (dontProcessBiasSlider) {
-            dontProcessBiasSlider = false;
+        if (dontProcessRefSlider) {
+            dontProcessRefSlider = false;
             return;
         }
         int bv = refBitValueFromSliderValue();
@@ -389,8 +389,8 @@ public class ShiftedSourceControlsCF extends javax.swing.JPanel implements Obser
         //            startEdit();
         //        }
 
-        if (dontProcessBufferBiasSlider) {
-            dontProcessBufferBiasSlider = false;
+        if (dontProcessRegBiasSlider) {
+            dontProcessRegBiasSlider = false;
             return;
         }
         int bbv = regBitValueFromSliderValue();
@@ -573,6 +573,15 @@ private void voltageLevelComboBoxActionPerformed(java.awt.event.ActionEvent evt)
             refBiasTextField.setVisible(valueEnabled);
             rr();
         }
+        
+        if (regBiasSlider.isVisible() != sliderEnabled) {
+            regBiasSlider.setVisible(sliderEnabled);
+            rr();
+        }
+        if (regBiasSlider.isVisible() != valueEnabled) {
+            regBiasSlider.setVisible(valueEnabled);
+            rr();
+        }
 
         refBiasSlider.setValue(refSliderValueFromBitValue());
         refBiasTextField.setText(engFormat.format(pot.getRefCurrent()));
@@ -593,6 +602,7 @@ private void voltageLevelComboBoxActionPerformed(java.awt.event.ActionEvent evt)
         if(operatingModeComboBox.getSelectedItem()!=pot.getOperatingMode()){
             operatingModeComboBox.setSelectedItem(pot.getOperatingMode());
         }
+        //log.info("update appearance "+pot.getName());
 
     }
     // following two methods compute slider/bit value inverses
@@ -612,13 +622,9 @@ private void voltageLevelComboBoxActionPerformed(java.awt.event.ActionEvent evt)
      */
     private int bitVal2SliderVal(int v, int vmax, JSlider slider) {
         int s = 0;
-        if (v < knee) {
-            s = v;
-        } else {
-            double sm = slider.getMaximum();
-            double vm = vmax;
-            s = (int) (knee + Math.round((sm - knee) * log2((double) v - (knee - 1)) / log2(vm - (knee - 1))));
-        }
+        double sm = slider.getMaximum();
+        double vm = vmax;
+        s = (int) Math.round(sm*v/vm);;
 //        log.info("bitValue=" + v + " -> sliderValue=" + s);
         return s;
     }
@@ -632,19 +638,15 @@ private void voltageLevelComboBoxActionPerformed(java.awt.event.ActionEvent evt)
     private int sliderVal2BitVal(int vmax, JSlider slider) {
         int v = 0;
         int s = slider.getValue();
-        if (s < knee) {
-            v = s;
-        } else {
-            double sm = slider.getMaximum();
-            double vm = vmax;
-            v = (int) (knee - 1 + Math.round(Math.pow(2, (s - knee) * (log2(vm - (knee - 1))) / (sm - knee))));
-        }
+        double sm = slider.getMaximum();
+        double vm = vmax;
+        v = (int) Math.round(vm*s/sm);
 //        log.info("sliderValue=" + s + " -> bitValue=" + v);
         return v;
     }
 
     private int refSliderValueFromBitValue() {
-        int s = bitVal2SliderVal(pot.getRefBitValue(), pot.getMaxBitValue(), refBiasSlider);
+        int s = bitVal2SliderVal(pot.getRefBitValue(), pot.maxRefBitValue, refBiasSlider);
         return s;
     }
 
@@ -667,7 +669,7 @@ private void voltageLevelComboBoxActionPerformed(java.awt.event.ActionEvent evt)
 
     /** called when Observable changes (pot changes) */
     public void update(Observable observable, Object obj) {
-        if (observable instanceof ShiftedSourceBias) {
+        if (observable instanceof ShiftedSourceBiasCF) {
 //            log.info("observable="+observable);
             SwingUtilities.invokeLater(new Runnable() {
 

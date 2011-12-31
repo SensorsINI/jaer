@@ -68,12 +68,12 @@ public class AddressedIPotArray extends PotArray implements Iterable<AddressedIP
          * @return 1 if pot2 has larger shift register index than pot1, 0 if they have the same index, or -1 if pot1 has a larger index.
          */
         public int compare(AddressedIPot p1, AddressedIPot p2){
-            if(p1.getShiftRegisterNumber()<p2.getShiftRegisterNumber()) return 1;
-            if(p1.getShiftRegisterNumber()==p2.getShiftRegisterNumber()) return 0;
+            if(p1.getAddress()<p2.getAddress()) return 1;
+            if(p1.getAddress()==p2.getAddress()) return 0;
             return -1;
         }
         public boolean equals(AddressedIPot p1, AddressedIPot p2){
-            if(p1.getShiftRegisterNumber()==p2.getShiftRegisterNumber()) return true; else return false;
+            if(p1.getAddress()==p2.getAddress()) return true; else return false;
         }
     }
     

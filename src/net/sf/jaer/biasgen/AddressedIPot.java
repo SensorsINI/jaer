@@ -40,7 +40,7 @@ public class AddressedIPot extends Pot implements Cloneable, Observer, RemoteCon
     /** the number of bits of resolution for this bias. This number is used to compute the max bit value and also for
     computing the number of bits or bytes to send to a device (only bits for )
      */
-    protected int valueBits = 16;
+    protected int valueBits = 24;
     
     /** Creates a new instance of IPot passing only the biasgen it belongs to. All other parameters take default values.
      *<p>
@@ -122,7 +122,7 @@ public class AddressedIPot extends Pot implements Cloneable, Observer, RemoteCon
      * 
      * @return  The shift register number which is ordered so that the lowest address is the bias at the start of the shift register.
      */
-    public int getShiftRegisterNumber() {
+    public int getAddress() {
         return this.address;
     }
     
@@ -131,13 +131,13 @@ public class AddressedIPot extends Pot implements Cloneable, Observer, RemoteCon
      * The highest number should go to the end of the shift register. This bias needs to be loaded first.
      * @param address which lower towards the input side and starts with 0 by convention.
      */
-    public void setShiftRegisterNumber(final int shiftRegisterNumber) {
+    public void setAddress(final int shiftRegisterNumber) {
         this.address = shiftRegisterNumber;
     }
     
-    public void setAddress(int address){
-        this.address = address;
-    }
+//    public void setAddress(int address){
+//        this.address = address;
+//    }
     
     /** @return max possible current (master current) */
     public float getMaxCurrent(){
@@ -171,14 +171,14 @@ public class AddressedIPot extends Pot implements Cloneable, Observer, RemoteCon
     /** Change current value by ratio, or at least by one bit value.
      @param ratio between new current and old value, e.g. 1.1f or 0.9f
      */
-//    public void changeByRatio(float ratio){
-//        int oldv=getBitValue();
-//        int v=Math.round(getBitValue()*ratio);
-//        if(v==oldv){
-//            v = v + (ratio >= 1 ? 1 : -1);
-//        }
-//        setBitValue(v);
-//    }
+    public void changeByRatio(float ratio){
+        int oldv=getBitValue();
+        int v=Math.round(getBitValue()*ratio);
+        if(v==oldv){
+            v = v + (ratio >= 1 ? 1 : -1);
+        }
+        setBitValue(v);
+    }
 
     /** Change by ratio from preferred value; can be used for a tweak from a nominal value.
      @param ratio between new current and old value, e.g. 1.1f or 0.9f
@@ -243,16 +243,14 @@ public class AddressedIPot extends Pot implements Cloneable, Observer, RemoteCon
      */
     @Override
     public byte[] getBinaryRepresentation() {
-         int n=getNumBytes();
-        if(bytes==null) bytes=new byte[n+1];
-        //address
-        bytes[0] = (byte)address;
-        //value
+        int n=getNumBytes();
+        if(bytes==null) bytes=new byte[n];
         int val=getBitValue();
-        int k=1;
+        int k=0;
         for(int i=bytes.length-1;i>=0;i--){
             bytes[k++]=(byte)(0xff&(val>>>(i*8)));
         }
+        bytes[0]=(byte)(0xff&address);
         return bytes;
    }
 

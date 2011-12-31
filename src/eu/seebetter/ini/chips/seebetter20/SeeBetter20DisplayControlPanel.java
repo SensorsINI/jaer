@@ -38,8 +38,8 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
         initComponents();
         renderer.getSupport().addPropertyChangeListener(AEChipRenderer.COLOR_SCALE, this);
         renderer.getSupport().addPropertyChangeListener(SeeBetter20.SeeBetter20Renderer.AGC_VALUES, this);
-        renderer.getSupport().addPropertyChangeListener(SeeBetter20.SeeBetter20Renderer.LOG_INTENSITY_GAIN, this);
-        renderer.getSupport().addPropertyChangeListener(SeeBetter20.SeeBetter20Renderer.LOG_INTENSITY_OFFSET, this);
+        renderer.getSupport().addPropertyChangeListener(SeeBetter20.SeeBetter20Renderer.APS_INTENSITY_GAIN, this);
+        renderer.getSupport().addPropertyChangeListener(SeeBetter20.SeeBetter20Renderer.APS_INTENSITY_OFFSET, this);
     }
 
     /** This method is called from within the constructor to
@@ -54,7 +54,7 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
 
         displayControlPanel = new javax.swing.JPanel();
         jPanel1 = new javax.swing.JPanel();
-        logIntensityCB = new javax.swing.JCheckBox();
+        showAPS = new javax.swing.JCheckBox();
         invertADCvaluesCB = new javax.swing.JCheckBox();
         logIntenCalibPanel = new javax.swing.JPanel();
         offchipCalibCB = new javax.swing.JCheckBox();
@@ -92,12 +92,12 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
         displayControlPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("SeeBetter20 Display"));
         displayControlPanel.setPreferredSize(new java.awt.Dimension(565, 300));
 
-        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Log intensity"));
+        jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("APS"));
 
-        logIntensityCB.setText("Show log intensity data");
-        logIntensityCB.setToolTipText("Shows the scanned out static log intensity values.");
+        showAPS.setText("Show APS data");
+        showAPS.setToolTipText("Shows the scanned out static intensity values.");
 
-        org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.displayLogIntensity}"), logIntensityCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
+        org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.displayLogIntensity}"), showAPS, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
         invertADCvaluesCB.setText("Invert ADC values");
@@ -218,7 +218,7 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
                 .addComponent(applyButton))
         );
 
-        logIntenStatPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("statistics"));
+        logIntenStatPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Statistics"));
 
         jLabel2.setText("min (offset)");
 
@@ -250,35 +250,35 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
             logIntenStatPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, logIntenStatPanelLayout.createSequentialGroup()
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(jLabel2)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(logIntenStatPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(logIntenStatPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(logIntenStatPanelLayout.createSequentialGroup()
-                        .addGap(10, 10, 10)
+                        .addComponent(jLabel5)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(maxTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(logIntenStatPanelLayout.createSequentialGroup()
                         .addComponent(jLabel6)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(minTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(logIntenStatPanelLayout.createSequentialGroup()
-                        .addComponent(gainAGCTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jLabel2)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jLabel5)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(maxTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap())
+                        .addComponent(gainAGCTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addGap(76, 76, 76))
         );
         logIntenStatPanelLayout.setVerticalGroup(
             logIntenStatPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(logIntenStatPanelLayout.createSequentialGroup()
                 .addGroup(logIntenStatPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
                     .addComponent(jLabel2)
-                    .addComponent(gainAGCTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel5)
-                    .addComponent(maxTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(gainAGCTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(logIntenStatPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
                     .addComponent(jLabel6)
                     .addComponent(minTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap())
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(logIntenStatPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+                    .addComponent(jLabel5)
+                    .addComponent(maxTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
         );
 
         gainLabel.setText("gain");
@@ -359,7 +359,7 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(logIntenCalibPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addComponent(logIntensityCB)
+                .addComponent(showAPS)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(invertADCvaluesCB))
             .addGroup(jPanel1Layout.createSequentialGroup()
@@ -372,18 +372,21 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(logIntensityCB, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(showAPS, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(invertADCvaluesCB))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, 47, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(agcPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(logIntenStatPanel, 0, 77, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(logIntenStatPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(logIntenCalibPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap())
+                .addGap(22, 22, 22))
         );
+
+        showAPS.getAccessibleContext().setAccessibleName("Show APS data");
+        showAPS.getAccessibleContext().setAccessibleDescription("Shows the scanned out static intensity values.");
 
         jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("Events"));
 
@@ -405,7 +408,7 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
         jPanel2Layout.setHorizontalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
-                .addContainerGap(10, Short.MAX_VALUE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(logIntensityChangeCB)
                 .addContainerGap())
             .addGroup(jPanel2Layout.createSequentialGroup()
@@ -413,7 +416,7 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
                 .addComponent(jLabel3)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(colorScaleSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 59, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(51, Short.MAX_VALUE))
+                .addContainerGap(38, Short.MAX_VALUE))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -453,7 +456,7 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
                         .addComponent(jLabel4)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(jSpinner1, javax.swing.GroupLayout.PREFERRED_SIZE, 62, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addGap(45, 45, 45))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -470,38 +473,37 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
         displayControlPanel.setLayout(displayControlPanelLayout);
         displayControlPanelLayout.setHorizontalGroup(
             displayControlPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, displayControlPanelLayout.createSequentialGroup()
-                .addGroup(displayControlPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, 239, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .addGroup(displayControlPanelLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(displayControlPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(jPanel3, 0, 202, Short.MAX_VALUE)
+                    .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, 202, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, 393, Short.MAX_VALUE)
+                .addContainerGap())
         );
         displayControlPanelLayout.setVerticalGroup(
             displayControlPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(displayControlPanelLayout.createSequentialGroup()
-                .addContainerGap()
                 .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-            .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, 235, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(90, Short.MAX_VALUE))
+            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, 268, Short.MAX_VALUE)
         );
+
+        jPanel1.getAccessibleContext().setAccessibleName("APS");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(displayControlPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 657, Short.MAX_VALUE)
-                .addContainerGap())
+            .addComponent(displayControlPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 633, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(displayControlPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 262, Short.MAX_VALUE)
+            .addComponent(displayControlPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 295, Short.MAX_VALUE)
         );
-
-        displayControlPanel.getAccessibleContext().setAccessibleName("SeeBetter20 Display");
 
         bindingGroup.bind();
     }// </editor-fold>//GEN-END:initComponents
@@ -555,7 +557,6 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
     private javax.swing.JSpinner jSpinner1;
     private javax.swing.JPanel logIntenCalibPanel;
     private javax.swing.JPanel logIntenStatPanel;
-    private javax.swing.JCheckBox logIntensityCB;
     private javax.swing.JCheckBox logIntensityChangeCB;
     private javax.swing.JTextField maxTF;
     private javax.swing.JTextField minTF;
@@ -563,6 +564,7 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
     private javax.swing.JCheckBox offchipCalibCB;
     private javax.swing.JLabel offsetLabel;
     private javax.swing.JSlider offsetSlider;
+    private javax.swing.JCheckBox showAPS;
     private javax.swing.JCheckBox twoPointCalibCB;
     private org.jdesktop.beansbinding.BindingGroup bindingGroup;
     // End of variables declaration//GEN-END:variables
@@ -596,19 +598,19 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
     }
 
     public void setLogIntensityOffset(int logIntensityOffset) {
-        renderer.setLogIntensityOffset(logIntensityOffset);
+        renderer.setAPSIntensityOffset(logIntensityOffset);
     }
 
     public void setLogIntensityGain(int logIntensityGain) {
-        renderer.setLogIntensityGain(logIntensityGain);
+        renderer.setAPSIntensityGain(logIntensityGain);
     }
 
     public int getLogIntensityOffset() {
-        return (int)(renderer.getLogIntensityOffset());
+        return (int)(renderer.getAPSIntensityOffset());
     }
 
     public int getLogIntensityGain() {
-        return (int)(renderer.getLogIntensityGain());
+        return (int)(renderer.getAPSIntensityGain());
     }
 
 
@@ -634,10 +636,10 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
             minTF.setText(String.format("%.0f",f.x));
             maxTF.setText(String.format("%.0f",f.y));
             gainAGCTF.setText(String.format("%.0f",SeeBetter20.MAX_ADC/(f.y-f.x)));
-        }else if(evt.getPropertyName()==SeeBetter20.SeeBetter20Renderer.LOG_INTENSITY_GAIN){
-            gainSlider.setValue(renderer.getLogIntensityGain());
-        }else if(evt.getPropertyName()==SeeBetter20.SeeBetter20Renderer.LOG_INTENSITY_OFFSET){
-            offsetSlider.setValue(renderer.getLogIntensityOffset());
+        }else if(evt.getPropertyName()==SeeBetter20.SeeBetter20Renderer.APS_INTENSITY_GAIN){
+            gainSlider.setValue(renderer.getAPSIntensityGain());
+        }else if(evt.getPropertyName()==SeeBetter20.SeeBetter20Renderer.APS_INTENSITY_OFFSET){
+            offsetSlider.setValue(renderer.getAPSIntensityOffset());
         }
     }
 
