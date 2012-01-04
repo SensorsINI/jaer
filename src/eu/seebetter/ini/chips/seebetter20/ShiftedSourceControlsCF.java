@@ -128,7 +128,7 @@ public class ShiftedSourceControlsCF extends javax.swing.JPanel implements Obser
         });
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.X_AXIS));
 
-        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12));
+        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12)); // NOI18N
         nameLabel.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
         nameLabel.setText("name");
         nameLabel.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
@@ -281,14 +281,9 @@ public class ShiftedSourceControlsCF extends javax.swing.JPanel implements Obser
 
         add(bufferBiasPanel);
 
-        bitPatternTextField.setColumns(10);
         bitPatternTextField.setEditable(false);
-        bitPatternTextField.setFont(new java.awt.Font("Monospaced", 0, 10));
-        bitPatternTextField.setText("bitPattern");
-        bitPatternTextField.setToolTipText("bit value as bits");
-        bitPatternTextField.setMaximumSize(new java.awt.Dimension(32767, 16));
-        bitPatternTextField.setMinimumSize(new java.awt.Dimension(11, 15));
-        bitPatternTextField.setPreferredSize(new java.awt.Dimension(71, 15));
+        bitPatternTextField.setText("bitPatternTextField");
+        bitPatternTextField.setToolTipText("Bit pattern sent to bias gen");
         add(bitPatternTextField);
     }// </editor-fold>//GEN-END:initComponents
 //    Border selectedBorder=new EtchedBorder(), unselectedBorder=new EmptyBorder(1,1,1,1);
@@ -590,7 +585,7 @@ private void voltageLevelComboBoxActionPerformed(java.awt.event.ActionEvent evt)
             bitPatternTextField.setVisible(bitViewEnabled);
             rr();
         }
-        bitPatternTextField.setText(pot.toBitPatternString());
+        bitPatternTextField.setText(String.format("%16s", Integer.toBinaryString(pot.computeBinaryRepresentation())).replace(' ', '0'));
 
         regBiasSlider.setValue(regSliderValueFromBitValue());
         regBiasTextField.setText(engFormat.format(pot.getRegCurrent()));

@@ -247,6 +247,17 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
     }
     private byte[] bytes = null;
 
+    protected int computeInverseBinaryRepresentation(){
+        int length = 16;
+        int ret=computeBinaryRepresentation();
+        int out=0;
+        for(int i=0; i<length; i++){
+            out |= (((ret&(0x0001<<(length-1-i)))<<i)>>(length-1-i));
+        }
+        return out;
+    }
+    
+    
     /** returns a byte[] with the short binary representation in big endian order (MSB to LSB) of the binary representation
      * of the shifted source to be written to the SPI port.
      * The SPI routine writes bytes in the order passed from here. The bits in each byte are written in big endian order, msb to lsb.
@@ -259,8 +270,8 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
             bytes = new byte[n];
         }
         int val = computeBinaryRepresentation();
-        int k = 0;
-        for (int i = bytes.length - 1; i >= 0; i--) {
+        int k = 1;
+        for (int i = bytes.length - 2; i >= 0; i--) {
             bytes[k++] = (byte) (0xff & (val >>> (i * 8)));
         }
         bytes[0]=(byte)(0xFF & address);

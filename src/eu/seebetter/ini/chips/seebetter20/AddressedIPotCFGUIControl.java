@@ -156,7 +156,6 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
         fineBiasTextField = new javax.swing.JTextField();
         nameLabel = new javax.swing.JButton();
         totalBiasTextField = new javax.swing.JTextField();
-        totalCurrentTextField = new javax.swing.JTextField();
 
         setMaximumSize(new java.awt.Dimension(131243, 22));
         setPreferredSize(new java.awt.Dimension(544, 22));
@@ -239,7 +238,7 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
         });
 
         coarseBiasTextField.setColumns(6);
-        coarseBiasTextField.setFont(new java.awt.Font("Courier New", 0, 11)); // NOI18N
+        coarseBiasTextField.setFont(new java.awt.Font("Courier New", 0, 11));
         coarseBiasTextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         coarseBiasTextField.setText("value");
         coarseBiasTextField.setToolTipText("Enter bias current here. Up and Down arrows change values. Shift to increment/decrement bit value.");
@@ -290,7 +289,7 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
         });
 
         fineBiasTextField.setColumns(6);
-        fineBiasTextField.setFont(new java.awt.Font("Courier New", 0, 11)); // NOI18N
+        fineBiasTextField.setFont(new java.awt.Font("Courier New", 0, 11));
         fineBiasTextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         fineBiasTextField.setText("value");
         fineBiasTextField.setToolTipText("Enter buffer bias current here. Up and Down arrows change values. Shift to increment/decrement bit value.");
@@ -328,10 +327,7 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
 
         totalBiasTextField.setEditable(false);
         totalBiasTextField.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
-        totalBiasTextField.setText("BitPatter");
-
-        totalCurrentTextField.setEditable(false);
-        totalCurrentTextField.setText("totalCurrent");
+        totalBiasTextField.setText("BitPattern");
 
         org.jdesktop.layout.GroupLayout layout = new org.jdesktop.layout.GroupLayout(this);
         this.setLayout(layout);
@@ -352,11 +348,9 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(coarseBiasTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(fineBiasSlider, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 51, Short.MAX_VALUE)
+                .add(fineBiasSlider, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 36, Short.MAX_VALUE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
                 .add(fineBiasTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(totalCurrentTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 50, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(totalBiasTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 104, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
@@ -368,7 +362,6 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
             .add(org.jdesktop.layout.GroupLayout.CENTER, coarseBiasTextField, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 23, Short.MAX_VALUE)
             .add(org.jdesktop.layout.GroupLayout.CENTER, fineBiasSlider, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 23, Short.MAX_VALUE)
             .add(org.jdesktop.layout.GroupLayout.CENTER, fineBiasTextField, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 23, Short.MAX_VALUE)
-            .add(org.jdesktop.layout.GroupLayout.CENTER, totalCurrentTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
             .add(org.jdesktop.layout.GroupLayout.CENTER, totalBiasTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
             .add(org.jdesktop.layout.GroupLayout.CENTER, biasEnabledComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 22, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
             .add(org.jdesktop.layout.GroupLayout.CENTER, typeComboBox, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 22, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
@@ -434,7 +427,7 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
             return;
         }
         int bv = coarseBitValueFromSliderValue();
-        pot.setCoarseBitValue(bv);
+        pot.setCoarseBitValue(pot.getMaxCoarseBitValue()-bv);
 }//GEN-LAST:event_coarseBiasSliderStateChanged
 
     private void coarseBiasSliderMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_coarseBiasSliderMousePressed
@@ -472,13 +465,12 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
     private void coarseBiasTextFieldKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_coarseBiasTextFieldKeyPressed
         int code = evt.getKeyCode();
         if (code == KeyEvent.VK_UP) {
-            float v = engFormat.parseFloat(coarseBiasTextField.getText());
             startEdit();
-            coarseBiasTextField.setText(engFormat.format(pot.setCoarseCurrent(v)));
+            pot.setCoarseBitValue(pot.getCoarseBitValue() - 1);
             endEdit();
         } else if (code == KeyEvent.VK_DOWN) {
             startEdit();
-            pot.setCoarseBitValue(pot.getCoarseBitValue() - 1);
+            pot.setCoarseBitValue(pot.getCoarseBitValue() + 1);
             endEdit();
         }
 }//GEN-LAST:event_coarseBiasTextFieldKeyPressed
@@ -486,7 +478,7 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
     private void coarseBiasTextFieldMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_coarseBiasTextFieldMouseWheelMoved
         int clicks = evt.getWheelRotation();
         startEdit();
-        pot.setCoarseBitValue(pot.getCoarseBitValue() - clicks);
+        pot.setCoarseBitValue(pot.getCoarseBitValue() + clicks);
         endEdit();
 }//GEN-LAST:event_coarseBiasTextFieldMouseWheelMoved
 
@@ -699,12 +691,12 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         coarseBiasSlider.setValue(coarseSliderValueFromBitValue());
         coarseBiasTextField.setText(engFormat.format(pot.getCoarseCurrent()));
 
-        totalCurrentTextField.setText(engFormat.format(pot.getTotalCurrent()));
+        //totalCurrentTextField.setText(engFormat.format(pot.getTotalCurrent()));
 
         fineBiasSlider.setValue(fineSliderValueFromBitValue());
-        coarseBiasTextField.setText(engFormat.format(pot.getCoarseCurrent()));
+        fineBiasTextField.setText(engFormat.format(pot.getFineCurrent()));
         
-        totalBiasTextField.setText(Integer.toBinaryString(pot.getBitValue()));
+        totalBiasTextField.setText(String.format("%16s", Integer.toBinaryString(pot.computeBinaryRepresentation())).replace(' ', '0'));
 
         if (sexComboBox.getSelectedItem() != pot.getSex()) {
             sexComboBox.setSelectedItem(pot.getSex());
@@ -762,7 +754,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     }
 
     private int coarseSliderValueFromBitValue() {
-        int s = bitVal2SliderVal(pot.getCoarseBitValue(), pot.getMaxCoarseBitValue(), coarseBiasSlider);
+        int s = bitVal2SliderVal(pot.getMaxCoarseBitValue()-pot.getCoarseBitValue(), pot.getMaxCoarseBitValue(), coarseBiasSlider);
         return s;
     }
 
@@ -807,7 +799,6 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.JButton nameLabel;
     private javax.swing.JComboBox sexComboBox;
     private javax.swing.JTextField totalBiasTextField;
-    private javax.swing.JTextField totalCurrentTextField;
     private javax.swing.JComboBox typeComboBox;
     // End of variables declaration//GEN-END:variables
 

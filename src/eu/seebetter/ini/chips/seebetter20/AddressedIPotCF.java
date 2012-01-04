@@ -22,6 +22,9 @@ import net.sf.jaer.util.RemoteControlCommand;
  */
 public class AddressedIPotCF extends AddressedIPot {
 
+    /** Estimation of the master bias */
+    public double fixMasterBias = 0.000000389;
+    
    /** Operating current level, defines whether to use shifted-source current mirrors for small currents. */
     public enum CurrentLevel {Normal, Low}
     
@@ -265,15 +268,9 @@ public class AddressedIPotCF extends AddressedIPot {
     @Override
     public int getBitValue(){
         this.bitValue = fineBitValue+(int)(coarseBitValue << (numFineBits));
-        String hex = String.format("%02X",bitValue);
+        //String hex = String.format("%02X",bitValue);
         //log.info("AIPot "+this.getName()+" bit value "+hex);
         return bitValue;
-    }
-    
-    /** TODO compute real current
-     * @return current in amps */
-    public float getTotalCurrent(){
-        return getFineCurrent()+getCoarseCurrent();
     }
     
     /** sets the bit value based on desired current and {@link #masterbias} current.
@@ -282,15 +279,14 @@ public class AddressedIPotCF extends AddressedIPot {
      *@return actual float value of current after resolution clipping.
      */
     public float setCoarseCurrent(float current){
-        float im=masterbias.getCurrent();
-        float r=current/im;
-        setCoarseBitValue(Math.round(r*maxCoarseBitValue));
+        double im=fixMasterBias; //TODO real MasterBias
+        setCoarseBitValue(7-(int)Math.round(Math.log(current/im)/Math.log(8)+5));
         return getCoarseCurrent();
     }
     
     public float getCoarseCurrent(){
-        float im=masterbias.getCurrent();
-        float i=im*getCoarseBitValue()/getMaxCoarseBitValue();
+        double im=fixMasterBias; //TODO real MasterBias
+        float i=(float)(im*Math.pow(8, 2-getCoarseBitValue()));
         return i;
     }
     
@@ -299,13 +295,13 @@ public class AddressedIPotCF extends AddressedIPot {
     public float setFineCurrent(float current){
         float im=getCoarseCurrent();
         float r=current/im;
-        setFineBitValue(Math.round(r*maxFineBitValue));
+        setFineBitValue(Math.round(r*(maxFineBitValue+1)));
         return getFineCurrent();
     }
     
     public float getFineCurrent(){
         float im=getCoarseCurrent();
-        float i=im*getFineBitValue()/getMaxFineBitValue();
+        float i=im*getFineBitValue()/(maxFineBitValue+1);
         return i;
     }
     
@@ -370,21 +366,41 @@ public class AddressedIPotCF extends AddressedIPot {
         sh=Integer.numberOfTrailingZeros(bitFineMask);
         ret|=fineBitValue<<sh;
         sh=Integer.numberOfTrailingZeros(bitCoarseMask);
-        ret|=coarseBitValue<<sh;
+        ret|=computeBinaryInverse(coarseBitValue, numCoarseBits)<<sh;
         
         //System.out.println(toString() + " byte repres " + Integer.toHexString(ret));
         
         return ret;
     }
     
+    
+    protected int computeInverseBinaryRepresentation(){
+        int length = 16;
+        int ret=computeBinaryRepresentation();
+        int out=0;
+        for(int i=0; i<length; i++){
+            out |= (((ret&(0x0001<<(length-1-i)))<<i)>>(length-1-i));
+        }
+        return out;
+    }
+    
+    protected int computeBinaryInverse(int value, int length){
+        int out=0;
+        for(int i=0; i<length; i++){
+            out |= (((value&(0x0001<<(length-1-i)))<<i)>>(length-1-i));
+        }
+        return out;
+    }
+    
     private byte[] bytes=null;
     
+    /** Computes the actual bit pattern to be sent to chip based on configuration values */
     public byte[] getBinaryRepresentation() {
         int n=3;
         if(bytes==null) bytes=new byte[n];
         int val=computeBinaryRepresentation();
-        int k=0;
-        for(int i=bytes.length-1;i>=0;i--){
+        int k=1;
+        for(int i=bytes.length-2;i>=0;i--){
             bytes[k++]=(byte)(0xff&(val>>>(i*8)));
         }
         bytes[0]=(byte)(0xff&address);

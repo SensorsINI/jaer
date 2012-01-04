@@ -25,6 +25,7 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.hardwareinterface.*;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Insets;
 import java.awt.Rectangle;
@@ -105,7 +106,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             this.pitch = pitch;
         }
     }
-    public static final PixelArray EntirePixelArray = new PixelArray(1, 0, 0, 64, 32);
+    public static final PixelArray EntirePixelArray = new PixelArray(2, 0, 0, 128, 64);
     // following define bit masks for various hardware data types. 
     // The hardware interface translateEvents method packs the raw device data into 32 bit 'addresses' and timestamps.
     // timestamps are unwrapped and timestamp resets are handled in translateEvents. Addresses are filled with either AE or ADC data.
@@ -320,6 +321,8 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                             e.y = (short) (e.y >>> 1); // cDVS array is clumped into 32x32
                         }
                         gotAEREvent = true;
+                        String eventData = "address:"+Integer.toBinaryString(e.address)+"( x: "+Integer.toString(e.x)+", y: "+Integer.toString(e.y)+"), timestamp "+Integer.toString(e.timestamp);
+                        System.out.println("Addressed Event: "+eventData);
                     }
                 } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
                     // if scanner is stopped on one place, then we never get a start bit. we then limit the number of samples
@@ -350,6 +353,8 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                     e.address = data;
                     e.startOfFrame = (data & ADC_START_BIT) == ADC_START_BIT;
                     e.x=-1; e.y=-1;
+                    String eventData = "timestamp: "+Integer.toString(e.timestamp)+", start of frame: "+Boolean.toString(e.startOfFrame)+", data "+Integer.toBinaryString(e.adcSample)+" ("+Integer.toString(e.adcSample)+")";
+                    System.out.println("ADC Event: "+eventData);
                 }
 
             }
@@ -418,6 +423,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         private ShiftedSourceBiasCF[] ssBiases = new ShiftedSourceBiasCF[2];
 //        private VPot thermometerDAC;
         ExtraOnChipConfigBits extraOnchipConfigBits = null;
+        ExtraBiasDiagBits extraBiasDiagBits = null;
         int address = 0;
         JPanel bPanel;
         JTabbedPane bgTabbedPane;
@@ -443,7 +449,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         // lists of ports and CPLD config
         private ADC adc;
 //        private Scanner scanner;
-        private apsReadoutControl logReadoutControl;
+        private ApsReadoutControl apsReadoutControl;
         // other options
         private boolean autoResetEnabled; // set in loadPreferences
 
@@ -528,10 +534,14 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 addAIPot("IFRefrBn,n,normal,Integrate and fire intensity neuron refractory period bias current");
                 addAIPot("PadFollBn,n,normal,Follower-pad buffer bias current");
                 addAIPot("apsOverflowLevel,n,normal,special overflow level bias ");
+                addAIPot("biasBuffer,n,normal,special buffer bias ");
             } catch (Exception e) {
                 throw new Error(e.toString());
             }
-
+            // on-chip diagnose bits for the bias generator
+            extraBiasDiagBits = new ExtraBiasDiagBits();
+            extraBiasDiagBits.addObserver(this);
+            
             // on-chip output muxes
             allMuxes = new AllMuxes();
             allMuxes.addObserver(this);
@@ -545,7 +555,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             adc.addObserver(this);
 
             // control of log readout
-            logReadoutControl = new apsReadoutControl();
+            apsReadoutControl = new ApsReadoutControl();
 
 //            scanner = new Scanner(SeeBetter20.this);
 //            scanner.addObserver(this);
@@ -642,10 +652,11 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         
         public boolean sendMuxAndConfigBits() throws HardwareInterfaceException{
             //diagnose SR
+            String biasConfigBits = extraBiasDiagBits.getBitString();
             String configBitsBits = extraOnchipConfigBits.getBitString();
             String muxBitsBits = allMuxes.getBitString(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
 
-            byte[] muxAndConfigBytes = bitString2Bytes((configBitsBits + muxBitsBits)); // returns bytes padded at end
+            byte[] muxAndConfigBytes = bitString2Bytes((configBitsBits + muxBitsBits + biasConfigBits)); // returns bytes padded at end
             if (muxAndConfigBytes == null) {
                 return false; // not ready yet, called by super
             }
@@ -727,7 +738,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 return false; // not ready yet, called by super
             }
             String hex = String.format("%02X%02X%02X",bytes[2],bytes[1],bytes[0]);
-            log.info("Send AIPot for "+pot.getName()+" with value "+hex);
+            //log.info("Send AIPot for "+pot.getName()+" with value "+hex);
             sendConfig(CMD_AIPOT, 0, bytes); // the usual packing of ipots with other such as shifted sources, on-chip voltage dac, and diagnotic mux output and extra configuration
             return true;
         }
@@ -931,13 +942,17 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             bgTabbedPane.add("Analog output", adcScannerLogPanel);
             adcScannerLogPanel.add(new ParameterControlPanel(adc));
 //            adcScannerLogPanel.add(new ParameterControlPanel(scanner));
-            adcScannerLogPanel.add(new ParameterControlPanel(logReadoutControl));
+            adcScannerLogPanel.add(new ParameterControlPanel(apsReadoutControl));
 
             JPanel moreConfig = new JPanel(new BorderLayout());
 
             JPanel extraPanel = extraOnchipConfigBits.makeControlPanel();
             extraPanel.setBorder(new TitledBorder("Extra on-chip bits"));
-            moreConfig.add(extraPanel, BorderLayout.WEST);
+            moreConfig.add(extraPanel, BorderLayout.NORTH);
+               
+            JPanel diagPanel = extraBiasDiagBits.makeControlPanel();
+            diagPanel.setBorder(new TitledBorder("Extra bias diagnose bits"));
+            moreConfig.add(diagPanel, BorderLayout.WEST);
 
             JPanel portBitsPanel = new JPanel();
             portBitsPanel.setLayout(new BoxLayout(portBitsPanel, BoxLayout.Y_AXIS));
@@ -1070,11 +1085,11 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 //        }
 
         /** Controls the log intensity readout by wrapping the relevant bits */
-        public class apsReadoutControl implements Observer {
+        public class ApsReadoutControl implements Observer {
 
             private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
 
-            public apsReadoutControl() {
+            public ApsReadoutControl() {
                 rowSettle.addObserver(this);
                 colSettle.addObserver(this);
                 exposure.addObserver(this);
@@ -1106,30 +1121,38 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 colSettle.set(timeUs * ADC_CLK_CYCLES_PER_US);
             }
 
-            public void setExposureTime(int timeUs) {
-                int desiredCC = timeUs * ADC_CLK_CYCLES_PER_US;
-                int actualCC = getColCCwoB();
-                if(desiredCC < actualCC){
-                    exposure.set(0);
-                } else {
-                    int diff = desiredCC-actualCC;
-                    exposure.set((int)diff/(actualCC));
-                }
+//            public void setExposureTime(int timeUs) {
+//                int desiredCC = timeUs * ADC_CLK_CYCLES_PER_US;
+//                int actualCC = getColCCwoB();
+//                if(desiredCC < actualCC){
+//                    exposure.set(0);
+//                } else {
+//                    int diff = desiredCC-actualCC;
+//                    exposure.set((int)diff/(actualCC));
+//                }
+//            }
+            
+//            public void setFramePeriodTime(int timeUs) {
+//                int desiredCC = timeUs * ADC_CLK_CYCLES_PER_US;
+//                int actualCC = getFrameCC();
+//                if(desiredCC < actualCC){
+//                    framePeriod.set(0);
+//                } else {
+//                    int diff = desiredCC-actualCC;
+//                    framePeriod.set((int)diff/(actualCC));
+//                }
+//            }
+            
+//            public void setFrameRefreshFrequency(int hz){
+//                setFramePeriodTime((int) 1000000/hz);
+//            }
+            
+            public void setFrameDelay(int timeUs){
+                framePeriod.set(timeUs * ADC_CLK_CYCLES_PER_US);
             }
             
-            public void setFramePeriodTime(int timeUs) {
-                int desiredCC = timeUs * ADC_CLK_CYCLES_PER_US;
-                int actualCC = getFrameCC();
-                if(desiredCC < actualCC){
-                    framePeriod.set(0);
-                } else {
-                    int diff = desiredCC-actualCC;
-                    framePeriod.set((int)diff/(actualCC));
-                }
-            }
-            
-            public void setFrameRefreshFrequency(int hz){
-                setFramePeriodTime((int) 1000000/hz);
+            public void setExposureDelay(int timeUs){
+                exposure.set(timeUs * ADC_CLK_CYCLES_PER_US);
             }
 
             public int getColSettleTime() {
@@ -1144,17 +1167,26 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 return resSettle.get() / ADC_CLK_CYCLES_PER_US;
             }
             
-            public int getExposureTime() {
-                return exposure.get()*getColCCwoB() / ADC_CLK_CYCLES_PER_US;
+            public int getFrameDelay() {
+                return framePeriod.get() / ADC_CLK_CYCLES_PER_US;
             }
             
-            public int getFrameTime() {
-                return (framePeriod.get()+getFrameCC()) / ADC_CLK_CYCLES_PER_US;
+            public int getExposureDelay() {
+                return exposure.get() / ADC_CLK_CYCLES_PER_US;
             }
             
-            public int getFrameRefreshFrequency() {
-                return (int)(1000000/getFrameTime());
-            }
+//            public int getExposureTime() {
+//                return exposure.get()*getColCCwoB() / ADC_CLK_CYCLES_PER_US;
+//            }
+            
+            
+//            public int getFrameTime() {
+//                return (framePeriod.get()+getFrameCC()) / ADC_CLK_CYCLES_PER_US;
+//            }
+            
+//            public int getFrameRefreshFrequency() {
+//                return (int)(1000000/getFrameTime());
+//            }
 
             @Override
             public void update(Observable o, Object arg) {
@@ -1272,6 +1304,82 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             OnchipConfigBit[] bits = {pullupX, pullupY};
 
             public ExtraOnChipConfigBits() {
+                hasPreferencesList.add(this);
+                for (OnchipConfigBit b : bits) {
+                    b.addObserver(this);
+                }
+            }
+
+            @Override
+            public void loadPreference() {
+                for (OnchipConfigBit b : bits) {
+                    b.loadPreference();
+                }
+            }
+
+            @Override
+            public void storePreference() {
+                for (OnchipConfigBit b : bits) {
+                    b.storePreference();
+                }
+            }
+
+            /** Returns the bit string to send to the firmware to load a bit sequence for the config bits in the shift register.
+             * 
+             * Bytes sent to FX2 are loaded big endian into shift register (msb first). 
+             * Here returned string has named config bits at right end and unused bits at left end. Right most character is pullupX.
+             * Think of the entire on-chip shift register laid out from right to left with input at right end and extra config bits at left end.
+             * Bits are loaded in order of bit string here starting from left end (the unused registers)
+             * 
+             * @return string of 0 and 1 with first element of extraOnchipConfigBits at right hand end, and starting with padding bits to fill unused registers.
+             */
+            String getBitString() {
+                StringBuilder s = new StringBuilder();
+                // iterate over list
+                for (int i = 0; i < TOTAL_NUM_BITS - bits.length; i++) {
+                    s.append("1"); // loaded first into unused parts of final shift register
+                }
+                for (int i = bits.length - 1; i >= 0; i--) {
+                    s.append(bits[i].isSet() ? "1" : "0");
+                }
+//                log.info(s.length() + " extra config bits with unused registers at left end =" + s);
+                return s.toString();
+            }
+
+            /** Returns a control panel for setting the bits, using the Actions
+             * 
+             * @return the panel, with BoxLayout.Y_AXIS layout
+             */
+            JPanel makeControlPanel() {
+                JPanel pan = new JPanel();
+                pan.setLayout(new BoxLayout(pan, BoxLayout.Y_AXIS));
+                for (OnchipConfigBit b : bits) {
+                    JRadioButton but = new JRadioButton(b.getAction());
+                    pan.add(but);
+                }
+                return pan;
+            }
+
+            @Override
+            public void update(Observable o, Object arg) {
+                SeeBetterConfig.this.update(o, arg); // pass update up to biasgen
+            }
+        } // ExtraOnChipConfigBits
+        
+        public class ExtraBiasDiagBits extends Observable implements HasPreference, Observer { // TODO fix for config bit of pullup
+
+            final int TOTAL_NUM_BITS = 7;  
+            boolean value = false;
+            OnchipConfigBit biasDiag0 = new OnchipConfigBit(SeeBetter20.this, "biasDiag0", 0, "Bias diagnose bit 0", false),
+                    biasDiag1 = new OnchipConfigBit(SeeBetter20.this, "biasDiag1", 1, "Bias diagnose bit 1", true),
+                    biasDiag2 = new OnchipConfigBit(SeeBetter20.this, "biasDiag2", 2, "Bias diagnose bit 2", true),
+                    biasDiag3 = new OnchipConfigBit(SeeBetter20.this, "biasDiag3", 3, "Bias diagnose bit 3", true),
+                    resetTestPixel = new OnchipConfigBit(SeeBetter20.this, "resetTestPixel", 4, "Reset the test pixel", true),
+                    resetCalibCircuit = new OnchipConfigBit(SeeBetter20.this, "resetCalibCircuit", 5, "Reset the calibration circuit", true),
+                    nTypeCalibCircuit = new OnchipConfigBit(SeeBetter20.this, "nTypeCalibCircuit", 7, "N type calibration circuit", true);
+            OnchipConfigBit[] bits = {biasDiag0, biasDiag1, biasDiag2, biasDiag3, resetTestPixel, resetCalibCircuit, nTypeCalibCircuit};
+
+            public ExtraBiasDiagBits() {
                 hasPreferencesList.add(this);
                 for (OnchipConfigBit b : bits) {
                     b.addObserver(this);
@@ -1754,7 +1862,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             gl.glColor3f(1, 1, 1);
             // draw boxes around arrays
 
-            rect(gl, 0, 0, 64, 32, "apsDVS"); // big DVS + log
+            rect(gl, 0, 0, 128, 64, "apsDVS"); // big DVS + log
 //            rect(gl, 128, 0, 2, 64); /// whole chip + extra to right
             // show scanned pixel if we are not continuously scanning
 //            if (!config.scanContinuouslyEnabled.isSet()) {
@@ -1892,66 +2000,69 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             if (!accumulateEnabled) {
                 resetFrame(.5f);
             }
+            //String eventData = "NULL";
             boolean putADCData=displayIntensity && !getAeViewer().isPaused(); // don't keep reputting the ADC data into buffer when paused and rendering packet over and over again
-//           try {
-//                step = 1f / (colorScale);
-//                for (Object obj : packet) {
-//                    PolarityADCSampleEvent e = (PolarityADCSampleEvent) obj;
-//                    if (putADCData && e.isAdcSample()) { // hack to detect ADC sample events
-//                        // ADC 'event'
-//                        frameData.putEvent(e);
-//                    } else if (displayLogIntensityChangeEvents && !e.isAdcSample()) {
-//                        // real AER event
-//                        int type = e.getType();
-//                        if (xsel >= 0 && ysel >= 0) { // find correct mouse pixel interpretation to make sounds for large pixels
-//                            int xs = xsel, ys = ysel;
-//                            xs >>= 1;
-//                            ys >>= 1;
-//
-//                            if (e.x == xs && e.y == ys) {
-//                                playSpike(type);
-//                            }
-//                        }
-//                        int x = e.x, y = e.y;
-//                        switch (e.polarity) {
-//                            case On:
-//                                changeCDVSPixel(x, y, pm, brighter, step);
-//                                break;
-//                            case Off:
-//                                changeCDVSPixel(x, y, pm, darker, step);
-//                                break;
-//                        }
-//                    }
-//                }
-//                if (displayIntensity) {
-//                    int minADC = Integer.MAX_VALUE;
-//                    int maxADC = Integer.MIN_VALUE;
-//                    for (int y = 0; y < EntirePixelArray.height; y++) {
-//                        for (int x = 0; x < EntirePixelArray.width; x++) {
-//                            int count = frameData.get(x, y);
-//                            if (agcEnabled) {
-//                                if (count < minADC) {
-//                                    minADC = count;
-//                                } else if (count > maxADC) {
-//                                    maxADC = count;
-//                                }
-//                            }
-//                            float v = adc01normalized(count);
-//                            float[] vv = {v, v, v};
-//                            changeCDVSPixel(x, y, pm, vv, 1);
-//                        }
-//                    }
-//                    if (agcEnabled && (minADC > 0 && maxADC > 0)) { // don't adapt to first frame which is all zeros
-//                        Float filter2d = agcFilter.filter2d(minADC, maxADC, frameData.getTimestamp());
-////                        System.out.println("agc minmax=" + filter2d + " minADC=" + minADC + " maxADC=" + maxADC);
-//                        getSupport().firePropertyChange(AGC_VALUES, null, filter2d); // inform listeners (GUI) of new AGC min/max filterd log intensity values
-//                    }
-//
-//                }
-//                autoScaleFrame(pm);
-//            } catch (IndexOutOfBoundsException e) {
-//                log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type?");
-//            }
+           try {
+                step = 1f / (colorScale);
+                for (Object obj : packet) {
+                    PolarityADCSampleEvent e = (PolarityADCSampleEvent) obj;
+                    //eventData = "address:"+Integer.toBinaryString(e.address)+"( x: "+Integer.toString(e.x)+", y: "+Integer.toString(e.y)+"), data "+Integer.toBinaryString(e.adcSample)+" ("+Integer.toString(e.adcSample)+")";
+                    //System.out.println("Event: "+eventData);
+                    if (putADCData && e.isAdcSample()) { // hack to detect ADC sample events
+                        // ADC 'event'
+                        frameData.putEvent(e);
+                    } else if (displayLogIntensityChangeEvents && !e.isAdcSample()) {
+                        // real AER event
+                        int type = e.getType();
+                        if (xsel >= 0 && ysel >= 0) { // find correct mouse pixel interpretation to make sounds for large pixels
+                            int xs = xsel, ys = ysel;
+                            xs >>= 1;
+                            ys >>= 1;
+
+                            if (e.x == xs && e.y == ys) {
+                                playSpike(type);
+                            }
+                        }
+                        int x = e.x, y = e.y;
+                        switch (e.polarity) {
+                            case On:
+                                changeCDVSPixel(x, y, pm, brighter, step);
+                                break;
+                            case Off:
+                                changeCDVSPixel(x, y, pm, darker, step);
+                                break;
+                        }
+                    }
+                }
+                if (displayIntensity) {
+                    int minADC = Integer.MAX_VALUE;
+                    int maxADC = Integer.MIN_VALUE;
+                    for (int y = 0; y < EntirePixelArray.height; y++) {
+                        for (int x = 0; x < EntirePixelArray.width; x++) {
+                            int count = frameData.get(x, y);
+                            if (agcEnabled) {
+                                if (count < minADC) {
+                                    minADC = count;
+                                } else if (count > maxADC) {
+                                    maxADC = count;
+                                }
+                            }
+                            float v = adc01normalized(count);
+                            float[] vv = {v, v, v};
+                            changeCDVSPixel(x, y, pm, vv, 1);
+                        }
+                    }
+                    if (agcEnabled && (minADC > 0 && maxADC > 0)) { // don't adapt to first frame which is all zeros
+                        Float filter2d = agcFilter.filter2d(minADC, maxADC, frameData.getTimestamp());
+//                        System.out.println("agc minmax=" + filter2d + " minADC=" + minADC + " maxADC=" + maxADC);
+                        getSupport().firePropertyChange(AGC_VALUES, null, filter2d); // inform listeners (GUI) of new AGC min/max filterd log intensity values
+                    }
+
+                }
+                autoScaleFrame(pm);
+            } catch (IndexOutOfBoundsException e) {
+                log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type?");//log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type? Event: "+eventData);
+            }
             pixmap.rewind();
         }
 
