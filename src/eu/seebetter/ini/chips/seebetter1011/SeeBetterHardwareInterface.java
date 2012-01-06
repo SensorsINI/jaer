@@ -374,14 +374,14 @@ public class SeeBetterHardwareInterface extends CypressFX2Biasgen {
 //                                        }
                                     } else {// y address
                                         // lasty = (0xFF & buf[i]); //
-//                                        if (gotY) {// TODO creates bogus event to see y without x. This should not normally occur.
-//                                  //          addresses[eventCounter] = (lasty << SeeBetter1011.YSHIFT) + (SeeBetter1011.SIZEX_TOTAL - 1 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
-//                                  //          timestamps[eventCounter] = lastts; //*TICK_US; //add in the wrap offset and convert to 1us tick
-//                                  //          eventCounter++;
+                                        if (gotY) {// TODO creates bogus event to see y without x. This should not normally occur.
+                                            addresses[eventCounter] = (lasty << SeeBetter1011.YSHIFT) | ( 44 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
+                                            timestamps[eventCounter] = currentts; //*TICK_US; //add in the wrap offset and convert to 1us tick
+                                            eventCounter++;
 //                                            yonlycount++;
 //                                            yonlycons++;
 //                                            doubleY=true;
-//                                        }
+                                        }
                                         if ((buf[i] & IntensityMask) != 0) { // intensity spike
                                             // log.info("received intensity bit");
                                             addresses[eventCounter] = SeeBetter1011.INTENSITYMASK;
