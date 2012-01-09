@@ -123,13 +123,22 @@ public class CPLDShiftRegister {
 //        log.info(sb.toString());
 
         byte[] bytes = bigint.toByteArray();
+        this.bytes = bytes;
         return bytes;
     }
 
     @Override
     public String toString() {
-        return "CPLDConfig{" + "numBits=" + numBits + ", minBit=" + minBit + ", maxBit=" + maxBit + ", cpldConfigValues=" + cpldConfigValues + ", bytes=" + bytes + '}';
+        return "CPLDConfig{" + "numBits=" + numBits + ", minBit=" + minBit + ", maxBit=" + maxBit + ", cpldConfigValues=" + cpldConfigValues + '}';
     }
+    
+//    public String getByteString(byte[] bytes){
+//        String out = "";
+//        for(int i = 0; i<bytes.length;i++){
+//            out = out+(String.format("%16s", Integer.toBinaryString((int)bytes[i])).replace(' ', '0'));
+//        }
+//        return out;
+//    }
 
     /** Clears list of values
      * 

@@ -15,6 +15,9 @@ public class PolarityADCSampleEvent extends PolarityEvent {
     
     /** Set if this event is a start bit event, e.g. start of frame sample. */
     protected boolean startOfFrame=false;
+    
+    /** This bit determines whether it is the first read (A) or the second read (B) of a pixel */
+    protected boolean isB = false;
 
     public PolarityADCSampleEvent() {
     }
@@ -67,5 +70,13 @@ public class PolarityADCSampleEvent extends PolarityEvent {
      */
     public boolean isAdcSample() {
         return adcSample>=0;
+    }
+    
+    /** Returns true if sample is second sample.
+     * 
+     * @return false = A, true = B
+     */
+    public boolean getMode() {
+        return isB;
     }
 }

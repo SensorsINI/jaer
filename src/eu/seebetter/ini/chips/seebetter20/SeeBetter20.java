@@ -106,7 +106,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             this.pitch = pitch;
         }
     }
-    public static final PixelArray EntirePixelArray = new PixelArray(2, 0, 0, 128, 64);
+    public static final PixelArray EntirePixelArray = new PixelArray(2, 0, 0, 64, 32);
     // following define bit masks for various hardware data types. 
     // The hardware interface translateEvents method packs the raw device data into 32 bit 'addresses' and timestamps.
     // timestamps are unwrapped and timestamp resets are handled in translateEvents. Addresses are filled with either AE or ADC data.
@@ -129,8 +129,8 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
     /** Address-type refers to data if is it an "address". This data is either an AE address or ADC reading.*/
     public static final int ADDRESS_TYPE_MASK = 0x2000, EVENT_ADDRESS_MASK = POLMASK | XMASK | YMASK, ADDRESS_TYPE_EVENT = 0x0000, ADDRESS_TYPE_ADC = 0x2000;
     /** For ADC data, the data is defined by the ADC channel and whether it is the first ADC value from the scanner. */
-    public static final int ADC_TYPE_MASK = 0x1000, ADC_DATA_MASK = 0xfff, ADC_START_BIT = 0x1000, ADC_CHANNEL_MASK = 0x0000; // right now there is no channel info in the data word
-    public static final int MAX_ADC = (int) ((1 << 12) - 1);
+    public static final int ADC_TYPE_MASK = 0x1000, ADC_DATA_MASK = 0x7ff, ADC_START_BIT = 0x1000, ADC_CHANNEL_MASK = 0x0000, ADC_MODE_BIT = 0x0800; // right now there is no channel info in the data word
+    public static final int MAX_ADC = (int) ((1 << 11) - 1);
     /** The computed intensity value. */
     private float globalIntensity = 0;
     private FrameEventPacket frameEventPacket = new FrameEventPacket(PolarityADCSampleEvent.class);
@@ -146,8 +146,8 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
     public SeeBetter20() {
         setName("SeeBetter20");
         setEventClass(PolarityADCSampleEvent.class);
-        setSizeX(EntirePixelArray.width);
-        setSizeY(EntirePixelArray.height);
+        setSizeX(EntirePixelArray.width*EntirePixelArray.pitch);
+        setSizeY(EntirePixelArray.height*EntirePixelArray.pitch);
         setNumCellTypes(3); // two are polarity and last is intensity
         setPixelHeightUm(14.5f);
         setPixelWidthUm(14.5f);
@@ -349,12 +349,15 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                     // adc sample data is saved in the packet so that we can most easily log it and play it back
                     PolarityADCSampleEvent e = (PolarityADCSampleEvent) outItr.nextOutput();
                     e.adcSample = data & ADC_DATA_MASK;
+                    e.isB = (data & ADC_MODE_BIT) == ADC_MODE_BIT;
                     e.timestamp = (timestamps[i]);
                     e.address = data;
                     e.startOfFrame = (data & ADC_START_BIT) == ADC_START_BIT;
                     e.x=-1; e.y=-1;
-                    String eventData = "timestamp: "+Integer.toString(e.timestamp)+", start of frame: "+Boolean.toString(e.startOfFrame)+", data "+Integer.toBinaryString(e.adcSample)+" ("+Integer.toString(e.adcSample)+")";
-                    System.out.println("ADC Event: "+eventData);
+                    //String type = "";
+                    //if(e.isB){type = "B";}else{type = "A";}
+                    //String eventData = "type: "+type+" timestamp: "+Integer.toString(e.timestamp)+", start of frame: "+Boolean.toString(e.startOfFrame)+", data "+Integer.toBinaryString(e.adcSample)+" ("+Integer.toString(e.adcSample)+")";
+                    //if(e.startOfFrame)System.out.println("ADC Event: "+eventData);
                 }
 
             }
@@ -439,7 +442,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         //
         // adc and scanner configurations are stored in scanner and adc; updates to here should update CPLD config below
         // CPLD shift register contents specified here by CPLDInt and CPLDBit
-        private CPLDInt adcConfig = new CPLDInt(SeeBetter20.this, 11, 0, "adcConfig", "ADC configuration bits; computed by ADC with channel and sequencing parameters", 0);
+        private CPLDInt adcConfig = new CPLDInt(SeeBetter20.this, 11, 0, "adcConfig", "ADC configuration bits; computed by ADC with channel and sequencing parameters", 160);
         private CPLDInt exposure = new CPLDInt(SeeBetter20.this, 27, 12, "exposure", "time between reset and readout of a pixel", 0);
         private CPLDInt colSettle = new CPLDInt(SeeBetter20.this, 43, 28, "colSettle", "time to settle a column select before readout", 0);
         private CPLDInt rowSettle = new CPLDInt(SeeBetter20.this, 59, 44, "rowSettle", "time to settle a row select before readout", 0);
@@ -801,6 +804,8 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 
         private void sendCPLDConfig() throws HardwareInterfaceException {
             byte[] bytes = cpldConfig.getBytes();
+            
+            log.info("Send Chip Cofig: "+cpldConfig.toString());
             sendConfig(CMD_CPLD_CONFIG, 0, bytes);
         }
 
@@ -1204,8 +1209,8 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         public class ADC extends Observable implements Observer {
 
             private final int ADCchannelshift = 5;
-            private final short ADCconfig = (short) 0x100;   //normal power mode, single ended, sequencer unused : (short) 0x908;
-            int channel = getPrefs().getInt("ADC.channel", 0);
+            private final short ADCconfig = (short) 0x160;   //normal power mode, single ended, channel 3, sequencer unused : (short) 0x908;
+            int channel = getPrefs().getInt("ADC.channel", 3);
             public final String EVENT_ADC_ENABLED = "adcEnabled", EVENT_ADC_CHANNEL = "adcChannel";
             private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
 
@@ -1932,7 +1937,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 
         private SeeBetter20 cDVSChip = null;
 //        private final float[] redder = {1, 0, 0}, bluer = {0, 0, 1}, greener={0,1,0}, brighter = {1, 1, 1}, darker = {-1, -1, -1};
-        private final float[] redder = {1, 0, 0}, bluer = {0, 0, 1}, greener = {0, 1, 0}, brighter = {1, 0, 0}, darker = {0, 1, 0};
+        private final float[] brighter = {1, 0, 0}, darker = {0, 1, 0};
         private int sizeX = 1;
         private LowpassFilter2d agcFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
         private boolean agcEnabled;
@@ -1966,9 +1971,9 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 grayBuffer.rewind();
                 for (int y = 0; y < sizeY; y++) {
                     for (int x = 0; x < sizeX; x++) {
-                        grayBuffer.put(value);
-                        grayBuffer.put(value);
-                        grayBuffer.put(value);
+                        grayBuffer.put(0);
+                        grayBuffer.put(0);
+                        grayBuffer.put(0);
                     }
                 }
                 grayBuffer.rewind();
@@ -1997,12 +2002,14 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             }
             float[] pm = getPixmapArray();
             sizeX = chip.getSizeX();
+            //log.info("pm : "+pm.length+", sizeX : "+sizeX);
             if (!accumulateEnabled) {
                 resetFrame(.5f);
             }
             //String eventData = "NULL";
             boolean putADCData=displayIntensity && !getAeViewer().isPaused(); // don't keep reputting the ADC data into buffer when paused and rendering packet over and over again
-           try {
+            String event = "";
+            try {
                 step = 1f / (colorScale);
                 for (Object obj : packet) {
                     PolarityADCSampleEvent e = (PolarityADCSampleEvent) obj;
@@ -2011,7 +2018,8 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                     if (putADCData && e.isAdcSample()) { // hack to detect ADC sample events
                         // ADC 'event'
                         frameData.putEvent(e);
-                    } else if (displayLogIntensityChangeEvents && !e.isAdcSample()) {
+                        //log.info("put "+e.toString());
+                    } else if (displayLogIntensityChangeEvents && !e.isAdcSample()) {   
                         // real AER event
                         int type = e.getType();
                         if (xsel >= 0 && ysel >= 0) { // find correct mouse pixel interpretation to make sounds for large pixels
@@ -2039,6 +2047,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                     int maxADC = Integer.MIN_VALUE;
                     for (int y = 0; y < EntirePixelArray.height; y++) {
                         for (int x = 0; x < EntirePixelArray.width; x++) {
+                            event = "ADC x "+x+", y "+y;
                             int count = frameData.get(x, y);
                             if (agcEnabled) {
                                 if (count < minADC) {
@@ -2061,7 +2070,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 }
                 autoScaleFrame(pm);
             } catch (IndexOutOfBoundsException e) {
-                log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type?");//log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type? Event: "+eventData);
+                log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type? Event: "+event);//log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type? Event: "+eventData);
             }
             pixmap.rewind();
         }
@@ -2199,19 +2208,19 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
          * Gain of MAX_ADC makes a single count go full scale.
          * @param apsIntensityGain the apsIntensityGain to set
          */
-        public void setAPSIntensityGain(int logIntensityGain) {
+        public void setAPSIntensityGain(int apsIntensityGain) {
             int old = this.apsIntensityGain;
-            if (logIntensityGain < 1) {
-                logIntensityGain = 1;
-            } else if (logIntensityGain > MAX_ADC) {
-                logIntensityGain = MAX_ADC;
+            if (apsIntensityGain < 1) {
+                apsIntensityGain = 1;
+            } else if (apsIntensityGain > MAX_ADC) {
+                apsIntensityGain = MAX_ADC;
             }
-            this.apsIntensityGain = logIntensityGain;
-            chip.getPrefs().putInt("logIntensityGain", logIntensityGain);
+            this.apsIntensityGain = apsIntensityGain;
+            chip.getPrefs().putInt("logIntensityGain", apsIntensityGain);
             if (chip.getAeViewer() != null) {
                 chip.getAeViewer().interruptViewloop();
             }
-            getSupport().firePropertyChange(APS_INTENSITY_GAIN, old, logIntensityGain);
+            getSupport().firePropertyChange(APS_INTENSITY_GAIN, old, apsIntensityGain);
         }
 
         /**
@@ -2251,13 +2260,15 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
      */
     public class IntensityFrameData implements HasPreference {
 
-        /** The scanner is 16 wide by 32 high  */
+        /** The scanner is 64wide by 32 high  */
         public final int WIDTH = EntirePixelArray.width, HEIGHT = EntirePixelArray.height; // width is BDVS pixels not scanner registers
         private final int NUMSAMPLES = WIDTH * HEIGHT;
         private int timestamp = 0; // timestamp of starting sample
         private int[] data = new int[NUMSAMPLES];
+        private int[] aData, bData;
         /** Readers should access the current reading buffer. */
-        private int writeCounter = 0;
+        private int writeCounterA = 0;
+         private int writeCounterB = 0;
         private int[] calibData1 = new int[NUMSAMPLES];
         private int[] calibData2 = new int[NUMSAMPLES];
         private float[] gain = new float[NUMSAMPLES];
@@ -2268,6 +2279,10 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         private int lasttimestamp=-1;
         
         public IntensityFrameData() {
+            aData = new int[NUMSAMPLES];
+            bData = new int[NUMSAMPLES];
+            Arrays.fill(aData, 0);
+            Arrays.fill(bData, 0);
             loadPreference();
         }
         
@@ -2303,7 +2318,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 resetWriteCounter();
                 setTimestamp(e.timestamp);
             }else{
-                putNextSampleValue(e.adcSample);
+                putNextSampleValue(e.adcSample, e.isB);
             }
             lasttimestamp=e.timestamp; // so we don't put the same sample over and over again
         }
@@ -2312,14 +2327,21 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
          * Writes wrap around to the start position. 
          * @param val the sample
          */
-        private void putNextSampleValue(int val) {
-            if (writeCounter >= data.length) {
-//            log.info("buffer overflowed - missing start frame bit?");
-                return;
-            }
-            data[writeCounter++] = val;
-            if (writeCounter == NUMSAMPLES) {
-                writeCounter = 0;
+        private void putNextSampleValue(int val, boolean isB) {
+            if(isB){
+                if (writeCounterB >= bData.length) {
+    //            log.info("buffer overflowed - missing start frame bit?");
+                    return;
+                }
+                bData[writeCounterB] = val;
+                data[writeCounterB] = aData[writeCounterB]-bData[writeCounterB];
+                writeCounterB++;
+            } else {
+                if (writeCounterA >= aData.length) {
+    //            log.info("buffer overflowed - missing start frame bit?");
+                    return;
+                }
+                aData[writeCounterA++] = val;
             }
         }
 
@@ -2444,11 +2466,12 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 
         @Override
         public String toString() {
-            return "LogIntensityFrameData{" + "WIDTH=" + WIDTH + ", HEIGHT=" + HEIGHT + ", NUMSAMPLES=" + NUMSAMPLES + ", timestamp=" + timestamp + ", writeCounter=" + writeCounter + '}';
+            return "LogIntensityFrameData{" + "WIDTH=" + WIDTH + ", HEIGHT=" + HEIGHT + ", NUMSAMPLES=" + NUMSAMPLES + ", timestamp=" + timestamp + ", writeCounter=" + writeCounterA + '}';
         }
 
         public void resetWriteCounter() {
-            writeCounter = 0;
+            writeCounterA = 0;
+            writeCounterB = 0;
         }
         final String CALIB1_KEY = "LogIntensityFrameData.calibData1", CALIB2_KEY = "LogIntensityFrameData.calibData2";
 

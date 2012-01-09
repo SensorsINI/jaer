@@ -74,9 +74,6 @@
               </Border>
             </Property>
           </Properties>
-          <AccessibilityProperties>
-            <Property name="AccessibleContext.accessibleName" type="java.lang.String" value="APS"/>
-          </AccessibilityProperties>
 
           <Layout>
             <DimensionLayout dim="0">
@@ -128,10 +125,6 @@
                 <Property name="text" type="java.lang.String" value="Show APS data"/>
                 <Property name="toolTipText" type="java.lang.String" value="Shows the scanned out static intensity values."/>
               </Properties>
-              <AccessibilityProperties>
-                <Property name="AccessibleContext.accessibleName" type="java.lang.String" value="Show APS data"/>
-                <Property name="AccessibleContext.accessibleDescription" type="java.lang.String" value="Shows the scanned out static intensity values."/>
-              </AccessibilityProperties>
               <BindingProperties>
                 <BindingProperty name="selected" source="Form" sourcePath="${chip.displayLogIntensity}" target="showAPS" targetPath="selected" updateStrategy="0" immediately="false"/>
               </BindingProperties>

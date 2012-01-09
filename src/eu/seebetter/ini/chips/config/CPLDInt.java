@@ -31,16 +31,17 @@ public class CPLDInt extends CPLDConfigValue implements ConfigInt {
         this.msb = msb;
         this.def = def;
         key = "CPLDInt." + name;
-        if (msb - lsb != 15) {
-            log.warning("only counted " + (msb - lsb + 1) + " bits, but there should usually be 16 in a CPLDInt like we are (" + this+")");
-        }
+        this.nBits = msb-lsb;
+//        if (msb - lsb != 15) {
+//            log.warning("only counted " + (msb - lsb + 1) + " bits, but there should usually be 16 in a CPLDInt like we are (" + this+")");
+//        }
         loadPreference();
     }
 
     @Override
     public void set(int value) throws IllegalArgumentException {
-        if (value < 0 || value >= 1 << nBits) {
-            throw new IllegalArgumentException("tried to store value=" + value + " which larger than permitted value of " + (1 << nBits) + " or is negative in " + this);
+        if (value < 0 || value >= (long)1 << nBits) {
+            throw new IllegalArgumentException("tried to store value=" + value + " which larger than permitted value of " + (long)(1 << nBits) + " or is negative in " + this);
         }
         if (this.value != value) {
             setChanged();

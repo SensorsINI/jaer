@@ -605,11 +605,11 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
         renderer.setAPSIntensityGain(logIntensityGain);
     }
 
-    public int getLogIntensityOffset() {
+    public int getAPSIntensityOffset() {
         return (int)(renderer.getAPSIntensityOffset());
     }
 
-    public int getLogIntensityGain() {
+    public int getAPSIntensityGain() {
         return (int)(renderer.getAPSIntensityGain());
     }
 
