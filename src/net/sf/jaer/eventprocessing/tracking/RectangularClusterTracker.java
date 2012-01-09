@@ -102,7 +102,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     private Point2D.Float averageVelocityPPT = new Point2D.Float();
     private final float averageVelocityMixingFactor = 0.001f; // average velocities of all clusters mixed with this factor to produce this "prior" on initial cluster velocityPPT
     private boolean showClusterMass = getBoolean("showClusterMass", false);
-    private boolean filterEventsEnabled = getBoolean("filterEventsEnabled", false); // enables filtering events so that output events only belong to clustera and point to the clusters.
+    protected boolean filterEventsEnabled = getBoolean("filterEventsEnabled", false); // enables filtering events so that output events only belong to clustera and point to the clusters.
     protected float velocityTauMs = getFloat("velocityTauMs", 100);
     protected float frictionTauMs = getFloat("frictionTauMs", Float.NaN);
     private int maxNumClusters = getInt("maxNumClusters", 10);
@@ -110,9 +110,15 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     private boolean dontMergeEver = getBoolean("dontMergeEver", false);
     private boolean angleFollowsVelocity = getBoolean("angleFollowsVelocity", false);
     private boolean showPaths=getBoolean("showPaths",true);
-
+    private float smoothWeight=getFloat("smoothWeight",100);
+    
+    private float surroundInhibitionCost = getFloat("surroundInhibitionCost",1);
+    
+    
      private  KalmanFilter kalmanFilter;
   
+     
+    public boolean smoothMove=false;
 
     public enum ClusterLoggingMethod {
 
@@ -153,6 +159,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         setPropertyTooltip(sizing, "clusterSize", "size (starting) in fraction of chip max size");
         setPropertyTooltip(update, "growMergedSizeEnabled", "enabling makes merged clusters take on sum of sizes, otherwise they take on size of older cluster");
         setPropertyTooltip(movement, "useVelocity", "uses measured cluster velocity to predict future position; vectors are scaled " + String.format("%.1f pix/pix/s", VELOCITY_VECTOR_SCALING / AEConstants.TICK_DEFAULT_US * 1e-6));
+        setPropertyTooltip(movement, "smoothMove","Cluster velocity, is updated instead of position, resulting in a smoother movement");
+        setPropertyTooltip(movement, "smoothWeight","If smoothmove is checked, the 'weight' of a cluster");
         setPropertyTooltip(disp, "showPaths", "shows the stored path points of each cluster");
         setPropertyTooltip(disp, "classifierEnabled", "colors clusters based on single size metric");
         setPropertyTooltip(disp, "classifierThreshold", "the boundary for cluster size classification in fractions of chip max dimension");
@@ -180,7 +188,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         setPropertyTooltip(movement, "initializeVelocityToAverage", "initializes cluster velocity to moving average of cluster velocities; otherwise initialized to zero");
         setPropertyTooltip(global, "filterEventsEnabled", "<html>If disabled, input packet is unaltered. <p>If enabled, output packet contains RectangularClusterTrackerEvent, <br>events refer to containing cluster, and non-owned events are discarded.");
         setPropertyTooltip(lifetime, "surroundInhibitionEnabled", "Enabling this option causes events in the surround region to actively reduce the cluster mass, enabling tracking of only isolated features");
-//        setPropertyTooltip("sizeClassificationEnabled", "Enables coloring cluster by size threshold");
+        setPropertyTooltip(lifetime, "surroundInhibitionCost", "If above is checked: The negative weight of surrounding points");
+        
+        //        setPropertyTooltip("sizeClassificationEnabled", "Enables coloring cluster by size threshold");
 //        setPropertyTooltip("opticalGyroTauHighpassMs", "highpass filter time constant in ms for optical gyro position, increase to forget DC value more slowly");
 //    {setPropertyTooltip("velocityMixingFactor","how much cluster velocityPPT estimate is updated by each packet (IIR filter constant)");}
 //    {setPropertyTooltip("velocityTauMs","time constant in ms for cluster velocityPPT lowpass filter");}
@@ -841,6 +851,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         private final int MIN_DT_FOR_VELOCITY_UPDATE = 10;
         /** location of cluster in pixels */
         public Point2D.Float location = new Point2D.Float(); // location in chip pixels
+        public Point2D.Float velocity = new Point2D.Float(); // location in chip pixels
+        
         private Point2D.Float birthLocation = new Point2D.Float(); // birth location of cluster
         private Point2D.Float lastPacketLocation = new Point2D.Float(); // location at end of last packet, used for movement sample
         /** velocityPPT of cluster in pixels/tick, where tick is timestamp tick (usually microseconds) */
@@ -1006,7 +1018,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             if (surroundInhibitionEnabled) {
                 // if the event is in the surround, we decrement the mass, if inside cluster, we increment
                 float normDistance = distanceToLastEvent / radius;
-                float dmass = normDistance <= 1 ? 1 : -1;
+                //float dmass = normDistance <= 1 ? 1 : -1;
+                float dmass = normDistance <= 1 ? 1 : -surroundInhibitionCost;
                 mass = dmass + mass * (float) Math.exp((float) (lastEventTimestamp - event.timestamp) / clusterLifetimeWithoutSupportUs);
             } else {
                 // don't worry about distance, just increment
@@ -1368,6 +1381,11 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             // change to older for location to avoid discontinuities in postion
             location.x = stronger.location.x; //(one.location.x * one.mass + two.location.x * two.mass) / (mass);
             location.y = stronger.location.y; // (one.location.y * one.mass + two.location.y * two.mass) / (mass);
+            
+            velocity.x=0;
+            velocity.y=0;
+            
+            
             angle = stronger.angle;
             cosAngle = stronger.cosAngle;
             sinAngle = stronger.sinAngle;
@@ -1478,6 +1496,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             //            }
             // compute new cluster location by mixing old location with event location by using
             // mixing factor.
+            
+            float newX,newY;
+            
             if (event instanceof OrientationEvent) {
                 // if event is an orientation event, use the orientation to only move the cluster in a direction perpindicular to
                 // the estimated orientation
@@ -1489,15 +1510,41 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 float aDotB = (d.x * eventXCentered) + (d.y * eventYCentered);
                 //float aDotA = (d.x * d.x) + (d.y *d.y);
                 float division = aDotB; /// aDotA;
-                float newX = (division * d.x) + location.x;
-                float newY = (division * d.y) + location.y;
-                location.x = (m1 * location.x + m * newX);
-                location.y = (m1 * location.y + m * newY);
+                newX = (division * d.x) + location.x;
+                newY = (division * d.y) + location.y;
+                //location.x = (m1 * location.x + m * newX);
+                //location.y = (m1 * location.y + m * newY);
             } else {
                 // otherwise, move the cluster in the direction of the event.
-                location.x = (m1 * location.x + m * event.x);
-                location.y = (m1 * location.y + m * event.y);
+                newX=event.x;
+                newY=event.y;
+                
+                
+                
             }
+            
+            
+            
+            if (!smoothMove)
+            {   location.x = (m1 * location.x + m * newX);
+                location.y = (m1 * location.y + m * newY);
+                
+            }
+            else
+            {
+                m=1/smoothWeight;
+                m1=1-m;
+                velocity.x=m1 * velocity.x + m * (event.x-location.x);
+                velocity.y=m1 * velocity.y + m * (event.y-location.y);
+                
+                location.x=location.x+velocity.x*m;
+                location.y=location.y+velocity.y*m;
+                
+            } 
+                
+               
+            
+            
         }
 
         /** Updates the cluster radius and angle according to distance of event from cluster center,
@@ -2574,6 +2621,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         getSupport().firePropertyChange("filterEventsEnabled", old, filterEventsEnabled);
     }
 
+    
     public void update(Observable o, Object arg) {
         if (o == this) {
             UpdateMessage msg = (UpdateMessage) arg;
@@ -3154,4 +3202,36 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         this.useEllipticalClusters = useEllipticalClusters;
         putBoolean("useEllipticalClusters", useEllipticalClusters);
     }
+    
+    public void setSmoothMove(boolean v)
+    {
+        this.smoothMove=v;
+        putBoolean("smoothMove", v);
+    }
+    
+    public boolean getSmoothMove()
+    {return smoothMove;}
+    
+    public void setSmoothWeight(float v)
+    {
+        this.smoothWeight=v;
+        putFloat("smoothWeight", v);
+    }
+    
+    public float getSmoothWeight()
+    {return smoothWeight;}
+    
+    public void setSurroundInhibitionCost(float v)
+    {
+        this.surroundInhibitionCost=v;
+        putFloat("surroundInhibitionCost", v);
+    }
+    
+    public float getSurroundInhibitionCost()
+    {return surroundInhibitionCost;}
+    
+    
+    
+    
+    
 }

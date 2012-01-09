@@ -9,7 +9,7 @@
  * Created on May 10, 2011, 3:10:56 PM
  */
 
-package ch.unizh.ini.jaer.projects.ClassItUp;
+package ch.unizh.ini.jaer.projects.neuralNetToolbox;
 
 /**
  *

@@ -3,20 +3,19 @@
  * and open the template in the editor.
  */
 
-package ch.unizh.ini.jaer.projects.ClassItUp;
+package ch.unizh.ini.jaer.projects.neuralNetToolbox;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
+import net.sf.jaer.eventprocessing.EventFilter2D;
 /**
  *
  * @author tobi
  */
-public class UnitProbe implements Plotter,ActionListener,WindowListener{
+public class UnitProbe extends Plotter implements ActionListener,WindowListener{
 
-    Network NN;
-    
     Probe h;
 
     int currentIX=0;
@@ -42,6 +41,8 @@ public class UnitProbe implements Plotter,ActionListener,WindowListener{
     {   
     }*/
 
+    public void UnitProbe(SuperNetFilter F_, Network NN_){load(F_,NN_);}
+    
     @Override public void actionPerformed(ActionEvent e) {
 
             if (e.getSource()==h.editUnit)
@@ -53,12 +54,11 @@ public class UnitProbe implements Plotter,ActionListener,WindowListener{
 
         }
 
-    @Override public void init(Network N)
+    public void init()
     {
         //L=new unitchange();
         //s//elf=this;
 
-        NN=N;
         h=new Probe();
 
         h.setVisible(true);
@@ -136,7 +136,7 @@ public class UnitProbe implements Plotter,ActionListener,WindowListener{
 
     @Override public void update()
     {
-        float vm=Unit.get_vmem();
+        float vm=Unit.get_vmem(F.getLastTimestamp());
 
         if (vm<minMP)
         {   minMP=vm;

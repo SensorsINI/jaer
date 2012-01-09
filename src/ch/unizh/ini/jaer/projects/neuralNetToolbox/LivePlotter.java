@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 
-package ch.unizh.ini.jaer.projects.ClassItUp;
+package ch.unizh.ini.jaer.projects.neuralNetToolbox;
 
 /**
  *
@@ -17,9 +17,8 @@ import org.LiveGraph.LiveGraph;
 */
 import java.io.File;
 
-public class LivePlotter implements Plotter {
+public class LivePlotter extends Plotter {
 
-    Network NN;
     //NumberReader NumDisp;       // Numberreader object
 
     // Properties-Implementation Related
@@ -28,8 +27,8 @@ public class LivePlotter implements Plotter {
     DataFileSettings dfs;
     LiveGraph app;
 */
-
-    @Override public void init(Network N)
+    
+    public void init()
     {
         // Initiallize Buffer-File
         /*

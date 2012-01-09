@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 
-package ch.unizh.ini.jaer.projects.ClassItUp;
+package ch.unizh.ini.jaer.projects.neuralNetToolbox;
 
 
 import java.awt.event.ActionEvent;
@@ -11,7 +11,9 @@ import java.awt.event.ActionListener;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Iterator;
+
 import java.awt.event.WindowStateListener;
+
 /**
  *
  * @author tobi
@@ -20,9 +22,8 @@ import java.awt.event.WindowStateListener;
 
 // Note: need to cancel updates once windows get closed!
 
-public class NumberPlot implements Plotter,ActionListener {
-
-    Network NN;
+public class NumberPlot extends Plotter implements ActionListener {
+    
     NumberReader h;       // Numberreader object
 
     Controller c;         // Controller Object
@@ -31,9 +32,11 @@ public class NumberPlot implements Plotter,ActionListener {
 
     List<UnitProbe> P = new ArrayList<UnitProbe>(0);
 
-    @Override public void init(Network N)
+    void NumberPlot(SuperNetFilter F_, Network NN_){load(F_,NN_);}
+    
+    @Override public void init()
     {
-        NN=N;
+        //NN=N;
         h=new NumberReader();
         h.setVisible(true);
         h.jSlider.setValue(10);
@@ -56,7 +59,7 @@ public class NumberPlot implements Plotter,ActionListener {
         float vmax=-100000;
         int i,imax=0;
         for (i=0; i<10; i++){
-            vout[i]=NN.N[NN.N.length-10+i].get_vmem();
+            vout[i]=NN.N[NN.N.length-10+i].get_vmem(F.getLastTimestamp());
             if (vout[i]>vmax) {vmax=vout[i]; imax=i;}
         }
 
@@ -90,12 +93,14 @@ public class NumberPlot implements Plotter,ActionListener {
     @Override public void actionPerformed(ActionEvent e) {
         if (e.getSource()==h.pushProbe)
         {   UnitProbe p=new UnitProbe();
-            p.init(NN);
+            p.load(F,NN);
+            p.init();
             P.add(p);
         }
         else if (e.getSource()==h.pushControl)
         {    c=new Controller();
-             c.init(NN);
+             c.load(F,NN);
+             c.init();
         }
     }
 

@@ -4,7 +4,7 @@
  */
 
 
-package ch.unizh.ini.jaer.projects.ClassItUp;
+package ch.unizh.ini.jaer.projects.neuralNetToolbox;
 
 // JAER Stuff
 import net.sf.jaer.chip.*;
@@ -18,6 +18,7 @@ import java.io.FileNotFoundException;
 
 // Swingers
 import javax.swing.JOptionPane;
+import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 
 // Plotting packaging
 
@@ -28,7 +29,7 @@ import javax.swing.JOptionPane;
  *
  * @author Peter
  */
-public class ClassItUp extends EventFilter2D {
+public class ClassItUp extends SuperNetFilter {
     /* Network
      * Every Event-Source/Neuron has an integer "address".  When the event source
      * generates an event, it is propagated through the network.  
@@ -37,7 +38,6 @@ public class ClassItUp extends EventFilter2D {
 
     //------------------------------------------------------
     // Properties-Network Related
-    Network NN;                 // Neural Network
 
     // Bar-Plot Handle
     Plotter plot;       // Numberreader object
@@ -49,6 +49,8 @@ public class ClassItUp extends EventFilter2D {
     //Sparsify S;
     FilterChain dickChainy;
 
+    Network Net;
+    
     //------------------------------------------------------
     // Filter Methods
 
@@ -56,58 +58,66 @@ public class ClassItUp extends EventFilter2D {
     @Override public EventPacket<?> filterPacket( EventPacket<?> P){
         
         if(!filterEnabled) return P;
-        if (NN==null)
-        {   resetFilter();
-            return P;
-        }
+        
         
         int k=0;
         int dim=128;
         //int dim=32;
 
+        
 
-
-        EventPacket Pout=dickChainy.filterPacket(P);
+        //EventPacket Pout=dickChainy.filterPacket(P);
+        out=P;
+        if (Net==null)
+        {   //resetFilter();
+            return out;
+        }
+        
         /*
         EventPacket Pt=S.filterPacket(P); // Sparsify Images
         int test=P.getSize();
         EventPacket Pout=C.filterPacket(Pt); // Center Images
         int test2=P.getSize();
         */
-        for(Object e:Pout){ // iterate over the input packet**
-            PolarityEvent E=(PolarityEvent)e; // cast the object to basic event to get timestamp, x and y**
-            NN.propagate(dim*E.x+dim-1-E.y,1);
+        for(Object e:out){ // iterate over the input packet**
+            BasicEvent E=(BasicEvent)e; // cast the object to basic event to get timestamp, x and y**
+            Net.propagate(dim*E.x+dim-1-E.y,1,E.timestamp); 
             //NN.propagate(dim*E.x/4+dim-1-E.y/4,1);
             k++;
         }
 
-        plot.update();
-        return Pout;
+        if (plot!=null) plot.update();
+        
+        return out;
     }
 
     // Read the Network File on filter Reset
     @Override public void resetFilter() {
 
+        initFilter();
+        /*
        try{
-            NN=new Network();
-            NN.readfile(); // Read that Saved Neural Network file
+            Net=new Network();
+            Net.readfile(); // Read that Saved Neural Network file
 
-            choosePlot(); // Setup the Plotter
+            doChoosePlot(); // Setup the Plotter
        }
        catch(FileNotFoundException M){ 
            System.out.println("Somehow we didn't find the file, even though you just selected it.  Figure that one out.");
        }
        catch(Exception E){ // Generally means you clicked cancel.
+           Net=null;
+           System.out.println("You cancelled.  Click reset to chose a network.");
            filterEnabled=false;
            // System.out.println(E.getMessage());
         }
-
+*/
     }
 
     //------------------------------------------------------
     // Output-Generating Methods
 
-    public void choosePlot(){
+    public void doChoosePlot(){
 
         Object[] options = {"LivePlotter","Number Display","Unit Probe"};
         int n = JOptionPane.showOptionDialog(null,
@@ -131,8 +141,10 @@ public class ClassItUp extends EventFilter2D {
                 plot=new UnitProbe();
                 break;
         }
-        plot.init(NN);
+        plot.load(this, Net);
+        plot.init();
     }
+    
 
     //------------------------------------------------------
     // Obligatory method overrides
@@ -141,23 +153,32 @@ public class ClassItUp extends EventFilter2D {
     public  ClassItUp(AEChip  chip){
         super(chip);
 
-        CenterMe C=new CenterMe(chip);
-        Sparsify S=new Sparsify(chip);
+        //CenterMe C=new CenterMe(chip);
+        //Sparsify S=new Sparsify(chip);
 
         // Change defaults of Sparsification filter
-        S.maxFreq=10000;
-        S.polarityPass=-1;
+        //S.maxFreq=10000;
+        //S.polarityPass=-1;
 
-        S.setFilterEnabled(true);
-        C.setFilterEnabled(true);
-
+        //S.setFilterEnabled(true);
+        //C.setFilterEnabled(true);
+        /*
         dickChainy=new FilterChain(chip);
+        
+        //dickChainy.add(C);
+        //dickChainy.add(S);
+        
+        dickChainy=new FilterChain(chip);
+        //NeurSparse S=new NeurSparse(chip);
+//        RectangularClusterTracker R=new RectangularClusterTracker(chip);
+        ClusterSet C = new ClusterSet(chip);
+        //dickChainy.add(S);
         dickChainy.add(C);
-        dickChainy.add(S);
+        C.setFilterEnabled(true);
         
         setEnclosedFilterChain(dickChainy);
 
-
+*/
 
 
         /*
@@ -191,12 +212,10 @@ public class ClassItUp extends EventFilter2D {
     
     // Nothing
     @Override public void initFilter(){
-/*
-         try{
-            NN=new Network();
-            NN.readfile(); // Read that Saved Neural Network file
 
-            choosePlot(); // Setup the Plotter
+         try{
+            doLoad_Network();
+            doChoosePlot(); // Setup the Plotter
        }
         catch(FileNotFoundException M){
 
@@ -204,7 +223,16 @@ public class ClassItUp extends EventFilter2D {
          catch(Exception E){
             System.out.println(E.getMessage());
         }
-*/
+/**/
+        
+    }
+    
+    public void doLoad_Network() throws FileNotFoundException, Exception
+    {
+        Net=new Network();
+        Net.readfile(); // Read that Saved Neural Network file
+        NN=Net;
+        NN.setThresholds(500);
     }
     
     // Nothing

@@ -6,7 +6,7 @@
 
 
 
-package ch.unizh.ini.jaer.projects.ClassItUp;
+package ch.unizh.ini.jaer.projects.neuralNetToolbox;
 
 
 // JAER Stuff
@@ -61,8 +61,8 @@ public class CenterMe extends EventFilter2D {
             PolarityEvent E=(PolarityEvent)e; // cast the object to basic event to get timestamp, x and y**
             update(E.x,E.y);
             
-            E.x= (short) (Math.max(Math.min(64+E.x-(xc+dxc), 127),0));
-            E.y= (short) (Math.max(Math.min(64+E.y-(yc+dyc), 127),0));
+            E.x= (short) (Math.max(Math.min(64+E.x-xc, 127),0));
+            E.y= (short) (Math.max(Math.min(64+E.y-yc, 127),0));
             
 
         }

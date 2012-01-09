@@ -4,7 +4,7 @@
  */
 
 
-package ch.unizh.ini.jaer.projects.ClassItUp;
+package ch.unizh.ini.jaer.projects.neuralNetToolbox;
 
 /*
 import java.io.File;
@@ -100,14 +100,15 @@ public class Sparsify extends EventFilter2D {
             OutputEventIterator outItr=out.outputIterator();
 
             out.setEventClass(PolarityEvent.class);
-
-            for (int i=0; i<P.getSize()*maxFreq/rate; i++)
+            for (Object p:P)
+            //for (int i=0; i<P.getSize()*maxFreq/rate; i++)
             { // iterate over the input packet**
-                PolarityEvent e=(PolarityEvent) P.getEvent(i);
-                if ((polarityPass==0) || (polarityPass==-1 && (e.polarity==e.polarity.Off)) || (polarityPass==1 && (e.polarity==e.polarity.On)))
-                {   PolarityEvent x=(PolarityEvent)outItr.nextOutput();  // make an output event**
-                    x.copyFrom(e);
-                }
+                    PolarityEvent e=(PolarityEvent) p;// P.getEvent(i);
+                    if ((polarityPass==0) || (polarityPass<0 && (e.polarity==e.polarity.Off)) || (polarityPass>0 && (e.polarity==e.polarity.On)))
+                    {   PolarityEvent x=(PolarityEvent)outItr.nextOutput();  // make an output event**
+                        x.copyFrom(e);
+                        
+                    }
             }
 
             //System.out.print(rate+" Hz");
@@ -191,18 +192,5 @@ public class Sparsify extends EventFilter2D {
         getPrefs().putInt("Sparsify.PolarityPass",a);
     }
     
-/*
-    public void setUsePIDController(boolean usePIDController) {
-        this.usePIDController = usePIDController;
-        //pidController = new PIDController(chip);
-        getPrefs().putBoolean("Sparsify.usePIDController",usePIDController);
-    }
-
-    public boolean getUsePIDController() {
-        return usePIDController;
-    }*/
-
-    //------------------------------------------------------
-
 
 }

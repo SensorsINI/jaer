@@ -9,13 +9,13 @@
  * Created on Sep 21, 2011, 11:19:16 AM
  */
 
-package ch.unizh.ini.jaer.projects.ClassItUp;
+package ch.unizh.ini.jaer.projects.neuralNetToolbox;
 
 /**
  *
  * @author tobi
  */
-public class Controller extends javax.swing.JFrame implements Plotter {
+public class Controller extends Plotter /*javax.swing.JFrame*/  {
 
     /** Creates new form Controller */
     public Controller() {
@@ -196,8 +196,8 @@ public class Controller extends javax.swing.JFrame implements Plotter {
 
     private void butFireActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_butFireActionPerformed
 
-        for (int i=minU; i<=maxU; i++)
-            NN.propagate(i,0);
+        //for (int i=minU; i<=maxU; i++)
+            //NN.propagate(i,0);
 
     }//GEN-LAST:event_butFireActionPerformed
 
@@ -239,6 +239,7 @@ public class Controller extends javax.swing.JFrame implements Plotter {
     public int maxU;
     public Network NN;
 
+    void Controller(SuperNetFilter F_, Network NN_){load(F_,NN_);}
 
     @Override
     public void update() {
@@ -246,9 +247,7 @@ public class Controller extends javax.swing.JFrame implements Plotter {
     }
 
     @Override
-    public void init(Network N) {
-
-        NN=N;
+    public void init() {
         
         setrange(0,NN.N.length-1);
         this.labTotal.setText("("+NN.N.length+" units in total)");

@@ -9,14 +9,13 @@
  * Created on Sep 16, 2011, 11:01:25 AM
  */
 
-package ch.unizh.ini.jaer.projects.ClassItUp;
+package ch.unizh.ini.jaer.projects.neuralNetToolbox;
 
 /**
  *
  * @author tobi
  */
 public class Probe extends javax.swing.JFrame {
-
     /** Creates new form Probe */
     public Probe() {
         initComponents();

@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 
-package ch.unizh.ini.jaer.projects.ClassItUp;
+package ch.unizh.ini.jaer.projects.neuralNetToolbox;
 
 
 // Java  Stuff
@@ -14,17 +14,13 @@ import java.io.FileNotFoundException;
 import java.util.Scanner;
 import java.util.NoSuchElementException;
 import javax.swing.*;
-import javax.swing.border.Border;
-
-import java.awt.BorderLayout;
-import java.awt.Container;
-
+import net.sf.jaer.event.OutputEventIterator;
 
 /**
  *
  * @author tobi
  */
-public class Network {
+public class Network implements SuperNet{
 
     /* Network
      * Every Event-Source/Neuron has an integer "address".  When the event source
@@ -36,27 +32,89 @@ public class Network {
     // Properties-Network Related
     public int[][] c;          // Arrey of connection c[i][j] is the addresss of neuron i's j'th connection.
     public float[][] w;        // Array of weigths in network.  w[i][j] is the connection strength of connection c[i][j]
-    Neuron[] N;                 // Array of neurons.  N[i] is the ith neuron.
+    ENeuron[] N;                 // Array of neurons.  N[i] is the ith neuron.
     public int maxdepth=100;    // Maximum depth of propagation - prevents infinite loops in unstable recurrent nets.
 
-    // Propagate an event through the network
-    public void propagate(int source,int depth) {
-
+    // Propagate 
+    public void propagate(int source, int depth,int timestamp, OutputEventIterator outItr){
+        // Propagate an event through the network.
+        // TRICK: if depth=-1, "source" refers not the the source but the destination.
+        
         boolean fire;
         if (depth>maxdepth){
-            System.out.println("This spike has triggered too many propagations.  See maxdepth");
+            System.out.println("This spike has triggered too many (>"+maxdepth+") propagations.  See maxdepth");
+            return;
+        }
+        int i;
+        if (c==null) return; // Handle case when we didn't create output connections
+        for (i=0;i<w[source].length;i++){ // Iterate through connections
+            fire=N[c[source][i]].spike(w[source][i],timestamp,outItr);
+            if (fire){
+                propagate(c[source][i],depth+1,timestamp,outItr);
+            }
+        }
+        
+    }
+    
+    public void stimulate(int dest, float weight, int timestamp, OutputEventIterator outItr)
+    {   // Directly stimulate a neuron with a given weight
+        
+        boolean fire=N[dest].spike(weight,timestamp,outItr);
+        if (fire){
+            propagate(dest,1,timestamp,outItr);
+        }
+    }
+
+    @Override
+    public void setThresholds(float thresh)
+    {   for (Neuron n:N)
+            n.thresh=thresh;    
+    }
+    
+    @Override
+    public void setTaus(float tc)
+    {   for (Neuron n:N)
+            n.tau=tc;    
+    }
+    
+    @Override
+    public void setSats(float tc)
+    {   for (Neuron n:N)
+            n.sat=tc;    
+    }
+    
+    
+    @Override
+    public void setDoubleThresh(boolean v)
+    {   for (Neuron n:N)
+            n.doublethresh=v;    
+    }
+    
+    @Override
+    public void reset()
+    {   for (Neuron n:N)
+            n.reset();    
+    }
+    
+    // Propagate an event through the network
+    public void propagate(int source,int depth,int timestamp) {
+        propagate(source,depth,timestamp,null);
+        /*boolean fire;
+        if (depth>maxdepth){
+            System.out.println("This spike has triggered too many (>"+maxdepth+") propagations.  See maxdepth");
             return;
         }
         int i;
         for (i=0;i<w[source].length;i++){ // Iterate through connections
-            fire=N[c[source][i]].spike(w[source][i]);
+            fire=N[c[source][i]].spike(w[source][i],timestamp);
             if (fire){
-                propagate(c[source][i],depth+1);
+                propagate(c[source][i],depth+1,timestamp);
             }
-        }
+        }*/
 
     }
 
+    
     // Read a network file into a Network Object
     public void readfile()  throws FileNotFoundException, Exception  {
         // Locate a Network-Description file and read it into a network.
@@ -92,7 +150,7 @@ public class Network {
         // Initialize arrays
         w=new float[netLen][];
         c=new int[netLen][];
-        N=new Neuron[netLen];
+        N=new ENeuron[netLen];
 
         System.out.println("Reading Network...");
 
@@ -127,7 +185,7 @@ public class Network {
             String lab;
 
             
-            N[i]=new Neuron();      // Initialize Neuron
+            N[i]=new ENeuron();      // Initialize Neuron
 
             while (true)
             {
