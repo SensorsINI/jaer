@@ -19,8 +19,6 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl;
 
@@ -39,31 +37,96 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer, Fra
     private int histBinSizeUs = getInt("histBinSizeUs", 1000);
     private float histCountScale = getFloat("histCountScale", 0.1f);
     private long periodMs = getInt("periodMs", 20);
-    protected int countThreshold = getInt("countThreshold", 100);
-    protected float maxDeviationMs = getFloat("maxDeviationMs",2);
+    private int countThreshold = getInt("countThreshold", 100);
+    private float maxDeviationMs = getFloat("maxDeviationMs", 2);
+    private int binDurationUs = getInt("binDurationUs", 100);
+    private int durationAfterFlashToCountUs = getInt("durationAfterFlashToCountUs", 4000);
     // fields
     private HasLEDControl ledControl = null;
     private boolean proximityDetected = false;
     /** Event that is fired on change of proximity */
     public static final String PROXIMITY = "proximityDetected";
     private Timer ledTimer = null;
-//    private EventRateEstimator rateEstimator = null;
     private int lastLEDChangeTimestampUs = 0;
     private boolean lastLEDOn = true;
     private long lastCommandSentNs = 0;
     private Histogram histOn = new Histogram(), histOff = new Histogram();
-    TextRenderer renderer;
+    private TextRenderer renderer;
+    private EventCounter eventCounter = new EventCounter();
+
+    class EventCounter {
+
+        public EventCounter() {
+            init();
+        }
+        int[] eventCountBins = null;
+        int nbins = 0;
+
+        synchronized void init() {
+            nbins = 2 * durationAfterFlashToCountUs / binDurationUs + 1; // BEFORE  and after flash
+            eventCountBins = new int[nbins];
+        }
+
+        void reset() {
+            Arrays.fill(eventCountBins, 0);
+        }
+
+        synchronized void putEvent(int dt) {
+            int bin = bin(dt);
+            if (bin >= 0) {
+                eventCountBins[bin]++;
+            }
+        }
+
+        private int bin(int dt) {
+            if (dt >= 0 && dt < durationAfterFlashToCountUs) {
+                return nbins / 2 + dt / binDurationUs;
+            } else if (dt < 0 && dt > -durationAfterFlashToCountUs) {
+                return nbins / 2 + dt / binDurationUs;
+            } else {
+                return -1;
+            }
+        }
+
+        void draw(GL gl) {
+            gl.glColor3f(1, 1, 1);
+            gl.glLineWidth(4);
+            int x0 = 10, y0 = 10;
+            float xsc = (chip.getSizeX() - 2 * x0) / (float) (nbins);
+            float ysc = (chip.getSizeY() - 2 * y0) * histCountScale;
+            gl.glBegin(GL.GL_LINE_STRIP);
+            for (int i = 0; i < nbins; i++) {
+                gl.glVertex2f(x0 + i * xsc, y0 + eventCountBins[i] * ysc);
+                gl.glVertex2f(x0 + (i + 1) * xsc, y0 + eventCountBins[i] * ysc);
+            }
+            gl.glEnd();
+        }
+    }
+
+    public enum Method {
+
+        Histogram, RatioBeforeAfter
+    };
+    private Method method = Method.RatioBeforeAfter;
+
+    {
+        try {
+            setMethod(Method.valueOf(getPrefs().get("method", Method.RatioBeforeAfter.toString())));
+        } catch (Exception e) {
+        }
+    }
 
     public ProximityLEDDetector(AEChip chip) {
         super(chip);
-//        rateEstimator = new EventRateEstimator(chip);
-//        setEnclosedFilterChain(new FilterChain(chip));
-//        getEnclosedFilterChain().add(rateEstimator);
-        setPropertyTooltip("histCountScale", "scale for delta time histogram counts after sync pulses");
-        setPropertyTooltip("histBinSizeUs", "histogram bin size in us after LED change");
-        setPropertyTooltip("histNumBins", "number of histogram bins");
-        setPropertyTooltip("maxDeviationMs", "maximum standard deviation in ms around mean delta time to consider events as resulting from LED change");
-        setPropertyTooltip("countThreshold", "min number of events to capture after LED change to consider for proximity detection");
+        String hist = "Histogram", ratio = "RatioBeforeAfter";
+        setPropertyTooltip(hist, "histCountScale", "scale for delta time histogram counts after sync pulses");
+        setPropertyTooltip(hist, "histBinSizeUs", "histogram bin size in us after LED change");
+        setPropertyTooltip(hist, "histNumBins", "number of histogram bins");
+        setPropertyTooltip(hist, "maxDeviationMs", "maximum standard deviation in ms around mean delta time to consider events as resulting from LED change");
+        setPropertyTooltip(hist, "countThreshold", "min number of events to capture after LED change to consider for proximity detection");
+        setPropertyTooltip(ratio, "binDurationUs", "bin size in us to collect event counts before and after LED change");
+        setPropertyTooltip(ratio, "durationAfterFlashToCountUs", "how long in us to count events after LED turns on or off");
+
         setPropertyTooltip("periodMs", "LED flashing period in ms");
         setPropertyTooltip("proximityDetected", "indicates detected proximity");
         chip.addObserver(this);
@@ -71,35 +134,54 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer, Fra
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-//        rateEstimator.filterPacket(in);
-        for (BasicEvent o : in) {
-            PolarityEvent e = (PolarityEvent) o;
-            if (e.isSpecial()) { // got sync event indicating that camera has changed LED
-                if (ledControl.getLEDState(0) == HasLEDControl.LEDState.ON) {
-                    lastLEDOn = true;
-                    histOn.reset();
-                } else {
-                    lastLEDOn = false; // TODO sloppy
-                    histOff.reset();
+        switch (method) {
+            case Histogram:
+                for (BasicEvent o : in) {
+                    PolarityEvent e = (PolarityEvent) o;
+                    if (e.isSpecial()) { // got sync event indicating that camera has changed LED
+                        if (ledControl.getLEDState(0) == HasLEDControl.LEDState.ON) {
+                            lastLEDOn = true;
+                            histOn.reset();
+                        } else {
+                            lastLEDOn = false; // TODO sloppy
+                            histOff.reset();
+                        }
+                        lastLEDChangeTimestampUs = e.timestamp;
+                    } else {
+                        int dt = e.timestamp - lastLEDChangeTimestampUs;
+                        if (lastLEDOn) {
+                            histOn.put(dt);
+                        } else {
+                            histOff.put(dt);
+                        }
+                    }
                 }
-//                int dt = e.timestamp - lastLEDChangeTimestampUs;
-//                log.info(dt + " us since last LED change");
-                lastLEDChangeTimestampUs = e.timestamp;
-            } else {
-                int dt = e.timestamp - lastLEDChangeTimestampUs;
-                if (lastLEDOn) {
-                    histOn.put(dt);
+                histOn.computeStats();
+                histOff.computeStats();
+                if (histOn.proximityDetected() && histOff.proximityDetected()) {
+                    setProximityDetected(true);
                 } else {
-                    histOff.put(dt);
+                    setProximityDetected(false);
                 }
-            }
-        }
-        histOn.computeStats();
-        histOff.computeStats();
-        if (histOn.proximityDetected() && histOff.proximityDetected()) {
-            setProximityDetected(true);
-        } else {
-            setProximityDetected(false);
+                break;
+            case RatioBeforeAfter:
+                for (BasicEvent o : in) {
+                    PolarityEvent e = (PolarityEvent) o;
+                    if (e.isSpecial()) { // got sync event indicating that camera has changed LED
+                        if (ledControl.getLEDState(0) == HasLEDControl.LEDState.ON) {
+                            lastLEDOn = true;
+                        } else {
+                            lastLEDOn = false; // TODO sloppy
+                        }
+                        lastLEDChangeTimestampUs = e.timestamp;
+                        eventCounter.reset();
+                    } else {
+                        int dt = e.timestamp - lastLEDChangeTimestampUs;
+                        eventCounter.putEvent(dt); // TODO dt is always >0 here, should be <0 for events before flash
+                    }
+                }
+                // TODO decide proximity
+                break;
         }
         return in;
 
@@ -111,8 +193,14 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer, Fra
         if (renderer == null) {
             renderer = new TextRenderer(new Font("Monospaced", Font.PLAIN, 24), true, true);
         }
-        histOn.draw(gl, 80);
-        histOn.draw(gl, 40);
+        switch (method) {
+            case Histogram:
+                histOn.draw(gl, 80);
+                histOn.draw(gl, 40);
+                break;
+            case RatioBeforeAfter:
+                eventCounter.draw(gl);
+        }
     }
 
     /**
@@ -269,7 +357,7 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer, Fra
 //            System.out.println("");
             gl.glEnd();
             renderer.begin3DRendering();
-            String s = String.format("count=%6.1f + %-6.1f mean dt=%6.1f+ %-6.1f ms", meanCount, stdCount, histBinSizeUs*meanBin/1000, histBinSizeUs*stdBin/1000);
+            String s = String.format("count=%6.1f + %-6.1f mean dt=%6.1f+ %-6.1f ms", meanCount, stdCount, histBinSizeUs * meanBin / 1000, histBinSizeUs * stdBin / 1000);
             final float scale = .2f;
             renderer.draw3D(s, x, y - 5, 0, scale);
 //        Rectangle2D bounds=renderer.getBounds(s);
@@ -290,7 +378,7 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer, Fra
                 int b = counts[i];
                 sumCounts += b;
                 sumCounts2 += b * b;
-                float wb = counts[i] * (.5f+i);
+                float wb = counts[i] * (.5f + i);
                 weightedCount += wb;
             }
             meanCount = (float) sumCounts / histNumBins;
@@ -306,7 +394,7 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer, Fra
             } else {
                 float sumSq = 0;
                 for (int i = 0; i < histNumBins; i++) {
-                    float dev = (i+0.5f - meanBin);
+                    float dev = (i + 0.5f - meanBin);
                     float dev2 = dev * dev;
                     sumSq += counts[i] * dev2;
                 }
@@ -332,7 +420,7 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer, Fra
             if (sumCounts < countThreshold) {
                 return false;
             }
-            if (stdBin*histBinSizeUs/1000 > maxDeviationMs) {
+            if (stdBin * histBinSizeUs / 1000 > maxDeviationMs) {
                 return false;
             }
             if (meanBin * histBinSizeUs > 5000) { // TODO make parameter
@@ -412,5 +500,52 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer, Fra
             ledControl = (HasLEDControl) arg;
             ledControl.setLEDState(0, HasLEDControl.LEDState.OFF);
         }
+    }
+
+    /**
+     * @return the method
+     */
+    public Method getMethod() {
+        return method;
+    }
+
+    /**
+     * @param method the method to set
+     */
+    public void setMethod(Method method) {
+        this.method = method;
+        putString("method", method.toString());
+    }
+
+    /**
+     * @return the binDurationUs
+     */
+    public int getBinDurationUs() {
+        return binDurationUs;
+    }
+
+    /**
+     * @param binDurationUs the binDurationUs to set
+     */
+    synchronized public void setBinDurationUs(int binDurationUs) {
+        this.binDurationUs = binDurationUs;
+        putInt("binDurationUs", binDurationUs);
+        eventCounter.init();
+    }
+
+    /**
+     * @return the durationAfterFlashToCountUs
+     */
+    public int getDurationAfterFlashToCountUs() {
+        return durationAfterFlashToCountUs;
+    }
+
+    /**
+     * @param durationAfterFlashToCountUs the durationAfterFlashToCountUs to set
+     */
+    synchronized public void setDurationAfterFlashToCountUs(int durationAfterFlashToCountUs) {
+        this.durationAfterFlashToCountUs = durationAfterFlashToCountUs;
+        putInt("durationAfterFlashToCountUs", durationAfterFlashToCountUs);
+        eventCounter.init();
     }
 }
