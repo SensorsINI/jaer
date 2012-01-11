@@ -10,10 +10,10 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 
 /**
- *
+ * @depricated
  * @author Peter
  */
-public class BackgroundActivityExtended extends BackgroundActivityFilter {
+class BackgroundActivityExtended extends BackgroundActivityFilter {
     
     int dtm;
     

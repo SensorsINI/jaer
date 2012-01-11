@@ -50,7 +50,7 @@ public class ClassItUp extends SuperNetFilter {
     // Bar-Plot Handle
     Plotter plot;       // Numberreader object
 
-    int viewingIndex;   // Index of network to view through plotter
+    //int viewingIndex;   // Index of network to view through plotter
     
     // Plotting Type
     //int disptype=2; // 1: Plot, 2: Bar-Viewer
@@ -77,33 +77,37 @@ public class ClassItUp extends SuperNetFilter {
     // Filter Methods
 
     // Deal with incoming packet
-    @Override public EventPacket<?> filterPacket( EventPacket<?> P){
+    @Override public EventPacket<?> filterPacket( EventPacket<?> in){
         
-        if(!filterEnabled) return P;
+        if(!filterEnabled) return in;
         
         int k=0;
         int dim=128;
         //int dim=32;
 
         //EventPacket Pout=dickChainy.filterPacket(P);
-        out=P;
+        out=enclosedFilterChain.filterPacket(in);
+        
         if (Net==null)
         {   return out;
         }
                 
+        
+        
+        /*
         if (enclosedFilter != null) {
             out = enclosedFilter.filterPacket(out);
         }
-        
+        */
         
         if (out.getEventClass() == ClusterEvent.class)
-        {   updateMapping(((ClusterSet)super.enclosedFilter).getClusters());
+        {   //updateMapping(((ClusterSet)super.enclosedFilter).getClusters());
             for(Object e:out)
             { // iterate over the input packet**
                 
                 ClusterEvent E=(ClusterEvent)e; // cast the object to basic event to get timestamp, x and y**
                 int index=clusterMapping.indexOf(E.getCluster());
-                Net.propagate(1,dim*E.x+dim-1-E.y,1,E.timestamp); 
+                Net.propagate(index,dim*E.x+dim-1-E.y,1,E.timestamp); 
             }
         }            
         else
@@ -111,7 +115,7 @@ public class ClassItUp extends SuperNetFilter {
             for(Object e:out)
             { // iterate over the input packet**
                 BasicEvent E=(BasicEvent)e; // cast the object to basic event to get timestamp, x and y**
-                Net.propagate(1,dim*E.x+dim-1-E.y,1,E.timestamp); 
+                Net.propagate(0,dim*E.x+dim-1-E.y,1,E.timestamp); 
             }
             
         }
@@ -142,7 +146,7 @@ public class ClassItUp extends SuperNetFilter {
         ArrayList clist=new ArrayList<Integer>();
         //for (ClusterSet.Cluster c:clusterList)
         //    clist.add(c.hashCode());
-        Iterator<Cluster> it = clusterList.iterator();
+        //Iterator<Cluster> it = clusterList.iterator();
         
         // Purge the clusters that no longer exist
         for (ClusterSet.Cluster c:clusterList)
@@ -213,22 +217,26 @@ public class ClassItUp extends SuperNetFilter {
     //  Initialize the filter
     public  ClassItUp(AEChip  chip){
         super(chip);
+        
+        enclosedFilterChain.add(new NeuronMapFilter(chip));
+        
+        
         C=new ClusterSet(chip);
-        this.setEnclosedFilter(C);
+        enclosedFilterChain.add(C);
     }        
     
     // Nothing
     @Override public void initFilter(){
-         try{
-            doLoad_Network();
-            doChoosePlot(); // Setup the Plotter
-       }
-        catch(FileNotFoundException M){
-
-        }
-         catch(Exception E){
-            System.out.println(E.getMessage());
-        }        
+//         try{
+//            doLoad_Network();
+//            doChoosePlot(); // Setup the Plotter
+//       }
+//        catch(FileNotFoundException M){
+//
+//        }
+//         catch(Exception E){
+//            System.out.println(E.getMessage());
+//        }        
     }
     
     public int getNetCount(){

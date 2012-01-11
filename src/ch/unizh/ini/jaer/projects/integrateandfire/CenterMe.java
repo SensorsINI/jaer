@@ -19,8 +19,8 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 
 
 /**
- *
- * @author tobi
+ * @depricated
+ * @author Peter
  */
 public class CenterMe extends EventFilter2D {
 /* Centers the image by taking a moving average.  Note: it'd be nice to transform 

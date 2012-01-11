@@ -14,7 +14,8 @@ import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
- *
+ * @Description This filter serves as a user-interface to a map of integrate and
+ * fire neurons.  
  * @author Peter
  */
 public class NeuronMapFilter  extends SuperNetFilter {
@@ -42,7 +43,7 @@ public class NeuronMapFilter  extends SuperNetFilter {
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> P)  
     {
-        if (!this.filterEnabled) return null;
+        if (!filterEnabled) return P;
         
         if (NM==null) resetFilter();
         

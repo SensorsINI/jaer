@@ -10,6 +10,8 @@ package ch.unizh.ini.jaer.projects.integrateandfire;
 
 
 // JAER Stuff
+//import com.sun.xml.internal.bind.v2.runtime.unmarshaller.XsiNilLoader;
+import com.sun.opengl.util.GLUT;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -17,15 +19,20 @@ import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 
 
 import java.awt.geom.Point2D;
+import java.util.ArrayList;
+import java.util.List;
+import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTrackerEvent;
 
-
 /**
- * @description This is a handy class for 
+ * @description An extension of RectangularClusterTracker for generating typed 
+ * events, with new coordinates, based on cluster membership.
+ * 
  *
- * @author tobi
+ * @author Peter
  */
 public class ClusterSet extends RectangularClusterTracker {
+
 /* Centers the image by taking a moving average.  Note: it'd be nice to transform 
  * this to a moving median, to make it more noise tolerant, but it's a little 
  * trickier to program. */
@@ -34,11 +41,31 @@ public class ClusterSet extends RectangularClusterTracker {
     boolean scaleIt=getBoolean("scaleIt",true);
     boolean centerIt=getBoolean("centerIt",true);
     boolean transformPoints=getBoolean("transformPoints",false);
-    /*
+    
+    boolean showClusterIndex=getBoolean("showClusterIndex",false);
+    
+    boolean[] indexOccupied;
+    
+    protected void initIndexOccupied()
+    {
+        indexOccupied=new boolean[super.getMaxNumClusters()]; // Should be initialized to false by default
+        
+    }
+    
+    
+    
     public class Cluster extends RectangularClusterTracker.Cluster{
     
         float velx=0;
         float vely=0;
+        
+        int index=-1;          // Index associated with cluster.  Designed such that clusters have unique indeces.  Index never changes
+        
+        // Inconvenience of wrapping constructors (thanks Java!)
+        public Cluster(){super();}
+        public Cluster(BasicEvent ev){ super(ev);}
+        public Cluster(Cluster ein, Cluster dwei){super(ein,dwei);}
+        protected Cluster(BasicEvent ev, OutputEventIterator outItr) {super(ev,outItr);}
         
         @Override
         protected void addEvent(BasicEvent ev, OutputEventIterator outItr) {
@@ -48,52 +75,56 @@ public class ClusterSet extends RectangularClusterTracker {
             }
             ClusterEvent oe = (ClusterEvent) outItr.nextOutput();
             oe.copyFrom(ev);
-            
-            oe.clusterid=(byte)this.getClusterNumber();
-            
-            oe.type=oe.clusterid;
-//            oe.setX((short) getLocation().x);
-//            oe.setY((short) getLocation().y);
-            
-            //oe.setCluster(this);
+            //oe.clusterid=(byte)(this.index % chip.getRenderer().getTypeColors().length);
+            oe.clusterid=(byte)(Math.abs(this.index) % 4); // TODO: Do this properly
+            oe.nclusters=getMaxNumClusters();
+            //oe.type=oe.clusterid;
+            oe.setCluster(this);
         }
         
+        
         @Override
-        protected void updatePosition(BasicEvent event, float m)
-        {
-            float m1 = 1 - m;
-            //location.x = (m1 * location.x + m * event.x);
-            //location.y = (m1 * location.y + m * event.y);
-
-            velx = (m1 * velx + m * (event.x-location.x));
-            vely = (m1 * velx + m * (event.y-location.y));
-            
-            location.x=location.x+velx;
-            location.y=location.y+vely;
-            
-        };
-    
+        public void draw(GLAutoDrawable drawable) {
+            super.draw(drawable);
+            final int font = GLUT.BITMAP_HELVETICA_18;
+            if (showClusterIndex) {
+                chip.getCanvas().getGlut().glutBitmapString(font, String.format("ix=%d ", this.index));
+            }
+        }
     };
-    */
     
     
+    @Override
+    public Cluster createCluster() {
+        return new Cluster();
+    }
+
+    @Override
+    public Cluster createCluster(BasicEvent ev) {
+        return new Cluster(ev);
+    }
+
+    @Override
+    public Cluster createCluster(RectangularClusterTracker.Cluster one, RectangularClusterTracker.Cluster two) {
+        return new Cluster((Cluster)one, (Cluster)two);
+    }
+
+    @Override
+    public Cluster createCluster(BasicEvent ev, OutputEventIterator itr) {
+        return new Cluster(ev, itr);
+    }
     
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if (in.getSize() == 0) {
+        if (in.getSize() == 0 || !filterEnabled) {
             return in; // added so that packets don't use a zero length packet to set last timestamps, etc, which can purge clusters for no reason
-        }//        EventPacket out; // TODO check use of out packet here, doesn't quite make sense
-        /*
-        checkOutputPacketEventType(ClusterEvent.class);
-        if (enclosedFilter != null) {
-            in = enclosedFilter.filterPacket(in);
-            out = track((EventPacket<BasicEvent>) in);
-        } else {
-            out = track((EventPacket<BasicEvent>) in);
-        }*/
+        }
+        
         checkOutputPacketEventType(ClusterEvent.class);
         out = track((EventPacket<BasicEvent>) in);
         
         if (!filterEventsEnabled) return out; 
+        
+        updateIndexOccupied(); // Update the cluster indeces list
         
         for(Object e:out)
         {   // iterate over the input packet**
@@ -101,19 +132,13 @@ public class ClusterSet extends RectangularClusterTracker {
             //BasicEvent tmp=(BasicEvent)e;
             ClusterEvent E=(ClusterEvent)e; // cast the object to basic event to get timestamp, x and y**
             
-            
-            E.nclusters=super.getMaxNumClusters();
-            E.clusterid=(byte)(E.getCluster().getClusterNumber() % E.nclusters);
-            //E.type=E.clusterid; E.
-            
-            
-            //E.type=(byte) (E.getCluster().hashCode() % super.getMaxNumClusters()); // TODO: replace this
-            
             Point2D loc=E.getCluster().location;
             float dis=E.getCluster().getAverageEventDistance();
             
             E.xp=E.x;
             E.yp=E.y;
+            
+            System.out.println(E.getType());
             
             if (centerIt)
             {   E.xp-=loc.getX();
@@ -132,20 +157,39 @@ public class ClusterSet extends RectangularClusterTracker {
                 if (transformPoints)
                 {   E.x=E.xp;
                     E.y=E.yp;
-                    
                 }
             }
-            
-            //E.y+=64-loc.getY();
-            
-            //E.getCluster().hashCode();
         }
         
-        
-        /**/
         return out;
-        
     }
+    
+    protected void updateIndexOccupied()
+    {   // Alright surely ther's a more efficient way than this, but for now, this'll have to do.
+        
+        // Clear indeces
+        for (int i=0; i<indexOccupied.length; i++)
+            indexOccupied[i]=false;
+        
+        // Mark still-used places
+        for (Object c:clusters)
+            if (((Cluster)c).index!=-1)
+                indexOccupied[((Cluster)c).index]=true;
+                
+        // Occupy empty spaces with unused clusters
+        for (Object ci:clusters)
+            if (((Cluster)ci).index==-1) // If cluster has no index, search for first free one.
+                for (int i=0; i<indexOccupied.length; i++)
+                    if (!indexOccupied[i])
+                    {   ((Cluster)ci).index=i;
+                        indexOccupied[i]=true;
+                        break;
+                    }
+        
+        // By this point no cluster should have an index of -1.
+    }
+    
+    
     
     //==========================================================================
     // Initialization and Startup
@@ -153,33 +197,36 @@ public class ClusterSet extends RectangularClusterTracker {
     @Override public void initFilter(){
         super.initFilter();
         
-        // Gimme some default properties
-        super.setFilterEventsEnabled(true);
-        super.setSurroundInhibitionEnabled(true);
-        super.setSmoothMove(true);
-        super.setMaxNumClusters(4);
+        resetFilter();
     }
     
     // Read the Network File on filter Reset
     @Override public void resetFilter(){
         
+        // Gimme some default properties
+        super.setFilterEventsEnabled(true);
+        super.setSurroundInhibitionEnabled(true);
+        super.setSmoothMove(true);
+        this.setMaxNumClusters(4);
+        super.setClusterLifetimeWithoutSupportUs(500000);
     }
 
-    
     //  Initialize the filter
     public  ClusterSet(AEChip  chip){
         super(chip);
 
+        /*
         NeuronMapFilter NM=new NeuronMapFilter(chip);
         NM.initFilter();
         this.setEnclosedFilter(NM);
         this.filterEnabled=true;
+        */
         
-        // setPropertyTooltip("N", "Weight");
         setPropertyTooltip("Normalization","centerIt", "Chose whether to center the image");
         setPropertyTooltip("Normalization","scaleIt", "Chose whether to scale the image to the desired Scale");
         setPropertyTooltip("Normalization","desiredScale", "How big to make the normalized number");
         setPropertyTooltip("Normalization","transformPoints", "Should the event locations actually be transformed?");
+        setPropertyTooltip("Display","showClusterIndex", "Show the index of the cluster");
     }
     
     public boolean getCenterIt()
@@ -220,6 +267,24 @@ public class ClusterSet extends RectangularClusterTracker {
     {   transformPoints=value;
         getPrefs().putBoolean("ClusterSet.showScaled",value);
         support.firePropertyChange("showScaled",this.transformPoints,value);
+    }
+    
+    
+    @Override
+    public void setMaxNumClusters(int maxNumClusters)
+    {       
+        super.setMaxNumClusters(maxNumClusters);
+        initIndexOccupied();
+    }
+    
+    public void setShowClusterIndex(boolean value)
+    {   showClusterIndex=value;
+        getPrefs().putBoolean("ClusterSet.showClusterIndex",value);
+        support.firePropertyChange("showClusterIndex",this.showClusterIndex,value);
+    }
+    
+    public boolean getShowClusterIndex()
+    {   return showClusterIndex;
     }
 
 }
