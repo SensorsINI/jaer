@@ -21,5 +21,6 @@ public interface SuperNet {
     
     public void reset();
         
+    public String networkStatus();
     
 }

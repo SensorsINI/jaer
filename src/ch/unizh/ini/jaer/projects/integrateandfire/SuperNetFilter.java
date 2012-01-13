@@ -23,14 +23,16 @@ abstract public class SuperNetFilter  extends EventFilter2D {
      * 
      */
     
+    String networkStatus="No network loaded. Click 'Load_Network'";
+    
     // Do these really need to be here?
     float thresh=2;             // Neuron threshold
     float tau= .02f;            // Neuron time-constant
     float sat= .005f;            // Neuron time-constant
-    int downsamp=1;             // Downsampling factor
     public enum polarityOpts {all,on,off,diff};         // <1: just off events, >1: Just on events, 0: both;
     polarityOpts polarityPass=polarityOpts.diff;
     
+    boolean enableNetwork=true; // Enable events to pass through the network.  This class just provides the get/set interface.  It's up to subclasses to impement it.
     
     int lastTimeStamp=-100000;
     
@@ -53,14 +55,15 @@ abstract public class SuperNetFilter  extends EventFilter2D {
     public SuperNetFilter(AEChip  chip)
     {   super(chip);
         
-        setPropertyTooltip("Preprocessing","downSamp", "Downsampling");
+        setPropertyTooltip("input","polarityPass", "All: treat ON/OFF the same.  on/off: filter ON/OFF events.  diff:on events entered with negative weight");
         
-        setPropertyTooltip("General","thresh", "Firing threshold");
-        setPropertyTooltip("General","tau", "Membrane Potential Time-Constant");
-        setPropertyTooltip("General","sat", "Spike Recovery Time-Constant");
-        setPropertyTooltip("General","doubleThresh", "Double-Ended Threshold?");
-        setPropertyTooltip("General","polarityPass", "all: treat all events as spikes.  off/on: keep only off/on events.  diff:on gives +ive input, off gives -ive.");
-        
+        final String net="Network";
+        setPropertyTooltip(net,"thresh", "Firing threshold");
+        setPropertyTooltip(net,"tau", "Membrane Potential Time-Constant");
+        setPropertyTooltip(net,"sat", "Spike Recovery Time-Constant");
+        setPropertyTooltip(net,"doubleThresh", "Double-Ended Threshold?");
+        setPropertyTooltip(net,"enableNetwork", "Enable events to pass through the network");
+        setPropertyTooltip(net,"networkStatus", "Current state of the network");
     }
     
     public int getLastTimestamp()
@@ -101,16 +104,6 @@ abstract public class SuperNetFilter  extends EventFilter2D {
         NN.setSats(dt);
     }
     
-    public int getDownsamp() {
-        return this.downsamp;
-    }
-    
-    public void setDownsamp(int dt) {
-        getPrefs().putFloat("NetworkFilter.Downsamp",dt);
-        support.firePropertyChange("downsamp",this.downsamp,dt);
-        this.downsamp = dt;
-        this.resetFilter();
-    }   
     
     public polarityOpts getPolarityPass() {
         return this.polarityPass;
@@ -118,7 +111,7 @@ abstract public class SuperNetFilter  extends EventFilter2D {
     
     public void setPolarityPass(polarityOpts dt) {
         getPrefs().put("NetworkFilter.PolarityPass",dt.toString());
-        support.firePropertyChange("polarityPass",this.downsamp,dt);
+        support.firePropertyChange("polarityPass",this.polarityPass,dt);
         this.polarityPass = dt;
     }   
     
@@ -133,10 +126,36 @@ abstract public class SuperNetFilter  extends EventFilter2D {
         NN.setDoubleThresh(dt);
     }   
     
+    
+    public boolean getEnableNetwork() {
+        return this.enableNetwork;
+    }
+    
+    public void setEnableNetwork(boolean dt) {
+        getPrefs().putBoolean("ClassItUp.EnableNetwork",dt);
+        support.firePropertyChange("enableNetwork",this.enableNetwork,dt);
+        this.enableNetwork = dt;
+    }   
+    
     public void doReset_All_Neurons()
     {   NN.reset();
     }
     
+    public void modifyNetworkStatus(String status)
+    {   this.networkStatus=status;
+        setNetworkStatus(status);    
+    }
+    
+    public void setNetworkStatus(String status)
+    {   getPrefs().put("SuperNetFilter.networkStatus",this.networkStatus);   
+        
+         support.firePropertyChange("networkStatus",this.networkStatus,this.networkStatus);
+         this.setChanged();
+    }
+    
+    public String getNetworkStatus()
+    {   return networkStatus;
+    }
 }
 
         

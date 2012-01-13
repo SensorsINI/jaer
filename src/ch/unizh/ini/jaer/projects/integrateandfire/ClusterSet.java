@@ -54,18 +54,20 @@ public class ClusterSet extends RectangularClusterTracker {
     
     
     
-    public class Cluster extends RectangularClusterTracker.Cluster{
+    public class ExtCluster extends RectangularClusterTracker.Cluster{
     
         float velx=0;
         float vely=0;
         
         int index=-1;          // Index associated with cluster.  Designed such that clusters have unique indeces.  Index never changes
         
+        String tag="";
+        
         // Inconvenience of wrapping constructors (thanks Java!)
-        public Cluster(){super();}
-        public Cluster(BasicEvent ev){ super(ev);}
-        public Cluster(Cluster ein, Cluster dwei){super(ein,dwei);}
-        protected Cluster(BasicEvent ev, OutputEventIterator outItr) {super(ev,outItr);}
+        public ExtCluster(){super();}
+        public ExtCluster(BasicEvent ev){ super(ev);}
+        public ExtCluster(ExtCluster ein, ExtCluster dwei){super(ein,dwei);}
+        protected ExtCluster(BasicEvent ev, OutputEventIterator outItr) {super(ev,outItr);}
         
         @Override
         protected void addEvent(BasicEvent ev, OutputEventIterator outItr) {
@@ -88,30 +90,38 @@ public class ClusterSet extends RectangularClusterTracker {
             super.draw(drawable);
             final int font = GLUT.BITMAP_HELVETICA_18;
             if (showClusterIndex) {
-                chip.getCanvas().getGlut().glutBitmapString(font, String.format("ix=%d ", this.index));
+                chip.getCanvas().getGlut().glutBitmapString(font, String.format("ix=%d  ", this.index));
             }
+            
+            if (!tag.isEmpty())
+                    chip.getCanvas().getGlut().glutBitmapString(font, this.tag);
+        }
+        
+        public void annotate(String text){
+            final int font = GLUT.BITMAP_HELVETICA_18;
+            chip.getCanvas().getGlut().glutBitmapString(font, text);
         }
     };
     
     
     @Override
-    public Cluster createCluster() {
-        return new Cluster();
+    public ExtCluster createCluster() {
+        return new ExtCluster();
     }
 
     @Override
-    public Cluster createCluster(BasicEvent ev) {
-        return new Cluster(ev);
+    public ExtCluster createCluster(BasicEvent ev) {
+        return new ExtCluster(ev);
     }
 
     @Override
-    public Cluster createCluster(RectangularClusterTracker.Cluster one, RectangularClusterTracker.Cluster two) {
-        return new Cluster((Cluster)one, (Cluster)two);
+    public ExtCluster createCluster(RectangularClusterTracker.Cluster one, RectangularClusterTracker.Cluster two) {
+        return new ExtCluster((ExtCluster)one, (ExtCluster)two);
     }
 
     @Override
-    public Cluster createCluster(BasicEvent ev, OutputEventIterator itr) {
-        return new Cluster(ev, itr);
+    public ExtCluster createCluster(BasicEvent ev, OutputEventIterator itr) {
+        return new ExtCluster(ev, itr);
     }
     
     public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -138,7 +148,6 @@ public class ClusterSet extends RectangularClusterTracker {
             E.xp=E.x;
             E.yp=E.y;
             
-            System.out.println(E.getType());
             
             if (centerIt)
             {   E.xp-=loc.getX();
@@ -172,20 +181,24 @@ public class ClusterSet extends RectangularClusterTracker {
             indexOccupied[i]=false;
         
         // Mark still-used places
-        for (Object c:clusters)
-            if (((Cluster)c).index!=-1)
-                indexOccupied[((Cluster)c).index]=true;
+        for (Cluster c:clusters)
+            if (((ExtCluster)c).index!=-1)
+                indexOccupied[((ExtCluster)c).index]=true;
                 
         // Occupy empty spaces with unused clusters
-        for (Object ci:clusters)
-            if (((Cluster)ci).index==-1) // If cluster has no index, search for first free one.
+        for (Cluster ci:clusters)
+            if (((ExtCluster)ci).index==-1) // If cluster has no index, search for first free one.
                 for (int i=0; i<indexOccupied.length; i++)
                     if (!indexOccupied[i])
-                    {   ((Cluster)ci).index=i;
+                    {   ((ExtCluster)ci).index=i;
                         indexOccupied[i]=true;
                         break;
                     }
-        
+                    else if (i==indexOccupied.length-1)
+                    {   System.out.println("Error-- Should never get here");
+                        i=i+1;
+                        break;
+                    }
         // By this point no cluster should have an index of -1.
     }
     

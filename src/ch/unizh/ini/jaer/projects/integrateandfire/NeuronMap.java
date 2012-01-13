@@ -30,6 +30,7 @@ public class NeuronMap implements SuperNet {
     // =========================================================================
     // Active Methods
     
+    
     // Signal from input
     public void inputSpike(short cx, short cy, int timestamp, OutputEventIterator outItr) throws Exception
     {   // Equivalent to inputSpike(1,cx,cy,timestamp,outItr); // Left separate for minor performance gain.
@@ -108,6 +109,11 @@ public class NeuronMap implements SuperNet {
         if (fire){
             propagate(cx,cy,1,timestamp,outItr);
         }
+    }
+    
+    @Override
+    public String networkStatus(){
+        return "Neuron Map of size "+dimx+"x"+dimy;
     }
     
     // =========================================================================

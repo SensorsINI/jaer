@@ -6,13 +6,19 @@ package ch.unizh.ini.jaer.projects.integrateandfire;
 
 // Java  Stuff
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileNotFoundException;
 
 
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Scanner;
 import java.util.NoSuchElementException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.*;
+import javax.swing.filechooser.FileSystemView;
 import net.sf.jaer.event.OutputEventIterator;
 
 /**
@@ -35,6 +41,19 @@ public class Network implements SuperNet {
     public int maxdepth = 100;    // Maximum depth of propagation - prevents infinite loops in unstable recurrent nets.
     public byte id;
 
+    short indimX=128;
+    short indimY=128;
+    
+    /*  
+    public void feedfromstandard(short x, short y, int timestamp, OutputEventIterator outItr)
+    {   feedfromloc(x/128f,y/128f,timestamp,outItr);
+    }
+          
+    public void feedfromloc(float relx, float rely, int timestamp, OutputEventIterator outItr)
+    {   propagate(indimY*E.xp)
+        Net.propagate(index,dim*E.xp+dim-1-E.yp,1,E.timestamp); 
+    }*/
+    
     // Propagate 
     public void propagate(int source, int depth, int timestamp, OutputEventIterator outItr) {
         // Propagate an event through the network.
@@ -55,9 +74,13 @@ public class Network implements SuperNet {
                 propagate(c[source][i], depth + 1, timestamp, outItr);
             }
         }
-
     }
 
+    @Override
+    public String networkStatus(){
+        return "Network with "+N.length+" Neurons";
+    }
+    
     public void stimulate(int dest, float weight, int timestamp, OutputEventIterator outItr) {   // Directly stimulate a neuron with a given weight
 
         boolean fire = N[dest].spike(weight, timestamp, outItr);
@@ -125,11 +148,30 @@ public class Network implements SuperNet {
 
         @Override
         public void run() {
-            JFileChooser fc = new JFileChooser();
-            fc.setDialogTitle("Choose network weight file");
-
-            fc.showOpenDialog(null);
-            file = fc.getSelectedFile();
+            /*
+            try {
+                URL classpath=new URL(getClass().getClassLoader().getResource(".").getPath());
+                classpath.
+            } catch (MalformedURLException ex) {
+                Logger.getLogger(Network.class.getName()).log(Level.SEVERE, null, ex);
+            }*/
+            File initloc=new File(getClass().getClassLoader().getResource(".").getPath());
+            
+            //JFileChooser fc = new JFileChooser();
+            JFileChooser fc;
+                fc = new JFileChooser(initloc.getAbsolutePath());
+                //fc.setCurrentDirectory(new File(initloc.getAbsolutePath()));
+                fc.setDialogTitle("Choose network weight file (JAER/filterSettings/NeuralNets)");
+                        
+                fc.showOpenDialog(null);
+                file = fc.getSelectedFile();
+           
+            //fc.setSelectedFile(file);
+            //fc.setCurrentDirectory(initloc);
+            
+            //FileSystemView.getFileSystemView().getRoots()[0];
+              
+            
         }
     }
 
@@ -139,6 +181,7 @@ public class Network implements SuperNet {
         if (SwingUtilities.isEventDispatchThread()) {
             fc.run();
             
+            
         } else {
             try {
                 SwingUtilities.invokeAndWait(fc);
@@ -146,9 +189,8 @@ public class Network implements SuperNet {
                 log.warning(ex.toString());
                 return null;
             }
+            
         }
-
-
         return fc.file;
     }
 
@@ -264,41 +306,6 @@ public class Network implements SuperNet {
 
         }
         System.out.println("Done");
-
-
-
-        /*
-         * 
-        progressBar.setValue(i);
-        progressBar.updateUI();
-        f.update(null);*/
-
-
-        /*
-        // Add forward connection weights
-        sc.nextLine();          // Jump to start of Weight line
-        String lab=sc.next();              // Jump over label
-        w[i]=new float[rowLen]; // Start weight array
-        for (j=0;j<rowLen;j++){ // Loop though forward connections
-        w[i][j]=sc.nextFloat();
-        }
-        
-        // Add neuron bias
-        sc.nextLine();          // Jump to bias line
-        sc.next();              // Jump to bias value
-        N[i]=new Neuron();      // Initialize Neuron
-        //bias=sc.nextInt;      // Note: include bias
-        
-        // Add forward connection locations
-        sc.nextLine();          // Jump to connections line
-        sc.next();              // Jump to first connection
-        c[i]=new int[rowLen]; // Start weight array
-        for (j=0;j<rowLen;j++){ // Loop though forward connections
-        c[i][j]=sc.nextInt();
-        }
-        
-        sc.nextLine();          // Jump to next Neuron
-         */
 
     }
 }

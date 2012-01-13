@@ -8,25 +8,21 @@ package ch.unizh.ini.jaer.projects.integrateandfire;
 
 // JAER Stuff
 import java.io.File;
-import java.util.Iterator;
+import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
-import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.eventprocessing.FilterChain;
 
 // Java  Stuff
 //import java.io.File;
 import java.io.FileNotFoundException;
 
 // Swingers
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
 import javax.swing.JOptionPane;
-import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
-import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
+import javax.swing.SwingUtilities;
+import javax.xml.stream.EventFilter;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.graphics.FrameAnnotater;
 
 // Plotting packaging
 
@@ -37,7 +33,7 @@ import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
  * @description Attempts to classify digits
  * @author Peter
  */
-public class ClassItUp extends SuperNetFilter {
+public class ClassItUp extends SuperNetFilter implements FrameAnnotater {
     /* Network
      * Every Event-Source/Neuron has an integer "address".  When the event source
      * generates an event, it is propagated through the network.  
@@ -65,7 +61,7 @@ public class ClassItUp extends SuperNetFilter {
     
     //HashMap H;
     //ArrayList<ClusterSet.Cluster> clusterMapping;   // Mapping of cluster numbers to network indeces
-    ArrayList<Integer> clusterMapping;
+    //ArrayList<Integer> clusterMapping;
     
     ClusterSet C;  // Link to clustering filter
     
@@ -86,28 +82,30 @@ public class ClassItUp extends SuperNetFilter {
         //int dim=32;
 
         //EventPacket Pout=dickChainy.filterPacket(P);
-        out=enclosedFilterChain.filterPacket(in);
         
-        if (Net==null)
-        {   return out;
-        }
+        
+        if (enclosedFilterChain!=null)
+            in=enclosedFilterChain.filterPacket(in);
+        
+        if (Net==null || !enableNetwork)
+        {   out=in;
+            return out;
+        }              
                 
-        
-        
-        /*
-        if (enclosedFilter != null) {
-            out = enclosedFilter.filterPacket(out);
-        }
-        */
-        
+        out=in;
         if (out.getEventClass() == ClusterEvent.class)
-        {   //updateMapping(((ClusterSet)super.enclosedFilter).getClusters());
+        {   
+            // Iterate through events, send them through the network
             for(Object e:out)
             { // iterate over the input packet**
-                
                 ClusterEvent E=(ClusterEvent)e; // cast the object to basic event to get timestamp, x and y**
-                int index=clusterMapping.indexOf(E.getCluster());
-                Net.propagate(index,dim*E.x+dim-1-E.y,1,E.timestamp); 
+                int index=E.getCluster().index;
+                
+                if (index==-1)
+                {   System.out.println("Unaddressed cluster.  This shouldn't happen but hey look, it did big woop.");
+                    continue;
+                }
+                Net.propagate(index,dim*E.xp+dim-1-E.yp,1,E.timestamp); 
             }
         }            
         else
@@ -127,53 +125,16 @@ public class ClassItUp extends SuperNetFilter {
         EventPacket Pout=C.filterPacket(Pt); // Center Images
         int test2=P.getSize();
         */
-        
+        setClusterTags();
 
-        if (plot!=null) plot.update();
-        
+        if (plot!=null) 
+        {   plot.replot();
+        }
+            
         return out;
     }
     
     
-    public void initMapping()
-    {   //clusterMapping=Collections.nCopies(Net.N.length, null);
-        clusterMapping=new ArrayList<Integer>();
-    }
-    
-    void updateMapping(List<ClusterSet.Cluster> clusterList)
-    {   // Update the mapping from list index to Network index
-        // Make a list of the hash maps
-        ArrayList clist=new ArrayList<Integer>();
-        //for (ClusterSet.Cluster c:clusterList)
-        //    clist.add(c.hashCode());
-        //Iterator<Cluster> it = clusterList.iterator();
-        
-        // Purge the clusters that no longer exist
-        for (ClusterSet.Cluster c:clusterList)
-            if (!clusterMapping.contains(c.hashCode()))
-            {    clusterMapping.add(c.hashCode());
-                clist.add(c.hashCode());
-            } 
-            
-        for (int i=0;i<clusterMapping.size(); i++)
-            if (!clist.contains(clusterMapping.get(i)))
-                clusterMapping.remove(clusterMapping.get(i));
-                
-                   /* 
-        for (ClusterSet.Cluster c:clusterMapping)
-            if (!clusterList.contains(c))
-                clusterMapping.remove(c);
-                //c=null;
-        
-        // Add the new clusters
-        for (ClusterSet.Cluster c:clusterList)
-            if (!clusterMapping.contains(c))
-                clusterMapping.add(c);
-                //else
-                //    clusterMapping.set(clusterMapping.indexOf(null),c);
-               */
-    }
-
     // Read the Network File on filter Reset
     @Override public void resetFilter() {
         initFilter();
@@ -184,6 +145,13 @@ public class ClassItUp extends SuperNetFilter {
 
     public void doChoosePlot(){
 
+        if (plot!=null)
+        {   // Thread safety (am I doing it right?)
+            Plotter ptemp=plot;
+            plot=null;
+            ptemp.dispose();
+        }
+        
         Object[] options = {"LivePlotter","Number Display","Unit Probe"};
         int n = JOptionPane.showOptionDialog(null,
             "How you wanna display this?",
@@ -200,13 +168,13 @@ public class ClassItUp extends SuperNetFilter {
                 plot=new LivePlotter();
                 break;
             case 1: // Swing Display for numbers
-                plot=new NumberPlot();
+                plot=new NumberReader();
                 break;
             case 2:
-                plot=new UnitProbe();
+                plot=new Probe();
                 break;
         }
-        plot.load(this, Net.N[current]);
+        plot.load(this, Net);
         plot.init();
     }
     
@@ -218,25 +186,32 @@ public class ClassItUp extends SuperNetFilter {
     public  ClassItUp(AEChip  chip){
         super(chip);
         
-        enclosedFilterChain.add(new NeuronMapFilter(chip));
+        FilterChain dickChainy=new FilterChain(chip);
+                
+        // Neuron Map Filter for sparsifying input (saving cycles!)
+        //NeuronMapFilter N=new NeuronMapFilter(chip);
+        //N.setFilterEnabled(false);
+        //N.initFilter();
         
-        
+        // Clustering Filter
         C=new ClusterSet(chip);
-        enclosedFilterChain.add(C);
+                
+        dickChainy.add(new PreProcess(chip));
+        //dickChainy.add(N);
+        dickChainy.add(C);
+        
+        setEnclosedFilterChain(dickChainy);
+        
+        setPropertyTooltip("Network","netCount", "Number of networks to use in parallel: Will also change the number of clusters");
+        
+        putString("Status","Great!");
     }        
     
     // Nothing
     @Override public void initFilter(){
-//         try{
-//            doLoad_Network();
-//            doChoosePlot(); // Setup the Plotter
-//       }
-//        catch(FileNotFoundException M){
-//
-//        }
-//         catch(Exception E){
-//            System.out.println(E.getMessage());
-//        }        
+        setAnnotationEnabled(true);
+        
+        enclosedFilterChain.reset();
     }
     
     public int getNetCount(){
@@ -250,21 +225,24 @@ public class ClassItUp extends SuperNetFilter {
     }
     
     public void doLoad_Network() throws FileNotFoundException, Exception
-    {   genFile=null;
-        Net=new NetworkArray(0);
-        /*
-        genFile=null;
-        getGenFile();
+    {   
+        setEnableNetwork(false);
         
-        for (Network n:Net.N)
-        {   n=new Network();
-            n.readfile(genFile); /// Ugh cloning would be much quicker
-        }
-                           
-        //Net.readfile(); // Read that Saved Neural Network file
-        NN=Net;*/
-        setNetCount(4);
-        NN.setThresholds(500);
+        genFile=null;
+        Net=new NetworkArray(0);
+        setNetCount(4); // File's read in here
+        Net.setThresholds(500);
+        NN=Net;
+                
+        // Stop Top layer from firing!
+        int i;
+        for (Network nn:Net.N)
+            for (i=1; i<11; i++)
+                nn.N[nn.N.length-i].thresh=100000;
+        
+        modifyNetworkStatus(Net.networkStatus());
+        
+        setEnableNetwork(true);
     }
     
     public File getGenFile()  throws FileNotFoundException, Exception
@@ -276,14 +254,16 @@ public class ClassItUp extends SuperNetFilter {
     }
     
     public void setNetCount(int count) throws FileNotFoundException, Exception
-    {   C.setMaxNumClusters(netCount);
+    {   
+        this.filterEnabled=false;
+        C.setMaxNumClusters(netCount);
         if (count < Net.N.length)
             Net.N=Arrays.copyOfRange(Net.N, 0, count-1);
         else
         {   Network[] nn=new Network[count];
             for (int i=0; i<count-Net.N.length; i++)
              {   if (i<Net.N.length)
-                     nn[i]=Net.N[i];
+                    nn[i]=Net.N[i];
                  else
                  {  nn[i]=new Network();
                     nn[i].readfile(getGenFile());
@@ -292,13 +272,43 @@ public class ClassItUp extends SuperNetFilter {
             }
             Net.N=nn;
         }
-        initMapping();
-        
         
         netCount=count;
+        tagNetworks();
+        this.filterEnabled=true;
+    }
+    
+    public Network getCurrentNet()
+    {   return Net.N[current];        
+    }
+    
+    private void tagNetworks()
+    {   // Tags the neurons with output labels.
+        for (Network net:Net.N)
+            for (int i=0; i<10; i++)
+                net.N[net.N.length-10+i].tag=(char)('0'+i);
     }
     
     
+    public void setClusterTags()
+    {   if (C==null) return; 
+    
+        for (ClusterSet.Cluster c:C.getClusters())
+            ((ClusterSet.ExtCluster)c).tag="["+getWinnerTag(Net.N[((ClusterSet.ExtCluster)c).index])+"?]";
+        
+    }
+    
+    public char getWinnerTag(Network netnet)
+    {   float vmax=-100000, vout;
+        int i,imax=0;
+        for (i=netnet.N.length-10; i<netnet.N.length; i++)
+        {   vout=netnet.N[i].get_vmem(getLastTimestamp());
+            if (vout>vmax) {vmax=vout; imax=i;}
+        }
+        return netnet.N[imax].tag;
+    }
+    
+   
     // Nothing
     public ClassItUp getFilterState(){
         return this;
@@ -308,5 +318,10 @@ public class ClassItUp extends SuperNetFilter {
 
     //------------------------------------------------------
 
+    @Override
+    public void annotate(GLAutoDrawable drawable) {
+        
+    }
+/**/
 
 }

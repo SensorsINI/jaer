@@ -24,6 +24,11 @@ public class ClusterEvent extends RectangularClusterTrackerEvent {
     
     public int nclusters=4;
         
+    @Override
+    public ClusterSet.ExtCluster getCluster()
+    {   return (ClusterSet.ExtCluster)super.getCluster();
+    }
+    
     @Override public int getType(){
         return clusterid;
     }

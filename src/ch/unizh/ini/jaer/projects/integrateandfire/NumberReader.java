@@ -11,12 +11,145 @@
 
 package ch.unizh.ini.jaer.projects.integrateandfire;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import javax.swing.JLabel;
+import javax.swing.JProgressBar;
+
 /**
  *
  * @author tobi
  */
-public class NumberReader extends javax.swing.JFrame {
+public class NumberReader extends Plotter implements ActionListener{
 
+    
+    
+
+    Controller c;         // Controller Object
+
+    boolean enable=true;
+    //UnitProbe[] P=new UnitProbe[0];
+
+    ArrayList<MiniProbe> miniProbes;
+    class MiniProbe
+    {
+        JProgressBar hP;
+        ENeuron N;
+        JLabel lab;
+        public float lastmem;
+        
+        public MiniProbe(int N_, JProgressBar J_, JLabel L_)
+        {   init(N_, J_, L_);
+        }
+        
+        final void init(int N_, JProgressBar J_, JLabel L_)
+        {   N=NN.N[N_];
+            hP=J_;     
+            lab=L_;
+            
+            lab.setText("#"+N_+": '"+N.tag+"'");
+        }
+        
+        void update(float scalefac,int timestamp)
+        {   lastmem=N.get_vmem(timestamp);
+            hP.setValue((int) (100/(1+Math.exp(-lastmem*scalefac))));
+        }
+        
+    }
+    
+    
+    
+    List<Probe> P = new ArrayList<Probe>(0);
+
+    void NumberPlot(SuperNetFilter F_, Network NN_){load(F_,NN_);}
+    
+    @Override public void init()
+    {
+        enable=false;
+        
+        // Make a list of links connecting neurons to their nets.
+        miniProbes=new ArrayList<MiniProbe>();
+        JProgressBar[] jbars={jBar1,jBar2,jBar3,jBar4,jBar5,jBar6,jBar7,jBar8,jBar9,jBar0};
+        JLabel[] jlabs={jLabel1,jLabel2,jLabel3,jLabel4,jLabel5,jLabel6,jLabel7,jLabel8,jLabel9,jLabel10};
+        for (int i=0; i<10; i++)
+            miniProbes.add(new MiniProbe(NN.N.length-10+i,jbars[i],jlabs[i]));
+            
+        this.setVisible(true);
+        this.jSlider.setValue(10);
+        
+        this.pushProbe.addActionListener(this);
+        this.pushControl.addActionListener(this);
+
+        this.setTitle("Network "+this.currentNet);
+        
+        comboNet.removeAllItems();
+        for (int i=0;i<NA.N.length;i++)
+        {    comboNet.addItem("Network "+i);
+        }
+        
+        enable=true;
+    }
+    
+    @Override
+    void refresh() {
+        init();
+    }
+
+    @Override public void update()
+    {
+        if (!enable)
+            return;
+        
+        // Prevent top layer from firing
+        float[] vout=new float[10];
+               
+        // Update all values
+        char maxlab='?';
+        float vmax=Float.NEGATIVE_INFINITY;
+        int timestamp=F.getLastTimestamp();
+        float scalefac=(float) (jSlider.getValue()) /100;
+        for (MiniProbe m:miniProbes)
+        {   m.update(scalefac,timestamp);
+            if (m.lastmem>vmax)
+            {   vmax=m.lastmem;
+                maxlab=m.N.tag;                
+            }
+        }
+        
+        // Decide on the number
+        if (vmax>0)
+            this.jResult.setText("" + maxlab);
+        else 
+            this.jResult.setText("?");
+                
+        Iterator<Probe> Pit = P.iterator();
+	while (Pit.hasNext()) {
+            Pit.next().update();
+	}
+
+    }
+
+    @Override public void actionPerformed(ActionEvent e) {
+        if (e.getSource()==this.pushProbe)
+        {   Probe p=new Probe();
+            p.load(F,NN);
+            p.init();
+            P.add(p);
+        }
+        else if (e.getSource()==this.pushControl)
+        {    c=new Controller();
+             c.load(F,NN);
+             c.init();
+        }
+    }
+
+
+    
+    
+    
     /** Creates new form NumberReader */
     public NumberReader() {
         initComponents();
@@ -56,28 +189,30 @@ public class NumberReader extends javax.swing.JFrame {
         jResult = new javax.swing.JTextField();
         pushProbe = new javax.swing.JButton();
         pushControl = new javax.swing.JButton();
+        pushRefresh = new javax.swing.JButton();
+        comboNet = new javax.swing.JComboBox();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
-        jLabel1.setText("1");
+        jLabel1.setText("-");
 
-        jLabel2.setText("2");
+        jLabel2.setText("-");
 
-        jLabel3.setText("3");
+        jLabel3.setText("-");
 
-        jLabel4.setText("4");
+        jLabel4.setText("-");
 
-        jLabel5.setText("5");
+        jLabel5.setText("-");
 
-        jLabel6.setText("6");
+        jLabel6.setText("-");
 
-        jLabel7.setText("7");
+        jLabel7.setText("-");
 
-        jLabel8.setText("8");
+        jLabel8.setText("-");
 
-        jLabel9.setText("9");
+        jLabel9.setText("-");
 
-        jLabel10.setText("0");
+        jLabel10.setText("-");
 
         jLabel11.setText("Sensitivity");
 
@@ -97,6 +232,20 @@ public class NumberReader extends javax.swing.JFrame {
             }
         });
 
+        pushRefresh.setText("Refresh");
+        pushRefresh.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                pushRefreshActionPerformed(evt);
+            }
+        });
+
+        comboNet.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        comboNet.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                comboNetActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -108,7 +257,9 @@ public class NumberReader extends javax.swing.JFrame {
                         .addComponent(jLabel11))
                     .addGroup(layout.createSequentialGroup()
                         .addGap(29, 29, 29)
-                        .addComponent(jSlider, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(comboNet, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jSlider, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
                 .addGap(31, 31, 31)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                     .addComponent(pushProbe, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -135,12 +286,12 @@ public class NumberReader extends javax.swing.JFrame {
                             .addComponent(jBar5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(jBar4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(jBar3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 47, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 53, Short.MAX_VALUE)
                         .addComponent(jResult, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(43, 43, 43))
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(jBar2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addContainerGap(135, Short.MAX_VALUE))
+                        .addContainerGap(141, Short.MAX_VALUE))
                     .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jBar1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -148,12 +299,23 @@ public class NumberReader extends javax.swing.JFrame {
                             .addComponent(jBar0, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(jBar8, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(jBar7, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addContainerGap(135, Short.MAX_VALUE))))
+                        .addContainerGap(141, Short.MAX_VALUE))))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addGap(260, 260, 260)
+                .addComponent(pushRefresh, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGap(38, 38, 38)
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(pushRefresh)
+                        .addGap(4, 4, 4))
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(comboNet, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)))
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jBar1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel1))
@@ -221,6 +383,15 @@ public class NumberReader extends javax.swing.JFrame {
         // TODO add your handling code here:
     }//GEN-LAST:event_pushControlActionPerformed
 
+    private void pushRefreshActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pushRefreshActionPerformed
+        refresh();
+    }//GEN-LAST:event_pushRefreshActionPerformed
+
+    private void comboNetActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_comboNetActionPerformed
+        // TODO add your handling code here:
+        setCurrentNet(comboNet.getSelectedIndex());
+    }//GEN-LAST:event_comboNetActionPerformed
+
     /**
     * @param args the command line arguments
     */
@@ -233,6 +404,7 @@ public class NumberReader extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JComboBox comboNet;
     public javax.swing.JProgressBar jBar0;
     public javax.swing.JProgressBar jBar1;
     public javax.swing.JProgressBar jBar2;
@@ -258,6 +430,7 @@ public class NumberReader extends javax.swing.JFrame {
     public javax.swing.JSlider jSlider;
     public javax.swing.JButton pushControl;
     public javax.swing.JButton pushProbe;
+    public javax.swing.JButton pushRefresh;
     // End of variables declaration//GEN-END:variables
 
 }

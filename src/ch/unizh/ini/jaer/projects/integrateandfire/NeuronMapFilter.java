@@ -69,7 +69,7 @@ public class NeuronMapFilter  extends SuperNetFilter {
                     case diff:
                         if (e.polarity==Polarity.Off) vv=-1;
                 }
-                NM.inputSig(vv,(short)(e.x/downsamp),(short)(e.y/downsamp),e.timestamp,outItr);
+                NM.inputSig(vv,(short)(e.x),(short)(e.y),e.timestamp,outItr);
                 /*
                 if ((polarityPass==0) || (polarityPass<0 && (e.polarity==e.polarity.Off)) || (polarityPass>0 && (e.polarity==e.polarity.On)))
                 {   
@@ -91,11 +91,11 @@ public class NeuronMapFilter  extends SuperNetFilter {
         
     }
 
-        
+        /*
     public int xy2ind(short x, short y)
     {   // Given input coordiates x,y, return the index
         
-        return (x/downsamp)*collength+y/downsamp;
+        return (x)*collength+y;
     }
     
     class coord
@@ -110,7 +110,7 @@ public class NeuronMapFilter  extends SuperNetFilter {
         c.y=(short)(ix%collength);
         return c;
     }
-           
+           */
             
     //==========================================================================
     // Initialization, UI
@@ -125,7 +125,6 @@ public class NeuronMapFilter  extends SuperNetFilter {
         setPropertyTooltip("Mapping","autoFilter","Auto Filter to use");
         setPropertyTooltip("Mapping","autoStrength","Modulate Strength of Auto-Connections");
         
-        
     }
     
     
@@ -137,10 +136,10 @@ public class NeuronMapFilter  extends SuperNetFilter {
     @Override
     public void initFilter() {
         
-        short dimx=(short) Math.ceil((float) chip.getSizeX()/ (float) downsamp);
-        short dimy=(short) Math.ceil((float) chip.getSizeY()/ (float) downsamp);
+        short dimx=(short) Math.ceil((float) chip.getSizeX());
+        short dimy=(short) Math.ceil((float) chip.getSizeY());
         
-        float wmag=1/(downsamp^2);        
+        float wmag=1;        
         
         collength=dimy;
         NM=new NeuronMap();
@@ -207,9 +206,11 @@ public class NeuronMapFilter  extends SuperNetFilter {
     }
         
     public void setAutoStrength(float v) {
+        this.autoStrength=v;
+        NM.autoStrength=v;
         getPrefs().putFloat("NeuronMapFilter.autoStrength",v);
         support.firePropertyChange("autoStrength",this.autoStrength,v);
-        NM.autoStrength=v;
+        
     }
     
     public float getAutoStrength() {

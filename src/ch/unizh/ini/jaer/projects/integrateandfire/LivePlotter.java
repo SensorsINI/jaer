@@ -68,6 +68,11 @@ public class LivePlotter extends Plotter {
 */
     }
 
+    @Override
+    void refresh() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
 
 
 }

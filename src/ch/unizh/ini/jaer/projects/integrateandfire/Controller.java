@@ -268,6 +268,11 @@ public class Controller extends Plotter /*javax.swing.JFrame*/  {
 
     }
 
+    @Override
+    void refresh() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
 
 
 }

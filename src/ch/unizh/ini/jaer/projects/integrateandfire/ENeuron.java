@@ -17,6 +17,7 @@ public class ENeuron extends Neuron{
     short x=0;            // Associated x coordinate
     short y=0;            // Associated y coordinate
     byte type=0;          // Byte identifying map/layer/whatever
+    public char tag='x';  // "tag" to label individual neurons
     boolean out=false;    // Is the neuron an output neuron?
     
     public boolean spike(float w,int timestamp,OutputEventIterator outItr){
@@ -25,10 +26,11 @@ public class ENeuron extends Neuron{
         
         boolean didit=super.spike(w,timestamp);
         if (out && didit){
-            TypedEvent e=(TypedEvent)outItr.nextOutput(); 
+            TypedEvent e=(TypedEvent)outItr.nextOutput();             
             e.x=x;
             e.y=y;
             e.type=type;
+            e.timestamp=timestamp;
         }
         return didit;
     }

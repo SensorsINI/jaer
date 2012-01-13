@@ -55,6 +55,11 @@ public class NetworkArray implements SuperNet{
     }
 
     @Override
+    public String networkStatus(){
+        return "Network Array with "+N.length+" Networks";
+    }
+    
+    @Override
     public void setThresholds(float thresh)
     {   for (SuperNet n:N)
             n.setThresholds(thresh);    
