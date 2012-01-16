@@ -16,7 +16,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 /**
  * Abstract class for motion chips. Provides some static variables methods for 
  * motion chips. The class mainly serves to allow late binding.
- *
+ * 
  * @author reto
  */
 
@@ -32,11 +32,13 @@ public  abstract class Chip2DMotion extends Chip2D {
     /** can be used to hold reference to last motion data */
     public MotionData lastMotionData=null;
     public ChipCanvas[]canvasArray;
+    public OpticalFlowIntegrator integrator= null; // keeps track on accumulative effect of motions values
 
 
 
     public  Chip2DMotion() {
         super();
+        integrator= new OpticalFlowIntegrator(this);
     }
 
 

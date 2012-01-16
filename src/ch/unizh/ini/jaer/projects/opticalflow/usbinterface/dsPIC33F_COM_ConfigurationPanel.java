@@ -7,6 +7,7 @@ package ch.unizh.ini.jaer.projects.opticalflow.usbinterface;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
@@ -33,21 +34,28 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
     private dsPIC33F_COM_OpticalFlowHardwareInterface hardwareInterface;
     private dsPIC33F_COM_CommandLineWindow commandLineWindow;
     private String lastAnalyseName= "";
+    private boolean initializing;
 
     /** Creates new form dsPIC33F_COM_ConfigurationPanel */
     public dsPIC33F_COM_ConfigurationPanel(dsPIC33F_COM_OpticalFlowHardwareInterface hardwareInterface) {
+        initializing= true;
         this.hardwareInterface= hardwareInterface;
         
         initComponents();
         
         commandLineWindow= new dsPIC33F_COM_CommandLineWindow(hardwareInterface);
 
-        delaysCB.setSelectedItem("20");
-        
         comCombo.removeAllItems();
         comCombo.addItem("");
         for(String portName : hardwareInterface.getAvailablePortNames())
             comCombo.addItem(portName);
+
+        delaysCB.setSelectedItem( Integer.toString(hardwareInterface.getDelay1Ms()) ); // assume symmetric delays
+        onChipBiasCB.setSelected( hardwareInterface.isOnChipBiases() );
+        comCombo.setSelectedItem( hardwareInterface.getPortName() );
+        debuggingCB.setSelected( hardwareInterface.isDebugging() );
+        
+        initializing= false;
     }
 
     public void setStatus(String status) {
@@ -62,11 +70,18 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         onChipBiasCB.setSelected(b);
     }
     
-    public void answerReceived(String cmd,String answer)
+    public void answerReceived(final String cmd,String answer)
     {
-        // 'format'
-        answer= answer.replace(";", "\n\t");
-        commandLineWindow.logString("("+cmd+") > " + answer);
+        final String str= answer.replace(";", "\n\t"); // 'format'
+        
+        Runnable doUpdate= new Runnable() {
+            @Override
+            public void run() {
+                if (commandLineWindow.isValid())
+                    commandLineWindow.logString("("+cmd+") > " + str);
+            }
+        };
+        SwingUtilities.invokeLater(doUpdate);
     }
 
 
@@ -92,6 +107,8 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         jLabel2 = new javax.swing.JLabel();
         jLabel3 = new javax.swing.JLabel();
         delaysCB = new javax.swing.JComboBox();
+        debuggingCB = new javax.swing.JCheckBox();
+        fpnButton = new javax.swing.JButton();
 
         jLabel1.setText("port to use");
 
@@ -114,7 +131,6 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
             }
         });
 
-        streamingCB.setSelected(true);
         streamingCB.setText("streaming");
         streamingCB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -182,6 +198,20 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
             }
         });
 
+        debuggingCB.setText("dbg");
+        debuggingCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                debuggingCBActionPerformed(evt);
+            }
+        });
+
+        fpnButton.setText("FPN");
+        fpnButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                fpnButtonActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
@@ -197,11 +227,15 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
                                 .addComponent(comCombo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(statusText, javax.swing.GroupLayout.DEFAULT_SIZE, 476, Short.MAX_VALUE))
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                            .addGroup(layout.createSequentialGroup()
                                 .addComponent(resetButton)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(showCmdLineButton)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 215, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(debuggingCB)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(fpnButton, javax.swing.GroupLayout.DEFAULT_SIZE, 57, Short.MAX_VALUE)
+                                .addGap(111, 111, 111)
                                 .addComponent(jLabel3)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(delaysCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -226,7 +260,9 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
                     .addComponent(resetButton)
                     .addComponent(showCmdLineButton)
                     .addComponent(jLabel3)
-                    .addComponent(delaysCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(delaysCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(debuggingCB)
+                    .addComponent(fpnButton))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(analysisPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
@@ -240,6 +276,9 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void comComboActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_comComboActionPerformed
+        if (initializing)
+            return;
+        
         String portName= (String) comCombo.getSelectedItem();
 
         if (portName == null)
@@ -257,6 +296,15 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
 
     }//GEN-LAST:event_comComboActionPerformed
 
+    /**
+     * toggles streaming (i.e. stops streaming data if was streaming before
+     * and vice versa)
+     */
+    public void toggleStreaming() {
+        streamingCB.setSelected(!streamingCB.isSelected());
+        streamingCBActionPerformed(null);
+    }
+    
     private void streamingCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_streamingCBActionPerformed
         if (streamingCB.isSelected())
             hardwareInterface.startStreaming();
@@ -312,13 +360,23 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         hardwareInterface.setDelayMs(ms);                
     }//GEN-LAST:event_delaysCBActionPerformed
 
+    private void debuggingCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_debuggingCBActionPerformed
+        hardwareInterface.setDebugging(debuggingCB.isSelected());
+    }//GEN-LAST:event_debuggingCBActionPerformed
+
+    private void fpnButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_fpnButtonActionPerformed
+        hardwareInterface.setFPN();
+    }//GEN-LAST:event_fpnButtonActionPerformed
+
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton analyseButton;
     private javax.swing.JPanel analysisPanel;
     private javax.swing.JComboBox comCombo;
+    private javax.swing.JCheckBox debuggingCB;
     private javax.swing.JComboBox delaysCB;
+    private javax.swing.JButton fpnButton;
     private javax.swing.JComboBox frameSaveRateCB;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;

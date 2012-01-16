@@ -25,7 +25,9 @@ import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.GlobalOpticalFlowAnalyser;
 
 import gnu.io.PortInUseException;
 import java.util.Calendar;
+import java.util.prefs.Preferences;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 
 
 /**
@@ -52,7 +54,7 @@ import javax.swing.JPanel;
  * and read the documentation (particularly the "usage" section in the appendix) of 
  * the semester project for which this interface was written; the report for
  * that project can be downloaded at 
- * <a href="http://n.ethz.ch/~andstein/MDC2Dsrinivasan.pdf">http://n.ethz.ch/~andstein/MDC2Dsrinivasan.pdf</a> 
+ * <a href="http://people.ee.ethz.ch/~andstein/mdc2d/">http://people.ee.ethz.ch/~andstein/mdc2d/</a> 
  * <br /><br />
  *
  * @see ch.unizh.ini.jaer.projects.dspic.serial.StreamCommand
@@ -63,17 +65,19 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         implements MotionChipInterface,StreamCommandListener {
 
     static final Logger log=Logger.getLogger(dsPIC33F_COM_OpticalFlowHardwareInterface.class.getName());
+    static Preferences prefs = Preferences.userNodeForPackage(dsPIC33F_COM_OpticalFlowHardwareInterface.class);
     
     /** set this boolean to true to enable some more diagnostic messages to be
         shown in the log; may be turned of to avoid too many noisy messages */
-    public boolean debugging= true;
+    public boolean debugging= prefs.getBoolean("debugging", true);
 
     // we use Chip2DMotion even though we don't provide all the data...
     private Chip2DMotion chip;
     
     // a 'version conflict' will be displayed until the firmware matches this
     // version in its major number
-    public final static int PROTOCOL_VERSION= 6;
+    public final static int PROTOCOL_MAJOR= 6; // we need *exactly* this major
+    public final static int PROTOCOL_MINOR= 3; // we need *at least* this minor
 
     // the first word (16bit) of a message identifies its contents
     public final static int MESSAGE_RESET=              0x0000;
@@ -86,24 +90,24 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
     public final static int DSPIC_FCY= 39613750; // clock speed of microcontroller
     public final static int DSPIC_BRGVAL= 3; // used to calculate the baudRate
     public final static float DSPIC_DAC_SCALEFACTOR = 1.25f; // to get the exact displayed voltage values...
+    static final int MAX_POTS=16;
     
     // this delta is used to calculate the new voltage biases
     // (the original biases were estimated for a aVDD of 3.33V, but this board
     //  features a TPS79328 that provides an aVDD at 3.28V)
     private final static float VDD_SHOULD_BE= 3.33f;
     private final static float VDD_IS= 3.28f;
-    
-    // specify two different delays for image capture
-    protected int delay1_us = 20000;
-    protected int delay2_us = 20000;
 
-    
-    private int[] ipotValues=null; // cache of pot values used for checking which ones to send
-    private int[] vpotValues=null; // cache of pot values used for checking which ones to send
-    static final int MAX_POTS=64;
-    private int channel = MotionDataMDC2D.LMC1;
-    private boolean onChipADC = false; // see setChannel()
-    private int pd=1; // see setPowerdown()
+    // begin class state variables -- synchronized with device in initializeDevice()
+    protected String portName= prefs.get("port", ""); // "" means no connection
+    private int delay1_us = prefs.getInt("delay1", 20000); // delays between consecutive frames
+    private int delay2_us = prefs.getInt("delay2", 20000); // (alternate: delay1->delay2->delay1->...)
+    protected int[] ipotValues=null; // cache of pot values used for checking which ones to send
+    protected int[] vpotValues=null; // cache of pot values used for checking which ones to send
+    protected int channel = prefs.getInt("channel",MotionDataMDC2D.LMC1);
+    protected boolean onChipADC = prefs.getBoolean("onChipADC",false); // see setChannel()
+    protected boolean onChipBiases = prefs.getBoolean("onChipBiases",true);
+    // end class state variables
 
     // states of opening procedure; see open() and setPortName()
     private boolean triedOpening= false;
@@ -113,7 +117,6 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
 
     private StreamCommand serial;
     private dsPIC33F_COM_ConfigurationPanel configPanel;
-    private String portName;
 
     // these are used for buffering the data between the different threads
     // see use of DataConverter for details
@@ -139,7 +142,6 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         chip= new MDC2D();
         
         serial= new StreamCommand(this,DSPIC_FCY/(16*(DSPIC_BRGVAL+1)));
-        portName= null; // will be initialized in panel
         configPanel= new dsPIC33F_COM_ConfigurationPanel(this);
         configPanel.setStatus("not connected");
 
@@ -162,9 +164,10 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
             if (cmd.equals("version") || cmd.equals("reset") || verified) {
                 serial.sendCommand(cmd);
         
-            if (debugging)
-                System.err.format("%s : (%s)>\n", exactTimeString(), cmd);
-            }
+                if (debugging)
+                    System.err.format("%s : (%s)>\n", exactTimeString(), cmd);
+            } else
+                log.info("cannot send command "+cmd+" : not verified");
     }
 
     
@@ -180,8 +183,7 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         
         // set on-chip bias generator, ADC
         sendCommand("onchip " + (onChipADC?"1":"0"));
-        sendCommand("pd " + pd);
-        configPanel.setOnChipBias(pd == 0);
+        sendCommand("pd " + (onChipBiases?"0":"1"));
         
         // set capturing delays
         sendDelayCommands();
@@ -210,8 +212,7 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         if (isStreaming()) {
             stopStreaming();
             startStreaming();
-        } else
-            configPanel.setStreaming(false);
+        }
     }
 
     @Override
@@ -241,24 +242,38 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         verified= false;
         
         if (cmd.equals("version"))
-            configPanel.setStatus("no device attached");
+            updateStatus("no device attached");
     }
 
     @Override
     public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
-        pd= powerDown?1:0;
+        onChipBiases= !powerDown;
         if (!isOpen())
             return;
         
-        sendCommand("pd " + pd); // e.g. '0' or '1'
+        sendCommand("pd " + (onChipBiases?"0":"1"));
 
-        log.info("set pd=" + pd);
+        log.info("set pd=" + (onChipBiases?"0":"1"));
+    }
+
+    /**
+     * whether on-chip biases are used
+     * 
+     * @return <code>true</code> when <code>powerDown==0</code> (i.e. when
+     *      the on-chip bias generator is <i>not powered down</i>)
+     * @throws HardwareInterfaceException 
+     */
+    public boolean isOnChipBiases() {
+        return onChipBiases;
     }
 
     @Override
     public void setChannel(int bit, boolean onChip) throws HardwareInterfaceException {
         channel  = bit;
         onChipADC= onChip;
+        
+        prefs.putInt("channel", bit);
+        prefs.putBoolean("onChipADC", onChip);
         
         if (isOpen()) {
             sendCommand("onchip " + (onChipADC?"1":"0"));
@@ -271,6 +286,24 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
                 sendCommand("channel lmc2");
         }
     }
+    
+    /**
+     * get currently transmitted channel (only one channel transmitted at a time)
+     * @return index {@link MotionDataMDC2D}<code>.PHOTO/LMC1/LMC2</code>
+     * @throws HardwareInterfaceException 
+     */
+    public int getChannel() {
+        return channel;
+    }
+    
+    /**
+     * whether on-chip ADC is used (rather than the <code>dsPIC</code>'s own ADC)
+     * @return 
+     */
+    public boolean isOnChipADC() {
+        return onChipADC;
+    }
+    
 
     /**
      * sets the delay between frames according to this instances variables
@@ -301,7 +334,16 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
     public void setDelayMs(int delayMs) {
         delay1_us= 1000 * delayMs;
         delay2_us= 1000 * delayMs;
+        prefs.putInt("delay1", delay1_us);
+        prefs.putInt("delay2", delay2_us);
         sendDelayCommands();
+    }
+    
+    public int getDelay1Ms() {
+        return delay1_us / 1000;
+    }
+    public int getDelay2Ms() {
+        return delay2_us / 1000;
     }
 
 
@@ -444,6 +486,20 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         }
         
         /**
+         * @return true if this message contains a global motion vector
+         */
+        protected boolean hasPixelData(StreamCommandMessage msg)
+        {
+            switch( msg.getType() ){
+                case MESSAGE_WORDS:
+                case MESSAGE_WORDS_DXDY:
+                case MESSAGE_BYTES:
+                    return true;
+            }
+            return false;
+        }
+        
+        /**
          * @return true if this message should contain a global motion vector
          *      but some error occurred while calculating the motion vector value
          */
@@ -542,33 +598,36 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
                 // which is much more precise than the delay estimated here...
                 frame.setTimeCapturedMs(System.currentTimeMillis());
 
-                // set the raw pixel data -- for compatibility with the other
-                // code we indicate presence of all kind of data that is merely
-                // copied -- use setChannel() to change the transmitted pixel
-                // data...
-                frame.setContents( MotionData.PHOTO |
-                                   MotionDataMDC2D.LMC1 |
-                                   MotionDataMDC2D.LMC2 |
-                                   MotionDataMDC2D.ON_CHIP_ADC );
-                float[][][] rawData= frame.getRawDataPixel();
-                
-                // extract the transmitted channel into the first array...
-                for(int y=0; y<chip.getSizeY(); y++)
-                    for(int x=0; x<chip.getSizeX(); x++) 
-                    {
-                        int pixelValue= getFramePixel(message,x,y);
-                        if (pixelValue > 1024)
-                            // apparently, we lost our reading frame (the ADC
-                            // of the dsPIC is 10bit only...)
-                            return false;
-                        
-                        rawData[0][y][x]= convertPixelValue(pixelValue);
-                    }
-                
-                // ...and simply copy this data into all the other channels
-                for(int channel=1; channel<rawData.length; channel++)
+                if (hasPixelData(message)) {
+                    
+                    // set the raw pixel data -- for compatibility with the other
+                    // code we indicate presence of all kind of data that is merely
+                    // copied -- use setChannel() to change the transmitted pixel
+                    // data...
+                    frame.setContents( MotionData.PHOTO |
+                                       MotionDataMDC2D.LMC1 |
+                                       MotionDataMDC2D.LMC2 |
+                                       MotionDataMDC2D.ON_CHIP_ADC );
+                    float[][][] rawData= frame.getRawDataPixel();
+
+                    // extract the transmitted channel into the first array...
                     for(int y=0; y<chip.getSizeY(); y++)
-                        System.arraycopy(rawData[0][y], 0, rawData[channel][y], 0, chip.getSizeX());
+                        for(int x=0; x<chip.getSizeX(); x++) 
+                        {
+                            int pixelValue= getFramePixel(message,x,y);
+                            if (pixelValue > 1024)
+                                // apparently, we lost our reading frame (the ADC
+                                // of the dsPIC is 10bit only...)
+                                return false;
+
+                            rawData[0][y][x]= convertPixelValue(pixelValue);
+                        }
+
+                    // ...and simply copy this data into all the other channels
+                    for(int channel=1; channel<rawData.length; channel++)
+                        for(int y=0; y<chip.getSizeY(); y++)
+                            System.arraycopy(rawData[0][y], 0, rawData[channel][y], 0, chip.getSizeX());
+                }
 
                 
                 // we need at least 2 frames for motion...
@@ -614,6 +673,9 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
                         if (isAnalysing())
                             analyser.analyseMotionData(frame);
                         
+                        if (hasGlobalMotion(message))
+                            chip.integrator.addFrame(frame);
+                        
                     } else {
                        frame.setGlobalX2(0);
                        frame.setGlobalY2(0);
@@ -621,9 +683,9 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
                     
                 }
 
-            } catch (ArrayIndexOutOfBoundsException e) {
-                log.warning("Out of Bounds while unpacking message : " + e.getMessage());
-                return false;
+//            } catch (ArrayIndexOutOfBoundsException e) {
+//                log.warning("Out of Bounds while unpacking message : " + e.getMessage());
+//                return false;
 
             } catch (NoSuchElementException ex) {
                 // undocumented exception ?
@@ -634,6 +696,7 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
             } catch (NullPointerException ex) {
                 // this is common during debugging because past motion data gets lost
                 log.warning("caught null pointer exception");
+                ex.printStackTrace();
                 return false;
             }
             
@@ -764,6 +827,15 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         // which means in the unpackFrame() method just before the motion
         // is calculated
     }
+    
+    /**
+     * tells device to use current frame as a reference image to remove fixed
+     * pattern noise
+     */
+    public void setFPN() {
+        sendCommand("FPN zero");
+        sendCommand("FPN set");
+    }
 
 
 
@@ -803,7 +875,7 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
      * on the new port; this method should therefore not be called from within
      * a serial i/o thread.
      *
-     * @param portName OS specific
+     * @param portName OS specific (<code>null</code> means not connected)
      * @see dsPIC33F_COM_ConfigurationPanel
      * @see #open
      */
@@ -815,8 +887,9 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
             if (portName.equals(this.portName))
                 return;
         }
+        prefs.put("port", portName==null?"":portName);
         
-        configPanel.setStatus("");
+        updateStatus("");
 
         if (serial.isConnected())
             close();
@@ -862,26 +935,26 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         }
 
 
-        // send the DAC values
-        
-        for(int i=0;i<biasgen.getNumPots();i++)
-        {
-            VPot vpot=(VPot)biasgen.getPotArray().getPotByNumber(i);
-            int chan=vpot.getChannel(); // DAC channel for pot
-            int mv= (int) (1000*vpot.getVoltage());
-            if (mv > 2500)
-                mv += (int) (1000*(VDD_IS-VDD_SHOULD_BE)); // adjust pFETs for TPS79328
+        // send the DAC values -- only if on-chip generator powered down
+        if (!onChipBiases)
+            for(int i=0;i<biasgen.getNumPots();i++)
+            {
+                VPot vpot=(VPot)biasgen.getPotArray().getPotByNumber(i);
+                int chan=vpot.getChannel(); // DAC channel for pot
+                int mv= (int) (1000*vpot.getVoltage());
+                if (mv > 2500)
+                    mv += (int) (1000*(VDD_IS-VDD_SHOULD_BE)); // adjust pFETs for TPS79328
 
-            // send the new value (in mV) only if it has changed
-            if(vpotValues[chan] != mv) {
-                vpotValues[chan] = mv;
+                // send the new value (in mV) only if it has changed
+                if(vpotValues[chan] != mv) {
+                    vpotValues[chan] = mv;
 
-                if (debugging)
-                    System.err.println("setting DAC channel " + i + " ("+vpot.getName()+") to " + mv + " mV");
-                
-                sendCommand("DAC " + Integer.toHexString(i) +" "+ Integer.toHexString((int)(mv*DSPIC_DAC_SCALEFACTOR)));
+                    if (debugging)
+                        System.err.println("setting DAC channel " + i + " ("+vpot.getName()+") to " + mv + " mV");
+
+                    sendCommand("DAC " + Integer.toHexString(i) +" "+ Integer.toHexString((int)(mv*DSPIC_DAC_SCALEFACTOR)));
+                }
             }
-        }
 
 
         // cache on-chip bias currents
@@ -906,8 +979,8 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
                 ipotValues[sr]=ipot.getBitValue();
                 allEqual= false;
 
-                if (debugging)
-                    System.err.println("set IPot '"+ipot.getName()+"' value "+ipot.getBitValue()+" ("+ipot.getPhysicalValue()+ipot.getPhysicalValueUnits()+") into SR pos " +sr);
+//                if (debugging)
+//                    System.err.println("set IPot '"+ipot.getName()+"' value "+ipot.getBitValue()+" ("+ipot.getPhysicalValue()+ipot.getPhysicalValueUnits()+") into SR pos " +sr);
             }
 
             byte[] bin =ipot.getBinaryRepresentation();
@@ -918,7 +991,8 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         }
 
         // send the new shift register content if at least one IPot has changed
-        if (!allEqual) {
+        // -- only if on-chip generator powered up
+        if (!allEqual && onChipBiases) {
             StringBuilder allValues= new StringBuilder();
             for(int i=0; i<allbin.length; i++)
                 allValues.append(String.format("%02X", allbin[i]));
@@ -972,7 +1046,7 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         }
 
         serial.close();
-        configPanel.setStatus("not connected");
+        updateStatus("not connected");
 
         log.info("interface closed");
     }
@@ -1025,13 +1099,13 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
             // try to establish a serial connection
             serial.connect(portName);
         } catch (PortInUseException ex) {
-            configPanel.setStatus("port in use");
+            updateStatus("port in use");
             log.warning("port " + portName + " is already in use by another application");
             hardwareError= true;
             return;
         } catch (Exception ex) {
             // this happens if a non-compatible port is selected (baud rate etc)
-            configPanel.setStatus("I/O error");
+            updateStatus("I/O error");
             log.warning("I/O error while opening port " + portName + " : " + ex);
             hardwareError= true;
             return;
@@ -1046,14 +1120,14 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
             // it's our first try so we simply send a version command
             // and parse the output asynchronously...
             sendCommand("version");
-            configPanel.setStatus("verifying...");
+            updateStatus("verifying...");
             triedOpening= true;
         } else {
             // we already tried once and did not get a valid answer
             // this can be because the firmware crashed and needs a reset
             // the command ISR should be responding in any case
             sendCommand("reset");
-            configPanel.setStatus("tried reset...");
+            updateStatus("tried reset...");
             triedReset= true;
         }
     }
@@ -1189,6 +1263,26 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
             return -1;
         }
     }
+    
+    /**
+     * @return -1 in case of an error; the minor part of the version number
+     *      (that keeps track of new features) in all other cases
+     */
+    protected int getMinorVersion(String answer) {
+        if (answer.charAt(0) == '!' ||
+            !answer.contains("version"))
+            return -1;
+        
+        try {
+            String version= answer.substring(answer.lastIndexOf(' ') +1);
+            String minor= version.substring(version.indexOf('.')+1,version.length()-1); // discard newline
+            return Integer.parseInt(minor);
+            
+        } catch (IndexOutOfBoundsException ex) {
+            // version string could not be parsed
+            return -1;
+        }
+    }
 
     @Override
     public void answerReceived(String cmd,String answer) {
@@ -1200,10 +1294,11 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
 
         if (cmd.equals("version"))
         {
-            if (getMajorVersion(answer) == PROTOCOL_VERSION) {
+            if (getMajorVersion(answer) == PROTOCOL_MAJOR &&
+                getMinorVersion(answer) >= PROTOCOL_MINOR ) {
 
                 verified= true;
-                configPanel.setStatus("connected");
+                updateStatus("connected");
 
                 // once the connection is established and the device verified,
                 // it still needs to be initialized with biases etc
@@ -1212,14 +1307,14 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
 
             } else {
                 // clean up, indicate error
-                configPanel.setStatus("version conflict : " + answer);
+                updateStatus("version conflict : " + answer);
                 log.warning("version conflict : " + answer);
             }
         }
 
         // this always indicates an error
         if (answer.charAt(0) == '!') {
-            configPanel.setStatus("error : " + cmd);
+            updateStatus("error : " + cmd);
             log.warning("command error (" + cmd + ") : " + answer);
         }
     }
@@ -1229,6 +1324,21 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         // used for debugging the transmitted byte stream...
         return;
     }
+    
+    /**
+     * update the status text in configPanel from within any thread
+     * @param msg 
+     */
+    protected void updateStatus(final String msg) {
+        Runnable doUpdate= new Runnable() {
+            @Override
+            public void run() {
+                if (configPanel.isValid())
+                    configPanel.setStatus(msg);
+            }
+        };
+        SwingUtilities.invokeLater(doUpdate);
+    }
 
     @Override
     public void messageReceived(StreamCommandMessage message) {
@@ -1237,11 +1347,11 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         {
             // device start-up; -> re-initialize device...
             log.info("device reset message received");
-            if (getMajorVersion(message.getAsString()) == PROTOCOL_VERSION) {
+            if (getMajorVersion(message.getAsString()) == PROTOCOL_MAJOR) {
 
                 // we're up and running
                 verified= true;
-                configPanel.setStatus("connected");
+                updateStatus("connected");
                 // always initialize device after reset -- this synchronizes
                 // the device's state with this instance's
                 initializeDevice();
@@ -1251,7 +1361,7 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
 
             } else {
                 // clean up, indicate error
-                configPanel.setStatus("version conflict : " + message.getAsString());
+                updateStatus("version conflict : " + message.getAsString());
                 log.warning("version conflict : " + message.getAsString());
             }
             initializeDevice();
@@ -1285,6 +1395,15 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         } else
             // this should not happen in normal operation
             log.warning("streaming error : " + msg);
+    }
+
+    public boolean isDebugging() {
+        return debugging;
+    }
+
+    public void setDebugging(boolean debugging) {
+        this.debugging = debugging;
+        prefs.putBoolean("debugging",debugging);
     }
 
 }

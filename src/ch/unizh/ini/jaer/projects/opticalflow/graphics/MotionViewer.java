@@ -38,7 +38,7 @@ import java.util.logging.*;
 import java.util.prefs.*;
 import javax.imageio.*;
 import javax.swing.*;
-
+ 
 /**
  * Shows retina live and allows for controlling view and recording and playing back events.
  * @author  tobi
@@ -160,6 +160,14 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
                 }
             }
         });
+        
+        // restore window position
+        int x= prefs.getInt("Window.left", 0);
+        int y= prefs.getInt("Window.top", 0);
+        int w= prefs.getInt("Window.width", 1000);
+        int h= prefs.getInt("Window.height", 800);
+        setLocation(x,y);
+        setSize(new Dimension(w,h));
 
         playerControlPanel.setVisible(false);
 
@@ -1732,6 +1740,13 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
     }//GEN-LAST:event_measureTimeMenuItemActionPerformed
 
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
+        Dimension d= getSize();
+        Point p= getLocation();
+        prefs.putInt("Window.left", (int) p.getX());
+        prefs.putInt("Window.top", (int) p.getY());
+        prefs.putInt("Window.width", (int) d.getWidth());
+        prefs.putInt("Window.height", (int) d.getHeight());
+        
         log.info("window closing event, only 1 viewer so calling System.exit");
         stopMe();
         System.exit(0);

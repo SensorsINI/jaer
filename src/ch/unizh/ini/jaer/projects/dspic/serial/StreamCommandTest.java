@@ -498,7 +498,7 @@ public class StreamCommandTest extends javax.swing.JFrame
     }//GEN-LAST:event_syncCBActionPerformed
 
     private void resetCodeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetCodeActionPerformed
-
+        logString("NOT IMPLEMENTED YET");
     }//GEN-LAST:event_resetCodeActionPerformed
 
     private void clearButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearButtonActionPerformed

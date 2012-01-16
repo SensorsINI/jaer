@@ -28,11 +28,15 @@
                               <EmptySpace max="-2" attributes="0"/>
                               <Component id="statusText" pref="476" max="32767" attributes="0"/>
                           </Group>
-                          <Group type="102" alignment="1" attributes="0">
-                              <Component id="resetButton" min="-2" max="-2" attributes="0"/>
+                          <Group type="102" alignment="0" attributes="0">
+                              <Component id="resetButton" min="-2" max="-2" attributes="1"/>
                               <EmptySpace max="-2" attributes="0"/>
                               <Component id="showCmdLineButton" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace pref="215" max="32767" attributes="0"/>
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Component id="debuggingCB" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Component id="fpnButton" pref="57" max="32767" attributes="1"/>
+                              <EmptySpace min="-2" pref="111" max="-2" attributes="0"/>
                               <Component id="jLabel3" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
                               <Component id="delaysCB" min="-2" max="-2" attributes="0"/>
@@ -65,6 +69,8 @@
                   <Component id="showCmdLineButton" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="jLabel3" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="delaysCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="debuggingCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="fpnButton" alignment="3" min="-2" max="-2" attributes="0"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
               <Component id="analysisPanel" min="-2" max="-2" attributes="0"/>
@@ -131,7 +137,6 @@
     </Component>
     <Component class="javax.swing.JCheckBox" name="streamingCB">
       <Properties>
-        <Property name="selected" type="boolean" value="true"/>
         <Property name="text" type="java.lang.String" value="streaming"/>
       </Properties>
       <AccessibilityProperties>
@@ -240,6 +245,22 @@
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="delaysCBActionPerformed"/>
+      </Events>
+    </Component>
+    <Component class="javax.swing.JCheckBox" name="debuggingCB">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="dbg"/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="debuggingCBActionPerformed"/>
+      </Events>
+    </Component>
+    <Component class="javax.swing.JButton" name="fpnButton">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="FPN"/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="fpnButtonActionPerformed"/>
       </Events>
     </Component>
   </SubComponents>

@@ -40,7 +40,7 @@ import java.util.logging.Logger;
  * Once the communication channel is opened + initialized, a stream of messages
  * is received from the microcontroller and forwarded to the registered
  * StreamCommandListener. The exact content of messages has to be interpreted
- * by the listening class. See getInSync() for documentation of the message
+ * by the listening class. See <code>getInSync()</code> for documentation of the message
  * format (apart from messages containing answers to commands).
  * <br /><br />
  * In case the messages get out of sync (which can happen when data bytes get
@@ -100,7 +100,7 @@ import java.util.logging.Logger;
  *   <li> The callbacks of <code>StreamCommandListener</code> are directly called
  *        called from within the serial-event handling thread; it is the listener's
  *        responsibility to immediately return and not to call <code>close()</code>
- *        or similar methods; ideally, this a separate thread would do this job...</li>
+ *        or similar methods; ideally, a separate thread would do this job...</li>
  * </ul>
 
  *

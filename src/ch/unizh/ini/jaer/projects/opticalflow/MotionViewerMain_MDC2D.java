@@ -13,7 +13,6 @@
 package ch.unizh.ini.jaer.projects.opticalflow;
 
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.*;
-import ch.unizh.ini.jaer.projects.opticalflow.motion18.*;
 import ch.unizh.ini.jaer.projects.opticalflow.graphics.*;
 import java.util.logging.Logger;
 

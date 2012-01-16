@@ -15,20 +15,24 @@ import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 
 /**
- * Displays output from an OpticalFlowChip. Optionally displays the photoreceptor and the local motion vectors. The local motion vectors are displayed
- either as color (red/blue) or as motion vector arrows.
- The global motion vector that is displayed is computed from the vector sum of local motion vectors. (The "global motion" vector captured from the chip is actually 
- just a corner pixel.)
- 
+ * Displays output from an OpticalFlowChip. Optionally displays the photoreceptor 
+ * and the local motion vectors. The local motion vectors are displayed either 
+ * as color (red/blue) or as motion vector arrows. The global motion vector 
+ * that is displayed is computed from the vector sum of local motion vectors. 
+ * (The "global motion" vector captured from the chip is actually  just a corner 
+ * pixel.) 
  *
- * @author tobi
- * 
- * 
- * changes by andstein
+ * <br /><br />
+ * changes by andstein:
  * <ul>
  * <li>added a second global motion vector (in red)</li>
+ * <li>possibility to integrate x/y coordinates over time; this results in a
+ *     dynamic transformation of the projection matrix and varying pixel-size;
+ *     see {@link OpticalFlowIntegrator}</li>
  * </ul>
- */
+ * 
+ * @author tobi
+*/
 public class OpticalFlowDisplayMethod extends DisplayMethod {
     
 //    HighpassFilter uxFilter, uyFilter, phFilter;
@@ -50,6 +54,7 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
             localDisplayEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.localDisplayEnabled",true),
             globalDisplayEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.globalDisplayEnabled",true),
             globalDisplay2Enabled=prefs.getBoolean("OpticalFlowDisplayMethod.globalDisplay2Enabled",true),
+            absoluteCoordinates=prefs.getBoolean("OpticalFlowDisplayMethod.absoluteCoordinatesEnabled",true),
             localMotionColorsEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.localMotionColorsEnabled",true);
 
     private int rawChannelToDisplay=0;
@@ -86,6 +91,9 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
         // get dt for filters
 //        long time=System.currentTimeMillis();
 //        int us=(int)((time-startTime)<<10); // to us from ms
+        
+        if (absoluteCoordinates)
+            ((Chip2DMotion) chip).integrator.glTransform(drawable,gl);
         
         gl.glClearColor(0,0,0,0);
         gl.glClear(GL.GL_COLOR_BUFFER_BIT);
@@ -145,6 +153,21 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
                 gl.glColor3f(red,green,blue);
                 gl.glRectf(col, row, col+1, (row+1));
             }
+        }
+        
+        if (absoluteCoordinates) {
+            // additional pixels
+            ((Chip2DMotion) chip).integrator.glDrawPixels(gl,photoOffset,scale*GAIN_FACTOR*photoGain);
+            
+            // border current frame
+            gl.glColor3f(0f,0f,1f);
+            gl.glLineWidth(2f);
+            gl.glBegin(GL.GL_LINE_LOOP);
+                gl.glVertex3f(0f,0f,0f);
+                gl.glVertex3f(chip.getSizeX(),0f,0f);
+                gl.glVertex3f(chip.getSizeX(),chip.getSizeY(),0f);
+                gl.glVertex3f(0f,chip.getSizeY(),0f);
+            gl.glEnd();
         }
 
         // get the global X and Y from motionData and rescale
@@ -257,6 +280,14 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
     
     public boolean isPhotoDisplayEnabled() {
         return photoDisplayEnabled;
+    }
+
+    public boolean isAbsoluteCoordinates() {
+        return absoluteCoordinates;
+    }
+
+    public void setAbsoluteCoordinates(boolean absoluteCoordinates) {
+        this.absoluteCoordinates = absoluteCoordinates;
     }
     
     public void setPhotoDisplayEnabled(boolean photoDisplayEnabled) {

@@ -7,17 +7,18 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.graphics;
 
+import ch.unizh.ini.jaer.hardware.pantilt.PanTiltParserPanel;
 import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MotionDataMDC2D;
-import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.MotionChipInterface;
 import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.OpticalFlowHardwareInterfaceFactory;
+import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.dsPIC33F_COM_ConfigurationPanel;
+import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.dsPIC33F_COM_OpticalFlowHardwareInterface;
 import java.awt.FlowLayout;
-import java.util.logging.Level;
+import java.awt.event.ActionEvent;
 import java.util.logging.Logger;
 import javax.swing.*;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 
 /**
  *
@@ -31,13 +32,12 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
  * <li>added the GUI elements for a second global motion vector</li>
  * </ul>
  */
-public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
+public final class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
     OpticalFlowDisplayMethod displayMethod=null;
     Chip2DMotion chip=null;
     MotionViewer viewer;
     int selectedChannel; // will be set by radio buttons
     static final Logger log=Logger.getLogger(OpticalFlowDisplayControlPanel.class.getName());
-    
 
     
     /** Creates new form OpticalFlowDisplayControlPanel
@@ -53,6 +53,18 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         enableLocalMotionCheckBox.setSelected(displayMethod.isLocalDisplayEnabled());
         enablePhotoreceptorCheckBox.setSelected(displayMethod.isPhotoDisplayEnabled());
         enabledLocalMotionColorsCheckBox.setSelected(displayMethod.isLocalMotionColorsEnabled());
+        enableAbsoluteCoordinates.setSelected(displayMethod.isAbsoluteCoordinates());
+        OFICPContainer.add( chip.integrator.getControlPanel() );
+        OFICPContainer.setLayout(new FlowLayout());
+        OFICPContainer.setVisible(displayMethod.isAbsoluteCoordinates());
+        servoPanel.setLayout(new FlowLayout());
+        PanTiltParserPanel parserPanel= new PanTiltParserPanel();
+        servoPanel.add(parserPanel);
+        chip.integrator.setPanTiltParserPanel(parserPanel);
+        //servoPanel.add(new PanTiltControlPanel());
+
+        
+        registerKeyBindings();
         
         // we have one combo group for the choice of the channel
         // displayed (and used for the motion calculations)
@@ -86,6 +98,41 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         setControlsVisible(true);
     }
 
+    /**
+     * creates new window-wide keybindings by inserting elemnts into the
+     * <code>WHEN_IN_FOCUSED_WINDOW</code> action map -- <b>beware</b> that
+     * the execution of these actions is unpredictable if the same keybinding
+     * is registered more than once
+     * <br /><br />
+     * 
+     * in this class, the action keys <code>F5-F8</code> are mapped to often
+     * used methods; feel free to changes this
+     */
+    protected void registerKeyBindings() {
+        
+        getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke("F5"), "toggleAbsoluteCoordinates");
+        getActionMap().put("toggleAbsoluteCoordinates", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                enableAbsoluteCoordinates.setSelected(!enableAbsoluteCoordinates.isSelected());
+                enableAbsoluteCoordinatesActionPerformed(e);
+            }
+        });
+        keyLabel1.setText("F5 : toggle absolute Coordinates");
+
+        getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke("F6"), "toggleStreaming");
+        getActionMap().put("toggleStreaming", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                JPanel p= viewer.hardware.getConfigPanel();
+                if (p instanceof dsPIC33F_COM_ConfigurationPanel)
+                    ((dsPIC33F_COM_ConfigurationPanel) p).toggleStreaming();
+            }   
+        });
+        keyLabel2.setText("F6 : toggle streaming");
+    }
 
     /**
      * updates the channel used for display & motion calculations
@@ -119,6 +166,32 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         MDC2D.setChannelForMotionAlgorithm(rawIndex);
 
 //        System.err.println("set channel displayed/calculated to " + rawIndex); //DBG
+    }
+    
+    /**
+     * synchronize controls with interface <code>viewer.hardware</code>
+     * 
+     * due to different hardware interfaces and continued "support" for older
+     * interfaces not used anymore, this is somewhat of a hack...
+     */
+    protected void updateHardwareControls() {
+        if (viewer.hardware instanceof dsPIC33F_COM_OpticalFlowHardwareInterface) {
+            dsPIC33F_COM_OpticalFlowHardwareInterface hwi= (dsPIC33F_COM_OpticalFlowHardwareInterface) viewer.hardware;
+
+            switch( hwi.getChannel() ) {
+                case MotionDataMDC2D.PHOTO:
+                    channelRecep.setSelected(true);
+                    break;
+                case MotionDataMDC2D.LMC1:
+                    channelLmc1.setSelected(true);
+                    break;
+                case MotionDataMDC2D.LMC2:
+                    channelLmc2.setSelected(true);
+                    break;
+            }
+
+            onChipADCSelector.setSelected(hwi.isOnChipADC());
+        }
     }
     
     // returns int 0-100 from float 0-1
@@ -163,6 +236,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         enabledLocalMotionColorsCheckBox = new javax.swing.JCheckBox();
         enablePhotoreceptorCheckBox = new javax.swing.JCheckBox();
         enableGlobalMotionCheckBox2 = new javax.swing.JCheckBox();
+        enableAbsoluteCoordinates = new javax.swing.JCheckBox();
         jPanel3 = new javax.swing.JPanel();
         rawChannelControlPanel1 = new javax.swing.JPanel();
         channelRecep = new javax.swing.JRadioButton();
@@ -184,6 +258,13 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         hardwareChoose = new javax.swing.JComboBox();
         hardwareConfigurationPanelContainer = new javax.swing.JPanel();
         placeHolder = new javax.swing.JPanel();
+        OFICPContainer = new javax.swing.JPanel();
+        keyBindingsPanel = new javax.swing.JPanel();
+        keyLabel1 = new javax.swing.JLabel();
+        keyLabel2 = new javax.swing.JLabel();
+        keyLabel3 = new javax.swing.JLabel();
+        keyLabel4 = new javax.swing.JLabel();
+        servoPanel = new javax.swing.JPanel();
 
         localPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Local motion"));
 
@@ -339,7 +420,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
             jPanel8Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(jPanel8Layout.createSequentialGroup()
                 .add(photoOffsetSlider, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(30, Short.MAX_VALUE))
         );
 
         jPanel9.setBorder(javax.swing.BorderFactory.createTitledBorder("Gain"));
@@ -364,7 +445,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
             jPanel9Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(jPanel9Layout.createSequentialGroup()
                 .add(photoGainSlider, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(30, Short.MAX_VALUE))
         );
 
         org.jdesktop.layout.GroupLayout photoPanelLayout = new org.jdesktop.layout.GroupLayout(photoPanel);
@@ -379,8 +460,8 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         );
         photoPanelLayout.setVerticalGroup(
             photoPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(jPanel8, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 45, Short.MAX_VALUE)
-            .add(jPanel9, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 45, Short.MAX_VALUE)
+            .add(jPanel8, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .add(jPanel9, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
 
         showHideToggleButton.setText("Show rendering controls");
@@ -430,7 +511,6 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         });
 
         enableGlobalMotionCheckBox2.setText("global motion average (firmware)");
-        enableGlobalMotionCheckBox2.setActionCommand("global motion average (firmware)");
         enableGlobalMotionCheckBox2.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         enableGlobalMotionCheckBox2.setMargin(new java.awt.Insets(0, 0, 0, 0));
         enableGlobalMotionCheckBox2.addActionListener(new java.awt.event.ActionListener() {
@@ -439,18 +519,29 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
             }
         });
 
+        enableAbsoluteCoordinates.setText("absolute Coordinates");
+        enableAbsoluteCoordinates.setToolTipText("\"scan mode\" : optical flow is integrated and view moves accordingly");
+        enableAbsoluteCoordinates.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        enableAbsoluteCoordinates.setMargin(new java.awt.Insets(0, 0, 0, 0));
+        enableAbsoluteCoordinates.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                enableAbsoluteCoordinatesActionPerformed(evt);
+            }
+        });
+
         org.jdesktop.layout.GroupLayout displayPanelLayout = new org.jdesktop.layout.GroupLayout(displayPanel);
         displayPanel.setLayout(displayPanelLayout);
         displayPanelLayout.setHorizontalGroup(
             displayPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(displayPanelLayout.createSequentialGroup()
-                .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap()
                 .add(displayPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                     .add(enableGlobalMotionCheckBox)
                     .add(enableGlobalMotionCheckBox2)
                     .add(enablePhotoreceptorCheckBox)
                     .add(enabledLocalMotionColorsCheckBox)
-                    .add(enableLocalMotionCheckBox)))
+                    .add(enableLocalMotionCheckBox)
+                    .add(enableAbsoluteCoordinates)))
         );
         displayPanelLayout.setVerticalGroup(
             displayPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
@@ -464,7 +555,9 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
                 .add(enabledLocalMotionColorsCheckBox)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(enablePhotoreceptorCheckBox)
-                .addContainerGap(37, Short.MAX_VALUE))
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(enableAbsoluteCoordinates)
+                .addContainerGap(16, Short.MAX_VALUE))
         );
 
         jPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder("MDC2D Control"));
@@ -674,18 +767,20 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         placeHolder.setLayout(placeHolderLayout);
         placeHolderLayout.setHorizontalGroup(
             placeHolderLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(0, 486, Short.MAX_VALUE)
+            .add(0, 470, Short.MAX_VALUE)
         );
         placeHolderLayout.setVerticalGroup(
             placeHolderLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(0, 91, Short.MAX_VALUE)
+            .add(0, 89, Short.MAX_VALUE)
         );
 
         org.jdesktop.layout.GroupLayout hardwareConfigurationPanelContainerLayout = new org.jdesktop.layout.GroupLayout(hardwareConfigurationPanelContainer);
         hardwareConfigurationPanelContainer.setLayout(hardwareConfigurationPanelContainerLayout);
         hardwareConfigurationPanelContainerLayout.setHorizontalGroup(
             hardwareConfigurationPanelContainerLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(placeHolder, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .add(hardwareConfigurationPanelContainerLayout.createSequentialGroup()
+                .add(placeHolder, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(129, Short.MAX_VALUE))
         );
         hardwareConfigurationPanelContainerLayout.setVerticalGroup(
             hardwareConfigurationPanelContainerLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
@@ -705,8 +800,68 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
             hardwareInterfacePanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(hardwareInterfacePanelLayout.createSequentialGroup()
                 .add(hardwareChoose, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(71, Short.MAX_VALUE))
+                .addContainerGap(69, Short.MAX_VALUE))
             .add(hardwareConfigurationPanelContainer, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+
+        OFICPContainer.setBorder(javax.swing.BorderFactory.createTitledBorder("OFI settings"));
+
+        org.jdesktop.layout.GroupLayout OFICPContainerLayout = new org.jdesktop.layout.GroupLayout(OFICPContainer);
+        OFICPContainer.setLayout(OFICPContainerLayout);
+        OFICPContainerLayout.setHorizontalGroup(
+            OFICPContainerLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(0, 100, Short.MAX_VALUE)
+        );
+        OFICPContainerLayout.setVerticalGroup(
+            OFICPContainerLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(0, 100, Short.MAX_VALUE)
+        );
+
+        keyBindingsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("key bindings"));
+
+        keyLabel1.setText("F5 : not used");
+
+        keyLabel2.setText("F6 : not used");
+
+        keyLabel3.setText("F7 : not used");
+
+        keyLabel4.setText("F8 : not used");
+
+        org.jdesktop.layout.GroupLayout keyBindingsPanelLayout = new org.jdesktop.layout.GroupLayout(keyBindingsPanel);
+        keyBindingsPanel.setLayout(keyBindingsPanelLayout);
+        keyBindingsPanelLayout.setHorizontalGroup(
+            keyBindingsPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(keyBindingsPanelLayout.createSequentialGroup()
+                .add(keyBindingsPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(keyLabel1)
+                    .add(keyLabel2)
+                    .add(keyLabel3)
+                    .add(keyLabel4))
+                .addContainerGap(61, Short.MAX_VALUE))
+        );
+        keyBindingsPanelLayout.setVerticalGroup(
+            keyBindingsPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(keyBindingsPanelLayout.createSequentialGroup()
+                .add(keyLabel1)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(keyLabel2)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(keyLabel3)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(keyLabel4))
+        );
+
+        servoPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("servo"));
+
+        org.jdesktop.layout.GroupLayout servoPanelLayout = new org.jdesktop.layout.GroupLayout(servoPanel);
+        servoPanel.setLayout(servoPanelLayout);
+        servoPanelLayout.setHorizontalGroup(
+            servoPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(0, 100, Short.MAX_VALUE)
+        );
+        servoPanelLayout.setVerticalGroup(
+            servoPanelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(0, 100, Short.MAX_VALUE)
         );
 
         org.jdesktop.layout.GroupLayout layout = new org.jdesktop.layout.GroupLayout(this);
@@ -716,37 +871,54 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
             .add(layout.createSequentialGroup()
                 .addContainerGap()
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(hardwareInterfacePanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
+                        .add(hardwareInterfacePanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(OFICPContainer, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                     .add(layout.createSequentialGroup()
-                        .add(localPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
                         .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                            .add(showHideToggleButton)
-                            .add(displayPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                        .add(20, 20, 20))
-                    .add(photoPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
-                .add(jPanel3, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .add(137, 137, 137))
+                            .add(layout.createSequentialGroup()
+                                .add(localPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                                    .add(showHideToggleButton)
+                                    .add(displayPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
+                            .add(photoPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(servoPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                        .add(47, 47, 47)))
+                .add(11, 11, 11)
+                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
+                    .add(keyBindingsPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(jPanel3, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(layout.createSequentialGroup()
                 .addContainerGap()
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(org.jdesktop.layout.GroupLayout.TRAILING, localPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                    .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
-                        .add(showHideToggleButton)
-                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
-                        .add(displayPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(photoPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(hardwareInterfacePanel, 0, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addContainerGap(82, Short.MAX_VALUE))
-            .add(layout.createSequentialGroup()
-                .add(jPanel3, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(214, Short.MAX_VALUE))
+                    .add(org.jdesktop.layout.GroupLayout.TRAILING, keyBindingsPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(layout.createSequentialGroup()
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
+                            .add(servoPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                            .add(layout.createSequentialGroup()
+                                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                                    .add(org.jdesktop.layout.GroupLayout.TRAILING, localPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                                    .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                                        .add(layout.createSequentialGroup()
+                                            .add(showHideToggleButton)
+                                            .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
+                                            .add(displayPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                                        .add(jPanel3, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
+                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                                .add(photoPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
+                            .add(OFICPContainer, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                            .add(layout.createSequentialGroup()
+                                .add(hardwareInterfacePanel, 0, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addContainerGap())))))
         );
 
         getAccessibleContext().setAccessibleName("");
@@ -781,6 +953,10 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         localPanel.setVisible(yes);
         photoPanel.setVisible(yes);
         displayPanel.setVisible(yes);
+        hardwareInterfacePanel.setVisible(yes);
+        servoPanel.setVisible(yes);
+        keyBindingsPanel.setVisible(yes);
+        OFICPContainer.setVisible(yes);
         if("MDC2D".equals(chip.CHIPNAME)){
             this.jPanel3.setVisible(yes);//set MDC2D controls visible
         }
@@ -892,6 +1068,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
         // the hardwareInterface has now its .chip set and therefore we can
         // update its internal variables concerning channel, on-chip ADC
         updateChannel();
+        updateHardwareControls();
         
         // exit from blocking exchange
         if (viewer.viewLoop != null)
@@ -907,9 +1084,16 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
     private void enableGlobalMotionCheckBox2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_enableGlobalMotionCheckBox2ActionPerformed
         displayMethod.setGlobalDisplay2Enabled(enableGlobalMotionCheckBox2.isSelected());
     }//GEN-LAST:event_enableGlobalMotionCheckBox2ActionPerformed
+
+    private void enableAbsoluteCoordinatesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_enableAbsoluteCoordinatesActionPerformed
+        displayMethod.setAbsoluteCoordinates(enableAbsoluteCoordinates.isSelected());
+        chip.integrator.reset(); // reset viewport
+        OFICPContainer.setVisible(enableAbsoluteCoordinates.isSelected());
+    }//GEN-LAST:event_enableAbsoluteCoordinatesActionPerformed
     
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JPanel OFICPContainer;
     private javax.swing.JComboBox averagingCombo;
     private javax.swing.JLabel averagingLabel;
     private javax.swing.ButtonGroup buttonGroup1;
@@ -918,6 +1102,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
     private javax.swing.JRadioButton channelLmc2;
     private javax.swing.JRadioButton channelRecep;
     private javax.swing.JPanel displayPanel;
+    private javax.swing.JCheckBox enableAbsoluteCoordinates;
     private javax.swing.JCheckBox enableGlobalMotionCheckBox;
     private javax.swing.JCheckBox enableGlobalMotionCheckBox2;
     private javax.swing.JCheckBox enableLocalMotionCheckBox;
@@ -940,6 +1125,11 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
     private javax.swing.JPanel jPanel6;
     private javax.swing.JPanel jPanel8;
     private javax.swing.JPanel jPanel9;
+    private javax.swing.JPanel keyBindingsPanel;
+    private javax.swing.JLabel keyLabel1;
+    private javax.swing.JLabel keyLabel2;
+    private javax.swing.JLabel keyLabel3;
+    private javax.swing.JLabel keyLabel4;
     private javax.swing.JSlider localGainSlider;
     private javax.swing.JSlider localOffsetSlider;
     private javax.swing.JPanel localPanel;
@@ -950,6 +1140,7 @@ public class OpticalFlowDisplayControlPanel extends javax.swing.JPanel {
     private javax.swing.JPanel photoPanel;
     private javax.swing.JPanel placeHolder;
     private javax.swing.JPanel rawChannelControlPanel1;
+    private javax.swing.JPanel servoPanel;
     private javax.swing.JToggleButton showHideToggleButton;
     private javax.swing.JSlider thresholdSlider;
     private javax.swing.JPanel timeOfTravelControlPanel;
