@@ -16,7 +16,7 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
 
     public enum OperatingMode {
 
-        ShiftedSource(0), TiedToRail(1), HiZ(2);
+        ShiftedSource(0), HiZ(1), TiedToRail(2);
         private final int bits;
         public static final int mask = 0x0003; // at head of 16 bit shift register for shifted source
 
@@ -420,7 +420,7 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
      */
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof ConfigurableIPotRev0)) {
+        if (!(obj instanceof AddressedIPot)) {
             return false;
         }
         ShiftedSourceBiasCF other = (ShiftedSourceBiasCF) obj;

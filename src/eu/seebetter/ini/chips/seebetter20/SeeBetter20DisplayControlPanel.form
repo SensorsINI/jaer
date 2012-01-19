@@ -16,7 +16,7 @@
   <Layout>
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
-          <Component id="displayControlPanel" alignment="0" pref="633" max="32767" attributes="0"/>
+          <Component id="displayControlPanel" alignment="0" pref="691" max="32767" attributes="0"/>
       </Group>
     </DimensionLayout>
     <DimensionLayout dim="1">
@@ -48,7 +48,7 @@
                       <Component id="jPanel2" alignment="0" pref="202" max="32767" attributes="3"/>
                   </Group>
                   <EmptySpace max="-2" attributes="0"/>
-                  <Component id="jPanel1" pref="393" max="32767" attributes="0"/>
+                  <Component id="jPanel1" max="32767" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
               </Group>
           </Group>
@@ -59,9 +59,9 @@
                   <Component id="jPanel2" min="-2" max="-2" attributes="2"/>
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="jPanel3" min="-2" max="-2" attributes="2"/>
-                  <EmptySpace pref="90" max="32767" attributes="0"/>
+                  <EmptySpace pref="112" max="32767" attributes="0"/>
               </Group>
-              <Component id="jPanel1" alignment="0" pref="268" max="32767" attributes="2"/>
+              <Component id="jPanel1" alignment="0" max="32767" attributes="2"/>
           </Group>
         </DimensionLayout>
       </Layout>
@@ -80,14 +80,19 @@
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" alignment="0" attributes="0">
                       <EmptySpace max="-2" attributes="0"/>
-                      <Component id="logIntenStatPanel" min="-2" max="-2" attributes="0"/>
+                      <Component id="apsIntenStatPanel" min="-2" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
-                      <Component id="logIntenCalibPanel" min="-2" max="-2" attributes="0"/>
+                      <Component id="apsIntenCalibPanel" min="-2" max="-2" attributes="0"/>
                   </Group>
                   <Group type="102" alignment="0" attributes="0">
-                      <Component id="showAPS" min="-2" max="-2" attributes="0"/>
+                      <Component id="displayIntensity" min="-2" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
-                      <Component id="invertADCvaluesCB" min="-2" max="-2" attributes="0"/>
+                      <Component id="invertADCvalues" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="readComboBox" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace pref="96" max="32767" attributes="0"/>
+                      <Component id="snapshotButton" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
                   </Group>
                   <Group type="102" alignment="0" attributes="0">
                       <EmptySpace max="-2" attributes="0"/>
@@ -102,8 +107,10 @@
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" attributes="0">
                       <Group type="103" groupAlignment="3" attributes="0">
-                          <Component id="showAPS" alignment="3" min="-2" pref="23" max="-2" attributes="0"/>
-                          <Component id="invertADCvaluesCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="displayIntensity" alignment="3" min="-2" pref="23" max="-2" attributes="0"/>
+                          <Component id="invertADCvalues" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="snapshotButton" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="readComboBox" alignment="3" min="-2" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace type="unrelated" max="-2" attributes="0"/>
                       <Component id="jPanel4" min="-2" pref="47" max="-2" attributes="0"/>
@@ -111,8 +118,8 @@
                       <Component id="agcPanel" min="-2" pref="49" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="logIntenStatPanel" min="-2" max="-2" attributes="0"/>
-                          <Component id="logIntenCalibPanel" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="apsIntenStatPanel" min="-2" max="-2" attributes="0"/>
+                          <Component id="apsIntenCalibPanel" alignment="0" min="-2" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace min="-2" pref="22" max="-2" attributes="0"/>
                   </Group>
@@ -120,24 +127,27 @@
             </DimensionLayout>
           </Layout>
           <SubComponents>
-            <Component class="javax.swing.JCheckBox" name="showAPS">
+            <Component class="javax.swing.JCheckBox" name="displayIntensity">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Show APS data"/>
                 <Property name="toolTipText" type="java.lang.String" value="Shows the scanned out static intensity values."/>
               </Properties>
               <BindingProperties>
-                <BindingProperty name="selected" source="Form" sourcePath="${chip.displayLogIntensity}" target="showAPS" targetPath="selected" updateStrategy="0" immediately="false"/>
+                <BindingProperty name="selected" source="Form" sourcePath="${chip.displayLogIntensity}" target="displayIntensity" targetPath="selected" updateStrategy="0" immediately="false"/>
               </BindingProperties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="displayIntensityActionPerformed"/>
+              </Events>
             </Component>
-            <Component class="javax.swing.JCheckBox" name="invertADCvaluesCB">
+            <Component class="javax.swing.JCheckBox" name="invertADCvalues">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Invert ADC values"/>
               </Properties>
               <BindingProperties>
-                <BindingProperty name="selected" source="Form" sourcePath="${chip.frameData.invertADCvalues}" target="invertADCvaluesCB" targetPath="selected" updateStrategy="0" immediately="false"/>
+                <BindingProperty name="selected" source="Form" sourcePath="${chip.frameData.invertADCvalues}" target="invertADCvalues" targetPath="selected" updateStrategy="0" immediately="false"/>
               </BindingProperties>
             </Component>
-            <Container class="javax.swing.JPanel" name="logIntenCalibPanel">
+            <Container class="javax.swing.JPanel" name="apsIntenCalibPanel">
               <Properties>
                 <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
                   <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
@@ -303,7 +313,7 @@
                 </Component>
               </SubComponents>
             </Container>
-            <Container class="javax.swing.JPanel" name="logIntenStatPanel">
+            <Container class="javax.swing.JPanel" name="apsIntenStatPanel">
               <Properties>
                 <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
                   <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
@@ -464,9 +474,7 @@
                     <Property name="toolTipText" type="java.lang.String" value="Sets the gain applied to ADC count. Gain=1 scales full count to white when offset=0. Gain=MAX_ADC scales a single count to full white when offset=0."/>
                   </Properties>
                   <BindingProperties>
-                    <BindingProperty name="value" source="Form" sourcePath="${logIntensityGain}" target="gainSlider" targetPath="value" updateStrategy="0" immediately="false">
-                      <BindingParameter name="IGNORE_ADJUSTING" value="N"/>
-                    </BindingProperty>
+                    <BindingProperty name="value" source="Form" sourcePath="${apsIntensityGain}" target="gainSlider" targetPath="value" updateStrategy="0" immediately="false"/>
                   </BindingProperties>
                 </Component>
                 <Component class="javax.swing.JTextField" name="gainTF">
@@ -491,9 +499,7 @@
                     <Property name="toolTipText" type="java.lang.String" value="Sets the offset subtracted from ADC count. Gain=1 scales full count to white when offset=0. Offset shifts black point to offset count value."/>
                   </Properties>
                   <BindingProperties>
-                    <BindingProperty name="value" source="Form" sourcePath="${logIntensityOffset}" target="offsetSlider" targetPath="value" updateStrategy="0" immediately="false">
-                      <BindingParameter name="IGNORE_ADJUSTING" value="N"/>
-                    </BindingProperty>
+                    <BindingProperty name="value" source="Form" sourcePath="${apsIntensityOffset}" target="offsetSlider" targetPath="value" updateStrategy="0" immediately="false"/>
                   </BindingProperties>
                 </Component>
                 <Component class="javax.swing.JTextField" name="offTF">
@@ -507,6 +513,28 @@
                 </Component>
               </SubComponents>
             </Container>
+            <Component class="javax.swing.JButton" name="snapshotButton">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Snapshot"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="snapshotButtonActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JComboBox" name="readComboBox">
+              <Properties>
+                <Property name="model" type="javax.swing.ComboBoxModel" editor="org.netbeans.modules.form.editors2.ComboBoxModelEditor">
+                  <StringArray count="3">
+                    <StringItem index="0" value="A"/>
+                    <StringItem index="1" value="B"/>
+                    <StringItem index="2" value="Diff"/>
+                  </StringArray>
+                </Property>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="readComboBoxActionPerformed"/>
+              </Events>
+            </Component>
           </SubComponents>
         </Container>
         <Container class="javax.swing.JPanel" name="jPanel2">
@@ -523,7 +551,7 @@
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" alignment="1" attributes="0">
                       <EmptySpace max="32767" attributes="0"/>
-                      <Component id="logIntensityChangeCB" min="-2" max="-2" attributes="0"/>
+                      <Component id="intensityChangeCB" min="-2" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
                   </Group>
                   <Group type="102" alignment="0" attributes="0">
@@ -538,7 +566,7 @@
             <DimensionLayout dim="1">
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" alignment="0" attributes="0">
-                      <Component id="logIntensityChangeCB" min="-2" pref="23" max="-2" attributes="0"/>
+                      <Component id="intensityChangeCB" min="-2" pref="23" max="-2" attributes="0"/>
                       <EmptySpace type="unrelated" max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="3" attributes="0">
                           <Component id="jLabel3" alignment="3" min="-2" max="-2" attributes="0"/>
@@ -549,13 +577,13 @@
             </DimensionLayout>
           </Layout>
           <SubComponents>
-            <Component class="javax.swing.JCheckBox" name="logIntensityChangeCB">
+            <Component class="javax.swing.JCheckBox" name="intensityChangeCB">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Show log intensity change events"/>
                 <Property name="toolTipText" type="java.lang.String" value="Show log intensity change (temporal contrast) Brighter and Darker events."/>
               </Properties>
               <BindingProperties>
-                <BindingProperty name="selected" source="Form" sourcePath="${chip.displayLogIntensityChangeEvents}" target="logIntensityChangeCB" targetPath="selected" updateStrategy="0" immediately="false"/>
+                <BindingProperty name="selected" source="Form" sourcePath="${chip.displayLogIntensityChangeEvents}" target="intensityChangeCB" targetPath="selected" updateStrategy="0" immediately="false"/>
               </BindingProperties>
             </Component>
             <Component class="javax.swing.JSpinner" name="colorScaleSpinner">

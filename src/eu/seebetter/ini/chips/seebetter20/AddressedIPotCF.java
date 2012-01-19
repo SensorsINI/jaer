@@ -415,7 +415,7 @@ public class AddressedIPotCF extends AddressedIPot {
      */
     @Override
     protected String prefsKey() {
-        return biasgen.getChip().getClass().getSimpleName() + ".ConfigurableIPot." + name;
+        return biasgen.getChip().getClass().getSimpleName() + ".AddressedIPotCF." + name;
     }
     
     static String KEY_BITVALUE_COARSE="BitValueCoarse",
