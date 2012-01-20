@@ -336,8 +336,8 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                             e.y = (short) (e.y >>> 1); // cDVS array is clumped into 32x32
                         }
                         gotAEREvent = true;
-                        String eventData = "address:"+Integer.toBinaryString(e.address)+"( x: "+Integer.toString(e.x)+", y: "+Integer.toString(e.y)+"), timestamp "+Integer.toString(e.timestamp);
-                        System.out.println("Addressed Event: "+eventData);
+                  //      String eventData = "address:"+Integer.toBinaryString(e.address)+"( x: "+Integer.toString(e.x)+", y: "+Integer.toString(e.y)+"), timestamp "+Integer.toString(e.timestamp);
+                  //      System.out.println("Addressed Event: "+eventData);
                     }
                 } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
                     // if scanner is stopped on one place, then we never get a start bit. we then limit the number of samples
