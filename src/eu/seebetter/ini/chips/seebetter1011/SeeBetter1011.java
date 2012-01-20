@@ -2309,6 +2309,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             if(e.startOfFrame) {
                 resetWriteCounter();
                 setTimestamp(e.timestamp);
+                putNextSampleValue(e.adcSample);
             }else if(config.scanContinuouslyEnabled.isSet()){
                 putNextSampleValue(e.adcSample);
             }else{
