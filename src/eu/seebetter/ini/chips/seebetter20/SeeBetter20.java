@@ -380,11 +380,11 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                         countY[sampleType] = 0;
                         countX[sampleType]++;
                     }
-                    if(e.isB && countX[sampleType] > 0){
-                        e.x=(short)(countX[sampleType]-1); 
-                    } else {
+//                    if(e.isB && countX[sampleType] > 0){
+//                        e.x=(short)(countX[sampleType]-1); 
+//                    } else {
                         e.x=countX[sampleType]; 
-                    }
+//                    }
                     e.y=countY[sampleType]++;
                     String type = "";
                     if(e.isB){type = "B";}else{type = "A";}
@@ -495,7 +495,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         public SeeBetterConfig(Chip chip) {
             super(chip);
             setName("SeeBetter20Biasgen");
-
+            
             // setup listeners
 
 
