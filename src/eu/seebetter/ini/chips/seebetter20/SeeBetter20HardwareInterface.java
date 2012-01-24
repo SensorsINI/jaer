@@ -20,13 +20,13 @@ import java.io.*;
  *
  * @author tobi
  */
-public class SeeBetterHardwareInterface extends CypressFX2Biasgen {
+public class SeeBetter20HardwareInterface extends CypressFX2Biasgen {
 
     /** The USB product ID of this device */
-    static public final short PID = (short) 0x840B;
+    static public final short PID = (short) 0x840C;
 
     /** Creates a new instance of CypressFX2Biasgen */
-    public SeeBetterHardwareInterface(int devNumber) {
+    public SeeBetter20HardwareInterface(int devNumber) {
         super(devNumber);
     }
 
@@ -369,7 +369,7 @@ public class SeeBetterHardwareInterface extends CypressFX2Biasgen {
 //                                        if (doubleY)
 //                                        {
 //                                            doubleY=false;
-//                                            System.out.println(yonlycons+ " Y addresses consecutively recieved in SeeBetterHardwareInterface, total y only: "+ yonlycount); // this printout makes display very jerky!!!
+//                                            System.out.println(yonlycons+ " Y addresses consecutively recieved in SeeBetter20HardwareInterface, total y only: "+ yonlycount); // this printout makes display very jerky!!!
 //                                            yonlycons=0;
 //                                        }
                                     } else {// y address

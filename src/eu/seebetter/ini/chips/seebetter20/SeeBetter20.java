@@ -139,6 +139,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
     private boolean displayIntensity;
     private boolean displayLogIntensityChangeEvents;
     private boolean snapshot = false;
+    private boolean resetOnReadout = false;
     SeeBetter20DisplayControlPanel displayControlPanel = null;
     private IntensityFrameData frameData = new IntensityFrameData();
     private SeeBetterConfig config;
@@ -279,6 +280,12 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             Arrays.fill(countY, 0, numReadoutTypes, (short)0);
         }
         
+        private void lastADCevent(){
+            if (resetOnReadout){
+                config.nChipReset.set(true);
+            }
+        }
+        
         /** extracts the meaning of the raw events.
          *@param in the raw events, can be null
          *@return out the processed events. these are partially processed in-place. empty packet is returned if null is supplied as in.
@@ -370,6 +377,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                     e.address = data;
                     e.startOfFrame = (data & ADC_START_BIT) == ADC_START_BIT;
                     if(e.startOfFrame){
+                        //System.out.println("New frame");
                         resetCounters();
                         if(snapshot){
                             snapshot = false;
@@ -379,6 +387,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                     if(!(countY[sampleType]<chip.getSizeY()/2)){
                         countY[sampleType] = 0;
                         countX[sampleType]++;
+                        lastADCevent();
                     }
 //                    if(e.isB && countX[sampleType] > 0){
 //                        e.x=(short)(countX[sampleType]-1); 
@@ -479,7 +488,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         private CPLDInt colSettle = new CPLDInt(SeeBetter20.this, 43, 28, "colSettle", "time to settle a column select before readout", 0);
         private CPLDInt rowSettle = new CPLDInt(SeeBetter20.this, 59, 44, "rowSettle", "time to settle a row select before readout", 0);
         private CPLDInt resSettle = new CPLDInt(SeeBetter20.this, 75, 60, "resSettle", "time to settle a reset before readout", 0);
-        private CPLDInt framePeriod = new CPLDInt(SeeBetter20.this, 107, 76, "framePeriod", "time between two frames", 0);
+        private CPLDLong framePeriod = new CPLDLong(SeeBetter20.this, 107, 76, "framePeriod", "time between two frames", 0);
         private CPLDBit testpixel = new CPLDBit(SeeBetter20.this, 108, "testPixel", "enables continuous scanning of testpixel", false);
         //
         // lists of ports and CPLD config
@@ -1311,8 +1320,19 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             public boolean isAdcEnabled() {
                 return runAdc.isSet();
             }
+            
+            public boolean isResetOnReadout() {
+                return resetOnReadout;
+            }
+            
+            public void setResetOnReadout(boolean reset) {
+                resetOnReadout = reset;
+            }
 
             public void setAdcEnabled(boolean yes) {
+                if(resetOnReadout){
+                    nChipReset.set(false);
+                }
                 runAdc.set(yes);
             }
             
@@ -2474,6 +2494,9 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 if (writeCounterB >= bData.length) {
     //            log.info("buffer overflowed - missing start frame bit?");
                     return;
+                }
+                if (writeCounterB == bData.length-1) {
+                    
                 }
                 bData[writeCounterB] = val;
                 data[writeCounterB] = aData[writeCounterB]-bData[writeCounterB];

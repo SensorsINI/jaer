@@ -59,7 +59,7 @@
                   <Component id="jPanel2" min="-2" max="-2" attributes="2"/>
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="jPanel3" min="-2" max="-2" attributes="2"/>
-                  <EmptySpace pref="112" max="32767" attributes="0"/>
+                  <EmptySpace pref="101" max="32767" attributes="0"/>
               </Group>
               <Component id="jPanel1" alignment="0" max="32767" attributes="2"/>
           </Group>
@@ -133,7 +133,7 @@
                 <Property name="toolTipText" type="java.lang.String" value="Shows the scanned out static intensity values."/>
               </Properties>
               <BindingProperties>
-                <BindingProperty name="selected" source="Form" sourcePath="${chip.displayLogIntensity}" target="displayIntensity" targetPath="selected" updateStrategy="0" immediately="false"/>
+                <BindingProperty name="selected" source="Form" sourcePath="${chip.displayIntensity}" target="displayIntensity" targetPath="selected" updateStrategy="0" immediately="false"/>
               </BindingProperties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="displayIntensityActionPerformed"/>
