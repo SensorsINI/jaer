@@ -137,7 +137,9 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
     private SeeBetter20Renderer cDVSRenderer = null;
     private SeeBetter20DisplayMethod cDVSDisplayMethod = null;
     private boolean displayIntensity;
+    private int exposure;
     private boolean displayLogIntensityChangeEvents;
+    private boolean updateAPSdisplay;
     private boolean snapshot = false;
     private boolean resetOnReadout = false;
     SeeBetter20DisplayControlPanel displayControlPanel = null;
@@ -260,6 +262,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         // according to  D:\Users\tobi\Documents\avlsi-svn\db\Firmware\cDVSTest20\cDVSTest_dataword_spec.pdf
 //        public static final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0x000,  YSHIFT = 12,  INTENSITYMASK = 0x40000;
         private int lastIntenTs = 0;
+        private int firstFrameTs = 0;
         private short[] countX;
         private short[] countY;
 
@@ -383,11 +386,11 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                             snapshot = false;
                             config.adc.setAdcEnabled(false);
                         }
+                        firstFrameTs = e.timestamp;
                     }
                     if(!(countY[sampleType]<chip.getSizeY()/2)){
                         countY[sampleType] = 0;
                         countX[sampleType]++;
-                        lastADCevent();
                     }
 //                    if(e.isB && countX[sampleType] > 0){
 //                        e.x=(short)(countX[sampleType]-1); 
@@ -399,6 +402,12 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                     if(e.isB){type = "B";}else{type = "A";}
                     String eventData = "x: "+e.x+", y:"+e.y+", type: "+type+", start of frame: "+Boolean.toString(e.startOfFrame)+" timestamp: "+Integer.toString(e.timestamp)+", data "+Integer.toBinaryString(e.adcSample)+" ("+Integer.toString(e.adcSample)+")";
                     //System.out.println("ADC Event: "+eventData);
+                    if(e.isB && e.x == 1 && e.y == 1){
+                        exposure = e.timestamp-firstFrameTs;
+                    }
+                    if(e.isB && e.x == (short)((chip.getSizeX()/2)-1) && e.y == (short)((chip.getSizeY()/2)-1)){
+                        lastADCevent();
+                    }
                 }
 
             }
@@ -473,6 +482,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         JTabbedPane bgTabbedPane;
         // portA
         private PortBit runCpld = new PortBit(SeeBetter20.this, "a3", "runCpld", "Set high to run CPLD which enables event capture, low to hold logic in reset", true);
+        private PortBit resetTestpixel = new PortBit(SeeBetter20.this, "a1", "resetTestpixel", "Set high to assign '11' to Column Mode in the idle state", false);
         // portC
         private PortBit runAdc = new PortBit(SeeBetter20.this, "c0", "runAdc", "High to run ADC", true);
         // portE
@@ -513,6 +523,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             addConfigValue(powerDown);
             addConfigValue(runAdc);
             addConfigValue(runCpld);
+            addConfigValue(resetTestpixel);
 
             // cpld shift register stuff
             addConfigValue(adcConfig);
@@ -1332,6 +1343,11 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             public void setAdcEnabled(boolean yes) {
                 if(resetOnReadout){
                     nChipReset.set(false);
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(SeeBetter20.class.getName()).log(Level.SEVERE, null, ex);
+                    }
                 }
                 runAdc.set(yes);
             }
@@ -1986,6 +2002,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
     public class SeeBetter20DisplayMethod extends DVSWithIntensityDisplayMethod {
 
         private TextRenderer renderer = null;
+        private TextRenderer exposureRenderer = null;
 
         public SeeBetter20DisplayMethod(SeeBetter20 chip) {
             super(chip.getCanvas());
@@ -1996,6 +2013,10 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             if (renderer == null) {
                 renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 18), true, true);
                 renderer.setColor(1, .2f, .2f, 0.4f);
+            }
+            if (exposureRenderer == null) {
+                exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 10), true, true);
+                exposureRenderer.setColor(1, 1, 1, 1);
             }
             super.display(drawable);
             GL gl = drawable.getGL();
@@ -2025,8 +2046,14 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             // label arrays
             if (txt != null) {
                 renderer.begin3DRendering();
-                renderer.draw3D(txt, x, y, 0, .4f); // x,y,z, scale factor
+                renderer.draw3D(txt, x, y, 0, .4f); // x,y,z, scale factor 
                 renderer.end3DRendering();
+                if(displayIntensity){
+                    exposureRenderer.begin3DRendering();
+                    exposureRenderer.draw3D("exposure [us]: "+Integer.toString(exposure), x, h, 0, .4f); // x,y,z, scale factor 
+                    exposureRenderer.end3DRendering();
+                }
+                
             }
             gl.glPopMatrix();
         }
@@ -2409,6 +2436,11 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         private final int NUMSAMPLES = WIDTH * HEIGHT;
         private int timestamp = 0; // timestamp of starting sample
         private int[] data = new int[NUMSAMPLES];
+        private int[] oldData = new int[NUMSAMPLES];
+        private float[] onCalib = new float[NUMSAMPLES];
+        private float[] offCalib = new float[NUMSAMPLES];
+        private int[] onCount = new int[NUMSAMPLES];
+        private int[] offCount = new int[NUMSAMPLES];
         private int[] aData, bData;
         /** Readers should access the current reading buffer. */
         private int writeCounterA = 0;
@@ -2428,6 +2460,11 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             bData = new int[NUMSAMPLES];
             Arrays.fill(aData, 0);
             Arrays.fill(bData, 0);
+            Arrays.fill(onCalib, 0);
+            Arrays.fill(offCalib, 0);
+            Arrays.fill(onCount, 0);
+            Arrays.fill(offCount, 0);
+            Arrays.fill(oldData, 0);
             loadPreference();
         }
         
@@ -2496,7 +2533,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                     return;
                 }
                 if (writeCounterB == bData.length-1) {
-                    
+                    updateDVSintensities();
                 }
                 bData[writeCounterB] = val;
                 data[writeCounterB] = aData[writeCounterB]-bData[writeCounterB];
@@ -2524,6 +2561,25 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                     return;
                 }
                 aData[index] = val;
+            }
+        }
+        
+        private void updateDVSintensities(){
+            int prediction = 0;
+            for(int i = 0; i < NUMSAMPLES; i++){
+                prediction = oldData[i]+(int)(onCount[i]*onCalib[i]+offCount[i]*offCalib[i]);
+            }
+            System.arraycopy(data, 0, oldData, 0, NUMSAMPLES);
+        }
+        
+        public float updateDVScalib(int x, int y, boolean isOn){
+            final int idx = index(x,y);
+            if(isOn){
+                onCount[idx]++;
+                return onCalib[idx];
+            } else {
+                offCount[idx]++;
+                return offCalib[idx];
             }
         }
 
