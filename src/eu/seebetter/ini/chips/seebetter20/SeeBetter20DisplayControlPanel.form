@@ -59,7 +59,7 @@
                   <Component id="jPanel2" min="-2" max="-2" attributes="2"/>
                   <EmptySpace type="separate" max="-2" attributes="0"/>
                   <Component id="jPanel3" min="-2" max="-2" attributes="2"/>
-                  <EmptySpace pref="82" max="32767" attributes="0"/>
+                  <EmptySpace pref="71" max="32767" attributes="0"/>
               </Group>
               <Component id="jPanel1" alignment="0" max="32767" attributes="2"/>
           </Group>
@@ -469,7 +469,7 @@
                 <Component class="javax.swing.JSlider" name="gainSlider">
                   <Properties>
                     <Property name="maximum" type="int" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
-                      <Connection code="SeeBetter20.MAX_ADC/100" type="code"/>
+                      <Connection code="SeeBetter20.MAX_ADC/10" type="code"/>
                     </Property>
                     <Property name="toolTipText" type="java.lang.String" value="Sets the gain applied to ADC count. Gain=1 scales full count to white when offset=0. Gain=MAX_ADC scales a single count to full white when offset=0."/>
                   </Properties>

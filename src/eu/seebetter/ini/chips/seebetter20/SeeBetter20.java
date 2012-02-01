@@ -138,6 +138,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
     private SeeBetter20DisplayMethod cDVSDisplayMethod = null;
     private boolean displayIntensity;
     private int exposure;
+    private int framePeriod;
     private boolean displayLogIntensityChangeEvents;
     private boolean updateAPSdisplay;
     private boolean snapshot = false;
@@ -386,6 +387,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                             snapshot = false;
                             config.adc.setAdcEnabled(false);
                         }
+                        framePeriod = e.timestamp - firstFrameTs;
                         firstFrameTs = e.timestamp;
                     }
                     if(!(countY[sampleType]<chip.getSizeY()/2)){
@@ -2050,7 +2052,11 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 renderer.end3DRendering();
                 if(displayIntensity){
                     exposureRenderer.begin3DRendering();
-                    exposureRenderer.draw3D("exposure [us]: "+Integer.toString(exposure), x, h, 0, .4f); // x,y,z, scale factor 
+                    String frequency = "";
+                    if(framePeriod>0){
+                         frequency = "("+(float)1000000/framePeriod+" Hz)";
+                    }
+                    exposureRenderer.draw3D("exposure: "+(float)exposure/1000+" ms, frame period: "+(float)framePeriod/10000+" ms "+frequency, x, h, 0, .4f); // x,y,z, scale factor 
                     exposureRenderer.end3DRendering();
                 }
                 
@@ -2301,7 +2307,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         private float adc01normalized(int count) {
             float v;
             if (!agcEnabled) {
-                v = (float) (apsIntensityGain * (count - apsIntensityOffset)) / (float) MAX_ADC;
+                v = (float) (apsIntensityGain*count+apsIntensityOffset) / (float) MAX_ADC;
             } else {
                 Float filter2d = agcFilter.getValue2d();
                 float offset = filter2d.x;

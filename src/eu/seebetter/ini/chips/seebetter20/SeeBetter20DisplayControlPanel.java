@@ -292,7 +292,7 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
 
         gainLabel.setText("gain");
 
-        gainSlider.setMaximum(SeeBetter20.MAX_ADC/100);
+        gainSlider.setMaximum(SeeBetter20.MAX_ADC/10);
         gainSlider.setToolTipText("Sets the gain applied to ADC count. Gain=1 scales full count to white when offset=0. Gain=MAX_ADC scales a single count to full white when offset=0.");
 
         binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${apsIntensityGain}"), gainSlider, org.jdesktop.beansbinding.BeanProperty.create("value"));
@@ -533,7 +533,7 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
                 .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(18, 18, 18)
                 .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(82, Short.MAX_VALUE))
+                .addContainerGap(71, Short.MAX_VALUE))
             .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
 
