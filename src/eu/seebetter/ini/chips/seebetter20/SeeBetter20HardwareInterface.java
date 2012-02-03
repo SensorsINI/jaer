@@ -301,6 +301,7 @@ public class SeeBetter20HardwareInterface extends CypressFX2Biasgen {
          */
         static private final byte Xmask = (byte) 0x01;
         static private final byte IntensityMask = (byte) 0x40;
+        static private final byte triggerMask = (byte) 0x10;
         private int lasty = 0;
         private int currentts = 0;
         private int lastts = 0;
@@ -358,7 +359,11 @@ public class SeeBetter20HardwareInterface extends CypressFX2Biasgen {
                                         timestamps[eventCounter] = currentts;  // ADC event gets last timestamp
                                         eventCounter++;
 //                                              System.out.println("ADC word: " + (dataword&SeeBetter20.ADC_DATA_MASK));
-                                    } else if ((buf[i + 1] & Xmask) == Xmask) {////  received an X address, write out event to addresses/timestamps output arrays
+                                    } else if ((buf[i + 1] & triggerMask) == triggerMask) { 
+                                        addresses[eventCounter] = 256;  // combine current bits with last y address bits and send
+                                        timestamps[eventCounter] = currentts;
+                                        eventCounter++;
+                                     } else if ((buf[i + 1] & Xmask) == Xmask) {////  received an X address, write out event to addresses/timestamps output arrays
                                         // x adddress
                                         //xadd = (buf[i] & 0xff);  //
                                         addresses[eventCounter] = (lasty << SeeBetter20.YSHIFT) | (dataword & (SeeBetter20.XMASK | SeeBetter20.POLMASK));  // combine current bits with last y address bits and send
