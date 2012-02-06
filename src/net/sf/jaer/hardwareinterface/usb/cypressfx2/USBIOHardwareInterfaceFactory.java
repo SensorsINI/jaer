@@ -192,6 +192,7 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
         UsbIo.destroyDeviceList(getGDevList());
         short vid = (short) (0xffff & deviceDescriptor.idVendor);
         short pid = (short) (0xffff & deviceDescriptor.idProduct); // for some reason returns 0xffff8613 from blank cypress fx2
+        short did = (short) (0xffff & deviceDescriptor.bcdDevice); // for some reason returns 0xffff8613 from blank cypress fx2
         // TODO fix this so that PID is parsed by reflection or introspection from hardwareinterface classes
 
         // here the PID switches to construct the appropriate hardwareinterface.
@@ -203,7 +204,7 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
                 //    case CypressFX2.PID_TMPDIFF128_FX2_SMALL_BOARD:  // VID/PID replaced with the ones from thesycon
                 return new CypressFX2DVS128HardwareInterface(n);
             case CypressFX2.PID_TMPDIFF128_RETINA:
-                short did = (short) (0xffff & deviceDescriptor.bcdDevice);
+              
                 if (did == CypressFX2.DID_STEREOBOARD) {
                     return new CypressFX2StereoBoard(n);
                     //System.out.println(did);
@@ -218,9 +219,11 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
             case cDVSTestHardwareInterface.PID:
                 return new cDVSTestHardwareInterface(n);
             case SeeBetterHardwareInterface.PID:
-                return new SeeBetterHardwareInterface(n);
-            case SeeBetter20HardwareInterface.PID:
-                return new SeeBetter20HardwareInterface(n);
+                if (did == SeeBetter20HardwareInterface.DID) {
+                    return new SeeBetter20HardwareInterface(n);
+                } else {
+                    return new SeeBetterHardwareInterface(n);
+                }
             case DVS320HardwareInterface.PID:
                 return new DVS320HardwareInterface(n);
             case CochleaAMS1bHardwareInterface.PID:

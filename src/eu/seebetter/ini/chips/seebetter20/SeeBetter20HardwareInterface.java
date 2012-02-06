@@ -23,7 +23,8 @@ import java.io.*;
 public class SeeBetter20HardwareInterface extends CypressFX2Biasgen {
 
     /** The USB product ID of this device */
-    static public final short PID = (short) 0x840C;
+    static public final short PID = (short) 0x840B;
+    static public final short DID = (short) 0x0002;
 
     /** Creates a new instance of CypressFX2Biasgen */
     public SeeBetter20HardwareInterface(int devNumber) {
