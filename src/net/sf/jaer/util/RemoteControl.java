@@ -256,6 +256,7 @@ public class RemoteControl /* implements RemoteControlled */{
             if ( line.startsWith(HELP) ){
                 String help = getHelp();
                 echo(help + PROMPT);
+                log.info(help);
             } else{
                 String[] tokens = line.split("\\s");
                 String cmdTok = tokens[0];
@@ -263,7 +264,9 @@ public class RemoteControl /* implements RemoteControlled */{
                     return;
                 }
                 if ( !cmdMap.containsKey(cmdTok) ){
-                    echo(String.format("%s is unknown command - type %s for help\n%s",line,HELP,PROMPT));
+                    String s=String.format("%s is unknown command - type %s for help\n%s",line,HELP,PROMPT);
+                    echo(s);
+                    log.warning(line+" is unknown command - send \""+HELP+"\" for help");
                     return;
                 }
                 RemoteControlled controlled = controlledMap.get(cmdTok);

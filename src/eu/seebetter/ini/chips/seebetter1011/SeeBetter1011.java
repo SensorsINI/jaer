@@ -624,7 +624,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             }
         }
 
-        /** Sends everything on the on-chip shift register 
+        /** Sends everything on the on-chip shift register F
          * 
          * @throws HardwareInterfaceException 
          * @return false if not sent because bytes are not yet initialized

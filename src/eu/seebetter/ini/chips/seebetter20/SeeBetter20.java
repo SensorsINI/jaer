@@ -539,7 +539,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 
             // masterbias
             getMasterbias().setKPrimeNFet(55e-3f); // estimated from tox=42A, mu_n=670 cm^2/Vs // TODO fix for UMC18 process
-            getMasterbias().setMultiplier(9 * (24f / 2.4f) / (4.8f / 2.4f));  // =45  correct for dvs320
+            getMasterbias().setMultiplier(4);  // =45  correct for dvs320
             getMasterbias().setWOverL(4.8f / 2.4f); // masterbias has nfet with w/l=2 at output
             getMasterbias().addObserver(this); // changes to masterbias come back to update() here
 
@@ -1588,7 +1588,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 private String name = "OutputMux";
                 int selectedChannel = -1; // defaults to no input selected in the case of voltage and current, and channel 0 in the case of logic
                 String bitString = null;
-                final String CMD_SELECTMUX = "selectMux_";
+                final String CMD_SELECTMUX = "selectMux";
 
                 /**
                  *  A set of output mux channels.
@@ -1601,6 +1601,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                     nInputs = nin;
                     map = m;
                     hasPreferencesList.add(this);
+                    setName(name); // stores remote contol command, maybe redundantly (which overwrites previous)
                 }
 
                 @Override
@@ -1654,9 +1655,12 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                     return name;
                 }
 
-                public void setName(String name) {
+                public void setName(String name) { // TODO should remove previous remote control command and add new one for this mux
                     this.name = name;
-                }
+                   if (getRemoteControl() != null) {
+                        getRemoteControl().addCommandListener(this, String.format("%s_%s <n>",CMD_SELECTMUX, getName()), "Selects mux "+getName()+" output number n");
+                    }
+                 }
 
                 private String key() {
                     return getClass().getSimpleName() + "." + name + ".selectedChannel";
@@ -1687,6 +1691,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                         String s = t[0], a = t[1];
                         try {
                             select(Integer.parseInt(a));
+                            log.info(getName()+": selected channel "+a);
                             return this + "\n";
                         } catch (NumberFormatException e) {
                             log.warning("Bad number format: " + input + " caused " + e);
