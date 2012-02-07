@@ -575,7 +575,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         }
 
         @Override
-        public void loadPreferences() {
+        final public void loadPreferences() {
             super.loadPreferences();
             if (hasPreferencesList != null) {
                 for (HasPreference hp : hasPreferencesList) {
@@ -798,7 +798,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         }
 
         // sends complex configuration information to multiple shift registers and off chip DACs
-        void sendConfiguration() throws HardwareInterfaceException {
+        private void sendConfiguration() throws HardwareInterfaceException {
             if (!isOpen()) {
                 open();
             }
