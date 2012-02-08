@@ -12,6 +12,9 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.usbinterface;
 
+import cl.eye.PSeye_OpticalFlowHardwareInterface;
+import cl.eye.CLCamera;
+import cl.eye.CLRetinaHardwareInterface;
 import net.sf.jaer.hardwareinterface.*;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
@@ -28,6 +31,7 @@ import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
  * <li>added the new <cdoe>dsPIC33F_COM_ConfigurationPanel</code></li>
  * <li>added error message in <code>buildUsbIoList</code> that can arise when
  *     different driver version is used</li>
+ * <li>added psEYE hardware interface for comparison reasons</li>
  * </ul>
  */
 public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotifyInterface, HardwareInterfaceFactoryInterface {
@@ -42,6 +46,7 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
     private long gDevList; // 'handle' (an integer) to an internal device list static to UsbIo
     
     ArrayList<UsbIo> usbioList=null;
+    MotionChipInterface[] psEyes;
     // interfaces are cached to re-use allocated ressources
     HardwareInterface cache[];
 
@@ -50,6 +55,7 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
     private OpticalFlowHardwareInterfaceFactory() {
         UsbIoUtilities.enablePnPNotification(this,GUID);
         buildUsbIoList();
+        buildPsEyeList();
         emptyCache();
     }
 
@@ -65,8 +71,10 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
     }
 
     public int getNumInterfacesAvailable() {
-        if(usbioList==null) return 0;
-        else return usbioList.size() +1;
+        int ret=1; // the serial interface is "always available"
+        if (usbioList != null) ret+= usbioList.size();
+        if (psEyes != null) ret+= psEyes.length;
+        return ret;
     }
 
     public HardwareInterface getFirstAvailableInterface() throws HardwareInterfaceException {
@@ -76,8 +84,12 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
 
     private HardwareInterface createInterface(int n) throws HardwareInterfaceException {
         // we may have any number of SiLabsC8051F320_OpticalFlowHardwareInterface
-        if(n<getNumInterfacesAvailable()-1)
+        if(n< usbioList.size())
             return new SiLabsC8051F320_OpticalFlowHardwareInterface(n);
+        n-= usbioList.size();
+        // same is true for PS3 eyes
+        if (n<psEyes.length)
+            return psEyes[n];
         // the last hardware interface is by definition the dsPIC33F_COM_OpticalFlowHardwareInterface
         // (that may not be connected; error issued on opening)
         return new dsPIC33F_COM_OpticalFlowHardwareInterface();
@@ -101,6 +113,14 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
     public void onRemove() {
         buildUsbIoList();
         emptyCache();
+    }
+    
+    void buildPsEyeList() {
+        if (CLCamera.isLibraryLoaded()) {
+            psEyes= new MotionChipInterface[ CLCamera.cameraCount() ];
+            for ( int i = 0; i < psEyes.length; i++ )
+                psEyes[i] = new PSeye_OpticalFlowHardwareInterface(i);
+        }
     }
     
     void buildUsbIoList(){

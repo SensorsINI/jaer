@@ -288,6 +288,7 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
 
     public void setAbsoluteCoordinates(boolean absoluteCoordinates) {
         this.absoluteCoordinates = absoluteCoordinates;
+        prefs.putBoolean("OpticalFlowDisplayMethod.absoluteCoordinatesEnabled", absoluteCoordinates);
     }
     
     public void setPhotoDisplayEnabled(boolean photoDisplayEnabled) {
