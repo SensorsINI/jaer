@@ -413,11 +413,11 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 }
 
             }
-            if (gotAEREvent) {
+        /*    if (gotAEREvent) {
                 lastEventTime = System.currentTimeMillis();
             } else if (config.autoResetEnabled && config.nChipReset.isSet() && System.currentTimeMillis() - lastEventTime > AUTO_RESET_TIMEOUT_MS && getAeViewer() != null && getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
                 config.resetChip();
-            }
+            }*/
 
             return out;
         } // extractPacket
@@ -500,8 +500,9 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         private CPLDInt colSettle = new CPLDInt(SeeBetter20.this, 43, 28, "colSettle", "time to settle a column select before readout", 0);
         private CPLDInt rowSettle = new CPLDInt(SeeBetter20.this, 59, 44, "rowSettle", "time to settle a row select before readout", 0);
         private CPLDInt resSettle = new CPLDInt(SeeBetter20.this, 75, 60, "resSettle", "time to settle a reset before readout", 0);
-        private CPLDLong framePeriod = new CPLDLong(SeeBetter20.this, 107, 76, "framePeriod", "time between two frames", 0);
-        private CPLDBit testpixel = new CPLDBit(SeeBetter20.this, 108, "testPixel", "enables continuous scanning of testpixel", false);
+        private CPLDInt framePeriod = new CPLDInt(SeeBetter20.this, 91, 76, "framePeriod", "time between two frames", 0);
+   //     private CPLDInt padding = new CPLDInt(SeeBetter20.this, 107, 92, "pad", "used to pad 16 zeros", 0);
+        private CPLDBit testpixel = new CPLDBit(SeeBetter20.this, 92, "testPixel", "enables continuous scanning of testpixel", false);
         //
         // lists of ports and CPLD config
         private ADC adc;
@@ -534,6 +535,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             addConfigValue(rowSettle);
             addConfigValue(colSettle);
             addConfigValue(framePeriod);
+        //     addConfigValue(padding);
             addConfigValue(testpixel);
 
 
