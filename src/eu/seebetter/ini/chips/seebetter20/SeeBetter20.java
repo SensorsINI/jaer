@@ -2063,7 +2063,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                     if(framePeriod>0){
                          frequency = "("+(float)1000000/framePeriod+" Hz)";
                     }
-                    exposureRenderer.draw3D("exposure: "+(float)exposure/1000+" ms, frame period: "+(float)framePeriod/10000+" ms "+frequency, x, h, 0, .4f); // x,y,z, scale factor 
+                    exposureRenderer.draw3D("exposure: "+(float)exposure/1000+" ms, frame period: "+(float)framePeriod/1000+" ms "+frequency, x, h, 0, .4f); // x,y,z, scale factor 
                     exposureRenderer.end3DRendering();
                 }
                 
