@@ -121,6 +121,7 @@ public class LowPassAngularAccelerationPredictor extends AbstractRotatedAccelera
                 if (target.norm() > 0) {
                     a = 1 - target.normalizedDot(Vector.getXAxis(2));
                 }
+                if (target.get(1) < 0) a = -a;
                 this.acceleration.set(1, this.filters[1].filter(a / 10000, timestamp));
                 
             }

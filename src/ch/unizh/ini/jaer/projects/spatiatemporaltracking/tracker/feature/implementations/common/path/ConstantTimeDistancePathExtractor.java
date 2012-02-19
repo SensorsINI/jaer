@@ -40,7 +40,7 @@ public class ConstantTimeDistancePathExtractor extends AbstractPathExtractor {
     public ConstantTimeDistancePathExtractor(ParameterManager parameters, 
                                      FeatureManager features, 
                                      AEChip chip) {
-        super(Features.Event, parameters, features, chip);
+        super(Features.Position, parameters, features, chip);
         
         this.init();
         this.reset();

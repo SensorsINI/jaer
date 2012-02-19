@@ -125,6 +125,6 @@ public class SimpleActivityExtractor extends AbstractActivityExtractor {
         
         this.activity = this.sum.getSum() / (be.getMajorLength() * be.getMinorLength() * Math.PI);
         
-        this.features.getNotifier().notify(this.feature, this.timestamp);
+        this.features.getNotifier().notify(this.feature, timestamp);
     }
 }

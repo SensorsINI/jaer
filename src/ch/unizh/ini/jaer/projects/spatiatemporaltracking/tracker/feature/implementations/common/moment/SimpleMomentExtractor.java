@@ -106,6 +106,6 @@ public class SimpleMomentExtractor extends AbstractMomentExtractor {
             }
         }
         
-        this.features.getNotifier().notify(this.feature, this.timestamp);
+        this.features.getNotifier().notify(this.feature, timestamp);
     }
 }

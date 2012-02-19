@@ -17,9 +17,12 @@ import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.impleme
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.velocity.SimpleVelocityExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.event.packet.SimplePacketEventExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.event.single.SimpleSingleEventExtractor;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.information.EventInformationExtractor;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.information.InterruptedPositionInformationExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.information.PathInformationExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.information.SignalInformationExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.information.VelocityInformationExtractor;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.interrupt.ExternalInterruptExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.prediction.acceleration.LowPassAngularAccelerationPredictor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.prediction.occurance.TemporalPatternOccurancePredictor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.prediction.position.DiscreteHeunPositionPredictor;
@@ -116,12 +119,19 @@ public class ConcreteFeatureExtractorFactory implements FeatureExtractorFactory 
             case Occurance:
                 return new TemporalPatternOccurancePredictor(this.manager, features, this.chip);
                 
+            case Interrupt:
+                return new ExternalInterruptExtractor(this.manager, features, this.chip);
+                
             case InformationSignal:
                 return new SignalInformationExtractor(this.manager, features, this.chip);
+            case InformationPosition:
+                return new InterruptedPositionInformationExtractor(this.manager, features, this.chip);
             case InformationPath:
                 return new PathInformationExtractor(this.manager, features, this.chip);
             case InformationVelocity:
                 return new VelocityInformationExtractor(this.manager, features, this.chip);
+            case InformationEvent:
+                return new EventInformationExtractor(this.manager, features, this.chip);
             
         }
         return null;

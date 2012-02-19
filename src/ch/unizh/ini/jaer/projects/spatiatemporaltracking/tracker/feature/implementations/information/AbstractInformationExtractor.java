@@ -23,8 +23,8 @@ import net.sf.jaer.chip.AEChip;
 public abstract class AbstractInformationExtractor extends AbstractFeatureExtractor implements InformationExtractor {
     
     /** Defines the path of the file. */
-    //public final String PATH = "C:\\Users\\matthias\\Documents\\02_eth\\05_semester\\01_master\\02_repo\\doc\\experiments\\identification\\results\\";
     public final String PATH = "C:\\Users\\matthias\\Documents\\02_eth\\05_semester\\01_master\\02_repo\\doc\\experiments\\tracking\\results\\";
+    //public final String PATH = "C:\\Users\\matthias\\Documents\\02_eth\\05_semester\\01_master\\02_repo\\doc\\experiments\\tracking\\results\\precition\\";
     
     /**
      * Creates a new instance of a AbstractPathInformationExtractor.

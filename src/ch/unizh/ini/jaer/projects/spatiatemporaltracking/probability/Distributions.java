@@ -125,7 +125,8 @@ public class Distributions {
          */
         public static float getCumulativeDistributionFunction(float l, float x) {
             if (x < 0) return 0;
-            return (float)(1 - Math.exp(-l*x));
+            float r = (float)(1 - Math.exp(-x * l));
+            return r;
         }
     }
 }

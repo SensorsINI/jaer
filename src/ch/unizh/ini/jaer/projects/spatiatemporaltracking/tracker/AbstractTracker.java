@@ -46,6 +46,9 @@ public class AbstractTracker implements Tracker, FeatureClusterStorage {
     /** Stores the FeatureClusters for the visualization. */
     protected List<FeatureCluster> visualization;
     
+    /** The timestamp of the first event. */
+    protected int first;
+    
     /**
      * Creates a new instance of the class AbstractTracker.
      */
@@ -84,7 +87,7 @@ public class AbstractTracker implements Tracker, FeatureClusterStorage {
     public FeatureCluster addCluster() {
         this.nFeatureClusters++;
         
-        FeatureCluster cluster = new SimpleFeatureCluster(new TrackingFeatureManager(new TrackingFeatureNotifier(), ConcreteFeatureExtractorFactory.getInstance(this, this.chip)), 
+        FeatureCluster cluster = new SimpleFeatureCluster(new TrackingFeatureManager(new TrackingFeatureNotifier(), ConcreteFeatureExtractorFactory.getInstance(this, this.chip), this.first), 
                                                           this);
         
         this.addCluster(cluster);
@@ -95,7 +98,7 @@ public class AbstractTracker implements Tracker, FeatureClusterStorage {
     public FeatureCluster addCandidateCluster() {
         this.nCandidateClusters++;
         
-        FeatureCluster cluster = new SimpleCandidateCluster(new TrackingFeatureManager(new TrackingFeatureNotifier(), ConcreteFeatureExtractorFactory.getInstance(this, this.chip)), 
+        FeatureCluster cluster = new SimpleCandidateCluster(new TrackingFeatureManager(new TrackingFeatureNotifier(), ConcreteFeatureExtractorFactory.getInstance(this, this.chip), this.first), 
                                                             this);
         
         this.addCluster(cluster);

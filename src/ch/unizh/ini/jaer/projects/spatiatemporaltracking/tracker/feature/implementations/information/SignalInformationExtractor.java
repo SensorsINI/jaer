@@ -11,7 +11,7 @@ import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.impleme
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.signal.signal.SignalExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.util.FileHandler;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.util.file.FileHandler;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -22,6 +22,9 @@ import net.sf.jaer.chip.AEChip;
  * @author matthias
  */
 public class SignalInformationExtractor extends AbstractInformationExtractor {
+    
+    /** Indicates whether the signal was allready logged or not. */
+    private boolean isLogged;
     
     /**
      * Creates a new instance of a PathInformationExtractor.
@@ -43,6 +46,8 @@ public class SignalInformationExtractor extends AbstractInformationExtractor {
     @Override
     public void reset() {
         super.reset();
+        
+        this.isLogged = false;
     }
     
     /**
@@ -57,20 +62,24 @@ public class SignalInformationExtractor extends AbstractInformationExtractor {
          * writes the signal to the file.
          */
         if (this.features.has(Features.Signal)) {
+            if (this.isLogged) return;
+            this.isLogged = false;
+            
             Signal s = ((SignalExtractor)this.features.get(Features.Signal)).getSignal();
             
             DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
             Date date = new Date();
             
             int lifetime = ((LifetimeExtractor)this.features.get(Features.Lifetime)).getLifetime();
+            int creationtime = ((LifetimeExtractor)this.features.get(Features.Lifetime)).getCreationTime();
             float x = ((BoundaryExtractor)this.features.get(Features.Boundary)).getMajorLength();
             float y = ((BoundaryExtractor)this.features.get(Features.Boundary)).getMinorLength();
             
-            String header = dateFormat.format(date) + ", " + lifetime + ", " + x + ", " + y;
+            String header = String.format("%s, %d, %d, %d, %f, %f", dateFormat.format(date), this.hashCode(), creationtime, lifetime, x, y);
             String output = "";
-            for (int i = 0; i < s.getSize(); i++) output += ", " + s.getOriginalTransition(i).state + ", " + s.getOriginalTransition(i).time;
+            for (int i = 0; i < s.getSize(); i++) output += String.format(", %d, %d", s.getOriginalTransition(i).state, s.getOriginalTransition(i).time);
             
-            FileHandler.getInstance(PATH + "signal.txt").writeLine(header + output);
+            FileHandler.getInstance(PATH + "signal.txt").writeLine(String.format("%s%s", header, output));
         }
     }
 }

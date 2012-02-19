@@ -39,7 +39,7 @@ public interface FeatureNotifier {
      * feature.
      * 
      * @param feature The changed feature.
-     * @param timestamp The timestamp of the algorithm.
+     * 
      */
     public void notify(Features feature, int timestamp);
 }

@@ -20,6 +20,14 @@ import net.sf.jaer.event.TypedEvent;
 public interface FeatureManager {
     
     /**
+     * Gets the timestamp of the creation of the tracker. This timestamp
+     * can be used as a reference.
+     * 
+     * @return The timestamp of the creation of the tracker.
+     */
+    public int getReferenceTime();
+    
+    /**
      * Adds a new extractor to the manager if the feature is not yet presentd.
      * 
      * @param feature The new extractor for the manager.

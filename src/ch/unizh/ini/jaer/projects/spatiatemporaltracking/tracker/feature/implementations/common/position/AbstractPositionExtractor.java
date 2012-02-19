@@ -5,6 +5,7 @@
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.position;
 
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.Vector;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.path.PathLocation;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.AbstractFeatureExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
@@ -25,6 +26,12 @@ public abstract class AbstractPositionExtractor extends AbstractFeatureExtractor
 
     /** Stores the position of the object. */
     protected Vector position;
+    
+    /** Stores the current location of the object. */
+    protected PathLocation current;
+    
+    /** Stores the previous location of the object. */
+    protected PathLocation previous;
     
     /**
      * Creates a new instance of a AbstractPositionExtractor.
@@ -56,6 +63,16 @@ public abstract class AbstractPositionExtractor extends AbstractFeatureExtractor
     @Override
     public Vector getPosition() {
         return this.position;
+    }
+    
+    @Override
+    public PathLocation getCurrentLocation() {
+        return current;
+    }
+    
+    @Override
+    public PathLocation getPreviousLocation() {
+        return previous;
     }
     
     @Override

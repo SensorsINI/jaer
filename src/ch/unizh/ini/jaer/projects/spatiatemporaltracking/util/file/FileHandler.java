@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.jaer.projects.spatiatemporaltracking.util;
+package ch.unizh.ini.jaer.projects.spatiatemporaltracking.util.file;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -10,7 +10,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -91,19 +93,20 @@ public class FileHandler {
      * 
      * @return The content of the file.
      */
-    public String readFile() {
+    public List<String> readFile() {
+        List<String> lines = new ArrayList<String>();
+        
         File file = new File(this.path);
         try {
             BufferedReader in = new BufferedReader(new FileReader(this.path));
-            String content = "";
             while (in.ready()) {
-                content += in.readLine();
+                lines.add(in.readLine());
             }
             in.close();
-            return content;
+            return lines;
         } 
         catch (IOException e) {}
-        return "";
+        return lines;
     }
     
     /**

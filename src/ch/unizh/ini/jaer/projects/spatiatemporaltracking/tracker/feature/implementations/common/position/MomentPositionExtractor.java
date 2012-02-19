@@ -4,6 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.position;
 
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.path.PathLocation;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.moment.MomentExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
@@ -58,6 +59,9 @@ public class MomentPositionExtractor extends AbstractPositionExtractor {
         this.position.set(0, m10 / m00);
         this.position.set(1, m01 / m00);
         
-        this.features.getNotifier().notify(Features.Position, this.timestamp);
+        this.previous = this.current;
+        this.current = new PathLocation(this.position.copy(), timestamp);
+        
+        this.features.getNotifier().notify(Features.Position, timestamp);
     }
 }

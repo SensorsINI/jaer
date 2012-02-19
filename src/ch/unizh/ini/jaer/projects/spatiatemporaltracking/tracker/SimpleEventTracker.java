@@ -56,6 +56,9 @@ public class SimpleEventTracker extends AbstractTracker implements EventTracker 
     /** The flag is used to indicated that the filter was reseted. */
     private boolean isReseted;
     
+    /** Indicates whether the object was allready used or not. */
+    private boolean isVirgin;
+    
     /**
      * Creates a new instance of the class SimpleEventTracker.
      */
@@ -90,6 +93,7 @@ public class SimpleEventTracker extends AbstractTracker implements EventTracker 
     public void track(EventPacket<?> in) {
         if (this.isReseted) {
             this.isReseted = false;
+            this.isVirgin = true;
             
             while (!this.clusters.isEmpty()) {
                 this.delete(this.clusters.get(0));
@@ -97,6 +101,11 @@ public class SimpleEventTracker extends AbstractTracker implements EventTracker 
         }
         
         if (in.isEmpty()) return;
+        
+        if (this.isVirgin) {
+            this.isVirgin = false;
+            this.first = in.getFirstTimestamp();
+        }
         
         /*
          * assigns each EventGroup to the best matching FeatureCluster

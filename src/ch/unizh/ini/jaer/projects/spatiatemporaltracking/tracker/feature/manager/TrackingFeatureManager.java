@@ -24,6 +24,12 @@ import net.sf.jaer.event.TypedEvent;
  */
 public class TrackingFeatureManager implements FeatureManager {
 
+    /** 
+     * Stores the reference time which corresponds to the time of the
+     * creation of the algorithm.
+     */
+    private int reference;
+    
     /** Stores the source of the manager. */
     private FeatureNotifier notifier;
     
@@ -43,13 +49,26 @@ public class TrackingFeatureManager implements FeatureManager {
     
     /**
      * Creates a new instance of the class TrackingFeatureManager.
+     * 
+     * @param notifier The notifier used by this manager to notify the
+     * associated extractors about changes.
+     * @param factory The factory used to crate new extractors.
+     * @param reference The timestamp used as reference.
      */
-    public TrackingFeatureManager(FeatureNotifier notifier, FeatureExtractorFactory factory) {
+    public TrackingFeatureManager(FeatureNotifier notifier, 
+                                  FeatureExtractorFactory factory,
+                                  int reference) {
         this.notifier = notifier;
         this.factory = factory;
+        this.reference = reference;
         
         this.features = new EnumMap<Features, FeatureExtractor>(Features.class);
         this.packet = new ArrayList<TypedEvent>();
+    }
+    
+    @Override
+    public int getReferenceTime() {
+        return this.reference;
     }
 
     @Override

@@ -38,7 +38,10 @@ public enum Features {
     PositionPredictor,
     Occurance,
     
+    Interrupt,
+    InformationPosition,
     InformationPath,
     InformationVelocity,
-    InformationSignal
+    InformationSignal,
+    InformationEvent
 }

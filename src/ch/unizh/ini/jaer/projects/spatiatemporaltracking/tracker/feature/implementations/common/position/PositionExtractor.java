@@ -5,6 +5,7 @@
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.position;
 
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.Vector;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.path.PathLocation;
 
 /**
  *
@@ -21,4 +22,18 @@ public interface PositionExtractor {
      * @return The position of the object.
      */
     public Vector getPosition();
+    
+    /**
+     * Gets the current location of the object.
+     * 
+     * @return The current location of the object.
+     */
+    public PathLocation getCurrentLocation();
+    
+    /**
+     * Gets the previous location of the object.
+     * 
+     * @return The previous location of the object.
+     */
+    public PathLocation getPreviousLocation();
 }

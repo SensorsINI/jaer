@@ -4,7 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.util.FileHandler;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.util.file.FileHandler;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -79,7 +79,7 @@ public class Parameters {
         "Defines the threshold for the assignment of events.",
         Type.Float,
         false,
-        0.25f);
+        /*0.25f*/ 1.4f);
     
     public static final Parameter EVENT_ASSINGMENT_SPATIAL_SHARPNESS = new Parameter(
         "event.assignment", 
@@ -118,7 +118,7 @@ public class Parameters {
         "Defines the threshold for the assignment of clusters to a temporal pattern.",
         Type.Float,
         false,
-        0.2f);
+        0.4f);
     
     public static final Parameter CLUSTER_MERGE_THRESHOLD = new Parameter(
         "cluster.assignment", 
@@ -136,7 +136,7 @@ public class Parameters {
         "Defines the threshold for the delete an unused cluster.",
         Type.Float,
         false,
-        10f);
+        1f);
     
     /*
      * transition history
@@ -184,7 +184,7 @@ public class Parameters {
         "Defines allowed deviation in the number of elements of a possible transition compared to the maxima found.",
         Type.Float,
         false,
-        0.2f);
+        0.6f);
     
     /*
      * signal

@@ -9,10 +9,7 @@ import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Feature
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.velocity.VelocityExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.util.FileHandler;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.util.file.FileHandler;
 import net.sf.jaer.chip.AEChip;
 
 /**
@@ -54,16 +51,11 @@ public class VelocityInformationExtractor extends AbstractInformationExtractor {
         /*
          * writes the signal to the file.
          */
-        if (this.features.has(Features.Velocity)) {
+        if (this.features.has(Features.Velocity)
+                && this.features.get(Features.Signal).isStatic()) {
             Vector v = ((VelocityExtractor)this.features.get(Features.Velocity)).getVelocity();
             
-            DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-            Date date = new Date();
-            String header = dateFormat.format(date) + ", ";
-            String output = "";
-            for (int i = 0; i < v.getDimension(); i++) output += ", " + v.get(i);
-            
-            FileHandler.getInstance(PATH + "velocity(" + this.features.hashCode() + ").txt").writeLine(header + output);
+            FileHandler.getInstance(PATH + "velocity_" + this.hashCode() + ".txt").writeLine(String.format("%d %d %f %f", this.feature.hashCode(), timestamp, v.get(0), v.get(1)));
         }
     }
 }

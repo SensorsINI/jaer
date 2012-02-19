@@ -23,6 +23,10 @@ public class SimpleLifetimeExtractor extends AbstractLifetimeExtractor {
     
     /**
      * Creates a new instance of a SimpleLifetimeExtractor.
+     * 
+     * @param parameters The instances managing the parameters used by this feature.
+     * @param features The instance managing the features uesd by this feature.
+     * @param chip The AEChip used by the DVS.
      */
     public SimpleLifetimeExtractor(ParameterManager parameters, 
                                    FeatureManager features,  
@@ -51,11 +55,12 @@ public class SimpleLifetimeExtractor extends AbstractLifetimeExtractor {
         
         if (this.isVirgin) { 
             this.birthtime = timestamp;
+            this.creationtime = this.birthtime - this.features.getReferenceTime();
             this.isVirgin = false;
         }
         
         this.lifetime = timestamp - this.birthtime;
         
-        this.features.getNotifier().notify(this.feature, this.timestamp);
+        this.features.getNotifier().notify(this.feature, timestamp);
     }
 }

@@ -51,7 +51,7 @@ public class PeakKernelTransitionHistory extends AbstractTransitionHistoryExtrac
      * Defines the allowed deviation between the global maxima and the local
      * one in order to create a new transition.
      */
-    public float deviation = 0.4f;
+    public float deviation;
     
     /** Stores the best candidate of the transition. */
     private KernelExtractor.Storage candidate;

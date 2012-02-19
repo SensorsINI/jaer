@@ -24,6 +24,9 @@ public abstract class AbstractLifetimeExtractor extends AbstractFeatureExtractor
     
     /** Stores the lifetime. */
     protected int lifetime;
+    
+    /** Stores the time of the creation of the object. */
+    protected int creationtime;
             
     /**
      * Creates a new instance of a AbstractLifetimeExtractor.
@@ -40,11 +43,17 @@ public abstract class AbstractLifetimeExtractor extends AbstractFeatureExtractor
         super.reset();
         
         this.lifetime = 0;
+        this.creationtime = 0;
     }
 
     @Override
     public int getLifetime() {
         return this.lifetime;
+    }
+    
+    @Override
+    public int getCreationTime() {
+        return this.creationtime;
     }
     
     @Override

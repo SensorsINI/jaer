@@ -4,27 +4,26 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.information;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.path.PathLocation;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.path.PathExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterManager;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.util.file.FileHandler;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.TypedEvent;
 
 /**
  *
  * @author matthias
  */
-public class PathInformationExtractor extends AbstractInformationExtractor {
+public class EventInformationExtractor extends AbstractInformationExtractor {
     
     /**
-     * Creates a new instance of a PathInformationExtractor.
+     * Creates a new instance of a EventInformationExtractor.
      */
-    public PathInformationExtractor(ParameterManager parameters, 
-                                    FeatureManager features, 
-                                    AEChip chip) {
-        super(Features.Path, parameters, features, Features.InformationPath, chip);
+    public EventInformationExtractor(ParameterManager parameters, 
+                                     FeatureManager features, 
+                                     AEChip chip) {
+        super(Features.Event, parameters, features, Features.InformationEvent, chip);
         
         this.init();
         this.reset();
@@ -48,14 +47,8 @@ public class PathInformationExtractor extends AbstractInformationExtractor {
      */
     @Override
     public void update(int timestamp) {
-        /*
-         * writes the signal to the file.
-         */
-        if (this.features.has(Features.Path) 
-                && this.features.get(Features.Signal).isStatic()) {
-            PathLocation p = ((PathExtractor)this.features.get(Features.Path)).getPath();
-            
-            FileHandler.getInstance(PATH + "path_" + this.hashCode() + ".txt").writeLine(String.format("%d %d %f %f", this.feature.hashCode(), timestamp, p.location.get(0), p.location.get(1)));
-        }
+        TypedEvent e = this.features.getEvent();
+        
+        FileHandler.getInstance(PATH + "events.txt").writeLine(String.format("%d %d %d", e.timestamp, e.x, e.y));
     }
 }
