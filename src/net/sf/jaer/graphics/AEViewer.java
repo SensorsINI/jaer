@@ -859,7 +859,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          * arguments are: items to show, scrolling interval, 
          * froozen items top, frozen items bottom
          */
-        MenuScroller.setScrollerFor(deviceMenu, 8, 100, 0, 1);
+        MenuScroller.setScrollerFor(deviceMenu, 15, 100, 4, 2);
     }
 
     /** If the AEMonitor is open, tells it to resetTimestamps.
