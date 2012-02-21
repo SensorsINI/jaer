@@ -2,92 +2,85 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-
 package ch.unizh.ini.jaer.projects.integrateandfire;
 
-
-// Java  Stuff
 import java.io.File;
 import java.io.FileNotFoundException;
-
-
-import java.util.Scanner;
-import java.util.NoSuchElementException;
-import javax.swing.*;
+import java.lang.reflect.InvocationTargetException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.sf.jaer.event.OutputEventIterator;
 
 /**
  *
- * @author tobi
+ * @author Peter
  */
-public class NetworkArray implements SuperNet{
-
-    /* Network
-     * Every Event-Source/Neuron has an integer "address".  When the event source
-     * generates an event, it is propagated through the network.
-     *
-     * */
-
-    //------------------------------------------------------
-    // Properties-Network Related
-   
-    Network[] N;
+public class NetworkArray {
     
-    public NetworkArray(int number)
-    {
-        N=new Network[number];
+    
+    public Network[] N;
+    int numNets=4;
+    Class C;            // Class of
+    
+    Network getNet(int index)
+    {   return N[index];        
     }
     
-    //ENeuron[] N;                 // Array of neurons.  N[i] is the ith neuron.
-    public int maxdepth=100;    // Maximum depth of propagation - prevents infinite loops in unstable recurrent nets.
-
-    public void propagate(int index, int source, int depth, int timestamp)
-    {   N[index].propagate(source, depth, timestamp); 
-    }
-    
-    public void propagate(int index, int source, int depth, int timestamp, OutputEventIterator outItr)
-    {   N[index].propagate(source, depth, timestamp, outItr); 
-    }
-    
-    public void stimulate(int index, int dest, float weight, int timestamp, OutputEventIterator outItr)
-    {   // Directly stimulate a neuron with a given weight
-        N[index].stimulate(dest,weight,timestamp, outItr);
-    }
-
-    @Override
-    public String networkStatus(){
-        return "Network Array with "+N.length+" Networks";
-    }
-    
-    @Override
-    public void setThresholds(float thresh)
-    {   for (SuperNet n:N)
-            n.setThresholds(thresh);    
-    }
-    
-    @Override
-    public void setTaus(float tc)
-    {   for (SuperNet n:N)
-            n.setTaus(tc);
-    }
-    
-    @Override
-    public void setSats(float tc)
-    {   for (SuperNet n:N)
-            n.setSats(tc);    
-    }
-    
-    @Override
-    public void setDoubleThresh(boolean v)
-    {   for (SuperNet n:N)
-            n.setDoubleThresh(v);    
-    }
-    
-    @Override
     public void reset()
-    {   for (SuperNet n:N)
-            n.reset();    
+    {   for (Network n:N)
+            n.reset();        
     }
-
+    
+    public void setRemapper(Remapper R){
+        for (Network n:N)
+            if (n!=null)
+                n.R=R;
+    }
+    
+    public void setTrackHistory(int th)
+    {   for (Network n:N)
+            n.trackHistory=th;        
+    }
+    
+    public void setOutputIX(int[] outs)
+    {   for (Network n:N)
+            n.setOutputIX(outs);        
+    }
+    
+    NetworkArray(Class C,int number) throws Exception
+    {   // Maybe this is a little strange, but the arguments going into this 
+        // constructor are the network class 
+        try {
+            if (!Network.class.isAssignableFrom(C))
+                throw new Exception("The class '"+C.getSimpleName()+"is not a subclass of Network");
+            
+            N=new Network[number];
+            for (int i=0; i<N.length; i++)
+                N[i]=(Network)C.newInstance();
+                
+        } catch (InstantiationException ex) {
+            Logger.getLogger(NetworkArray.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            Logger.getLogger(NetworkArray.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IllegalArgumentException ex) {
+            Logger.getLogger(NetworkArray.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (InvocationTargetException ex) {
+            Logger.getLogger(NetworkArray.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (NoSuchMethodException ex) {
+            Logger.getLogger(NetworkArray.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (SecurityException ex) {
+            Logger.getLogger(NetworkArray.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+    }
+    
+    public void loadFromFile() throws FileNotFoundException, Exception
+    {   
+        File file=Network.getfile();
+        
+        for (Network n:N)
+        {   n.readfile(file);
+        }
+    }
     
 }

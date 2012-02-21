@@ -20,8 +20,8 @@ public class PreProcess extends EventFilter2D {
     int maxEventsPerPacket=getInt("maxEventsPerPacket",Integer.MAX_VALUE);
     int downsamp=getInt("downsamp",1);
     public enum polarityOpts {all,on,off};         // <1: just off events, >1: Just on events, 0: both;
-    polarityOpts polarityPass=polarityOpts.all;
-    
+    polarityOpts polarityPass=polarityOpts.valueOf(getPrefs().get("polarityPass",polarityOpts.off.toString()));
+       
     boolean transformPoints=getBoolean("transformPoints",false);
     
     public PreProcess(AEChip chip)

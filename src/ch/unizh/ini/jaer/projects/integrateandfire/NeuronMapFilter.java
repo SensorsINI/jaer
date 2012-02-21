@@ -18,7 +18,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * fire neurons.  
  * @author Peter
  */
-public class NeuronMapFilter  extends SuperNetFilter {
+public class NeuronMapFilter  extends SuperLIFFilter {
     /* Put a layer of neurons on the input to act as a filter.  These integrate-
      * and fire neurons have exponential decau functions.  
      * 

@@ -16,7 +16,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  *
  * @author Peter
  */
-abstract public class SuperNetFilter  extends EventFilter2D {
+abstract public class SuperLIFFilter  extends EventFilter2D {
     /* @Description: This class provides some general UI tools for dealing with 
      * neural networks.  It is meant to be extended
      * 
@@ -38,7 +38,7 @@ abstract public class SuperNetFilter  extends EventFilter2D {
     
     boolean doubleThresh=false; // DoubleThresh
     
-    SuperNet NN;            // Reference to general Network Interface
+    LIFcontroller NN;            // Reference to general Network Interface
     
     //==========================================================================
     // Obligatory Overrides
@@ -52,7 +52,7 @@ abstract public class SuperNetFilter  extends EventFilter2D {
     //==========================================================================
     // Initialization, UI
     
-    public SuperNetFilter(AEChip  chip)
+    public SuperLIFFilter(AEChip  chip)
     {   super(chip);
         
         setPropertyTooltip("input","polarityPass", "All: treat ON/OFF the same.  on/off: filter ON/OFF events.  diff:on events entered with negative weight");

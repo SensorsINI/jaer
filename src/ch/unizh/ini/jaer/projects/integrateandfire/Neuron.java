@@ -9,11 +9,13 @@
 
 package ch.unizh.ini.jaer.projects.integrateandfire;
 
+import ch.unizh.ini.jaer.projects.integrateandfire.Network.Unit;
+
 /**
  *
  * @author tobi
  */
-public class Neuron {
+public class Neuron implements Unit{
 
     private float vmem=0;       // Membrane Potential at previous spike
     private int tlast=-10000;   // microsecond timestamp of previous vmem update
@@ -116,6 +118,26 @@ public class Neuron {
         if (dt<0){ return 0f; } // TODO: Do this properly
         return (float)(vmem*Math.exp(-dt/tau));
                 */
+    }
+
+    @Override
+    public float getVsig(int timestamp) {
+        return get_vmem(timestamp);
+    }
+
+    @Override
+    public float getAsig() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public String getName() {
+        return name;
+    }
+
+    @Override
+    public String getInfo() {
+        return "Thresh: "+thresh;
     }
 
 }

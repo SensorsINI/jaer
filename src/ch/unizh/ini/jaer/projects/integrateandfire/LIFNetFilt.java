@@ -33,7 +33,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @description Attempts to classify digits
  * @author Peter
  */
-public class ClassItUp extends SuperNetFilter implements FrameAnnotater {
+public class LIFNetFilt extends SuperLIFFilter implements FrameAnnotater {
     /* Network
      * Every Event-Source/Neuron has an integer "address".  When the event source
      * generates an event, it is propagated through the network.  
@@ -55,7 +55,7 @@ public class ClassItUp extends SuperNetFilter implements FrameAnnotater {
     //Sparsify S;
     //FilterChain dickChainy;
 
-    NetworkArray Net;
+    LIFArray Net;
     
     int current; // Index of current network
     
@@ -128,7 +128,7 @@ public class ClassItUp extends SuperNetFilter implements FrameAnnotater {
         setClusterTags();
 
         if (plot!=null) 
-        {   plot.replot();
+        {   plot.replot(this.getLastTimestamp());
         }
             
         return out;
@@ -142,7 +142,7 @@ public class ClassItUp extends SuperNetFilter implements FrameAnnotater {
 
     //------------------------------------------------------
     // Output-Generating Methods
-
+    
     public void doChoosePlot(){
 
         if (plot!=null)
@@ -174,7 +174,7 @@ public class ClassItUp extends SuperNetFilter implements FrameAnnotater {
                 plot=new Probe();
                 break;
         }
-        plot.load(this, Net);
+        plot.load(Net);
         plot.init();
     }
     
@@ -183,7 +183,7 @@ public class ClassItUp extends SuperNetFilter implements FrameAnnotater {
     // Obligatory method overrides
         
     //  Initialize the filter
-    public  ClassItUp(AEChip  chip){
+    public  LIFNetFilt(AEChip  chip){
         super(chip);
         
         FilterChain dickChainy=new FilterChain(chip);
@@ -229,14 +229,14 @@ public class ClassItUp extends SuperNetFilter implements FrameAnnotater {
         setEnableNetwork(false);
         
         genFile=null;
-        Net=new NetworkArray(0);
+        Net=new LIFArray(0);
         setNetCount(4); // File's read in here
         Net.setThresholds(500);
         NN=Net;
                 
         // Stop Top layer from firing!
         int i;
-        for (Network nn:Net.N)
+        for (LIFNet nn:(Net.lif))
             for (i=1; i<11; i++)
                 nn.N[nn.N.length-i].thresh=100000;
         
@@ -247,7 +247,7 @@ public class ClassItUp extends SuperNetFilter implements FrameAnnotater {
     
     public File getGenFile()  throws FileNotFoundException, Exception
     {   if (genFile==null)
-        {   genFile=Network.getfile();
+        {   genFile=LIFNet.getfile();
             return genFile;
         }
         else return genFile;
@@ -260,12 +260,12 @@ public class ClassItUp extends SuperNetFilter implements FrameAnnotater {
         if (count < Net.N.length)
             Net.N=Arrays.copyOfRange(Net.N, 0, count-1);
         else
-        {   Network[] nn=new Network[count];
+        {   LIFNet[] nn=new LIFNet[count];
             for (int i=0; i<count-Net.N.length; i++)
              {   if (i<Net.N.length)
-                    nn[i]=Net.N[i];
+                    nn[i]=Net.lif[i];
                  else
-                 {  nn[i]=new Network();
+                 {  nn[i]=new LIFNet();
                     nn[i].readfile(getGenFile());
                  }
                  
@@ -278,13 +278,13 @@ public class ClassItUp extends SuperNetFilter implements FrameAnnotater {
         this.filterEnabled=true;
     }
     
-    public Network getCurrentNet()
-    {   return Net.N[current];        
+    public LIFNet getCurrentNet()
+    {   return Net.lif[current];        
     }
     
     private void tagNetworks()
     {   // Tags the neurons with output labels.
-        for (Network net:Net.N)
+        for (LIFNet net:Net.lif)
             for (int i=0; i<10; i++)
                 net.N[net.N.length-10+i].tag=(char)('0'+i);
     }
@@ -294,11 +294,11 @@ public class ClassItUp extends SuperNetFilter implements FrameAnnotater {
     {   if (C==null) return; 
     
         for (ClusterSet.Cluster c:C.getClusters())
-            ((ClusterSet.ExtCluster)c).tag="["+getWinnerTag(Net.N[((ClusterSet.ExtCluster)c).index])+"?]";
+            ((ClusterSet.ExtCluster)c).tag="["+getWinnerTag(Net.lif[((ClusterSet.ExtCluster)c).index])+"?]";
         
     }
     
-    public char getWinnerTag(Network netnet)
+    public char getWinnerTag(LIFNet netnet)
     {   float vmax=-100000, vout;
         int i,imax=0;
         for (i=netnet.N.length-10; i<netnet.N.length; i++)
@@ -310,7 +310,7 @@ public class ClassItUp extends SuperNetFilter implements FrameAnnotater {
     
    
     // Nothing
-    public ClassItUp getFilterState(){
+    public LIFNetFilt getFilterState(){
         return this;
     }
 

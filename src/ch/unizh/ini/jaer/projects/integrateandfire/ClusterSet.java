@@ -88,13 +88,13 @@ public class ClusterSet extends RectangularClusterTracker {
         @Override
         public void draw(GLAutoDrawable drawable) {
             super.draw(drawable);
-            final int font = GLUT.BITMAP_HELVETICA_18;
+            final int font = GLUT.BITMAP_TIMES_ROMAN_24;
             if (showClusterIndex) {
                 chip.getCanvas().getGlut().glutBitmapString(font, String.format("ix=%d  ", this.index));
             }
             
             if (!tag.isEmpty())
-                    chip.getCanvas().getGlut().glutBitmapString(font, this.tag);
+                    chip.getCanvas().getGlut().glutBitmapString(font,"     "+this.tag);
         }
         
         public void annotate(String text){

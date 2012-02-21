@@ -56,7 +56,7 @@ public class LivePlotter extends Plotter {
 */
     }
 
-    @Override public void update()
+    @Override public void update(int timestamp)
     {
  /*      see.setDataValue(NN.N[NN.N.length-2].get_vmem());
         see.setDataValue(NN.N[NN.N.length-1].get_vmem());

@@ -4,144 +4,140 @@
  */
 package ch.unizh.ini.jaer.projects.integrateandfire;
 
-// Java  Stuff
 import java.io.File;
-import java.io.FileFilter;
 import java.io.FileNotFoundException;
-
-
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Scanner;
-import java.util.NoSuchElementException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.*;
-import javax.swing.filechooser.FileSystemView;
+import javax.swing.JFileChooser;
+import javax.swing.SwingUtilities;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.OutputEventIterator;
 
 /**
- * TODO
- * @author Peter Conner
+ * // This exists to provide a common interface for all all networks containing 
+ * the following features:
+ * 1) An indexed set of units
+ * 2) Some kind of viewable signal from those units.
+ * 
+ * @author Peter
  */
-public class Network implements SuperNet {
-
-    static Logger log = Logger.getLogger("Network");
-    /* Network
-     * Every Event-Source/Neuron has an integer "address".  When the event source
-     * generates an event, it is propagated through the network.
-     *
-     * */
-    //------------------------------------------------------
-    // Properties-Network Related
-    public int[][] c;          // Arrey of connection c[i][j] is the addresss of neuron i's j'th connection.
-    public float[][] w;        // Array of weigths in network.  w[i][j] is the connection strength of connection c[i][j]
-    ENeuron[] N;                 // Array of neurons.  N[i] is the ith neuron.
-    public int maxdepth = 100;    // Maximum depth of propagation - prevents infinite loops in unstable recurrent nets.
-    public byte id;
-
-    short indimX=128;
-    short indimY=128;
+public abstract class Network {
     
-    /*  
-    public void feedfromstandard(short x, short y, int timestamp, OutputEventIterator outItr)
-    {   feedfromloc(x/128f,y/128f,timestamp,outItr);
+    Remapper R; // Maps incoming events to destinations
+    
+    static final Logger log = Logger.getLogger("Network");
+    
+    int[] outputIX={};
+    float[] windex={};
+    
+    public void setOutputIX(int[] outs)
+    {   outputIX=outs;   
+        windex=new float[outs.length];
     }
-          
-    public void feedfromloc(float relx, float rely, int timestamp, OutputEventIterator outItr)
-    {   propagate(indimY*E.xp)
-        Net.propagate(index,dim*E.xp+dim-1-E.yp,1,E.timestamp); 
-    }*/
     
-    // Propagate 
-    public void propagate(int source, int depth, int timestamp, OutputEventIterator outItr) {
-        // Propagate an event through the network.
-        // TRICK: if depth=-1, "source" refers not the the source but the destination.
-
-        boolean fire;
-        if (depth > maxdepth) {
-            System.out.println("This spike has triggered too many (>" + maxdepth + ") propagations.  See maxdepth");
-            return;
+    int trackHistory=0; // History tracking in winner return
+    
+    public int getWinningIndex()
+    {   /* Returns the index of the Unit with the highest activation signal 
+         * (as determined by getAsig)
+         * Special cases:
+         * No output elements specified: returns -1
+         * Tie:  returns -2
+         * 
+        */
+        
+        float keep=0, thro=1;
+        
+        if (trackHistory>0)
+        {   keep=(1-1f/(trackHistory));
+            thro=1-keep;
         }
-        int i;
-        if (c == null) {
-            return; // Handle case when we didn't create output connections
-        }
-        for (i = 0; i < w[source].length; i++) { // Iterate through connections
-            fire = N[c[source][i]].spike(w[source][i], timestamp, outItr);
-            if (fire) {
-                propagate(c[source][i], depth + 1, timestamp, outItr);
+        
+        float max=Float.NEGATIVE_INFINITY;
+        int maxix=-1;
+        for (int i=0; i<outputIX.length;i++)
+        {   float curr;
+                        
+            curr=U[outputIX[i]].getAsig()*thro+windex[i]*keep;
+            windex[i]=curr;
+            
+            if (curr>max)
+            {   max=curr;
+                maxix=outputIX[i];
+            }
+            else if (curr==max)
+            {   maxix=-2;                
             }
         }
-    }
-
-    @Override
-    public String networkStatus(){
-        return "Network with "+N.length+" Neurons";
+        return maxix;
     }
     
-    public void stimulate(int dest, float weight, int timestamp, OutputEventIterator outItr) {   // Directly stimulate a neuron with a given weight
-
-        boolean fire = N[dest].spike(weight, timestamp, outItr);
-        if (fire) {
-            propagate(dest, 1, timestamp, outItr);
-        }
+    public String getWinningTag(){
+        int ix=getWinningIndex();
+        if (ix==-1)
+            return "(no outputs)";
+        else if (ix==-2) return "(tie)";
+        else return U[ix].getName();
     }
+    
+    public interface Unit
+    {   // Standardizes methods for viewing different "neurons".  
+        // Neuron implementations of subclasses should implement this class
+        
+        // Membrane-Voltage signal of neuron at some index.
+        public float getVsig(int timestamp);    
 
-    @Override
-    public void setThresholds(float thresh) {
-        for (Neuron n : N) {
-            n.thresh = thresh;
-        }
+        // Activation singal of neuron at some index
+        public float getAsig();
+
+        // Name of unit
+        public String getName();
+        
+        // Return basic info on state of unit
+        public String getInfo();
+        
     }
-
-    @Override
-    public void setTaus(float tc) {
-        for (Neuron n : N) {
-            n.tau = tc;
-        }
+    Unit[] U; // Link to list of units.  IMPORTANT, however you implement your array of units, make sure this property links to them
+    
+    
+    // ===== Actual functions =====
+    public int eventIndex(BasicEvent ev)
+    {   return R.xy2ind(ev.x, ev.y);        
     }
-
-    @Override
-    public void setSats(float tc) {
-        for (Neuron n : N) {
-            n.sat = tc;
-        }
+    
+    public void setRemapper(Remapper Rnew)
+    {   R=Rnew;        
     }
-
-    @Override
-    public void setDoubleThresh(boolean v) {
-        for (Neuron n : N) {
-            n.doublethresh = v;
-        }
+    
+    public Remapper getRemapper()
+    {   return R;
     }
+//    abstract public void eatEvent(BasicEvent ev);
+//    {   int ix=eventIndex(ev);
+//        propagate(ix,0,ev.timestamp);
+//    }
+    
+//    abstract public void eatEvent(BasicEvent ev,OutputEventIterator outItr);
+//    {   int ix=eventIndex(ev);
+//        propagate(ix,0,ev.timestamp,outItr);
+//    }    
+    
+    // ===== Network Activity Functions =====
 
-    @Override
-    public void reset() {
-        for (Neuron n : N) {
-            n.reset();
-        }
-    }
+    abstract public void reset();
+    
+    // ===== Network Observation Functions =====
+    public Unit getUnit(int index){return U[index];}
+    
+    public int nUnits(){return U.length;}
+    
+    // Return fanout connections
+    abstract public int[] getConnections(int index);
 
-    // Propagate an event through the network
-    public void propagate(int source, int depth, int timestamp) {
-        propagate(source, depth, timestamp, null);
-        /*boolean fire;
-        if (depth>maxdepth){
-        System.out.println("This spike has triggered too many (>"+maxdepth+") propagations.  See maxdepth");
-        return;
-        }
-        int i;
-        for (i=0;i<w[source].length;i++){ // Iterate through connections
-        fire=N[c[source][i]].spike(w[source][i],timestamp);
-        if (fire){
-        propagate(c[source][i],depth+1,timestamp);
-        }
-        }*/
-
-    }
-
+    // Return fanout weigths
+    abstract public float[] getWeights(int index);
+    
+    // ===== File IO Functions =====    
     static class FileChoice implements Runnable {
 
         File file = null;
@@ -194,118 +190,6 @@ public class Network implements SuperNet {
         return fc.file;
     }
 
-//    public File readfile()  throws FileNotFoundException, Exception{
-//        File file=getfile();
-//        readfile(file);        
-//        return file;
-//    }
-    // Read a network file into a Network Object
-    public void readfile(File file) throws FileNotFoundException, Exception {
-        // Locate a Network-Description file and read it into a network.
-
-
-        int i, j;
-        int netLen, rowLen;
-
-        /*
-        File file;
-        JFrame frame = new JFrame("FileChooserDemo");
-        
-        
-        // Locate file
-        JFileChooser fc = new JFileChooser();
-        
-        fc.showOpenDialog(frame);
-        file=fc.getSelectedFile();
-        //file=new File("C:\\Documents and Settings\\tobi\\My Documents\\Simple Net.txt");
-         */
-
-        // Parse Out First Info
-        Scanner sc = new Scanner(file);
-
-        sc.nextLine();              // Name Line
-        sc.nextLine();              // Notes Line
-        sc.next();                  // #Units Line
-        netLen = sc.nextInt();        // Read Network Length
-
-
-        sc.nextLine();
-
-        // Initialize arrays
-        w = new float[netLen][];
-        c = new int[netLen][];
-        N = new ENeuron[netLen];
-
-        System.out.println("Reading Network...");
-
-        sc.next("Unit");
-
-        /*
-        JFrame f = new JFrame("JProgressBar Sample");
-        f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        Container content = f.getContentPane();
-        JProgressBar progressBar = new JProgressBar();
-        progressBar.setValue(25);
-        progressBar.setStringPainted(true);
-        Border border = BorderFactory.createTitledBorder("Reading...");
-        progressBar.setBorder(border);
-        content.add(progressBar, BorderLayout.NORTH);
-        f.setSize(300, 100);
-        f.setVisible(true);
-         */
-
-        for (i = 0; i < netLen; i++) {     //Loop Though Neurons
-
-            // Add new unit
-            //sc.nextLine();
-            //sc.next();  // Unit
-            if (i != sc.nextInt()) {
-                //out.println("ERROR: UNIT # DOES NOT MATCH INDEX");
-            }
-            sc.nextLine();          // Jump to connection-count line
-            sc.next();              // Jump to number of connections
-            rowLen = sc.nextInt();    // Grab the length of the row
-
-            String lab;
-
-
-            N[i] = new ENeuron();      // Initialize Neuron
-
-            while (true) {
-                sc.nextLine();
-
-
-                try {
-                    lab = sc.next();
-                } catch (NoSuchElementException E) {
-                    break;
-                }
-
-
-                if (lab.equals("W:")) {
-                    w[i] = new float[rowLen]; // Start weight array
-                    for (j = 0; j < rowLen; j++) { // Loop though forward connections
-                        w[i][j] = sc.nextFloat();
-                    }
-                } else if (lab.equals("C:")) {   // Fill me with Code!    
-                    c[i] = new int[rowLen]; // Start weight array
-                    for (j = 0; j < rowLen; j++) { // Loop though forward connections
-                        c[i][j] = sc.nextInt();
-                    }
-                } else if (lab.equals("N:")) {
-                    N[i].name = sc.next();
-                } else if (lab.equals("B:")) {   // Fill me with Code!
-                } else if (lab.equals("Unit")) {
-                    break;
-                } else {
-                    throw new Exception("Unknown Neuron parameter :'" + lab + "'");
-                }
-
-
-            }
-
-        }
-        System.out.println("Done");
-
-    }
+    abstract public void readfile(File file) throws FileNotFoundException, Exception;
+    
 }

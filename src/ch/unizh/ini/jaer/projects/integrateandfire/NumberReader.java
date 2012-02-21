@@ -37,7 +37,7 @@ public class NumberReader extends Plotter implements ActionListener{
     class MiniProbe
     {
         JProgressBar hP;
-        ENeuron N;
+        Network.Unit N;
         JLabel lab;
         public float lastmem;
         
@@ -46,16 +46,24 @@ public class NumberReader extends Plotter implements ActionListener{
         }
         
         final void init(int N_, JProgressBar J_, JLabel L_)
-        {   N=NN.N[N_];
+        {   N=NN.getUnit(N_);
             hP=J_;     
             lab=L_;
             
-            lab.setText("#"+N_+": '"+N.tag+"'");
+            lab.setText("#"+N_+": '"+N.getName()+"'");
         }
         
         void update(float scalefac,int timestamp)
-        {   lastmem=N.get_vmem(timestamp);
-            hP.setValue((int) (100/(1+Math.exp(-lastmem*scalefac))));
+        {   if (radioVM.isSelected())
+            {    lastmem=N.getVsig(timestamp);
+                 hP.setValue((int) (100/(1+Math.exp(-lastmem*scalefac))));
+            }
+            else
+            {   // TODO: Generalize to non-binary firing rates 
+                lastmem=N.getAsig();
+                 hP.setValue((int) (100*lastmem));
+            }
+            
         }
         
     }
@@ -64,18 +72,22 @@ public class NumberReader extends Plotter implements ActionListener{
     
     List<Probe> P = new ArrayList<Probe>(0);
 
-    void NumberPlot(SuperNetFilter F_, Network NN_){load(F_,NN_);}
+    void NumberPlot(LIFNet NN_){load(NN_);}
     
     @Override public void init()
     {
         enable=false;
+        
+        buttonGroupSig.add(radioVM);
+        buttonGroupSig.add(radioFR);
+        radioVM.setSelected(true);
         
         // Make a list of links connecting neurons to their nets.
         miniProbes=new ArrayList<MiniProbe>();
         JProgressBar[] jbars={jBar1,jBar2,jBar3,jBar4,jBar5,jBar6,jBar7,jBar8,jBar9,jBar0};
         JLabel[] jlabs={jLabel1,jLabel2,jLabel3,jLabel4,jLabel5,jLabel6,jLabel7,jLabel8,jLabel9,jLabel10};
         for (int i=0; i<10; i++)
-            miniProbes.add(new MiniProbe(NN.N.length-10+i,jbars[i],jlabs[i]));
+            miniProbes.add(new MiniProbe(NN.nUnits()-10+i,jbars[i],jlabs[i]));
             
         this.setVisible(true);
         this.jSlider.setValue(10);
@@ -98,7 +110,7 @@ public class NumberReader extends Plotter implements ActionListener{
         init();
     }
 
-    @Override public void update()
+    @Override public void update(int timestamp)
     {
         if (!enable)
             return;
@@ -107,15 +119,14 @@ public class NumberReader extends Plotter implements ActionListener{
         float[] vout=new float[10];
                
         // Update all values
-        char maxlab='?';
+        String maxlab="?";
         float vmax=Float.NEGATIVE_INFINITY;
-        int timestamp=F.getLastTimestamp();
         float scalefac=(float) (jSlider.getValue()) /100;
         for (MiniProbe m:miniProbes)
         {   m.update(scalefac,timestamp);
             if (m.lastmem>vmax)
             {   vmax=m.lastmem;
-                maxlab=m.N.tag;                
+                maxlab=m.N.getName();                
             }
         }
         
@@ -127,7 +138,7 @@ public class NumberReader extends Plotter implements ActionListener{
                 
         Iterator<Probe> Pit = P.iterator();
 	while (Pit.hasNext()) {
-            Pit.next().update();
+            Pit.next().update(timestamp);
 	}
 
     }
@@ -135,13 +146,13 @@ public class NumberReader extends Plotter implements ActionListener{
     @Override public void actionPerformed(ActionEvent e) {
         if (e.getSource()==this.pushProbe)
         {   Probe p=new Probe();
-            p.load(F,NN);
+            p.load(NN);
             p.init();
             P.add(p);
         }
         else if (e.getSource()==this.pushControl)
         {    c=new Controller();
-             c.load(F,NN);
+             c.load(NN);
              c.init();
         }
     }
@@ -164,6 +175,7 @@ public class NumberReader extends Plotter implements ActionListener{
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        buttonGroupSig = new javax.swing.ButtonGroup();
         jBar1 = new javax.swing.JProgressBar();
         jBar2 = new javax.swing.JProgressBar();
         jBar4 = new javax.swing.JProgressBar();
@@ -191,6 +203,8 @@ public class NumberReader extends Plotter implements ActionListener{
         pushControl = new javax.swing.JButton();
         pushRefresh = new javax.swing.JButton();
         comboNet = new javax.swing.JComboBox();
+        radioVM = new javax.swing.JRadioButton();
+        radioFR = new javax.swing.JRadioButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -246,6 +260,15 @@ public class NumberReader extends Plotter implements ActionListener{
             }
         });
 
+        radioVM.setText("Membrane Voltage");
+
+        radioFR.setText("Firing Rate");
+        radioFR.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                radioFRActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -259,7 +282,9 @@ public class NumberReader extends Plotter implements ActionListener{
                         .addGap(29, 29, 29)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(comboNet, javax.swing.GroupLayout.PREFERRED_SIZE, 162, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jSlider, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                            .addComponent(jSlider, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(radioVM)
+                            .addComponent(radioFR))))
                 .addGap(31, 31, 31)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                     .addComponent(pushProbe, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -369,7 +394,11 @@ public class NumberReader extends Plotter implements ActionListener{
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel11)
                     .addComponent(pushProbe))
-                .addContainerGap())
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(radioVM)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(radioFR)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         pack();
@@ -392,6 +421,10 @@ public class NumberReader extends Plotter implements ActionListener{
         setCurrentNet(comboNet.getSelectedIndex());
     }//GEN-LAST:event_comboNetActionPerformed
 
+    private void radioFRActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_radioFRActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_radioFRActionPerformed
+
     /**
     * @param args the command line arguments
     */
@@ -404,6 +437,7 @@ public class NumberReader extends Plotter implements ActionListener{
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.ButtonGroup buttonGroupSig;
     private javax.swing.JComboBox comboNet;
     public javax.swing.JProgressBar jBar0;
     public javax.swing.JProgressBar jBar1;
@@ -431,6 +465,8 @@ public class NumberReader extends Plotter implements ActionListener{
     public javax.swing.JButton pushControl;
     public javax.swing.JButton pushProbe;
     public javax.swing.JButton pushRefresh;
+    private javax.swing.JRadioButton radioFR;
+    private javax.swing.JRadioButton radioVM;
     // End of variables declaration//GEN-END:variables
 
 }

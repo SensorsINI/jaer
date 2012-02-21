@@ -10,7 +10,7 @@ import net.sf.jaer.event.OutputEventIterator;
  *
  * @author Peter
  */
-public class NeuronMap implements SuperNet {
+public class NeuronMap implements LIFcontroller {
     
     ENeuron[][] N;
     private float[][]   Wi;  // Input weight kernel

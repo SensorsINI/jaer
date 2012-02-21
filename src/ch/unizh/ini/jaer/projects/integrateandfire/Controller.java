@@ -237,12 +237,12 @@ public class Controller extends Plotter /*javax.swing.JFrame*/  {
 
     public int minU;
     public int maxU;
-    public Network NN;
+    public LIFNet NN;
 
-    void Controller(SuperNetFilter F_, Network NN_){load(F_,NN_);}
+    void Controller(LIFNet NN_){load(NN_);}
 
     @Override
-    public void update() {
+    public void update(int timestamp) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 

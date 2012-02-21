@@ -30,14 +30,14 @@ public class Probe extends Plotter  implements ActionListener,WindowListener{
 
     int currentIX=0;
 
-    ENeuron Unit;
+    Network.Unit Unit;
 
 
     float minMP;
     float maxMP;
 
-    float minFF;
-    float maxFF;
+    float minFR;
+    float maxFR;
 
     float tc;       // Time constant when measuring FF.
 
@@ -51,7 +51,7 @@ public class Probe extends Plotter  implements ActionListener,WindowListener{
     {   
     }*/
 
-    public void UnitProbe(SuperNetFilter F_, Network NN_){load(F_,NN_);}
+    public void UnitProbe(LIFNet NN_){load(NN_);}
     
     @Override public void actionPerformed(ActionEvent e) {
 
@@ -74,7 +74,7 @@ public class Probe extends Plotter  implements ActionListener,WindowListener{
 
         h.setVisible(true);
 
-        h.labTotal.setText("("+NN.N.length+" in total)");
+        h.labTotal.setText("("+NN.nUnits()+" in total)");
 
         h.editUnit.addActionListener(this);
         h.comboFanout.addActionListener(this);
@@ -92,10 +92,10 @@ public class Probe extends Plotter  implements ActionListener,WindowListener{
     private void comboFanout()
     {   int x=h.comboFanout.getSelectedIndex();
 
-        if (x!=-1)
-        {   int n=NN.c[currentIX][x];
-            //newunit(n);
-        }
+//        if (x!=-1)
+//        {   int n=NN.c[currentIX][x];
+//            //newunit(n);
+//        }
     }
 
     @Override
@@ -106,13 +106,13 @@ public class Probe extends Plotter  implements ActionListener,WindowListener{
     private void newunit(int n)
     {
         
-        if (n>=NN.N.length)
-        {    n=NN.N.length-1;}
+        if (n>=NN.nUnits())
+        {    n=NN.nUnits()-1;}
         else if (n<0)
         {      n=0;    }
 
         currentIX=n;
-        Unit=NN.N[n];
+        Unit=NN.getUnit(n);
         
         h.editUnit.setText(""+n);
 
@@ -121,33 +121,36 @@ public class Probe extends Plotter  implements ActionListener,WindowListener{
 
         minMP=0;
         maxMP=0;
-
-        this.labTag.setText(""+Unit.tag);
-        h.labThresh.setText(""+NN.N[currentIX].thresh);
-        h.labTC.setText(""+NN.N[currentIX].tau);
+        minFR=0;
+        maxFR=0;
+        
+        this.jTextInfo.setText(Unit.getInfo());
+//        this.labTag.setText(""+Unit.getName());
+//        h.labThresh.setText(""+NN.N[currentIX].thresh);
+//        h.labTC.setText(""+NN.N[currentIX].tau);
 
         updateMPextreme();
 
         // Build fanout list
         h.comboFanout.removeAllItems();
-        for (int i=0;i<NN.w[currentIX].length;i++)
-        {    h.comboFanout.addItem(NN.c[currentIX][i]+" w:"+NN.w[currentIX][i]);
+        for (int i=0;i<NN.getWeights(n).length;i++)
+        {    h.comboFanout.addItem(NN.getConnections(n)[i]+" w:"+NN.getWeights(n)[i]);
         }
         
         // Build network list
         h.comboNet.removeAllItems();
-        for (int i=0;i<NN.N.length;i++)
+        for (int i=0;i<NN.nUnits();i++)
         {    h.comboNet.addItem(""+i);
         }
         
         
-        if (NN.N[currentIX].name.length()==0)
+        if (Unit.getName().length()==0)
             h.setTitle("Net "+currentIX+", Unit "+n);
         else
-            h.setTitle("Net "+currentIX+", Unit "+n+" '"+NN.N[currentIX].name+"'");
+            h.setTitle("Net "+currentIX+", Unit "+n+" '"+Unit.getName()+"'");
         
         //h.comboFanout.enable();
-        update();
+        update(lasttimestamp);
     }
 
     void updateMPextreme()
@@ -156,15 +159,18 @@ public class Probe extends Plotter  implements ActionListener,WindowListener{
         h.labMPmax.setText(""+maxMP);
     }
 
+    void updateFRextreme()
+    {   h.labFRmin.setText(""+minFR);
+        h.labFRmax.setText(""+maxFR);
+    }
 
-
-    @Override public void update()
+    @Override public void update(int timestamp)
     {
         if (Unit==null) 
             return;
         
-        float vm=Unit.get_vmem(F.getLastTimestamp());
-
+        float vm=Unit.getVsig(timestamp);
+        
         if (vm<minMP)
         {   minMP=vm;
             updateMPextreme();
@@ -173,11 +179,24 @@ public class Probe extends Plotter  implements ActionListener,WindowListener{
         {   maxMP=vm;
             updateMPextreme();
         }
-            
-
         h.labMP.setText(""+vm);
         h.barMP.setValue((int) (100*(vm-minMP)/(maxMP-minMP)) );
 
+        
+        // Calling me laaaaaazyyy
+        float fr=Unit.getAsig();
+        if (fr<minFR)
+        {   minFR=fr;
+            updateFRextreme();
+        }
+        else if (fr>maxFR)
+        {   maxFR=fr;
+            updateFRextreme();
+        }
+        h.labFF.setText(""+fr);
+        h.barFF.setValue((int) (100*(fr-minFR)/(maxFR-minFR)) );
+        
+        
     }
 
 
@@ -253,15 +272,11 @@ public class Probe extends Plotter  implements ActionListener,WindowListener{
         labFRmax = new javax.swing.JLabel();
         jLabel11 = new javax.swing.JLabel();
         comboFanout = new javax.swing.JComboBox();
-        jLabel2 = new javax.swing.JLabel();
-        labThresh = new javax.swing.JLabel();
-        jLabel4 = new javax.swing.JLabel();
-        labTC = new javax.swing.JLabel();
         jLabel5 = new javax.swing.JLabel();
         comboNet = new javax.swing.JComboBox();
-        labTag = new javax.swing.JLabel();
-        jLabel7 = new javax.swing.JLabel();
         butRefresh = new javax.swing.JButton();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        jTextInfo = new javax.swing.JTextPane();
 
         menu1.setLabel("File");
         menuBar1.add(menu1);
@@ -304,14 +319,6 @@ public class Probe extends Plotter  implements ActionListener,WindowListener{
 
         comboFanout.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
-        jLabel2.setText("Threshold:");
-
-        labThresh.setText("value");
-
-        jLabel4.setText("Time Constant:");
-
-        labTC.setText("value");
-
         jLabel5.setText("Network:");
 
         comboNet.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
@@ -321,16 +328,14 @@ public class Probe extends Plotter  implements ActionListener,WindowListener{
             }
         });
 
-        labTag.setText("value");
-
-        jLabel7.setText("Tag:");
-
         butRefresh.setText("refresh");
         butRefresh.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 butRefreshActionPerformed(evt);
             }
         });
+
+        jScrollPane1.setViewportView(jTextInfo);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -365,24 +370,9 @@ public class Probe extends Plotter  implements ActionListener,WindowListener{
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(comboNet, javax.swing.GroupLayout.PREFERRED_SIZE, 137, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(jLabel4)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED))
-                            .addGroup(layout.createSequentialGroup()
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(jLabel2)
-                                    .addComponent(jLabel7))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 122, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(layout.createSequentialGroup()
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(labTC)
-                                    .addComponent(labThresh))
-                                .addGap(23, 23, 23)
-                                .addComponent(butRefresh))
-                            .addComponent(labTag)))
+                        .addComponent(butRefresh))
                     .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addGroup(layout.createSequentialGroup()
@@ -398,7 +388,7 @@ public class Probe extends Plotter  implements ActionListener,WindowListener{
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addContainerGap(24, Short.MAX_VALUE)
+                .addContainerGap(50, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(jLabel5)
                     .addComponent(comboNet, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
@@ -411,26 +401,14 @@ public class Probe extends Plotter  implements ActionListener,WindowListener{
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jLabel11)
                     .addComponent(comboFanout, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(layout.createSequentialGroup()
-                        .addGap(18, 18, 18)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel7)
-                            .addComponent(labTag))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(labThresh)
-                            .addComponent(jLabel2))
-                        .addGap(3, 3, 3)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel4)
-                            .addComponent(labTC))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(butRefresh)
-                        .addGap(9, 9, 9)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addGap(20, 20, 20))
+                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                         .addComponent(jLabel3)
@@ -490,22 +468,18 @@ public class Probe extends Plotter  implements ActionListener,WindowListener{
     public javax.swing.JTextField editUnit;
     public javax.swing.JLabel jLabel1;
     public javax.swing.JLabel jLabel11;
-    private javax.swing.JLabel jLabel2;
     public javax.swing.JLabel jLabel3;
-    private javax.swing.JLabel jLabel4;
     public javax.swing.JLabel jLabel5;
     public javax.swing.JLabel jLabel6;
-    private javax.swing.JLabel jLabel7;
     private javax.swing.JPopupMenu jPopupMenu1;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JTextPane jTextInfo;
     public javax.swing.JLabel labFF;
     public javax.swing.JLabel labFRmax;
     public javax.swing.JLabel labFRmin;
     public javax.swing.JLabel labMP;
     public javax.swing.JLabel labMPmax;
     public javax.swing.JLabel labMPmin;
-    public javax.swing.JLabel labTC;
-    public javax.swing.JLabel labTag;
-    public javax.swing.JLabel labThresh;
     public javax.swing.JLabel labTotal;
     private java.awt.Menu menu1;
     private java.awt.Menu menu2;

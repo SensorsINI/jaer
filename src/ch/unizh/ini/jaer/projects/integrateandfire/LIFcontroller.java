@@ -4,12 +4,19 @@
  */
 package ch.unizh.ini.jaer.projects.integrateandfire;
 
+import net.sf.jaer.event.BasicEvent;
+
 /**
  *
  * @author Peter
  */
-public interface SuperNet {
+public interface LIFcontroller {
     // Define methods common to all neural network architectures
+    // 
+    // Note it's perfectly acceptable to make sublasses that do not have functioning 
+    // implementations of all these methods.
+        
+    // Set Methods
     
     public void setThresholds(float thresh);
     

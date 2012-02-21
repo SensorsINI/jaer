@@ -6,6 +6,7 @@ ClusterEvent *
 
 package ch.unizh.ini.jaer.projects.integrateandfire;
 
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTrackerEvent;
 
 /**
@@ -44,15 +45,18 @@ public class ClusterEvent extends RectangularClusterTrackerEvent {
     /** copies fields from source event src to this event
      @param src the event to copy from
      */
-    /*
-    @Override public void copyFrom(BasicEvent src){
-        RectangularClusterTrackerEvent e=(RectangularClusterTrackerEvent)src;
-        super.copyFrom(e);
-        if(e instanceof ClusterEvent) 
-        {   this.clusterid=((ClusterEvent)e).clusterid;
-            this.nclusters=((ClusterEvent)e).nclusters;
+    public void copyFrom(ClusterEvent src){
+        //RectangularClusterTrackerEvent e=(RectangularClusterTrackerEvent)src;
+        super.copyFrom(src);
+//        if(e instanceof ClusterEvent) 
+//        {   
+            this.clusterid=((ClusterEvent)src).clusterid;
+            this.nclusters=((ClusterEvent)src).nclusters;
+            this.setCluster(src.getCluster());
+            this.xp=src.xp;
+            this.yp=src.yp;
+//        }
         }
-        }*/
     
     
     
