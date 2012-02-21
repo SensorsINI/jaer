@@ -16,7 +16,7 @@
   <Layout>
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
-          <Component id="displayControlPanel" alignment="0" pref="691" max="32767" attributes="0"/>
+          <Component id="displayControlPanel" alignment="0" pref="694" max="32767" attributes="0"/>
       </Group>
     </DimensionLayout>
     <DimensionLayout dim="1">
@@ -44,7 +44,7 @@
               <Group type="102" alignment="0" attributes="0">
                   <EmptySpace max="-2" attributes="0"/>
                   <Group type="103" groupAlignment="0" attributes="0">
-                      <Component id="jPanel3" min="0" pref="207" max="32767" attributes="3"/>
+                      <Component id="jPanel3" min="0" pref="202" max="32767" attributes="3"/>
                       <Component id="jPanel2" min="-2" pref="202" max="-2" attributes="3"/>
                   </Group>
                   <EmptySpace max="-2" attributes="0"/>
@@ -90,7 +90,7 @@
                       <Component id="invertADCvalues" min="-2" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
                       <Component id="readComboBox" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace pref="91" max="32767" attributes="0"/>
+                      <EmptySpace pref="99" max="32767" attributes="0"/>
                       <Component id="snapshotButton" min="-2" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
                   </Group>
@@ -119,7 +119,7 @@
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Component id="apsIntenStatPanel" min="-2" max="-2" attributes="0"/>
-                          <Component id="apsIntenCalibPanel" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="apsIntenCalibPanel" alignment="0" min="-2" pref="73" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace min="-2" pref="22" max="-2" attributes="0"/>
                   </Group>
@@ -151,41 +151,29 @@
               <Properties>
                 <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
                   <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
-                    <TitledBorder title="Calibration"/>
+                    <TitledBorder title="Extrapolation"/>
                   </Border>
                 </Property>
               </Properties>
+              <AccessibilityProperties>
+                <Property name="AccessibleContext.accessibleName" type="java.lang.String" value="Extrapolation"/>
+              </AccessibilityProperties>
 
               <Layout>
                 <DimensionLayout dim="0">
                   <Group type="103" groupAlignment="0" attributes="0">
                       <Group type="102" alignment="0" attributes="0">
                           <EmptySpace max="32767" attributes="0"/>
-                          <Group type="103" groupAlignment="0" attributes="0">
-                              <Component id="offchipCalibCB" alignment="0" min="-2" max="-2" attributes="0"/>
-                              <Component id="twoPointCalibCB" alignment="0" min="-2" max="-2" attributes="0"/>
-                          </Group>
-                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                          <Group type="103" groupAlignment="0" attributes="0">
-                              <Component id="calibButton" min="-2" max="-2" attributes="0"/>
-                              <Component id="calibData2Button" alignment="0" min="-2" max="-2" attributes="0"/>
-                          </Group>
+                          <Component id="offchipCalibCB" min="-2" max="-2" attributes="0"/>
+                          <EmptySpace min="-2" pref="79" max="-2" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
                 <DimensionLayout dim="1">
                   <Group type="103" groupAlignment="0" attributes="0">
-                      <Group type="103" groupAlignment="1" attributes="0">
-                          <Group type="102" alignment="1" attributes="0">
-                              <Component id="calibButton" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace max="-2" attributes="0"/>
-                              <Component id="calibData2Button" min="-2" max="-2" attributes="0"/>
-                          </Group>
-                          <Group type="102" alignment="1" attributes="0">
-                              <Component id="offchipCalibCB" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace max="-2" attributes="0"/>
-                              <Component id="twoPointCalibCB" min="-2" max="-2" attributes="0"/>
-                          </Group>
+                      <Group type="102" alignment="0" attributes="0">
+                          <Component id="offchipCalibCB" min="-2" max="-2" attributes="0"/>
+                          <EmptySpace min="-2" pref="23" max="-2" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
@@ -193,48 +181,12 @@
               <SubComponents>
                 <Component class="javax.swing.JCheckBox" name="offchipCalibCB">
                   <Properties>
-                    <Property name="text" type="java.lang.String" value="Off-chip"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Use off-chip calibration"/>
+                    <Property name="text" type="java.lang.String" value="Use DVS Extrapolation"/>
+                    <Property name="toolTipText" type="java.lang.String" value="Use DVS Extrapolation"/>
                   </Properties>
                   <BindingProperties>
-                    <BindingProperty name="selected" source="Form" sourcePath="${chip.frameData.useOffChipCalibration}" target="offchipCalibCB" targetPath="selected" updateStrategy="0" immediately="false"/>
+                    <BindingProperty name="selected" source="Form" sourcePath="${chip.frameData.useDVSExtrapolation}" target="offchipCalibCB" targetPath="selected" updateStrategy="0" immediately="false"/>
                   </BindingProperties>
-                </Component>
-                <Component class="javax.swing.JButton" name="calibButton">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Store dark"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Stores teh calibration frame; use while sensor looks at a unifform dark scene"/>
-                    <Property name="margin" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
-                      <Insets value="[0, 2, 2, 2]"/>
-                    </Property>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="calibButtonActionPerformed"/>
-                  </Events>
-                </Component>
-                <Component class="javax.swing.JCheckBox" name="twoPointCalibCB">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Two-point"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Use two-point (dark+bright) calibration"/>
-                  </Properties>
-                  <BindingProperties>
-                    <BindingProperty name="selected" source="Form" sourcePath="${chip.frameData.twoPointCalibration}" target="twoPointCalibCB" targetPath="selected" updateStrategy="0" immediately="false"/>
-                  </BindingProperties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="twoPointCalibCBActionPerformed"/>
-                  </Events>
-                </Component>
-                <Component class="javax.swing.JButton" name="calibData2Button">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Store bright"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Stores the white calibration frame; use while sensor looks at uniform bright scene"/>
-                    <Property name="margin" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
-                      <Insets value="[2, 2, 2, 2]"/>
-                    </Property>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="calibData2ButtonActionPerformed"/>
-                  </Events>
                 </Component>
               </SubComponents>
             </Container>

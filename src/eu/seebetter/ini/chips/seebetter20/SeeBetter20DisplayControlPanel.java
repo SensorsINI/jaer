@@ -58,9 +58,6 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
         invertADCvalues = new javax.swing.JCheckBox();
         apsIntenCalibPanel = new javax.swing.JPanel();
         offchipCalibCB = new javax.swing.JCheckBox();
-        calibButton = new javax.swing.JButton();
-        twoPointCalibCB = new javax.swing.JCheckBox();
-        calibData2Button = new javax.swing.JButton();
         agcPanel = new javax.swing.JPanel();
         agcCB = new javax.swing.JCheckBox();
         jLabel1 = new javax.swing.JLabel();
@@ -114,43 +111,13 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
         binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.frameData.invertADCvalues}"), invertADCvalues, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
-        apsIntenCalibPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Calibration"));
+        apsIntenCalibPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Extrapolation"));
 
-        offchipCalibCB.setText("Off-chip");
-        offchipCalibCB.setToolTipText("Use off-chip calibration");
+        offchipCalibCB.setText("Use DVS Extrapolation");
+        offchipCalibCB.setToolTipText("Use DVS Extrapolation");
 
-        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.frameData.useOffChipCalibration}"), offchipCalibCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
+        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.frameData.useDVSExtrapolation}"), offchipCalibCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
-
-        calibButton.setText("Store dark");
-        calibButton.setToolTipText("Stores teh calibration frame; use while sensor looks at a unifform dark scene");
-        calibButton.setMargin(new java.awt.Insets(0, 2, 2, 2));
-        calibButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                calibButtonActionPerformed(evt);
-            }
-        });
-
-        twoPointCalibCB.setText("Two-point");
-        twoPointCalibCB.setToolTipText("Use two-point (dark+bright) calibration");
-
-        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.frameData.twoPointCalibration}"), twoPointCalibCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
-        bindingGroup.addBinding(binding);
-
-        twoPointCalibCB.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                twoPointCalibCBActionPerformed(evt);
-            }
-        });
-
-        calibData2Button.setText("Store bright");
-        calibData2Button.setToolTipText("Stores the white calibration frame; use while sensor looks at uniform bright scene");
-        calibData2Button.setMargin(new java.awt.Insets(2, 2, 2, 2));
-        calibData2Button.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                calibData2ButtonActionPerformed(evt);
-            }
-        });
 
         javax.swing.GroupLayout apsIntenCalibPanelLayout = new javax.swing.GroupLayout(apsIntenCalibPanel);
         apsIntenCalibPanel.setLayout(apsIntenCalibPanelLayout);
@@ -158,25 +125,14 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
             apsIntenCalibPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(apsIntenCalibPanelLayout.createSequentialGroup()
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGroup(apsIntenCalibPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(offchipCalibCB)
-                    .addComponent(twoPointCalibCB))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(apsIntenCalibPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(calibButton)
-                    .addComponent(calibData2Button)))
+                .addComponent(offchipCalibCB)
+                .addGap(79, 79, 79))
         );
         apsIntenCalibPanelLayout.setVerticalGroup(
             apsIntenCalibPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(apsIntenCalibPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                .addGroup(apsIntenCalibPanelLayout.createSequentialGroup()
-                    .addComponent(calibButton)
-                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                    .addComponent(calibData2Button))
-                .addGroup(apsIntenCalibPanelLayout.createSequentialGroup()
-                    .addComponent(offchipCalibCB)
-                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                    .addComponent(twoPointCalibCB)))
+            .addGroup(apsIntenCalibPanelLayout.createSequentialGroup()
+                .addComponent(offchipCalibCB)
+                .addGap(23, 23, 23))
         );
 
         agcPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("AGC"));
@@ -387,7 +343,7 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
                 .addComponent(invertADCvalues)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(readComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 91, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 99, Short.MAX_VALUE)
                 .addComponent(snapshotButton)
                 .addContainerGap())
             .addGroup(jPanel1Layout.createSequentialGroup()
@@ -411,9 +367,11 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(apsIntenStatPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(apsIntenCalibPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(apsIntenCalibPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 73, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(22, 22, 22))
         );
+
+        apsIntenCalibPanel.getAccessibleContext().setAccessibleName("Extrapolation");
 
         jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("Events"));
 
@@ -521,7 +479,7 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
             .addGroup(displayControlPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(displayControlPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jPanel3, 0, 207, Short.MAX_VALUE)
+                    .addComponent(jPanel3, 0, 202, Short.MAX_VALUE)
                     .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, 202, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -541,7 +499,7 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(displayControlPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 691, Short.MAX_VALUE)
+            .addComponent(displayControlPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 694, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -554,22 +512,6 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
     private void applyButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_applyButtonActionPerformed
         renderer.applyAGCValues();
     }//GEN-LAST:event_applyButtonActionPerformed
-
-    private void calibButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_calibButtonActionPerformed
-        if(chip==null || chip.getFrameData()==null) return;
-        chip.getFrameData().setCalibData1();
-    }//GEN-LAST:event_calibButtonActionPerformed
-
-    private void twoPointCalibCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_twoPointCalibCBActionPerformed
-        // TODO add your handling code here:
-        if(chip==null || chip.getFrameData()==null) return;
-        chip.getFrameData().calculateCalibration();
-    }//GEN-LAST:event_twoPointCalibCBActionPerformed
-
-    private void calibData2ButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_calibData2ButtonActionPerformed
-         if(chip==null || chip.getFrameData()==null) return;
-        chip.getFrameData().setCalibData2();
-    }//GEN-LAST:event_calibData2ButtonActionPerformed
 
     private void snapshotButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_snapshotButtonActionPerformed
         chip.takeSnapshot();
@@ -595,8 +537,6 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
     private javax.swing.JButton applyButton;
     private javax.swing.JPanel apsIntenCalibPanel;
     private javax.swing.JPanel apsIntenStatPanel;
-    private javax.swing.JButton calibButton;
-    private javax.swing.JButton calibData2Button;
     private javax.swing.JSpinner colorScaleSpinner;
     private javax.swing.JPanel displayControlPanel;
     private javax.swing.JCheckBox displayIntensity;
@@ -627,7 +567,6 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
     private javax.swing.JSlider offsetSlider;
     private javax.swing.JComboBox readComboBox;
     private javax.swing.JButton snapshotButton;
-    private javax.swing.JCheckBox twoPointCalibCB;
     private org.jdesktop.beansbinding.BindingGroup bindingGroup;
     // End of variables declaration//GEN-END:variables
 

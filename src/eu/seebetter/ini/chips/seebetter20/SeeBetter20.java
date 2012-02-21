@@ -2446,7 +2446,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
      */
     public static enum Read{A, B, DIFF};
     
-    public class IntensityFrameData implements HasPreference {
+    public class IntensityFrameData {
 
         /** The scanner is 64wide by 32 high  */
         public final int WIDTH = EntirePixelArray.width, HEIGHT = EntirePixelArray.height; // width is BDVS pixels not scanner registers
@@ -2461,14 +2461,9 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         private int[] aData, bData;
         /** Readers should access the current reading buffer. */
         private int writeCounterA = 0;
-         private int writeCounterB = 0;
-        private int[] calibData1 = new int[NUMSAMPLES];
-        private int[] calibData2 = new int[NUMSAMPLES];
-        private float[] gain = new float[NUMSAMPLES];
-        private int[] offset = new int[NUMSAMPLES];
-        private boolean useOffChipCalibration = getPrefs().getBoolean("useOffChipCalibration", false);
+        private int writeCounterB = 0;
+        private boolean useDVSExtrapolation = getPrefs().getBoolean("useDVSExtrapolation", false);
         private boolean invertADCvalues = getPrefs().getBoolean("invertADCvalues", true); // true by default for log output which goes down with increasing intensity
-        private boolean twoPointCalibration = getPrefs().getBoolean("twoPointCalibration", false);
         private int lasttimestamp=-1;
         private Read displayRead = Read.DIFF;
         
@@ -2482,7 +2477,6 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             Arrays.fill(onCount, 0);
             Arrays.fill(offCount, 0);
             Arrays.fill(oldData, 0);
-            loadPreference();
         }
         
         private int index(int x, int y){
@@ -2513,14 +2507,8 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                     break;
             }
             if (invertADCvalues) {
-                if (useOffChipCalibration) {
-                    return MAX_ADC - (int) (gain[idx] * (displayData - offset[idx]));
-                }
                 return MAX_ADC - displayData;
             } else {
-                if (useOffChipCalibration) {
-                    return ((int) gain[idx] * (displayData - offset[idx]));
-                }
                 return displayData;
             }
         }
@@ -2530,12 +2518,8 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             if(e.startOfFrame) {
                 resetWriteCounter();
                 setTimestamp(e.timestamp);
-                putNextSampleValue(e.adcSample, e.isB, index(e.x, e.y));
-//                putNextSampleValue(e.adcSample, e.isB);
-            }else{
-                putNextSampleValue(e.adcSample, e.isB, index(e.x, e.y));
-//                putNextSampleValue(e.adcSample, e.isB);
-            }
+			}
+			putNextSampleValue(e.adcSample, e.isB, index(e.x, e.y));
             lasttimestamp=e.timestamp; // so we don't put the same sample over and over again
         }
         
@@ -2582,9 +2566,11 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         }
         
         private void updateDVSintensities(){
-            int prediction = 0;
+			int difference = 0;
             for(int i = 0; i < NUMSAMPLES; i++){
-                prediction = oldData[i]+(int)(onCount[i]*onCalib[i]+offCount[i]*offCalib[i]);
+				difference = data[i]-oldData[i];
+				onCalib[i] = (onCalib[i]+((onCount[i]/(onCount[i]+offCount[i]))*(difference/(onCount[i]-offCount[i]))))/2;
+				onCalib[i] = (onCalib[i]+((offCount[i]/(onCount[i]+offCount[i]))*(difference/(onCount[i]-offCount[i]))))/2;
             }
             System.arraycopy(data, 0, oldData, 0, NUMSAMPLES);
         }
@@ -2619,53 +2605,15 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
          * @return the useOffChipCalibration
          */
         public boolean isUseOffChipCalibration() {
-            return useOffChipCalibration;
+            return useDVSExtrapolation;
         }
 
         /**
          * @param useOffChipCalibration the useOffChipCalibration to set
          */
         public void setUseOffChipCalibration(boolean useOffChipCalibration) {
-            this.useOffChipCalibration = useOffChipCalibration;
+            this.useDVSExtrapolation = useOffChipCalibration;
             getPrefs().putBoolean("useOffChipCalibration", useOffChipCalibration);
-        }
-
-        public void calculateCalibration() {
-            if (calibData1 == null) {
-                calibData1 = new int[NUMSAMPLES];
-            }
-            if (calibData2 == null) {
-                calibData2 = new int[NUMSAMPLES];
-            }
-            if (twoPointCalibration) {
-                int mean1 = getMean(calibData1);
-                int mean2 = getMean(calibData2);
-                for (int i = 0; i < NUMSAMPLES; i++) {
-                    gain[i] = ((float) (mean2 - mean1)) / ((float) (calibData2[i] - calibData1[i]));
-                    offset[i] = (calibData1[i] - (int) (mean1 / gain[i]));
-                }
-            } else {
-                for (int i = 0; i < NUMSAMPLES; i++) {
-                    gain[i] = 1;
-                }
-                subtractMean(calibData1, offset);
-            }
-        }
-
-        /**
-         * uses the current writing buffer as calibration data and subtracts the mean
-         */
-        public void setCalibData1() {
-            System.arraycopy(data, 0, calibData1, 0, NUMSAMPLES);
-            calculateCalibration();
-            storePreference();
-        }
-
-        public void setCalibData2() {
-            System.arraycopy(data, 0, calibData2, 0, NUMSAMPLES);
-            calculateCalibration();
-            storePreference();
-            //substractMean();
         }
 
         private int getMean(int[] dataIn) {
@@ -2706,21 +2654,6 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         public void setInvertADCvalues(boolean invertADCvalues) {
             this.invertADCvalues = invertADCvalues;
             getPrefs().putBoolean("invertADCvalues", invertADCvalues);
-        }
-
-        /**
-         * @return the twoPointCalibration
-         */
-        public boolean isTwoPointCalibration() {
-            return twoPointCalibration;
-        }
-
-        /**
-         * @param twoPointCalibration the twoPointCalibration to set
-         */
-        public void setTwoPointCalibration(boolean twoPointCalibration) {
-            this.twoPointCalibration = twoPointCalibration;
-            getPrefs().putBoolean("twoPointCalibration", twoPointCalibration);
         }
 
         public boolean isNewData() {
@@ -2773,20 +2706,6 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             }
             return ret;
         }
-
-        @Override
-        public void loadPreference() {
-            calibData1 = getArray(CALIB1_KEY);
-            calibData2 = getArray(CALIB2_KEY);
-            calculateCalibration();
-        }
-
-        @Override
-        public void storePreference() {
-            putArray(calibData1, CALIB1_KEY);
-            putArray(calibData2, CALIB2_KEY);
-        }
-
 
     }
 }
