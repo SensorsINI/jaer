@@ -266,7 +266,8 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         private int firstFrameTs = 0;
         private short[] countX;
         private short[] countY;
-
+        private int pixCnt=0; // TODO debug
+        
         public SeeBetter20Extractor(SeeBetter20 chip) {
             super(chip);
             resetCounters();
@@ -381,8 +382,10 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                     e.address = data;
                     e.startOfFrame = (data & ADC_START_BIT) == ADC_START_BIT;
                     if(e.startOfFrame){
-                        //System.out.println("New frame");
+                        if(pixCnt!=4096) System.out.println("New frame, pixCnt was "+pixCnt);
+                        
                         resetCounters();
+                        pixCnt=0;
                         if(snapshot){
                             snapshot = false;
                             config.adc.setAdcEnabled(false);
@@ -400,9 +403,10 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                         e.x=countX[sampleType]; 
 //                    }
                     e.y=countY[sampleType]++;
-                    String type = "";
-                    if(e.isB){type = "B";}else{type = "A";}
-                    String eventData = "x: "+e.x+", y:"+e.y+", type: "+type+", start of frame: "+Boolean.toString(e.startOfFrame)+" timestamp: "+Integer.toString(e.timestamp)+", data "+Integer.toBinaryString(e.adcSample)+" ("+Integer.toString(e.adcSample)+")";
+                    pixCnt++;
+//                    String type = "";
+//                    if(e.isB){type = "B";}else{type = "A";}
+//                    String eventData = "x: "+e.x+", y:"+e.y+", type: "+type+", start of frame: "+Boolean.toString(e.startOfFrame)+" timestamp: "+Integer.toString(e.timestamp)+", data "+Integer.toBinaryString(e.adcSample)+" ("+Integer.toString(e.adcSample)+")";
                     //System.out.println("ADC Event: "+eventData);
                     if(e.isB && e.x == 1 && e.y == 1){
                         exposure = e.timestamp-firstFrameTs;
