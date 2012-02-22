@@ -382,7 +382,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                     e.address = data;
                     e.startOfFrame = (data & ADC_START_BIT) == ADC_START_BIT;
                     if(e.startOfFrame){
-                        if(pixCnt!=4096) System.out.println("New frame, pixCnt was "+pixCnt);
+                        if(pixCnt!=4096) System.out.println("New frame, pixCnt was incorrectly "+pixCnt+" instead of 4096 but this could happen at end of file");
                         
                         resetCounters();
                         pixCnt=0;
