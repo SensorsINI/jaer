@@ -798,7 +798,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         }
 
         // sends complex configuration information to multiple shift registers and off chip DACs
-        private void sendConfiguration() throws HardwareInterfaceException {
+        void sendConfiguration() throws HardwareInterfaceException {
             if (!isOpen()) {
                 open();
             }
