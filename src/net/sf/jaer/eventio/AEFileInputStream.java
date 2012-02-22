@@ -243,8 +243,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             ts-=timestampOffset; 
             // TODO fix extra event no matter what dt
             if (ts > maxTimestamp ) { // handle bigwrap this way
-                // push back event
-                position(position()-1); // we haven't updated our position field yet
+                // push back event onto byteBuffer.
+                // we've already read the event, but have not updated the position field.
+                // therefore we just set position back to its value now (the event we are reading)
+                position(position); // we haven't updated our position field yet
                 ts=lastTs; // this is the one last read successfully 
                 mostRecentTimestamp=ts;
                 return null;
