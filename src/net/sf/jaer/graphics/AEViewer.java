@@ -1854,7 +1854,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                    }
 
                     // filter events, do processing on them in rendering loop here
-                    if (filterChain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING || playMode != playMode.LIVE) {
+                    if (filterChain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING || playMode != PlayMode.LIVE) {
                         try {
                             packet = filterChain.filterPacket(packet);
                         } catch (Exception e) {
