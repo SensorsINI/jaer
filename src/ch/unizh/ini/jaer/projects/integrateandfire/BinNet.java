@@ -8,6 +8,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.OutputEventIterator;
 
@@ -17,11 +19,11 @@ import net.sf.jaer.event.OutputEventIterator;
  */
 public class BinNet extends Network {
 
-    BinNeuron[] N;   
-    
+    BinNeuron[] N;
+
     
     class BinNeuron implements Unit
-    {   float vmem;             // Membrane Potential
+    {   float vmem=0;             // Membrane Potential
         boolean state=false;    // State
         float[] w;              // Outgoing connections weights
         int[] c;                // Outgoing connection addresses
@@ -79,6 +81,16 @@ public class BinNet extends Network {
         @Override
         public String getInfo() {
             return "thresh: "+thresh;
+        }
+        
+        public void copyTo(BinNeuron BN){
+            //BinNeuron BN=new BinNeuron();
+            BN.w=w.clone();
+            BN.c=c.clone();
+            BN.thresh=thresh;
+            BN.tag=tag;
+            
+            //return BN;
         }
 
     }
@@ -150,6 +162,9 @@ public class BinNet extends Network {
         // Parse Out First Info
         Scanner sc = new Scanner(file);
 
+        if (R==null)
+            R=new Remapper();
+        
         // Loop Through Items in header
         String lab;
         while (true){
@@ -253,6 +268,24 @@ public class BinNet extends Network {
         for (BinNeuron n:N)
             n.reset();
     }
+    
+    @Override
+    public BinNet copy() {
+        
+        BinNet Net=new BinNet();        
+        
+        super.copyParamsInto(Net);
+        
+        Net.N=new BinNeuron[N.length];
+        
+        for (int i=0; i<Net.N.length; i++)
+        {   Net.N[i]=Net.new BinNeuron(); // TRICKY!  Need to instantiate the neuron within an instance of it's parent network.
+            N[i].copyTo(Net.N[i]);
+        }
+        Net.U=Net.N;
+        return Net;
+    }
+    
     
     
 }

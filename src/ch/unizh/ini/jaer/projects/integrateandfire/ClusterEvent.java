@@ -31,7 +31,7 @@ public class ClusterEvent extends RectangularClusterTrackerEvent {
     }
     
     @Override public int getType(){
-        return clusterid;
+        return (byte)(Math.abs(clusterid)%4);
     }
     
     @Override public String toString(){

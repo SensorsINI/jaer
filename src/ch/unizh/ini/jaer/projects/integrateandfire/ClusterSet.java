@@ -37,7 +37,7 @@ public class ClusterSet extends RectangularClusterTracker {
  * this to a moving median, to make it more noise tolerant, but it's a little 
  * trickier to program. */
     
-    float desiredScale=getFloat("desiredScale",45);
+    float desiredScale=getFloat("desiredScale",40);
     boolean scaleIt=getBoolean("scaleIt",true);
     boolean centerIt=getBoolean("centerIt",true);
     boolean transformPoints=getBoolean("transformPoints",false);
@@ -78,10 +78,13 @@ public class ClusterSet extends RectangularClusterTracker {
             ClusterEvent oe = (ClusterEvent) outItr.nextOutput();
             oe.copyFrom(ev);
             //oe.clusterid=(byte)(this.index % chip.getRenderer().getTypeColors().length);
-            oe.clusterid=(byte)(Math.abs(this.index) % 4); // TODO: Do this properly
+            //oe.clusterid=(byte)(Math.abs(this.index) % 4); // TODO: Do this properly
+            oe.clusterid=(byte)this.index;
+            
             oe.nclusters=getMaxNumClusters();
             //oe.type=oe.clusterid;
             oe.setCluster(this);
+            
         }
         
         
@@ -215,14 +218,11 @@ public class ClusterSet extends RectangularClusterTracker {
     
     // Read the Network File on filter Reset
     @Override public void resetFilter(){
-        
+        super.resetFilter();
         // Gimme some default properties
-        super.setFilterEventsEnabled(true);
-        super.setSurroundInhibitionEnabled(true);
-        super.setSmoothMove(true);
-        this.setMaxNumClusters(4);
-        super.setClusterLifetimeWithoutSupportUs(500000);
+        initIndexOccupied();
     }
+    
 
     //  Initialize the filter
     public  ClusterSet(AEChip  chip){
@@ -284,10 +284,12 @@ public class ClusterSet extends RectangularClusterTracker {
     
     
     @Override
-    public void setMaxNumClusters(int maxNumClusters)
+    public void setMaxNumClusters(int maxNum)
     {       
-        super.setMaxNumClusters(maxNumClusters);
-        initIndexOccupied();
+        super.setMaxNumClusters(maxNum);
+        resetFilter();
+        if (out!=null)
+            out.clear();
     }
     
     public void setShowClusterIndex(boolean value)

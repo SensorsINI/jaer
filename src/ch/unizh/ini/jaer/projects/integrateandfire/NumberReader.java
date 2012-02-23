@@ -418,7 +418,9 @@ public class NumberReader extends Plotter implements ActionListener{
 
     private void comboNetActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_comboNetActionPerformed
         // TODO add your handling code here:
+        
         setCurrentNet(comboNet.getSelectedIndex());
+        
     }//GEN-LAST:event_comboNetActionPerformed
 
     private void radioFRActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_radioFRActionPerformed

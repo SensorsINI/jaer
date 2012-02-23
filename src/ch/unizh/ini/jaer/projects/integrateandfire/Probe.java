@@ -139,15 +139,15 @@ public class Probe extends Plotter  implements ActionListener,WindowListener{
         
         // Build network list
         h.comboNet.removeAllItems();
-        for (int i=0;i<NN.nUnits();i++)
+        for (int i=0;i<this.NA.numNets;i++)
         {    h.comboNet.addItem(""+i);
         }
         
         
         if (Unit.getName().length()==0)
-            h.setTitle("Net "+currentIX+", Unit "+n);
+            h.setTitle("Net "+currentNet+", Unit "+n);
         else
-            h.setTitle("Net "+currentIX+", Unit "+n+" '"+Unit.getName()+"'");
+            h.setTitle("Net "+currentNet+", Unit "+n+" '"+Unit.getName()+"'");
         
         //h.comboFanout.enable();
         update(lasttimestamp);

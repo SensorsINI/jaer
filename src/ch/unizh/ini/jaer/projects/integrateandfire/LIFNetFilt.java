@@ -247,7 +247,9 @@ public class LIFNetFilt extends SuperLIFFilter implements FrameAnnotater {
     
     public File getGenFile()  throws FileNotFoundException, Exception
     {   if (genFile==null)
-        {   genFile=LIFNet.getfile();
+        {   // Get file from the default directory
+            File dir=new File(getClass().getClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../../../filterSettings/NeuralNets/");
+            genFile=LIFNet.getfile(dir);
             return genFile;
         }
         else return genFile;

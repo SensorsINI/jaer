@@ -26,16 +26,27 @@ public abstract class Network {
     Remapper R; // Maps incoming events to destinations
     
     static final Logger log = Logger.getLogger("Network");
-    
     int[] outputIX={};
     float[] windex={};
+    int trackHistory=0; // History tracking in winner return
+    
+    
     
     public void setOutputIX(int[] outs)
     {   outputIX=outs;   
         windex=new float[outs.length];
     }
-    
-    int trackHistory=0; // History tracking in winner return
+        
+    /* Copy the parameters (copying of units will be left to implementing class);
+     * Notes: Remapper R is copied by referance, rather than being cloned
+     * 
+     */
+    public void copyParamsInto(Network newNet)
+    {   newNet.R=R; // Remapper is just linked, not copied!!!
+        newNet.outputIX=outputIX.clone();
+        newNet.windex=new float[outputIX.length];
+        newNet.trackHistory=trackHistory;
+    }
     
     public int getWinningIndex()
     {   /* Returns the index of the Unit with the highest activation signal 
@@ -137,10 +148,14 @@ public abstract class Network {
     // Return fanout weigths
     abstract public float[] getWeights(int index);
     
+    // Copy network
+    abstract public Network copy();
+    
     // ===== File IO Functions =====    
     static class FileChoice implements Runnable {
 
-        File file = null;
+        File file;
+        File startDir;
 
         @Override
         public void run() {
@@ -171,9 +186,15 @@ public abstract class Network {
         }
     }
 
-    static public File getfile() throws FileNotFoundException {
+    
+    
+    static public File getfile(File startDir) throws FileNotFoundException {
 
         FileChoice fc = new FileChoice();
+        
+        if (startDir!=null && startDir.isDirectory())
+            fc.startDir=startDir;
+        
         if (SwingUtilities.isEventDispatchThread()) {
             fc.run();
             

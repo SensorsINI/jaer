@@ -55,6 +55,7 @@ public abstract class Plotter extends javax.swing.JFrame implements Runnable {
         
     public void setCurrentNet(int ind)
     {   if (ind==-1) return;
+        currentNet=ind;
         if (NA!=null)
             NN=NA.N[ind];
         refresh();
@@ -76,7 +77,7 @@ public abstract class Plotter extends javax.swing.JFrame implements Runnable {
 //        }
         
     
-        Object[] options = {"LivePlotter","Number Display","Unit Probe"};
+        Object[] options = {"Number Display","Unit Probe"};
         int n = JOptionPane.showOptionDialog(null,
             "How you wanna display this?",
             "Hey YOU",
@@ -84,18 +85,15 @@ public abstract class Plotter extends javax.swing.JFrame implements Runnable {
             JOptionPane.QUESTION_MESSAGE,
             null,
             options,
-            options[1]);
+            options[0]);
 
         Plotter plot;
         switch (n){
 
-            case 0: // LivePlot Display
-                plot=new LivePlotter();
-                break;
-            case 1: // Swing Display for numbers
+            case 0: // Swing Display for numbers
                 plot=new NumberReader();
                 break;
-            case 2:
+            case 1:
                 plot=new Probe();
                 break;
             default:

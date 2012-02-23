@@ -21,6 +21,7 @@ public class NetworkArray {
     public Network[] N;
     int numNets=4;
     Class C;            // Class of
+    Remapper R;
     
     Network getNet(int index)
     {   return N[index];        
@@ -31,10 +32,13 @@ public class NetworkArray {
             n.reset();        
     }
     
-    public void setRemapper(Remapper R){
+    public void setRemapper(Remapper arr){
+        R=arr;
+        
+        //
         for (Network n:N)
             if (n!=null)
-                n.R=R;
+                n.R=arr;
     }
     
     public void setTrackHistory(int th)
@@ -74,13 +78,22 @@ public class NetworkArray {
         
     }
     
-    public void loadFromFile() throws FileNotFoundException, Exception
-    {   
-        File file=Network.getfile();
+    public void loadFromFile() throws FileNotFoundException, Exception {loadFromFile(null);}
+    public void loadFromFile(File fileOrStartDir) throws FileNotFoundException, Exception
+    {   // Note: You need to have loaded a remapper already for this to work.
+        if (fileOrStartDir==null || !fileOrStartDir.isFile())
+            fileOrStartDir=Network.getfile(fileOrStartDir);
         
-        for (Network n:N)
-        {   n.readfile(file);
+        if (N.length==0) return;
+                
+        N[0].readfile(fileOrStartDir);
+        
+        R=N[0].R; // Copy Remapper reference
+        
+        for (int i=1; i<N.length; i++)
+        {   N[i]=N[0].copy();
         }
+        
     }
     
 }

@@ -275,4 +275,9 @@ public class LIFNet extends Network implements LIFcontroller {
         System.out.println("Done");
 
     }
+
+    @Override
+    public Network copy() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
 }
