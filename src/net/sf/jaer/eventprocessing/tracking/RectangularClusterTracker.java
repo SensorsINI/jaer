@@ -110,7 +110,12 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     private boolean dontMergeEver = getBoolean("dontMergeEver", false);
     private boolean angleFollowsVelocity = getBoolean("angleFollowsVelocity", false);
     private boolean showPaths=getBoolean("showPaths",true);
+    
+    
     private float smoothWeight=getFloat("smoothWeight",100);
+    private float smoothPosition=getFloat("smoothPosition",.001f);
+    private float smoothIntegral=getFloat("smoothIntegral",.001f);
+    
     
     private float surroundInhibitionCost = getFloat("surroundInhibitionCost",1);
     
@@ -159,8 +164,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         setPropertyTooltip(sizing, "clusterSize", "size (starting) in fraction of chip max size");
         setPropertyTooltip(update, "growMergedSizeEnabled", "enabling makes merged clusters take on sum of sizes, otherwise they take on size of older cluster");
         setPropertyTooltip(movement, "useVelocity", "uses measured cluster velocity to predict future position; vectors are scaled " + String.format("%.1f pix/pix/s", VELOCITY_VECTOR_SCALING / AEConstants.TICK_DEFAULT_US * 1e-6));
-        setPropertyTooltip(movement, "smoothMove","Cluster velocity, is updated instead of position, resulting in a smoother movement");
-        setPropertyTooltip(movement, "smoothWeight","If smoothmove is checked, the 'weight' of a cluster");
+        
         setPropertyTooltip(disp, "showPaths", "shows the stored path points of each cluster");
         setPropertyTooltip(disp, "classifierEnabled", "colors clusters based on single size metric");
         setPropertyTooltip(disp, "classifierThreshold", "the boundary for cluster size classification in fractions of chip max dimension");
@@ -189,6 +193,15 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         setPropertyTooltip(global, "filterEventsEnabled", "<html>If disabled, input packet is unaltered. <p>If enabled, output packet contains RectangularClusterTrackerEvent, <br>events refer to containing cluster, and non-owned events are discarded.");
         setPropertyTooltip(lifetime, "surroundInhibitionEnabled", "Enabling this option causes events in the surround region to actively reduce the cluster mass, enabling tracking of only isolated features");
         setPropertyTooltip(lifetime, "surroundInhibitionCost", "If above is checked: The negative weight of surrounding points");
+        
+        final String pi="PI Controller";
+        setPropertyTooltip(pi, "smoothMove","Use the PI controller");
+        setPropertyTooltip(pi, "smoothWeight","If smoothmove is checked, the 'weight' of a cluster");
+        setPropertyTooltip(pi, "smoothPosition","Position Coefficient");
+        setPropertyTooltip(pi, "smoothIntegral","Integral Coefficient");
+        
+        
+        
         
         //        setPropertyTooltip("sizeClassificationEnabled", "Enables coloring cluster by size threshold");
 //        setPropertyTooltip("opticalGyroTauHighpassMs", "highpass filter time constant in ms for optical gyro position, increase to forget DC value more slowly");
@@ -436,7 +449,10 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 pruneList.add(c2);
                 clusters.remove(c1);
                 clusters.remove(c2);
-                clusters.add(new Cluster(c1, c2));
+                
+                // clusters.add(new Cluster(c1, c2)); // No good for cluster-class overriding!
+                clusters.add(createCluster(c1,c2));
+                
 //                    System.out.println("merged "+c1+" and "+c2);
             }
         } while (mergePending);
@@ -1312,7 +1328,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             if (showClusterNumber) {
                 chip.getCanvas().getGlut().glutBitmapString(font, String.format("#=%d ", hashCode()));
             }
-
+            
             //annotate the cluster with the velocityPPT in pps
             if (showClusterVelocity) {
 //                Point2D.Float velpps = getVelocityPPS();
@@ -1522,9 +1538,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 
                 
             }
-            
-            
-            
+                        
             if (!smoothMove)
             {   location.x = (m1 * location.x + m * newX);
                 location.y = (m1 * location.y + m * newY);
@@ -1532,13 +1546,21 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             }
             else
             {
-                m=1/smoothWeight;
-                m1=1-m;
-                velocity.x=m1 * velocity.x + m * (event.x-location.x);
-                velocity.y=m1 * velocity.y + m * (event.y-location.y);
                 
-                location.x=location.x+velocity.x*m;
-                location.y=location.y+velocity.y*m;
+                float errX=(event.x-location.x);
+                float errY=(event.y-location.y);
+                
+                //float changerate=1/smoothWeight;
+                m=m/smoothWeight;
+                m1=1-m;
+                
+                
+                
+                velocity.x=m1 * velocity.x + m * (errX);
+                velocity.y=m1 * velocity.y + m * (errY);
+                
+                location.x=location.x+velocity.x*smoothIntegral+errX*smoothPosition;
+                location.y=location.y+velocity.y*smoothIntegral+errX*smoothPosition;
                 
             } 
                 
@@ -3209,17 +3231,32 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         putBoolean("smoothMove", v);
     }
     
+    // Smoothmove settings
+    
     public boolean getSmoothMove()
     {return smoothMove;}
     
+    public float getSmoothWeight(){return smoothWeight;};
     public void setSmoothWeight(float v)
     {
         this.smoothWeight=v;
         putFloat("smoothWeight", v);
     }
     
-    public float getSmoothWeight()
-    {return smoothWeight;}
+    public float getSmoothPosition(){return smoothPosition;};
+    public void setSmoothPosition(float v)
+    {
+        this.smoothPosition=v;
+        putFloat("smoothPosition", v);
+    }
+    
+    public float getSmoothIntegral(){return smoothIntegral;};
+    public void setSmoothIntegral(float v)
+    {
+        this.smoothIntegral=v;
+        putFloat("smoothIntegral", v);
+    }
+    // ----------------------
     
     public void setSurroundInhibitionCost(float v)
     {
