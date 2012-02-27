@@ -321,7 +321,7 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
             }
         });
 
-        readComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "A", "B", "Diff" }));
+        readComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "A", "B", "C", "Diff_B", "Diff_C", "HDR", "LOG-HDR" }));
         readComboBox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 readComboBoxActionPerformed(evt);
@@ -343,7 +343,7 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
                 .addComponent(invertADCvalues)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(readComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 99, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 71, Short.MAX_VALUE)
                 .addComponent(snapshotButton)
                 .addContainerGap())
             .addGroup(jPanel1Layout.createSequentialGroup()
@@ -371,8 +371,6 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
                 .addGap(22, 22, 22))
         );
 
-        apsIntenCalibPanel.getAccessibleContext().setAccessibleName("Extrapolation");
-
         jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("Events"));
 
         intensityChangeCB.setText("Show log intensity change events");
@@ -388,10 +386,10 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
 
         jLabel3.setText("Full scale events");
 
-        jCheckBox2.setText("Update APS display");
-        jCheckBox2.setToolTipText("Update APS readout displlay on every event");
+        jCheckBox2.setText("Ignore DVS events on APS readout");
+        jCheckBox2.setToolTipText("Ignore DVS events during the APS readout");
 
-        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.updateAPSdisplay}"), jCheckBox2, org.jdesktop.beansbinding.BeanProperty.create("selected"));
+        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${chip.ignoreReadout}"), jCheckBox2, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
         jCheckBox2.addActionListener(new java.awt.event.ActionListener() {
@@ -404,20 +402,16 @@ public class SeeBetter20DisplayControlPanel extends javax.swing.JPanel implement
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(intensityChangeCB)
-                .addContainerGap())
             .addGroup(jPanel2Layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jLabel3)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(colorScaleSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 59, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(38, Short.MAX_VALUE))
-            .addGroup(jPanel2Layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jCheckBox2)
-                .addContainerGap(65, Short.MAX_VALUE))
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel2Layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(jLabel3)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(colorScaleSpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 59, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(intensityChangeCB)
+                    .addComponent(jCheckBox2))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)

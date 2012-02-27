@@ -10,6 +10,8 @@ import net.sf.jaer.event.PolarityEvent;
  */
 public class PolarityADCSampleEvent extends PolarityEvent {
 
+    public enum Type {A,B,C};
+    
     /** The ADC sample value. Has value -1 by convention for non-sample events. */
     protected int adcSample = 0;
     
@@ -17,7 +19,7 @@ public class PolarityADCSampleEvent extends PolarityEvent {
     protected boolean startOfFrame=false;
     
     /** This bit determines whether it is the first read (A) or the second read (B) of a pixel */
-    protected boolean isB = false;
+    protected Type readoutType = Type.A;
 
     public PolarityADCSampleEvent() {
     }
@@ -72,11 +74,15 @@ public class PolarityADCSampleEvent extends PolarityEvent {
         return adcSample>=0;
     }
     
-    /** Returns true if sample is second sample.
-     * 
-     * @return false = A, true = B
-     */
-    public boolean getMode() {
-        return isB;
+    public boolean isA(){
+        return readoutType == Type.A;
+    }
+    
+    public boolean isB(){
+        return readoutType == Type.B;
+    }
+    
+    public boolean isC(){
+        return readoutType == Type.C;
     }
 }
