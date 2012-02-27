@@ -123,7 +123,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
      private  KalmanFilter kalmanFilter;
   
      
-    public boolean smoothMove=false;
+    public boolean smoothMove=getBoolean("smoothMove",false);
 
     public enum ClusterLoggingMethod {
 

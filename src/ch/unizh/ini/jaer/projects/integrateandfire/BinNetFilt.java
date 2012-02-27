@@ -35,25 +35,21 @@ import net.sf.jaer.graphics.RetinaRenderer;
  */
 public class BinNetFilt extends EventFilter2D implements FrameAnnotater {
 
-    NetworkArray Net;            // Array of binary nets
+    // Settings
+    boolean enableNetwork=true;                     // Pass events through net?
+    int netCount=getInt("netCount",4);              // Number of networks
+    float inputThresh=getFloat("inputThresh",0);    // Input Threshold
     int inputPersistence=getInt("inputPersistence",200000);   // Input persistence, in us
-    LinkedList<ClusterEvent> offBuffer=new LinkedList(); // Buffer of events to be turned off
-    boolean enableNetwork=true;
-    int netCount=getInt("netCount",4);
-    ClusterSet C;
-    Plotter plot;
-    float inputThresh=getFloat("inputThresh",0);
-    File networkFile;
+    int Memory=getInt("inputPersistence",10);
+    File networkFile=new File(getClass().getClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../../../filterSettings/NeuralNets/MLP 784-100-50-10 shaken.xml");
     
-    
-    float[] windex;         // Records 
-    float windexUpdates;
-    
-    ClusterEvent evOut;
-    
-//        int balance=0; // temp
-    
-    Remapper R;         // Remapper object
+    // Internal Variables
+    NetworkArray Net;               // Array of binary nets    
+    LinkedList<ClusterEvent> offBuffer=new LinkedList(); // Buffer of events to be turned off    
+    ClusterSet C;                   // ClusterSet Filter
+    Plotter plot;                   // Plotter Object    
+    ClusterEvent evOut;             // Need to store this event between filter calls
+    Remapper R;                     // Remapper object
     
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in)  {   // Distribute incoming events to appropriate network.  
@@ -152,7 +148,12 @@ public class BinNetFilt extends EventFilter2D implements FrameAnnotater {
     public void loadNetwork(boolean useDefaultFile)  {   
         if (!useDefaultFile)
             try {
-            networkFile=Network.getfile(networkFile.getParentFile());
+                File parent;
+                if (networkFile!=null && networkFile.exists())
+                    parent=networkFile.getParentFile();
+                else
+                    parent=null;
+                networkFile=Network.getfile(parent);
         } catch (FileNotFoundException ex) {
             Logger.getLogger(BinNetFilt.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -187,7 +188,7 @@ public class BinNetFilt extends EventFilter2D implements FrameAnnotater {
             outputIX[i]=Net.N[0].nUnits()-10+i;
         Net.setOutputIX(outputIX);
         
-        Net.setTrackHistory(10);
+        setMemory(Memory);
         
         resetFilter();
         setEnableNetwork(true);
@@ -319,6 +320,18 @@ public class BinNetFilt extends EventFilter2D implements FrameAnnotater {
     
     public float getInputThresh()    {   return inputThresh;
     }
+    
+    public void setMemory(int val) {
+        if (Net==null) return;
+        Memory=val;
+        Net.setTrackHistory(val);
+        
+    }
+    
+    public int getMemory()    {  
+        if (Net==null) return -1;
+        return Memory;
+    }
         
     public void setClusterTags()    {   if (C==null) return; 
     
@@ -382,30 +395,18 @@ public class BinNetFilt extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip("inputPersistence", "The time for which an input signal will last.");
         setPropertyTooltip("enableNetwork", "Enable the network.");
         setPropertyTooltip("inputThresh", "Threshold of the input units.  Setting this higher makes it more noise-tolerant.");
-        //putString("Status","Great!");
-        /*
-        URL loc;
-        try {
-            loc=new URL(getClass().getClassLoader().getResource("../../../..").getPath());
-        } catch (MalformedURLException ex) {
-            Logger.getLogger(BinNetFilt.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        */
+        setPropertyTooltip("memory", "(approximately) how many cycles over which to smooth the output in order to determine a winner");
         
         
-        //networkFile=new File(getClass().getClassLoader().getResource(".").getPath()+"../../../../filterSettings/NeuralNets/BinNet.txt");
-        networkFile=new File(getClass().getClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../../../filterSettings/NeuralNets/BinNet.txt");
         
-    }        
+    }
     
     // Nothing
     @Override public void initFilter(){
         setAnnotationEnabled(true);
-        
         enclosedFilterChain.reset();
         doDefault_Settings();
-        
-        
+                
     }
 
     @Override

@@ -6,12 +6,27 @@ package ch.unizh.ini.jaer.projects.integrateandfire;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.xml.parsers.ParserConfigurationException;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.OutputEventIterator;
+
+
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.DocumentBuilder;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.Node;
+import org.w3c.dom.Element;
+import org.xml.sax.SAXException;
+
+
+
+
 
 /**
  *
@@ -22,8 +37,7 @@ public class BinNet extends Network {
     BinNeuron[] N;
 
     
-    class BinNeuron implements Unit
-    {   float vmem=0;             // Membrane Potential
+    class BinNeuron implements Unit    {   float vmem=0;             // Membrane Potential
         boolean state=false;    // State
         float[] w;              // Outgoing connections weights
         int[] c;                // Outgoing connection addresses
@@ -105,16 +119,13 @@ public class BinNet extends Network {
         return N[index].w;
     }
     
-    public void setFire(int index, boolean newstate)
-    {   N[index].setFire(newstate);        
+    public void setFire(int index, boolean newstate)    {   N[index].setFire(newstate);        
     }
 
-    public void hitThat(int index, float w)
-    {   N[index].hitme(w);        
+    public void hitThat(int index, float w)    {   N[index].hitme(w);        
     }
         
-    public void printStates()
-    {   // Assuming inputs are indexed y-first (as in matlab), print out the 
+    public void printStates()    {   // Assuming inputs are indexed y-first (as in matlab), print out the 
         // State of the network.
         System.out.println("Inputs:");
         for (short i=0; i<R.outDimY; i++)
@@ -129,8 +140,7 @@ public class BinNet extends Network {
             System.out.println(i+"("+N[i].tag+"):\t"+N[i].state);
     }
     
-    public void setInputThresh(float thresh)
-    {
+    public void setInputThresh(float thresh)    {
         for (int i=0; i<R.outDimX*R.outDimY; i++)
             N[i].thresh=thresh;
         
@@ -141,23 +151,15 @@ public class BinNet extends Network {
     public void readfile(File file) throws FileNotFoundException, Exception {
         // Locate a Network-Description file and read it into a network.
 
+        readXML(file);
+        return;
+               
+        
+        /*
 
         int i, j;
         int netLen=-1; 
         int rowLen;
-
-        /*
-        File file;
-        JFrame frame = new JFrame("FileChooserDemo");
-
-
-        // Locate file
-        JFileChooser fc = new JFileChooser();
-
-        fc.showOpenDialog(frame);
-        file=fc.getSelectedFile();
-        //file=new File("C:\\Documents and Settings\\tobi\\My Documents\\Simple Net.txt");
-         */
 
         // Parse Out First Info
         Scanner sc = new Scanner(file);
@@ -260,8 +262,58 @@ public class BinNet extends Network {
 
         }
         System.out.println("Done");
-
+*/
     }
+    
+    public void readXML(File file) throws ParserConfigurationException, SAXException, IOException{
+        
+        DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+        
+        Document doc = dBuilder.parse(file);
+        doc.getDocumentElement().normalize();
+                
+                        
+        int netLen=java.lang.Integer.parseInt(doc.getElementsByTagName("nUnits").item(0).getTextContent());
+        
+        N=new BinNeuron[netLen];
+        U=N;
+        
+        // Read dimensions        
+        if (R==null)
+            R=new Remapper();
+        String[] dimString=doc.getElementsByTagName("inputDims").item(0).getTextContent().split(" ");
+        R.outDimX=(short)java.lang.Integer.parseInt(dimString[0]);
+        R.outDimY=(short)java.lang.Integer.parseInt(dimString[1]);
+        
+        
+        
+        NodeList nList = doc.getElementsByTagName("Unit");
+        for (int i=0; i<netLen; i++){
+            
+            Element node=(Element)nList.item(i);
+            
+            N[i]=new BinNeuron();
+            N[i].thresh=java.lang.Float.parseFloat( node.getElementsByTagName("T").item(0).getTextContent() );
+            
+            int nConnections=java.lang.Integer.parseInt(node.getElementsByTagName("nConnections").item(0).getTextContent() );
+            
+            N[i].tag=node.getElementsByTagName("tag").item(0).getTextContent();
+            
+            // Get Weights
+            N[i].w=new float[nConnections];            
+            Scanner sc=new Scanner(node.getElementsByTagName("W").item(0).getTextContent());
+            for (int j=0; j<nConnections; j++)
+                N[i].w[j]=sc.nextFloat();
+            
+            // Get Connections
+            N[i].c=new int[nConnections];            
+            sc=new Scanner(node.getElementsByTagName("C").item(0).getTextContent());
+            for (int j=0; j<nConnections; j++)
+                N[i].c[j]=sc.nextInt();
+        }
+    }
+    
     
     @Override
     public void reset() {

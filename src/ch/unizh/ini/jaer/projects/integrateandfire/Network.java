@@ -5,6 +5,7 @@
 package ch.unizh.ini.jaer.projects.integrateandfire;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileNotFoundException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -166,13 +167,17 @@ public abstract class Network {
             } catch (MalformedURLException ex) {
                 Logger.getLogger(Network.class.getName()).log(Level.SEVERE, null, ex);
             }*/
-            File initloc=new File(getClass().getClassLoader().getResource(".").getPath());
+            //File initloc=new File(getClass().getClassLoader().getResource(".").getPath());
             
             //JFileChooser fc = new JFileChooser();
             JFileChooser fc;
-                fc = new JFileChooser(initloc.getAbsolutePath());
+                //fc = new JFileChooser(initloc.getAbsolutePath());
+                fc = new JFileChooser(startDir);
+                
+//                javax.swing.filechooser.FileFilter filt=fc.getFileFilter();
+                
                 //fc.setCurrentDirectory(new File(initloc.getAbsolutePath()));
-                fc.setDialogTitle("Choose network weight file (JAER/filterSettings/NeuralNets)");
+                fc.setDialogTitle("Choose network weight XML file (JAER/filterSettings/NeuralNets)");
                         
                 fc.showOpenDialog(null);
                 file = fc.getSelectedFile();
