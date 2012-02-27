@@ -139,7 +139,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
     private boolean displayIntensity;
     private int exposureB;
     private int exposureC;
-    private int framePeriod;
+    private int frameTime;
     private boolean displayLogIntensityChangeEvents;
     private boolean ignoreReadout;
     private boolean snapshot = false;
@@ -402,7 +402,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                             snapshot = false;
                             config.adc.setAdcEnabled(false);
                         }
-                        framePeriod = e.timestamp - firstFrameTs;
+                        frameTime = e.timestamp - firstFrameTs;
                         firstFrameTs = e.timestamp;
                     }
                     if(!(countY[sampleType]<chip.getSizeY()/2)){
@@ -514,16 +514,16 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
         //
         // adc and scanner configurations are stored in scanner and adc; updates to here should update CPLD config below
         // CPLD shift register contents specified here by CPLDInt and CPLDBit
-        private CPLDInt adcConfig = new CPLDInt(SeeBetter20.this, 11, 0, "adcConfig", "ADC configuration bits; computed by ADC with channel and sequencing parameters", 352);
-        private CPLDInt exposureB = new CPLDInt(SeeBetter20.this, 27, 12, "exposureB", "time between reset and readout of a pixel", 0);
-        private CPLDInt exposureC = new CPLDInt(SeeBetter20.this, 43, 28, "exposureC", "time between reset and readout of a pixel for a second time (min 64!)", 64);
-        private CPLDInt colSettle = new CPLDInt(SeeBetter20.this, 59, 44, "colSettle", "time to settle a column select before readout", 0);
-        private CPLDInt rowSettle = new CPLDInt(SeeBetter20.this, 75, 60, "rowSettle", "time to settle a row select before readout", 0);
-        private CPLDInt resSettle = new CPLDInt(SeeBetter20.this, 91, 76, "resSettle", "time to settle a reset before readout", 0);
-        private CPLDInt framePeriod = new CPLDInt(SeeBetter20.this, 107, 92, "framePeriod", "time between two frames", 0);
-   //     private CPLDInt padding = new CPLDInt(SeeBetter20.this, 107, 92, "pad", "used to pad 16 zeros", 0);
-        private CPLDBit testpixel = new CPLDBit(SeeBetter20.this, 108, "testPixel", "enables continuous scanning of testpixel", false);
-        private CPLDBit useC = new CPLDBit(SeeBetter20.this, 109, "useC", "enables a second readout", false);
+        private CPLDInt adcConfig = new CPLDInt(SeeBetter20.this, 15, 0, "adcConfig", "ADC configuration bits; computed by ADC with channel and sequencing parameters", 352);
+        private CPLDInt exposureB = new CPLDInt(SeeBetter20.this, 31, 16, "exposureB", "time between reset and readout of a pixel", 0);
+        private CPLDInt exposureC = new CPLDInt(SeeBetter20.this, 47, 32, "exposureC", "time between reset and readout of a pixel for a second time (min 64!)", 64);
+        private CPLDInt colSettle = new CPLDInt(SeeBetter20.this, 63, 48, "colSettle", "time to settle a column select before readout", 0);
+        private CPLDInt rowSettle = new CPLDInt(SeeBetter20.this, 79, 64, "rowSettle", "time to settle a row select before readout", 0);
+        private CPLDInt resSettle = new CPLDInt(SeeBetter20.this, 95, 80, "resSettle", "time to settle a reset before readout", 0);
+        private CPLDInt frameDelay = new CPLDInt(SeeBetter20.this, 111, 96, "frameDelay", "time between two frames", 0);
+        private CPLDInt padding = new CPLDInt(SeeBetter20.this, 117, 112, "pad", "used to zeros", 0);
+        private CPLDBit testpixel = new CPLDBit(SeeBetter20.this, 118, "testPixel", "enables continuous scanning of testpixel", false);
+        private CPLDBit useC = new CPLDBit(SeeBetter20.this, 119, "useC", "enables a second readout", false);
         //
         // lists of ports and CPLD config
         private ADC adc;
@@ -556,8 +556,8 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             addConfigValue(resSettle);
             addConfigValue(rowSettle);
             addConfigValue(colSettle);
-            addConfigValue(framePeriod);
-        //     addConfigValue(padding);
+            addConfigValue(frameDelay);
+            addConfigValue(padding);
             addConfigValue(testpixel);
             addConfigValue(useC);
 
@@ -1183,7 +1183,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 exposureB.addObserver(this);
                 exposureC.addObserver(this);
                 resSettle.addObserver(this);
-                framePeriod.addObserver(this);
+                frameDelay.addObserver(this);
                 testpixel.addObserver(this);
                 useC.addObserver(this);
             }
@@ -1213,7 +1213,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 //            }
 //            
 //            public void setFrameDelay(int timeUs){
-//                framePeriod.set(timeUs * ADC_CLK_CYCLES_PER_US);
+//                frameTime.set(timeUs * ADC_CLK_CYCLES_PER_US);
 //            }
 //            
 //            public void setExposureDelay(int timeUs){
@@ -1233,7 +1233,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             }
             
             public void setFrameDelayCC(int cc){
-                framePeriod.set(cc);
+                frameDelay.set(cc);
             }
             
             public void setExposureBDelayCC(int cc){
@@ -1275,10 +1275,10 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 //                int desiredCC = timeUs * ADC_CLK_CYCLES_PER_US;
 //                int actualCC = getFrameCC();
 //                if(desiredCC < actualCC){
-//                    framePeriod.set(0);
+//                    frameTime.set(0);
 //                } else {
 //                    int diff = desiredCC-actualCC;
-//                    framePeriod.set((int)diff/(actualCC));
+//                    frameTime.set((int)diff/(actualCC));
 //                }
 //            }
             
@@ -1300,7 +1300,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 //            }
 //            
 //            public int getFrameDelay() {
-//                return framePeriod.get() / ADC_CLK_CYCLES_PER_US;
+//                return frameTime.get() / ADC_CLK_CYCLES_PER_US;
 //            }
 //            
 //            public int getExposureDelay() {
@@ -1320,7 +1320,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             }
             
             public int getFrameDelayCC() {
-                return framePeriod.get();
+                return frameDelay.get();
             }
             
             public int getExposureBDelayCC() {
@@ -1337,7 +1337,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             
             
 //            public int getFrameTime() {
-//                return (framePeriod.get()+getFrameCC()) / ADC_CLK_CYCLES_PER_US;
+//                return (frameTime.get()+getFrameCC()) / ADC_CLK_CYCLES_PER_US;
 //            }
             
 //            public int getFrameRefreshFrequency() {
@@ -2079,7 +2079,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 renderer.setColor(1, .2f, .2f, 0.4f);
             }
             if (exposureRenderer == null) {
-                exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 10), true, true);
+                exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 8), true, true);
                 exposureRenderer.setColor(1, 1, 1, 1);
             }
             super.display(drawable);
@@ -2092,7 +2092,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 //            rect(gl, 128, 0, 2, 64); /// whole chip + extra to right
             // show scanned pixel if we are not continuously scanning
 //            if (!config.scanContinuouslyEnabled.isSet()) {
-//                rect(gl, 2 * config.scanX.get(), 2 * config.framePeriod.get(), 2, 2, null); // 2* because pixel pitch is 2 pixels for bDVS array
+//                rect(gl, 2 * config.scanX.get(), 2 * config.frameTime.get(), 2, 2, null); // 2* because pixel pitch is 2 pixels for bDVS array
 //            }
         }
 
@@ -2115,14 +2115,14 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                 if(displayIntensity){
                     exposureRenderer.begin3DRendering();
                     String frequency = "";
-                    if(framePeriod>0){
-                         frequency = "("+(float)1000000/framePeriod+" Hz)";
+                    if(frameTime>0){
+                         frequency = "("+(float)1000000/frameTime+" Hz)";
                     }
                     String expC = "";
                     if(config.useC.isSet()){
                          expC = " ms, exposure 2: "+(float)exposureC/1000;
                     }
-                    exposureRenderer.draw3D("exposure 1: "+(float)exposureB/1000+expC+" ms, frame period: "+(float)framePeriod/1000+" ms "+frequency, x, h, 0, .4f); // x,y,z, scale factor 
+                    exposureRenderer.draw3D("exposure 1: "+(float)exposureB/1000+expC+" ms, frame period: "+(float)frameTime/1000+" ms "+frequency, x, h, 0, .4f); // x,y,z, scale factor 
                     exposureRenderer.end3DRendering();
                 }
                 
