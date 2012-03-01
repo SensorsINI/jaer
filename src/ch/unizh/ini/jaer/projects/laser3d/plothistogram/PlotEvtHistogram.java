@@ -1,0 +1,80 @@
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package ch.unizh.ini.jaer.projects.laser3d.plothistogram;
+
+import java.util.Observable;
+import java.util.Observer;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+
+/**
+ *
+ * @author Thomas Mantel
+ */
+@Description("Creates a histogram of events during several periods (distinguished with special events)")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+public class PlotEvtHistogram extends EventFilter2D implements Observer {
+
+    Histogram histogram;
+    PlotHistogram histogramPlot;
+    boolean isInitialized = false;
+        
+    public PlotEvtHistogram(AEChip chip) {
+        super(chip);
+        
+    }
+    
+    @Override
+    public void update(Observable o, Object arg) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public EventPacket<?> filterPacket(EventPacket<?> in) {
+        if (!filterEnabled) {
+            return in;
+        } else {
+            for (Object e : in) {
+                if (!isInitialized) {
+                    initFilter();
+                }
+                histogram.processEvent((PolarityEvent) e);
+            }
+            return in;
+        }
+    }
+//
+    @Override
+    public void resetFilter() {
+        if (isFilterEnabled()) {
+            if (histogram == null) {
+                histogram = new EvtHistogram(this);
+            } else {
+                histogram.initHistogram();
+            }
+            if (histogramPlot != null) {
+                histogramPlot.makeHistogramFrameVisible();
+            }
+        }
+    }
+
+    @Override
+    public void initFilter() {
+        histogram = new EvtHistogram(this);
+        histogramPlot = new PlotHistogram(histogram);
+        histogramPlot.createHistogramFrame();
+        isInitialized = true;
+    }
+}
+
+
+
+
+
+

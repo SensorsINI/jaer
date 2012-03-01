@@ -75,7 +75,7 @@ public class HistGCanvas extends Canvas {
                     g2D.setColor(Color.black);
                     g2D.drawLine(curXPos, CFHeight + borderTop - 5, curXPos, CFHeight + borderTop + 5);
                     /* Write XData label */
-                    if((i-1)%(histg.nBins()/4)==0) {
+                    if((i-1)%((histg.nBins())/5)==0) {
                         g2D.drawString(String.format("%d", (int) XData[i-1]), curXPos-10, borderTop + CFHeight + 25);
                     }
                     for (int j = 0; j < nDatasets; j++) {

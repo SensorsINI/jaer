@@ -9,8 +9,6 @@ package ch.unizh.ini.jaer.projects.laser3d;
 import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
-import javax.media.opengl.GL;
-import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -27,14 +25,28 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 public class FilterSyncedEvents extends EventFilter2D implements Observer {
 
     /**
+     * *******
      * Options
+     * *******
      */
+    
+    /**
+     * 
+     */    
     protected boolean useOnAndOff = getPrefs().getBoolean("FilterSyncedEvents.useOnAndOff", true);
+    /**
+     * 
+     */
     protected int t0 = getPrefs().getInt("FilterSyncedEvents.t0", 500);
+    /**
+     * 
+     */
     protected int t1 = getPrefs().getInt("FilterSyncedEvents.t1", 500);
+    
     /**
      * *********************
-     * Variables *********************
+     * Variables 
+     * *********************
      */
     private int DEFAULT_TIMESTAMP = 0; //Integer.MIN_VALUE;
     private int[][] lastOnTimestamps;
@@ -44,6 +56,7 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
 
     /**
      * Creates a new instance of FilterLaserLine
+     * @param chip 
      */
     public FilterSyncedEvents(AEChip chip) {
         super(chip);
@@ -156,6 +169,10 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
         }
     }
 
+    /**
+     * 
+     * @return
+     */
     public Object getFilterState() {
         return null;
     }
@@ -189,10 +206,18 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
         this.t0 = t0;
     }
 
+    /**
+     * 
+     * @return
+     */
     public int getMinT0() {
         return 0;
     }
 
+    /**
+     * 
+     * @return
+     */
     public int getMaxT0() {
         return 1000;
     }
@@ -218,10 +243,18 @@ public class FilterSyncedEvents extends EventFilter2D implements Observer {
         this.t1 = t1;
     }
 
+    /**
+     * 
+     * @return
+     */
     public int getMinT1() {
         return 0;
     }
 
+    /**
+     * 
+     * @return
+     */
     public int getMaxT1() {
         return 1000;
     }

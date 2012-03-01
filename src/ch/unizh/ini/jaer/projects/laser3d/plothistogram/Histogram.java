@@ -4,15 +4,15 @@
  */
 package ch.unizh.ini.jaer.projects.laser3d.plothistogram;
 
-import java.util.Observer;
 import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
  *
  * @author Thomas Mantel
  */
 public interface Histogram {
+    
+    String getHistogramName();
     
     /**
      * 
