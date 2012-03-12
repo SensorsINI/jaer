@@ -59,30 +59,30 @@ public class OrientationDisplay extends GLCanvas implements GLEventListener {
         
             // Draw orientation pictograms
             // Horizontal
-            gl.glColor3f(1, 0, 0);
+            gl.glColor3f(1.0f, 0.0f, 0.0f);
             gl.glLineWidth(5.0f);
-            gl.glBegin(GL.GL_LINE);
+            gl.glBegin(GL.GL_LINE_STRIP);
             gl.glVertex2f(-0.75f, 0.85f);
             gl.glVertex2f(-0.45f, 0.85f);
             gl.glEnd();
 
             // Vertical
-            gl.glColor3f(0, 0, 1);
-            gl.glBegin(GL.GL_LINE);
+            gl.glColor3f(0.0f, 0.0f, 1.0f);
+            gl.glBegin(GL.GL_LINE_STRIP);
             gl.glVertex2f(0.2f, 0.99f);
             gl.glVertex2f(0.2f, 0.70f);
             gl.glEnd();
             
             // 45 degrees
             gl.glColor3f(0, 1, 0);
-            gl.glBegin(GL.GL_LINE);
+            gl.glBegin(GL.GL_LINE_STRIP);
             gl.glVertex2f(-0.3f, 0.7f);
             gl.glVertex2f(-0.1f, 0.99f);
             gl.glEnd();
 
             // 135 degrees
             gl.glColor3f(1, 0, 1);
-            gl.glBegin(GL.GL_LINE);
+            gl.glBegin(GL.GL_LINE_STRIP);
             gl.glVertex2f(0.7f, 0.7f);
             gl.glVertex2f(0.5f, 0.99f);
             gl.glEnd();

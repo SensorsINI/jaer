@@ -108,7 +108,7 @@ public class StatisticsCalculator extends EventFilter2D {
         for (BasicEvent e : in) { // iterate over all input events
                 updatePixelStatistics(e);
                 updateOverallStatistics(e, false);
-                updateISIStatistics(e);
+                // updateISIStatistics(e);
                 updateTimeStatistics(e);
         } // BasicEvent e
 
