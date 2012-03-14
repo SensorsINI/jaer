@@ -995,6 +995,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
 
     class FloatControl extends JPanel implements HasSetter {
+        
+        EngineeringFormat engFmt=new EngineeringFormat();
+//        final String format="%.6f";
 
         Method write, read;
         EventFilter filter;
@@ -1032,8 +1035,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     return;
                 }
                 initValue = x.floatValue();
-                String s = String.format("%.4f", initValue);
-                tf.setText(s);
+                tf.setText(engFmt.format(initValue));
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
             } catch (IllegalAccessException e) {
@@ -1046,11 +1048,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 public void actionPerformed(ActionEvent e) {
 //                    System.out.println(e);
                     try {
-                        float y = Float.parseFloat(tf.getText());
+                        float y = engFmt.parseFloat(tf.getText());
                         w.invoke(filter, new Float(y));
                         Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
                         nval = x.floatValue();
-                        tf.setText(String.format("%.4f", nval));
+                        tf.setText(engFmt.format(nval));
                     } catch (NumberFormatException fe) {
                         tf.selectAll();
                     } catch (InvocationTargetException ite) {
@@ -1093,7 +1095,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             w.invoke(filter, new Float(nval)); // setter the value
                             Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
                             nval = x.floatValue();
-                            tf.setText(String.format("%.4f", nval));
+                            tf.setText(engFmt.format(nval));
                         } catch (InvocationTargetException ite) {
                             ite.printStackTrace();
                         } catch (IllegalAccessException iae) {
@@ -1110,7 +1112,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             w.invoke(filter, new Float(initValue / floatFactor));
                             Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
                             nval = x.floatValue();
-                            tf.setText(String.format("%.4f", nval));
+                            tf.setText(engFmt.format(nval));
                         } catch (InvocationTargetException ite) {
                             ite.printStackTrace();
                         } catch (IllegalAccessException iae) {
@@ -1146,7 +1148,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 w.invoke(filter, new Float(nval)); // setter the value
                                 Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
                                 nval = x.floatValue();
-                                tf.setText(String.format("%.4f", nval));
+                                tf.setText(engFmt.format(nval));
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
                             } catch (IllegalAccessException iae) {
@@ -1163,7 +1165,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 w.invoke(filter, new Float(initValue / wheelFactor));
                                 Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
                                 nval = x.floatValue();
-                                tf.setText(String.format("%.4f", nval));
+                                tf.setText(engFmt.format(nval));
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
                             } catch (IllegalAccessException iae) {
