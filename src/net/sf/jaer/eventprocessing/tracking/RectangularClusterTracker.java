@@ -602,6 +602,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         float distance;
     }
 
+    private int lastTimestamp=0;
+    
     /** The method that actually does the tracking.
      *
      * @param in the event packet.
@@ -649,7 +651,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 clusters.add(newCluster);
             }
 
-            updatedClusterList = maybeCallUpdateObservers(in, ev.timestamp); // callback to update()
+            updatedClusterList = maybeCallUpdateObservers(in, (lastTimestamp=ev.timestamp)); // callback to update()
 //            if (!updateTimeInitialized) {
 //                nextUpdateTimeUs = (int) (ev.timestamp + updateIntervalMs * 1000 / AEConstants.TICK_DEFAULT_US);
 //                updateTimeInitialized = true;
@@ -667,7 +669,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         // TODO update here again, relying on the fact that lastEventTimestamp was set by possible previous update according to
         // schedule; we have have double update of velocityPPT using same dt otherwise
         if (!updatedClusterList) {
-            updateClusterList(in, in.getLastTimestamp()); // at laest once per packet update list
+            updateClusterList(in, lastTimestamp); // at laest once per packet update list
         }
 //        for (Cluster c : clusters) {
 //            if (!c.isVisible()) {
