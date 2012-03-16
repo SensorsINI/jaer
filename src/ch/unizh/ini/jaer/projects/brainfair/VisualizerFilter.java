@@ -43,7 +43,7 @@ public class VisualizerFilter extends EventFilter2D implements FrameAnnotater {
     // Update factor for history of overall firing rate
     private float ISIHistoryFactor = getFloat("ISIHistoryFactor", 40.0f);
 
-    private float pixelHistoryFactor = getFloat("pixelHistoryFactor", 2000.0f);
+    private float pixelHistoryFactor = getFloat("pixelHistoryFactor", 1.0f);
 
     private int maxTime = getInt("maxTime", 5000);
 
@@ -110,6 +110,10 @@ public class VisualizerFilter extends EventFilter2D implements FrameAnnotater {
         statistics.setISITau(ISIHistoryFactor);
         statistics.setPixelTau(pixelHistoryFactor);
         statistics.setMaxTime(maxTime);
+        
+        if (statFrame != null) {
+            statFrame.resetDisplay();
+        }
     }
 
     @Override

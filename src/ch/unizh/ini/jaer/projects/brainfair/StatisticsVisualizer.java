@@ -341,4 +341,13 @@ public class StatisticsVisualizer extends javax.swing.JFrame {
         }
     
     }
+    
+    public void resetDisplay() {
+        if (overallDisplay != null) {
+            overallDisplay.resetDisplay();
+        }
+        if (pixelDisplay != null)  {
+            pixelDisplay.resetDisplay();
+        }
+    }
 }

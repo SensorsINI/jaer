@@ -152,5 +152,8 @@ public class OverallRateDisplay extends GLCanvas implements GLEventListener {
         this.statistics = statistics;
     }
 
+    public void resetDisplay() {
+        maxOverallRate = 0.0;
+    }
 
 }

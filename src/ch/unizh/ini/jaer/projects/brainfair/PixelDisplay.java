@@ -79,6 +79,12 @@ public class PixelDisplay extends GLCanvas implements GLEventListener {
         }
 
     }
+    
+    public void resetDisplay() {
+        
+    }
+    
+    
     public void init(GLAutoDrawable drawable) {
 
         System.out.println("init");

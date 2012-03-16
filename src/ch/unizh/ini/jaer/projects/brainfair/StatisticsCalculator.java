@@ -145,7 +145,7 @@ public class StatisticsCalculator extends EventFilter2D {
     }
 
     
-    
+   
     // Resets overall statistics
     private void resetOverallStatistics() {
         numEvents = 0;
@@ -269,6 +269,7 @@ public class StatisticsCalculator extends EventFilter2D {
         }
         Arrays.fill(ISIbins,0);
         this.maxBin = 0;
+        
     }
 
     /**
@@ -299,12 +300,16 @@ public class StatisticsCalculator extends EventFilter2D {
    public void decayPixelHistogram (int timestamp){
         if ( this.PixelTau > 0 && timestamp > nextPixelDecayTimestamp ){
             float decayconstant = (float)java.lang.Math.exp(-( timestamp - lastPixelDecayTimestamp ) / 
-                    ( PixelTau * 1000 ));
+                    ( PixelTau * 1000000f ));
+            maxPixelBin = 0;
             for ( int i = 0 ; i < Pixelbins.length ; i++ ){
                
                 Pixelbins[i] = (int)( Pixelbins[i] * decayconstant );
+                if (Pixelbins[i] > maxPixelBin) {
+                    maxPixelBin = Pixelbins[i];
+                }
             }
-            nextPixelDecayTimestamp = (int)( timestamp + ( PixelTau * 1000 ) / 10 );
+            nextPixelDecayTimestamp = (int)( timestamp + ( PixelTau * 1000000 ) / 10 );
             lastPixelDecayTimestamp = timestamp;
         }
     }
@@ -315,6 +320,8 @@ public class StatisticsCalculator extends EventFilter2D {
         }
         Arrays.fill(Pixelbins,0);
         this.maxPixelBin = 0;
+        nextPixelDecayTimestamp = 0;
+        lastPixelDecayTimestamp = 0;
     }
     
     private void rescalePixelBins (){
