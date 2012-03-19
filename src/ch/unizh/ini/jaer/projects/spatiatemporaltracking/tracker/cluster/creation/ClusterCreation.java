@@ -4,7 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.creation;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterListener;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterListener;
 import net.sf.jaer.event.TypedEvent;
 
 /**

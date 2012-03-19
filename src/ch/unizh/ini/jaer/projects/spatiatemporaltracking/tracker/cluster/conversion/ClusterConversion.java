@@ -5,7 +5,7 @@
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.conversion;
 
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.CandidateCluster;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterListener;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterListener;
 
 /**
  *

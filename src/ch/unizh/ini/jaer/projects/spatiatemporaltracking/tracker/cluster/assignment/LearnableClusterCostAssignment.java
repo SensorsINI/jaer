@@ -4,12 +4,10 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.assignment;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.assignable.AssignableCluster;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.FeatureClusterStorage;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.assignment.cost.ClusterCostFunction;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.Parameters;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.Parameters;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.temporalpattern.TemporalPattern;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.temporalpattern.TemporalPatternStorage;
 

@@ -5,8 +5,7 @@
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.merge;
 
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.FeatureClusterStorage;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.merge.cost.MergeCostFunction;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterManager;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
 
 /**
  *

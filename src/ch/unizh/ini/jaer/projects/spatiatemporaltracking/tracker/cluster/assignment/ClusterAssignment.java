@@ -4,8 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.assignment;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.assignable.AssignableCluster;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterListener;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterListener;
 
 /**
  *

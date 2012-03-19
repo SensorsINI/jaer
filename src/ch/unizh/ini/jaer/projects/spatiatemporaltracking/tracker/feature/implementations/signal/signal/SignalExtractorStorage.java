@@ -7,7 +7,7 @@ package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implem
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.signal.Signal;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterManager;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
 import com.sun.opengl.util.j2d.TextRenderer;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;

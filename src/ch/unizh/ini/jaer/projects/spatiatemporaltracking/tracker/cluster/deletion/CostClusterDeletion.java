@@ -6,9 +6,8 @@ package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.deleti
 
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.FeatureCluster;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.FeatureClusterStorage;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.deletion.cost.DeletionCostFunction;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.Parameters;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.Parameters;
 
 /**
  *

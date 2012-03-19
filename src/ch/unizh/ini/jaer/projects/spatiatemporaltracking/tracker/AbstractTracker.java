@@ -11,7 +11,7 @@ import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.SimpleF
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.factory.ConcreteFeatureExtractorFactory;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.TrackingFeatureManager;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.notifier.TrackingFeatureNotifier;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterListener;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterListener;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.temporalpattern.TemporalPattern;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.temporalpattern.TemporalPatternStorage;
 import com.sun.opengl.util.j2d.TextRenderer;

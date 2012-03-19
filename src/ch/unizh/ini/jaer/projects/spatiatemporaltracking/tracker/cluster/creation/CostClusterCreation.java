@@ -6,10 +6,9 @@ package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.creati
 
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.FeatureCluster;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.FeatureClusterStorage;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.creation.cost.CreationCostFunction;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event.assignable.EventAssignable;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.Parameters;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event.EventAssignable;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.Parameters;
 import net.sf.jaer.event.TypedEvent;
 
 /**

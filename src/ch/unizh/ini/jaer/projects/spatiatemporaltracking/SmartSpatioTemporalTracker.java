@@ -6,7 +6,7 @@ package ch.unizh.ini.jaer.projects.spatiatemporaltracking;
 
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.EventTracker;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.SimpleEventTracker;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.Parameters;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.Parameters;
 import java.util.Observable;
 import java.util.Observer;
 import javax.media.opengl.GLAutoDrawable;

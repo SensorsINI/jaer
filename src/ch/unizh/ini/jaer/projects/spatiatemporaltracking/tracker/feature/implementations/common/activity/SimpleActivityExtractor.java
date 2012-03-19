@@ -8,7 +8,7 @@ import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.IntegerSummedCircu
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.boundary.BoundaryExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterManager;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
 import java.util.List;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.TypedEvent;

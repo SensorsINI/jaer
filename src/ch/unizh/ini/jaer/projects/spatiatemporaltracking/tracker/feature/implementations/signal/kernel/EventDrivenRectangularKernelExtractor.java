@@ -7,7 +7,7 @@ package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implem
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.FloatSummedCircularList;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterManager;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;

@@ -7,7 +7,7 @@ package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implem
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.Vector;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterManager;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
 import net.sf.jaer.chip.AEChip;
 
 /**

@@ -10,8 +10,8 @@ import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.impleme
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.lifetime.LifetimeExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.signal.signal.SignalExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.util.file.FileHandler;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.util.FileHandler;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;

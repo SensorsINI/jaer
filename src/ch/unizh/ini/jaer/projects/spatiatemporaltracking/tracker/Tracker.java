@@ -4,7 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterManager;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
 import javax.media.opengl.GLAutoDrawable;
 
 /**

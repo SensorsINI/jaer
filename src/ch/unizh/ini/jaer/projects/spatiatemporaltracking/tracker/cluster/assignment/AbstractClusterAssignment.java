@@ -4,8 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.assignment;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.assignment.cost.ClusterCostFunction;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterManager;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
 
 /**
  *

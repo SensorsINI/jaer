@@ -5,8 +5,7 @@
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.conversion;
 
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.FeatureClusterStorage;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.conversion.cost.ConversionCostFunction;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterManager;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
 
 /**
  *

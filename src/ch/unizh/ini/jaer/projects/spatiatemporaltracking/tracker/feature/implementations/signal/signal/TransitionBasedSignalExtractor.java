@@ -13,9 +13,9 @@ import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Feature
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.signal.period.PeriodExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.signal.transition.TransitionHistoryExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.ParameterManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.parameter.Parameters;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.util.correlation.Correlation;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.Parameters;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.math.Correlation;
 import java.util.ArrayList;
 import java.util.List;
 import net.sf.jaer.chip.AEChip;
