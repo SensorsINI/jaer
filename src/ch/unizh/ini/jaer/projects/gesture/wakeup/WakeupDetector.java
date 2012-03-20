@@ -13,32 +13,35 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.SpikeSound;
 
 /**
  * Activity and simple gesture-based wakeup detector.
  * @author tobi & christian
  */
-@Description("Activity-level and simple gesture wakeup detector")
+@Description("<html>Activity-level and simple gesture wakeup detector.<br>Uses 2 IF digital neurons that slew towards zero. <br>")
 public class WakeupDetector extends EventFilter2D implements FrameAnnotater{
     
-    public int onCount, offCount, maxCount, callCount, lastOffThr, lastOnThr, onInterval, offInterval;
+    public int onCount, offCount, maxCount, wakupCount, lastOffThr, lastOnThr, onInterval, offInterval;
     
     private int minDt = 10000; //mininmal time until next threshold passing is sampled
     
     private boolean isOn = false;
     private boolean measureOn = true;
     
-    private int tolerance=getPrefs().getInt("WakeupDetector.tolerance",50000);
+    private SpikeSound spikeSound=new SpikeSound();
+    
+    private int tolerance=getInt("tolerance",50000);
     {setPropertyTooltip("tolerance","time [us] that two intervals are allowed to differ");}
     
-    private int tapLength=getPrefs().getInt("WakeupDetector.tapLength",270000);
-    {setPropertyTooltip("tolerance","time [us] that two intervals are allowed to differ");}
+    private int tapLength=getInt("tapLength",270000);
+    {setPropertyTooltip("tapLength","time [us] that two intervals are allowed to differ");}
     
-    private int decayCount=getPrefs().getInt("WakeupDetector.decayCount",3);
-    {setPropertyTooltip("decayCout","time [us] to wait for the subtraction of 1000 events");}
+    private int decayCount=getPrefs().getInt("decayCount",3);
+    {setPropertyTooltip("decayCount","time [us] to wait for the subtraction of 1000 events");}
     
-    private int threshold=getPrefs().getInt("WakeupDetector.threshold",8000);
-    {setPropertyTooltip("threshold","threshold for wakeup");}
+    private int threshold=getInt("threshold",8000);
+    {setPropertyTooltip("threshold","threshold in accumlated events for counter neuron to swap to detecting other event polarity for wakeup");}
     
     public WakeupDetector(AEChip chip) {
         super(chip);
@@ -62,9 +65,8 @@ public class WakeupDetector extends EventFilter2D implements FrameAnnotater{
                             onInterval < tapLength+tolerance &&
                             offInterval > tapLength-tolerance &&
                             offInterval < tapLength+tolerance){
-                        callCount++;
-                        if(isOn)isOn = false;
-                                else isOn = true;
+                        wakeupDetected();
+                        
                     }
                     measureOn = false;
                 }
@@ -79,12 +81,10 @@ public class WakeupDetector extends EventFilter2D implements FrameAnnotater{
                     lastOffThr = ev.timestamp;
                     System.out.println("Off transition interval:"+offInterval);
                     if(onInterval > tapLength-tolerance &&
-                            onInterval < tapLength+tolerance &&
-                            offInterval > tapLength-tolerance &&
-                            offInterval < tapLength+tolerance){
-                        callCount++;
-                        if(isOn)isOn = false;
-                                else isOn = true;
+                      onInterval < tapLength + tolerance
+                            && offInterval > tapLength - tolerance
+                            && offInterval < tapLength + tolerance) {
+                        wakeupDetected();
                     }
                     measureOn = true;
                 }
@@ -93,7 +93,17 @@ public class WakeupDetector extends EventFilter2D implements FrameAnnotater{
         
         return in;
     }
-    
+
+    private void wakeupDetected() {
+        wakupCount++; //  detected wakeup
+        spikeSound.play();
+        if (isOn) {
+            isOn = false;
+        } else {
+            isOn = true;
+        }
+    }
+
     class DecayThread extends Thread {
         public void run(){
             while(true){
@@ -122,7 +132,7 @@ public class WakeupDetector extends EventFilter2D implements FrameAnnotater{
         onCount = 0;
         offCount = 0;
         maxCount = 0;
-        callCount = 0;
+        wakupCount = 0;
         lastOffThr = 0;
         lastOnThr = 0;
         onInterval = 0;
@@ -154,7 +164,7 @@ public class WakeupDetector extends EventFilter2D implements FrameAnnotater{
         }
         
         renderer.begin3DRendering();
-        renderer.draw3D(Integer.toString(callCount), -30f, 0f, 0f, .4f); // x,y,z, scale factor 
+        renderer.draw3D(Integer.toString(wakupCount), -30f, 0f, 0f, .4f); // x,y,z, scale factor 
         renderer.end3DRendering();
         
         //Threshold line (blue)
@@ -211,7 +221,7 @@ public class WakeupDetector extends EventFilter2D implements FrameAnnotater{
     
     public void setTolerance(int tolerance) {
         this.tolerance = tolerance;
-        getPrefs().putInt("WakeupDetector.tolerance",tolerance);
+        putInt("tolerance",tolerance);
     }
     
     public int getDecayCount() {
@@ -220,7 +230,7 @@ public class WakeupDetector extends EventFilter2D implements FrameAnnotater{
     
     public void setDecayCount(int decayCount) {
         this.decayCount = decayCount;
-        getPrefs().putInt("WakeupDetector.decayCount",decayCount);
+        putInt("decayCount",decayCount);
     }
     
     public int getThreshold() {
@@ -229,7 +239,7 @@ public class WakeupDetector extends EventFilter2D implements FrameAnnotater{
     
     public void setThreshold(int threshold) {
         this.threshold = threshold;
-        getPrefs().putInt("WakeupDetector.threshold",threshold);
+        putInt("threshold",threshold);
     }
     
     public int getTapLength() {
@@ -238,7 +248,7 @@ public class WakeupDetector extends EventFilter2D implements FrameAnnotater{
     
     public void setTapLength(int tapLength) {
         this.tapLength = tapLength;
-        getPrefs().putInt("WakeupDetector.tapLength",tapLength);
+        putInt("tapLength",tapLength);
     }
     
 }
