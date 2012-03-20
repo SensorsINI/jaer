@@ -749,16 +749,16 @@ public abstract class EventFilter extends Observable {
         return prefs.get(prefsKeyHeader() + key, def);
     }
     
-    /** Returns Description of this filter as annotated by Description annotation. Note this method is not static and requires the EventFilter to already be constructed.
+    /** Returns Description value of this filter as annotated by Description annotation. Note this method is not static and requires the EventFilter to already be constructed.
      * The ClassChooser dialog uses the annotation to obtain class Descriptions without constructing the objects first.
-     * @return the String description or null if no description is available or any exception is thrown.
+     * @return the String description (the value() of the Description) or null if no description is available or any exception is thrown.
      */
     public String getDescription() {
         try {
             Class c = this.getClass();
             Description d = (Description) c.getAnnotation(Description.class);
             if(d==null) return null;
-            return d.toString();
+            return d.value();
         } catch (Exception e) {
             return null;
         }
