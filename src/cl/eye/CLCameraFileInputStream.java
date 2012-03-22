@@ -47,7 +47,7 @@ public class CLCameraFileInputStream extends AEFileInputStream {
         }
         int[] addr = packet.getAddresses();
         int[] ts = packet.getTimestamps();
-        int oldPosition = position();
+        long oldPosition = position();
         EventRaw ev;
         int count = 0;
         for (int frame = 0; frame < nframes; frame++) {

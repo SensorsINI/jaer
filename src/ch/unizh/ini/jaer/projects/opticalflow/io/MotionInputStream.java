@@ -51,7 +51,7 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
      */
     synchronized public MotionData readData(MotionData motionData) throws IOException{
             try{
-                int oldPosition=position();
+                long oldPosition=position();
                 motionData.read(dataInputStream);
                 getSupport().firePropertyChange("position",oldPosition,position());
                 return motionData;
@@ -96,9 +96,9 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
     }
     
     @Override
-    public int position() {
+    public long position() {
         try{
-            int p= (int)fileChannel.position()/motionData.getLoggedObjectSize();
+            long p= (int)fileChannel.position()/motionData.getLoggedObjectSize();
             return p;
         }catch(IOException e){
             e.printStackTrace();
@@ -107,7 +107,7 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
     }
     
     @Override
-   public void position(int n) {
+   public void position(long n) {
         try{
             fileChannel.position(n*motionData.getLoggedObjectSize());
         }catch(IOException e){
@@ -122,9 +122,9 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
     
     @Override
      synchronized  public void setFractionalPosition(float frac) {
-        int oldPosition=position();
+        long oldPosition=position();
         position((int)(frac*size));
-        int newPosition=position();
+        long newPosition=position();
         log.info("Set fractional position "+frac+" changed position from "+oldPosition+" to "+newPosition);
     }
     

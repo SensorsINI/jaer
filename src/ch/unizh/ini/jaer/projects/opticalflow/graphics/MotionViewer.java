@@ -777,11 +777,11 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
             motionInputStream.mark();
         }
 
-        public int position() {
+        public long position() {
             return motionInputStream.position();
         }
 
-        public void position(int event) {
+        public void position(long event) {
             motionInputStream.position(event);
         }
 

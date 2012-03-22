@@ -24,7 +24,7 @@ public interface InputDataFileInterface {
      * 
      * @return fractional position in total events
      */
-    float getFractionalPosition();
+    public float getFractionalPosition();
 
     /**
      * mark the current position.
@@ -32,30 +32,30 @@ public interface InputDataFileInterface {
      * 
      * @throws IOException if there is some error in reading the data
      */
-    void mark() throws IOException;
+    public void mark() throws IOException;
 
     /**
      * return position in events
      */
-    int position();
+    public long position();
 
     /**
      * set position in units of the file, e.g. events or frames
      @param n the number to position to
      */
-    void position(int n);
+    public void position(long n);
 
     /**
      * rewind to the start, or to the marked position, if it has been set
      */
-    void rewind() throws IOException;
+    public void rewind() throws IOException;
 
     /**
      * Sets fractional position in units of the file
      * 
      * @param frac 0-1 float range, 0 at start, 1 at end
      */
-    void setFractionalPosition(float frac);
+    public void setFractionalPosition(float frac);
 
     /**
      * 

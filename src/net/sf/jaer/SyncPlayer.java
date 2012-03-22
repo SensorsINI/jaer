@@ -390,7 +390,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         return true;
     }
 
-    public int position(AEFileInputStreamInterface stream) {
+    public long position(AEFileInputStreamInterface stream) {
         return stream.position();
     }
 
