@@ -160,7 +160,11 @@ public abstract class AbstractAEPlayer {
      */
     public void speedUp (){
         setPacketSizeEvents(getPacketSizeEvents() * 2);
-        setTimesliceUs(getTimesliceUs() * 2);
+        long newTimeSlice = (long)getTimesliceUs() * 2;
+        if (newTimeSlice > (long)Integer.MAX_VALUE) {
+            newTimeSlice = Integer.MAX_VALUE; // clip to avoid negative slices sizes for slices > 2G us
+        }
+        setTimesliceUs((int) newTimeSlice);
     }
 
     /** Slows down the playback so that less time or fewer events are displayed per slice.

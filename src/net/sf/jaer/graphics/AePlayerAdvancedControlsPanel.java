@@ -70,7 +70,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                     // event generated when we programmatically set the slider position here
                     playerSlider.setValue(Math.round(getFractionalPosition() * playerSlider.getMaximum()));
                     if (moreControlsPanel.isVisible() || aeViewer.aePlayer.getAEInputStream() != null) {
-                        eventField.setText(Integer.toString(aeViewer.aePlayer.position()));
+                        eventField.setText(Long.toString(aeViewer.aePlayer.position()));
                         timeField.setText(Integer.toString(aeViewer.aePlayer.getTime()));
                     }
                 } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARKSET)) {
@@ -619,7 +619,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
             return;
         }
         try {
-            int pos = Integer.parseInt(eventField.getText());
+            long pos = Long.parseLong(eventField.getText());
             aePlayer.getAEInputStream().position(pos);
         } catch (Exception e) {
             log.warning(e.toString());

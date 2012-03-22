@@ -424,11 +424,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         aeFileInputStream.mark();
     }
 
-    public int position (){
+    public long position (){
         return aeFileInputStream.position();
     }
 
-    public void position (int event){
+    public void position (long event){
         aeFileInputStream.position(event);
     }
 
