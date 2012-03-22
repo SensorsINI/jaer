@@ -27,6 +27,7 @@ import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.SpikeSound;
 import net.sf.jaer.util.filter.LowpassFilter;
 /**
@@ -66,6 +67,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater,Mou
     final private static float[] GLOBAL_HIST_COLOR = { 0,0,.8f,.5f }, INDIV_HIST_COLOR = { 0,.2f,.6f,.5f };
     private Point currentMousePoint = null;
     private int[] currentAddress = null;
+    EngineeringFormat engFmt=new EngineeringFormat();
 
     public CellStatsProber (AEChip chip){
         super(chip);
@@ -552,7 +554,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater,Mou
 
         @Override
         public String toString (){
-            return String.format("n=%d, keps=%.1f",count,filteredRate);
+            return String.format("%10d events, %15s eps",count,engFmt.format(filteredRate));
         }
 
         private void measureAverageEPS (int lastT,int n){
@@ -583,7 +585,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater,Mou
             renderer.begin3DRendering();
 //            renderer.beginRendering(drawable.getWidth(), drawable.getHeight());
             // optionally set the color
-            renderer.setColor(0,0,1,0.8f);
+            renderer.setColor(1,1,1,0.8f);
             if ( rateEnabled ){
                 renderer.draw3D(this.toString(),1,chip.getSizeY() - 4,0,.5f); // TODO fix string n lines
             }

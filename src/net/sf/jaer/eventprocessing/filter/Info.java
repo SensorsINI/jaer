@@ -69,11 +69,25 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private long wrappingCorrectionMs = 0;
     private long absoluteStartTimeMs = 0;
     volatile private long relativeTimeInFileMs = 0; // volatile because this field accessed by filtering and rendering threads
+    volatile private long displayTimeMs = 0; // volatile because this field accessed by filtering and rendering threads
     volatile private float eventRateMeasured = 0; // volatile, also shared
     private boolean addedViewerPropertyChangeListener = false; // need flag because viewer doesn't exist on creation
     private boolean eventRate = getPrefs().getBoolean("Info.eventRate", true);
     private EventRateEstimator eventRateFilter;
     private EngineeringFormat engFmt = new EngineeringFormat();
+
+    private void computeDisplayTime() {
+        if (chip.getAeViewer() != null && chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
+            displayTimeMs = System.currentTimeMillis();
+        } else {
+            displayTimeMs = relativeTimeInFileMs + wrappingCorrectionMs;
+            displayTimeMs = (long) (displayTimeMs * timestampScaleFactor);
+            if (absoluteTime) {
+                displayTimeMs += absoluteStartTimeMs;
+            }
+            displayTimeMs = displayTimeMs + timeOffsetMs;
+        }
+    }
 
     private class RateHistory {
 
@@ -125,8 +139,11 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 //            gl.glRotatef(-90, 0, 0, 1);
             gl.glScalef((float) chip.getSizeX() / (endTime - startTime), (float) (chip.getSizeY() * .2f) / (maxRate), 1);
             gl.glLineWidth(1);
+            int n = rateSamples.size();
+            if(n<2) return;
             gl.glBegin(GL.GL_LINE_STRIP);
-            for (RateSample s : rateSamples) {
+            for (int i = 1; i < n; i++) {
+                RateSample s = rateSamples.get(i);
                 gl.glVertex2f(s.time - startTime, s.rate);
             }
             gl.glEnd();
@@ -196,6 +213,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 } else {
                     wrappingCorrectionMs = wrappingCorrectionMs + (fwds ? (long) (1L << 32L) / 1000 : -(long) (1L << 31L) / 1000); // 4G us
                 }
+                rateHistory.clear();
                 log.info("timestamp wrap event received by " + this + " from " + evt.getSource() + " oldValue=" + evt.getOldValue() + " newValue=" + evt.getNewValue() + ", wrappingCorrectionMs increased by " + (wrappingCorrectionMs - old));
             } else if (evt.getPropertyName().equals(AEInputStream.EVENT_INIT)) {
                 log.info("EVENT_INIT recieved, signaling new input stream");
@@ -231,6 +249,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         if (!addedViewerPropertyChangeListener) {
             if (chip.getAeViewer() != null) {
                 chip.getAeViewer().addPropertyChangeListener(this);
+                chip.getAeViewer().getAePlayer().getSupport().addPropertyChangeListener(this); // TODO might be duplicated callback
                 addedViewerPropertyChangeListener = true;
                 getAbsoluteStartingTimeMsFromFile();
             }
@@ -241,11 +260,12 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 dataFileTimestampStartTimeMs = in.getFirstTimestamp();
             }
             relativeTimeInFileMs = (in.getLastTimestamp() - dataFileTimestampStartTimeMs) / 1000;
+            computeDisplayTime();
             if (isEventRate()) {
                 eventRateFilter.filterPacket(in);
                 eventRateMeasured = eventRateFilter.getFilteredEventRate();
                 if (showRateTrace ) {
-                    rateHistory.addSample(relativeTimeInFileMs + wrappingCorrectionMs, eventRateMeasured);
+                    rateHistory.addSample(relativeTimeInFileMs+wrappingCorrectionMs, eventRateMeasured);
                 }
             }
         }
@@ -265,18 +285,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void annotate(GLAutoDrawable drawable) {
         GL gl = drawable.getGL();
-        long t = 0;
-        if (chip.getAeViewer() != null && chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
-            t = System.currentTimeMillis();
-        } else {
-            t = relativeTimeInFileMs + wrappingCorrectionMs;
-            t = (long) (t * timestampScaleFactor);
-            if (absoluteTime) {
-                t += absoluteStartTimeMs;
-            }
-            t = t + timeOffsetMs;
-        }
-        drawClock(gl, t);
+        drawClock(gl, displayTimeMs);
         drawEventRate(gl, eventRateMeasured);
         if (chip.getAeViewer() != null) {
             drawTimeScaling(gl, chip.getAeViewer().getTimeExpansion());

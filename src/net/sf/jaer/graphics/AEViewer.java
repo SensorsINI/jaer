@@ -4657,8 +4657,25 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), 100000));
             loggingEnabled = true;
+            
+            if(playMode==PlayMode.PLAYBACK){ // add change listener for rewind to stop logging
+                getAePlayer().getAEInputStream().getSupport().addPropertyChangeListener("rewind", new PropertyChangeListener() {
 
-            log.info("starting logging to " + loggingFile);
+                    @Override
+                    public void propertyChange(PropertyChangeEvent evt) {
+                        if(evt.getSource()==getAePlayer().getAEInputStream() && evt.getPropertyName().equals("rewind")){
+                            log.info("recording reached end, stopping re-logging");
+                            SwingUtilities.invokeLater(new Runnable() {
+
+                                @Override
+                                public void run() {
+                                    stopLogging(true);
+                                }
+                            });
+                        }
+                    }
+                });
+            }
             setCurrentFile(loggingFile);
             loggingEnabled = true;
 
@@ -4667,6 +4684,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (loggingTimeLimit > 0) {
                 loggingStartTime = System.currentTimeMillis();
             }
+            log.info("starting logging to " + loggingFile);
 //            aemon.resetTimestamps();
 
         } catch (FileNotFoundException e) {
