@@ -2227,7 +2227,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 String colorScaleString = (getRenderer().isAutoscaleEnabled() ? "AS=" : "FS=") + Integer.toString(cs);
 
                 sb.delete(0, sb.length());
-                sb.append(timeSliceString).append('@').append(thisTimeString).append(numEventsString).append(ovstring).append(rateString).append(frameRateString).append(timeExpansionString).append(frameRateString).append(colorScaleString);
+                sb.append(timeSliceString).append('@').append(thisTimeString).append(numEventsString).append(ovstring).append(rateString).append(timeExpansionString).append(frameRateString).append(colorScaleString);
 
 //               statLabel = String.format("%8ss@%-8s,%s%s,%s,%3.0f/%dfps,%4s,%2dms,%s=%2d",
 //                        timeSliceString,
