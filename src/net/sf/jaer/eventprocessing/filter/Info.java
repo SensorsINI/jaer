@@ -317,6 +317,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 }
             }
         }
+        if(logStatistics){
+            String s=String.format("%20d\t%20.2g",displayTimeMs,eventRateFilter.getFilteredEventRate());
+            tobiLogger.log(s);
+        }
 
         return in;
     }
