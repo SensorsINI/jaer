@@ -38,7 +38,7 @@ public class TobiLogger {
      * Creates a new instance of TobiLogger.
      *@param filename the filename. Date/Timestamp string us appended to the filename 
      * and ".txt" is appended if it is not already the suffix, e.g. "PencilBalancer-2008-10-12T10-23-58+0200.txt". The file is created in the program startup folder.
-     *@param headerLineComment a comment usuually specifying the contents and data fields, a # is prepended automatically. 
+     *@param headerLineComment a comment usually specifying the contents and data fields, a # is prepended automatically. 
      A second header line is also written automatically with the file creation date, e.g. "# created Sat Oct 11 13:04:34 CEST 2008"
      */
     public TobiLogger(String filename, String headerLineComment) {
@@ -101,7 +101,7 @@ public class TobiLogger {
             try{
                 String fn=getTimestampedFilename();
                 logStream=new PrintStream(new BufferedOutputStream(new FileOutputStream(new File(fn))));
-                logStream.println("# "+headerLine);
+                logStream.println("# "+getHeaderLine());
                 logStream.println("# created "+new Date());
                 log.info("created log file name "+fn+" in folder "+System.getProperties().getProperty("user.dir"));
                 startingTime=nanotimeEnabled? System.nanoTime():System.currentTimeMillis();
@@ -140,6 +140,22 @@ public class TobiLogger {
      */
     public void setNanotimeEnabled(boolean nanotimeEnabled) {
         this.nanotimeEnabled = nanotimeEnabled;
+    }
+
+    /**
+     * @return the headerLine
+     */
+    public String getHeaderLine() {
+        return headerLine;
+    }
+
+    /**
+     * Sets the contents of the first header line
+     *     *@param headerLineComment a comment usually specifying the contents and data fields, a # is prepended automatically. 
+     A second header line is also written automatically with the file creation date, e.g. "# created Sat Oct 11 13:04:34 CEST 2008"
+     */
+    public void setHeaderLine(String headerLine) {
+        this.headerLine = headerLine;
     }
     
 }
