@@ -11,37 +11,43 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventio.AEFileInputStream;
-import net.sf.jaer.eventio.AEInputStream;
-import net.sf.jaer.eventprocessing.*;
-import net.sf.jaer.graphics.AbstractAEPlayer;
-import net.sf.jaer.graphics.AEViewer;
-import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.util.EngineeringFormat;
-import com.sun.opengl.util.*;
+import com.sun.opengl.util.GLUT;
 import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.Font;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
-import java.text.*;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.*;
-import javax.media.opengl.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.TimeZone;
+import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.glu.*;
+import javax.media.opengl.glu.GLU;
+import javax.media.opengl.glu.GLUquadric;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEConstants;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.graphics.AbstractAEPlayer;
+import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.EngineeringFormat;
+import net.sf.jaer.util.TobiLogger;
 
 /**
- * Annotates the rendered data stream canvas
-with additional information like a
-clock with absolute time, a bar showing instantaneous activity rate,
-a graph showing historical activity over the file, etc.
-These features are enabled by flags of the filter.
+ * Annotates the rendered data stream canvas with additional information like a
+ * clock with absolute time, a bar showing instantaneous activity rate, a graph
+ * showing historical activity over the file, etc. These features are enabled by
+ * flags of the filter.
+ *
  * @author tobi
  */
 @Description("Adds useful information annotation to the display, e.g. date/time/event rate")
@@ -63,9 +69,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private float eventRateScaleMax = getPrefs().getFloat("Info.eventRateScaleMax", 1e5f);
     private boolean timeScaling = getPrefs().getBoolean("Info.timeScaling", true);
     private boolean showRateTrace = getBoolean("showRateTrace", true);
-    public final int MAX_SAMPLES=1000; // to avoid running out of memory
-    private int maxSamples=getInt("maxSamples",MAX_SAMPLES);
-    private long dataFileTimestampStartTimeMs = 0;
+    public final int MAX_SAMPLES = 1000; // to avoid running out of memory
+    private int maxSamples = getInt("maxSamples", MAX_SAMPLES);
+    private long dataFileTimestampStartTimeUs = 0;
     private long wrappingCorrectionMs = 0;
     private long absoluteStartTimeMs = 0;
     volatile private long relativeTimeInFileMs = 0; // volatile because this field accessed by filtering and rendering threads
@@ -75,7 +81,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private boolean eventRate = getPrefs().getBoolean("Info.eventRate", true);
     private EventRateEstimator eventRateFilter;
     private EngineeringFormat engFmt = new EngineeringFormat();
+    private boolean logStatistics = false;
+    private TobiLogger tobiLogger = null;
 
+    // computes the time displayed on rate trace
     private void computeDisplayTime() {
         if (chip.getAeViewer() != null && chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
             displayTimeMs = System.currentTimeMillis();
@@ -89,8 +98,37 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         }
     }
 
-    private class RateHistory {
+    /**
+     * @return the logStatistics
+     */
+    public boolean isLogStatistics() {
+        return logStatistics;
+    }
 
+    /**
+     * @param logStatistics the logStatistics to set
+     */
+    synchronized public void setLogStatistics(boolean logStatistics) {
+        boolean old = this.logStatistics;
+        this.logStatistics = logStatistics;
+        getSupport().firePropertyChange("logStatistics", old, this.logStatistics);
+        if (logStatistics) {
+            String s = "# statistics from Info filter logged starting at " + new Date() + " and originating from ";
+            if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
+                s = s + " file " + chip.getAeViewer().getAePlayer().getAEInputStream().getFile().toString();
+            } else {
+                s = s + " input during PlayMode=" + chip.getAeViewer().getPlayMode().toString();
+            }
+            if (tobiLogger == null) {
+                tobiLogger = new TobiLogger("Info", s);
+            }
+            tobiLogger.setEnabled(true);
+        } else {
+            tobiLogger.setEnabled(false);
+        }
+    }
+
+    private class RateHistory {
 
         ArrayList<RateSample> rateSamples = new ArrayList(getMaxSamples());
         float startTime = Float.MAX_VALUE, endTime = Float.MIN_VALUE;
@@ -106,7 +144,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         }
 
         void addSample(float time, float rate) {
-            if(rateSamples.size()>=getMaxSamples()){
+            if (rateSamples.size() >= getMaxSamples()) {
                 clear();
             }
             rateSamples.add(new RateSample(time, rate));
@@ -134,13 +172,15 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             gl.glTranslatef(0, pos, 0);
 //            gl.glRotatef(90, 0, 0, 1);
             renderer.begin3DRendering();
-            renderer.draw3D("Max rate="+engFmt.format(maxRate)+"eps", chip.getSizeY()*.3f, 0, 0,.2f);
+            renderer.draw3D("Max rate=" + engFmt.format(maxRate) + "eps", chip.getSizeY() * .3f, 0, 0, .2f);
             renderer.end3DRendering();
 //            gl.glRotatef(-90, 0, 0, 1);
             gl.glScalef((float) chip.getSizeX() / (endTime - startTime), (float) (chip.getSizeY() * .2f) / (maxRate), 1);
             gl.glLineWidth(1);
             int n = rateSamples.size();
-            if(n<2) return;
+            if (n < 2) {
+                return;
+            }
             gl.glBegin(GL.GL_LINE_STRIP);
             for (int i = 1; i < n; i++) {
                 RateSample s = rateSamples.get(i);
@@ -170,8 +210,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     }
     private RateHistory rateHistory = new RateHistory();
 
-    /** Creates a new instance of Info for the chip
-    @param chip the chip object
+    /**
+     * Creates a new instance of Info for the chip
+     *
+     * @param chip the chip object
      */
     public Info(AEChip chip) {
         super(chip);
@@ -193,10 +235,14 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         setPropertyTooltip("eventRate", "shows average event rate");
         setPropertyTooltip("eventRateTauMs", "lowpass time constant in ms for filtering event rate");
         setPropertyTooltip("showRateTrace", "shows a historical trace of event rate");
-        setPropertyTooltip("maxSamples","maximum number of samples before clearing rate history");
+        setPropertyTooltip("maxSamples", "maximum number of samples before clearing rate history");
     }
 
-    /** handles tricky property changes coming from AEViewer and AEFileInputStream */
+    /**
+     * handles tricky property changes coming from AEViewer and
+     * AEFileInputStream
+     */
+    @Override
     public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getSource() instanceof AEFileInputStream) {
             if (evt.getPropertyName().equals(AEInputStream.EVENT_REWIND)) {
@@ -224,7 +270,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             }
         } else if (evt.getSource() instanceof AEViewer) {
             if (evt.getPropertyName().equals(AEViewer.EVENT_FILEOPEN)) { // TODO don't getString this because AEViewer doesn't refire event from AEPlayer and we don't getString this on initial fileopen because this filter has not yet been run so we have not added ourselves to the viewer
-               rateHistory.clear();
+                rateHistory.clear();
             }
         }
     }
@@ -235,13 +281,14 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             AEFileInputStream in = (AEFileInputStream) (player.getAEInputStream());
             if (in != null) {
                 in.getSupport().addPropertyChangeListener(this);
-                dataFileTimestampStartTimeMs = in.getFirstTimestamp();
+                dataFileTimestampStartTimeUs = in.getFirstTimestamp();
                 log.info("added ourselves for PropertyChangeEvents from " + in);
                 absoluteStartTimeMs = in.getAbsoluteStartingTimeMs();
             }
         }
     }
 
+    @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!isFilterEnabled() || in == null || in.getSize() == 0) {
             return in;
@@ -257,15 +304,16 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         if (in != null && in.getSize() > 0) {
             if (resetTimeEnabled) {
                 resetTimeEnabled = false;
-                dataFileTimestampStartTimeMs = in.getFirstTimestamp();
+                dataFileTimestampStartTimeUs = in.getFirstTimestamp();
             }
-            relativeTimeInFileMs = (in.getLastTimestamp() - dataFileTimestampStartTimeMs) / 1000;
+            // for large files, the relativeTimeInFileMs wraps around after 2G us and then every 4G us
+            relativeTimeInFileMs = (in.getLastTimestamp() - dataFileTimestampStartTimeUs) / 1000;
             computeDisplayTime();
             if (isEventRate()) {
                 eventRateFilter.filterPacket(in);
                 eventRateMeasured = eventRateFilter.getFilteredEventRate();
-                if (showRateTrace ) {
-                    rateHistory.addSample(relativeTimeInFileMs+wrappingCorrectionMs, eventRateMeasured);
+                if (showRateTrace) {
+                    rateHistory.addSample(relativeTimeInFileMs + wrappingCorrectionMs, eventRateMeasured);
                 }
             }
         }
@@ -273,16 +321,19 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         return in;
     }
 
+    @Override
     synchronized public void resetFilter() {
         eventRateFilter.resetFilter();
         rateHistory.clear();
     }
 
+    @Override
     public void initFilter() {
     }
     GLU glu = null;
     GLUquadric wheelQuad;
 
+    @Override
     public void annotate(GLAutoDrawable drawable) {
         GL gl = drawable.getGL();
         drawClock(gl, displayTimeMs);
@@ -465,14 +516,18 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         return eventRate;
     }
 
-    /** True to show event rate in Hz */
+    /**
+     * True to show event rate in Hz
+     */
     public void setEventRate(boolean eventRate) {
         this.eventRate = eventRate;
         getPrefs().putBoolean("Info.eventRate", eventRate);
     }
     private volatile boolean resetTimeEnabled = false;
 
-    /** Reset the time zero marker to the next packet's first timestamp */
+    /**
+     * Reset the time zero marker to the next packet's first timestamp
+     */
     public void doResetTime() {
         resetTimeEnabled = true;
     }
@@ -568,10 +623,12 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
      * @param maxSamples the maxSamples to set
      */
     public void setMaxSamples(int maxSamples) {
-        int old=this.maxSamples;
-        if(maxSamples<100) maxSamples=100;
+        int old = this.maxSamples;
+        if (maxSamples < 100) {
+            maxSamples = 100;
+        }
         this.maxSamples = maxSamples;
-        putInt("maxSamples",maxSamples);
+        putInt("maxSamples", maxSamples);
         getSupport().firePropertyChange("maxSamples", old, maxSamples);
     }
 }
