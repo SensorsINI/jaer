@@ -34,7 +34,7 @@ abstract public class EventFilter2D extends EventFilter {
     }
 
 
-    protected float currenrtUpdateIntervalMs;
+    protected float currentUpdateIntervalMs;
 
     /** Resets the output packet to be a new packet if none has been instanced or clears the packet
     if it exists
@@ -139,10 +139,10 @@ abstract public class EventFilter2D extends EventFilter {
      * @return true if Observers were notified.
      */
     public boolean maybeCallUpdateObservers(EventPacket packet, int timestamp) {
-        if (!updateTimeInitialized || currenrtUpdateIntervalMs != chip.getFilterChain().getUpdateIntervalMs()) {
+        if (!updateTimeInitialized || currentUpdateIntervalMs != chip.getFilterChain().getUpdateIntervalMs()) {
             nextUpdateTimeUs = (int) (timestamp + chip.getFilterChain().getUpdateIntervalMs() * 1000 / AEConstants.TICK_DEFAULT_US);
             updateTimeInitialized = true; // TODO may not be handled correctly after rewind of filter
-            currenrtUpdateIntervalMs = chip.getFilterChain().getUpdateIntervalMs();
+            currentUpdateIntervalMs = chip.getFilterChain().getUpdateIntervalMs();
         }
         // ensure observers are called by next event after upateIntervalUs
         if (timestamp >= nextUpdateTimeUs || timestamp<lastUpdateTimeUs /* handle rewind of time */) {

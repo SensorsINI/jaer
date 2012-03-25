@@ -209,11 +209,11 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         return readEventForwards(Integer.MAX_VALUE);
     }
     
-    /** reads the next event forward, sets mostRecentTimestamp, returns null if the next timestamp is later than maxTimestamp.
+    /** Reads the next event forward, sets mostRecentTimestamp, returns null if the next timestamp is later than maxTimestamp.
      * @param maxTimestamp the latest timestamp that should be read.
       @throws EOFException at end of file
-     * @throws NonMonotonicTimeException
-     * @throws WrappedTimeException
+     * @throws NonMonotonicTimeException - the event that has wrapped will be returned on the next readEventForwards 
+     * @throws WrappedTimeException  - the event that has wrapped will be returned on the next readEventForwards 
      */
     private EventRaw readEventForwards (int maxTimestamp) throws IOException,NonMonotonicTimeException{
         int ts = -1;
@@ -254,6 +254,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             // check for non-monotonic increasing timestamps, if we get one, reset our notion of the starting time
             if ( isWrappedTime(ts,mostRecentTimestamp,1) ){
                 throw new WrappedTimeException(ts,mostRecentTimestamp,position);
+//                           WrappedTimeException e = new WrappedTimeException(ts, mostRecentTimestamp, position);
+//                log.info(e.toString());
+//                getSupport().firePropertyChange(AEInputStream.EVENT_WRAPPED_TIME,e.getPreviousTimestamp(),e.getCurrentTimestamp());
             }
             if ( enableTimeWrappingExceptionsChecking && ts < mostRecentTimestamp ){
 //                log.warning("AEInputStream.readEventForwards returned ts="+ts+" which goes backwards in time (mostRecentTimestamp="+mostRecentTimestamp+")");
@@ -286,6 +289,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /** Reads the next event backwards and leaves the position and byte buffer pointing to event one earlier
     than the one we just read. I.e., we back up, read the event, then back up again to leave us in state to
     either read forwards the event we just read, or to repeat backing up and reading if we read backwards
+      @throws EOFException at end of file
+     * @throws NonMonotonicTimeException
+     * @throws WrappedTimeException     
      */
     private EventRaw readEventBackwards () throws IOException,NonMonotonicTimeException{
         // we enter this with position pointing to next event *to read forwards* and byteBuffer also in this state.
@@ -414,15 +420,22 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * <li>Fires a property change AEInputStream.EVENT_POSITION at end of reading each packet.
      * <li>Fires property change AEInputStream.EVENT_WRAPPED_TIME when time wraps from positive to negative or vice versa (when playing backwards).  
      * These events are fired on "big wraps" when the 32 bit 1-us timestamp wraps around, which occurs every 
-     * 4295 seconds or 72 minutes.
-     * <li>Fires property change  AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP if a non-monotonically increasing timestamp is detected.
+     * 4295 seconds or 72 minutes. This event signifies that on the next packet read the absolute time should be 
+     * advanced or retarded (for backwards reading) by the big wrap.
+     * <li>Fires property change  AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP if a non-monotonically increasing timestamp is 
+     * detected that is not a wrapped time non-monotonic event.
      * <li>Fires property change AEInputStream.EVENT_EOF on end of the file.
      * </ol>
      * <p>
-     * Non-monotonic timestamps cause warning messages to be printed (up to MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT) and packet
-     * reading is aborted when the non-monotonic timestamp is encountered. Normally this does not cause problems except that the packet
-     * is shorter in duration that called for. But when synchronized playback is enabled it causes the different threads to desynchronize.
-     * Therefore the data files should not contain non-monotonic timestamps when synchronized playback is desired.
+     * Non-monotonic timestamps cause warning messages to be printed 
+     * (up to MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT) and packet
+     * reading is aborted when the non-monotonic timestamp or wrapped timestamp is 
+     * encountered and the non-monotonic timestamp is NOT included in the packet. 
+     * Normally this does not cause problems except that the packet
+     * is shorter in duration that called for. But when synchronized playback 
+     * is enabled it causes the different threads to desynchronize.
+     * Therefore the data files should not contain non-monotonic timestamps 
+     * when synchronized playback is desired.
      * 
      *@param dt the timestamp different in units of the timestamp (usually us)
      *@see #MAX_BUFFER_SIZE_EVENTS
@@ -434,7 +447,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         }
         int endTimestamp = currentStartTimestamp + dt;
         // check to see if this read will wrap the int32 timestamp around e.g. from >0 to <0 for dt>0
-        boolean bigWrap = isWrappedTime(endTimestamp,currentStartTimestamp,dt);
+        boolean bigWrap = isWrappedTime(endTimestamp, currentStartTimestamp, dt);
+        if (bigWrap) {
+            log.info("bigwrap is true - read should wrap around");
+        }
 //        if( (dt>0 && mostRecentTimestamp>endTimestamp ) || (dt<0 && mostRecentTimestamp<endTimestamp)){
 //            boolean lt1=endTimestamp<0, lt2=mostRecentTimestamp<0;
 //            boolean changedSign= ( (lt1 && !lt2) || (!lt1 && lt2) );
@@ -502,7 +518,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 }
             }
         } catch ( WrappedTimeException w ){
-            log.warning(w.toString());
+            log.info(w.toString());
+            System.out.println(w.toString());
             currentStartTimestamp = w.getCurrentTimestamp();
             mostRecentTimestamp = w.getCurrentTimestamp();
             getSupport().firePropertyChange(AEInputStream.EVENT_WRAPPED_TIME,w.getPreviousTimestamp(),w.getCurrentTimestamp());
@@ -756,7 +773,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             return "NonMonotonicTimeException: position=" + position + " timestamp=" + timestamp + " lastTimestamp=" + lastTimestamp + " jumps backwards by " + ( timestamp - lastTimestamp );
         }
     }
-    /** Indicates that timestamp has wrapped around from most positive to most negative signed value.
+    /** Indicates that this timestamp has wrapped around from most positive to most negative signed value.
     The de-facto timestamp tick is us and timestamps are represented as int32 in jAER. Therefore the largest possible positive timestamp
     is 2^31-1 ticks which equals 2147.4836 seconds (35.7914 minutes). This wraps to -2147 seconds. The actual total time
     can be computed taking account of these "big wraps" if
