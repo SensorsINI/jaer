@@ -123,7 +123,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                     s = s + " input during PlayMode=" + chip.getAeViewer().getPlayMode().toString();
                 }
                 s = s + "\n# evenRateFilterTauMs=" + eventRateFilter.getEventRateTauMs();
-                s = s + "\n#relTimeMs\tabsTimeSince1970Ms\teventRateHz";
+                s = s + "\n#relativeLoggingTimeMs\tabsDataTimeSince1970Ms\teventRateHz";
 
                 if (tobiLogger == null) {
                     tobiLogger = new TobiLogger("Info", s);
