@@ -101,8 +101,10 @@ public class MeanEventLocationTracker extends EventFilter2D implements FrameAnno
      * @param mixingRate the mixingRate to set
      */
     public void setMixingRate(float mixingRate) {
+        float old=this.mixingRate;
         this.mixingRate = mixingRate;
         putFloat("mixingRate", mixingRate); // stores the last chosen value in java preferences
+        getSupport().firePropertyChange("mixingRate", old, mixingRate);
     }
 
     /**
