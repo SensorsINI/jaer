@@ -17,6 +17,7 @@ public class PxlScoreMap {
     private int mapSizeX;
     private int mapSizeY;
     private double sumOfScores;
+    // pxlScore is moving average over historySize scores
     private double[][] pxlScore;
     private double[][][] pxlScoreHistory;
     private FilterLaserline filter;
@@ -67,10 +68,10 @@ public class PxlScoreMap {
     }
     
     /**
-     * 
+     * Get score of specific pixel
      * @param x
      * @param y
-     * @return
+     * @return score of pixel (x,y)
      */
     public double getScore(short x, short y) {
         if (x >= 0 & x <= mapSizeX & y >= 0 & y <= mapSizeY) {
@@ -82,7 +83,9 @@ public class PxlScoreMap {
     }
 
     /**
+     * set score of pixel (x,y).
      * 
+     * probably #addToSCore is better choice
      * @param x
      * @param y
      * @param score
@@ -96,7 +99,7 @@ public class PxlScoreMap {
     }
     
     /**
-     * 
+     * update score 
      * @param x
      * @param y
      * @param score
@@ -113,12 +116,13 @@ public class PxlScoreMap {
      * 
      */
     public void updatePxlScore() {
+        // apply moving average on score history
         sumOfScores = 0;
         for (short x = 0; x < mapSizeX; x++) {
             for (short y = 0; y < mapSizeY; y++) {
                 if (historySize > 0) {
-                    pxlScore[x][y] -= pxlScoreHistory[x][y][historySize];
-                    pxlScore[x][y] += pxlScoreHistory[x][y][0];
+                    pxlScore[x][y] -= pxlScoreHistory[x][y][historySize]/historySize;
+                    pxlScore[x][y] += pxlScoreHistory[x][y][0]/historySize;
                     /* shift history */
                     for (int i = historySize; i > 0; i--) {
                         pxlScoreHistory[x][y][i] = pxlScoreHistory[x][y][i-1];
@@ -126,6 +130,7 @@ public class PxlScoreMap {
                 } else {                
                     pxlScore[x][y] = pxlScoreHistory[x][y][0];
                 }
+                // dump small scores
                 if (Math.abs(pxlScore[x][y]) < 1e-3) pxlScore[x][y] = 0;
                 /* reset pxlScore */
                 pxlScoreHistory[x][y][0] = 0;
@@ -138,17 +143,34 @@ public class PxlScoreMap {
     }
     
 
-    
+    /*
+     * Update laserline
+     * rewrites the arraylist with updated pixels classified as on pixel
+     * 
+     * @param laserline
+     * 
+     * @return laserline
+     */
     ArrayList updateLaserline(ArrayList laserline) {
         laserline.clear();
         double threshold = findThreshold();
         for (short x = 0; x < mapSizeX; x++) {
             for (short y = 0; y < mapSizeY; y++) {
-                short[] pxl;
-                if (pxlScore[x][y] > threshold)  {
-                    pxl = new short[2];
+                float[] pxl;
+                float sumScores = 0;
+                float sumWeightedCoord = 0;
+                while (pxlScore[x][y] > threshold)  {
+                    sumWeightedCoord += (y*pxlScore[x][y]);
+                    sumScores += pxlScore[x][y];
+                    y++;
+                    if (y >= mapSizeY) {
+                        break;  
+                    }
+                }
+                if (sumScores > 0) {
+                    pxl = new float[2];
                     pxl[0] = x;
-                    pxl[1] = y;
+                    pxl[1] = sumWeightedCoord/sumScores;
                     laserline.add(pxl);
                 }
             }

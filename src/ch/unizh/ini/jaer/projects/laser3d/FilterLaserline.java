@@ -4,8 +4,11 @@
  */
 package ch.unizh.ini.jaer.projects.laser3d;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.logging.Level;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
@@ -25,7 +28,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  *
  * @author Thomas Mantel
  */
-@Description("Filters a pulsed laserline using a histogram over several past periods")
+@Description("Filters a clocked laserline using a event histogram over several the most recent periods as score for new events")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class FilterLaserline extends EventFilter2D implements FrameAnnotater {
 
@@ -43,29 +46,53 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater {
     private ArrayList laserline;
 
     private double[][] curBinWeights;
+    
+    private LaserlineLogfile laserlineLogfile;
     /**
-     * Options
+     * Size of histogram history in periods
      */
     protected int histogramHistorySize = getPrefs().getInt("FilterLaserline.histogramHistorySize", 1000);
     /**
-     * 
+     * Moving average window length
      */
-    protected int pxlScoreHistorySize = getPrefs().getInt("FilterLaserline.pxlScoreHistorySize", 5);
+    protected int pxlScoreHistorySize = getPrefs().getInt("FilterLaserline.pxlScoreHistorySize", 3);
     /**
-     * 
+     * binsize for histogram (in us)
      */
     protected int binSize = getPrefs().getInt("FilterLaserline.binSize", 50);
     /**
-     * 
+     * Allows to display the score of each pixel with a score not equal 0
      */
     protected boolean showDebugPixels = getPrefs().getBoolean("FilterLaserline.showDebugPixels", false);
+    /**
+     * Use different weigths for on and off events?
+     */
     protected boolean useWeightedOnOff = getPrefs().getBoolean("FilterLaserline.useWeightedOnOff", true);
-    protected float pxlScoreThreshold = getPrefs().getFloat("FilterLaserline.pxlScoreThreshold", 0f);
-    protected boolean subtractAverage = getPrefs().getBoolean("FilterLaserline.subtractAverage", false);
+    /**
+     * All pixels with a score above pxlScoreThreshold are classified as laser line
+     */
+    protected float pxlScoreThreshold = getPrefs().getFloat("FilterLaserline.pxlScoreThreshold", 1.5f);
+    /**
+     * Subtract average of histogram to get scoring function?
+     */
+    protected boolean subtractAverage = getPrefs().getBoolean("FilterLaserline.subtractAverage", true);
+    /**
+     * Allow negative scores (only possible if average subraction is enabled)
+     */
     protected boolean allowNegativeScores = getPrefs().getBoolean("FilterLaserline.allowNegativeScores", true);
+    /**
+     * while true, coordinates and timestamp of pixels classified as laser line are written to output file 
+     */
+    protected boolean writeLaserlineToFile = getPrefs().getBoolean("FilterLaserline.writeLaserlineToFile", false);
+    /**
+     * ALPHA status: give more weigth to most recent histogram
+     */
+    protected boolean useReinforcement = getPrefs().getBoolean("FilterLaserline.useReinforcement",false);
     
    /**
+     * Creates new instance of FilterLaserline
      * 
+     * The real instantiation is done when filter is activated for the first time (in method #filterPacket)
      * @param chip
      */
     public FilterLaserline(AEChip chip) {
@@ -78,7 +105,9 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip("Pixel Scoring", "subtractAverage", "Subtract average to get bin weight?");
         setPropertyTooltip("Pixel Scoring", "allowNegativeScores", "Allow negativ scores?");
         setPropertyTooltip("Pixel Scoring", "pxlScoreThreshold", "Minimum score of pixel to be on laserline");
+        setPropertyTooltip("Pixel Scorint", "useReinforcement", "Use binweights of last period for new binweights");
         setPropertyTooltip("Debugging", "showDebugPixels", "Display score of each pixel?");
+        setPropertyTooltip("Logging", "writeLaserlineToFile", "Write laserline to file?");
     }
 
     @Override
@@ -89,16 +118,17 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater {
         if (!isFilterEnabled()) {
             return in;
         }
-        
-        OutputEventIterator outItr = out.outputIterator();
-
+        // set class of output packets to Polarity Events
+        out.setEventClass(PolarityEvent.class);
+        OutputEventIterator outItr = out.outputIterator();        
         // iterate over each event in packet
         for (Object e : in) {
-            // check if filter is initialized
+            // check if filter is initialized yet
             if (!isInitialized) {
                 BasicEvent ev = (BasicEvent) e;
                 if (ev.special) {
                     // if new and last laserPeriod do not differ too much from each other 
+                    // -> 2 consecutive periods must have about the same length before filter is initialized
                     if (Math.abs(laserPeriod - (ev.timestamp - lastTriggerTimestamp)) < 10) {
                         // Init filter
                         laserPeriod = ev.timestamp - lastTriggerTimestamp;
@@ -124,14 +154,20 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater {
                     
                     laserline = pxlScoreMap.updateLaserline(laserline);
                     
-                    // save timestamp
+                    // save timestamp as most recent TriggerTimestamp
                     lastTriggerTimestamp = ev.timestamp;
-                    if (pxlScoreMap.getScore((short) 121, (short) 124) > getPxlScoreThreshold()) {
-                        log.log(Level.FINE, "pxlScore(121, 124) > threshold");
-                    }
+
                     // write laserline to out
                     writeLaserlineToOutItr(outItr);
+                    
+                    if (writeLaserlineToFile) {
+                        // write laserline to file
+                        if (laserlineLogfile != null) {
+                            laserlineLogfile.write(laserline, lastTriggerTimestamp);
+                        }
+                    }
                 } else {
+                    // if not a special event
                     // add to histogram
                     if (ev.polarity == Polarity.On) {
                         onHist.addToData((double) (ev.timestamp-lastTriggerTimestamp));
@@ -173,7 +209,31 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater {
             onHist.resetHistData();
             offHist.resetHistData();
             Arrays.fill(curBinWeights[0],0d);
-            Arrays.fill(curBinWeights[0],0d);
+            Arrays.fill(curBinWeights[1],0d);
+            log.info("FilterLaserline resetted");
+        } else {
+            // check if arrays are allocated
+            if(pxlScoreMap != null) {
+                pxlScoreMap.resetMap();
+                log.info("Pixelscore map resetted");
+            }
+            if (laserline != null) {
+                laserline.clear();
+                laserline.ensureCapacity(chip.getSizeX());
+                log.info("Laserline array resetted");
+            }
+            if (onHist != null & offHist != null) {
+                onHist.resetHistData();
+                offHist.resetHistData();               
+                log.info("Histogram data resetted");
+            }
+            if (curBinWeights != null) {
+                if (curBinWeights[0] != null & curBinWeights[1] != null) {
+                    Arrays.fill(curBinWeights[0],0d);
+                    Arrays.fill(curBinWeights[1],0d);
+                    log.info("Bin weights resetted");
+                }
+            }
         }
     }
 
@@ -217,11 +277,16 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater {
     
 
     private void updateBinWeights() {
+        double[][] lastBinWeights = null;
+        if (useReinforcement) {
+            lastBinWeights = Arrays.copyOf(curBinWeights, nBins);
+        }
         curBinWeights[0] = onHist.getNormalized(curBinWeights[0],subtractAverage);
         curBinWeights[1] = offHist.getNormalized(curBinWeights[1],subtractAverage);
         
+        // use maximum on/off score as a weigthing factor (some sort of SNR for each polarity)
         double divisor = onHist.getMaxVal()+offHist.getMaxVal();
-        if (divisor == 0) divisor = 1.0;
+        if (divisor == 0) divisor = 1.0; // avoid divions by 0 (allthough should never happen)
         double onFactor  = onHist.getMaxVal()/divisor;
         double offFactor = offHist.getMaxVal()/divisor;
         
@@ -229,6 +294,11 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater {
             if (useWeightedOnOff) {
                 curBinWeights[0][i] *= onFactor;
                 curBinWeights[1][i] *= offFactor;
+            }
+            if (useReinforcement) {
+                // ALPHA status
+                curBinWeights[0][i] = 0.4*curBinWeights[0][i] + 0.6*lastBinWeights[0][i];
+                curBinWeights[1][i] = 0.4*curBinWeights[1][i] + 0.6*lastBinWeights[1][i];
             }
             if (!allowNegativeScores & curBinWeights[0][i] < 0) {
                 curBinWeights[0][i] = 0;
@@ -240,15 +310,22 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater {
     }
 
     private void writeLaserlineToOutItr(OutputEventIterator outItr) {
+        // generate events for all pixels classified as laser line,
+        // using the last triggerTimestamp as timestamp for all created events
         for (Object o : laserline) {
-            short[] pxl = (short[]) o;
-            BasicEvent outEvent = (BasicEvent) outItr.nextOutput();
+            float[] fpxl = (float[]) o;
+            short[] pxl = new short[2];
+            pxl[0] = (short) Math.round(fpxl[0]);
+            pxl[1] = (short) Math.round(fpxl[1]);
+            PolarityEvent outEvent = (PolarityEvent) outItr.nextOutput();
             outEvent.setTimestamp(lastTriggerTimestamp);
             outEvent.setX(pxl[0]);
             outEvent.setY(pxl[1]);
+            // really important since address is saved in logfile, not x/y coordinates
+            outEvent.setAddress(chip.getEventExtractor().getAddressFromCell(pxl[0],pxl[1],0));
         }
     }
-    
+       
     int getLastTriggerTimestamp() {
         return this.lastTriggerTimestamp;
     }
@@ -365,6 +442,27 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater {
         getPrefs().putBoolean("FilterLaserline.useWeightedOnOff", useWeightedOnOff);
         getSupport().firePropertyChange("useWeightedOnOff", this.useWeightedOnOff, useWeightedOnOff);
         this.useWeightedOnOff = useWeightedOnOff;
+    }
+    
+    /**
+     * gets useReinforcement
+     *
+     * @return 
+     */
+    public boolean getUseReinforcement() {
+        return this.useReinforcement;
+    }
+
+    /**
+     * sets useReinforcement
+     *
+     * @see #getUseReinforcement
+     * @param useReinforcement boolean
+     */
+    public void setUseReinforcement(boolean useReinforcement) {
+        getPrefs().putBoolean("FilterLaserline.useReinforcement", useReinforcement);
+        getSupport().firePropertyChange("useReinforcement", this.useReinforcement, useReinforcement);
+        this.useReinforcement = useReinforcement;
     }
     
     /**
@@ -504,6 +602,35 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater {
      */
     public int getMaxPxlScoreHistorySize() {
         return 10;
+    }
+
+    /**
+     * gets writeLaserlineToFile
+     *
+     * @return 
+     */
+    public boolean getWriteLaserlineToFile() {
+        return this.writeLaserlineToFile;
+    }
+
+    /**
+     * sets writeLaserlineToFile
+     *
+     * @see #getWriteLaserlineToFile
+     * @param writeLaserlineToFile boolean
+     */
+    public void setWriteLaserlineToFile(boolean writeLaserlineToFile) {
+        getPrefs().putBoolean("FilterLaserline.writeLaserlineToFile", writeLaserlineToFile);
+        getSupport().firePropertyChange("writeLaserlineToFile", this.writeLaserlineToFile, writeLaserlineToFile);
+        this.writeLaserlineToFile = writeLaserlineToFile;
+        if (writeLaserlineToFile) {
+            DateFormat loggingFilenameDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ");
+            laserlineLogfile = new LaserlineLogfile(log);
+                    laserlineLogfile.openFile("C:\\temp\\", "laserline-" + 
+                    loggingFilenameDateFormat.format(new Date()) + ".txt");
+        } else if (!writeLaserlineToFile & laserlineLogfile != null) {
+            laserlineLogfile.close();
+        }
     }
     
     @Override
