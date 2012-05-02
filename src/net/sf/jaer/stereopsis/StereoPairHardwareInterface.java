@@ -339,6 +339,8 @@ public class StereoPairHardwareInterface implements AEMonitorInterface,ReaderBuf
     synchronized public void resetTimestamps (){
         // clear out pending events
         requestTimestampReset = true; // this tells rendering thread (which calls acquireAvailableEventsFromDriver) that timestamps have been reset
+        aemonLeft.resetTimestamps();
+        aemonRight.resetTimestamps();
     }
 
     /** @return true if either device overran the buffer */
