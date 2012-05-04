@@ -33,7 +33,8 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
     private Point lastMousePressLocation = new Point(w / 2, h / 2);
     private boolean recordingEnabled = false;
     private Trajectory trajectory = new Trajectory();
-     private float panTiltLimit=0.5f;
+     private float panLimit=0.5f;
+     private float tiltLimit=0.5f;
 
 
     class Trajectory extends ArrayList<TrajectoryPoint> {
@@ -323,8 +324,8 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
 
     private void setPanTilt(float pan, float tilt) {
         try {
-            pan=clipPT(pan);
-            tilt=clipPT(tilt);
+            pan=clipPan(pan);
+            tilt=clipTilt(tilt);
             lastPanTilt.x = pan;
             lastPanTilt.y = tilt;
             panTilt.setPanTiltValues(pan, tilt);
@@ -334,9 +335,13 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
         }
     }
 
-    private float clipPT(float pt){
-        if(pt>0.5f+panTiltLimit) pt=0.5f+panTiltLimit; else if(pt<.5f-panTiltLimit) pt=.5f-panTiltLimit;
-        return pt;
+    private float clipPan(float pan){
+        if(pan>0.5f+panLimit) pan=0.5f+panLimit; else if(pan<.5f-panLimit) pan=.5f-panLimit;
+        return pan;
+    }
+    private float clipTilt(float tilt){
+        if(tilt>0.5f+tiltLimit) tilt=0.5f+tiltLimit; else if(tilt<.5f-tiltLimit) tilt=.5f-tiltLimit;
+        return tilt;
     }
     public Point getMouseFromPanTilt(Point2D.Float pt) {
         return new Point((int) (calibrationPanel.getWidth() * pt.x), (int) (calibrationPanel.getHeight() * pt.y));
@@ -484,14 +489,15 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
      * @return the panTiltLimit
      */
     public float getPanTiltLimit() {
-        return panTiltLimit;
+        return panLimit;
     }
 
     /**
      * @param panTiltLimit the panTiltLimit to set
      */
-    public void setPanTiltLimit(float panTiltLimit) {
-        this.panTiltLimit = panTiltLimit;
+    public void setPanTiltLimit(float panLimit, float tiltLimit) {
+        this.panLimit = panLimit;
+        this.tiltLimit = tiltLimit;
     }
 
     
