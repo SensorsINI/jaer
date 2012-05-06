@@ -458,6 +458,9 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
     public void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
         setPositionComputer(positionComputer); // reflag enabled/disabled state of motion computation
+        if(!yes){
+            setPanTiltEnabled(false); // turn off servos, close interface
+        }
     }
 
     public boolean isFeedforwardEnabled() {
@@ -549,14 +552,18 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
         putBoolean("panTiltEnabled", panTiltEnabled);
         if (!panTiltEnabled) {
             try {
-                panTilt.setPanTiltValues(.5f, .5f);
-                panTilt.close();
+                if(panTilt!=null && panTilt.getServoInterface()!=null && panTilt.getServoInterface().isOpen()){
+                    panTilt.getServoInterface().disableAllServos();
+                    panTilt.close();
+                }
             } catch (HardwareInterfaceException ex) {
                 log.warning(ex.toString());
                 panTilt.close();
             }
         }
     }
+    
+    
 
     /**
      * @return the electronicStabilizationEnabled
