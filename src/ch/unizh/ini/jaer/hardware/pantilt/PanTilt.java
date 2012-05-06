@@ -270,6 +270,7 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
             float dy=(float)(jitterAmplitude*Math.cos(phase));
             try {
                 setPanTiltValues(pantiltvalues[0] + dx, pantiltvalues[1] + dy);
+//                setPanTiltValues(pantiltvalues[0] + Math.signum(dx)*jitterAmplitude, pantiltvalues[1] + Math.signum(dy)*jitterAmplitude);
             } catch (HardwareInterfaceException ex) {
             }
 //            try {

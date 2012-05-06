@@ -6,6 +6,7 @@ package org.capocaccia.cne.jaer.cne2012.smalleyemovements;
 
 import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimer;
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -73,11 +74,18 @@ public class SmallEyeMovements extends EventFilter2D implements Observer, Proper
         return out;
     }
 
+    private int lastptsign=1;
+    
     private void updateImage(PolarityEvent e) {
         float[] rgb=display.getPixmapRGB(e.x, e.y);
         float oldvalue=rgb[0]; // old value
         float[] ptchange=aimer.getPanTiltHardware().getPreviousPanTiltChange(); // get sign of eye movements, 
-        float ptsign=Math.signum(ptchange[0]*ptchange[1]); //+1 for up and to right
+        int ptsign=(int)Math.signum(ptchange[0]*ptchange[1]); //+1 for up and to right
+        if(ptsign==0) {
+            ptsign=lastptsign;
+        }else{
+            lastptsign=ptsign;
+        }
         int pol=e.getPolaritySignum(); // sign of event
         float newvalue=(1-fadeRate)*oldvalue+fadeRate*(oldvalue+ptsign*pol*eventGrayWeight);
         display.setPixmapGray(e.x, e.y, newvalue);
@@ -88,6 +96,10 @@ public class SmallEyeMovements extends EventFilter2D implements Observer, Proper
         resetImage();
     }
 
+    public void doAim(){
+        aimer.doAim();
+    }
+    
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
@@ -96,14 +108,21 @@ public class SmallEyeMovements extends EventFilter2D implements Observer, Proper
                 display = ImageDisplay.createOpenGLCanvas();
             }
             display.resetFrame(grayLevel);
-            display.clearImage();
             display.setImageSize(chip.getSizeX(), chip.getSizeY());
-            display.setBorderSpacePixels(15);
-            display.setPreferredSize(new Dimension(400, 400));
-            display.setMinimumSize(new Dimension(200, 200));
-            display.setMaximumSize(new Dimension(800, 800));
-            chip.getAeViewer().getImagePanel().add(display, BorderLayout.WEST);
-//            chip.getAeViewer().getImagePanel().revalidate();
+            display.setBorderSpacePixels(5);
+            display.setPreferredSize(new Dimension(600, 600));
+//            display.setMinimumSize(new Dimension(200, 200));
+//            display.setMaximumSize(new Dimension(800, 800));
+//            Component[] ca=chip.getAeViewer().getImagePanel().getComponents();
+//            for(Component c:ca){
+//                if(c==chip.getCanvas().getCanvas()){
+//                    chip.getAeViewer().getImagePanel().remove(c);
+//                    chip.getAeViewer().getImagePanel().add(c,BorderLayout.WEST);
+//                }
+//            }
+            chip.getAeViewer().getImagePanel().add(display, BorderLayout.WEST); // display will shrink vertically but not horizonstally
+            resetImage();
+            //            chip.getAeViewer().getImagePanel().revalidate();
 //            chip.getAeViewer().pack();
         } else {
             try {
@@ -129,6 +148,7 @@ public class SmallEyeMovements extends EventFilter2D implements Observer, Proper
         if (o instanceof AEChip) {
             AEChip c = (AEChip) o;
             if (c.getSizeX() > 0 && c.getSizeY() > 0) {
+                if(display!=null) display.clearImage();
             }
         }
     }

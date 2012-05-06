@@ -355,7 +355,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Returns the main viewer image display panel where the ChipCanvas is shown. DisplayMethod's can use this getter to add their own display controls.
+     * Returns the main viewer image display panel where the ChipCanvas is shown. 
+     * DisplayMethod's can use this getter to add their own display controls.
      *
      * @return the imagePanel
      */
