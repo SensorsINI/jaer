@@ -59,6 +59,18 @@ public class PolarityEvent extends TypedEvent{
     public void setPolarity(Polarity polarity) {
         this.polarity = polarity;
     }
+    
+    /** Returns +1 if polarity is On or -1 if polarity is Off.
+     * 
+     * @return +1 from On event, -1 from Off event. 
+     */
+    public int getPolaritySignum(){
+        switch(polarity){
+            case Off: return -1;
+            case On: return +1;
+        }
+        throw new Error("Events should never have undefined Polarity. We should never get here.");
+    }
 
 
 }

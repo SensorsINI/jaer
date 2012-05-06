@@ -16,6 +16,7 @@ import de.thesycon.usbio.PnPNotifyInterface;
 import de.thesycon.usbio.UsbIo;
 import de.thesycon.usbio.UsbIoErrorCodes;
 import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.logging.*;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.USBIOHardwareInterfaceFactory;
@@ -86,8 +87,12 @@ public class UsbIoUtilities {
 
         @Override
         public void onAdd() {
-            for (PnPNotifyInterface i : this) {
-                i.onAdd();
+            try {
+                for (PnPNotifyInterface i : this) {
+                    i.onAdd();
+                }
+            } catch (ConcurrentModificationException ex) {
+                log.warning(ex.toString() + " (ignored)");
             }
         }
 

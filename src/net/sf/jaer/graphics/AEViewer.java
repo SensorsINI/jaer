@@ -4477,8 +4477,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     public void showFilters(boolean yes) {
         if (yes && !filterFrameBuilt) {
-            filterFrameBuilt = true;
-            filterFrame = new FilterFrame(chip);
+            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            try{
+                filterFrame = new FilterFrame(chip);
+            }finally{
+                setCursor(Cursor.getDefaultCursor());
+            }
             filterFrame.addWindowListener(new WindowAdapter() {
 
                 @Override
@@ -4487,6 +4491,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     filtersToggleButton.setSelected(false);
                 }
             });
+            filterFrameBuilt = true;
         }
 
         if (filterFrame != null) {

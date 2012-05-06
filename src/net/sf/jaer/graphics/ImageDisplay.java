@@ -143,7 +143,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     protected Logger log = Logger.getLogger("ImageDisplay");
     private int fontSize = 20;
     private int sizeX = 0, sizeY = 0;
-    protected float grayValue = 0;
+    /** The gray value. Default is 0. */
+    private float grayValue = 0;
     /** The rendered pixel map, ordered by rgb/row/col. The first 3 elements are the RBB float values of the LL pixel (x=0,y=0). The next 3 are
      * the RGB of the second pixel from the left in the bottom row (x=1,y=0). Pixel (0,1) is at position starting at 3*(chip.getSizeX()).
      */
@@ -151,7 +152,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     private FloatBuffer grayBuffer;
     private GLU glu = new GLU();
     private TextRenderer textRenderer;
-    private final int BORDER_SPACE_PIXELS = 40;
+    public final int BORDER_SPACE_PIXELS_DEFAULT = 40;
+    private int borderPixels =  BORDER_SPACE_PIXELS_DEFAULT;
     private boolean fillsVertically;
     private boolean fillsHorizontally;
     private final float ZCLIP = 1;
@@ -271,11 +273,10 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         checkGLError(gl, "before pixmap");
         final int wi = drawable.getWidth(), hi = drawable.getHeight();
         float scale = 1;
-        final float border = BORDER_SPACE_PIXELS;
         if (fillsVertically) {// tall chip, use chip height
-            scale = ((float) hi - 2 * border) / getSizeY();
+            scale = ((float) hi - 2 * borderPixels) / getSizeY();
         } else if (fillsHorizontally) {
-            scale = ((float) wi - 2 * border) / getSizeX();
+            scale = ((float) wi - 2 * borderPixels) / getSizeX();
         }
 
         gl.glPixelZoom(scale, scale);
@@ -382,6 +383,23 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         setPixmapPosition(x, y);
         pixmap.put(new float[]{gray, gray, gray});
     }
+    /** Sets a gray value for pixel x,y. Convenience wrapper around setPixmapRGB.
+     *
+     * @param x
+     * @param y
+     * @param gray the gray value, in range 0-1.
+     */
+    synchronized public void changePixmapGrayValueBy(int x, int y, float grayChange) {
+        setPixmapPosition(x, y);
+        float[] rgb=new float[3];
+        pixmap.get(rgb);
+        rgb[0]+=grayChange;
+        rgb[1]+=grayChange;
+        rgb[2]+=grayChange;
+        setPixmapPosition(x, y);
+        pixmap.put(rgb);
+    }
+
     private float[] rgb = new float[3];
 
     /** Returns a re-used float[] of pixmap RGB values at location x,y.
@@ -454,14 +472,15 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 
     /** Resets the pixmap frame buffer to a given gray level; can be used at the
      * start of rendering to achieve a particular starting grey level.
+     * Also sets the gray value.
      *
      * @param value gray level, 0-1 range.
      */
     synchronized public void resetFrame(float value) {
         resetPixmapGrayLevel(value);
-        grayValue = value;
+        grayValue=value;
     }
-
+    
     /** Subclasses should call checkPixmapAllocation to
      * make sure the pixmap FloatBuffer is allocated before accessing it.
      *
@@ -544,7 +563,6 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         GLdouble far)
          */
         final int w = getWidth(), h = getHeight(); // w,h of screen
-        final float border = getBorderSpacePixels(); // desired smallest border in screen pixels
         float glScale;
         checkGLError(g, "before setDefaultProjection");
         g.glMatrixMode(GL.GL_PROJECTION);
@@ -552,8 +570,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         // now we set the clipping volume so that the volume is clipped according to whether the window is tall (ar>1) or wide (ar<1).
 
         if (isFillsHorizontally()) { //tall
-            glScale = (float) (w - 2 * border) / sizeX; // chip pix to screen pix scaling in horizontal&vert direction
-            float b = border / glScale; // l,r border in model coordinates
+            glScale = (float) (w - 2 * borderPixels) / sizeX; // chip pix to screen pix scaling in horizontal&vert direction
+            float b = borderPixels / glScale; // l,r border in model coordinates
             if (b <= 0) {
                 b = 1;
             }
@@ -569,8 +587,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             borders.bottomTop = bb;
             g.glOrtho(-b, sizeX + b, -bb, (sizeY + bb), ZCLIP, -ZCLIP); // clip area has same aspect ratio as screen!
         } else {
-            glScale = (float) (h - 2 * border) / sizeY;
-            float b = border / glScale;
+            glScale = (float) (h - 2 * borderPixels) / sizeY;
+            float b = borderPixels / glScale;
             if (b <= .5f) {
                 b = 1;
             }
@@ -589,8 +607,12 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         g.glMatrixMode(GL.GL_MODELVIEW);
     }
 
-    private float getBorderSpacePixels() {
-        return BORDER_SPACE_PIXELS;
+    public float getBorderSpacePixels() {
+        return borderPixels;
+    }
+   
+    public void setBorderSpacePixels(int border) {
+        this.borderPixels=border;
     }
 
     /**  Returns the horizontal dimension of image.
@@ -620,7 +642,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
      * @param sizeX rows
      * @param sizeY columns
      */
-    synchronized public void setSize(int sizeX, int sizeY) {
+    synchronized public void setImageSize(int sizeX, int sizeY) {
         if (sizeX != this.sizeX || sizeY != this.sizeY) {
             this.sizeX = sizeX;
             this.sizeY = sizeY;
@@ -782,6 +804,23 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getFontSize()), true, true);
         }
     }
+
+//    /**
+//     * @return the grayValue
+//     */
+//    public float getGrayValue() {
+//        return grayValue;
+//    }
+//
+//    /**
+//     * Sets the gray value that image is cleared to by clearImage().
+//     * 
+//     * @param grayValue the grayValue to set
+//     */
+//    public void setGrayValue(float grayValue) {
+//        this.grayValue = grayValue;
+//        clearImage(); // TODO needed to get this gray value to apply
+//    }
 
     /** Orthographic projection clipping area. */
     private class ClipArea {
@@ -949,6 +988,11 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     synchronized public void clearLegends() {
         legends.clear();
     }
+    
+    /** Resets the image to the gray value. */
+    synchronized public void clearImage(){
+        resetFrame(grayValue);
+    }
 
     /** Renders the string with newlines ('\n') starting at x,y image position (with origin at lower left corner),
      * using the text renderer font size.
@@ -1021,7 +1065,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         int size = 200;  // used later to define image size
         final Point2D.Float mousePoint = new Point2D.Float();
 
-        disp.setSize(size, size); // set dimensions of image
+        disp.setImageSize(size, size); // set dimensions of image
 
         disp.addKeyListener(new KeyAdapter() { // add some key listeners to the ImageDisplay
 

@@ -348,6 +348,7 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
             lastPanTilt.x = pan;
             lastPanTilt.y = tilt;
             panTilt.setPanTiltValues(pan, tilt);
+            support.firePropertyChange(Message.PanTiltSet.name(), null, new Point2D.Float(pan,tilt));
             statusLabel.setText(String.format("%.3f, %.3f", pan, tilt));
         } catch (HardwareInterfaceException e) {
             log.warning(e.toString());
@@ -492,7 +493,7 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
      * 
      * When samples have been chosen, "done" is passed.
      * 
-     * @return the support. Add yourself as a listener to get notifications of new calibration points.
+     * @return the support. Add yourself as a listener to get notifications of new user aiming points.
      */
     public PropertyChangeSupport getSupport() {
         return support;

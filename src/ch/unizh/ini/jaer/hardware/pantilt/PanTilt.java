@@ -34,7 +34,9 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     public final int DEFAULT_PAN_SERVO = 1,  DEFAULT_TILT_SERVO = 2; // number of servo output on controller
     volatile boolean lockAcquired = false;
     java.util.Timer timer;
-    private float pan, tilt;
+    private float pan=.5f, tilt=.5f;
+    private float previousPan=pan, previousTilt=tilt;
+    
     private float jitterAmplitude=.01f;
     private float jitterFreqHz=10f;
     private boolean jitterEnabled=false;
@@ -88,30 +90,32 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     /** Simultaneously sets pan and tilt values. The directions here depend on the servo polarities, which could vary.
      * These values apply to HiTec digital servos.
      * 
-     * @param pan the pan value from 0 to 1 inclusive, 0.5f is the center position. 1 is full right.
-     * @param tilt the tilt value from 0 to 1. 1 is full down.
+     * @param newPan the pan value from 0 to 1 inclusive, 0.5f is the center position. 1 is full right.
+     * @param newTilt the tilt value from 0 to 1. 1 is full down.
      * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException.
      If this exception is thrown, the interface should be closed. The next attempt to set the pan/tilt values will reopen
      the interface.
-     * @see #DEFAULT_PAN_SERVO
+     * @see #panServoNumber
      * @see #tiltServoNumber
      */
     @Override
-    synchronized public void setPanTiltValues(float pan, float tilt) throws HardwareInterfaceException {
+    synchronized public void setPanTiltValues(float newPan, float newTilt) throws HardwareInterfaceException {
         checkServos();
-         this.pan=pan;
-        this.tilt=tilt; //efferent copy
-        if(panInverted)pan=1-pan;
-        if(tiltInverted)tilt=1-tilt;
-       float[] lastValues = servo.getLastServoValues();
-        lastValues[panServoNumber] = pan;
-        lastValues[tiltServoNumber] = tilt;
+        previousPan=this.pan;
+        previousTilt=this.tilt;
+         this.pan=newPan;
+        this.tilt=newTilt; //efferent copy
+        if(panInverted)newPan=1-newPan;
+        if(tiltInverted)newTilt=1-newTilt;
+//       float[] lastValues = servo.getLastServoValues();
+//        lastValues[panServoNumber] = pan;
+//        lastValues[tiltServoNumber] = tilt;
 //        for(int i=0;i<4;i++){
 //            System.out.print(lastValues[i]+", ");
 //        }
 //        System.out.println("");
-        servo.setServoValue(panServoNumber,pan);
-        servo.setServoValue(tiltServoNumber,tilt);
+        servo.setServoValue(panServoNumber,newPan);
+        servo.setServoValue(tiltServoNumber,newTilt);
 //        servo.setAllServoValues(lastValues);
         setLaserOn(true);
     }
@@ -134,7 +138,8 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
         return lockAcquired;
     }
 
-    /** Returns the last value set, even if the servo interface is not functional. The servo could still be moving to this location. 
+    /** Returns the last value set, even if the servo interface is not functional. 
+     * The servo could still be moving to this location. 
      * 
      * @return a float[] array with the 0 component being the pan value, and the 1 component being the tilt 
      * 
@@ -142,6 +147,18 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     @Override
     public float[] getPanTiltValues(){
         float[] r={pan,tilt};
+        return r;
+    }
+    
+    /** Returns previous pan and tilt values. */
+    public float[] getPreviousPanTiltValues(){
+        float[] r={previousPan,previousTilt};
+        return r;
+    }
+    
+    /** Returns last change of pan and tilt values.*/
+       public float[] getPreviousPanTiltChange(){
+        float[] r={pan-previousPan,tilt-previousTilt};
         return r;
     }
 

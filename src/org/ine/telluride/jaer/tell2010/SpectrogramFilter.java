@@ -214,7 +214,7 @@ public final class SpectrogramFilter extends EventFilter2D implements Observer, 
 
         }
         if (numChannels != imageDisplay.getSizeY() || numTimeBins != imageDisplay.getSizeX()) {
-            imageDisplay.setSize(numTimeBins, numChannels);
+            imageDisplay.setImageSize(numTimeBins, numChannels);
         }
     }
 

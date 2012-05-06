@@ -389,7 +389,7 @@ public class SlotcarTrack implements java.io.Serializable {
 
                     closestPointImage = ImageDisplay.createOpenGLCanvas();
                     closestPointImage.setFontSize(10);
-                    closestPointImage.setSize(size, size);
+                    closestPointImage.setImageSize(size, size);
                     closestPointImage.setxLabel("x");
                     closestPointImage.setyLabel("y");
 
