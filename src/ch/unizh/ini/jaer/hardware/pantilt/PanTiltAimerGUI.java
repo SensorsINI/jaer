@@ -172,6 +172,7 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
         clearBut = new javax.swing.JButton();
         loopTB = new javax.swing.JToggleButton();
         centerBut = new javax.swing.JButton();
+        relaxBut = new javax.swing.JButton();
 
         jButton1.setText("jButton1");
 
@@ -224,7 +225,7 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
         calibrationPanel.setLayout(calibrationPanelLayout);
         calibrationPanelLayout.setHorizontalGroup(
             calibrationPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 611, Short.MAX_VALUE)
+            .addGap(0, 0, Short.MAX_VALUE)
         );
         calibrationPanelLayout.setVerticalGroup(
             calibrationPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -261,12 +262,25 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
             }
         });
 
+        relaxBut.setText("Relax");
+        relaxBut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                relaxButActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(calibrationPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(1, 1, 1)
+                        .addComponent(statusLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                     .addGroup(layout.createSequentialGroup()
                         .addContainerGap()
                         .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 195, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -277,13 +291,9 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(loopTB)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(centerBut))
-                    .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(calibrationPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(1, 1, 1)
-                        .addComponent(statusLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 624, Short.MAX_VALUE)))
+                        .addComponent(centerBut)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 20, Short.MAX_VALUE)
+                        .addComponent(relaxBut)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -296,7 +306,8 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
                     .addComponent(clearBut)
                     .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                         .addComponent(loopTB)
-                        .addComponent(centerBut)))
+                        .addComponent(centerBut)
+                        .addComponent(relaxBut)))
                 .addGap(15, 15, 15)
                 .addComponent(calibrationPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addGap(18, 18, 18)
@@ -439,6 +450,17 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
         }
     }//GEN-LAST:event_centerButActionPerformed
 
+    private void relaxButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_relaxButActionPerformed
+        if (panTilt != null && panTilt.getServoInterface() != null) {
+            try {
+                panTilt.stopJitter();
+                panTilt.getServoInterface().disableAllServos();
+            } catch (HardwareInterfaceException ex) {
+                log.warning(ex.toString());
+            }
+        }
+    }//GEN-LAST:event_relaxButActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel calibrationPanel;
     private javax.swing.JButton centerBut;
@@ -447,6 +469,7 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
     private javax.swing.JLabel jLabel5;
     private javax.swing.JToggleButton loopTB;
     private javax.swing.JCheckBox recordCB;
+    private javax.swing.JButton relaxBut;
     private javax.swing.JLabel statusLabel;
     // End of variables declaration//GEN-END:variables
 

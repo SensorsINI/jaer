@@ -133,7 +133,6 @@ public class PanTiltAimer extends EventFilter2D implements  PanTiltInterface, La
             gui = new PanTiltAimerGUI(panTiltHardware);
             gui.addPropertyChangeListener(this);
             gui.setPanTiltLimit(limitOfPan, limitOfTilt);
-
         }
         gui.setVisible(true);
     }
