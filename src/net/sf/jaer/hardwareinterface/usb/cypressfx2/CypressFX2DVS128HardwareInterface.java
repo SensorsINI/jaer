@@ -129,7 +129,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
             this.sendVendorRequest(this.VENDOR_REQUEST_LED, cmd, (byte) 0);
             ledState = state;
         } catch (HardwareInterfaceException e) {
-            log.warning(e.toString());
+            log.warning(e.toString()+": ignored. Probably your DVS128 firmware version is too old");
         }
 
     }
