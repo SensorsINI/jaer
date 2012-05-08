@@ -512,6 +512,10 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             clusterLogger.logClusterHistories(pruneList);
         }
         clusters.removeAll(pruneList);
+        for(Cluster c:pruneList){
+            c=null;
+        }
+        
     }
 
     /** This method updates the list of clusters, pruning and

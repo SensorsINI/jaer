@@ -78,6 +78,7 @@ public class UDPInterfaceFactory implements HardwareInterfaceFactoryInterface {
             if(packet==null) packet=new DatagramPacket(buf, buf.length);
             packet.setData(buf);
             try {
+//                log.info("waiting 100ms for UDP clients to connect");
                 socket.setSoTimeout(100);
                 socket.receive(packet);
                 if(packet != null && !availableInterfaces.contains("SmartEyeTDS")){

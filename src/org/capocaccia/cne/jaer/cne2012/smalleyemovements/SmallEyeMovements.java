@@ -35,9 +35,9 @@ public class SmallEyeMovements extends EventFilter2D implements Observer, Proper
     FilterChain filterChain = null;
     ImageDisplay display = null;
     private float eventGrayWeight = getFloat("eventGrayWeight", 1f / 10);
-    private float fadeRate=getFloat("fadeRate",0.01f);
-    private float grayLevel=0.5f;
-    private volatile boolean resetImageFlag=false;
+    private float fadeRate = getFloat("fadeRate", 0.01f);
+    private float grayLevel = 0.5f;
+    private volatile boolean resetImageFlag = false;
 
     public SmallEyeMovements(AEChip chip) {
         super(chip);
@@ -49,22 +49,23 @@ public class SmallEyeMovements extends EventFilter2D implements Observer, Proper
         filterChain.add(aimer);
         setEnclosedFilterChain(filterChain);
         setPropertyTooltip("eventGrayWeight", "how much gray scale each event updates image");
-        setPropertyTooltip("fadeRate","rate that old events fade away; 1 means each event instantaneously updates image completely");
-         Runtime.getRuntime().addShutdownHook(new Thread(){
+        setPropertyTooltip("fadeRate", "rate that old events fade away; 1 means each event instantaneously updates image completely");
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+
             @Override
-            public void run(){
+            public void run() {
                 log.info("disabling servos");
                 aimer.doDisableServos();
             }
         });
-   }
+    }
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         out = filterChain.filterPacket(in);
-        if(resetImageFlag){
+        if (resetImageFlag) {
             display.resetFrame(grayLevel);
-            resetImageFlag=false; // caused by aimer gui movement of eye
+            resetImageFlag = false; // caused by aimer gui movement of eye
         }
         for (Object o : out) {
             PolarityEvent e = (PolarityEvent) o;
@@ -73,21 +74,20 @@ public class SmallEyeMovements extends EventFilter2D implements Observer, Proper
         display.repaint();
         return out;
     }
+    private int lastptsign = 1;
 
-    private int lastptsign=1;
-    
     private void updateImage(PolarityEvent e) {
-        float[] rgb=display.getPixmapRGB(e.x, e.y);
-        float oldvalue=rgb[0]; // old value
-        float[] ptchange=aimer.getPanTiltHardware().getPreviousPanTiltChange(); // get sign of eye movements, 
-        int ptsign=(int)Math.signum(ptchange[0]*ptchange[1]); //+1 for up and to right
-        if(ptsign==0) {
-            ptsign=lastptsign;
-        }else{
-            lastptsign=ptsign;
+        float[] rgb = display.getPixmapRGB(e.x, e.y);
+        float oldvalue = rgb[0]; // old value
+        float[] ptchange = aimer.getPanTiltHardware().getPreviousPanTiltChange(); // get sign of eye movements, 
+        int ptsign = (int) Math.signum(ptchange[0] * ptchange[1]); //+1 for up and to right
+        if (ptsign == 0) {
+            ptsign = lastptsign;
+        } else {
+            lastptsign = ptsign;
         }
-        int pol=e.getPolaritySignum(); // sign of event
-        float newvalue=(1-fadeRate)*oldvalue+fadeRate*(oldvalue+ptsign*pol*eventGrayWeight);
+        int pol = e.getPolaritySignum(); // sign of event
+        float newvalue = (1 - fadeRate) * oldvalue + fadeRate * (oldvalue + ptsign * pol * eventGrayWeight);
         display.setPixmapGray(e.x, e.y, newvalue);
     }
 
@@ -96,10 +96,10 @@ public class SmallEyeMovements extends EventFilter2D implements Observer, Proper
         resetImage();
     }
 
-    public void doAim(){
+    public void doAim() {
         aimer.doAim();
     }
-    
+
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
@@ -126,7 +126,9 @@ public class SmallEyeMovements extends EventFilter2D implements Observer, Proper
 //            chip.getAeViewer().pack();
         } else {
             try {
-                chip.getAeViewer().getImagePanel().remove(display);
+                if (display != null) {
+                    chip.getAeViewer().getImagePanel().remove(display);
+                }
             } catch (NullPointerException e) {
                 log.warning(e.toString());
             }
@@ -148,7 +150,9 @@ public class SmallEyeMovements extends EventFilter2D implements Observer, Proper
         if (o instanceof AEChip) {
             AEChip c = (AEChip) o;
             if (c.getSizeX() > 0 && c.getSizeY() > 0) {
-                if(display!=null) display.clearImage();
+                if (display != null) {
+                    display.clearImage();
+                }
             }
         }
     }
@@ -179,13 +183,17 @@ public class SmallEyeMovements extends EventFilter2D implements Observer, Proper
      * @param fadeRate the fadeRate to set
      */
     public void setFadeRate(float fadeRate) {
-        if(fadeRate<0)fadeRate=0; else if(fadeRate>1) fadeRate=1;
+        if (fadeRate < 0) {
+            fadeRate = 0;
+        } else if (fadeRate > 1) {
+            fadeRate = 1;
+        }
         this.fadeRate = fadeRate;
-        putFloat("fadeRate",fadeRate);
+        putFloat("fadeRate", fadeRate);
     }
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        resetImageFlag=true;
+        resetImageFlag = true;
     }
 }
