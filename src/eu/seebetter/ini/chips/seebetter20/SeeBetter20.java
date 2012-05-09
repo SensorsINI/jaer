@@ -54,6 +54,7 @@ import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
+import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.border.TitledBorder;
@@ -190,9 +191,14 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
     private void registerControlPanel() {
         try {
             AEViewer viewer = getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
-            JPanel imagePanel = viewer.getImagePanel();
-            imagePanel.add((displayControlPanel = new eu.seebetter.ini.chips.seebetter20.SeeBetter20DisplayControlPanel(this)), BorderLayout.SOUTH);
+            //JPanel imagePanel = viewer.getImagePanel();
+			JFrame controlFrame = new JFrame("SeeBetter20 display controls");
+            JPanel imagePanel = new JPanel();
+			imagePanel.add((displayControlPanel = new eu.seebetter.ini.chips.seebetter20.SeeBetter20DisplayControlPanel(this)), BorderLayout.SOUTH);
             imagePanel.revalidate();
+			controlFrame.getContentPane().add(imagePanel);
+			controlFrame.pack();
+			controlFrame.setVisible(true);
         } catch (Exception e) {
             log.warning("could not register control panel: " + e);
         }
