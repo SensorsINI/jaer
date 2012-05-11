@@ -271,6 +271,7 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
         if (in.getSize() > 0) {
             lastAeTimestamp = in.getLastTimestamp();
         }
+        checkOutputPacketEventType(PhidgetsSpatialEvent.class);
         return in;
     }
 
