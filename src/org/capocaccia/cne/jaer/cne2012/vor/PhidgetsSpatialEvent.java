@@ -16,16 +16,22 @@ import net.sf.jaer.event.PolarityEvent;
  */
 public class PhidgetsSpatialEvent extends PolarityEvent {
 
-    public enum Type {Roll, Pitch, Yaw};
-    
+    public enum Type {Roll, Pitch, Yaw, Unknown};
+
     /**
      * Roll pan and tilt rates are in deg/sec and represent, respectively
      * clockwise roll, rightwards pan, and upwards tilt for positive values.
      */
-    public float value;
+    public float value=0;
 
     public Type spatialDataType;
+
+    public PhidgetsSpatialEvent() {
+        spatialDataType=Type.Unknown;
+    }
+      
     
+     
     @Override
     public boolean isSpecial() {
         return true;
