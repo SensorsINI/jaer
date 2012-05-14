@@ -201,6 +201,12 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer, Fra
             case RatioBeforeAfter:
                 eventCounter.draw(gl);
         }
+        if(proximityDetected){
+            renderer.begin3DRendering();
+            gl.glColor3f(0,1,0);
+            renderer.draw3D("I see you!", 20, chip.getSizeY()/2,0,.7f);
+            renderer.end3DRendering();
+        }
     }
 
     /**
