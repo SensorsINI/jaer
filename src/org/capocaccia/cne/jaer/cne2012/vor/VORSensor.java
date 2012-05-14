@@ -349,19 +349,20 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
 
         int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
 
-//        // draw transform
-//        gl.glPushMatrix();
-//            gl.glTranslatef(-transformAtTime.translation.x + sx2, -transformAtTime.translation.y + sy2, 0);
-//            gl.glRotatef((float) (-transformAtTime.rotation * 180 / Math.PI), 0, 0, 1);
-//        gl.glLineWidth(2f);
-//        gl.glColor3f(0, 1, 1);
-//        gl.glBegin(GL.GL_LINES);
-//        gl.glVertex2f(-sx2, 0);
-//        gl.glVertex2f(sx2, 0);
-//        gl.glVertex2f(0, -sy2);
-//        gl.glVertex2f(0, sy2);
-//        gl.glEnd();
-//        gl.glPopMatrix();
+        // draw transform
+        gl.glPushMatrix();
+            gl.glTranslatef(transformAtTime.translation.x + sx2, transformAtTime.translation.y + sy2, 0);
+            gl.glRotatef((float) (transformAtTime.rotation * 180 / Math.PI), 0, 0, 1);
+        gl.glLineWidth(2f);
+        gl.glColor3f(1, 1, 1);
+        gl.glBegin(GL.GL_LINE_LOOP);
+        // rectangle around transform
+        gl.glVertex2f(-sx2, -sy2);
+        gl.glVertex2f(sx2, -sy2);
+        gl.glVertex2f(sx2, sy2);
+        gl.glVertex2f(-sx2, sy2);
+        gl.glEnd();
+        gl.glPopMatrix();
     }
 
     /**

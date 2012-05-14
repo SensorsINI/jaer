@@ -276,12 +276,14 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         if (transform == null) {
             return;
         }
+//        transform.cosAngle=0; transform.sinAngle=1;
         e.x -= sx2;
         e.y -= sy2;
-        e.x = (short) (transform.cosAngle * e.x - transform.sinAngle * e.y + transform.translation.x);
-        e.y = (short) (transform.sinAngle * e.x + transform.cosAngle * e.y + transform.translation.y);
-        e.x += sx2;
-        e.y += sy2;
+        short newx = (short) (transform.cosAngle * e.x - transform.sinAngle * e.y + transform.translation.x);
+        short newy = (short) (transform.sinAngle * e.x + transform.cosAngle * e.y + transform.translation.y);
+        e.x = (short)(newx+sx2);
+        e.y = (short)(newy+sy2);
+        e.address=chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType());
     }
 
     /** Using DirectionSelectiveFilter, the transform is computed by pure
