@@ -290,14 +290,18 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
         checkOutputPacketEventType(PhidgetsSpatialEvent.class);
         OutputEventIterator outItr = out.outputIterator();
         PhidgetsSpatialEvent spatialEvent = null;
+        // tricky
+        // as we iterate over input events, check for new Phidgets data. 
+        // If we have some, write it out as PhidgetsSpatialEvents
+        // Also write out the regular input data into the output packet.
         for (BasicEvent o : in) {
             for (spatialEvent = spatialDataQueue.poll(); spatialEvent != null; spatialEvent = spatialDataQueue.poll()) {
                 PhidgetsSpatialEvent oe = (PhidgetsSpatialEvent) outItr.nextOutput();
                 oe.copyFrom(spatialEvent);
             }
-
+            outItr.nextOutput().copyFrom(o);
         }
-        return in;
+        return out;
     }
 
     @Override

@@ -77,9 +77,10 @@ public class PhidgetsSpatialEvent extends PolarityEvent {
         BigDecimal roundedScaled=bd.round(rounding).movePointRight(PRECISION_DIGITS);
         int intval=roundedScaled.intValue();
         this.address=(type.ordinal()<<16|(intval&0xffff));
+        setSpecial(true);
     }
     
-    /** Sets the phidgets spatial event fields from the raw address spatialDataValue.
+    /** Sets the Phidgets spatial event fields from the raw address spatialDataValue.
      * 
      */
     public void reconstructDataFromRawAddress(){

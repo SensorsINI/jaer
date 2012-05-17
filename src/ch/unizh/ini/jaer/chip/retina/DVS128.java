@@ -396,8 +396,8 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 e.address = addr;
                 e.timestamp = (timestamps[i]);
 
-                if ((addr&0x8000)!=0) { // msb is set
-                    e.special = true;
+                if ((addr&(CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK|BasicEvent.SPECIAL_EVENT_BIT_MASK))!=0) { // msb is set
+                    e.setSpecial(true);
                     e.x = -1;
                     e.y = -1;
                     e.type = -1;
@@ -410,7 +410,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                         }
                     }
                 } else {
-                    e.special = false;
+                    e.setSpecial(false);
                     e.type = (byte) (1 - addr & 1);
                     e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
                     e.x = (short) (sxm - ((short) ((addr & XMASK) >>> XSHIFT)));

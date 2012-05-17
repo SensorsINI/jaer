@@ -13,31 +13,54 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 
 /**
- * Base class for events. This class is extended by producers offering extended event type information.
-Instances are used in EventPacket. This class is the new-style event that replaces the original Event2D.
+ * Base class for events. This class is extended by producers offering extended
+ * event type information. Instances are used in EventPacket. This class is the
+ * new-style event that replaces the original Event2D.
  *
  * @author tobi
  */
 public class BasicEvent implements EventInterface<BasicEvent> {
 
 //    public int serial=-1;
-    /** timestamp of event, by convention in us */
+    /**
+     * timestamp of event, by convention in us
+     */
     public int timestamp;
-    /** The raw address corresponding to the event which has originated in hardware and is associated here for purposes of low level IO to streams.
-    <p>
-     * This address is generally not transformed by event filtering, so filters which transform events, e.g. by shifting them or rotating them, must handle
-    the transformation of the raw addresses. Event filters which simply remove events need not worry about this effect.
+    /**
+     * The raw address corresponding to the event which has originated in
+     * hardware and is associated here for purposes of low level IO to streams.
+     * <p> This address is generally not transformed by event filtering, so
+     * filters which transform events, e.g. by shifting them or rotating them,
+     * must handle the transformation of the raw addresses. Event filters which
+     * simply remove events need not worry about this effect.
      */
     public int address;
-    /** x address of event (horizontal coordinate, by convention starts at left of image) */
+    /**
+     * x address of event (horizontal coordinate, by convention starts at left
+     * of image)
+     */
     public short x;
-    /** y address of event (vertical coordinate, by convention starts at bottom of image) */
+    /**
+     * y address of event (vertical coordinate, by convention starts at bottom
+     * of image)
+     */
     public short y;
-    /** Indicates that this event is a special (e.g. synchronizing) event, e.g. originating from a separate hardware input pin or from a special source. */
+    /**
+     * Indicates that this event is a special (e.g. synchronizing) event, e.g.
+     * originating from a separate hardware input pin or from a special source.
+     */
     public boolean special = false;
+    /**
+     * When this bit is set in raw address it indicates some kind of special
+     * event, e.g. sync, special data, etc.
+     */
+    public final static int SPECIAL_EVENT_BIT_MASK = 0x80000000;
 
     /**
-     * Indicates that this event is a special synchronizing event, e.g. originating from a separate hardware input pin or from the a special source.
+     * Indicates that this event is a special synchronizing event, e.g.
+     * originating from a separate hardware input pin or from the a special
+     * source.
+     *
      * @return the special
      */
     public boolean isSpecial() {
@@ -45,11 +68,19 @@ public class BasicEvent implements EventInterface<BasicEvent> {
     }
 
     /**
-     * Indicates that this event is a special (e.g. synchronizing) event, e.g. originating from a separate hardware input pin or from  a special source.
+     * Indicates that this event is a special (e.g. synchronizing) event, e.g.
+     * originating from a separate hardware input pin or from a special source.
+     * This method also sets or clears the SPECIAL_EVENT_BIT_MASK in the address.
+     *
      * @param special the special to set
      */
-    public void setSpecial(boolean syncEvent) {
-        this.special = syncEvent;
+    public void setSpecial(boolean yes) {
+        this.special = yes;
+        if (yes) {
+            this.address |= SPECIAL_EVENT_BIT_MASK;
+        } else {
+            this.address &= (~SPECIAL_EVENT_BIT_MASK);
+        }
     }
 
     // TODO implement filteredAway in a consistent way across jAER so that the numbers of events and iteration are properly handled (big job)
@@ -64,8 +95,8 @@ public class BasicEvent implements EventInterface<BasicEvent> {
     }
 
     /**
-     * create an BasicEvent with a timestamp, x, y, and a variable length number of bytes types.
-     * TODO, currently the type and types fields are ignored.
+     * create an BasicEvent with a timestamp, x, y, and a variable length number
+     * of bytes types. TODO, currently the type and types fields are ignored.
      */
     public BasicEvent(int timestamp, short x, short y, byte type, byte... types) {
         this.timestamp = timestamp;
@@ -73,8 +104,10 @@ public class BasicEvent implements EventInterface<BasicEvent> {
         this.y = y;
     }
 
-    /** copies fields from source event src to this event
-    @param e the event to copy from
+    /**
+     * copies fields from source event src to this event
+     *
+     * @param e the event to copy from
      */
     public void copyFrom(BasicEvent e) {
         this.timestamp = e.timestamp;
@@ -87,13 +120,15 @@ public class BasicEvent implements EventInterface<BasicEvent> {
 
     /**
      * Creates a new instance of BasicEvent.
+     *
      * @param t the timestamp, by convention in us.
      */
     public BasicEvent(int t) {
         timestamp = t;
     }
 
-    /** Creates a new instance of BasicEvent.
+    /**
+     * Creates a new instance of BasicEvent.
      *
      * @param timestamp the timestamp, by convention in us.
      * @param address the raw address
@@ -104,7 +139,7 @@ public class BasicEvent implements EventInterface<BasicEvent> {
     }
 
     public String toString() {
-        return getClass().getSimpleName() + " timestamp=" + timestamp + " address=" + address + " x=" + x + " y=" + y+" special="+special;
+        return getClass().getSimpleName() + " timestamp=" + timestamp + " address=" + address + " x=" + x + " y=" + y + " special=" + special;
     }
 
     public int getNumCellTypes() {
@@ -153,7 +188,9 @@ public class BasicEvent implements EventInterface<BasicEvent> {
         this.y = y;
     }
 
-    /** Draws this event by some standardized method that will depend on rendering method.
+    /**
+     * Draws this event by some standardized method that will depend on
+     * rendering method.
      *
      * @param drawable the OpenGL drawable.
      */

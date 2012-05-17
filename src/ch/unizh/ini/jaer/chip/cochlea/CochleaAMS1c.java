@@ -334,7 +334,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         // portA
         private PortBit hostResetTimestamps = new PortBit("a7", "hostResetTimestamps", "High to reset timestamps", false),
                 runAERComm = new PortBit("a3", "runAERComm", "High to run CPLD state machine (send events)- also controls CPLDLED2", true);
-//                timestampMaster = new PortBit("a1", "timestampMaster", "High to make this the master AER timing source"); // output from CPLD to signify it is the master
+//                timestampMaster = new PortBit("a1", "timestampMaster", "Higher to make this the master AER timing source"); // output from CPLD to signify it is the master
         // portC
         private PortBit runAdc = new PortBit("c0", "runAdc", "High to run ADC", true);
         // portD
@@ -665,6 +665,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 //            t.start();
 //        }
         /** convenience method for sending configuration to hardware. Sends vendor request VENDOR_REQUEST_SEND_BIAS_BYTES with subcommand cmd, index index and bytes bytes.
+         * cmd is decoded by case switch in firmware to dispatch data properly.
          * 
          * @param cmd the subcommand to set particular configuration, e.g. CMD_CPLD_CONFIG
          * @param index unused
@@ -674,19 +675,19 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         void sendConfig(int cmd, int index, byte[] bytes) throws HardwareInterfaceException {
 
             // debug
-            System.out.print(String.format("sending config cmd 0x%X, index=0x%X, with %d bytes", cmd, index, bytes.length));
+//            System.out.print(String.format("sending config cmd 0x%X, index=0x%X, with %d bytes", cmd, index, bytes.length));
             if (bytes == null || bytes.length == 0) {
-                System.out.println("");
+//                System.out.println(String.format("send config: cmd=0x%x, index=0x%x; (no bytes to send)",cmd,index));
             } else {
                 int max = 8;
                 if (bytes.length < max) {
                     max = bytes.length;
                 }
-                System.out.print(" = ");
-                for (int i = 0; i < max; i++) {
-                    System.out.print(String.format("%X, ", bytes[i]));
-                }
-                System.out.println("");
+//                System.out.print(String.format("%d config bytes = ",max));
+//                for (int i = 0; i < max; i++) {
+//                    System.out.print(String.format("%02X, ", bytes[i]));
+//                }
+//                System.out.println("");
             } // end debug
 
 
@@ -757,6 +758,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                     byte[] bytes = {b.isSet() ? (byte) 1 : (byte) 0};
                     sendConfig(CMD_SETBIT, b.portbit, bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]=value (1,0)
                 } else if (observable instanceof CPLDConfigValue) {
+                    System.out.println(String.format("sending CPLDConfigValue %s",observable));
                     sendCPLDConfig();
                     // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]=value (1,0)
                 } else if (observable instanceof ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen.Scanner) {// TODO resolve with scannerProxy
@@ -1041,7 +1043,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             byte[] bytes = null;
 
             /** Computes the bits to be sent to the CPLD from all the CPLD config values: bits, tristateable bits, and ints.
-             * Writes the bits boolean[] so that they are set according to the bit position, e.g. for a bit if startBit=0, then bits[0] is set.
+             * Writes the bits boolean[] so that they are set according to the bit position, e.g. for a bit if startBit=n, then bits[n] is set.
              * 
              */
             private void compute() {
@@ -1057,7 +1059,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                         }
                     } else if (v instanceof ConfigInt) {
                         int i = ((ConfigInt) v).get();
-                        for (int k = v.startBit; k < v.endBit; k++) {
+                        for (int k = v.startBit; k <= v.endBit; k++) {
                             bits[k] = (i & 1) == 1;
                             i = i >>> 1;
                         }
@@ -1838,7 +1840,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         class OnChipPreamp extends Observable implements PreferenceChangeListener, HasPreference {
 
             protected String key = "OnChipPreamp";
-            String initgain = getPrefs().get("OnChipPreampGain", OnChipPreampGain.High.name());
+            String initgain = getPrefs().get("OnChipPreampGain", OnChipPreampGain.Higher.name());
             OnChipPreampGain gain = OnChipPreampGain.valueOf(initgain);
             CPLDInt gainBits;
 
@@ -1872,9 +1874,9 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             @Override
             public void loadPreference() {
                 try {
-                    setGain(OnChipPreampGain.valueOf(getPrefs().get(key, OnChipPreampGain.High.name())));
+                    setGain(OnChipPreampGain.valueOf(getPrefs().get(key, OnChipPreampGain.Higher.name())));
                 } catch (Exception e) {
-                    setGain(OnChipPreampGain.High);
+                    setGain(OnChipPreampGain.Higher);
                 }
             }
 
@@ -2039,9 +2041,10 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
     /** Enum for on-chip preamp gain values */
     public enum OnChipPreampGain {
 
-        Low(0, "Low (100 kohm)"),
-        Medium(1, "Medium (200 kohm)"),
-        High(2, "High (400 kohm)");
+        Low(0, "Low_80 (80 kohm)"),
+        Medium(1, "Medium_160 (160 kohm)"),
+        Higher(2, "Higher_320 (320 kohm)"),
+        Highest(3, "Highest_640 (640 kohm)");
         private final int code;
         private final String label;
 

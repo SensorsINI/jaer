@@ -166,7 +166,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         biasgen.getOffchipPreampRight().addObserver(this);
 
         switch (biasgen.getOnchipGain()) {
-            case High:
+            case Higher:
                 onchipHighB.setSelected(true);
                 break;
             case Medium:
@@ -317,7 +317,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 cont.qSOSSlider.setValue(c.getQSOS());
             } else if (observable instanceof CochleaAMS1c.Biasgen.OnChipPreamp) {
                 switch (biasgen.getOnchipGain()) {
-                    case High:
+                    case Higher:
                         onchipHighB.setSelected(true);
                         break;
                     case Medium:
@@ -660,6 +660,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         onchipLowB = new javax.swing.JRadioButton();
         onchipMedB = new javax.swing.JRadioButton();
         onchipHighB = new javax.swing.JRadioButton();
+        onchipHighestB = new javax.swing.JRadioButton();
         offchipPanel = new javax.swing.JPanel();
         jPanel4 = new javax.swing.JPanel();
         offchipGainPanelLeft = new javax.swing.JPanel();
@@ -733,7 +734,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         dacCmdPanel.add(jLabel4);
 
         dacCmdComboBox.setEditable(true);
-        dacCmdComboBox.setFont(new java.awt.Font("Courier New", 0, 11));
+        dacCmdComboBox.setFont(new java.awt.Font("Courier New", 0, 11)); // NOI18N
         dacCmdComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "000000 000000", "ffffff ffffff" }));
         dacCmdComboBox.addItemListener(new java.awt.event.ItemListener() {
             public void itemStateChanged(java.awt.event.ItemEvent evt) {
@@ -755,7 +756,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 48, Short.MAX_VALUE)
+            .addGap(0, 52, Short.MAX_VALUE)
         );
 
         dacCmdPanel.add(jPanel3);
@@ -777,7 +778,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 48, Short.MAX_VALUE)
+            .addGap(0, 52, Short.MAX_VALUE)
         );
 
         dacCmdPanel.add(jPanel2);
@@ -853,7 +854,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         bpfKilledPanel.setLayout(new java.awt.GridLayout(1, 0));
         equalizerSlidersPanel.add(bpfKilledPanel);
 
-        channelLabel.setFont(new java.awt.Font("Bitstream Vera Sans Mono", 0, 11));
+        channelLabel.setFont(new java.awt.Font("Bitstream Vera Sans Mono", 0, 11)); // NOI18N
         channelLabel.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
         channelLabel.setText("                                       ");
         equalizerSlidersPanel.add(channelLabel);
@@ -989,7 +990,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 31, Short.MAX_VALUE)
+            .addGap(0, 35, Short.MAX_VALUE)
         );
 
         scannerPanel.add(jPanel1);
@@ -1039,6 +1040,15 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         });
         onchipGainPanel.add(onchipHighB);
 
+        onchipGainGroup.add(onchipHighestB);
+        onchipHighestB.setText("highest");
+        onchipHighestB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                onchipHighestBActionPerformed(evt);
+            }
+        });
+        onchipGainPanel.add(onchipHighestB);
+
         javax.swing.GroupLayout onchipPanelLayout = new javax.swing.GroupLayout(onchipPanel);
         onchipPanel.setLayout(onchipPanelLayout);
         onchipPanelLayout.setHorizontalGroup(
@@ -1046,7 +1056,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
             .addGroup(onchipPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(onchipGainPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(663, Short.MAX_VALUE))
+                .addContainerGap(602, Short.MAX_VALUE))
         );
         onchipPanelLayout.setVerticalGroup(
             onchipPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -1173,7 +1183,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 .addComponent(onchipPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(18, 18, 18)
                 .addComponent(offchipPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 241, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(37, Short.MAX_VALUE))
+                .addContainerGap(45, Short.MAX_VALUE))
         );
 
         tabbedPane.addTab("Mic Preamp", preampPanel);
@@ -1329,7 +1339,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     }//GEN-LAST:event_onchipMedBActionPerformed
 
     private void onchipHighBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_onchipHighBActionPerformed
-        biasgen.getOnchipPreamp().setGain(CochleaAMS1c.OnChipPreampGain.High);
+        biasgen.getOnchipPreamp().setGain(CochleaAMS1c.OnChipPreampGain.Higher);
     }//GEN-LAST:event_onchipHighBActionPerformed
 
     private void setClrADCChannel(ActionEvent evt, int chan) {
@@ -1358,6 +1368,10 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private void resetEqButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetEqButActionPerformed
         biasgen.resetEqualizer();  
     }//GEN-LAST:event_resetEqButActionPerformed
+
+    private void onchipHighestBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_onchipHighestBActionPerformed
+        biasgen.getOnchipPreamp().setGain(CochleaAMS1c.OnChipPreampGain.Highest); 
+    }//GEN-LAST:event_onchipHighestBActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel adcPanel;
@@ -1415,6 +1429,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.ButtonGroup onchipGainGroup;
     private javax.swing.JPanel onchipGainPanel;
     private javax.swing.JRadioButton onchipHighB;
+    private javax.swing.JRadioButton onchipHighestB;
     private javax.swing.JRadioButton onchipLowB;
     private javax.swing.JRadioButton onchipMedB;
     private javax.swing.JPanel onchipPanel;

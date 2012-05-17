@@ -232,12 +232,13 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                         lastTimestampTmp = timestamps[eventCounter];
                         // this is USB2AERmini2 or StereoRetina board which have 1us timestamp tick
                         if ((addresses[eventCounter] & SYNC_EVENT_BITMASK) != 0) {
-                            if (printedSyncEventWarningCount++ < 10) {
+                            if (printedSyncEventWarningCount < 10) {
                                 if (printedSyncEventWarningCount < 10) {
                                     log.info("sync event at timestamp=" + timestamps[eventCounter]);
                                 } else {
                                     log.warning("disabling further printing of sync events");
                                 }
+                                printedSyncEventWarningCount++;
                             }
                         }
                         eventCounter++;

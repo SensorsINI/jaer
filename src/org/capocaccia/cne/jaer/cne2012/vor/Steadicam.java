@@ -279,15 +279,15 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
 //        transform.cosAngle=0; transform.sinAngle=1;
         e.x -= sx2;
         e.y -= sy2;
-        short newx = (short) (transform.cosAngle * e.x - transform.sinAngle * e.y + transform.translation.x);
-        short newy = (short) (transform.sinAngle * e.x + transform.cosAngle * e.y + transform.translation.y);
+        short newx = (short) Math.round((transform.cosAngle * e.x - transform.sinAngle * e.y + transform.translation.x));
+        short newy = (short) Math.round((transform.sinAngle * e.x + transform.cosAngle * e.y + transform.translation.y));
         e.x = (short)(newx+sx2);
         e.y = (short)(newy+sy2);
-        e.address=chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType());
+        e.address=chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
     }
 
     /** Using DirectionSelectiveFilter, the transform is computed by pure
-    integration of the motion signal followed by a highpass filter to remove long term DC offsets.
+    integration of the motion signal followed by a high-pass filter to remove long term DC offsets.
      * <p>
     Using OpticalGyro, the transform is computed by the optical gyro which tracks clusters and measures
     scene translation (and possibly rotation) from a consensus of the tracked clusters.
