@@ -21,17 +21,17 @@ public class GotYourDigits extends EventFilter2D {
         
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> P) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return P;
     }
 
     @Override
     public void resetFilter() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        
     }
 
     @Override
     public void initFilter() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        
     }
     
 }
