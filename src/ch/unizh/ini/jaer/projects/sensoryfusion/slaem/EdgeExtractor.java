@@ -24,6 +24,7 @@ package ch.unizh.ini.jaer.projects.sensoryfusion.slaem;
 public class EdgeExtractor extends EventFilter2D implements Observer, FrameAnnotater{
     
     public EdgePixelArray edgePixels;
+    public Edges edges;
     public Camera camera;
     public int eventNr;
     public int trimmedEvents;
@@ -41,6 +42,12 @@ public class EdgeExtractor extends EventFilter2D implements Observer, FrameAnnot
     {setPropertyTooltip("drawEdgePixels","Should the edgePixels be drawn");}
     
     /**
+     * Determines whether edgePixels should be drawn
+     */
+    private boolean drawEdges=getPrefs().getBoolean("EdgeExtractor.drawEdges",true);
+    {setPropertyTooltip("drawEdges","Should the edges be drawn");}
+    
+    /**
      * Determines whether events that cannot be assigned to an edge should be filtered out
      */
     private int activeEvents=getPrefs().getInt("EdgeExtractor.activeEvents",5000);
@@ -55,10 +62,10 @@ public class EdgeExtractor extends EventFilter2D implements Observer, FrameAnnot
 	/**
      * Selection of the edge detection method
      */
-	public enum EdgePixelMethod {
-        LastSignificants, Voxels
+    public enum EdgePixelMethod {
+        LastSignificants, LineSegments, ProtoClusters
     };
-    private EdgePixelMethod edgePixelMethod = EdgePixelMethod.valueOf(getPrefs().get("ITDFilter.edgePixelMethod", "LastSignificants"));
+    public EdgePixelMethod edgePixelMethod = EdgePixelMethod.valueOf(getPrefs().get("ITDFilter.edgePixelMethod", "LastSignificants"));
 	{setPropertyTooltip("edgePixelMethod","Method to do the edge detection");}
     
     public EdgeExtractor(AEChip chip){
@@ -70,6 +77,7 @@ public class EdgeExtractor extends EventFilter2D implements Observer, FrameAnnot
     @Override
     public void initFilter() {
         edgePixels = new EdgePixelArray(this);
+        edges = new Edges(edgePixels);
         camera = new Camera (chip);
         resetFilter();
     }
@@ -79,6 +87,7 @@ public class EdgeExtractor extends EventFilter2D implements Observer, FrameAnnot
         eventNr = 1;
         edgePixels.resetArray();
         edgePixels.setDeltaTsActivity(deltaTsActivity);
+        edges = new Edges(edgePixels);
     }
     
     @Override
@@ -96,14 +105,8 @@ public class EdgeExtractor extends EventFilter2D implements Observer, FrameAnnot
             }
         }    
         eventNr -= trimmedEvents;
-        switch(edgePixelMethod){
-            case LastSignificants:
-                trimmedEvents = edgePixels.trimActivePixels(eventNr-activeEvents);
-                break;
-            case Voxels:
-                trimmedEvents = edgePixels.trimActivePixelsV(eventNr-activeEvents);
-                break;
-        }
+        trimmedEvents = edgePixels.trimActivePixels(eventNr-activeEvents);
+        edges.trimEdges();
         if(filteringEnabled){ 
             return out;
         }else{
@@ -114,22 +117,12 @@ public class EdgeExtractor extends EventFilter2D implements Observer, FrameAnnot
     @Override
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
-        if(!drawEdgePixels) return;
-        GL gl=drawable.getGL();
-        
-        gl.glColor3f(1,0,0);
-        
-        gl.glPushMatrix();
-
-        gl.glPointSize(4);
-        Iterator edgePixelItr = edgePixels.activePixels.iterator();
-        while(edgePixelItr.hasNext()){
-            EdgePixelArray.EdgePixel pixel = (EdgePixelArray.EdgePixel)edgePixelItr.next();
-            gl.glBegin(GL.GL_POINTS);
-            gl.glVertex2i(pixel.posX,pixel.posY);
-            gl.glEnd();
+        if(drawEdgePixels){
+            edgePixels.annotate(drawable);
         }
-        gl.glPopMatrix();
+        if(drawEdges){
+            edges.annotate(drawable);
+        }
     }
 
     @Override
@@ -194,6 +187,20 @@ public class EdgeExtractor extends EventFilter2D implements Observer, FrameAnnot
      */
     public void setDrawEdgePixels(boolean drawEdgePixels) {
         this.drawEdgePixels = drawEdgePixels;
+    }
+    
+        /**
+     * @return the drawEdges
+     */
+    public boolean isDrawEdges() {
+        return drawEdges;
+    }
+
+    /**
+     * @param drawEdges the drawEdges to set
+     */
+    public void setDrawEdges(boolean drawEdges) {
+        this.drawEdges = drawEdges;
     }
 	
 	public EdgePixelMethod getEdgePixelMethod() {

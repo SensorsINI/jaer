@@ -27,7 +27,7 @@ public class Bodies {
         Edges edges;
         
         public Body(){
-            edges = new Edges();
+            //edges = new Edges();
             
         }
         
