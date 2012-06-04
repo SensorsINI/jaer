@@ -63,17 +63,17 @@ public class EdgePixelArray {
         int trimmed = 0;
         ArrayList<EdgePixel> trimmedPixels = new ArrayList<EdgePixel>();
         switch(extractor.edgePixelMethod){
-            case LastSignificants:
-                for(Iterator<EdgePixel> it = activePixels.iterator(); it.hasNext() ;){
-                    EdgePixel pixel = it.next();
-                    if(pixel.lastEventNr < oldestEventNr){
-                        pixel.deactivate();
-                        trimmedPixels.add(pixel);
-                        trimmed++;
-                    }
-                }
-                activePixels.removeAll(trimmedPixels);
-                break;
+//            case LastSignificants:
+//                for(Iterator<EdgePixel> it = activePixels.iterator(); it.hasNext() ;){
+//                    EdgePixel pixel = it.next();
+//                    if(pixel.lastEventNr < oldestEventNr){
+//                        pixel.deactivate();
+//                        trimmedPixels.add(pixel);
+//                        trimmed++;
+//                    }
+//                }
+//                activePixels.removeAll(trimmedPixels);
+//                break;
             case LineSegments:
                 for(Iterator<EdgePixel> it = activePixels.iterator(); it.hasNext() ;){
                     EdgePixel pixel = it.next();
@@ -129,22 +129,22 @@ public class EdgePixelArray {
             boolean returnValue = false;
             switch(extractor.edgePixelMethod){
                 
-                case LastSignificants:
-                    if((e.timestamp < lastNeighborTs+deltaTsActive) && !isActive){
-                        activate();
-                    }
-                    updateNeighbors(e.timestamp);
-                    if(isActive){
-                        lastEventNr = eventNr;
-                        returnValue = true;
-                    }
-                    break;
+//                case LastSignificants:
+//                    if((e.timestamp < lastNeighborTs+deltaTsActive) && !isActive){
+//                        activate();
+//                    }
+//                    updateNeighbors(e.timestamp);
+//                    if(isActive){
+//                        lastEventNr = eventNr;
+//                        returnValue = true;
+//                    }
+//                    break;
                 
                 case LineSegments:
                     updateNeighbors(e.timestamp);
                     if((e.timestamp < lastNeighborTs+deltaTsActive)){
                         if(edge == null){
-                            extractor.edges.newEdge(this);
+                            //extractor.edges.newEdge(this);
                         }
                         activate();
                     }
@@ -170,13 +170,13 @@ public class EdgePixelArray {
                         neighbor.lastNeighborTs = ts;
                         switch(extractor.edgePixelMethod){
 
-                            case LastSignificants:
-                                if(neighbor.isActive){
-                                    if(!isActive){
-                                        activate();
-                                    }
-                                }
-                                break;
+//                            case LastSignificants:
+//                                if(neighbor.isActive){
+//                                    if(!isActive){
+//                                        activate();
+//                                    }
+//                                }
+//                                break;
 
                             case LineSegments:
                                 if(edge == null && neighbor.edge != null){
