@@ -135,6 +135,7 @@ abstract public class EventFilter2D extends EventFilter {
     /** Checks for passage of interval of at least updateIntervalMs since the last update and 
      * notifies Observers if time has passed.
      * Observers are called with an UpdateMessage formed from the current packet and the current timestamp.
+     * @param packet the current data
      * @param timestamp the timestamp to be checked. If this timestamp is greater than the nextUpdateTime (or has gone backwards, to handle rewinds), then the UpdateMessage is sent.
      * @return true if Observers were notified.
      */

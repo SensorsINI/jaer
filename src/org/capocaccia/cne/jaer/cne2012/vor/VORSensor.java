@@ -23,6 +23,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.label.DirectionSelectiveFilter;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.HighpassFilter;
 
@@ -53,19 +54,21 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
     HighpassFilter panTranslationFilter = new HighpassFilter();
     HighpassFilter tiltTranslationFilter = new HighpassFilter();
     HighpassFilter rollFilter = new HighpassFilter();
-    private float highpassTauMs = getFloat("highpassTauMs", 1000);
+    private float highpassTauMsTranslation = getFloat("highpassTauMsTranslation", 1000);
+    private float highpassTauMsRotation = getFloat("highpassTauMsRotation", 1000);
     float radPerPixel = 1;
     private ArrayBlockingQueue<PhidgetsSpatialEvent> spatialDataQueue = new ArrayBlockingQueue<PhidgetsSpatialEvent>(9 * 4);
 
     public VORSensor(AEChip chip) {
         super(chip);
         chip.addObserver(this);
-        rollFilter.setTauMs(highpassTauMs);
-        panTranslationFilter.setTauMs(highpassTauMs);
-        tiltTranslationFilter.setTauMs(highpassTauMs);
+        rollFilter.setTauMs(highpassTauMsRotation);
+        panTranslationFilter.setTauMs(highpassTauMsTranslation);
+        tiltTranslationFilter.setTauMs(highpassTauMsTranslation);
         log.info(Phidget.getLibraryVersion());
         setPropertyTooltip("sampleIntervalMs", "sensor sample interval in ms");
-        setPropertyTooltip("highpassTauMs", "highpass filter time constant in ms to relax transform back to zero");
+        setPropertyTooltip("highpassTauMsTranslation", "highpass filter time constant in ms to relax transform back to zero for translation (pan, tilt) components");
+        setPropertyTooltip("highpassTauMsRotation", "highpass filter time constant in ms to relax transform back to zero for rotation (roll) component");
         try {
             spatial = new SpatialPhidget();
         } catch (PhidgetException e) {
@@ -74,7 +77,6 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
         }
 
         spatial.addAttachListener(new AttachListener() {
-
             @Override
             public void attached(AttachEvent ae) {
                 log.log(Level.INFO, "attachment of {0}", ae);
@@ -92,7 +94,6 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
             }
         });
         spatial.addDetachListener(new DetachListener() {
-
             @Override
             public void detached(DetachEvent ae) {
                 log.log(Level.INFO, "detachment of {0}", ae);
@@ -105,14 +106,12 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
             }
         });
         spatial.addErrorListener(new ErrorListener() {
-
             @Override
             public void error(ErrorEvent ee) {
                 log.warning(ee.toString());
             }
         });
         spatial.addSpatialDataListener(new SpatialDataListener() {
-
             @Override
             public void data(SpatialDataEvent sde) {
                 if (sde.getData().length == 0) {
@@ -129,23 +128,23 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
                 upAccel = (float) acceleration[0];
                 rightAccel = (float) acceleration[1];
                 zAccel = (float) acceleration[2];
-                float dt = (float) (sed.getTime() - lastTimestampDouble);
+//                float dt = (float) (sed.getTime() - lastTimestampDouble);
                 timestampUs = sed.getTimeSeconds() * 1000000 + sed.getTimeMicroSeconds();
-                panDC += panRate * dt;
-                tiltDC += tiltRate * dt;
-                rollDC += rollRate * dt;
+//                panDC += panRate * dt;
+//                tiltDC += tiltRate * dt;
+//                rollDC += rollRate * dt;
+//
+//                panTranslationDeg = panTranslationFilter.filter(panDC, timestampUs);
+//                tiltTranslationDeg = tiltTranslationFilter.filter(tiltDC, timestampUs);
+//                rollDeg = rollFilter.filter(rollDC, timestampUs);
+//
+//                // computute transform in TransformAtTime units here.
+//                // Use the lens focal length and camera resolution.
+//
+//                transformAtTime.set(timestampUs, (float) (Math.PI / 180 * panTranslationDeg) / radPerPixel, (float) (Math.PI / 180 * tiltTranslationDeg) / radPerPixel, -rollDeg * (float) Math.PI / 180);
+//                lastTimestampDouble = sed.getTime();
 
-                panTranslationDeg = panTranslationFilter.filter(panDC, timestampUs);
-                tiltTranslationDeg = tiltTranslationFilter.filter(tiltDC, timestampUs);
-                rollDeg = rollFilter.filter(rollDC, timestampUs);
-
-                // computute transform in TransformAtTime units here.
-                // Use the lens focal length and camera resolution.
-
-                transformAtTime.set(timestampUs, (float) (Math.PI / 180 * panTranslationDeg) / radPerPixel, (float) (Math.PI / 180 * tiltTranslationDeg) / radPerPixel, -rollDeg * (float) Math.PI / 180);
-                lastTimestampDouble = sed.getTime();
-
-                if (isFilterEnabled() && spatialDataQueue.remainingCapacity()>=6) {
+                if (isFilterEnabled() && spatialDataQueue.remainingCapacity() >= 6) {
                     try {
                         spatialDataQueue.add(new PhidgetsSpatialEvent(timestampUs, panRate, PhidgetsSpatialEvent.SpatialDataType.YawRight));
                         spatialDataQueue.add(new PhidgetsSpatialEvent(timestampUs, rollRate, PhidgetsSpatialEvent.SpatialDataType.RollClockwise));
@@ -178,7 +177,9 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
 
     // delegated methods
     public void zeroGyro() throws PhidgetException {
-        spatial.zeroGyro();
+        if (spatial != null) {
+            spatial.zeroGyro();
+        }
     }
 
     public void setCompassCorrectionParameters(double magField, double offset0, double offset1, double offset2, double gain0, double gain1, double gain2, double T0, double T1, double T2, double T3, double T4, double T5) throws PhidgetException {
@@ -298,20 +299,55 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
             for (spatialEvent = spatialDataQueue.poll(); spatialEvent != null; spatialEvent = spatialDataQueue.poll()) {
                 PhidgetsSpatialEvent oe = (PhidgetsSpatialEvent) outItr.nextOutput();
                 oe.copyFrom(spatialEvent);
+                maybeCallUpdateObservers(in, o.timestamp); // call listeners if enough time has passed for update. This update should update the camera rotation values.
             }
             outItr.nextOutput().copyFrom(o);
         }
         return out;
     }
+    int lastUpdateTimestamp = 0;
+
+    /** Computes transform using current gyro outputs based on timestamp supplied and returns a TransformAtTime object.
+     * Should be called by update in enclosing processor.
+     * @param timestamp the timestamp in us.
+     * @return the transform object representing the camera rotation
+     */
+    public TransformAtTime computeTransform(int timestamp) {
+        float dtS = (timestamp - lastUpdateTimestamp)*1e-6f;
+        lastUpdateTimestamp = timestamp;
+        panDC += panRate * dtS;
+        tiltDC += tiltRate * dtS;
+        rollDC += rollRate * dtS;
+
+        panTranslationDeg = panTranslationFilter.filter(panDC, timestampUs);
+        tiltTranslationDeg = tiltTranslationFilter.filter(tiltDC, timestampUs);
+        rollDeg = rollFilter.filter(rollDC, timestampUs);
+
+        // computute transform in TransformAtTime units here.
+        // Use the lens focal length and camera resolution.
+
+        TransformAtTime tr = new TransformAtTime(timestamp,
+                new Point2D.Float(
+                (float) (Math.PI / 180 * panTranslationDeg) / radPerPixel,
+                (float) (Math.PI / 180 * tiltTranslationDeg) / radPerPixel),
+                -rollDeg * (float) Math.PI / 180);
+        transformAtTime=tr;
+        return tr;
+    }
 
     @Override
     public void resetFilter() {
+        panRate=0;
+        tiltRate=0;
+        rollRate=0;
         panDC = 0;
         tiltDC = 0;
         rollDC = 0;
+        rollDeg=0;
         panTranslationFilter.reset();
         tiltTranslationFilter.reset();
         rollFilter.reset();
+        transformAtTime.set(0,0,0,0);
     }
 
     @Override
@@ -332,7 +368,7 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
         GL gl = drawable.getGL();
         // draw global translation vector
         gl.glPushMatrix();
-        gl.glColor3f(1, 1, 1);
+        gl.glColor3f(1, 0, 0);
         gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
         gl.glLineWidth(6f);
         gl.glBegin(GL.GL_LINES);
@@ -355,10 +391,10 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
 
         // draw transform
         gl.glPushMatrix();
-            gl.glTranslatef(transformAtTime.translation.x + sx2, transformAtTime.translation.y + sy2, 0);
-            gl.glRotatef((float) (transformAtTime.rotation * 180 / Math.PI), 0, 0, 1);
+        gl.glTranslatef(transformAtTime.translation.x + sx2, transformAtTime.translation.y + sy2, 0);
+        gl.glRotatef((float) (transformAtTime.rotation * 180 / Math.PI), 0, 0, 1);
         gl.glLineWidth(2f);
-        gl.glColor3f(1, 1, 1);
+        gl.glColor3f(1, 0, 0);
         gl.glBegin(GL.GL_LINE_LOOP);
         // rectangle around transform
         gl.glVertex2f(-sx2, -sy2);
@@ -435,19 +471,34 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
     /**
      * @return the highpassTauMs
      */
-    public float getHighpassTauMs() {
-        return highpassTauMs;
+    public float getHighpassTauMsTranslation() {
+        return highpassTauMsTranslation;
     }
 
     /**
      * @param highpassTauMs the highpassTauMs to set
      */
-    public void setHighpassTauMs(float highpassTauMs) {
-        this.highpassTauMs = highpassTauMs;
-        putFloat("highpassTauMs", highpassTauMs);
-        rollFilter.setTauMs(highpassTauMs);
+    public void setHighpassTauMsTranslation(float highpassTauMs) {
+        this.highpassTauMsTranslation = highpassTauMs;
+        putFloat("highpassTauMsTranslation", highpassTauMs);
         panTranslationFilter.setTauMs(highpassTauMs);
         tiltTranslationFilter.setTauMs(highpassTauMs);
+    }
+
+    /**
+     * @return the highpassTauMs
+     */
+    public float getHighpassTauMsRotation() {
+        return highpassTauMsRotation;
+    }
+
+    /**
+     * @param highpassTauMs the highpassTauMs to set
+     */
+    public void setHighpassTauMsRotation(float highpassTauMs) {
+        this.highpassTauMsRotation = highpassTauMs;
+        putFloat("highpassTauMsRotation", highpassTauMs);
+        rollFilter.setTauMs(highpassTauMs);
     }
 
     @Override

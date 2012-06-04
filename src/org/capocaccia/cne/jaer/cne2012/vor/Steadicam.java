@@ -35,41 +35,42 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.filter.HighpassFilter;
 
 /**
- * This "vestibular-ocular Steadicam" tries to compensate global image motion by using vestibular and 
- * global motion metrics to 
- * redirect output events and (optionally) also
-a mechanical pantilt unit, shifting them according to motion of input.
-Two methods can be used 1) the global translational flow computed from DirectionSelectiveFilter, 
- * or 2) the optical gyro outputs from OpticalGyro.
- * Also, a Phidgets gyro unit (the 9-DOF unit) provide input that is fused with the optical flow information.
+ * This "vestibular-ocular Steadicam" tries to compensate global image motion by
+ * using vestibular and global motion metrics to redirect output events and
+ * (optionally) also a mechanical pantilt unit, shifting them according to
+ * motion of input. Two methods can be used 1) the global translational flow
+ * computed from DirectionSelectiveFilter, or 2) the optical gyro outputs from
+ * OpticalGyro. Also, a Phidgets gyro unit (the 9-DOF unit) provide input that
+ * is fused with the optical flow information.
  *
  * @author tobi
  */
 @Description("Compenstates global scene translation and rotation to stabilize scene like a SteadiCam.")
 public class Steadicam extends EventFilter2D implements FrameAnnotater, Application, Observer {
 
+//    /**
+//     * @return the vestibularStabilizationEnabled
+//     */
+//    public boolean isVestibularStabilizationEnabled() {
+//        return vestibularStabilizationEnabled;
+//    }
+//
+//    /**
+//     * @param vestibularStabilizationEnabled the vestibularStabilizationEnabled to set
+//     */
+//    public void setVestibularStabilizationEnabled(boolean vestibularStabilizationEnabled) {
+//        this.vestibularStabilizationEnabled = vestibularStabilizationEnabled;
+//        putBoolean("vestibularStabilizationEnabled",vestibularStabilizationEnabled);
+//    }
     /**
-     * @return the vestibularStabilizationEnabled
+     * Classes that compute camera rotation estimate based on scene shift and
+     * maybe rotation around the center of the scene.
      */
-    public boolean isVestibularStabilizationEnabled() {
-        return vestibularStabilizationEnabled;
-    }
+    public enum CameraRotationEstimator {
 
-    /**
-     * @param vestibularStabilizationEnabled the vestibularStabilizationEnabled to set
-     */
-    public void setVestibularStabilizationEnabled(boolean vestibularStabilizationEnabled) {
-        this.vestibularStabilizationEnabled = vestibularStabilizationEnabled;
-        putBoolean("vestibularStabilizationEnabled",vestibularStabilizationEnabled);
-    }
-
-    /** Classes that compute scene shift and maybe rotation around the center of the scene.
-     */
-    public enum PositionComputer {
-
-        OpticalGyro, DirectionSelectiveFilter
+        OpticalGyro, DirectionSelectiveFilter, VORSensor
     };
-    private PositionComputer positionComputer = null; //PositionComputer.valueOf(get("positionComputer", "OpticalGyro"));
+    private CameraRotationEstimator cameraRotationEstimator = null; //PositionComputer.valueOf(get("positionComputer", "OpticalGyro"));
     private float gainTranslation = getFloat("gainTranslation", 1f);
     private float gainVelocity = getFloat("gainVelocity", 1);
     private float gainPanTiltServos = getFloat("gainPanTiltServos", 1);
@@ -78,7 +79,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     private boolean feedforwardEnabled = getBoolean("feedforwardEnabled", false);
     private boolean panTiltEnabled = getBoolean("panTiltEnabled", false);
     private boolean electronicStabilizationEnabled = getBoolean("electronicStabilizationEnabled", true);
-    private boolean vestibularStabilizationEnabled = getBoolean("vestibularStabilizationEnabled", false);
+//    private boolean vestibularStabilizationEnabled = getBoolean("vestibularStabilizationEnabled", false);
     private Point2D.Float translation = new Point2D.Float();
     private HighpassFilter filterX = new HighpassFilter(), filterY = new HighpassFilter(), filterRotation = new HighpassFilter();
     private boolean flipContrast = false;
@@ -92,10 +93,11 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     private PanTilt panTilt = null;
     ArrayList<TransformAtTime> transformList = new ArrayList(); // holds list of transforms over update times commputed by enclosed filter update callbacks
     int sx2, sy2;
-    VORSensor vorSensor=null;
+    VORSensor vorSensor = null;
 
- 
-    /** Creates a new instance of SceneStabilizer */
+    /**
+     * Creates a new instance of SceneStabilizer
+     */
     public Steadicam(AEChip chip) {
         super(chip);
         filterChain = new FilterChain(chip);
@@ -111,22 +113,23 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         opticalGyro.addObserver(this);
         filterChain.add(opticalGyro);
 
-        vorSensor=new VORSensor(chip);
+        vorSensor = new VORSensor(chip);
+        vorSensor.addObserver(this);
         filterChain.add(vorSensor);
-        
+
         setEnclosedFilterChain(filterChain);
 
         try {
-            positionComputer = PositionComputer.valueOf(getString("positionComputer", "OpticalGyro"));
+            cameraRotationEstimator = CameraRotationEstimator.valueOf(getString("positionComputer", "OpticalGyro"));
         } catch (IllegalArgumentException e) {
             log.warning("bad preference " + getString("positionComputer", "OpticalGyro") + " for preferred PositionComputer, choosing default OpticalGyro");
-            positionComputer = PositionComputer.OpticalGyro;
+            cameraRotationEstimator = CameraRotationEstimator.OpticalGyro;
             putString("positionComputer", "OpticalGyro");
         }
 
-        setPositionComputer(positionComputer); // init filter enabled states
+        setCameraRotationEstimator(cameraRotationEstimator); // init filter enabled states
         initFilter(); // init filters for motion compensation
-        setPropertyTooltip("positionComputer", "specifies which method is used to measure scene motion");
+        setPropertyTooltip("cameraRotationEstimator", "specifies which method is used to measure camera rotation estimate");
         setPropertyTooltip("gainTranslation", "gain applied to measured scene translation to affect electronic or mechanical output");
         setPropertyTooltip("gainVelocity", "gain applied to measured scene velocity times the weighted-average cluster aqe to affect electronic or mechanical output");
         setPropertyTooltip("gainPanTiltServos", "gain applied to translation for pan/tilt servo values");
@@ -136,9 +139,9 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         setPropertyTooltip("flipContrast", "flips contrast of output events depending on x*y sign of motion - should maintain colors of edges");
         setPropertyTooltip("cornerFreqHz", "sets highpass corner frequency in Hz for stabilization - frequencies smaller than this will not be stabilized and transform will return to zero on this time scale");
         setPropertyTooltip("annotateEnclosedEnabled", "showing tracking or motion filter output annotation of output, for setting up parameters of enclosed filters");
-        setPropertyTooltip("opticalGyroTauLowpassMs","lowpass filter time constant in ms for optical gyro camera rotation measure");
-        setPropertyTooltip("opticalGyroRotationEnabled","enables rotation in transform");
-        setPropertyTooltip("vestibularStabilizationEnabled","use the gyro/accelometer to provide transform");
+        setPropertyTooltip("opticalGyroTauLowpassMs", "lowpass filter time constant in ms for optical gyro camera rotation measure");
+        setPropertyTooltip("opticalGyroRotationEnabled", "enables rotation in transform");
+        setPropertyTooltip("vestibularStabilizationEnabled", "use the gyro/accelometer to provide transform");
     }
 
     @Override
@@ -219,37 +222,37 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                 }
             }
         }
-        
-        if(isVestibularStabilizationEnabled()){
-            int sizex = chip.getSizeX() - 1;
-            int sizey = chip.getSizeY() - 1;
-            checkOutputPacketEventType(in);
-            int n = in.getSize();
-            short nx, ny;
-            TransformAtTime transform=vorSensor.transformAtTime;
-            if(flipContrast){
-                evenMotion=vorSensor.getPanRate()*vorSensor.getTiltRate()>0;
-            }
-            
-            OutputEventIterator outItr = out.outputIterator();
-             for (Object o : in) {
-                PolarityEvent ev = (PolarityEvent) o;
-                transformEvent(ev, transform);
 
-                if (ev.x > sizex || ev.x < 0 || ev.y > sizey || ev.y < 0) {
-                    continue;
-                }
-                if (!flipContrast) {
-                    outItr.nextOutput().copyFrom(ev);
-                } else {
-                    if (evenMotion) {
-                        ev.type = (byte) (1 - ev.type); // don't let contrast flip when direction changes, try to stabilze contrast  by flipping it as well
-                        ev.polarity = ev.polarity == PolarityEvent.Polarity.On ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
-                    }
-                    outItr.nextOutput().copyFrom(ev);
-                }
-            }
-        }
+//        if(isVestibularStabilizationEnabled()){
+//            int sizex = chip.getSizeX() - 1;
+//            int sizey = chip.getSizeY() - 1;
+//            checkOutputPacketEventType(in);
+//            int n = in.getSize();
+//            short nx, ny;
+//            TransformAtTime transform=vorSensor.transformAtTime;
+//            if(flipContrast){
+//                evenMotion=vorSensor.getPanRate()*vorSensor.getTiltRate()>0;
+//            }
+//            
+//            OutputEventIterator outItr = out.outputIterator();
+//             for (Object o : in) {
+//                PolarityEvent ev = (PolarityEvent) o;
+//                transformEvent(ev, transform);
+//
+//                if (ev.x > sizex || ev.x < 0 || ev.y > sizey || ev.y < 0) {
+//                    continue;
+//                }
+//                if (!flipContrast) {
+//                    outItr.nextOutput().copyFrom(ev);
+//                } else {
+//                    if (evenMotion) {
+//                        ev.type = (byte) (1 - ev.type); // don't let contrast flip when direction changes, try to stabilze contrast  by flipping it as well
+//                        ev.polarity = ev.polarity == PolarityEvent.Polarity.On ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
+//                    }
+//                    outItr.nextOutput().copyFrom(ev);
+//                }
+//            }
+//        }
 
         if (isPanTiltEnabled()) { // mechanical pantilt
             try {
@@ -265,7 +268,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
             }
         }
 
-        if (isElectronicStabilizationEnabled() || isVestibularStabilizationEnabled()) {
+        if (isElectronicStabilizationEnabled()) {
             return out;
         } else {
             return in;
@@ -281,24 +284,28 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         e.y -= sy2;
         short newx = (short) Math.round((transform.cosAngle * e.x - transform.sinAngle * e.y + transform.translation.x));
         short newy = (short) Math.round((transform.sinAngle * e.x + transform.cosAngle * e.y + transform.translation.y));
-        e.x = (short)(newx+sx2);
-        e.y = (short)(newy+sy2);
-        e.address=chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
+        e.x = (short) (newx + sx2);
+        e.y = (short) (newy + sy2);
+        e.address = chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
     }
 
-    /** Using DirectionSelectiveFilter, the transform is computed by pure
-    integration of the motion signal followed by a high-pass filter to remove long term DC offsets.
-     * <p>
-    Using OpticalGyro, the transform is computed by the optical gyro which tracks clusters and measures
-    scene translation (and possibly rotation) from a consensus of the tracked clusters.
-    
-    @param in the input event packet.
+    /**
+     * Called by update on enclosed filter updates. <p> Using
+     * DirectionSelectiveFilter, the transform is computed by pure integration
+     * of the motion signal followed by a high-pass filter to remove long term
+     * DC offsets. <p> Using OpticalGyro, the transform is computed by the
+     * optical gyro which tracks clusters and measures scene translation (and
+     * possibly rotation) from a consensus of the tracked clusters. <p> Using
+     * VORSensor, transform is computed by VORSensor using rate gyro sensors.
+     *
+     *
+     * @param in the input event packet.
      */
     private void computeTransform(UpdateMessage msg) {
         float shiftx = 0, shifty = 0;
         float rot = 0;
         Point2D.Float trans = new Point2D.Float();
-        switch (positionComputer) {
+        switch (cameraRotationEstimator) {
             case DirectionSelectiveFilter:
                 Point2D.Float f = dirFilter.getTranslationVector(); // this is 'instantaneous' motion vector in PPS units (as filtered by DirectionSelectiveFilter)
                 int t = msg.timestamp;
@@ -312,6 +319,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                 shifty += -(float) (gainTranslation * f.y * dtUs * 1e-6f);
                 trans.x = (filterX.filter(shiftx, t)); // these are highpass filtered shifts
                 trans.y = (filterY.filter(shifty, t));
+                transformList.add(new TransformAtTime(msg.timestamp, trans, rot)); // this list is applied during output transform of the event stream
                 break;
             case OpticalGyro:
 //                Point2D.Float trans=opticalGyro.getOpticalGyroTranslation();
@@ -327,8 +335,13 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                 } else {
                     evenMotion = v.y > 0;
                 }
+                transformList.add(new TransformAtTime(msg.timestamp, trans, rot)); // this list is applied during output transform of the event stream
+                break;
+            case VORSensor:
+                // compute the current transform based on rate gyro signals
+                transformList.add(vorSensor.computeTransform(msg.timestamp));
+
         }
-        transformList.add(new TransformAtTime(msg.timestamp, trans, rot)); // this list is applied during output transform of the event stream
     }
 
     float limit(float nsx) {
@@ -496,8 +509,8 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     @Override
     public void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
-        setPositionComputer(positionComputer); // reflag enabled/disabled state of motion computation
-        if(!yes){
+        setCameraRotationEstimator(cameraRotationEstimator); // reflag enabled/disabled state of motion computation
+        if (!yes) {
             setPanTiltEnabled(false); // turn off servos, close interface
         }
     }
@@ -506,7 +519,9 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         return feedforwardEnabled;
     }
 
-    /** true to apply current shift values to input packet events. This does a kind of feedback compensation
+    /**
+     * true to apply current shift values to input packet events. This does a
+     * kind of feedback compensation
      */
     public void setFeedforwardEnabled(boolean feedforwardEnabled) {
         this.feedforwardEnabled = feedforwardEnabled;
@@ -521,32 +536,45 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
 //        this.rotationEnabled=rotationEnabled;
 //        putBoolean("rotationEnabled",rotationEnabled);
 //    }
-    /** Method used to compute shift.
+    /**
+     * Method used to compute shift.
+     *
      * @return the positionComputer
      */
-    public PositionComputer getPositionComputer() {
-        return positionComputer;
+    public CameraRotationEstimator getCameraRotationEstimator() {
+        return cameraRotationEstimator;
     }
 
     /**
-    Chooses how the current position of the scene is computed.
+     * Chooses how the current position of the scene is computed.
+     *
      * @param positionComputer the positionComputer to set
      */
-    synchronized public void setPositionComputer(PositionComputer positionComputer) {
-        this.positionComputer = positionComputer;
+    synchronized public void setCameraRotationEstimator(CameraRotationEstimator positionComputer) {
+        this.cameraRotationEstimator = positionComputer;
         putString("positionComputer", positionComputer.toString());
         switch (positionComputer) {
             case DirectionSelectiveFilter:
                 dirFilter.setFilterEnabled(true);
                 opticalGyro.setFilterEnabled(false);
+                vorSensor.setFilterEnabled(false);
                 break;
             case OpticalGyro:
                 opticalGyro.setFilterEnabled(true);
                 dirFilter.setFilterEnabled(false);
+                vorSensor.setFilterEnabled(false);
+                break;
+            case VORSensor:
+                opticalGyro.setFilterEnabled(false);
+                dirFilter.setFilterEnabled(false);
+                vorSensor.setFilterEnabled(true);
         }
     }
 
-    /** The global translational shift applied to output, computed by enclosed FilterChain.
+    /**
+     * The global translational shift applied to output, computed by enclosed
+     * FilterChain.
+     *
      * @return the x,y shift
      */
     public Point2D.Float getShift() {
@@ -582,8 +610,10 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         return panTiltEnabled;
     }
 
-    /** Enables use of pan/tilt servo controller for camera for mechanical stabilization.
-    
+    /**
+     * Enables use of pan/tilt servo controller for camera for mechanical
+     * stabilization.
+     *
      * @param panTiltEnabled the panTiltEnabled to set
      */
     public void setPanTiltEnabled(boolean panTiltEnabled) {
@@ -591,7 +621,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         putBoolean("panTiltEnabled", panTiltEnabled);
         if (!panTiltEnabled) {
             try {
-                if(panTilt!=null && panTilt.getServoInterface()!=null && panTilt.getServoInterface().isOpen()){
+                if (panTilt != null && panTilt.getServoInterface() != null && panTilt.getServoInterface().isOpen()) {
                     panTilt.getServoInterface().disableAllServos();
                     panTilt.close();
                 }
@@ -601,8 +631,6 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
             }
         }
     }
-    
-    
 
     /**
      * @return the electronicStabilizationEnabled
@@ -612,7 +640,8 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     }
 
     /**
-     * @param electronicStabilizationEnabled the electronicStabilizationEnabled to set
+     * @param electronicStabilizationEnabled the electronicStabilizationEnabled
+     * to set
      */
     public void setElectronicStabilizationEnabled(boolean electronicStabilizationEnabled) {
         this.electronicStabilizationEnabled = electronicStabilizationEnabled;
@@ -634,7 +663,6 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         putFloat("gainPanTiltServos", gainPanTiltServos);
     }
 
-    
     @Override
     public void update(Observable o, Object arg) { // called by enclosed tracker to update event stream on the fly, using intermediate tracking data
         if (arg instanceof UpdateMessage) {
@@ -658,6 +686,4 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     public float getOpticalGyroTauLowpassMs() {
         return opticalGyro.getOpticalGyroTauLowpassMs();
     }
-    
-    
 }
