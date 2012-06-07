@@ -6,19 +6,31 @@ package net.sf.jaer.util.filter;
 public  class HighpassFilter extends Filter{
     float lpVal=0, lastVal=0, value=0;
     LowpassFilter lpFilter=new LowpassFilter();
+    
+    /** Applies a new input value at the time given and returns the new output value.
+     * 
+     * @param val the new sample
+     * @param time the time in us
+     * @return the filter output value
+     */
+    @Override
     public float filter(float val, int time){
         lpVal=lpFilter.filter(val,time);
         lastVal=val;
         value=val-lpVal;
         return value;
     }
+    
+    @Override
     public String toString(){ return "HP tauMs="+tauMs+" lpVal="+lpVal+": "+lastVal+"->"+value; }
     
+    @Override
     public void setInternalValue(float value) {
         this.value=value;
         lpFilter.setInternalValue(value);
     }
 
+    @Override
     public float getValue() {
         return value;
     }
@@ -31,5 +43,17 @@ public  class HighpassFilter extends Filter{
     public float getTauMs() {
         return lpFilter.getTauMs();
     }
+
+    /** Overridden to reset the enclosed lowpass filter.
+     * Apply this method to start from 0 output.
+     * 
+     */
+    @Override
+    public void reset() {
+        super.reset();
+        lpFilter.reset();
+    }
+    
+    
 }
 
