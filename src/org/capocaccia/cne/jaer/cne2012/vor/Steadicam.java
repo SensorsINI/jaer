@@ -371,6 +371,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     public void resetFilter() {
         dirFilter.resetFilter();
         opticalGyro.resetFilter();
+        vorSensor.resetFilter();
         setCornerFreqHz(cornerFreqHz);
         filterX.setInternalValue(0);
         filterY.setInternalValue(0);

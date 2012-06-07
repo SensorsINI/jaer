@@ -59,7 +59,8 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
     private float highpassTauMsRotation = getFloat("highpassTauMsRotation", 1000);
     float radPerPixel = 1;
     private ArrayBlockingQueue<PhidgetsSpatialEvent> spatialDataQueue = new ArrayBlockingQueue<PhidgetsSpatialEvent>(9 * 4);
-
+    private volatile boolean resetCalled=false;
+    
     public VORSensor(AEChip chip) {
         super(chip);
         chip.addObserver(this);
@@ -311,7 +312,7 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
         if (in.getSize() > 0) {
             lastAeTimestamp = in.getLastTimestamp();
         }
-        System.out.println("VORsensor processing " + in);
+//        System.out.println("VORsensor processing " + in);
         checkOutputPacketEventType(PhidgetsSpatialEvent.class);
         OutputEventIterator outItr = out.outputIterator();
         PhidgetsSpatialEvent spatialEvent = null;
@@ -345,6 +346,10 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
      * @return the transform object representing the camera rotation
      */
     synchronized public TransformAtTime computeTransform(int timestamp) {
+        if(resetCalled){
+            log.info("reset called, panDC"+panDC+" panTranslationFilter="+panTranslationFilter);
+            resetCalled=false;
+        }
         float dtS = (timestamp - lastUpdateTimestamp) * 1e-6f;
         lastUpdateTimestamp = timestamp;
         panDC += panRate * dtS;
@@ -374,6 +379,7 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
 
     @Override
     synchronized public void resetFilter() {
+        resetCalled=true;
         spatialDataQueue.clear();
         panRate = 0;
         tiltRate = 0;
