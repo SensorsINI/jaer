@@ -14,6 +14,7 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
@@ -49,7 +50,7 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
     private float tiltTranslationDeg = 0;
     private float rollDeg = 0;
     private float panDC = 0, tiltDC = 0, rollDC = 0;
-    public TransformAtTime transformAtTime = new TransformAtTime(timestampUs, new Point2D.Float(), rollDeg);
+//    public TransformAtTime transformAtTime = new TransformAtTime(timestampUs, new Point2D.Float(), rollDeg);
     private float lensFocalLengthMm = 8.5f;
     HighpassFilter panTranslationFilter = new HighpassFilter();
     HighpassFilter tiltTranslationFilter = new HighpassFilter();
@@ -66,7 +67,7 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
         panTranslationFilter.setTauMs(highpassTauMsTranslation);
         tiltTranslationFilter.setTauMs(highpassTauMsTranslation);
         log.info(Phidget.getLibraryVersion());
-        setPropertyTooltip("sampleIntervalMs", "sensor sample interval in ms");
+        setPropertyTooltip("sampleIntervalMs", "sensor sample interval in ms, min 4ms, powers of two, e.g. 4,8,16,32...");
         setPropertyTooltip("highpassTauMsTranslation", "highpass filter time constant in ms to relax transform back to zero for translation (pan, tilt) components");
         setPropertyTooltip("highpassTauMsRotation", "highpass filter time constant in ms to relax transform back to zero for rotation (roll) component");
         try {
@@ -77,6 +78,7 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
         }
 
         spatial.addAttachListener(new AttachListener() {
+
             @Override
             public void attached(AttachEvent ae) {
                 log.log(Level.INFO, "attachment of {0}", ae);
@@ -94,24 +96,23 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
             }
         });
         spatial.addDetachListener(new DetachListener() {
+
             @Override
             public void detached(DetachEvent ae) {
                 log.log(Level.INFO, "detachment of {0}", ae);
-                try {
-                    spatial.close();
-                } catch (PhidgetException ex) {
-                    log.warning(ex.toString());
-                }
-                spatial = null;
+                // do not close since then we will not get attachment events anymore
+                resetFilter();
             }
         });
         spatial.addErrorListener(new ErrorListener() {
+
             @Override
             public void error(ErrorEvent ee) {
                 log.warning(ee.toString());
             }
         });
         spatial.addSpatialDataListener(new SpatialDataListener() {
+
             @Override
             public void data(SpatialDataEvent sde) {
                 if (sde.getData().length == 0) {
@@ -167,6 +168,17 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
         }
     }
 
+    @Override
+    public synchronized void cleanup() {
+        super.cleanup();
+        try {
+            spatial.close();
+        } catch (PhidgetException ex) {
+            Logger.getLogger(VORSensor.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        spatial = null;
+    }
+
     public void doZeroGyro() {
         try {
             zeroGyro();
@@ -177,7 +189,7 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
 
     // delegated methods
     public void zeroGyro() throws PhidgetException {
-        if (spatial != null) {
+        if (spatial != null && spatial.isAttached()) {
             spatial.zeroGyro();
         }
     }
@@ -210,22 +222,22 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
         return spatial.getGyroAxisCount();
     }
 
-    public int getMinSampleIntervalMs() throws PhidgetException {
-        if (spatial.isAttached()) {
-            return spatial.getDataRateMax();
-        } else {
-            return 4;
-        }
-    }
-
-    public int getMaxSampleIntervalMs() throws PhidgetException {
-        if (spatial.isAttached()) {
-            return spatial.getDataRateMin();
-        } else {
-            return 1000;
-        }
-    }
-
+    // slider doesn't work well with propertyChange callbacks
+//    public int getMinSampleIntervalMs() throws PhidgetException {
+//        if (spatial.isAttached()) {
+//            return spatial.getDataRateMax();
+//        } else {
+//            return 4;
+//        }
+//    }
+//
+//    public int getMaxSampleIntervalMs() throws PhidgetException {
+//        if (spatial.isAttached()) {
+//            return spatial.getDataRateMin();
+//        } else {
+//            return 1000;
+//        }
+//    }
     public int getSampleIntervalMs() throws PhidgetException {
         if (spatial.isAttached()) {
             this.sampleIntervalMs = spatial.getDataRate();
@@ -234,16 +246,27 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
             return sampleIntervalMs;
         }
     }
+    private final int[] INT = {4, 8, 16, 32, 64, 128, 256, 512, 1024};
 
     public void setSampleIntervalMs(int ms) {
+        int old = this.sampleIntervalMs;
         try {
+
+            for (int i = 0; i < INT.length; i++) {
+                if (ms <= INT[i]) {
+                    ms = INT[i];
+                    break;
+                }
+            }
             if (spatial.isAttached()) {
                 spatial.setDataRate(ms);
             }
             this.sampleIntervalMs = ms;
+            getSupport().firePropertyChange("sampleIntervalMs", old, this.sampleIntervalMs);
             putInt("sampleIntervalMs", ms);
+            log.info("set sample interval to " + ms + " ms");
         } catch (PhidgetException ex) {
-            log.log(Level.WARNING, "can''t set interval {0}: {1}", new Object[]{ms, ex.toString()});
+            log.log(Level.WARNING, "can''t set interval {0}: {1}", new Object[]{this.sampleIntervalMs, ex.toString()});
         }
     }
 
@@ -288,6 +311,7 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
         if (in.getSize() > 0) {
             lastAeTimestamp = in.getLastTimestamp();
         }
+        System.out.println("VORsensor processing " + in);
         checkOutputPacketEventType(PhidgetsSpatialEvent.class);
         OutputEventIterator outItr = out.outputIterator();
         PhidgetsSpatialEvent spatialEvent = null;
@@ -299,21 +323,29 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
             for (spatialEvent = spatialDataQueue.poll(); spatialEvent != null; spatialEvent = spatialDataQueue.poll()) {
                 PhidgetsSpatialEvent oe = (PhidgetsSpatialEvent) outItr.nextOutput();
                 oe.copyFrom(spatialEvent);
-                maybeCallUpdateObservers(in, o.timestamp); // call listeners if enough time has passed for update. This update should update the camera rotation values.
             }
+            // update transform so that whatever is using this sensor output gets a new transform in their list that is updated during
+            // the enclosing filter processing of the transform.
+            boolean addedTransform = maybeCallUpdateObservers(in, o.timestamp); // call listeners if enough time has passed for update. This update should update the camera rotation values.
+//            if (addedTransform) {
+//                System.out.println("added a transform at t=" + o.timestamp);
+//            }
             outItr.nextOutput().copyFrom(o);
         }
         return out;
     }
     int lastUpdateTimestamp = 0;
 
-    /** Computes transform using current gyro outputs based on timestamp supplied and returns a TransformAtTime object.
-     * Should be called by update in enclosing processor.
+    /**
+     * Computes transform using current gyro outputs based on timestamp supplied
+     * and returns a TransformAtTime object. Should be called by update in
+     * enclosing processor.
+     *
      * @param timestamp the timestamp in us.
      * @return the transform object representing the camera rotation
      */
-    public TransformAtTime computeTransform(int timestamp) {
-        float dtS = (timestamp - lastUpdateTimestamp)*1e-6f;
+    synchronized public TransformAtTime computeTransform(int timestamp) {
+        float dtS = (timestamp - lastUpdateTimestamp) * 1e-6f;
         lastUpdateTimestamp = timestamp;
         panDC += panRate * dtS;
         tiltDC += tiltRate * dtS;
@@ -323,6 +355,11 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
         tiltTranslationDeg = tiltTranslationFilter.filter(tiltDC, timestampUs);
         rollDeg = rollFilter.filter(rollDC, timestampUs);
 
+//        float lim=20;
+//        panTranslationDeg=clip(panTranslationDeg,lim);
+//        tiltTranslationDeg=clip(tiltTranslationDeg,lim);
+//        rollDeg=clip(rollDeg,lim);
+
         // computute transform in TransformAtTime units here.
         // Use the lens focal length and camera resolution.
 
@@ -331,23 +368,23 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
                 (float) (Math.PI / 180 * panTranslationDeg) / radPerPixel,
                 (float) (Math.PI / 180 * tiltTranslationDeg) / radPerPixel),
                 -rollDeg * (float) Math.PI / 180);
-        transformAtTime=tr;
+//        transformAtTime = tr;
         return tr;
     }
 
     @Override
-    public void resetFilter() {
-        panRate=0;
-        tiltRate=0;
-        rollRate=0;
+    synchronized public void resetFilter() {
+        spatialDataQueue.clear();
+        panRate = 0;
+        tiltRate = 0;
+        rollRate = 0;
         panDC = 0;
         tiltDC = 0;
         rollDC = 0;
-        rollDeg=0;
+        rollDeg = 0;
         panTranslationFilter.reset();
         tiltTranslationFilter.reset();
         rollFilter.reset();
-        transformAtTime.set(0,0,0,0);
     }
 
     @Override
@@ -366,7 +403,7 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
         }
 
         GL gl = drawable.getGL();
-        // draw global translation vector
+        // draw rate gyro outputs
         gl.glPushMatrix();
         gl.glColor3f(1, 0, 0);
         gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
@@ -377,7 +414,7 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
         gl.glEnd();
         gl.glPopMatrix();
 
-        // draw global rotation vector as line left/right
+        // draw roll gryo as line left/right
         gl.glPushMatrix();
         gl.glTranslatef(chip.getSizeX() / 2, (chip.getSizeY() * 3) / 4, 0);
         gl.glLineWidth(6f);
@@ -389,20 +426,20 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
 
         int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
 
-        // draw transform
-        gl.glPushMatrix();
-        gl.glTranslatef(transformAtTime.translation.x + sx2, transformAtTime.translation.y + sy2, 0);
-        gl.glRotatef((float) (transformAtTime.rotation * 180 / Math.PI), 0, 0, 1);
-        gl.glLineWidth(2f);
-        gl.glColor3f(1, 0, 0);
-        gl.glBegin(GL.GL_LINE_LOOP);
-        // rectangle around transform
-        gl.glVertex2f(-sx2, -sy2);
-        gl.glVertex2f(sx2, -sy2);
-        gl.glVertex2f(sx2, sy2);
-        gl.glVertex2f(-sx2, sy2);
-        gl.glEnd();
-        gl.glPopMatrix();
+//        // draw transform
+//        gl.glPushMatrix();
+//        gl.glTranslatef(transformAtTime.translation.x + sx2, transformAtTime.translation.y + sy2, 0);
+//        gl.glRotatef((float) (transformAtTime.rotation * 180 / Math.PI), 0, 0, 1);
+//        gl.glLineWidth(2f);
+//        gl.glColor3f(1, 0, 0);
+//        gl.glBegin(GL.GL_LINE_LOOP);
+//        // rectangle around transform
+//        gl.glVertex2f(-sx2, -sy2);
+//        gl.glVertex2f(sx2, -sy2);
+//        gl.glVertex2f(sx2, sy2);
+//        gl.glVertex2f(-sx2, sy2);
+//        gl.glEnd();
+//        gl.glPopMatrix();
     }
 
     /**
@@ -504,5 +541,14 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
     @Override
     public void update(Observable o, Object arg) {
         radPerPixel = (float) Math.asin(getChip().getPixelWidthUm() * 1e-3f / lensFocalLengthMm);
+    }
+
+    private float clip(float f, float lim) {
+        if (f > lim) {
+            f = lim;
+        } else if (f < -lim) {
+            f = -lim;
+        }
+        return f;
     }
 }

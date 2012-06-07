@@ -48,20 +48,6 @@ import net.sf.jaer.util.filter.HighpassFilter;
 @Description("Compenstates global scene translation and rotation to stabilize scene like a SteadiCam.")
 public class Steadicam extends EventFilter2D implements FrameAnnotater, Application, Observer {
 
-//    /**
-//     * @return the vestibularStabilizationEnabled
-//     */
-//    public boolean isVestibularStabilizationEnabled() {
-//        return vestibularStabilizationEnabled;
-//    }
-//
-//    /**
-//     * @param vestibularStabilizationEnabled the vestibularStabilizationEnabled to set
-//     */
-//    public void setVestibularStabilizationEnabled(boolean vestibularStabilizationEnabled) {
-//        this.vestibularStabilizationEnabled = vestibularStabilizationEnabled;
-//        putBoolean("vestibularStabilizationEnabled",vestibularStabilizationEnabled);
-//    }
     /**
      * Classes that compute camera rotation estimate based on scene shift and
      * maybe rotation around the center of the scene.
@@ -94,6 +80,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     ArrayList<TransformAtTime> transformList = new ArrayList(); // holds list of transforms over update times commputed by enclosed filter update callbacks
     int sx2, sy2;
     VORSensor vorSensor = null;
+    TransformAtTime lastTransform = null;
 
     /**
      * Creates a new instance of SceneStabilizer
@@ -102,7 +89,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         super(chip);
         filterChain = new FilterChain(chip);
 
-        // if dirFilter is used to compute transform, opticalGyro is still used to transform the events
+        // if dirFilter is used to compute lastTransform, opticalGyro is still used to lastTransform the events
         dirFilter = new DirectionSelectiveFilter(chip);
         dirFilter.setAnnotationEnabled(false);
         dirFilter.addObserver(this);
@@ -150,41 +137,9 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         sy2 = chip.getSizeY() / 2;
         checkOutputPacketEventType(in);
         transformList.clear(); // empty list of transforms to be applied
-//        int lastTimeStamp=in.getLastTimestamp();
-//        if (feedforwardEnabled && isElectronicStabilizationEnabled()) {
-//            if (ffPacket == null) {
-//                ffPacket = new EventPacket(in.getEventClass());
-//            }
-//            int sx = chip.getSizeX(), sy = chip.getSizeY();
-//            int dx = Math.round(translation.x), dy = Math.round(translation.y); // TODO wrong transform, leaves out rotation
-//            OutputEventIterator oi = ffPacket.outputIterator();
-//            for (Object o : in) {
-//                PolarityEvent e = (PolarityEvent) o;
-//                int x = (e.x + dx);
-//                if (x < 0 | x >= sx) {
-//                    continue;
-//                }
-//                int y = (e.y + dy);
-//                if (y < 0 || y >= sy) {
-//                    continue;
-//                }
-//                PolarityEvent oe = (PolarityEvent) oi.nextOutput();
-//                oe.copyFrom(e);
-//            }
-//            in = ffPacket;
-//        }
         getEnclosedFilterChain().filterPacket(in); // issues callbacks to us periodically via update based on 
-//        switch(positionComputer){
-//            case DirectionSelectiveFilter:
-//                dir=enclosedFilter.filterPacket(in);
-//                break;
-//            case OpticalGyro:
-//                dir=opticalGyro.filterPacket(in);
-//        }
-
 
         if (isElectronicStabilizationEnabled()) {
-//            int dx=Math.round(translation.x), dy=Math.round(translation.y);
             int sizex = chip.getSizeX() - 1;
             int sizey = chip.getSizeY() - 1;
             checkOutputPacketEventType(in);
@@ -192,21 +147,20 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
             short nx, ny;
             OutputEventIterator outItr = out.outputIterator();
             // TODO compute evenMotion boolean from opticalGyro
-            TransformAtTime transform = null;
             Iterator<TransformAtTime> transformItr = transformList.iterator();
             if (transformItr.hasNext()) {
-                transform = transformItr.next();
-//                System.out.println(transform.toString());
+                lastTransform = transformItr.next();
+//                System.out.println(lastTransform.toString());
             }
             for (Object o : in) {
                 PolarityEvent ev = (PolarityEvent) o;
-                if (transform != null && ev.timestamp > transform.timestamp) {
+                if (lastTransform != null && ev.timestamp > lastTransform.timestamp) {
                     if (transformItr.hasNext()) {
-                        transform = transformItr.next();
-//                        System.out.println(transform.toString());
+                        lastTransform = transformItr.next();
+//                        System.out.println(lastTransform.toString());
                     }
                 }
-                transformEvent(ev, transform);
+                transformEvent(ev, lastTransform);
 
                 if (ev.x > sizex || ev.x < 0 || ev.y > sizey || ev.y < 0) {
                     continue;
@@ -222,37 +176,6 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                 }
             }
         }
-
-//        if(isVestibularStabilizationEnabled()){
-//            int sizex = chip.getSizeX() - 1;
-//            int sizey = chip.getSizeY() - 1;
-//            checkOutputPacketEventType(in);
-//            int n = in.getSize();
-//            short nx, ny;
-//            TransformAtTime transform=vorSensor.transformAtTime;
-//            if(flipContrast){
-//                evenMotion=vorSensor.getPanRate()*vorSensor.getTiltRate()>0;
-//            }
-//            
-//            OutputEventIterator outItr = out.outputIterator();
-//             for (Object o : in) {
-//                PolarityEvent ev = (PolarityEvent) o;
-//                transformEvent(ev, transform);
-//
-//                if (ev.x > sizex || ev.x < 0 || ev.y > sizey || ev.y < 0) {
-//                    continue;
-//                }
-//                if (!flipContrast) {
-//                    outItr.nextOutput().copyFrom(ev);
-//                } else {
-//                    if (evenMotion) {
-//                        ev.type = (byte) (1 - ev.type); // don't let contrast flip when direction changes, try to stabilze contrast  by flipping it as well
-//                        ev.polarity = ev.polarity == PolarityEvent.Polarity.On ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
-//                    }
-//                    outItr.nextOutput().copyFrom(ev);
-//                }
-//            }
-//        }
 
         if (isPanTiltEnabled()) { // mechanical pantilt
             try {
@@ -279,7 +202,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         if (transform == null) {
             return;
         }
-//        transform.cosAngle=0; transform.sinAngle=1;
+//        lastTransform.cosAngle=0; lastTransform.sinAngle=1;
         e.x -= sx2;
         e.y -= sy2;
         short newx = (short) Math.round((transform.cosAngle * e.x - transform.sinAngle * e.y + transform.translation.x));
@@ -291,12 +214,13 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
 
     /**
      * Called by update on enclosed filter updates. <p> Using
-     * DirectionSelectiveFilter, the transform is computed by pure integration
-     * of the motion signal followed by a high-pass filter to remove long term
-     * DC offsets. <p> Using OpticalGyro, the transform is computed by the
-     * optical gyro which tracks clusters and measures scene translation (and
-     * possibly rotation) from a consensus of the tracked clusters. <p> Using
-     * VORSensor, transform is computed by VORSensor using rate gyro sensors.
+     * DirectionSelectiveFilter, the lastTransform is computed by pure
+     * integration of the motion signal followed by a high-pass filter to remove
+     * long term DC offsets. <p> Using OpticalGyro, the lastTransform is
+     * computed by the optical gyro which tracks clusters and measures scene
+     * translation (and possibly rotation) from a consensus of the tracked
+     * clusters. <p> Using VORSensor, lastTransform is computed by VORSensor
+     * using rate gyro sensors.
      *
      *
      * @param in the input event packet.
@@ -319,7 +243,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                 shifty += -(float) (gainTranslation * f.y * dtUs * 1e-6f);
                 trans.x = (filterX.filter(shiftx, t)); // these are highpass filtered shifts
                 trans.y = (filterY.filter(shifty, t));
-                transformList.add(new TransformAtTime(msg.timestamp, trans, rot)); // this list is applied during output transform of the event stream
+                transformList.add(new TransformAtTime(msg.timestamp, trans, rot)); // this list is applied during output lastTransform of the event stream
                 break;
             case OpticalGyro:
 //                Point2D.Float trans=opticalGyro.getOpticalGyroTranslation();
@@ -335,11 +259,13 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                 } else {
                     evenMotion = v.y > 0;
                 }
-                transformList.add(new TransformAtTime(msg.timestamp, trans, rot)); // this list is applied during output transform of the event stream
+                transformList.add(new TransformAtTime(msg.timestamp, trans, rot)); // this list is applied during output lastTransform of the event stream
                 break;
             case VORSensor:
-                // compute the current transform based on rate gyro signals
-                transformList.add(vorSensor.computeTransform(msg.timestamp));
+                // compute the current lastTransform based on rate gyro signals
+                TransformAtTime tr=vorSensor.computeTransform(msg.timestamp);
+//                System.out.println("added transform "+tr);
+                transformList.add(tr);
 
         }
     }
@@ -363,14 +289,13 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         if (annotateEnclosedEnabled) { // show motion or feature tracking output, transformed accordingly
             if (!isElectronicStabilizationEnabled()) {
                 opticalGyro.annotate(drawable); // using mechanical
-            } else { // transform cluster tracker annotation to draw on top of transformed scene
+            } else { // lastTransform cluster tracker annotation to draw on top of transformed scene
                 gl.glPushMatrix();
                 gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
-                // use most recent optical gyro transform
-                if (!transformList.isEmpty()) {
-                    TransformAtTime t = transformList.get(transformList.size() - 1);
-                    rotation = t.rotation;
-                    translation = t.translation;
+                // use most recent optical gyro lastTransform
+                if (lastTransform != null) {
+                    rotation = lastTransform.rotation;
+                    translation = lastTransform.translation;
                 }
                 gl.glRotatef((float) (rotation * 180 / Math.PI), 0, 0, 1);
                 gl.glTranslatef(translation.x - chip.getSizeX() / 2, translation.y - chip.getSizeY() / 2, 0);
@@ -378,52 +303,22 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                 gl.glPopMatrix();
             }
         }
-        if (!transformList.isEmpty() && isElectronicStabilizationEnabled()) { // draw translation frame
-//            gl.glPushMatrix();
-//            gl.glColor3f(1,0,0);
-//            gl.glTranslatef(chip.getSizeX()/2,chip.getSizeY()/2,0);
-//            gl.glLineWidth(.3f);
-//            gl.glBegin(GL.GL_LINES);
-//            gl.glVertex2f(0,0);
-//            gl.glVertex2f(translation.x,translation.y); // vector from center to translation
-//            gl.glEnd();
-//            gl.glPopMatrix();
-
-            TransformAtTime transform = transformList.get(transformList.size() - 1);
-            float rotation = transform.rotation;
-            Point2D.Float translation = transform.translation;
-
-            final int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
-            gl.glPushMatrix(); // go back to origin
-            gl.glLineWidth(.3f);
-            gl.glColor3f(1, 0, 0);
-            gl.glTranslatef(sx2, sy2, 0);
-
-            gl.glRotatef((float) (rotation * 180 / Math.PI), 0, 0, 1);
-            gl.glTranslatef(translation.x - sx2, translation.y - sy2, 0);
-            gl.glBegin(GL.GL_LINE_LOOP); // draw box of translation
-            gl.glVertex2f(0, 0);
-            gl.glVertex2f(sx2 * 2, 0);
-            gl.glVertex2f(sx2 * 2, sy2 * 2);
-            gl.glVertex2f(0, sy2 * 2);
-            gl.glEnd();
-            gl.glPopMatrix();
-
+        if (lastTransform != null && isElectronicStabilizationEnabled()) { // draw translation frame
+            // draw transform
             gl.glPushMatrix();
-            // xhairs - these are drawn in unshifted frame to allow monitoring of stability of image
-            gl.glBegin(GL.GL_LINES);
-            gl.glColor3f(0, 0, 1);
-            // vert xhair line
-            gl.glVertex2f(chip.getSizeX() / 2, 0);
-            gl.glVertex2f(chip.getSizeX() / 2, chip.getSizeY());
-
-            // horiz xhair line
-            gl.glVertex2f(0, chip.getSizeY() / 2);
-            gl.glVertex2f(chip.getSizeX(), chip.getSizeY() / 2);
-
+            gl.glTranslatef(lastTransform.translation.x + sx2, lastTransform.translation.y + sy2, 0);
+            gl.glRotatef((float) (lastTransform.rotation * 180 / Math.PI), 0, 0, 1);
+            gl.glLineWidth(2f);
+            gl.glColor3f(1, 0, 0);
+            gl.glBegin(GL.GL_LINE_LOOP);
+            // rectangle around transform
+            gl.glVertex2f(-sx2, -sy2);
+            gl.glVertex2f(sx2, -sy2);
+            gl.glVertex2f(sx2, sy2);
+            gl.glVertex2f(-sx2, sy2);
             gl.glEnd();
-
             gl.glPopMatrix();
+
         }
     }
 
@@ -507,9 +402,10 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     }
 
     @Override
-    public void setFilterEnabled(boolean yes) {
+    synchronized public void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
         setCameraRotationEstimator(cameraRotationEstimator); // reflag enabled/disabled state of motion computation
+        getEnclosedFilterChain().reset();
         if (!yes) {
             setPanTiltEnabled(false); // turn off servos, close interface
         }
@@ -667,7 +563,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     public void update(Observable o, Object arg) { // called by enclosed tracker to update event stream on the fly, using intermediate tracking data
         if (arg instanceof UpdateMessage) {
             UpdateMessage msg = (UpdateMessage) arg;
-            computeTransform(msg); // gets the transform from the enclosed filter
+            computeTransform(msg); // gets the lastTransform from the enclosed filter
         }
     }
 
