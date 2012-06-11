@@ -717,7 +717,7 @@ public class ClusterTracker extends EventFilter2D implements FrameAnnotater, Obs
     synchronized public void resetFilter() {
         clusters.clear();
         //Emre: The following causes nullpointer exceptions when no kalman filter is used. Should this not go into an enclosed filter?
-        kalmanFilter.resetFilter();
+        if(kalmanFilter != null)kalmanFilter.resetFilter();
     }
     
     public EventPacket filterPacket(EventPacket in) {
