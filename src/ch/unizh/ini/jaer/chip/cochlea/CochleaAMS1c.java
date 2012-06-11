@@ -694,7 +694,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             if (bytes == null) {
                 bytes = emptyByteArray;
             }
-//            log.info(String.format("sending command vendor request cmd=%d, index=%d, and %d bytes", cmd, index, bytes.length));
+            log.info(String.format("sending command vendor request cmd=0x%x, index=0x%x, with %d bytes", cmd, index, bytes.length));
             if (cypress != null) {
                 cypress.sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff & cmd), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
             }
@@ -758,7 +758,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                     byte[] bytes = {b.isSet() ? (byte) 1 : (byte) 0};
                     sendConfig(CMD_SETBIT, b.portbit, bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]=value (1,0)
                 } else if (observable instanceof CPLDConfigValue) {
-                    System.out.println(String.format("sending CPLDConfigValue %s",observable));
+//                    System.out.println(String.format("sending CPLDConfigValue %s",observable));
                     sendCPLDConfig();
                     // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]=value (1,0)
                 } else if (observable instanceof ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen.Scanner) {// TODO resolve with scannerProxy
@@ -771,6 +771,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 } else if (observable instanceof Equalizer.EqualizerChannel) {
                     // sends 0 byte message (no data phase for speed)
                     Equalizer.EqualizerChannel c = (Equalizer.EqualizerChannel) observable;
+                    log.info("Sending "+c);
                     int value = (c.channel << 8) + CMD_EQUALIZER; // value has cmd in LSB, channel in MSB
                     int index = c.qsos + (c.qbpf << 5) + (c.lpfkilled ? 1 << 10 : 0) + (c.bpfkilled ? 1 << 11 : 0); // index has b11=bpfkilled, b10=lpfkilled, b9:5=qbpf, b4:0=qsos
                     sendConfig(value, index);
@@ -1543,7 +1544,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         }
 
         /** Extends base scanner class to control the relevant bits and parameters of the hardware */
-        public class Scanner extends ScannerHardwareInterfaceProxy implements PreferenceChangeListener, HasPreference, Observer {
+        public class Scanner extends ScannerHardwareInterfaceProxy implements RemoteControlled, PreferenceChangeListener, HasPreference, Observer {
 
             public final int nstages = 64;
             public final int minPeriod = 10; // to avoid FX2 getting swamped by interrupts for scanclk
@@ -1551,9 +1552,45 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
             public Scanner(CochleaAMS1c chip) {
                 super(chip);
+               if (getRemoteControl() != null) {
+                    getRemoteControl().addCommandListener(this, "setscannerchannel channel", "Sets the scanner cochlea channel (0-63) and disables continuous scan");
+                    getRemoteControl().addCommandListener(this, "setscannercontinuousscan <true|false>", "Sets the scanner for continuous scan");
+                    getRemoteControl().addCommandListener(this, "setscannerselect <bm|gangvm>", "Sets the scanner for either basilar membrane or ganglion cell Vm voltage");
+                }
                 loadPreference();
                 getPrefs().addPreferenceChangeListener(this);
                 hasPreferencesList.add(this);
+            }
+            
+            @Override
+            public String processRemoteControlCommand(RemoteControlCommand command, String input) {
+                String[] tok = input.split("\\s");
+                if (tok.length < 2) {
+                    return "error: bad syntax or too few arguments in "+input;
+                } else {
+                    if(tok[0].equalsIgnoreCase("setscannerchannel")){
+                        try {
+                        int val = Integer.parseInt(tok[1]);
+                        setScanContinuouslyEnabled(false);
+                        setScanX(val);
+                    } catch (NumberFormatException e) {
+                        return "error: bad number format \""+tok[1]+"\"for channel?\n";
+                    }
+                    }else if(tok[0].equalsIgnoreCase("setscannercontinuousscan")){
+                        if(tok[1].equalsIgnoreCase("true")){
+                            setScanContinuouslyEnabled(true);
+                        }else if(tok[1].equalsIgnoreCase("false")){
+                            setScanContinuouslyEnabled(false);
+                        }else return "error: bad option "+tok[1]+" for setscannercontinuousscan";
+                    }else if(tok[0].equalsIgnoreCase("setscannerselect")){
+                        if(tok[1].equalsIgnoreCase("bm")){
+                            setScanGanglionCellVMem(false);
+                        }else if(tok[1].equalsIgnoreCase("gangvm")){
+                            setScanGanglionCellVMem(true);
+                        }else return "error: bad option \""+tok[1]+"\" for setscannercontinuousscan; must be either bm or gangvm";
+                    }
+                }
+                return "";
             }
 
             public int getPeriod() {
@@ -1646,6 +1683,10 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                     setScanX(Biasgen.this.scanX.get());
                 }
             }
+            
+ 
+
+
         }
 
         /** Encapsulates each channels equalizer. Information is sent to device as
@@ -1830,8 +1871,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 private void reset() {
                     setBpfKilled(false);
                     setLpfKilled(false);
-                    setQBPF(0);
-                    setQSOS(0);
+                    setQBPF(15);
+                    setQSOS(15);
                 }
             }
         } // equalizer
