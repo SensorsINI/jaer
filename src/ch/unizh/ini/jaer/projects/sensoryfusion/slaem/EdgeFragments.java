@@ -25,7 +25,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnotater{
     
-    EdgeConstructor constructor;
+//    EdgeConstructor constructor;
     
     int[][] frameBuffer; //0=type, 1=x, 2=y, 3=timestamp, 4=protoClusterID, 5=clusterID
     int[] protoClusterSizes;
@@ -496,9 +496,9 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                 type = -1;
             }
             activateAccumArray();
-            if(constructor != null){
-                constructor.addFragment(this);
-            }
+//            if(constructor != null){
+//                constructor.addFragment(this);
+//            }
             on = true;
         }
         
@@ -699,9 +699,9 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
         
     }
     
-    public void setConstructor(EdgeConstructor constr){
-        constructor = constr;
-    }
+//    public void setConstructor(EdgeConstructor constr){
+//        constructor = constr;
+//    }
     
      /**
      * @return the frameBufferSize
