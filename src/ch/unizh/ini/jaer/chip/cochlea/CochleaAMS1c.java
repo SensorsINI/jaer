@@ -694,7 +694,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             if (bytes == null) {
                 bytes = emptyByteArray;
             }
-            log.info(String.format("sending command vendor request cmd=0x%x, index=0x%x, with %d bytes", cmd, index, bytes.length));
+//            log.info(String.format("sending command vendor request cmd=0x%x, index=0x%x, with %d bytes", cmd, index, bytes.length));
             if (cypress != null) {
                 cypress.sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff & cmd), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
             }
@@ -771,7 +771,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 } else if (observable instanceof Equalizer.EqualizerChannel) {
                     // sends 0 byte message (no data phase for speed)
                     Equalizer.EqualizerChannel c = (Equalizer.EqualizerChannel) observable;
-                    log.info("Sending "+c);
+//                    log.info("Sending "+c);
                     int value = (c.channel << 8) + CMD_EQUALIZER; // value has cmd in LSB, channel in MSB
                     int index = c.qsos + (c.qbpf << 5) + (c.lpfkilled ? 1 << 10 : 0) + (c.bpfkilled ? 1 << 11 : 0); // index has b11=bpfkilled, b10=lpfkilled, b9:5=qbpf, b4:0=qsos
                     sendConfig(value, index);
@@ -1700,10 +1700,12 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 //            private int globalGain = 15;
 //            private int globalQuality = 15;
             public EqualizerChannel[] channels = new EqualizerChannel[NUM_CHANNELS];
+            private boolean rubberBandsEnabled=getPrefs().getBoolean("Equalizer.rubberBandsEnabled", false);
+            public final static int RUBBER_BAND_RANGE=5;
 
             Equalizer() {
                 for (int i = 0; i < NUM_CHANNELS; i++) {
-                    channels[i] = new EqualizerChannel(i);
+                    channels[i] = new EqualizerChannel(this,i);
                     channels[i].addObserver(Biasgen.this); // CochleaAMS1c.Biasgen observes each equalizer channel
                 }
             }
@@ -1748,6 +1750,24 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 }
             }
 
+            /**
+             * @return the rubberBandsEnabled
+             */
+            public boolean isRubberBandsEnabled() {
+                return rubberBandsEnabled;
+            }
+
+            /**
+             * @param rubberBandsEnabled the rubberBandsEnabled to set
+             */
+            public void setRubberBandsEnabled(boolean rubberBandsEnabled) {
+                boolean old=this.rubberBandsEnabled;
+                this.rubberBandsEnabled = rubberBandsEnabled;
+                getPrefs().putBoolean("Equalizer.rubberBandsEnabled", rubberBandsEnabled);
+                if(old!=this.rubberBandsEnabled) setChanged();
+                notifyObservers(this);
+            }
+
 //            public int getGlobalGain() {
 //                return globalGain;
 //            }
@@ -1777,8 +1797,10 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 private volatile int qsos;
                 private volatile int qbpf;
                 private volatile boolean bpfkilled, lpfkilled;
+                private Equalizer equalizer=null;
 
-                EqualizerChannel(int n) {
+                EqualizerChannel(Equalizer e, int n) {
+                    equalizer=e;
                     channel = n;
                     prefsKey = "CochleaAMS1c.Biasgen.Equalizer.EqualizerChannel." + channel + ".";
                     loadPreference();
@@ -1814,6 +1836,14 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                     this.qbpf = qbpf;
                     notifyObservers();
                 }
+
+//                public void setQBPFRubberBand(int qbpf) {
+//                    if (this.qbpf != qbpf) {
+//                        setChanged();
+//                    }
+//                    this.qbpf = qbpf;
+//                    notifyObservers();
+//                }
 
                 public boolean isLpfKilled() {
                     return lpfkilled;

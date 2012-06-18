@@ -322,6 +322,10 @@ public final class CochleaAMS1cControlPanel extends javax.swing.JPanel implement
                 cont.lPFKillBox.setSelected(c.isLpfKilled());
                 cont.qBPFSlider.setValue(c.getQBPF());
                 cont.qSOSSlider.setValue(c.getQSOS());
+            }else if (observable instanceof Equalizer) {
+                // sends 0 byte message (no data phase for speed)
+                Equalizer c = (Equalizer) observable;
+                rubberBandCB.setSelected(c.isRubberBandsEnabled());
             } else if (observable instanceof CochleaAMS1c.Biasgen.OnChipPreamp) {
                 switch (biasgen.getOnchipGain()) {
                     case Higher:
@@ -664,8 +668,10 @@ public final class CochleaAMS1cControlPanel extends javax.swing.JPanel implement
         dacPoweroffButton = new javax.swing.JRadioButton();
         equalizerPanel = new javax.swing.JPanel();
         equalizerSlidersPanel = new javax.swing.JPanel();
-        resetEqBut = new javax.swing.JButton();
         channelLabel = new javax.swing.JLabel();
+        jPanel10 = new javax.swing.JPanel();
+        resetEqBut = new javax.swing.JButton();
+        rubberBandCB = new javax.swing.JCheckBox();
         sosQualPan = new javax.swing.JPanel();
         jPanel9 = new javax.swing.JPanel();
         allmaxsosqualbut = new javax.swing.JButton();
@@ -867,6 +873,13 @@ public final class CochleaAMS1cControlPanel extends javax.swing.JPanel implement
         equalizerSlidersPanel.setBorder(javax.swing.BorderFactory.createEtchedBorder());
         equalizerSlidersPanel.setLayout(new javax.swing.BoxLayout(equalizerSlidersPanel, javax.swing.BoxLayout.Y_AXIS));
 
+        channelLabel.setFont(new java.awt.Font("Bitstream Vera Sans Mono", 0, 11)); // NOI18N
+        channelLabel.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        channelLabel.setText("                                       ");
+        equalizerSlidersPanel.add(channelLabel);
+
+        jPanel10.setLayout(new javax.swing.BoxLayout(jPanel10, javax.swing.BoxLayout.LINE_AXIS));
+
         resetEqBut.setText("Reset all");
         resetEqBut.setToolTipText("Uses hardware reset to reset all latches to default state");
         resetEqBut.addActionListener(new java.awt.event.ActionListener() {
@@ -874,12 +887,13 @@ public final class CochleaAMS1cControlPanel extends javax.swing.JPanel implement
                 resetEqButActionPerformed(evt);
             }
         });
-        equalizerSlidersPanel.add(resetEqBut);
+        jPanel10.add(resetEqBut);
 
-        channelLabel.setFont(new java.awt.Font("Bitstream Vera Sans Mono", 0, 11)); // NOI18N
-        channelLabel.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-        channelLabel.setText("                                       ");
-        equalizerSlidersPanel.add(channelLabel);
+        rubberBandCB.setText("rubber bands");
+        rubberBandCB.setToolTipText("ties channels together with rubber band");
+        jPanel10.add(rubberBandCB);
+
+        equalizerSlidersPanel.add(jPanel10);
 
         sosQualPan.setBorder(javax.swing.BorderFactory.createTitledBorder("SOS quality"));
         sosQualPan.setToolTipText("");
@@ -1631,6 +1645,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.JLabel jLabel5;
     private javax.swing.JLabel jLabel6;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel10;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
@@ -1668,6 +1683,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.JPanel preampPanel;
     private javax.swing.JPanel qualSlidersPanel;
     private javax.swing.JButton resetEqBut;
+    private javax.swing.JCheckBox rubberBandCB;
     private javax.swing.ButtonGroup scanSelGroup;
     private javax.swing.JSlider scanSlider;
     private javax.swing.JSpinner scanSpinner;
