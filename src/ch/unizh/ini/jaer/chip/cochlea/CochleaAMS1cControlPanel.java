@@ -44,10 +44,12 @@ import net.sf.jaer.biasgen.VDAC.VPotGUIControl;
 import net.sf.jaer.util.ParameterControlPanel;
 
 /**
- * The custom control panel for CochleaAMS1c which includes IPots, VPots, local IPots, scanner, and digital control.
- * @author  tobi
+ * The custom control panel for CochleaAMS1c which includes IPots, VPots, local
+ * IPots, scanner, and digital control.
+ *
+ * @author tobi
  */
-public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Observer {
+public final class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Observer {
 
     Preferences prefs = Preferences.userNodeForPackage(CochleaAMS1cControlPanel.class);
     Logger log = Logger.getLogger("CochleaAMS1cControlPanel");
@@ -60,7 +62,9 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
     Scanner scanner = null;
     ADCHardwareInterfaceProxy adcProxy = null;
 
-    /** Creates new form CochleaAMS1cControlPanel */
+    /**
+     * Creates new form CochleaAMS1cControlPanel
+     */
     public CochleaAMS1cControlPanel(CochleaAMS1c chip) {
         this.chip = chip;
         biasgen = (CochleaAMS1c.Biasgen) chip.getBiasgen();
@@ -99,7 +103,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 panel.setAlignmentX(Component.LEFT_ALIGNMENT);
                 JLabel label = new JLabel(bit.getName() + ": " + bit.getDescription());
                 JRadioButton but = new JRadioButton("Set/Clear");
-                but.setToolTipText("<html>"+b2.toString()+"<br>Select to set bit, clear to clear bit");
+                but.setToolTipText("<html>" + b2.toString() + "<br>Select to set bit, clear to clear bit");
                 JRadioButton hiZButton = new JRadioButton("HiZ");
                 hiZButton.setToolTipText("Select to set pin to hiZ state");
 //                group.add(hiZButton);  // independent from other two buttons, can be hiz and 0 or 1
@@ -123,7 +127,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 ConfigBit b2 = (ConfigBit) bit;
                 JRadioButton but = new JRadioButton(bit.getName() + ": " + bit.getDescription());
                 but.setAlignmentX(Component.LEFT_ALIGNMENT);
-                but.setToolTipText("<html>"+b2.toString()+"<br>Select to set bit, clear to clear bit");
+                but.setToolTipText("<html>" + b2.toString() + "<br>Select to set bit, clear to clear bit");
                 but.setSelected(b2.isSet()); // pref value
                 configPanel.add(but);
                 configBitMap.put(bit, but);
@@ -136,7 +140,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 pan.setAlignmentX(Component.LEFT_ALIGNMENT);
                 pan.setLayout(new BoxLayout(pan, BoxLayout.X_AXIS));
                 JLabel label = new JLabel(in.getName());
-                label.setToolTipText("<html>"+in.toString()+"<br>"+in.getDescription()+"<br>Enter value or use mouse wheel or arrow keys to change value");
+                label.setToolTipText("<html>" + in.toString() + "<br>" + in.getDescription() + "<br>Enter value or use mouse wheel or arrow keys to change value");
                 pan.add(label);
                 JTextField tf = new JTextField();
                 tf.setText(Integer.toString(in.get()));
@@ -274,14 +278,17 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
             this.bPFKillBox = bPFKillBox;
         }
     }
-    final Dimension sliderDimPref = new Dimension(2, 200), 
-            sliderDimMin = new Dimension(1, 35), 
-            killDimPref = new Dimension(2, 25), 
-            killDimMax = new Dimension(6, 15), 
+    final Dimension sliderDimPref = new Dimension(2, 200),
+            sliderDimMin = new Dimension(1, 35),
+            killDimPref = new Dimension(2, 25),
+            killDimMax = new Dimension(6, 15),
             killDimMin = new Dimension(1, 15);
     final Insets zeroInsets = new Insets(0, 0, 0, 0);
 
-    /** Handles updates to GUI controls from any source, including preference changes */
+    /**
+     * Handles updates to GUI controls from any source, including preference
+     * changes
+     */
     @Override
     public void update(Observable observable, Object object) {  // thread safe to ensure gui cannot retrigger this while it is sending something
 //            log.info(observable + " sent " + object);
@@ -365,6 +372,12 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 }
 
             } else if (observable instanceof CochleaAMS1c.Biasgen.Scanner) {
+                if (isScanContinuouslyEnabled()) {
+                    continuousScanningEnabledCheckBox.setSelected(isScanContinuouslyEnabled());
+                } else {
+                    scanSpinner.setValue(getScanX());
+                }
+
             } else {
                 log.warning("unknown observable " + observable + " , not sending anything");
             }
@@ -407,8 +420,10 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
 //    boolean firstKillBoxTouched=false;
 //    boolean lastKillSelection = false; // remembers last kill box action so that drag can copy it
 
-    /** The kill box that turn green when neuron channel is enabled and red if disabled.
-     * 
+    /**
+     * The kill box that turn green when neuron channel is enabled and red if
+     * disabled.
+     *
      */
     class KillBox extends JButton {
 
@@ -439,20 +454,25 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 public void mouseMoved(MouseEvent e) {
                 }
 
+                @Override
                 public void mouseClicked(MouseEvent e) {
                 }
 
+                @Override
                 public void mousePressed(MouseEvent e) {
                     set(e);
                 }
 
+                @Override
                 public void mouseReleased(MouseEvent e) {
                 }
 
+                @Override
                 public void mouseEntered(MouseEvent e) {
                     set(e);
                 }
 
+                @Override
                 public void mouseExited(MouseEvent e) {
                 }
 
@@ -499,15 +519,19 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
             addChangeListener(channel);
             addMouseListener(new MouseListener() {
 
+                @Override
                 public void mouseClicked(MouseEvent e) {
                 }
 
+                @Override
                 public void mousePressed(MouseEvent e) {
                 }
 
+                @Override
                 public void mouseReleased(MouseEvent e) {
                 }
 
+                @Override
                 public void mouseEntered(MouseEvent e) {
 //                    System.out.println("entered ");
                     channelLabel.setText(channel.toString());
@@ -518,20 +542,23 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                     }
                 }
 
+                @Override
                 public void mouseExited(MouseEvent e) {
                 }
             });
             addMouseMotionListener(new MouseMotionListener() {
 
+                @Override
                 public void mouseDragged(MouseEvent e) {
 //                    System.out.println("dragged ");
-                    if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK ) {
+                    if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
                         int v = (int) (getMaximum() * (float) (getHeight() - e.getY()) / getHeight());
                         setValue(v);
                         setFileModified();
                     }
                 }
 
+                @Override
                 public void mouseMoved(MouseEvent e) {
 //                    System.out.println("moved ");
                     if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
@@ -552,6 +579,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
             this.bit = bit;
         }
 
+        @Override
         public void actionPerformed(ActionEvent e) {
             AbstractButton button = (AbstractButton) e.getSource();
             bit.setHiZ(button.isSelected()); // TODO fix here
@@ -567,6 +595,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
             this.bit = bit;
         }
 
+        @Override
         public void actionPerformed(ActionEvent e) {
             AbstractButton button = (AbstractButton) e.getSource();
             bit.set(button.isSelected());
@@ -582,6 +611,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
             this.integerConfig = bit;
         }
 
+        @Override
         public void actionPerformed(ActionEvent e) {
             JTextField tf = null;
             try {
@@ -599,10 +629,10 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         }
     }
 
-    /** This method is called from within the constructor to
-     * initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is
-     * always regenerated by the Form Editor.
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
      */
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
@@ -635,11 +665,29 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         equalizerPanel = new javax.swing.JPanel();
         equalizerSlidersPanel = new javax.swing.JPanel();
         resetEqBut = new javax.swing.JButton();
-        gainSlidersPanel = new javax.swing.JPanel();
-        qualSlidersPanel = new javax.swing.JPanel();
-        lpfKilledPanel = new javax.swing.JPanel();
-        bpfKilledPanel = new javax.swing.JPanel();
         channelLabel = new javax.swing.JLabel();
+        sosQualPan = new javax.swing.JPanel();
+        jPanel9 = new javax.swing.JPanel();
+        allmaxsosqualbut = new javax.swing.JButton();
+        allmidsosqualbut = new javax.swing.JButton();
+        allminsosqualbut = new javax.swing.JButton();
+        gainSlidersPanel = new javax.swing.JPanel();
+        bpfQualPanel = new javax.swing.JPanel();
+        jPanel8 = new javax.swing.JPanel();
+        allmaxbpfqualbut = new javax.swing.JButton();
+        allmidbpfqualbut = new javax.swing.JButton();
+        allminbpfqualbut = new javax.swing.JButton();
+        qualSlidersPanel = new javax.swing.JPanel();
+        lpfkilpan = new javax.swing.JPanel();
+        jPanel6 = new javax.swing.JPanel();
+        killalllpfbut = new javax.swing.JButton();
+        unkillalllpfbut = new javax.swing.JButton();
+        lpfKilledPanel = new javax.swing.JPanel();
+        bpfkillpan = new javax.swing.JPanel();
+        jPanel7 = new javax.swing.JPanel();
+        killallbpfbut = new javax.swing.JButton();
+        unkillallbpfbut = new javax.swing.JButton();
+        bpfKilledPanel = new javax.swing.JPanel();
         scannerPanel = new javax.swing.JPanel();
         jLabel2 = new javax.swing.JLabel();
         continuousScanningPanel = new javax.swing.JPanel();
@@ -828,36 +876,166 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         });
         equalizerSlidersPanel.add(resetEqBut);
 
-        gainSlidersPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("SOS quality"));
-        gainSlidersPanel.setToolTipText("Second order section feedback transconductance tweak, increase to increase Q");
-        gainSlidersPanel.setAlignmentX(0.0F);
-        gainSlidersPanel.setLayout(new java.awt.GridLayout(1, 0));
-        equalizerSlidersPanel.add(gainSlidersPanel);
-
-        qualSlidersPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("BPF quality"));
-        qualSlidersPanel.setToolTipText("Bandpass filter quality, increase for more ringiness");
-        qualSlidersPanel.setAlignmentX(0.0F);
-        qualSlidersPanel.setLayout(new java.awt.GridLayout(1, 0));
-        equalizerSlidersPanel.add(qualSlidersPanel);
-
-        lpfKilledPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("LPF killed"));
-        lpfKilledPanel.setToolTipText("Kills the lowpass filter neurons (Green=go, Red=killed)");
-        lpfKilledPanel.setAlignmentX(0.0F);
-        lpfKilledPanel.setMaximumSize(new java.awt.Dimension(32767, 60));
-        lpfKilledPanel.setLayout(new java.awt.GridLayout(1, 0));
-        equalizerSlidersPanel.add(lpfKilledPanel);
-
-        bpfKilledPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("BPF killed"));
-        bpfKilledPanel.setToolTipText("Kills the bandpass filter neurons");
-        bpfKilledPanel.setAlignmentX(0.0F);
-        bpfKilledPanel.setMaximumSize(new java.awt.Dimension(32767, 60));
-        bpfKilledPanel.setLayout(new java.awt.GridLayout(1, 0));
-        equalizerSlidersPanel.add(bpfKilledPanel);
-
         channelLabel.setFont(new java.awt.Font("Bitstream Vera Sans Mono", 0, 11)); // NOI18N
         channelLabel.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
         channelLabel.setText("                                       ");
         equalizerSlidersPanel.add(channelLabel);
+
+        sosQualPan.setBorder(javax.swing.BorderFactory.createTitledBorder("SOS quality"));
+        sosQualPan.setToolTipText("");
+        sosQualPan.setLayout(new javax.swing.BoxLayout(sosQualPan, javax.swing.BoxLayout.LINE_AXIS));
+
+        jPanel9.setMinimumSize(new java.awt.Dimension(40, 63));
+        jPanel9.setPreferredSize(new java.awt.Dimension(40, 63));
+        jPanel9.setLayout(new javax.swing.BoxLayout(jPanel9, javax.swing.BoxLayout.Y_AXIS));
+
+        allmaxsosqualbut.setText("max");
+        allmaxsosqualbut.setToolTipText("Set sliders to maximum value");
+        allmaxsosqualbut.setMargin(new java.awt.Insets(1, 1, 1, 1));
+        allmaxsosqualbut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                allmaxsosqualbutActionPerformed(evt);
+            }
+        });
+        jPanel9.add(allmaxsosqualbut);
+
+        allmidsosqualbut.setText("mid");
+        allmidsosqualbut.setMargin(new java.awt.Insets(1, 1, 1, 1));
+        allmidsosqualbut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                allmidsosqualbutActionPerformed(evt);
+            }
+        });
+        jPanel9.add(allmidsosqualbut);
+
+        allminsosqualbut.setText("min");
+        allminsosqualbut.setMargin(new java.awt.Insets(1, 1, 1, 1));
+        allminsosqualbut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                allminsosqualbutActionPerformed(evt);
+            }
+        });
+        jPanel9.add(allminsosqualbut);
+
+        sosQualPan.add(jPanel9);
+
+        gainSlidersPanel.setToolTipText("Second order section feedback transconductance tweak, increase to increase Q");
+        gainSlidersPanel.setAlignmentX(0.0F);
+        gainSlidersPanel.setLayout(new java.awt.GridLayout(1, 0));
+        sosQualPan.add(gainSlidersPanel);
+
+        equalizerSlidersPanel.add(sosQualPan);
+
+        bpfQualPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("BPF quality"));
+        bpfQualPanel.setLayout(new javax.swing.BoxLayout(bpfQualPanel, javax.swing.BoxLayout.LINE_AXIS));
+
+        jPanel8.setPreferredSize(new java.awt.Dimension(40, 63));
+        jPanel8.setLayout(new javax.swing.BoxLayout(jPanel8, javax.swing.BoxLayout.Y_AXIS));
+
+        allmaxbpfqualbut.setText("max");
+        allmaxbpfqualbut.setMargin(new java.awt.Insets(1, 1, 1, 1));
+        allmaxbpfqualbut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                allmaxbpfqualbutActionPerformed(evt);
+            }
+        });
+        jPanel8.add(allmaxbpfqualbut);
+
+        allmidbpfqualbut.setText("mid");
+        allmidbpfqualbut.setMargin(new java.awt.Insets(1, 1, 1, 1));
+        allmidbpfqualbut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                allmidbpfqualbutActionPerformed(evt);
+            }
+        });
+        jPanel8.add(allmidbpfqualbut);
+
+        allminbpfqualbut.setText("min");
+        allminbpfqualbut.setMargin(new java.awt.Insets(1, 1, 1, 1));
+        allminbpfqualbut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                allminbpfqualbutActionPerformed(evt);
+            }
+        });
+        jPanel8.add(allminbpfqualbut);
+
+        bpfQualPanel.add(jPanel8);
+
+        qualSlidersPanel.setToolTipText("Bandpass filter quality, increase for more ringiness");
+        qualSlidersPanel.setAlignmentX(0.0F);
+        qualSlidersPanel.setLayout(new java.awt.GridLayout(1, 0));
+        bpfQualPanel.add(qualSlidersPanel);
+
+        equalizerSlidersPanel.add(bpfQualPanel);
+
+        lpfkilpan.setBorder(javax.swing.BorderFactory.createTitledBorder("LPF killed"));
+        lpfkilpan.setLayout(new javax.swing.BoxLayout(lpfkilpan, javax.swing.BoxLayout.LINE_AXIS));
+
+        jPanel6.setMinimumSize(new java.awt.Dimension(60, 42));
+        jPanel6.setPreferredSize(new java.awt.Dimension(40, 48));
+        jPanel6.setLayout(new javax.swing.BoxLayout(jPanel6, javax.swing.BoxLayout.Y_AXIS));
+
+        killalllpfbut.setText("all");
+        killalllpfbut.setMargin(new java.awt.Insets(1, 1, 1, 1));
+        killalllpfbut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                killalllpfbutActionPerformed(evt);
+            }
+        });
+        jPanel6.add(killalllpfbut);
+
+        unkillalllpfbut.setText("none");
+        unkillalllpfbut.setMargin(new java.awt.Insets(1, 1, 1, 1));
+        unkillalllpfbut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                unkillalllpfbutActionPerformed(evt);
+            }
+        });
+        jPanel6.add(unkillalllpfbut);
+
+        lpfkilpan.add(jPanel6);
+
+        lpfKilledPanel.setToolTipText("Kills the lowpass filter neurons (Green=go, Red=killed)");
+        lpfKilledPanel.setAlignmentX(0.0F);
+        lpfKilledPanel.setMaximumSize(new java.awt.Dimension(32767, 60));
+        lpfKilledPanel.setLayout(new java.awt.GridLayout(1, 0));
+        lpfkilpan.add(lpfKilledPanel);
+
+        equalizerSlidersPanel.add(lpfkilpan);
+
+        bpfkillpan.setBorder(javax.swing.BorderFactory.createTitledBorder("BPF killed"));
+        bpfkillpan.setLayout(new javax.swing.BoxLayout(bpfkillpan, javax.swing.BoxLayout.LINE_AXIS));
+
+        jPanel7.setPreferredSize(new java.awt.Dimension(40, 42));
+        jPanel7.setLayout(new javax.swing.BoxLayout(jPanel7, javax.swing.BoxLayout.Y_AXIS));
+
+        killallbpfbut.setText("all");
+        killallbpfbut.setMargin(new java.awt.Insets(1, 1, 1, 1));
+        killallbpfbut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                killallbpfbutActionPerformed(evt);
+            }
+        });
+        jPanel7.add(killallbpfbut);
+
+        unkillallbpfbut.setText("none");
+        unkillallbpfbut.setMargin(new java.awt.Insets(1, 1, 1, 1));
+        unkillallbpfbut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                unkillallbpfbutActionPerformed(evt);
+            }
+        });
+        jPanel7.add(unkillallbpfbut);
+
+        bpfkillpan.add(jPanel7);
+
+        bpfKilledPanel.setToolTipText("Kills the bandpass filter neurons");
+        bpfKilledPanel.setAlignmentX(0.0F);
+        bpfKilledPanel.setMaximumSize(new java.awt.Dimension(32767, 60));
+        bpfKilledPanel.setLayout(new java.awt.GridLayout(1, 0));
+        bpfkillpan.add(bpfKilledPanel);
+
+        equalizerSlidersPanel.add(bpfkillpan);
 
         equalizerPanel.add(equalizerSlidersPanel, java.awt.BorderLayout.CENTER);
 
@@ -929,7 +1107,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 .addGroup(continuousScanningPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(continuousScanningEnabledCheckBox)
                     .addComponent(jPanel5, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(552, Short.MAX_VALUE))
+                .addContainerGap(686, Short.MAX_VALUE))
         );
         continuousScanningPanelLayout.setVerticalGroup(
             continuousScanningPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -986,11 +1164,11 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 852, Short.MAX_VALUE)
+            .addGap(0, 986, Short.MAX_VALUE)
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 35, Short.MAX_VALUE)
+            .addGap(0, 204, Short.MAX_VALUE)
         );
 
         scannerPanel.add(jPanel1);
@@ -1056,7 +1234,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
             .addGroup(onchipPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(onchipGainPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(602, Short.MAX_VALUE))
+                .addContainerGap(736, Short.MAX_VALUE))
         );
         onchipPanelLayout.setVerticalGroup(
             onchipPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -1173,7 +1351,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, preampPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(preampPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(offchipPanel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 844, Short.MAX_VALUE)
+                    .addComponent(offchipPanel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 978, Short.MAX_VALUE)
                     .addComponent(onchipPanel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
@@ -1183,7 +1361,7 @@ public class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Obse
                 .addComponent(onchipPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(18, 18, 18)
                 .addComponent(offchipPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 241, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(45, Short.MAX_VALUE))
+                .addContainerGap(215, Short.MAX_VALUE))
         );
 
         tabbedPane.addTab("Mic Preamp", preampPanel);
@@ -1362,24 +1540,71 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     }//GEN-LAST:event_basmemButActionPerformed
 
     private void gangcellButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_gangcellButActionPerformed
-        biasgen.getScanner().setScanGanglionCellVMem(gangcellBut.isSelected());  
+        biasgen.getScanner().setScanGanglionCellVMem(gangcellBut.isSelected());
     }//GEN-LAST:event_gangcellButActionPerformed
 
     private void resetEqButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetEqButActionPerformed
-        biasgen.resetEqualizer();  
+        biasgen.resetEqualizer();
     }//GEN-LAST:event_resetEqButActionPerformed
 
     private void onchipHighestBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_onchipHighestBActionPerformed
-        biasgen.getOnchipPreamp().setGain(CochleaAMS1c.OnChipPreampGain.Highest); 
+        biasgen.getOnchipPreamp().setGain(CochleaAMS1c.OnChipPreampGain.Highest);
     }//GEN-LAST:event_onchipHighestBActionPerformed
 
+    private void unkillallbpfbutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_unkillallbpfbutActionPerformed
+        biasgen.equalizer.setAllBPFKilled(false);
+    }//GEN-LAST:event_unkillallbpfbutActionPerformed
+
+    private void killallbpfbutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_killallbpfbutActionPerformed
+        biasgen.equalizer.setAllBPFKilled(true);
+    }//GEN-LAST:event_killallbpfbutActionPerformed
+
+    private void killalllpfbutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_killalllpfbutActionPerformed
+        biasgen.equalizer.setAllLPFKilled(true);
+    }//GEN-LAST:event_killalllpfbutActionPerformed
+
+    private void unkillalllpfbutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_unkillalllpfbutActionPerformed
+        biasgen.equalizer.setAllLPFKilled(false);
+    }//GEN-LAST:event_unkillalllpfbutActionPerformed
+
+    private void allmaxsosqualbutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_allmaxsosqualbutActionPerformed
+        biasgen.equalizer.setAllQSOS(Equalizer.MAX_VALUE);
+    }//GEN-LAST:event_allmaxsosqualbutActionPerformed
+
+    private void allmidsosqualbutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_allmidsosqualbutActionPerformed
+        biasgen.equalizer.setAllQSOS(Equalizer.MAX_VALUE / 2);
+    }//GEN-LAST:event_allmidsosqualbutActionPerformed
+
+    private void allminsosqualbutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_allminsosqualbutActionPerformed
+        biasgen.equalizer.setAllQSOS(0);
+    }//GEN-LAST:event_allminsosqualbutActionPerformed
+
+    private void allmaxbpfqualbutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_allmaxbpfqualbutActionPerformed
+        biasgen.equalizer.setAllQBPF(Equalizer.MAX_VALUE);
+    }//GEN-LAST:event_allmaxbpfqualbutActionPerformed
+
+    private void allmidbpfqualbutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_allmidbpfqualbutActionPerformed
+        biasgen.equalizer.setAllQBPF(Equalizer.MAX_VALUE / 2);
+    }//GEN-LAST:event_allmidbpfqualbutActionPerformed
+
+    private void allminbpfqualbutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_allminbpfqualbutActionPerformed
+        biasgen.equalizer.setAllQBPF(0);
+    }//GEN-LAST:event_allminbpfqualbutActionPerformed
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel adcPanel;
+    private javax.swing.JButton allmaxbpfqualbut;
+    private javax.swing.JButton allmaxsosqualbut;
+    private javax.swing.JButton allmidbpfqualbut;
+    private javax.swing.JButton allmidsosqualbut;
+    private javax.swing.JButton allminbpfqualbut;
+    private javax.swing.JButton allminsosqualbut;
     private javax.swing.JRadioButton arFastBut;
     private javax.swing.JRadioButton arMedBut;
     private javax.swing.JRadioButton arSlowBut;
     private javax.swing.JRadioButton basmemBut;
     private javax.swing.JPanel bpfKilledPanel;
+    private javax.swing.JPanel bpfQualPanel;
+    private javax.swing.JPanel bpfkillpan;
     private javax.swing.JPanel bufferBiasPanel;
     private javax.swing.JSlider bufferBiasSlider;
     private javax.swing.JTextField bufferBiasTextField;
@@ -1410,7 +1635,14 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
     private javax.swing.JPanel jPanel5;
+    private javax.swing.JPanel jPanel6;
+    private javax.swing.JPanel jPanel7;
+    private javax.swing.JPanel jPanel8;
+    private javax.swing.JPanel jPanel9;
+    private javax.swing.JButton killallbpfbut;
+    private javax.swing.JButton killalllpfbut;
     private javax.swing.JPanel lpfKilledPanel;
+    private javax.swing.JPanel lpfkilpan;
     private javax.swing.ButtonGroup offchipARGroup;
     private javax.swing.JPanel offchipARPanel;
     private javax.swing.JPanel offchipDACPanel;
@@ -1441,7 +1673,10 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.JSpinner scanSpinner;
     private javax.swing.JPanel scannerPanel;
     private javax.swing.JPanel singleChannelSelectionPanel;
+    private javax.swing.JPanel sosQualPan;
     private javax.swing.JTabbedPane tabbedPane;
+    private javax.swing.JButton unkillallbpfbut;
+    private javax.swing.JButton unkillalllpfbut;
     private org.jdesktop.beansbinding.BindingGroup bindingGroup;
     // End of variables declaration//GEN-END:variables
 //         UndoableEditSupport editSupport = new UndoableEditSupport();

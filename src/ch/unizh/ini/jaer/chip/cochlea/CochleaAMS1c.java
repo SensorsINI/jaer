@@ -1694,15 +1694,15 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
          * <img source="doc-files/equalizerBits.png"/>
          * where the index field of the vendor request has the quality and kill bit information.
          */
-        class Equalizer extends Observable { // describes the local gain and Q registers and the kill bits
+        public class Equalizer extends Observable { // describes the local gain and Q registers and the kill bits
 
-            final int numChannels = 128, maxValue = 31;
+            public static final int NUM_CHANNELS = 128, MAX_VALUE = 31;
 //            private int globalGain = 15;
 //            private int globalQuality = 15;
-            EqualizerChannel[] channels = new EqualizerChannel[numChannels];
+            public EqualizerChannel[] channels = new EqualizerChannel[NUM_CHANNELS];
 
             Equalizer() {
-                for (int i = 0; i < numChannels; i++) {
+                for (int i = 0; i < NUM_CHANNELS; i++) {
                     channels[i] = new EqualizerChannel(i);
                     channels[i].addObserver(Biasgen.this); // CochleaAMS1c.Biasgen observes each equalizer channel
                 }
@@ -1718,6 +1718,34 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 }
                 // TODO special dance with logic bits to reset here 
 
+            }
+            void setAllLPFKilled(boolean yes) {
+                  log.info("killing all LPF channels to "+yes);
+               for (EqualizerChannel c : channels) {
+                    c.setLpfKilled(yes);
+                }
+                // TODO special dance with logic bits to reset here 
+
+            }
+            void setAllBPFKilled(boolean yes) {
+                log.info("killing all BPF channels to "+yes);
+                for (EqualizerChannel c : channels) {
+                    c.setBpfKilled(yes);
+                }
+                // TODO special dance with logic bits to reset here 
+
+            }
+            void setAllQSOS(int gain){
+                  log.info("setting all SOS gains to "+gain);
+                for (EqualizerChannel c : channels) {
+                    c.setQSOS(gain);
+                }
+            }
+         void setAllQBPF(int gain){
+                  log.info("setting all BPF gains to "+gain);
+                for (EqualizerChannel c : channels) {
+                    c.setQBPF(gain);
+                }
             }
 
 //            public int getGlobalGain() {
