@@ -320,17 +320,17 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
         // as we iterate over input events, check for new Phidgets data. 
         // If we have some, write it out as PhidgetsSpatialEvents
         // Also write out the regular input data into the output packet.
+        // 
+        // if we iterate over a very long packet (e.g. taken at low rendering rate) we need to 
+        // make sure that transform updates are still applied during the packet.
         for (BasicEvent o : in) {
             for (spatialEvent = spatialDataQueue.poll(); spatialEvent != null; spatialEvent = spatialDataQueue.poll()) {
                 PhidgetsSpatialEvent oe = (PhidgetsSpatialEvent) outItr.nextOutput();
                 oe.copyFrom(spatialEvent);
             }
-            // update transform so that whatever is using this sensor output gets a new transform in their list that is updated during
-            // the enclosing filter processing of the transform.
-            boolean addedTransform = maybeCallUpdateObservers(in, o.timestamp); // call listeners if enough time has passed for update. This update should update the camera rotation values.
-//            if (addedTransform) {
-//                System.out.println("added a transform at t=" + o.timestamp);
-//            }
+            // periodically update transform so that whatever is using this sensor output gets a new transform in their list that is updated during
+            // the enclosing filter processing of the packet.
+            maybeCallUpdateObservers(in, o.timestamp); // call listeners if enough time has passed for update. This update should update the camera rotation values.
             outItr.nextOutput().copyFrom(o);
         }
         return out;
