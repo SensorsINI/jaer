@@ -160,6 +160,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         }
 
         gl.glFlush();
+//        log.info("after flush, timeWidthUs="+timeWidthUs+" ");
 //        gl.glFinish();  // should not need to be called, according to http://www.opengl.org/discussion_boards/ubbthreads.php?ubb=showflat&Number=196733
 
         getChipCanvas().checkGLError(gl, glu, "after RollingCochleaGramDisplayMethod");
