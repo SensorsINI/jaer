@@ -6,23 +6,15 @@ package ch.unizh.ini.jaer.projects.integrateandfire;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.media.opengl.GLAutoDrawable;
-import javax.swing.JOptionPane;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.InputEventIterator;
-import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.graphics.RetinaRenderer;
 
 /**
  * So this guy uses binary neurons.

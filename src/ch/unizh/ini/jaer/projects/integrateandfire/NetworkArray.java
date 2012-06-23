@@ -15,7 +15,7 @@ import net.sf.jaer.event.OutputEventIterator;
  *
  * @author Peter
  */
-public class NetworkArray {
+public class NetworkArray<NetType extends Network> {
     
     
     public Network[] N;
@@ -23,15 +23,18 @@ public class NetworkArray {
     Class C;            // Class of
     Remapper R;
     
+    /** Retrieve one of the networks */
     Network getNet(int index)
     {   return N[index];        
     }
     
+    /** Reset all networks */
     public void reset()
     {   for (Network n:N)
             n.reset();        
     }
     
+    /** Define the Remapper object used to map event addresses to network input addresses */
     public void setRemapper(Remapper arr){
         R=arr;
         
@@ -40,6 +43,7 @@ public class NetworkArray {
             if (n!=null)
                 n.R=arr;
     }
+    
     
     public void setTrackHistory(int th)
     {   for (Network n:N)

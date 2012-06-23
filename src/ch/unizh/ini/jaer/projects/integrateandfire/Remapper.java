@@ -4,6 +4,9 @@
  */
 package ch.unizh.ini.jaer.projects.integrateandfire;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Takes x,y coordinates of input events and transforms them into appropriate 
  * input indeces for neural networks.
@@ -16,27 +19,64 @@ public class Remapper {
     short inDimY;
     short outDimX;
     short outDimY;
+    int baseTime;
+    boolean baseTimeInitialized=false;
+    Map<Byte,Integer> sourceMap=new HashMap<Byte,Integer>();
     
+    public void addSourcePair(byte source,int index)
+    {   sourceMap.put(source,index);
+    }
     
+    public int source2dest(byte source)
+    {   return sourceMap.get(source);
+    }
+    
+    public void clearSourcePairs()
+    {   sourceMap.clear();
+    }
+    
+    long timeStamp2netTime(int eventTimeStamp)
+    {   if (!baseTimeInitialized)
+            initializeBaseTime(eventTimeStamp);
+                    
+        return eventTimeStamp-baseTime;        
+    }
+    
+    public void initializeBaseTime(int baseTimeStamp)
+    {
+        baseTime=baseTimeStamp;
+        baseTimeInitialized=true;
+    }
+    
+    double timeStamp2doubleTime(int eventTimeStamp)
+    {   
+        return (double) timeStamp2netTime(eventTimeStamp);  
+    }
+    
+    /** Take a set of raw input locs, resize and map to an index, according 
+     * to column-indexing (as in matlab). */
     int xy2ind(short x, short y)
-    {   // Take a set of raw input locs, resize
+    {   
+        // 
         
         short newX=(short)(x*outDimX/inDimX);
         short newY=(short)(outDimY-1-(y*outDimY/inDimY));
         
         return outDimY*(newX)+newY;
-                
     }
     
+    /** Takes x,y locs on the output coordinate system, transfers them to indeces */
     int ixy2ind(short x,short y)
     {   // Takes x,y locs on the output coordinate system, transfers them to indeces
         
         return outDimY*(x)+y;
     }
     
+    
+    /** Take a set of relative input locs, on scale [-1 1] [-1 1], map them onto
+     * the output */
     int xyCent2ind(float x, float y)
-    {   // Take a set of relative input locs, on scale [-1 1] [-1 1], map them 
-        // onto the output
+    {   
         if (x>=1) x=1-1/inDimX;
         else if (x<-1) x=-1;
         
