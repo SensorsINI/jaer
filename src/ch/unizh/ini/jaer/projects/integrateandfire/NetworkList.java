@@ -97,6 +97,7 @@ public class NetworkList<NetType extends SpikeStack>
     public SpikeStackWrapper newWrappedNet()
     {
         return new SpikeStackWrapper(initialNet.copy(),R);
+        
     }
     
     /** Route Cluster Events to network by cluster id */
