@@ -85,12 +85,12 @@ public class JAERViewer {
         } else {
             log.warning("no Java 6 splash screen to animate");
         }
-        
+
 //        if(true){
 //        throw new RuntimeException("test exception");
 //        }
-        log.info("java.vm.version=" + System.getProperty("java.vm.version")+" user.dir="+System.getProperty("user.dir"));
-        
+        log.info("java.vm.version=" + System.getProperty("java.vm.version") + " user.dir=" + System.getProperty("user.dir"));
+
         windowSaver = new WindowSaver(this, prefs);
         Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver, AWTEvent.WINDOW_EVENT_MASK); // adds windowSaver as JVM-wide event handler for window events
 
@@ -110,18 +110,27 @@ public class JAERViewer {
                 } catch (Exception e) {
                     log.info("couldn't load previous viewer AEChip classes, starting with last class");
                 }
-                if (classNames == null) {
-                    AEViewer v = new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
+
+                try {
+                    if (classNames == null) {
+                        AEViewer v = new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
 //                player=new SyncPlayer(v); // associate with the initial viewer
 //                v.pack();
-                    v.setVisible(true);
-                    //                splashThread.interrupt();
-                } else {
-                    for(String s:classNames){
-                        AEViewer v=new AEViewer(JAERViewer.this,s);
                         v.setVisible(true);
+                        //                splashThread.interrupt();
+                    } else {
+                        for (String s : classNames) {
+                            AEViewer v = new AEViewer(JAERViewer.this, s);
+                            v.setVisible(true);
+                        }
                     }
+                } catch (java.lang.UnsatisfiedLinkError err) {
+
+                    log.info("Unsatisfied link error.  Chances are that you are not running the right project configuration.  Set the project configuration to the appropiate platform (win,linux32,linux64,etc...)");
+
+                    err.printStackTrace();
                 }
+
             }
         });
         try {
