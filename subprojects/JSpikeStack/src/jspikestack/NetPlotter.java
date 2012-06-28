@@ -105,11 +105,12 @@ public class NetPlotter {
             
             pan.setBackground(Color.darkGray);
             
-            pan.setLayout(new GridLayout());
+            pan.setLayout(new GridBagLayout());
             
             
             
             ImageDisplay disp=ImageDisplay.createOpenGLCanvas();
+            
            // disp.resetFrame(.5f);
             
             // Assign sizes to the layers
@@ -127,7 +128,8 @@ public class NetPlotter {
             
             
 //            disp.setBorderSpacePixels(5);
-            disp.setPreferredSize(new Dimension(400,400));
+            
+            disp.setPreferredSize(new Dimension(300,300));
                         
             GridBagConstraints c = new GridBagConstraints();
             c.fill=GridBagConstraints.HORIZONTAL;
@@ -137,6 +139,9 @@ public class NetPlotter {
             
             pan.add(disp);  
             fr.getContentPane().add(pan,c);
+            
+//            disp.setVisible(true);
+//            pan.setVisible(true);
             
             layerStatePlots[i]=new LayerStatePlotter(net.lay(i),disp);
         }
@@ -161,11 +166,13 @@ public class NetPlotter {
         
         j.add(jt);
         
-        fr.getContentPane().add(j,c);
+//        j.setVisible(true);
         
+        fr.getContentPane().add(j,c);
+        fr.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         
         fr.pack();
-       // fr.setSize(1000,400);
+//        fr.setSize(1000,400);
         fr.setVisible(true);        
                 
         return fr;
