@@ -22,6 +22,9 @@ public class NetReader<NetType extends SpikeStack> implements SpikeStack.Network
     File file;  // Keeps track of the last file used.
     NetType net;        
     
+    // Default Directory 
+    File startDir=new File(getClass().getClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../files/nets");
+    
     public NetReader(NetType network)
     {   net=network;        
     }
@@ -34,6 +37,9 @@ public class NetReader<NetType extends SpikeStack> implements SpikeStack.Network
     /** Read in a network from XML */
     public void readFromXML(SpikeStack net, File infile) {
 
+        if (infile==null)
+            infile=startDir;
+        
         EasyXMLReader netRead = new EasyXMLReader(infile);
 
         file=infile;
