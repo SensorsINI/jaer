@@ -65,9 +65,18 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
     {   layers.add((LayerType)new SpikeStack.Layer(this,index));
     }
     
+    /** Copy the structure of the network, but leave the state blank */
     public NetType copy()
     {
-        return this.read.copy();
+        NetType net=this.read.copy();
+        
+        net.internalBuffer.clear();
+        net.inputBuffer.clear();
+        
+        for (int i=0; i<net.nLayers(); i++)
+            net.lay(i).outBuffer.clear();
+        
+        return net;
     }
     
     /** Create an EvtStack based on an Initializer Object */
@@ -175,7 +184,7 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
         int k=1;
         k++;
         
-        plot.followState();
+//        plot.followState();
         
         // If in liveMode, go til inputBuffer is empty, otherwise go til both buffers are empty (or timeout).
         while (!(inputBuffer.isEmpty()&&(internalBuffer.isEmpty() || liveMode )))
@@ -208,6 +217,14 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
     // </editor-fold>
     
     // <editor-fold defaultstate="collapsed" desc=" Access Methods ">
+    
+    /** Return a boolean indicating whether the network is built.  Currently, 
+     * the network is considered built if it has a non-empty set of layers 
+     * @return 
+     */
+    public boolean isBuilt()
+    {   return layers.size()>0;
+    }
     
     /** Return the layer from its index */
     public LayerType lay(int i)
@@ -379,7 +396,8 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
         /** Instantiate Layer with index */
         public Layer(NetType network,int ix)
         {   net=network;
-            ixLayer=ix;            
+            ixLayer=ix;    
+            
         }
         
         /** Fire Currents to this layer... */
@@ -401,6 +419,29 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
             }
         }
         
+        /** Set some a default value for dimx,dimy based on the number of units. */
+        public void setDefaultDims()
+        {
+            int nunits=nUnits();
+            
+            short start=(short)Math.ceil(Math.sqrt(nunits));
+            
+            dimy=-1;
+            
+            // Try finding a factor that divides evenly into the number of units
+            // up to a certain ratio.
+            for (short i=start; i<nunits-nunits/6; i++)
+                if (nunits%i==0)
+                {   dimy=i;
+                    break;
+                }
+            
+            if (dimy==-1)
+                dimy=start;  
+            
+            dimx=(short)Math.ceil(nUnits()/(float)dimy);
+        }
+        
         /** Get Reverse connection weights */
         public float[] getBackWeights(int destinationUnit)
         {   // Get reverse connection weights (THERE HAS GOT TO BE A BETTER WAY)
@@ -414,6 +455,7 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
         public void initializeUnits(int nUnits)
         {   // AHAHAH I tricked you Java! 
             units=(UnitType[])Array.newInstance(Unit.class, nUnits);
+            setDefaultDims();
         }
         
         /** Return a new unit with the given index */
@@ -427,6 +469,10 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
                 u.thresh*=sc;            
         }
         
+        public String getUnitName(int index)
+        {   return units[index].getName();
+        }
+        
         /** A LIF Neuron */
         public class Unit implements Serializable
         {
@@ -437,6 +483,8 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
             
             float vmem=0;
             float thresh;
+            
+            String name="";
             
             double tlast=Double.NEGATIVE_INFINITY;   // Last spike time
             double clast=Double.NEGATIVE_INFINITY;   // Last update time
@@ -495,12 +543,11 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
                 // Fire Behind!
 //                if (Lin!=null) 
                 for (LayerType l:Lin)
-                    if (l.backSend==1)
+                {   if (l.backSend==1)
                         l.fireTo(l.getBackWeights(ixUnit));
-                    else if (l.backSend==0)
-                        break;
-                    else
+                    else if (l.backSend!=0)
                         throw new UnsupportedOperationException("Scaling of reverse connections not yet supported");
+                }
                 
                 // Fire Sideways!
                 if (Wlat!=null && latSend!=0)
@@ -511,6 +558,11 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
                         throw new UnsupportedOperationException("Scaling of lateral connections not yet supported");
                 
                 }               
+            }
+            
+            /** Get the name of this particular unit */
+            public String getName()
+            {   return name;                
             }
             
             /** Set the output Weight vector */

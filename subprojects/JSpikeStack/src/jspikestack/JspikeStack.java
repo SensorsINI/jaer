@@ -93,7 +93,9 @@ public class JspikeStack {
         
         net.plot.timeScale=1f;
         
-        STPStack<STPStack,STPStack.Layer> net2=net.read.copy();
+//        STPStack<STPStack,STPStack.Layer> net2=net.read.copy();
+        
+        net.plot.followState();
         
         net.eatEvents(10000);
         

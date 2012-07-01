@@ -40,9 +40,15 @@ public class NetReader<NetType extends SpikeStack> implements SpikeStack.Network
         if (infile==null)
             infile=startDir;
         
-        EasyXMLReader netRead = new EasyXMLReader(infile);
-
-        file=infile;
+        EasyXMLReader netRead;
+        netRead = new EasyXMLReader(infile);
+        
+        if (!netRead.hasFile())
+        {   System.out.println("No File was selected");
+            return;
+        }
+        
+        file=netRead.getFile();
         //NodeList layList = netRead.get("Layer");
         
         //int nLayers=layList.getLength();

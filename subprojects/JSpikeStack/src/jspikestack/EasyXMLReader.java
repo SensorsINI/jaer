@@ -39,6 +39,7 @@ import org.xml.sax.SAXException;
 public class EasyXMLReader {
 
     Node doc;
+    File file;
     //BASE64Decoder decoder = new BASE64Decoder();
 
     public static File grabFile(String startPath)
@@ -54,16 +55,25 @@ public class EasyXMLReader {
         }
     }
     
-    public EasyXMLReader()
-    {   grabFile(null);
+    public EasyXMLReader() throws Exception
+    {   this(grabFile(null));
     }
     
-    public EasyXMLReader(File file) {
+    public EasyXMLReader(File infile){
+        
+        
+        if (infile.isDirectory())
+            file=grabFile(infile.toString());
+        else if (!infile.isFile())
+            file=grabFile(null);
+        else{
+            System.out.println("The file you gave s neither a file not a directory");
+            file=grabFile(null);
+        }
         
         if (file==null)
-            file=grabFile(null);
-        else if (file.isDirectory())
-            file=grabFile(file.toString());
+        {   return;            
+        }
         
         
         try {
@@ -87,6 +97,16 @@ public class EasyXMLReader {
         } catch (ParserConfigurationException ex) {
             Logger.getLogger(EasyXMLReader.class.getName()).log(Level.SEVERE, null, ex);
         }
+    }
+    
+    /** Return whether the system has a file */
+    public boolean hasFile()
+    {   return file!=null;
+        
+    }
+    
+    public File getFile()
+    {   return file;        
     }
 
     public EasyXMLReader(Node db) {

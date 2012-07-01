@@ -28,11 +28,14 @@ public class NetPlotter {
     
     SpikeStack net;
     
+    JFrame frm;
+    
     public int updateMillis=30;           // Update interval, in milliseconds
     public float timeScale=1;               // Number of network-seconds per real-second 0: doesn't advance.  Inf advances as fast as CPU will allow
     
-    boolean realTime=false;         // Set true for real-time computation.  In this case, the network will try to display up to the end of the output queue
+    public boolean realTime=false;         // Set true for real-time computation.  In this case, the network will try to display up to the end of the output queue
     
+    public boolean enable=true;
     
     long lastnanotime=Integer.MIN_VALUE;
     
@@ -40,6 +43,8 @@ public class NetPlotter {
     
     JTextComponent jt;
     LayerStatePlotter[] layerStatePlots;
+    
+    
     
     public NetPlotter(SpikeStack network)
     {   net=network;        
@@ -85,7 +90,7 @@ public class NetPlotter {
     }
 
     
-    /* Create a layerStatePlots for the network */
+    /** Create a figure for plotting the state of the network for the network */
     public JFrame createStatePlot()
     {
         int nLayers=net.nLayers();
@@ -131,6 +136,7 @@ public class NetPlotter {
             
             disp.setPreferredSize(new Dimension(300,300));
                         
+            
             GridBagConstraints c = new GridBagConstraints();
             c.fill=GridBagConstraints.HORIZONTAL;
             c.gridx=i;
@@ -179,10 +185,16 @@ public class NetPlotter {
     }
         
     
-    /** Start Plotting the state */
+    public JFrame getFrame()
+    {   return frm;
+        
+    }
+    
+    
+    /** Create a plot of the network state and launch a thread that updates this plot.*/
     public void followState()
     {
-        final JFrame fr=createStatePlot();
+        frm=createStatePlot();
                 
         
         class ViewLoop extends Thread{
@@ -196,7 +208,7 @@ public class NetPlotter {
             @Override
             public void run()
             {
-                while (fr.isShowing())
+                while (frm.isShowing() && enable)
                 {
                     
                     // System.out.println("Loop checking in at : "+lastNetTime+updateMillis*timeScale);
@@ -227,12 +239,12 @@ public class NetPlotter {
         
     }
     
-    /* Update the state plot */
+    /** Update the state plot to the current time */
     public void state()
     {   state(net.time);        
     }
     
-    /* Update the state plot */
+    /** Update the state plot to the specified time */
     public void state(double upToTime)
     {
         
@@ -332,6 +344,8 @@ public class NetPlotter {
             }
             
             
+            
+            
 //        System.out.println(net.time);
         
                 
@@ -370,10 +384,17 @@ public class NetPlotter {
             
             lastTime=toTime;
             
+            disp.setTitleLabel("AAA");
+//            disp.drawCenteredString(1, 1, "A");
             disp.repaint();
         }
         
                 
     }
         
+    public void closePlot()
+    {
+        frm.dispose();
+    }
+    
 }
