@@ -7,11 +7,14 @@ package jspikestack;
 //import org.ejml.data.DenseMatrix64F;
 
 
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
-import javax.swing.JFrame;
+import javax.swing.*;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
@@ -23,7 +26,7 @@ import org.jfree.data.xy.XYSeriesCollection;
 import org.jfree.experimental.chart.plot.CombinedXYPlot;
 
 /**
- * Here's a collection of demos that make use of the Spiking Network 
+ * Here's a collection of Demos that make use of the Spiking Network 
  * package.  To run, just uncomment the appropriate line in the main function.
  * 
  * HAVE FUN.
@@ -32,6 +35,7 @@ import org.jfree.experimental.chart.plot.CombinedXYPlot;
  */
 public class JspikeStack {
 
+    
     /**
      * @param args the command line arguments
      */
@@ -41,9 +45,12 @@ public class JspikeStack {
         
 //         learningDemo();
 
-        readNet();
+//        readNet();
         
 //        liquidDemo();
+        
+        demoMenu();
+        
     }
     
     /** Read in a network from XML, do stuff with it */
@@ -119,31 +126,33 @@ public class JspikeStack {
         // Initialize Network
         STDPStack.Initializer ini=new STDPStack.Initializer(nLayers);
         
-        ini.tau             = 10f;
+        ini.tau             = 20f;
         ini.thresh          = 1;
-        ini.tref            = 0;        
-        ini.stdp.plusStrength    = .0001f;
+        ini.tref            = 5;        
+        ini.stdp.plusStrength    = .001f;
+        ini.stdp.minusStrength    = -.001f;
+        ini.stdp.stdpTCplus      = 10f;
         ini.stdp.stdpTCminus     = 10f;
-        ini.stdp.stdpTCplus      = 10;
+        
         ini.stdpWin         = 30;
         
         ini.lay(0).nUnits   = 64;
         ini.lay(0).targ     = 1;
         ini.lay(0).name     = "Input";
-        ini.lay(0).WoutMean = .06f;
-        ini.lay(0).WoutStd  = 0.06f;
+        ini.lay(0).WoutMean = .5f;
+        ini.lay(0).WoutStd  = 0.3f;
         ini.lay(0).enableSTDP=true;
         
-        ini.lay(0).WlatMean = -.2f;
+        ini.lay(0).WlatMean = -0f;
         ini.lay(0).WlatStd  = 0f;
         
         ini.lay(1).nUnits   = 20;
         ini.lay(1).name     = "A1";
-        ini.lay(1).WlatMean = -1f;
-        ini.lay(1).WlatStd  = .2f;
+        ini.lay(1).WlatMean = -2f;
+        ini.lay(1).WlatStd  = .0f;
         
         
-        STDPStack es=new STDPStack(ini);
+        STDPStack<STDPStack,STDPStack.STDPLayer> es=new STDPStack(ini);
                 
         es.lay(1).latSend=1;
         es.lay(0).latSend=0;
@@ -153,17 +162,25 @@ public class JspikeStack {
         
         
         int nEpochs     = 10;
+                        
+        ArrayList<Spike> events=aevents2events(aef.events);
         
+        es.lay(0).enableSTDP=false;
+        es.feedEventsAndGo(events);
+        es.plot.raster("Random Initializations");
         
+        es.plot.timeScale=0;
+        
+        es.lay(0).enableSTDP=true;
         // Feed Events to Network
         for (int i=0; i<nEpochs; i++)
-        {   es.reset();
-            LinkedList<Spike> events=aevents2events(aef.events);
-            es.feedEvents(events);
+        {   System.out.println("Pass "+i);
+            es.reset();
+            es.feedEventsAndGo(events);
         }
-        es.plot.raster();
         
         
+        es.plot.raster("After "+nEpochs+" training cycles");
         
     }
     
@@ -206,7 +223,7 @@ public class JspikeStack {
         ini.lay(1).WlatStd  = 0f;
         
         
-        STDPStack es=new STDPStack(ini);
+        STDPStack<STDPStack,STDPStack.STDPLayer> es=new STDPStack(ini);
         
         
         es.lay(1).latSend=1;
@@ -216,15 +233,28 @@ public class JspikeStack {
         es.inputCurrentStrength=0.8f;
         
         
-        int nEpochs     = 10;
+        int nEpochs     = 5;
         
         
+        ArrayList<Spike> events=aevents2events(aef.events);
+        
+        
+        es.lay(0).enableSTDP=false;
+        es.feedEvents(events);
+        es.plot.raster();
+        
+        es.plot.timeScale=0;
+        
+        es.lay(0).enableSTDP=true;
         // Feed Events to Network
         for (int i=0; i<nEpochs; i++)
-        {   es.reset();
-            LinkedList<Spike> events=aevents2events(aef.events);
+        {   System.out.println("Pass "+i);
+            es.reset();
             es.feedEvents(events);
         }
+        
+        
+        es.eatEvents();
         es.plot.raster();
         
         
@@ -238,7 +268,7 @@ public class JspikeStack {
         // Read Events
         AERFile aef=new AERFile();
         aef.read();
-        LinkedList<Spike> events=aevents2events(aef.events);
+        ArrayList<Spike> events=aevents2events(aef.events);
         
         // Plot Events
         
@@ -261,7 +291,8 @@ public class JspikeStack {
         SpikeStack es=new SpikeStack(ini);
         
         // Feed Events to Network
-        es.feedEvents(events);
+        es.feedEventsAndGo(events);
+        
         es.plot.raster();
         
     }
@@ -310,7 +341,7 @@ public class JspikeStack {
         // Feed Events to Network
         for (int i=0; i<10; i++)
         {   es.reset();
-            LinkedList<Spike> events=aevents2events(aef.events);
+            ArrayList<Spike> events=aevents2events(aef.events);
             es.feedEvents(events);
         }
         es.plot.raster();
@@ -318,9 +349,9 @@ public class JspikeStack {
     }
     
     /** Convert AEViewer file events to JspikeStack Events */
-    public static LinkedList<Spike> aevents2events(ArrayList<AERFile.Event> events)
+    public static ArrayList<Spike> aevents2events(ArrayList<AERFile.Event> events)
     {   
-        LinkedList<Spike> evts =new LinkedList<Spike>();
+        ArrayList<Spike> evts =new ArrayList<Spike>();
         
         for (int i=0; i<events.size(); i++)
         {   AERFile.Event ev=events.get(i);
@@ -365,7 +396,87 @@ public class JspikeStack {
 
     }
     
-     
+    /** Enumeration of the list of available demos */
+    public static enum Demos {GENERATE,LEARN};
+    
+    /** Start a menu that allows the user to launch a number of demos for the 
+     * JSpikeStack package.  To add a new demo to the menu:
+     * 1) Add the appropriate element to the "Demos" enumerator;
+     * 2) Add the button in demoMenu
+     * 3) Connect the enumerator element to the appropriate function in DemoLauncher
+     */
+    public static void demoMenu()
+    {
+                
+        JFrame frm=new JFrame();
+        Container pane=frm.getContentPane();
+        JButton button;
+        
+        pane.setLayout(new GridBagLayout());
+        
+        addDemoButton("Network Generation Demo","Read a network From XML and let it generate",Demos.GENERATE,pane);
+        addDemoButton("Learning Demo","Read an AER file, initialize a random net, and run STDP learning",Demos.LEARN,pane);
+        
+        
+        frm.setPreferredSize(new Dimension(500,300));
+        frm.pack();
+        frm.setVisible(true);
+        
+    }
+    
+    static class DemoLauncher extends Thread{
+            Demos demoNumber;
+            public DemoLauncher(Demos demoNum)
+            {   demoNumber=demoNum;
+            }
+            
+            @Override
+            public void run()
+            {   switch (demoNumber)
+                {   case GENERATE:
+                        readNet();       
+                        break;
+                    case LEARN:
+                        learningDemo();
+                        break;
+                }
+            }
+        }        
+    
+    /** Add a demo button */
+    public static void addDemoButton(String demoName,String description,final Demos demoNumber,Container pane)
+    {        
+        JButton button=new JButton(demoName);
+        button.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                new DemoLauncher(demoNumber).start();
+            }
+        });
+        
+        
+        GridBagConstraints c = new GridBagConstraints();
+        
+        c.fill=GridBagConstraints.BOTH;
+        c.gridx=0;
+        c.gridy=demoNumber.ordinal();
+        c.weightx=1;
+        c.weighty=1;
+        pane.add(button,c);
+        
+        JTextArea jt=new JTextArea(description);
+        jt.setLineWrap(true);
+        jt.setWrapStyleWord(true);
+        
+        c.gridx=1;
+        //c.anchor=GridBagConstraints.CENTER;
+        c.fill=GridBagConstraints.CENTER;
+        
+        pane.add(jt,c);
+        
+    }
+    
+    
     
 }
    

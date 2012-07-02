@@ -27,6 +27,8 @@ public class AERFile {
     
     Scanner sc;
     
+    File file;
+    
     protected MappedByteBuffer byteBuffer = null;
     
     public class Event
@@ -36,15 +38,22 @@ public class AERFile {
         
     }
     
+    public boolean hasValidFile()
+    {
+        return ((file!=null)&&file.isFile());
+    }
     
     /* Read an aer file, build an array of events from it.*/
     public void read(){
         try {
             
             File startDir = new File(startPath);
-            File file=getfile(startDir);
+            file=getfile(startDir);
             
             //FileInputStream fis=new FileInputStream(file);
+            
+            if (file==null)
+                return;
             
             sc=new Scanner(file,"ISO-8859-1");
             
@@ -95,13 +104,14 @@ public class AERFile {
     static class FileChoice implements Runnable {
 
         File file;
-        File startDir;
+        File startDir=new File(getClass().getClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../files/aerdata");
+    
 
         @Override
         public void run() {
             JFileChooser fc;
             fc = new JFileChooser(startDir);
-            fc.setDialogTitle("Choose network weight XML file (JAER/filterSettings/NeuralNets)");
+            fc.setDialogTitle("Chose an AER data file");
 
             fc.showOpenDialog(null);
             file = fc.getSelectedFile();            

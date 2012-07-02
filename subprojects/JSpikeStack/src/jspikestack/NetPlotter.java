@@ -5,6 +5,7 @@
 package jspikestack;
 
 import java.awt.*;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -50,8 +51,12 @@ public class NetPlotter {
     {   net=network;        
     }
     
-   
     public void raster()
+    {   raster("");
+        
+    }
+   
+    public void raster(String title)
     {   
         CombinedDomainXYPlot plot = new CombinedDomainXYPlot(new NumberAxis("Time"));
         
@@ -59,7 +64,9 @@ public class NetPlotter {
         for (Object lay:net.layers)
             plot.add(layerRaster((SpikeStack.Layer)lay),1);
         
-        JFreeChart chart= new JFreeChart("Raster",JFreeChart.DEFAULT_TITLE_FONT, plot,true);
+        
+        
+        JFreeChart chart= new JFreeChart("Raster: "+title,JFreeChart.DEFAULT_TITLE_FONT, plot,true);
         
         // Put it in a frame!
         JFrame fr=new JFrame();
@@ -111,8 +118,6 @@ public class NetPlotter {
             pan.setBackground(Color.darkGray);
             
             pan.setLayout(new GridBagLayout());
-            
-            
             
             ImageDisplay disp=ImageDisplay.createOpenGLCanvas();
             
@@ -175,12 +180,16 @@ public class NetPlotter {
 //        j.setVisible(true);
         
         fr.getContentPane().add(j,c);
-        fr.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+//        fr.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         
         fr.pack();
 //        fr.setSize(1000,400);
+        
+        
         fr.setVisible(true);        
-                
+//        fr.validate();       
+//        fr.repaint();
+        
         return fr;
     }
         
@@ -247,53 +256,61 @@ public class NetPlotter {
     /** Update the state plot to the specified time */
     public void state(double upToTime)
     {
-        
-        // Can't progress further than present.
-            upToTime=Math.min(upToTime,net.time);
-        
-//        long t=System.nanoTime();
-        
-        // 
-//        float updatemillis=(float)updateTime;
-        
-                
-//        if (realTime) {
-//            try {
-//                Thread.sleep(updatemillis);
-//            } catch (InterruptedException ex) {
-//                Logger.getLogger(NetPlotter.class.getName()).log(Level.SEVERE, null, ex);
-//            }
-//        }
-        
-//        // If not yet ready for next frame, return
-//        if ((net.time-lastNetTime)*timeScale < updateTime)
-//            return;
-        
-//        double newNetTime=net.time;
-                
-        if (layerStatePlots==null)
-            createStatePlot();
-        
-        for (int i=0; i<net.nLayers(); i++)
-            layerStatePlots[i].update(upToTime);
-        
-        
-        jt.setText("Time: "+(int)upToTime+"ms\nNetTime: "+(int)net.time+"ms");
-        
-//        System.out.println(net.time+" "+(t-lastnanotime));
-// 
-//        lastnanotime=t;
-        
-        
-//        try {
-//            
-//            Thread.sleep((int)updatemillis);
-//        } catch (InterruptedException ex) {
-//            Logger.getLogger(NetPlotter.class.getName()).log(Level.SEVERE, null, ex);
-//        }
-        
-        lastNetTime=upToTime;
-//        lastNetTime=net.time;
+            // Can't progress further than present.
+                upToTime=Math.min(upToTime,net.time);
+            
+    //        long t=System.nanoTime();
+            
+            // 
+    //        float updatemillis=(float)updateTime;
+            
+                    
+    //        if (realTime) {
+    //            try {
+    //                Thread.sleep(updatemillis);
+    //            } catch (InterruptedException ex) {
+    //                Logger.getLogger(NetPlotter.class.getName()).log(Level.SEVERE, null, ex);
+    //            }
+    //        }
+            
+    //        // If not yet ready for next frame, return
+    //        if ((net.time-lastNetTime)*timeScale < updateTime)
+    //            return;
+            
+    //        double newNetTime=net.time;
+                  
+            
+            
+              
+            if (layerStatePlots==null)
+                createStatePlot();
+            
+            for (int i=0; i<net.nLayers(); i++)
+                layerStatePlots[i].update(upToTime);
+            
+            
+            jt.setText("Time: "+(int)upToTime+"ms\nNetTime: "+(int)net.time+"ms");
+            
+                    
+            
+                    
+                  
+    //        System.out.println(net.time+" "+(t-lastnanotime));
+    // 
+    //        lastnanotime=t;
+            
+            
+    //        try {
+    //            
+    //            Thread.sleep((int)updatemillis);
+    //        } catch (InterruptedException ex) {
+    //            Logger.getLogger(NetPlotter.class.getName()).log(Level.SEVERE, null, ex);
+    //        }
+            
+    //        frm.getContentPane().setVisible(true);
+            
+            lastNetTime=upToTime;
+    //        lastNetTime=net.time;
             
     }
     

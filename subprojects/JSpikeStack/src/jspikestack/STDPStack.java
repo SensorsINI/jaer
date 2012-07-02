@@ -53,7 +53,7 @@ public class STDPStack<NetType extends STDPStack,LayerType extends STDPStack.STD
         stdpWin=ini.stdpWin;
     
         for (int i = 0; i < layers.size(); i++) {
-            lay(i).stdpEnable = ini.lay(i).enableSTDP;
+            lay(i).enableSTDP = ini.lay(i).enableSTDP;
         }
     }
     
@@ -113,15 +113,12 @@ public class STDPStack<NetType extends STDPStack,LayerType extends STDPStack.STD
         int outBufferBookmark=0;   // Bookmark used for stdp learning
         int thisBufferBookmark=0;
 
-        public boolean enableSTDP;     // Enable STDP on the slow weights
+        public boolean enableSTDP=false;     // Enable STDP on the slow weights
 
         public STDPLayer(NetType network,int ind)
         {   super((NetType)network,ind);            
         }
-
         
-        boolean stdpEnable=false;
-
         /** Determine whether to spend time looping through spikes */
         public boolean isLearningEnabled()
         {   return enableSTDP;            
