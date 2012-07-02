@@ -20,22 +20,33 @@ public class NetworkList<NetType extends SpikeStack>
     NetType initialNet;     // The network off which other networks are based.
     Remapper R;             // The remapper object
     
-    ArrayList<SpikeStackWrapper<NetType>> nets;     // The list of networks to feed events to
+    ArrayList<SpikeStackWrapper<NetType>> nets=new ArrayList<SpikeStackWrapper<NetType>>();     // The list of networks to feed events to
     
     
     /** Initialize the network array given an initial network */
     public NetworkList(NetType initNet)
     {
-        initialNet=initNet;
-        
+        setNetwork(initNet);
         
     }
+    
+    /** Bring up the state-plot of a given network */
+    public void setPlottingState(int netNumber,boolean state)
+    {   
+        net(netNumber).setEnablePlotting(state);
+    }
+    
     
     /** Initialize the network array given an initial network */
     public NetworkList(NetType initNet, Remapper R)
     {
         this(initNet);
         setRemapper(R);
+    }
+    
+    /** Return the Network Wrapper at index netNumber */
+    public SpikeStackWrapper<NetType> net(int netNumber)
+    {   return nets.get(netNumber);        
     }
     
     /** Sets the network.  If nets is empty, this adds the network as the first
@@ -45,14 +56,19 @@ public class NetworkList<NetType extends SpikeStack>
      */
     public void setNetwork(NetType network)
     {           
+        
         int len=nets.size();
         
         if (len==0)
             len=1;
                 
         nets.clear();
-        
+                
         initialNet=network;
+        
+        nets.add(wrapNet(initialNet));
+        
+                
         setNetCount(len);
         
     }
@@ -96,8 +112,13 @@ public class NetworkList<NetType extends SpikeStack>
     
     public SpikeStackWrapper newWrappedNet()
     {
-        return new SpikeStackWrapper(initialNet.copy(),R);
+        return wrapNet((NetType)initialNet.copy());
         
+    }
+    
+    public SpikeStackWrapper wrapNet(NetType net)
+    {
+        return new SpikeStackWrapper(net,R);
     }
     
     /** Route Cluster Events to network by cluster id */

@@ -27,6 +27,11 @@ public class Remapper {
     {   sourceMap.put(source,index);
     }
     
+    /** Output a destination index (generally this will correspond to the index 
+     * of the input layer), given a byte identifying the event source.
+     * @param source
+     * @return 
+     */
     public int source2dest(byte source)
     {   return sourceMap.get(source);
     }
@@ -48,10 +53,16 @@ public class Remapper {
         baseTimeInitialized=true;
     }
     
-    double timeStamp2doubleTime(int eventTimeStamp)
-    {   
-        return (double) timeStamp2netTime(eventTimeStamp);  
+    public boolean isBaseTimeInitialized()
+    {   return baseTimeInitialized;        
     }
+    
+    double timeStamp2doubleTime(int eventTimeStamp,float scaleFactor)
+    {   
+        return (double) timeStamp2netTime(eventTimeStamp)*scaleFactor;  
+    }
+    
+   
     
     /** Take a set of raw input locs, resize and map to an index, according 
      * to column-indexing (as in matlab). */

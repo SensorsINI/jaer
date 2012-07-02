@@ -4,7 +4,10 @@
  */
 package ch.unizh.ini.jaer.projects.integrateandfire;
 
+import java.awt.GridBagLayout;
+import java.io.File;
 import jspikestack.STPStack;
+import jspikestack.SpikeStack;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -19,6 +22,9 @@ public class SpikeFilter extends EventFilter2D{
 
     NetworkList netArr;
     
+    File startDir=new File(getClass().getClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../subprojects/JSpikeStack/files/nets");
+    
+    
     public SpikeFilter(AEChip chip)
     {   super(chip);
     }
@@ -28,10 +34,10 @@ public class SpikeFilter extends EventFilter2D{
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         
         // Initialize Remapper
-        if (netArr.R==null)
-        {   
-            
-        }
+        if (netArr==null)
+            return in;
+        else if (!netArr.R.isBaseTimeInitialized())
+            netArr.R.initializeBaseTime(in.getFirstTimestamp());
         
         // If it's a clusterset event
         if (in.getEventClass()==ClusterSet.class)
@@ -47,8 +53,10 @@ public class SpikeFilter extends EventFilter2D{
             {   netArr.routeTo(ev,0);
             }
         }
+        
+        netArr.crunch();
                 
-        return out;
+        return in;
     }
     
     /** Grab the network */
@@ -56,60 +64,76 @@ public class SpikeFilter extends EventFilter2D{
     {
         
         /* Step 1: Grab the network */
-//        SpikeStack net=new 
-        STPStack<STPStack,STPStack.Layer> net = new STPStack();
-        net.read.readFromXML(net);    
+        SpikeStack net=new SpikeStack();
+//        STPStack<STPStack,STPStack.Layer> net = new STPStack();
+        
+        net.read.readFromXML(net,startDir);    
        
-        net.tau=100f;
+        if (!net.isBuilt())
+            return;
+        
+        net.tau=200f;
         net.delay=10f;
         net.tref=5;
         
         net.plot.timeScale=1f;
         
         // Set up connections
-        float[] sigf={0, 1, 0, 1};
+        float[] sigf={1, 1, 0, 0};
         net.setForwardStrength(sigf);
-        float[] sigb={1, 1, 0, 1};
+        float[] sigb={0, 0, 0, 1};
         net.setBackwardStrength(sigb);
         
         // Up the threshold
-        net.scaleThresholds(400);
+        net.scaleThresholds(500);
         
-        net.fastWeightTC=2;
-        
-        net.lay(1).enableFastSTDP=true;
-        net.lay(3).enableFastSTDP=true;
-        
-        
-        net.fastSTDP.plusStrength=-.001f;
-        net.fastSTDP.minusStrength=-.001f;   
-        net.fastSTDP.stdpTCminus=10;
-        net.fastSTDP.stdpTCplus=10;
+//        net.fastWeightTC=2;
+//        
+//        net.lay(1).enableFastSTDP=true;
+//        net.lay(3).enableFastSTDP=true;
+//        
+//        
+//        net.fastSTDP.plusStrength=-.001f;
+//        net.fastSTDP.minusStrength=-.001f;   
+//        net.fastSTDP.stdpTCminus=10;
+//        net.fastSTDP.stdpTCplus=10;
         
         net.plot.timeScale=1f;
         
-        STPStack<STPStack,STPStack.Layer> net2=net.read.copy();
+        net.liveMode=true;
+        net.plot.realTime=true;
         
-        net.eatEvents(10000);
+        net.plot.updateMillis=100;
         
+        net.inputCurrents=true;
+        net.inputCurrentStrength=.1f;
+        
+        
+//        STPStack<STPStack,STPStack.Layer> net2=net.read.copy();
+        
+//        net.eatEvents(10000);
         
         Remapper R=new Remapper();
         R.inDimX=(short)chip.getSizeX();
         R.inDimY=(short)chip.getSizeY(); 
-        R.outDimX=netArr.getNet(0).net.lay(0).dimx;
-        R.outDimY=netArr.getNet(0).net.lay(0).dimy;
-        netArr.setRemapper(R);
+        R.outDimX=net.lay(0).dimx;
+        R.outDimY=net.lay(0).dimy;
+        R.addSourcePair((byte)0, 0);
 
         netArr=new NetworkList(net,R);
-        
-        
-        
-        
     }
 
+    public void doPlot_Network()
+    {
+        netArr.setPlottingState(0, true);
+//        this.chip.getAeViewer().getContentPane().setLayout(new GridBagLayout());
+//        this.chip.getAeViewer().getContentPane().add(netArr.initialNet.plot.getFrame().getContentPane());
+    }
+    
+    
     @Override
     public void resetFilter() {
-        throw new UnsupportedOperationException("Not supported yet.");
+//        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
@@ -117,7 +141,7 @@ public class SpikeFilter extends EventFilter2D{
         
         
         
-        throw new UnsupportedOperationException("Not supported yet.");
+//        throw new UnsupportedOperationException("Not supported yet.");
     }
     
     

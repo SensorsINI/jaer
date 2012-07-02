@@ -20,7 +20,7 @@ public class SpikeStackWrapper <NetType extends SpikeStack> {
     
     NetType net;
     Remapper R;
-    
+        
     public SpikeStackWrapper(NetType network, Remapper rem)
     {
         net=network;
@@ -56,16 +56,34 @@ public class SpikeStackWrapper <NetType extends SpikeStack> {
     public Spike event2spike(BasicEvent ev)
     {
         byte source=0;
-        return new Spike(R.ixy2ind(ev.x, ev.y),R.timeStamp2doubleTime(ev.timestamp),R.source2dest(source));
+        return new Spike(R.xy2ind(ev.x, ev.y),R.timeStamp2doubleTime(ev.timestamp,.001f),R.source2dest(source));
     }
     
     /** Convert a cluster event to spike, using its cluster-relative position */
     public Spike event2spike(ClusterEvent ev)
     {
         byte source=0;
-        return new Spike(R.ixy2ind(ev.xp, ev.yp),R.timeStamp2doubleTime(ev.timestamp),R.source2dest(source));
+        return new Spike(R.ixy2ind(ev.xp, ev.yp),R.timeStamp2doubleTime(ev.timestamp,.001f),R.source2dest(source));
+    }
+
+    /**
+     * @return The "enabled" status of plotting
+     */
+    public boolean isEnablePlotting() {
+        return net.plot.enable;    }
+
+    /** Enable plotting for the given network.  If set to true, this will launch 
+     * a new plot.
+     */
+    public void setEnablePlotting(boolean enablePlotting) {
+        net.plot.enable=true;
+        if (enablePlotting)
+            net.plot.followState();
     }
     
-    
+    public void closePlot()
+    {
+        net.plot.closePlot();
+    }
     
 }
