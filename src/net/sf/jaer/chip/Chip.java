@@ -151,7 +151,7 @@ public class Chip extends Observable {
                  Logger.getLogger(Chip.class.getName()).log(Level.SEVERE, null, ex);
              } finally {
                  try {
-                     is.close();
+                     if(is!=null) is.close();
                  } catch (IOException ex) {
                      Logger.getLogger(Chip.class.getName()).log(Level.SEVERE, null, ex);
                  }
