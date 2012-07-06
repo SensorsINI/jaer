@@ -25,7 +25,7 @@ import javax.swing.*;
  * Export and import of filter preferences are also possible.
  * @author  tobi
  */
-public class FilterFrame extends javax.swing.JFrame implements PropertyChangeListener, WindowSaver.DontResize {
+public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFrame implements PropertyChangeListener, WindowSaver.DontResize {
 
     final int MAX_ROWS = 10; // max rows of filters, then wraps back to top
     static Preferences prefs = Preferences.userNodeForPackage(FilterFrame.class);
@@ -142,6 +142,7 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
         jPanel1 = new javax.swing.JPanel();
         updateIntervalLabel = new javax.swing.JLabel();
         updateIntervalField = new javax.swing.JTextField();
+        jbuttonSelectFilt = new javax.swing.JButton();
         statusPanel = new javax.swing.JPanel();
         scrollPane = new javax.swing.JScrollPane();
         filtersPanel = new javax.swing.JPanel();
@@ -207,6 +208,18 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
         jPanel1.add(updateIntervalField);
 
         jToolBar1.add(jPanel1);
+
+        jbuttonSelectFilt.setText("Select Filters...");
+        jbuttonSelectFilt.setActionCommand("Select Filters...");
+        jbuttonSelectFilt.setFocusable(false);
+        jbuttonSelectFilt.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        jbuttonSelectFilt.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        jbuttonSelectFilt.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jbuttonSelectFiltActionPerformed(evt);
+            }
+        });
+        jToolBar1.add(jbuttonSelectFilt);
 
         getContentPane().add(jToolBar1, java.awt.BorderLayout.NORTH);
 
@@ -428,7 +441,7 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
 
     }
     // list of individual filter panels
-    ArrayList<FilterPanel> filterPanels = new ArrayList<FilterPanel>();
+    protected ArrayList<PanelType> filterPanels = new ArrayList();
 
     /** rebuilds the frame contents using the existing filters in the filterChain */
     public void rebuildContents() {
@@ -443,7 +456,7 @@ public class FilterFrame extends javax.swing.JFrame implements PropertyChangeLis
         for (EventFilter2D f : filterChain) {
             FilterPanel p = new FilterPanel(f);
             filtersPanel.add(p);
-            filterPanels.add(p);
+            filterPanels.add((PanelType)p);
             n++;
             h += p.getHeight();
             w = p.getWidth();
@@ -586,6 +599,11 @@ private void updateIntervalFieldActionPerformed(java.awt.event.ActionEvent evt) 
     }
 }//GEN-LAST:event_updateIntervalFieldActionPerformed
 
+    private void jbuttonSelectFiltActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jbuttonSelectFiltActionPerformed
+       
+        filterChain.customize();
+    }//GEN-LAST:event_jbuttonSelectFiltActionPerformed
+
     private void filterVisibleBiases(String string) {
         if (string == null || string.isEmpty()) {
             for (FilterPanel p : filterPanels) {
@@ -618,19 +636,32 @@ private void updateIntervalFieldActionPerformed(java.awt.event.ActionEvent evt) 
             }
         }
     }
+    
+    public void clearFiltersPanel()
+    {   filterPanels.clear();
+        filtersPanel.removeAll();
+    }
+    
+    public void addToFiltersPanel(FilterPanel p)
+    {   filtersPanel.add(p);
+        filterPanels.add((PanelType)p);
+    }
+    
+    
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JRadioButtonMenuItem acquisitionModeMenuItem;
     private javax.swing.JMenuItem customizeMenuItem;
     private javax.swing.JToggleButton disableFilteringToggleButton;
     private javax.swing.JMenuItem exitMenuItem;
     private javax.swing.JMenu fileMenu;
-    private javax.swing.JPanel filtersPanel;
+    protected javax.swing.JPanel filtersPanel;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator2;
     private javax.swing.JSeparator jSeparator3;
     private javax.swing.JSeparator jSeparator4;
     private javax.swing.JToolBar jToolBar1;
+    private javax.swing.JButton jbuttonSelectFilt;
     private javax.swing.JCheckBoxMenuItem limitTimeCheckBoxMenuItem;
     private javax.swing.JMenuItem loadMenuItem;
     private javax.swing.JMenuBar mainMenuBar;

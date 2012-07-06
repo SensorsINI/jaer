@@ -56,6 +56,12 @@ public class BasicEvent implements EventInterface<BasicEvent> {
      */
     public final static int SPECIAL_EVENT_BIT_MASK = 0x80000000;
 
+    /** Source byte.  This is used to identify the source of the event when using
+     * filters that integrate multiple event sources (eg, Retina, Cochlea ; 
+     * Left Retina, Right Retina, etc).
+     */
+    public byte source;
+    
     /**
      * Indicates that this event is a special synchronizing event, e.g.
      * originating from a separate hardware input pin or from the a special

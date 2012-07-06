@@ -53,6 +53,9 @@ import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import spread.*;
 import cl.eye.*;
 import java.net.MalformedURLException;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+import net.sf.jaer.eventprocessing.PacketStream;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryChooserDialog;
 
 /**
@@ -1555,6 +1558,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public AEPlayer aePlayer = new AEPlayer(this, this);
     int noEventCounter = 0;
 
+
     /** This thread acquires events and renders them to the RetinaCanvas for active rendering. The other components render themselves
      * on the usual Swing rendering thread.
      */
@@ -1613,6 +1617,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (isPaused()) {
                 extractor.setSubsamplingEnabled(subsamplingEnabled);
             }
+            
             return packet;
         }
         private EngineeringFormat engFmt = new EngineeringFormat();
@@ -1631,7 +1636,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         @Override
         public void run() { // don't know why this needs to be thread-safe
         /* TODO synchronized tobi removed sync because it was causing deadlocks on exit. */
-            while (!isVisible()) {
+            while (!isVisible() && !globalized) {
                 try {
                     log.info("sleeping until isVisible()==true");
                     Thread.sleep(1000); // sleep to let components realize on screen - may be crashing opengl on nvidia drivers if we draw to unrealized components
@@ -1649,384 +1654,47 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     // another flag, doSingleStep, tells loop to do a single data acquisition and then pause again
                     // in this branch, getString new data to show
                     getFrameRater().takeBefore();
-                    switch (getPlayMode()) {
-                        case SEQUENCING:
-                            HardwareInterface chipHardwareInterface = chip.getHardwareInterface();
 
-                            if (chipHardwareInterface == null) {
-                                log.warning("AE monitor/sequencer became null while sequencing");
-                                setPlayMode(PlayMode.WAITING);
-                                break;
-                            }
-                            AESequencerInterface aemonseq = (AESequencerInterface) chip.getHardwareInterface();
-                            int nToSend = aemonseq.getNumEventsToSend();
-                            int position = 0;
-                            if (nToSend != 0) {
-                                position = (int) (playerControls.getPlayerSlider().getMaximum() * (float) aemonseq.getNumEventsSent() / nToSend);
-                            }
+                    // Grab input from one of various sources
+                    boolean skipTheRest = grabInput();
+                    if (skipTheRest) continue;
 
-                            sliderDontProcess = true;
-                            playerControls.getPlayerSlider().setValue(position);
-                            if (!(chip.getHardwareInterface() instanceof AEMonitorInterface)) {
-                                continue;                            // if we're a monitor plus sequencer than go on to monitor events, otherwise break out since there are no events to monitor
-                            }
-                        case LIVE:
-                            openAEMonitor();
-                            if (aemon == null || !aemon.isOpen()) {
-                                setPlayMode(PlayMode.WAITING);
-                                try {
-                                    Thread.sleep(300);
-                                } catch (InterruptedException e) {
-                                    log.warning("LIVE openAEMonitor sleep interrupted");
-                                }
-                                continue;
-                            }
-                            overrunOccurred = aemon.overrunOccurred();
-                            try {
-                                // try to getString an event to avoid rendering empty (black) frames
-//                                int triesLeft = 15;
-//                                do {
-//                                    if (!isInterrupted()) {
-                                aemon = (AEMonitorInterface) chip.getHardwareInterface(); // TODOkeep setting aemon to be chip's interface, this is kludge
-                                if (aemon == null) {
-                                    log.warning("AEViewer.ViewLoop.run(): AEMonitorInterface became null during acquisition");
-                                    throw new HardwareInterfaceException("hardware interface became null");
-                                }
-                                aeRaw = aemon.acquireAvailableEventsFromDriver();
-//                                        System.out.println("got "+aeRaw);
-//                                    }
-
-//                                    if (aeRaw.getNumEvents() > 0) {
-//                                        break;
-//                                    }
-//                                    System.out.print("."); System.out.flush();
-//                                    try {
-//                                        Thread.currentThread().sleep(3);
-//                                    } catch (InterruptedException e) {
-//                                        log.warning("LIVE attempt to getString data loop interrupted");
-//                                    }
-//                                } while (triesLeft-- > 0);
-////                                if(aeRaw.getNumEvents()==0) {System.out.print("0 events ..."); System.out.flush();}
-
-                            } catch (HardwareInterfaceException e) {
-                                if (stop) {
-                                    break; // break out of loop if this aquisition thread got HardwareInterfaceException because we are exiting
-                                }
-                                setPlayMode(PlayMode.WAITING);
-                                log.warning("while acquiring data caught " + e.toString());
-                                if (aemon != null) {
-                                    aemon.close(); // TODO check if this is OK -tobi
-                                }//                                e.printStackTrace();
-                                nullifyHardware();
-
-                                continue;
-                            } catch (ClassCastException cce) {
-                                setPlayMode(PlayMode.WAITING);
-                                log.warning("Interface changed out from under us: " + cce.toString());
-                                cce.printStackTrace();
-                                nullifyHardware();
-                                continue;
-                            }
-                            break;
-                        case PLAYBACK:
-//                            Thread thisThread=Thread.currentThread();
-//                            System.out.println("thread "+thisThread+" getting events for renderCount="+renderCount);
-                            aeRaw = getAePlayer().getNextPacket(aePlayer);
-                            getAePlayer().adjustTimesliceForRealtimePlayback();
-//                            System.out.println("."); System.out.flush();
-                            break;
-                        case REMOTE:
-                            if (unicastInputEnabled) {
-                                if (unicastInput == null) {
-                                    log.warning("null unicastInput, going to WAITING state");
-                                    setPlayMode(PlayMode.WAITING);
-                                } else {
-                                    aeRaw = unicastInput.readPacket();  // TODO should throw interruptedexception
-                                }
-
-                            }
-                            if (socketInputEnabled) {
-                                if (getAeSocket() == null) {
-                                    log.warning("null socketInputStream, going to WAITING state");
-                                    setPlayMode(PlayMode.WAITING);
-                                    socketInputEnabled = false;
-                                } else {
-                                    try {
-                                        aeRaw = getAeSocket().readPacket(); // reads a packet if there is data available // TODO should throw interrupted excpetion
-                                    } catch (IOException e) {
-                                        if (stop) {
-                                            break;
-                                        }
-                                        log.warning(e.toString() + ": closing and reconnecting...");
-                                        try {
-                                            getAeSocket().close();
-                                            aeSocket = new AESocket(); // uses last values stored in preferences
-                                            aeSocket.connect();
-                                            log.info("connected " + aeSocket);
-                                        } catch (IOException ex3) {
-                                            log.warning(ex3 + ": failed reconnection, sleeping 1 s before trying again");
-                                            try {
-                                                Thread.sleep(1000);
-                                            } catch (InterruptedException ex2) {
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-
-
-                            if (spreadInputEnabled) {
-                                try {
-                                    aeRaw = spreadInterface.readPacket();
-                                } catch (SpreadException e) {
-                                    log.warning(e.toString());
-                                }
-                            }
-                            if (multicastInputEnabled) {
-                                if (aeMulticastInput == null) {
-                                    log.warning("null aeMulticastInput, going to WAITING state");
-                                    setPlayMode(PlayMode.WAITING);
-                                } else {
-                                    aeRaw = aeMulticastInput.readPacket();
-                                }
-                            }
-                            if (blockingQueueInputEnabled) {
-                                if (getBlockingQueueInput() == null) {
-                                    log.warning("null blockingQueueInput, going to WAITING state");
-                                    setPlayMode(PlayMode.WAITING);
-                                } else {
-//                                    try {
-//                                        aeRaw = (AEPacketRaw) getBlockingQueueInput().take();
-//                                    } catch (InterruptedException ex) {
-//                                        Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
-//                                    }
-                                    Collection<AEPacketRaw> tempPackets = new ArrayList<AEPacketRaw>();
-                                    getBlockingQueueInput().drainTo(tempPackets);
-                                    int numOfCochleaPackets = 0;  // TODO make more general mechanism of merging streams
-                                    int numOfRetinaPackets = 0;
-                                    for (AEPacketRaw packet : tempPackets) {
-                                        if (packet.getNumEvents() != 0) {
-                                            if ((packet.addresses[0] & 0x8000) == 0) {
-                                                numOfCochleaPackets++;
-                                            } else {
-                                                numOfRetinaPackets++;
-                                            }
-                                        }
-                                    }
-                                    //log.info(String.format("remote received %d cochlea and %d retina packets.",numOfCochleaPackets,numOfRetinaPackets));
-                                    aeRaw = new AEPacketRaw(tempPackets);
-
-                                }
-                            }
-                            break;
-                        case WAITING:
-//                          notify(); // notify waiter on this thread that we have gone to WAITING state
-                            if (unicastInputEnabled || multicastInputEnabled || socketInputEnabled) {
-                                // if were were playing back a recording and a remote interface is active, then we go back to it here.
-                                setPlayMode(PlayMode.REMOTE);
-                                break;
-                            }
-                            openAEMonitor();
-                            if (aemon == null || !aemon.isOpen()) {
-                                statisticsLabel.setText("Choose desired HardwareInterface from Interface menu");
-//                                setPlayMode(PlayMode.WAITING); // we don't need to set it again
-                                try {
-                                    Thread.sleep(600);
-                                } catch (InterruptedException e) {
-                                    log.info("WAITING interrupted");
-                                }
-                                continue;
-                            }
-                    } // playMode switch to getString data
-
-                    if (aeRaw == null) {
-                        fpsDelay();
-                        continue;
-                    }
-
-
+                    
                     numRawEvents = aeRaw.getNumEvents();
 
-
                     // new style packet with reused event objects
-//                    if(aeRaw.getNumEvents()>0){ // we should always extract even if the packet is empty to be sure we get a valid packet!
+                    // if(aeRaw.getNumEvents()>0){ // we should always extract even if the packet is empty to be sure we get a valid packet!
+
                     packet = extractPacket(aeRaw);
-//                    }
 
-                    // filter events, do processing on them in rendering loop here
-                    if (filterChain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING || playMode != PlayMode.LIVE) {
-                        try {
-                            packet = filterChain.filterPacket(packet);
-                        } catch (Exception e) {
-                            log.warning("Caught " + e + ", disabling all filters. See following stack trace.");
-                            log.log(Level.WARNING, "Filter exception", e);
-                            for (EventFilter f : filterChain) {
-                                f.setFilterEnabled(false);
-                            }
-                        }
-                        if (packet == null) {
-                            //   log.warning("null packet after filtering");
-                            continue;
-                        }
-                    }
+                    //  synchronized(packet.class()){}
 
-                    // write to network socket if a client has opened a socket to us
-                    // we serve up events on this socket
-                    if (getAeServerSocket() != null && getAeServerSocket().getAESocket() != null) {
-                        AESocket s = getAeServerSocket().getAESocket();
-                        try {
-                            if (!isLogFilteredEventsEnabled()) {
-                                s.writePacket(aeRaw);
-                            } else {
-                                // send the reconstructed packet after filtering
-                                AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
-                                s.writePacket(aeRawRecon);
-                            }
-                        } catch (IOException e) {
-//                            e.printStackTrace();
-                            log.warning("sending packet " + aeRaw + " from " + this + " to " + s + " failed, closing socket");
-                            try {
-                                s.close();
-                            } catch (IOException e2) {
-                                e2.printStackTrace();
-                            } finally {
-                                getAeServerSocket().setSocket(null);
-                            }
-                        }
-                    }
-
-                    if (socketOutputEnabled) {
-                        if (getAeSocketClient() == null) {
-                            log.warning("null socketInputStream, going to WAITING state");
-                            setPlayMode(PlayMode.WAITING);
-                            socketOutputEnabled = false;
-                        } else {
-                            try {
-                                if (!isLogFilteredEventsEnabled()) {
-                                    getAeSocketClient().writePacket(aeRaw);
-                                } else {
-                                    // send the reconstructed packet after filtering
-                                    AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
-                                    getAeSocketClient().writePacket(aeRawRecon);
-                                }
-                                // reads a packet if there is data available // TODO should throw interrupted excpetion
-                            } catch (IOException e) {
-                                if (stop) {
-                                    break;
-                                }
-                                log.warning(e.toString() + ": closing and reconnecting...");
-                                try {
-                                    getAeSocketClient().close();
-                                    aeSocketClient = new AESocket(); // uses last values stored in preferences
-                                    aeSocketClient.connect();
-                                    log.info("connected " + aeSocketClient);
-                                } catch (IOException ex3) {
-                                    log.warning(ex3 + ": failed reconnection, sleeping 1 s before trying again");
-                                    try {
-                                        Thread.sleep(1000);
-                                    } catch (InterruptedException ex2) {
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // spread is a network system used by projects like the caltech darpa urban challange alice vehicle
-                    if (spreadOutputEnabled) {
-                        try {
-                            if (!isLogFilteredEventsEnabled()) {
-                                spreadInterface.writePacket(aeRaw);
-                            } else {
-                                // log the reconstructed packet after filtering
-                                AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
-                                spreadInterface.writePacket(aeRawRecon);
-                            }
-                        } catch (SpreadException e) {
-                            e.printStackTrace();
-                        }
-                    }
-
-                    // if we are multicasting output send it out here
-                    if (multicastOutputEnabled && aeMulticastOutput != null) {
-                        try {
-                            if (!isLogFilteredEventsEnabled()) {
-                                aeMulticastOutput.writePacket(aeRaw);
-                            } else {
-                                // log the reconstructed packet after filtering
-                                AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
-                                aeMulticastOutput.writePacket(aeRawRecon);
-                            }
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-
-                    if (unicastOutputEnabled && unicastOutput != null) {
-                        try {
-                            if (!isLogFilteredEventsEnabled()) {
-                                unicastOutput.writePacket(aeRaw);
-                            } else {
-                                // log the reconstructed packet after filtering.
-                                // TODO handle reconstructed packet with filtering that transforms events. At present the original raw addresses are sent out, so e.g. rotation will not appear
-                                // in the output.
-                                AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
-                                unicastOutput.writePacket(aeRawRecon);
-                            }
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
+                    // Filter Packet
+                    skipTheRest=filterPacket();
+                    if (skipTheRest) continue;
 
                     chip.setLastData(packet);// set the rendered data for use by various methods
 
                     // if we are logging data to disk do it here
                     if (loggingEnabled) {
-                        synchronized (loggingOutputStream) {
-                            try {
-                                if (!isLogFilteredEventsEnabled()) {
-                                    loggingOutputStream.writePacket(aeRaw); // log all events
-                                } else {
-                                    // log the reconstructed packet after filtering
-                                    AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
-                                    loggingOutputStream.writePacket(aeRawRecon);
-                                }
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                                loggingEnabled = false;
-                                try {
-                                    loggingOutputStream.close();
-                                } catch (IOException e2) {
-                                    e2.printStackTrace();
-                                }
-                            }
-                        }
-                        if (loggingTimeLimit > 0) { // we may have a defined time for logging, if so, check here and abort logging
-                            if (System.currentTimeMillis() - loggingStartTime > loggingTimeLimit) {
-                                log.info("logging time limit reached, stopping logging");
-                                try {
-                                    SwingUtilities.invokeAndWait(new Runnable() {
-
-                                        public void run() {
-                                            stopLogging(true); // must run this in AWT thread because it messes with file menu
-                                        }
-                                    });
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
-                            }
-                        }
+                        logPacket();
                     }
+
+                    // Write the ouput to whatever streams need it
+                    boolean breakout = writeOutputStreams();
+                    if (breakout)  break;
+
+                    
                     singleStepDone();
                     numEvents = packet.getSize();
                     numFilteredEvents = packet.getSize();
+//                    if (packet.isEmpty() && !isRenderBlankFramesEnabled()) {
+//                        // log.info("blank frame, not rendering it");
+//                        fpsDelay();
+//                        continue;
+//                    }
 
-                    if (packet.isEmpty() && !isRenderBlankFramesEnabled()) {
-//                        log.info("blank frame, not rendering it");
-                        fpsDelay();
-                        continue;
-                    }
-
+                    // Don't know what this is for
                     if (numEvents == 0) {
                         noEventCounter++;
                     } else {
@@ -2034,23 +1702,47 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
 
 
-                } // getting data
+                } // if (!isPaused() || isSingleStep())
 
+                
                 if (skipPacketsRenderingCount-- == 0) {
                     // we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
                     makeStatisticsLabel(packet);
                     renderPacket(packet);
                     skipPacketsRenderingCount = skipPacketsRenderingNumber;
-
                 }
-
                 getFrameRater().takeAfter();
                 renderCount++;
 
-                fpsDelay();
-//                rerenderFlagDone=true;
-            } // end of run() loop - main loop of AEViewer.ViewLoop
+                
+                
+                
+                //--------------------------------------------------------
+                // Peter's addition: Enable write to global
 
+                if (globalized) {
+                    
+                    try {
+                        waitFlag.await();
+                        
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
+                    } catch (BrokenBarrierException ex) {
+                        Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    
+                }
+                
+                
+            //--------------------------------------------------------
+//                System.out.println("Viewer Loop end");
+                fpsDelay();
+                
+                
+//                rerenderFlagDone=true;
+            } // while (stop == false): end of run() loop - main loop of AEViewer.ViewLoop
+
+            // Loop Cleanup
             log.info("AEViewer.run() ending: stop=" + stop + " isInterrupted=" + isInterrupted());
             if (aemon != null) {
                 aemon.close();
@@ -2062,6 +1754,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 unicastInput.close();
             }
 
+            // <editor-fold desc="Some Vestigal Organs.">
 //            if(windowSaver!=null)
 //                try {
 //                    windowSaver.saveSettings();
@@ -2082,7 +1775,392 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                    System.exit(0);
 //                }
 //            }
+            // </editor-fold>
+
         } // viewLoop.run()
+        
+        /** Grab the input.  Outputs true if the code should continue from here and skip future processing
+         * 
+         * @return 
+         */
+        boolean grabInput(){
+            
+            switch (getPlayMode()) {
+                case SEQUENCING:
+                    HardwareInterface chipHardwareInterface = chip.getHardwareInterface();
+
+                    if (chipHardwareInterface == null) {
+                        log.warning("AE monitor/sequencer became null while sequencing");
+                        setPlayMode(PlayMode.WAITING);
+                        break;
+                    }
+                    AESequencerInterface aemonseq = (AESequencerInterface) chip.getHardwareInterface();
+                    int nToSend = aemonseq.getNumEventsToSend();
+                    int position = 0;
+                    if (nToSend != 0) {
+                        position = (int) (playerControls.getPlayerSlider().getMaximum() * (float) aemonseq.getNumEventsSent() / nToSend);
+                    }
+
+                    sliderDontProcess = true;
+                    playerControls.getPlayerSlider().setValue(position);
+                    if (!(chip.getHardwareInterface() instanceof AEMonitorInterface)) {
+                        return true;                            // if we're a monitor plus sequencer than go on to monitor events, otherwise break out since there are no events to monitor
+                    }
+                case LIVE:
+                    openAEMonitor();
+                    if (aemon == null || !aemon.isOpen()) {
+                        setPlayMode(PlayMode.WAITING);
+                        try {
+                            Thread.sleep(300);
+                        } catch (InterruptedException e) {
+                            log.warning("LIVE openAEMonitor sleep interrupted");
+                        }
+                        return true;
+                    }
+                    overrunOccurred = aemon.overrunOccurred();
+                    try {
+                        // try to getString an event to avoid rendering empty (black) frames
+//                                int triesLeft = 15;
+//                                do {
+//                                    if (!isInterrupted()) {
+                        aemon = (AEMonitorInterface) chip.getHardwareInterface(); // TODOkeep setting aemon to be chip's interface, this is kludge
+                        if (aemon == null) {
+                            log.warning("AEViewer.ViewLoop.run(): AEMonitorInterface became null during acquisition");
+                            throw new HardwareInterfaceException("hardware interface became null");
+                        }
+                        aeRaw = aemon.acquireAvailableEventsFromDriver();
+//                                        System.out.println("got "+aeRaw);
+//                                    }
+
+//                                    if (aeRaw.getNumEvents() > 0) {
+//                                        break;
+//                                    }
+//                                    System.out.print("."); System.out.flush();
+//                                    try {
+//                                        Thread.currentThread().sleep(3);
+//                                    } catch (InterruptedException e) {
+//                                        log.warning("LIVE attempt to getString data loop interrupted");
+//                                    }
+//                                } while (triesLeft-- > 0);
+////                                if(aeRaw.getNumEvents()==0) {System.out.print("0 events ..."); System.out.flush();}
+
+                    } catch (HardwareInterfaceException e) {
+                        if (stop) {
+                            break; // break out of loop if this aquisition thread got HardwareInterfaceException because we are exiting
+                        }
+                        setPlayMode(PlayMode.WAITING);
+                        log.warning("while acquiring data caught " + e.toString());
+                        if (aemon != null) {
+                            aemon.close(); // TODO check if this is OK -tobi
+                        }//                                e.printStackTrace();
+                        nullifyHardware();
+
+                        return true;
+                    } catch (ClassCastException cce) {
+                        setPlayMode(PlayMode.WAITING);
+                        log.warning("Interface changed out from under us: " + cce.toString());
+                        cce.printStackTrace();
+                        nullifyHardware();
+                        return true;
+                    }
+                    break;
+                case PLAYBACK:
+//                            Thread thisThread=Thread.currentThread();
+//                            System.out.println("thread "+thisThread+" getting events for renderCount="+renderCount);
+                    aeRaw = getAePlayer().getNextPacket(aePlayer);
+                    getAePlayer().adjustTimesliceForRealtimePlayback();
+//                            System.out.println("."); System.out.flush();
+                    break;
+                case REMOTE:
+                    if (unicastInputEnabled) {
+                        if (unicastInput == null) {
+                            log.warning("null unicastInput, going to WAITING state");
+                            setPlayMode(PlayMode.WAITING);
+                        } else {
+                            aeRaw = unicastInput.readPacket();  // TODO should throw interruptedexception
+                        }
+
+                    }
+                    if (socketInputEnabled) {
+                        if (getAeSocket() == null) {
+                            log.warning("null socketInputStream, going to WAITING state");
+                            setPlayMode(PlayMode.WAITING);
+                            socketInputEnabled = false;
+                        } else {
+                            try {
+                                aeRaw = getAeSocket().readPacket(); // reads a packet if there is data available // TODO should throw interrupted excpetion
+                            } catch (IOException e) {
+                                if (stop) {
+                                    break;
+                                }
+                                log.warning(e.toString() + ": closing and reconnecting...");
+                                try {
+                                    getAeSocket().close();
+                                    aeSocket = new AESocket(); // uses last values stored in preferences
+                                    aeSocket.connect();
+                                    log.info("connected " + aeSocket);
+                                } catch (IOException ex3) {
+                                    log.warning(ex3 + ": failed reconnection, sleeping 1 s before trying again");
+                                    try {
+                                        Thread.sleep(1000);
+                                    } catch (InterruptedException ex2) {
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+
+
+                    if (spreadInputEnabled) {
+                        try {
+                            aeRaw = spreadInterface.readPacket();
+                        } catch (SpreadException e) {
+                            log.warning(e.toString());
+                        }
+                    }
+                    if (multicastInputEnabled) {
+                        if (aeMulticastInput == null) {
+                            log.warning("null aeMulticastInput, going to WAITING state");
+                            setPlayMode(PlayMode.WAITING);
+                        } else {
+                            aeRaw = aeMulticastInput.readPacket();
+                        }
+                    }
+                    if (blockingQueueInputEnabled) {
+                        if (getBlockingQueueInput() == null) {
+                            log.warning("null blockingQueueInput, going to WAITING state");
+                            setPlayMode(PlayMode.WAITING);
+                        } else {
+//                                    try {
+//                                        aeRaw = (AEPacketRaw) getBlockingQueueInput().take();
+//                                    } catch (InterruptedException ex) {
+//                                        Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
+//                                    }
+                            Collection<AEPacketRaw> tempPackets = new ArrayList<AEPacketRaw>();
+                            getBlockingQueueInput().drainTo(tempPackets);
+                            int numOfCochleaPackets = 0;  // TODO make more general mechanism of merging streams
+                            int numOfRetinaPackets = 0;
+                            for (AEPacketRaw packet : tempPackets) {
+                                if (packet.getNumEvents() != 0) {
+                                    if ((packet.addresses[0] & 0x8000) == 0) {
+                                        numOfCochleaPackets++;
+                                    } else {
+                                        numOfRetinaPackets++;
+                                    }
+                                }
+                            }
+                            //log.info(String.format("remote received %d cochlea and %d retina packets.",numOfCochleaPackets,numOfRetinaPackets));
+                            aeRaw = new AEPacketRaw(tempPackets);
+
+                        }
+                    }
+                    break;
+                case WAITING:
+//                          notify(); // notify waiter on this thread that we have gone to WAITING state
+                    if (unicastInputEnabled || multicastInputEnabled || socketInputEnabled) {
+                        // if were were playing back a recording and a remote interface is active, then we go back to it here.
+                        setPlayMode(PlayMode.REMOTE);
+                        break;
+                    }
+                    openAEMonitor();
+                    if (aemon == null || !aemon.isOpen()) {
+                        statisticsLabel.setText("Choose desired HardwareInterface from Interface menu");
+//                                setPlayMode(PlayMode.WAITING); // we don't need to set it again
+                        try {
+                            Thread.sleep(600);
+                        } catch (InterruptedException e) {
+                            log.info("WAITING interrupted");
+                        }
+                        return true;
+                    }
+            } // playMode switch to getString data
+
+            // If input is null, delay and continue
+            if (aeRaw == null) {
+                fpsDelay();
+                return true;
+            }
+            
+            return false;
+        }
+        
+        boolean filterPacket() {
+
+            // filter events, do processing on them in rendering loop here
+            if (filterChain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING || playMode != PlayMode.LIVE) {
+                try {
+                    packet = filterChain.filterPacket(packet);
+                } catch (Exception e) {
+                    log.warning("Caught " + e + ", disabling all filters. See following stack trace.");
+                    log.log(Level.WARNING, "Filter exception", e);
+                    for (EventFilter f : filterChain) {
+                        f.setFilterEnabled(false);
+                    }
+                }
+                if (packet == null) {
+                    //   log.warning("null packet after filtering");
+                    return true;
+                }
+            }
+            return false;
+        }
+             
+        void logPacket(){
+            synchronized (loggingOutputStream) {
+                try {
+                    if (!isLogFilteredEventsEnabled()) {
+                        loggingOutputStream.writePacket(aeRaw); // log all events
+                    } else {
+                        // log the reconstructed packet after filtering
+                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
+                        loggingOutputStream.writePacket(aeRawRecon);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    loggingEnabled = false;
+                    try {
+                        loggingOutputStream.close();
+                    } catch (IOException e2) {
+                        e2.printStackTrace();
+                    }
+                }
+            }
+            if (loggingTimeLimit > 0) { // we may have a defined time for logging, if so, check here and abort logging
+                if (System.currentTimeMillis() - loggingStartTime > loggingTimeLimit) {
+                    log.info("logging time limit reached, stopping logging");
+                    try {
+                        SwingUtilities.invokeAndWait(new Runnable() {
+
+                            public void run() {
+                                stopLogging(true); // must run this in AWT thread because it messes with file menu
+                            }
+                        });
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+        
+        /** Write data to output streams
+         * Returns true if the run loop should break.
+         * @return 
+         */
+        boolean writeOutputStreams(){
+            // write to network socket if a client has opened a socket to us
+                        // we serve up events on this socket
+            
+            
+            if (getAeServerSocket() != null && getAeServerSocket().getAESocket() != null) {
+                AESocket s = getAeServerSocket().getAESocket();
+                try {
+                    if (!isLogFilteredEventsEnabled()) {
+                        s.writePacket(aeRaw);
+                    } else {
+                        // send the reconstructed packet after filtering
+                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
+                        s.writePacket(aeRawRecon);
+                    }
+                } catch (IOException e) {
+//                            e.printStackTrace();
+                    log.warning("sending packet " + aeRaw + " from " + this + " to " + s + " failed, closing socket");
+                    try {
+                        s.close();
+                    } catch (IOException e2) {
+                        e2.printStackTrace();
+                    } finally {
+                        getAeServerSocket().setSocket(null);
+                    }
+                }
+            }
+
+            if (socketOutputEnabled) {
+                if (getAeSocketClient() == null) {
+                    log.warning("null socketInputStream, going to WAITING state");
+                    setPlayMode(PlayMode.WAITING);
+                    socketOutputEnabled = false;
+                } else {
+                    try {
+                        if (!isLogFilteredEventsEnabled()) {
+                            getAeSocketClient().writePacket(aeRaw);
+                        } else {
+                            // send the reconstructed packet after filtering
+                            AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
+                            getAeSocketClient().writePacket(aeRawRecon);
+                        }
+                        // reads a packet if there is data available // TODO should throw interrupted excpetion
+                    } catch (IOException e) {
+                        if (stop) {
+                            return true;
+                        }
+                        log.warning(e.toString() + ": closing and reconnecting...");
+                        try {
+                            getAeSocketClient().close();
+                            aeSocketClient = new AESocket(); // uses last values stored in preferences
+                            aeSocketClient.connect();
+                            log.info("connected " + aeSocketClient);
+                        } catch (IOException ex3) {
+                            log.warning(ex3 + ": failed reconnection, sleeping 1 s before trying again");
+                            try {
+                                Thread.sleep(1000);
+                            } catch (InterruptedException ex2) {
+                            }
+                        }
+                    }
+                }
+            }
+
+            // spread is a network system used by projects like the caltech darpa urban challange alice vehicle
+            if (spreadOutputEnabled) {
+                try {
+                    if (!isLogFilteredEventsEnabled()) {
+                        spreadInterface.writePacket(aeRaw);
+                    } else {
+                        // log the reconstructed packet after filtering
+                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
+                        spreadInterface.writePacket(aeRawRecon);
+                    }
+                } catch (SpreadException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            // if we are multicasting output send it out here
+            if (multicastOutputEnabled && aeMulticastOutput != null) {
+                try {
+                    if (!isLogFilteredEventsEnabled()) {
+                        aeMulticastOutput.writePacket(aeRaw);
+                    } else {
+                        // log the reconstructed packet after filtering
+                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
+                        aeMulticastOutput.writePacket(aeRawRecon);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            if (unicastOutputEnabled && unicastOutput != null) {
+                try {
+                    if (!isLogFilteredEventsEnabled()) {
+                        unicastOutput.writePacket(aeRaw);
+                    } else {
+                        // log the reconstructed packet after filtering.
+                        // TODO handle reconstructed packet with filtering that transforms events. At present the original raw addresses are sent out, so e.g. rotation will not appear
+                        // in the output.
+                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
+                        unicastOutput.writePacket(aeRawRecon);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            
+            return false;
+            
+        }
+        
 
         void fpsDelay() {
             if (!isPaused()) {
@@ -2252,6 +2330,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
     }
+    
     private javax.swing.Timer statusTimer = null;
 
     /** Sets the viewer's status message at the bottom of the window.
@@ -2562,6 +2641,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         filtersToggleButton = new javax.swing.JToggleButton();
         dontRenderToggleButton = new javax.swing.JToggleButton();
         loggingButton = new javax.swing.JToggleButton();
+        multiModeButton = new javax.swing.JToggleButton();
         playerControlPanel = new javax.swing.JPanel();
         jPanel1 = new javax.swing.JPanel();
         statusTextField = new javax.swing.JTextField();
@@ -2745,13 +2825,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         buttonsPanel.add(dontRenderToggleButton);
 
-        loggingButton.setFont(new java.awt.Font("Tahoma", 0, 10));
+        loggingButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
         loggingButton.setMnemonic('l');
         loggingButton.setText("Start logging");
         loggingButton.setToolTipText("Starts or stops logging or relogging");
         loggingButton.setAlignmentY(0.0F);
         loggingButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         buttonsPanel.add(loggingButton);
+
+        multiModeButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
+        multiModeButton.setMnemonic('l');
+        multiModeButton.setText("Multi-Input Mode");
+        multiModeButton.setToolTipText("Starts or stops logging or relogging");
+        multiModeButton.setAlignmentY(0.0F);
+        multiModeButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
+        multiModeButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                multiModeButtonActionPerformed(evt);
+            }
+        });
+        buttonsPanel.add(multiModeButton);
 
         playerControlPanel.setToolTipText("");
         playerControlPanel.setAlignmentY(0.0F);
@@ -2764,7 +2857,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jPanel1.setLayout(new java.awt.BorderLayout());
 
         statusTextField.setEditable(false);
-        statusTextField.setFont(new java.awt.Font("Tahoma", 0, 10));
+        statusTextField.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
         statusTextField.setToolTipText("Status messages show here");
         statusTextField.setFocusable(false);
         jPanel1.add(statusTextField, java.awt.BorderLayout.CENTER);
@@ -5247,6 +5340,12 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
 
         buildInterfaceMenu();     }//GEN-LAST:event_interfaceMenuMenuSelected
 
+    private void multiModeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_multiModeButtonActionPerformed
+        // TODO add your handling code here:
+        jaerViewer.setViewMode(true);
+//        jaerViewer.launchMultiModeViewer();
+    }//GEN-LAST:event_multiModeButtonActionPerformed
+
     /** Returns desired frame rate of FrameRater
      * 
      * @return desired frame rate in Hz. 
@@ -5581,6 +5680,138 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
     protected AEChipRenderer getRenderer() {
         return chip.getRenderer();
     }
+    
+    public CyclicBarrier waitFlag;
+    public boolean globalized;
+    
+    Ambassador ambassador=new Ambassador();
+    
+    /** Return the ambassador object from this AEViewer.  It contains the methods
+     * for communication between threads 
+     * @return 
+     */
+    public Ambassador getAmbassador()
+    {   return ambassador;        
+    }
+    
+    
+     /** This class allows the AEviewer to serve as a global communicator. */
+    public class Ambassador implements PacketStream, DisplayWriter
+    {        
+        int id;    // Number identifying this viewer
+        
+        JPanel displayPanel;
+        
+        public void setID(int ident)
+        {
+            id=ident;
+        }
+        
+        public void resetTimeStamps()
+        {
+            AEViewer.this.zeroTimestamps();
+        }
+        
+        @Override
+        public void setPanel(JPanel imagePanel) {
+//            imagePanel.
+            
+            Component canv=chip.getCanvas().getCanvas();
+            
+            canv.getParent().remove(canv);
+            
+            canv.setBounds(imagePanel.getBounds());
+//            imagePanel.add(chip.getCanvas().getCanvas());
+
+            displayPanel=imagePanel;
+            imagePanel.add(canv);
+//            
+//            
+//            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public void setSemaphore(CyclicBarrier barr) {
+            waitFlag=barr;
+        }
+
+        /** Set the viewer as being "watched".  This means its loop is synchronized
+         * with the global loop
+         * @param displayed 
+         */
+        public void setWatched(boolean displayed) {
+            globalized=displayed;
+        }
+
+        @Override
+        public Component getPanel() {
+//            return getRootPane();
+            return displayPanel;
+//            return chip.getCanvas().getCanvas();
+        }
+
+        @Override
+        public EventPacket getPacket() {
+            return packet;
+        }
+
+        @Override
+        public String getName() {
+            
+            return "V"+id+": "+chip.getClass().getSimpleName();
+        }
+
+        @Override
+        public boolean isReady() {
+            return true; // AEViewer streams are always considered ready.
+        }
+
+        public void display()
+        {   //chip.getRenderer().render(packet);  
+            viewLoop.renderPacket(packet);
+        }
+        
+        
+        @Override
+        public boolean process() {
+            throw new UnsupportedOperationException("This call should never be made");
+        }
+
+        @Override
+        public void setDisplayEnabled(boolean state) {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+        
+    }
+    
+        /** This method takes in an hardware interface and tries to find the 
+     * appropriate chip class.  You could use it before initializing an AEViewer.
+     * 
+     * It will return null if it does not find the appropriate chipclassname.
+     * 
+     * @return 
+     */
+    public static Class hardwareInterface2chipClassName(HardwareInterface hw)
+    {
+        
+        if (hw.toString().contains("DVS128"))
+            return ch.unizh.ini.jaer.chip.retina.DVS128.class;
+        else if (hw.toString().contains("Cochlea"))
+            return ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.class;
+        else
+            return null;
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 // AEViewer is a Swing Component and already has PropertyChangeSupport!!!
 //    /** AEViewer supports property change events. See the class description for supported events
 //    @return the support
@@ -5668,6 +5899,7 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
     private javax.swing.JRadioButtonMenuItem monSeqOpMode1;
     private javax.swing.ButtonGroup monSeqOpModeButtonGroup;
     private javax.swing.JMenu monSeqOperationModeMenu;
+    private javax.swing.JToggleButton multiModeButton;
     private javax.swing.JCheckBoxMenuItem multicastOutputEnabledCheckBoxMenuItem;
     private javax.swing.JSeparator networkSeparator;
     private javax.swing.JMenuItem newViewerMenuItem;

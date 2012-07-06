@@ -35,6 +35,12 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.prefs.*;
 import javax.swing.*;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.InputEventIterator;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 
 /**
  * Used to show multiple chips simultaneously in separate instances of {@link net.sf.jaer.graphics.AEViewer}, each running
@@ -74,8 +80,22 @@ public class JAERViewer {
     private SyncPlayer syncPlayer = new SyncPlayer(null, this); // TODO ugly, create here and then recreate later
     protected static final String JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY = "JAERViewer.viewerChipClassNames";
 
+    public GlobalViewer globalViewer=new GlobalViewer();
+    
+    // Internal switch: go into multiple-display mode right away?
+    boolean multistartmode=true;
+    
+    
+    // Set default arg to true for multi-start mode */
+    public JAERViewer()
+    {   this(false);
+    }
+    
     /** Creates a new instance of JAERViewer */
-    public JAERViewer() {
+    public JAERViewer(boolean multimode) {
+        
+        multistartmode=multimode;
+                
         Thread.UncaughtExceptionHandler handler = new LoggingThreadGroup("jAER UncaughtExceptionHandler");
         Thread.setDefaultUncaughtExceptionHandler(handler);
 
@@ -94,45 +114,9 @@ public class JAERViewer {
         windowSaver = new WindowSaver(this, prefs);
         Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver, AWTEvent.WINDOW_EVENT_MASK); // adds windowSaver as JVM-wide event handler for window events
 
+        SwingUtilities.invokeLater(new RunningThread());
 
-        SwingUtilities.invokeLater(new Runnable() {
-
-            public void run() {
-                // try to load a list of previous chip classes that running in viewers and then reopen them
-                ArrayList<String> classNames = null;
-                try {
-                    byte[] bytes = prefs.getByteArray(JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY, null);
-                    if (bytes != null) {
-                        ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
-                        classNames = (ArrayList<String>) in.readObject();
-                        in.close();
-                    }
-                } catch (Exception e) {
-                    log.info("couldn't load previous viewer AEChip classes, starting with last class");
-                }
-
-                try {
-                    if (classNames == null) {
-                        AEViewer v = new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
-//                player=new SyncPlayer(v); // associate with the initial viewer
-//                v.pack();
-                        v.setVisible(true);
-                        //                splashThread.interrupt();
-                    } else {
-                        for (String s : classNames) {
-                            AEViewer v = new AEViewer(JAERViewer.this, s);
-                            v.setVisible(true);
-                        }
-                    }
-                } catch (java.lang.UnsatisfiedLinkError err) {
-
-                    log.info("Unsatisfied link error.  Chances are that you are not running the right project configuration.  Set the project configuration to the appropiate platform (win,linux32,linux64,etc...)");
-
-                    err.printStackTrace();
-                }
-
-            }
-        });
+        
         try {
             // Create temp file.
             File temp = new File("JAERViewerRunning.txt");
@@ -186,10 +170,60 @@ public class JAERViewer {
             }
         });
 
-
-
     }
+    
 
+    
+    class RunningThread implements Runnable{
+        
+        
+        @Override
+            public void run() {
+                
+                
+                if (multistartmode)
+                {   setViewMode(true);
+                    return;
+                }
+                
+                // try to load a list of previous chip classes that running in viewers and then reOGloopen them
+                ArrayList<String> classNames = null;
+                try {
+                    byte[] bytes = prefs.getByteArray(JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY, null);
+                    if (bytes != null) {
+                        ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
+                        classNames = (ArrayList<String>) in.readObject();
+                        in.close();
+                    }
+                } catch (Exception e) {
+                    log.info("couldn't load previous viewer AEChip classes, starting with last class");
+                }
+
+                try {
+                    if (classNames == null) {
+                        AEViewer v = new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
+//                player=new SyncPlayer(v); // associate with the initial viewer
+//                v.pack();
+                        v.setVisible(true);
+                        //                splashThread.interrupt();
+                    } else {
+                        for (String s : classNames) {
+                            AEViewer v = new AEViewer(JAERViewer.this, s);
+                            v.setVisible(true);
+                        }
+                    }
+                } catch (java.lang.UnsatisfiedLinkError err) {
+
+                    log.info("Unsatisfied link error.  Chances are that you are not running the right project configuration.  Set the project configuration to the appropiate platform (win,linux32,linux64,etc...)");
+
+                    err.printStackTrace();
+                }
+
+            }
+        
+    }
+    
+    
     /** The main launcher for AEViewer's. 
     @param args the first argument can be a recorded AE data filename (.dat) with full path; the viewer will play this file
      */
@@ -645,4 +679,103 @@ public class JAERViewer {
 //        splashThread.start();
 //        return splashThread; // call interrupt on it to abort showing
 //    }
+    
+    //</editor-fold>
+        
+//    public void launchMultiModeViewer()
+//    {   
+//        // Below lines added to to display problem when reusing open ones
+//        for (AEViewer v:viewers)
+//        {   v.setEnabled(false);
+//            v.dispose();
+//        }
+//        viewers.clear();
+//        
+//        
+//        Runnable multiLaunch=new Runnable(){
+//
+//            @Override
+//            public void run() {
+//                new JAERViewer(true);
+//            }
+//        
+//        };
+//        
+//        
+//        if (SwingUtilities.isEventDispatchThread())
+//        {   multiLaunch.run();
+//        }
+//        else
+//            SwingUtilities.invokeLater(multiLaunch);
+//        
+//        
+//        
+//    }
+    
+    
+    public void setViewMode(final boolean multi)
+    {   
+        
+        class MultiLauncher implements Runnable{
+//        SwingUtilities.invokeLater(new Runnable(){
+
+            @Override
+            public void run(){
+
+                if (multi){
+
+                    int nInterfaces=HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+                    
+                    // Open however many viewers need to be opened
+                    int vsize=viewers.size();
+                    for (int i=0; i<nInterfaces-vsize; i++)
+                        new AEViewer(JAERViewer.this);
+                    
+                    // Set one inteface per viewer
+                    for (int i=0; i<viewers.size(); i++)
+                    {   
+                        AEViewer v=viewers.get(i);
+                        HardwareInterface hi=HardwareInterfaceFactory.instance().getInterface(i);
+                        Class guess=AEViewer.hardwareInterface2chipClassName(hi);
+                        if (guess!=null)
+                            v.setAeChipClass(guess);
+                        
+                        v.getChip().setHardwareInterface(hi);
+//                        v.setVisible(true);
+                    }
+                                        
+                    globalViewer.setJaerViewer(JAERViewer.this);
+                    
+                    globalViewer.start();            
+                    
+                    globalViewer.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+                }else{
+
+                    for (AEViewer v: viewers)
+                    {   v.setVisible(true);
+                        
+                    }
+
+                }
+
+            }
+        }
+        
+        
+        if (SwingUtilities.isEventDispatchThread())
+        {   MultiLauncher m=new MultiLauncher();
+            m.run();
+        }
+        else
+            SwingUtilities.invokeLater(new MultiLauncher());
+        
+        
+//        else
+//            SwingUtilities.
+//            SwingUtilities.invokeLater(new MultiLauncher());
+        
+    }
+    
+    
 }
