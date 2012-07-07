@@ -49,7 +49,6 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
 
     // constants
 
-    private final int SERVO_NUMBER=0;    // the servo number on the controller
 
     public Object learningLock=new Object();
     // Hardware Control
@@ -87,9 +86,9 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
     {        setPropertyTooltip("learningLeftSamplingBoundary","sets limit for learning to contrain learning to linear region near center");    }
     private float learningRightSamplingBoundary=getPrefs().getFloat("ServoArm.learningRightSamplingBoundary",0.6f);
     {        setPropertyTooltip("learningRightSamplingBoundary","sets limit for learning to contrain learning to linear region near center");    }
-    private float servoLimitLeft=getPrefs().getFloat("ServoArm.servoLimitLeft",0);
+    private float servoLimitLeft=getPrefs().getFloat("ServoArm.servoLimitLeft",.45f);
     {     setPropertyTooltip("servoLimitLeft","sets hard limit on left servo position for mechanical safety");    }
-    private float servoLimitRight=getPrefs().getFloat("ServoArm.servoLimitRight",1);
+    private float servoLimitRight=getPrefs().getFloat("ServoArm.servoLimitRight",.55f);
     { setPropertyTooltip("servoLimitRight","sets hard limit on left servo position for mechanical safety");   }
     private boolean realtimeLoggingEnabled=false; // getPrefs().getBoolean("ServoArm.realtimeLogging", false);
     { setPropertyTooltip("realtimeLogging","send desired and actual position to data window"); }
@@ -103,6 +102,8 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
     {setPropertyTooltip("visualFeedbackProportionalGain","under visual feedback control, the pixel error in servo position is multiplied by this factor to form the change in servo motor command");}
     private float visualFeedbackPIDControllerTauMs=getPrefs().getFloat("ServoArm.visualFeedbackPIDControllerTauMs",5);
     {setPropertyTooltip("visualFeedbackPIDControllerTauMs","time constant in ms of visual feedback PID controller IIR low- and high-pass filters");}
+    private int servoNumber=getInt("servoNumber",0);    // the servo number on the controller
+   {setPropertyTooltip("servoNumber","index of servo of arm");}
     
     // learning
 
@@ -150,6 +151,22 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
 
     public void setServoInterface(ServoInterface servo) {
         this.servo=servo;
+    }
+
+    /**
+     * @return the servoNumber
+     */
+    public int getServoNumber() {
+        return servoNumber;
+    }
+
+    /**
+     * @param servoNumber the servoNumber to set
+     */
+    public void setServoNumber(int servoNumber) {
+        if(servoNumber<0)servoNumber=0;else if(servoNumber>3)servoNumber=3;
+        this.servoNumber = servoNumber;
+        putInt("servoNumber",servoNumber);
     }
     private enum LearningStates{
         notlearning, learning, stoplearning
@@ -523,7 +540,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
                 ServoInterface s=(ServoInterface)servo;
                 //                if(JAERViewer.globalTime2 == 0)
 //                    JAERViewer.globalTime2 = System.nanoTime();
-                s.setServoValue(SERVO_NUMBER,f);    // servo is servo 1 for goalie
+                s.setServoValue(getServoNumber(),f);    // servo is servo 1 for goalie
                 setLastServoSetting(f);
             //System.out.println('.');
             }catch(HardwareInterfaceException e){
@@ -541,7 +558,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
         try{
             ServoInterface s=(ServoInterface)servo;
 
-            s.disableServo(SERVO_NUMBER);
+            s.disableServo(getServoNumber());
         }catch(HardwareInterfaceException e){
             e.printStackTrace();
         }
