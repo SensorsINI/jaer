@@ -2508,7 +2508,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             checkOutputPacketEventType(RectangularClusterTrackerEvent.class);
         }
         if (enclosedFilter != null) {
-            in = enclosedFilter.filterPacket(in);
+            out = enclosedFilter.filterPacket(in);
             out = track(out);
             return out;
         } else {
