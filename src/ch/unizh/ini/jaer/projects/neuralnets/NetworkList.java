@@ -2,8 +2,9 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.jaer.projects.integrateandfire;
+package ch.unizh.ini.jaer.projects.neuralnets;
 
+import ch.unizh.ini.jaer.projects.integrateandfire.ClusterEvent;
 import java.util.ArrayList;
 import jspikestack.SpikeStack;
 import net.sf.jaer.event.BasicEvent;
@@ -18,7 +19,7 @@ import net.sf.jaer.event.BasicEvent;
 public class NetworkList<NetType extends SpikeStack> 
 {
     NetType initialNet;     // The network off which other networks are based.
-    Remapper R;             // The remapper object
+    NetMapper R;             // The remapper object
     
     ArrayList<SpikeStackWrapper<NetType>> nets=new ArrayList<SpikeStackWrapper<NetType>>();     // The list of networks to feed events to
     
@@ -38,7 +39,7 @@ public class NetworkList<NetType extends SpikeStack>
     
     
     /** Initialize the network array given an initial network */
-    public NetworkList(NetType initNet, Remapper R)
+    public NetworkList(NetType initNet, NetMapper R)
     {
         this(initNet);
         setRemapper(R);
@@ -73,7 +74,7 @@ public class NetworkList<NetType extends SpikeStack>
         
     }
     
-    final public void setRemapper(Remapper rem)
+    final public void setRemapper(NetMapper rem)
     {   R=rem;
         for (SpikeStackWrapper n:nets)
             n.R=R;        

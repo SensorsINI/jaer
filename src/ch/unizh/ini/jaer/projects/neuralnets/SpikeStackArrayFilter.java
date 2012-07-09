@@ -2,8 +2,13 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.jaer.projects.integrateandfire;
+package ch.unizh.ini.jaer.projects.neuralnets;
 
+//import ch.unizh.ini.jaer.projects.integrateandfire.ClusterEvent;
+//import ch.unizh.ini.jaer.projects.integrateandfire.ClusterSet;
+//import ch.unizh.ini.jaer.projects.integrateandfire.Remapper;
+import ch.unizh.ini.jaer.projects.integrateandfire.ClusterEvent;
+import ch.unizh.ini.jaer.projects.integrateandfire.ClusterSet;
 import java.awt.GridBagLayout;
 import java.io.File;
 import jspikestack.STPStack;
@@ -18,14 +23,14 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * 
  * @author oconnorp
  */
-public class SpikeFilter extends EventFilter2D{
+public class SpikeStackArrayFilter extends EventFilter2D{
 
     NetworkList netArr;
     
     File startDir=new File(getClass().getClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../subprojects/JSpikeStack/files/nets");
     
     
-    public SpikeFilter(AEChip chip)
+    public SpikeStackArrayFilter(AEChip chip)
     {   super(chip);
     }
         
@@ -36,8 +41,8 @@ public class SpikeFilter extends EventFilter2D{
         // Initialize Remapper
         if (netArr==null)
             return in;
-        else if (!netArr.R.isBaseTimeInitialized())
-            netArr.R.initializeBaseTime(in.getFirstTimestamp());
+        else if (!netArr.R.isBaseTimeSet())
+            netArr.R.setBaseTime(in.getFirstTimestamp());
         
         // If it's a clusterset event
         if (in.getEventClass()==ClusterSet.class)
@@ -113,14 +118,19 @@ public class SpikeFilter extends EventFilter2D{
         
 //        net.eatEvents(10000);
         
-        Remapper R=new Remapper();
+       
+
+        netArr=new NetworkList(net,getNetMapper(net));
+    }
+    
+    public NetMapper getNetMapper(SpikeStack net)
+    {
+        SingleSourceVisualMapper R=new SingleSourceVisualMapper();
         R.inDimX=(short)chip.getSizeX();
         R.inDimY=(short)chip.getSizeY(); 
         R.outDimX=net.lay(0).dimx;
         R.outDimY=net.lay(0).dimy;
-        R.addSourcePair((byte)0, 0);
-
-        netArr=new NetworkList(net,R);
+        return R;
     }
 
     public void doPlot_Network()

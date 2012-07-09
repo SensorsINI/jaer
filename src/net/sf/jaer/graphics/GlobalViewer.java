@@ -106,9 +106,15 @@ public class GlobalViewer extends javax.swing.JFrame {
                 inputDisplays.add(v);
             }
             
+            resynchronize();
+        }
+        
+        
+        public void resynchronize()
+        {
             // In (Hopefully) rapid succession, zero the time-stamps
-            for (AEViewer v:viewers)
-                v.getAmbassador().resetTimeStamps();
+            for (AEViewer.Ambassador v:aeviewers)
+                v.resetTimeStamps();
         }
         
         public ArrayList<PacketStream> getInputStreams()
@@ -346,7 +352,7 @@ public class GlobalViewer extends javax.swing.JFrame {
             viewPanel=new JPanel();
             this.add(viewPanel,BorderLayout.CENTER);
             viewPanel.setBackground(Color.DARK_GRAY); 
-            viewPanel.setLayout(new GridBagLayout());
+            viewPanel.setLayout(new FlowLayout());
             
             
 //            buildDisplay();
@@ -440,12 +446,14 @@ public class GlobalViewer extends javax.swing.JFrame {
 //                imagePanel.setBounds(getPanelLoc(1,1));
                 imagePanel.setBackground(Color.DARK_GRAY);
 
-                viewPanel.add(imagePanel,c);
-               
+//                viewPanel.add(imagePanel,c);
+               viewPanel.add(imagePanel);
                 
 //                imagePanel.setVisible(true);
                 
-                d.setPanel(imagePanel);
+//                d.setPanel(imagePanel);
+                imagePanel.add(d.getPanel());
+                d.getPanel().setPreferredSize(imagePanel.getSize());
             
 //                viewPanel.revalidate();
                 

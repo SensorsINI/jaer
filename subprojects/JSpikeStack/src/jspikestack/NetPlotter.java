@@ -29,7 +29,7 @@ public class NetPlotter {
     
     SpikeStack net;
     
-    JFrame frm;
+    JPanel frm;
     
     public int updateMillis=30;           // Update interval, in milliseconds
     public float timeScale=1;               // Number of network-seconds per real-second 0: doesn't advance.  Inf advances as fast as CPU will allow
@@ -96,20 +96,34 @@ public class NetPlotter {
         
     }
 
+    public JFrame createStateFigure()
+    {
+        JFrame fr=new JFrame();
+        
+        fr.getContentPane().setBackground(Color.GRAY);
+        fr.setLayout(new GridBagLayout());
+        fr.setContentPane(createStatePlot());
+        
+        fr.pack();
+//        fr.setSize(1000,400);
+        
+        fr.setVisible(true);        
+        
+        return fr;
+    }
+        
     
     /** Create a figure for plotting the state of the network for the network */
-    public JFrame createStatePlot()
+    public JPanel createStatePlot()
     {
+        JPanel hostPanel=new JPanel();
+        
+        hostPanel.setLayout(new GridBagLayout());
+        
         int nLayers=net.nLayers();
         
         layerStatePlots=new LayerStatePlotter[nLayers];
         
-        JFrame fr=new JFrame();
-                
-        
-        fr.getContentPane().setBackground(Color.GRAY);
-        //fr.setForeground(Color.black);
-        fr.setLayout(new GridBagLayout());
         
         for (int i=0; i<nLayers; i++)
         {
@@ -149,7 +163,7 @@ public class NetPlotter {
             c.gridheight=2;
             
             pan.add(disp);  
-            fr.getContentPane().add(pan,c);
+            hostPanel.add(pan,c);
             
 //            disp.setVisible(true);
 //            pan.setVisible(true);
@@ -177,34 +191,47 @@ public class NetPlotter {
         
         j.add(jt);
         
+        hostPanel.add(j,c);
+        
+        hostPanel.setVisible(true);
+        hostPanel.repaint();
 //        j.setVisible(true);
         
-        fr.getContentPane().add(j,c);
-//        fr.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+//        fr.getContentPane().add(j,c);
+////        fr.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+//        
+//        fr.pack();
+////        fr.setSize(1000,400);
+//        
+//        
+//        fr.setVisible(true);        
+////        fr.validate();       
+////        fr.repaint();
+//        
+//        return fr;
+        return hostPanel;
+    }
+        
+    public void followState()
+    {   JFrame fr=new JFrame();
+        followState(fr.getContentPane());   
+        
+        fr.getContentPane().setBackground(Color.GRAY);
+        fr.setLayout(new GridBagLayout());
+        fr.setContentPane(createStatePlot());
         
         fr.pack();
 //        fr.setSize(1000,400);
         
-        
-        fr.setVisible(true);        
-//        fr.validate();       
-//        fr.repaint();
-        
-        return fr;
-    }
-        
-    
-    public JFrame getFrame()
-    {   return frm;
-        
+        fr.setVisible(true);   
     }
     
     
     /** Create a plot of the network state and launch a thread that updates this plot.*/
-    public void followState()
+    public void followState(Container pan)
     {
         frm=createStatePlot();
-                
+        pan.add(frm);
         
         class ViewLoop extends Thread{
             
@@ -217,7 +244,7 @@ public class NetPlotter {
             @Override
             public void run()
             {
-                while (frm.isShowing() && enable)
+                while (enable)
                 {
                     
                     // System.out.println("Loop checking in at : "+lastNetTime+updateMillis*timeScale);
@@ -408,10 +435,10 @@ public class NetPlotter {
         
                 
     }
-        
-    public void closePlot()
-    {
-        frm.dispose();
-    }
+//        
+//    public void closePlot()
+//    {
+//        frm.dispose();
+//    }
     
 }

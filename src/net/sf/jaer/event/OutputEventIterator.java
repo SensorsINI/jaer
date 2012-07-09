@@ -20,4 +20,7 @@ public interface OutputEventIterator<T extends BasicEvent> {
      * @return the next output event.
      */
     public T nextOutput();
+    
+    public void writeToNextOutput(T event);
+    
 }

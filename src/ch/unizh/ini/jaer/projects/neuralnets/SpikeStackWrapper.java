@@ -2,8 +2,12 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.jaer.projects.integrateandfire;
+package ch.unizh.ini.jaer.projects.neuralnets;
 
+import ch.unizh.ini.jaer.projects.integrateandfire.ClusterEvent;
+import ch.unizh.ini.jaer.projects.integrateandfire.Remapper;
+import java.io.File;
+import java.net.URL;
 import jspikestack.Spike;
 import jspikestack.SpikeStack;
 import net.sf.jaer.event.BasicEvent;
@@ -19,13 +23,16 @@ import net.sf.jaer.event.BasicEvent;
 public class SpikeStackWrapper <NetType extends SpikeStack> {
     
     NetType net;
-    Remapper R;
+    NetMapper R;
+    static File readingDir=new File(ClassLoader.getSystemClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../subprojects/JSpikeStack/files/nets");
+    
         
-    public SpikeStackWrapper(NetType network, Remapper rem)
+    public SpikeStackWrapper(NetType network, NetMapper rem)
     {
         net=network;
         R=rem;
     }
+    
     
     public void reset()
     {   net.reset();
@@ -47,23 +54,32 @@ public class SpikeStackWrapper <NetType extends SpikeStack> {
     {   net.addToQueue(event2spike(ev));
     }
     
-    public void readFromXML()
+    /** Build the existing network from XML */
+    public void buildFromXML()
     {
-        net.read.readFromXML(net);
+        buildFromXML(net);
+    }    
+    
+    /** Build the input network from XML */
+    public static void buildFromXML(SpikeStack net)
+    {
+//        URL f=ClassLoader.getSystemClassLoader().getResource(".");
+        
+        net.read.readFromXML(net,readingDir);
     }    
             
     /** Convert a basic event to spike */
     public Spike event2spike(BasicEvent ev)
     {
         byte source=0;
-        return new Spike(R.xy2ind(ev.x, ev.y),R.timeStamp2doubleTime(ev.timestamp,.001f),R.source2dest(source));
+        return new Spike(R.loc2addr(ev.x, ev.y,source),R.translateTimeDouble(ev.timestamp,.001f),R.source2layer(source));
     }
     
     /** Convert a cluster event to spike, using its cluster-relative position */
     public Spike event2spike(ClusterEvent ev)
     {
         byte source=0;
-        return new Spike(R.ixy2ind(ev.xp, ev.yp),R.timeStamp2doubleTime(ev.timestamp,.001f),R.source2dest(source));
+        return new Spike(R.loc2addr(ev.xp, ev.yp,source),R.translateTimeDouble(ev.timestamp,.001f),R.source2layer(source));
     }
 
     /**
@@ -81,9 +97,9 @@ public class SpikeStackWrapper <NetType extends SpikeStack> {
             net.plot.followState();
     }
     
-    public void closePlot()
-    {
-        net.plot.closePlot();
-    }
-    
+//    public void closePlot()
+//    {
+//        net.plot.closePlot();
+//    }
+//    
 }

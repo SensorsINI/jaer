@@ -17,8 +17,8 @@ import net.sf.jaer.eventprocessing.tracking.RectangularClusterTrackerEvent;
  */
 public class ClusterEvent extends RectangularClusterTrackerEvent {
     
-    short xp;
-    short yp;
+    public short xp;
+    public short yp;
     
     /** The orientation value. */
     public byte clusterid=0;

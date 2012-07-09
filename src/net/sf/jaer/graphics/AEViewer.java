@@ -1669,10 +1669,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                     //  synchronized(packet.class()){}
 
-                    // Filter Packet
-                    skipTheRest=filterPacket();
-                    if (skipTheRest) continue;
-
+                    // Filter Packet (unless part of global viewer, in which case it's done later)
+                    if (!globalized)
+                    {   skipTheRest=filterPacket();
+                        if (skipTheRest) continue;
+                    }
+                        
                     chip.setLastData(packet);// set the rendered data for use by various methods
 
                     // if we are logging data to disk do it here
@@ -5716,15 +5718,15 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
         public void setPanel(JPanel imagePanel) {
 //            imagePanel.
             
-            Component canv=chip.getCanvas().getCanvas();
-            
-            canv.getParent().remove(canv);
-            
-            canv.setBounds(imagePanel.getBounds());
-//            imagePanel.add(chip.getCanvas().getCanvas());
-
-            displayPanel=imagePanel;
-            imagePanel.add(canv);
+//            Component canv=chip.getCanvas().getCanvas();
+//            
+//            canv.getParent().remove(canv);
+//            
+//            canv.setBounds(imagePanel.getBounds());
+////            imagePanel.add(chip.getCanvas().getCanvas());
+//
+//            displayPanel=imagePanel;
+//            imagePanel.add(canv);
 //            
 //            
 //            throw new UnsupportedOperationException("Not supported yet.");
@@ -5746,7 +5748,8 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
         @Override
         public Component getPanel() {
 //            return getRootPane();
-            return displayPanel;
+            return chip.getCanvas().getCanvas();
+//            return displayPanel;
 //            return chip.getCanvas().getCanvas();
         }
 

@@ -11,6 +11,7 @@ import java.util.EnumMap;
 import javax.swing.JButton;
 import javax.swing.JPanel;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.MultiSourceProcessor;
 import net.sf.jaer.graphics.Chip2DRenderer;
@@ -68,6 +69,21 @@ public class SensoryFusionExample extends MultiSourceProcessor {
     
     @Override
     public EventPacket filterPacket(EventPacket<?> in) {
+        
+        int nA=0,nB=0;
+        
+        
+        for (Object e:in)
+        {   
+            if(((BasicEvent)e).source==0)
+                nA++;
+            else 
+                nB++;
+            
+        }
+        
+//        System.out.println("Recieved "+nA+" events from input A and "+nB+" from input B.");
+        System.out.println("nA:"+nA+"\t nB:"+nB); 
         
         if (disp!=null)
             disp.repaint();

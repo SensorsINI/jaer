@@ -298,7 +298,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     }
 
 
-    final private class OutItr implements OutputEventIterator {
+    final private class OutItr implements OutputEventIterator<E> {
         OutItr() {
             size=0; // reset size because we are starting off output packet
         }
@@ -311,6 +311,8 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
             }
             return elementData[size++];
         }
+        
+        
 
         final public void reset() {
             size=0;
@@ -318,6 +320,15 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 
         public String toString() {
             return "OutputEventIterator for packet with size="+size+" capacity="+capacity;
+        }
+
+        @Override
+        public void writeToNextOutput(E event) {
+            {   if(size>=capacity) {
+                    enlargeCapacity();
+                }
+                elementData[size++]=event;
+            }
         }
     }
     final private class InItr implements Iterator<E> {

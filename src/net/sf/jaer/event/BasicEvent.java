@@ -121,6 +121,7 @@ public class BasicEvent implements EventInterface<BasicEvent> {
         this.y = e.y;
         this.address = e.address;
         this.special = e.special;
+        this.source = e.source;
         //        this.filteredAway=e.filteredAway;
     }
 

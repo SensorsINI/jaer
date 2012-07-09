@@ -409,6 +409,7 @@ public class JspikeStack {
     {
                 
         JFrame frm=new JFrame();
+        frm.setTitle("JSpikeStack demos");
         Container pane=frm.getContentPane();
         JButton button;
         
