@@ -231,8 +231,8 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
         ((XYTypeFilter)armTracker.getEnclosedFilter()).setTypeEnabled(false);
         this.setCaptureRange(0,0,chip.getSizeX(),0);
         armTracker.setMaxNumClusters(1);
-        armTracker.setAspectRatio(1.2f);
-        armTracker.setClusterSize(0.2f);
+//        armTracker.setAspectRatio(1.2f);
+//        armTracker.setClusterSize(0.2f);
     }
     @Override public void setFilterEnabled(boolean yes){
         super.setFilterEnabled(yes);
