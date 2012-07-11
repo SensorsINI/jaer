@@ -98,8 +98,12 @@ public class UsbIoUtilities {
 
         @Override
         public void onRemove() {
-            for (PnPNotifyInterface i : this) {
-                i.onRemove();
+            try {
+                for (PnPNotifyInterface i : this) {
+                    i.onRemove();
+                }
+            } catch (ConcurrentModificationException ex) {
+                log.warning(ex.toString() + " (ignored)");
             }
         }
     }
