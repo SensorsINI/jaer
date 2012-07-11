@@ -10,44 +10,32 @@
  */
 package net.sf.jaer.graphics;
 
-import ch.unizh.ini.jaer.chip.projects.sensoryfusion.SensoryFusionExample;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.GridLayout;
-import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Stack;
-import java.util.Vector;
 import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JToggleButton;
 import javax.swing.JToolBar;
-import javax.swing.SwingUtilities;
-import javax.xml.stream.EventFilter;
+import javax.swing.UIManager;
+import javax.swing.UIManager.LookAndFeelInfo;
+import javax.swing.UnsupportedLookAndFeelException;
 import net.sf.jaer.JAERViewer;
-import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.eventprocessing.MultiInputFrame;
 import net.sf.jaer.eventprocessing.ProcessingNetwork;
-import net.sf.jaer.eventprocessing.MultiSourceProcessor;
 import net.sf.jaer.eventprocessing.PacketStream;
 import net.sf.jaer.eventprocessing.SourceSynchronizer;
 
@@ -87,7 +75,18 @@ public class GlobalViewer extends javax.swing.JFrame {
         // Methods -----------------------------------------
         public void collectAllInputs(ArrayList<AEViewer> viewers){
             
-            inputDisplays.clear();
+//            try {
+//                for (LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+//                    if ("Nimbus".equals(info.getName())) {
+//                        UIManager.setLookAndFeel(info.getClassName());
+//                        break;
+//                    }
+//                }
+//            } catch (Exception e) {
+//                // If Nimbus is not available, you can set the GUI to another look and feel.
+//            }
+            
+//            inputDisplays.clear();
             packetStreams.clear();
             
             
@@ -212,7 +211,7 @@ public class GlobalViewer extends javax.swing.JFrame {
         JPanel viewPanel;
         JPanel filterPanel;
         MultiInputFrame multiInputControl;
-        ArrayList<JPanel> viewPanels=new ArrayList();
+//        ArrayList<JPanel> viewPanels=new ArrayList();
         
         void initComponents()
         {
@@ -420,45 +419,58 @@ public class GlobalViewer extends javax.swing.JFrame {
 //            }
 //        }
 //        
-        public void addDisplayWriter(DisplayWriter d)
+        public void addDisplayWriter(final DisplayWriter d)
         {
             GridBagConstraints c=new GridBagConstraints();
             
             c.weightx=c.weighty=1;
             
             c.gridx=GridBagConstraints.RELATIVE;
-                c.gridy=1;
-                c.weightx=c.weighty=1;
-                
-//                viewPanel.add(d.getPanel(),c);
-                
-                JPanel imagePanel=new JPanel();
-//            
-                imagePanel.setLayout(new GridLayout());
-                
-                
-                imagePanel.setPreferredSize(new Dimension(400,400));
-//            Dimension dims=this.getSize();
-//            int dx=dims.width/numPanels;
-////            
-//            imagePanel.setBounds(new Rectangle(panelNumber*dx,0,dx,dims.height));
-//            
-//                imagePanel.setBounds(getPanelLoc(1,1));
-                imagePanel.setBackground(Color.DARK_GRAY);
+            c.gridy=1;
+            c.weightx=c.weighty=1;
 
-//                viewPanel.add(imagePanel,c);
-               viewPanel.add(imagePanel);
-                
-//                imagePanel.setVisible(true);
-                
-//                d.setPanel(imagePanel);
-                imagePanel.add(d.getPanel());
-                d.getPanel().setPreferredSize(imagePanel.getSize());
+            JPanel imagePanel=new JPanel();
+//            
+            imagePanel.setLayout(new BorderLayout());
+
+
+            imagePanel.setPreferredSize(new Dimension(400,400));
+            imagePanel.setBackground(Color.DARK_GRAY);
+
+            viewPanel.add(imagePanel);
             
-//                viewPanel.revalidate();
-                
+            Component content=d.getPanel();
+            
+            imagePanel.add(content);
+            
+            imagePanel.setPreferredSize(content.getPreferredSize());
+            
+            d.getPanel().setPreferredSize(imagePanel.getSize());
+
+            JToolBar joot=new JToolBar();
+            joot.setLayout(new BorderLayout());
+            imagePanel.add(joot,BorderLayout.NORTH);
+
+
+            JButton but = new JButton("X");
+            joot.add(but, BorderLayout.EAST);
+            but.addActionListener(new ActionListener() {
+
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    killDisplayWriter(d);
+                }
+            });
+
+
         }
 //                
+        
+        public void killDisplayWriter(DisplayWriter disp)
+        {   viewPanel.remove(disp.getPanel().getParent());
+            
+            disp.setDisplayEnabled(false);
+        }
         
         
         // </editor-fold>       

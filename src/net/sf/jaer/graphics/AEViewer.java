@@ -5782,7 +5782,7 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
 
         @Override
         public void setDisplayEnabled(boolean state) {
-            throw new UnsupportedOperationException("Not supported yet.");
+            // TODO: disable rendering
         }
         
     }

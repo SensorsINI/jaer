@@ -94,6 +94,8 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     public class NetworkPlot implements DisplayWriter
     {
 
+        JPanel disp; // Display panel for network
+        
         @Override
         public void setPanel(JPanel imagePanel) {
 //            wrapNet.net.plot.
@@ -102,9 +104,10 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         @Override
         public Component getPanel() {
             
-            JPanel disp=new JPanel();
-            
-            wrapNet.net.plot.followState(disp);
+            if (disp==null)
+            {   disp=new JPanel();
+                wrapNet.net.plot.followState(disp);
+            }            
             
             return disp;
             
