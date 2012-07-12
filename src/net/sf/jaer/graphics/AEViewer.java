@@ -2827,7 +2827,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         buttonsPanel.add(dontRenderToggleButton);
 
-        loggingButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
+        loggingButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         loggingButton.setMnemonic('l');
         loggingButton.setText("Start logging");
         loggingButton.setToolTipText("Starts or stops logging or relogging");
@@ -2835,7 +2835,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         loggingButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         buttonsPanel.add(loggingButton);
 
-        multiModeButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
+        multiModeButton.setFont(new java.awt.Font("Tahoma", 0, 10));
         multiModeButton.setMnemonic('l');
         multiModeButton.setText("Multi-Input Mode");
         multiModeButton.setToolTipText("Starts or stops logging or relogging");
@@ -2859,7 +2859,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jPanel1.setLayout(new java.awt.BorderLayout());
 
         statusTextField.setEditable(false);
-        statusTextField.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
+        statusTextField.setFont(new java.awt.Font("Tahoma", 0, 10));
         statusTextField.setToolTipText("Status messages show here");
         statusTextField.setFocusable(false);
         jPanel1.add(statusTextField, java.awt.BorderLayout.CENTER);
@@ -3106,6 +3106,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         fileMenu.add(remoteMenu);
         fileMenu.add(syncSeperator);
 
+        syncEnabledCheckBoxMenuItem.setSelected(false);
         syncEnabledCheckBoxMenuItem.setText("Synchronized logging/playback enabled");
         syncEnabledCheckBoxMenuItem.setToolTipText("All viwers start/stop logging in synchrony and playback times are synchronized");
         syncEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {

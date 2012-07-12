@@ -235,6 +235,9 @@
             </MenuItem>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="syncEnabledCheckBoxMenuItem">
               <Properties>
+                <Property name="selected" type="boolean" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="false" type="code"/>
+                </Property>
                 <Property name="text" type="java.lang.String" value="Synchronized logging/playback enabled"/>
                 <Property name="toolTipText" type="java.lang.String" value="All viwers start/stop logging in synchrony and playback times are synchronized"/>
               </Properties>
