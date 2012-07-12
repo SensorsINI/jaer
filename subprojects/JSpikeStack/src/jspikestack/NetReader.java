@@ -134,8 +134,14 @@ public class NetReader<NetType extends SpikeStack> implements SpikeStack.Network
     }
     
     public NetType copy()
-    {   
-        return deserialize(serialize());
+    {   throw new UnsupportedOperationException("Somme systems have problem with this... need to solve.");
+//        return this.net;
+//
+//        Below line mysteriously gives problems on SOME systems.
+//        C:\Documents and Settings\Tobi\My Documents\jaer\host\java\subprojects\JSpikeStack\src\jspikestack\NetReader.java:139: type parameters of <NetType>NetType cannot be determined; no unique maximal instance exists for type variable NetType with upper bounds NetType,jspikestack.SpikeStack
+//        return deserialize(serialize());
+
+//        return neet;
     }
             
             
