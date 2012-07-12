@@ -84,8 +84,8 @@ public class MultiInputFrame extends FilterFrame{
 //            pack();
 //        pack();
         
-        if (parentContainer!=null)
-            this.parentContainer.revalidate();
+//        if (parentContainer!=null)
+//            this.parentContainer.revalidate();
 //        this.filtersPanel.updateUI();
         
 //        this.repaint();

@@ -162,7 +162,7 @@ public class SourceSynchronizer {
         for (int i=0; i<viewers.size(); i++)
         {   timestamps[i]= viewers.get(i).getPacket().getFirstTimestamp();
             timeStampLabels[i].setText(timestamps[i]+"us");
-            timeStampLabels[i].getParent().revalidate();
+//            timeStampLabels[i].getParent().revalidate();
         }
         
         for (int i=0; i<viewers.size(); i++)

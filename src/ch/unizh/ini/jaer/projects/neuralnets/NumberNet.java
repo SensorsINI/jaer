@@ -58,7 +58,7 @@ public class NumberNet extends SpikeFilter {
         net.setBackwardStrength(sigb);
         
         // Up the threshold
-        net.scaleThresholds(500);
+        net.scaleThresholds(200);
         
 //        net.fastWeightTC=2;
 //        

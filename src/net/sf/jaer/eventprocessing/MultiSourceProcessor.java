@@ -211,9 +211,10 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
          * event, ensuring that pq always contains 1 element from each source.  
          * Run until one of the source buffers is empty.
          */
+        out.clear();
         OutputEventIterator<BasicEvent> outItr=out.outputIterator();
         
-        out.clear();
+        
         
         int lastTimestamp=Integer.MIN_VALUE;
         while(!pq.isEmpty())
