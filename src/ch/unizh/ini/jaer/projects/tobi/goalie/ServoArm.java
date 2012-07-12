@@ -14,32 +14,29 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.filter.XYTypeFilter;
-import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.*;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.hardwareinterface.ServoInterface;
 import net.sf.jaer.hardwareinterface.usb.ServoInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
-import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
 import net.sf.jaer.util.filter.LowpassFilter;
 import com.sun.opengl.util.GLUT;
 //import de.thesycon.usbio.PnPNotify;
-import de.thesycon.usbio.PnPNotifyInterface;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Observable;
 import java.util.Observer;
 import java.awt.Color;
-import java.awt.Graphics2D;
 import java.io.*;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
 import java.util.Timer;
 import java.util.TimerTask;
+import net.sf.jaer.stereopsis.StereoClusterTracker;
 /**
- * Controls the servo arm in Goalie to decouple the motor actions from the sensory processing and manages self-calibration of the arm.
+ * Controls the servo arm in StereoGoalie to decouple the motor actions from the sensory processing and manages self-calibration of the arm.
  This arm can also be controlled directly with visual feedback control using the tracked arm position. In this mode, the servo command is formed
  from an error signal that is the difference between the actual position and the desired position. The actual arm position comes from the cluster tracker
  that tracks the arm, while the desired position is the pixel position that the arm should go to.
@@ -119,7 +116,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
     VisualFeedbackController visualFeedbackController=null;
     int lastTimestamp=0;
     
-    private RectangularClusterTracker armTracker;
+    private StereoClusterTracker armTracker;
     private XYTypeFilter xyfilter;
     public boolean isVisualFeedbackControlEnabled(){
         return visualFeedbackControlEnabled;
@@ -181,7 +178,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
         super(chip);
         chip.addObserver(this); // to getString chip sizes correct in initFilter
 
-        armTracker=new RectangularClusterTracker(chip);
+        armTracker=new StereoClusterTracker(chip);
         setEnclosedFilter(armTracker); // to avoid storing enabled prefs for this filter set it to be the enclosed filter before enabling
 
         // only bottom filter
@@ -444,7 +441,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
             return;
         }
         // set father goalie immediately to SLEEPING state to discourage noise from stopping learning
-        getGoalie().setState(Goalie.State.SLEEPING);
+        getGoalie().setState(StereoGoalie.State.SLEEPING);
         synchronized(learningLock){
             if(state==state.learning){
                 return;
@@ -572,7 +569,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
         xyt.setStartY(starty);
         xyt.setEndY(endy);
         // the goalie gets the rest of the scene for ball tracking
-        Goalie g=getGoalie();
+        StereoGoalie g=getGoalie();
         if(g!=null){
             XYTypeFilter f=g.getXYFilter();
             if(f!=null){
@@ -625,18 +622,18 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
         setServo(servoLimitLeft); // to check value
     }
     private void disableGoalieTrackerMomentarily(){
-        Goalie g=getGoalie();
+        StereoGoalie g=getGoalie();
         if(g!=null){
-            RectangularClusterTracker f=g.getTracker();
+            StereoClusterTracker f=g.getTracker();
             f.setFilterEnabled(false);
             f.resetFilter();
             Timer t=new Timer();
             t.schedule(new RenableFilterTask(f),2000);
         }
     }
-    private Goalie getGoalie(){
-        if(getEnclosingFilter() instanceof Goalie){
-            Goalie g=(Goalie)getEnclosingFilter();
+    private StereoGoalie getGoalie(){
+        if(getEnclosingFilter() instanceof StereoGoalie){
+            StereoGoalie g=(StereoGoalie)getEnclosingFilter();
             return g;
         }
         return null;
@@ -1038,8 +1035,8 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
 
         }
         protected void finalize() throws Throwable{
-        //JAERViewer.GlobalDataViewer.removeDataSet("Actual Pos (Goalie)");
-            //JAERViewer.GlobalDataViewer.removeDataSet("Desired Pos (Goalie)");
+        //JAERViewer.GlobalDataViewer.removeDataSet("Actual Pos (StereoGoalie)");
+            //JAERViewer.GlobalDataViewer.removeDataSet("Desired Pos (StereoGoalie)");
         }
     }
     public float getServoPulseFreqHz(){
@@ -1076,7 +1073,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
     private void setLastServoSetting(float lastServoSetting){
         this.servoValue=lastServoSetting;
     }
-    public RectangularClusterTracker getArmTracker(){
+    public StereoClusterTracker getArmTracker(){
         return armTracker;
     }
     public boolean isLearningFailed(){

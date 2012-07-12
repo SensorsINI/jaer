@@ -51,7 +51,11 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
     final String CMD_RESET = "!R", CMD_CYCLE = "!C", CMD_SERVO = "!S";
     final int TIME_UNIT_NS = 250;  // unit of time in ns for servo controller times
     private boolean connected = false;
-    final float PAN_LIMIT = .4f, TILT_LIMIT = .4f, HEAD_LIMIT=.25f;
+    private float headPanOffset=getFloat("headPanOffset",0);
+    private float headTiltOffset=getFloat("headTiltOffset",0);
+    private float vergenceOffset=getFloat("vergenceOffset",0);
+    final float VERGENCE_LIMIT = .2f;
+    final float PAN_LIMIT = .4f, TILT_LIMIT = .3f, HEAD_LIMIT=.25f;
 
     public class GazeDirection {
 
@@ -85,6 +89,9 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
         setPropertyTooltip("showGUI", "shows GUI to manually control head");
         setPropertyTooltip("reset", "sends a reset command to the controller");
         setPropertyTooltip("centerGaze", "centers all servos");
+        setPropertyTooltip("headPanOffset", "offset for pan of head");
+        setPropertyTooltip("headTiltOffset", "offset for tilt of head");
+        setPropertyTooltip("vergenceOffset", "offset for vergence");
     }
 
     @Override
@@ -204,9 +211,18 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
     public void setServoValue(int servo, float value) throws HardwareInterfaceException, UnsupportedEncodingException, IOException {
         servoValues[servo] = value;
 //        serialPort.writeLn(String.format("%s%d=%d", CMD_SERVO, servo, float2servo(value))); // eg !S3=6000
-        serialPort.writeLn(String.format("s%ds%d", servo, float2servo(value))); // eg !S3=6000
-        serialPort.flushOutput();
-        serialPort.purgeInput();
+        String cmd=String.format("s%ds%d", servo, float2servo(value));
+        serialPort.writeLn(cmd);
+        try {
+            Thread.sleep(5);
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Head6DOF_ServoController.class.getName()).log(Level.SEVERE, null, ex);
+        }
+     //        if(!serialPort.sendCommand(cmd,cmd)){
+    //            log.warning("cmd=\""+cmd+"\" did not echo back properly");
+    //        }
+    //        serialPort.purgeInput();
+    //        serialPort.purgeInput();   
     }
 
     public void disableServo(int servo) throws HardwareInterfaceException, UnsupportedEncodingException, IOException {
@@ -282,10 +298,10 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
     }
 
     void setHeadDirection(float pan, float tilt) throws HardwareInterfaceException, UnsupportedEncodingException, IOException {
-        pan=clip(pan,HEAD_LIMIT);
+        pan=clip(pan+headPanOffset,HEAD_LIMIT);
         setServoValue(HEAD_PAN, gaze2servo(pan));
         gazeDirection.headDirection.x = pan;
-        tilt=clip(tilt,HEAD_LIMIT);
+        tilt=clip(tilt+headTiltOffset,HEAD_LIMIT);
         setServoValue(HEAD_TILT, gaze2servo(tilt));
         gazeDirection.headDirection.y = tilt;
         log.info("headDirection pan="+pan+" tilt="+tilt);
@@ -315,10 +331,9 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
         gazeDirection.gazeDirection.setLocation(pan, tilt);
         getSupport().firePropertyChange("gazeDirection", null, gazeDirection);
     }
-    final float VERGENCE_LIMIT = .2f;
 
     public void setVergence(float vergence) throws HardwareInterfaceException, UnsupportedEncodingException, IOException {
-        vergence = clip(vergence, VERGENCE_LIMIT);
+        vergence = clip(vergence+vergenceOffset, VERGENCE_LIMIT);
         gazeDirection.vergence = vergence;
         setEyeGazeDirection(gazeDirection.gazeDirection.x, gazeDirection.gazeDirection.y);
         getSupport().firePropertyChange("gazeDirection", null, gazeDirection);
@@ -326,5 +341,50 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
 
     public GazeDirection getGazeDirection() {
         return gazeDirection;
+    }
+
+    /**
+     * @return the headPanOffset
+     */
+    public float getHeadPanOffset() {
+        return headPanOffset;
+    }
+
+    /**
+     * @param headPanOffset the headPanOffset to set
+     */
+    public void setHeadPanOffset(float headPanOffset) {
+        this.headPanOffset = headPanOffset;
+         putFloat("headPanOffset",headPanOffset);
+   }
+
+    /**
+     * @return the headTiltOffset
+     */
+    public float getHeadTiltOffset() {
+        return headTiltOffset;
+    }
+
+    /**
+     * @param headTiltOffset the headTiltOffset to set
+     */
+    public void setHeadTiltOffset(float headTiltOffset) {
+        this.headTiltOffset = headTiltOffset;
+        putFloat("headTiltOffset",headTiltOffset);
+    }
+
+    /**
+     * @return the vergenceOffset
+     */
+    public float getVergenceOffset() {
+        return vergenceOffset;
+    }
+
+    /**
+     * @param vergenceOffset the vergenceOffset to set
+     */
+    public void setVergenceOffset(float vergenceOffset) {
+        this.vergenceOffset = vergenceOffset;
+        putFloat("vergenceOffset",vergenceOffset);
     }
 }

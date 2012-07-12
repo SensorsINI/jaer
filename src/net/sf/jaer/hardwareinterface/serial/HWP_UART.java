@@ -8,8 +8,9 @@ import java.util.logging.Logger;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
-/** Hardware port serial. 
- * 
+/**
+ * Hardware port serial.
+ *
  * @author jorg conradt
  */
 public class HWP_UART implements HardwareInterface {
@@ -168,7 +169,9 @@ public class HWP_UART implements HardwareInterface {
                 int diff = inputBufferSize - inputBufferReadPointer;
                 l = new String(inputBuffer, inputBufferReadPointer, diff, CHAR_SET) + new String(inputBuffer, 0, eol - diff, CHAR_SET);
             }
-        } catch (Exception doesNotOccur) {/**/
+        } catch (Exception doesNotOccur) {/*
+             * 
+             */
 
         }
 
@@ -189,7 +192,9 @@ public class HWP_UART implements HardwareInterface {
         if (bytesInBuffer > 0) {
             try {
                 l = new String(readExactBytes(bytesInBuffer), CHAR_SET);
-            } catch (Exception e) { /**/ }
+            } catch (Exception e) { /*
+                 * 
+                 */ }
         }
         return (l);
     }
@@ -218,7 +223,9 @@ public class HWP_UART implements HardwareInterface {
             }
             try {
                 Thread.sleep(TIMEOUT_DELAY_IN_MS);
-            } catch (Exception e) {/**/
+            } catch (Exception e) {/*
+                 * 
+                 */
 
             }
             timeOutMS -= TIMEOUT_DELAY_IN_MS;
@@ -245,7 +252,9 @@ public class HWP_UART implements HardwareInterface {
             }
             try {
                 Thread.sleep(TIMEOUT_DELAY_IN_MS);
-            } catch (Exception e) {/**/
+            } catch (Exception e) {/*
+                 * 
+                 */
 
             }
             timeOutMS -= TIMEOUT_DELAY_IN_MS;
@@ -273,20 +282,26 @@ public class HWP_UART implements HardwareInterface {
 
     public boolean sendCommand(String command, String expectedReturn, int timeOut) throws UnsupportedEncodingException, IOException {
         write(command + '\n');
-
-        for (int retryCounter = 8; retryCounter > 0; retryCounter--) {
-            if ((readLine(timeOut)).equals(expectedReturn)) {
+//
+//        for (int retryCounter = 8; retryCounter > 0; retryCounter--) {
+            String line=readLine(timeOut);
+            if(line.endsWith("\n")) line=line.substring(0, line.length()-1);
+            
+            if ((line==null && expectedReturn==null)|| (line!=null && line.equals(expectedReturn))) {
                 return (true);
             }
-        }
+//        }
+            log.warning("sent "+command+", read "+line+" expected "+expectedReturn);
         return false;
     }
 
     public boolean sendCommand(String command, String expectedReturn) throws UnsupportedEncodingException, IOException {
-        return (sendCommand(command, expectedReturn, 200));		// assume default time out of 200ms
+        return (sendCommand(command, expectedReturn, 10));		// assume default time out of 200ms
     }
 
-    /* ************************************************************************************** */
+    /*
+     * **************************************************************************************
+     */
     @SuppressWarnings("unchecked")
     public void showPortList() {
         CommPortIdentifier portId;
@@ -299,7 +314,9 @@ public class HWP_UART implements HardwareInterface {
 
     }
 
-    /* ************************************************************************************** */
+    /*
+     * **************************************************************************************
+     */
     public HWP_UART() {
         serialPort = null;
     }
@@ -326,17 +343,20 @@ public class HWP_UART implements HardwareInterface {
 
                     try {		// try opening the port, wait at most 50ms to get port
                         serialPort = (SerialPort) portId.open("JavaRS232Port", 50);
+                        serialPort.enableReceiveThreshold(256);
+                        serialPort.setOutputBufferSize(1024);
+
+                        setBaudRate(baudRate);
                     } catch (Exception e) {
+                        log.warning("opening port, caught exception "+ e.toString());
                         return (-1);
                     }
 
-                    serialPort.enableReceiveThreshold(256);
 
-                    setBaudRate(baudRate);
 
                     outputStream = serialPort.getOutputStream();
                     inputStream = serialPort.getInputStream();
-                    log.info("port "+portName+" opened with baudRate="+baudRate);
+                    log.info("port " + portName + " opened with baudRate=" + baudRate);
 
                 }		// end of equals portName
             }		// end of IsSerialPort
@@ -370,7 +390,9 @@ public class HWP_UART implements HardwareInterface {
         return;
     }
 
-    /* ************************************************************************************** */
+    /*
+     * **************************************************************************************
+     */
     public synchronized void setBaudRate(int baudRate) throws UnsupportedCommOperationException {
         if (isOpen()) {
             serialPort.setSerialPortParams(baudRate,
@@ -393,7 +415,9 @@ public class HWP_UART implements HardwareInterface {
         }
     }
 
-    /* ************************************************************************************** */
+    /*
+     * **************************************************************************************
+     */
     public synchronized int purgeInput() {
         try {
             while (inputStream.available() > 0) {
@@ -409,7 +433,9 @@ public class HWP_UART implements HardwareInterface {
         return (0);
     }
 
-    /* ************************************************************************************** */
+    /*
+     * **************************************************************************************
+     */
     public synchronized void write(byte[] b) throws IOException {
         if (outputStream == null) {
             throw new IOException("null output stream; port not opened?");
@@ -417,7 +443,9 @@ public class HWP_UART implements HardwareInterface {
         outputStream.write(b);
     }
 
-    /* ************************************************************************************** */
+    /*
+     * **************************************************************************************
+     */
     protected int updateBuffer() {				// read from serial port
         try {
             int bytesAvailable = inputStream.available();

@@ -60,6 +60,11 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
 
         eyePanel.setBackground(new java.awt.Color(255, 255, 255));
         eyePanel.setBorder(javax.swing.BorderFactory.createTitledBorder("eye direction"));
+        eyePanel.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                eyePanelMouseClicked(evt);
+            }
+        });
         eyePanel.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
             public void mouseDragged(java.awt.event.MouseEvent evt) {
                 eyePanelMouseDragged(evt);
@@ -70,11 +75,11 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
         eyePanel.setLayout(eyePanelLayout);
         eyePanelLayout.setHorizontalGroup(
             eyePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 287, Short.MAX_VALUE)
+            .addGap(0, 388, Short.MAX_VALUE)
         );
         eyePanelLayout.setVerticalGroup(
             eyePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 236, Short.MAX_VALUE)
+            .addGap(0, 111, Short.MAX_VALUE)
         );
 
         getContentPane().add(eyePanel);
@@ -99,11 +104,11 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
         headPanel.setLayout(headPanelLayout);
         headPanelLayout.setHorizontalGroup(
             headPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 287, Short.MAX_VALUE)
+            .addGap(0, 388, Short.MAX_VALUE)
         );
         headPanelLayout.setVerticalGroup(
             headPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 236, Short.MAX_VALUE)
+            .addGap(0, 111, Short.MAX_VALUE)
         );
 
         getContentPane().add(headPanel);
@@ -145,11 +150,22 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
         }
     }//GEN-LAST:event_vergenceSliderStateChanged
 
+    private void eyePanelMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_eyePanelMouseClicked
+        float p = getPan(evt), t = getTilt(evt);
+        try {
+            controller.setEyeGazeDirection(p, t);
+            repaint();
+        } catch (Exception ex) {
+            log.warning(ex.toString());
+        }
+    }//GEN-LAST:event_eyePanelMouseClicked
+
     private float getPan(MouseEvent evt) {
         int x = evt.getX();
-        float pan = (float) x / ((JPanel)evt.getSource()).getWidth(); // 0-1
+        int w=((JPanel)evt.getSource()).getWidth();
+        float pan = (float) x / w; // 0-1
         pan=2*pan-1;
-//        log.info("computed pan="+pan);
+//        log.info("computed x="+x+" w="+w+" pan="+pan);
         return pan;
 
     }
@@ -159,7 +175,7 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
         int h=((JPanel)evt.getSource()).getHeight();
         float tilt = (float) (h - y) / h;
         tilt=tilt*2-1;
-//        log.info("computed y="+y+" tilt="+tilt);
+//        log.info("computed y="+y+" h="+h+" tilt="+tilt);
         return tilt;
     }
     private Point p2 = new Point();
@@ -178,7 +194,7 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
         super.paint(g);
         Head6DOF_ServoController.GazeDirection gaze = controller.gazeDirection; // current state of all servos in -1:1 coordinates
 
-        int h=eyePanel.getHeight();
+        g= eyePanel.getGraphics();
         Point p = gaze2pix(eyePanel, gaze.gazeDirection);
         g.drawLine(p.x, p.y + r, p.x,  p.y - r);
         g.drawLine(p.x - r, p.y, p.x + r, p.y);
