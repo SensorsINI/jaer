@@ -283,6 +283,7 @@ public class AESocketDialog extends javax.swing.JDialog{
         jLabel4.setLabelFor(bufferSizeTextBox);
         jLabel4.setText("Receive bufferSize");
 
+        useBufferedStreamsCheckBox.setSelected(true);
         useBufferedStreamsCheckBox.setText("useBufferedStreams");
         useBufferedStreamsCheckBox.setToolTipText("<html>Enable to use System.nanoTime/1000 for all sent or received timstamps. <br>\nCan be useful for unsynchronized input from multple sources.");
         useBufferedStreamsCheckBox.addActionListener(new java.awt.event.ActionListener() {
@@ -328,10 +329,10 @@ public class AESocketDialog extends javax.swing.JDialog{
                         .addComponent(includeTimestampsCheckBox)
                         .addGap(33, 33, 33)
                         .addComponent(useLocalTimestampsEnabledCheckBox)
-                        .addContainerGap(33, Short.MAX_VALUE))
+                        .addContainerGap(181, Short.MAX_VALUE))
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(useISIEnabledCheckBox)
-                        .addContainerGap(345, Short.MAX_VALUE))
+                        .addContainerGap(403, Short.MAX_VALUE))
                     .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                             .addComponent(jLabel3)
@@ -339,9 +340,7 @@ public class AESocketDialog extends javax.swing.JDialog{
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(bufferSizeTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, 90, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(timestampMultiplierTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, 90, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                            .addComponent(timestampMultiplierTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, 90, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                             .addGroup(layout.createSequentialGroup()

@@ -64,11 +64,11 @@
                       <Component id="includeTimestampsCheckBox" min="-2" max="-2" attributes="0"/>
                       <EmptySpace min="-2" pref="33" max="-2" attributes="0"/>
                       <Component id="useLocalTimestampsEnabledCheckBox" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace pref="33" max="32767" attributes="0"/>
+                      <EmptySpace pref="181" max="32767" attributes="0"/>
                   </Group>
                   <Group type="102" alignment="0" attributes="0">
                       <Component id="useISIEnabledCheckBox" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace pref="345" max="32767" attributes="0"/>
+                      <EmptySpace pref="403" max="32767" attributes="0"/>
                   </Group>
                   <Group type="102" alignment="0" attributes="0">
                       <Group type="103" groupAlignment="1" max="-2" attributes="0">
@@ -78,10 +78,7 @@
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Component id="bufferSizeTextBox" alignment="0" min="-2" pref="90" max="-2" attributes="0"/>
-                          <Group type="102" alignment="0" attributes="0">
-                              <Component id="timestampMultiplierTextBox" min="-2" pref="90" max="-2" attributes="0"/>
-                              <EmptySpace max="32767" attributes="0"/>
-                          </Group>
+                          <Component id="timestampMultiplierTextBox" alignment="0" min="-2" pref="90" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="1" attributes="0">
@@ -322,6 +319,7 @@
     </Component>
     <Component class="javax.swing.JCheckBox" name="useBufferedStreamsCheckBox">
       <Properties>
+        <Property name="selected" type="boolean" value="true"/>
         <Property name="text" type="java.lang.String" value="useBufferedStreams"/>
         <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Enable to use System.nanoTime/1000 for all sent or received timstamps. &lt;br&gt;&#xa;Can be useful for unsynchronized input from multple sources."/>
       </Properties>
