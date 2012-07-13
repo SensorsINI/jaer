@@ -113,6 +113,7 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
         flushPacketsCheckBox.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         flushPacketsCheckBox.setMargin(new java.awt.Insets(0, 0, 0, 0));
 
+        useBufferedStreamsCheckBox.setSelected(true);
         useBufferedStreamsCheckBox.setText("Use buffered streams");
         useBufferedStreamsCheckBox.setToolTipText("Enabled to use BufferedInputStream and BufferedOutputStream on the socket");
         useBufferedStreamsCheckBox.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));

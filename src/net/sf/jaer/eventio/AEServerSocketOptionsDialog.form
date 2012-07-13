@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.1" encoding="UTF-8" ?>
 
 <Form version="1.3" maxVersion="1.3" type="org.netbeans.modules.form.forminfo.JDialogFormInfo">
   <SyntheticProperties>
@@ -172,6 +172,7 @@
     </Component>
     <Component class="javax.swing.JCheckBox" name="useBufferedStreamsCheckBox">
       <Properties>
+        <Property name="selected" type="boolean" value="true"/>
         <Property name="text" type="java.lang.String" value="Use buffered streams"/>
         <Property name="toolTipText" type="java.lang.String" value="Enabled to use BufferedInputStream and BufferedOutputStream on the socket"/>
         <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
