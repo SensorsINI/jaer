@@ -47,7 +47,8 @@ public class AESocketDialog extends javax.swing.JDialog{
         receiveBufferSizeTextBox.setText(Integer.toString(socketInterface.getReceiveBufferSize()));
         includeTimestampsCheckBox.setSelected(socketInterface.isTimestampsEnabled());
         useLocalTimestampsEnabledCheckBox.setSelected(socketInterface.isLocalTimestampEnabled());
-        KeyStroke escape = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE,0,false);
+         useBufferedStreamsCheckBox.setSelected(socketInterface.isUseBufferedStreams());
+       KeyStroke escape = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE,0,false);
         Action escapeAction = new AbstractAction(){
             public void actionPerformed (ActionEvent e){
                 dispose();

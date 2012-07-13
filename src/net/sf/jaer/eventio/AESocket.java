@@ -22,10 +22,10 @@ import java.util.prefs.Preferences;
  *<p>
  Stream format is very simple:
  <pre>
- int32 address0
  int32 timestamp0
- int32 address1
+ int32 address0
  int32 timestamp1
+ int32 address1
  etc for n AEs.
  </pre>
  The timestamp tick is us. The addresses are raw device addresses. See the AEChip classes for their

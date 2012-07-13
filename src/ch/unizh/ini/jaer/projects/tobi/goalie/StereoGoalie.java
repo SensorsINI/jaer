@@ -122,7 +122,7 @@ public class StereoGoalie extends EventFilter2D implements FrameAnnotater, Obser
     private int checkToRelax_state = 0;     // this is substate during relaxation to middle to goal
     
     /**
-     * Creates a Goaliestance of Goalie
+     * Creates an instance of Goalie
      */
     public StereoGoalie(AEChip chip) {
         super(chip);

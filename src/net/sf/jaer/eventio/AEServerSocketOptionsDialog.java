@@ -33,6 +33,7 @@ public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
         sendBufferSizeTextField.setText(Integer.toString(aeServerSocket.getSendBufferSize()));
         portTextField.setText(Integer.toString(aeServerSocket.getPort()));
         flushPacketsCheckBox.setSelected(aeServerSocket.isFlushPackets());
+        useBufferedStreamsCheckBox.setSelected(aeServerSocket.isUseBufferedStreams());
         getRootPane().setDefaultButton(okButton); // allows enter to just accept values
     }
 

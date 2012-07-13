@@ -247,7 +247,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     }
     private InItr inputIterator=null;
 
-    /** Returns after initializng the iterator over input events.
+    /** Returns after initializing the iterator over input events.
     @return an iterator that can iterate over the events.
      */
     final public Iterator<E> inputIterator() {
