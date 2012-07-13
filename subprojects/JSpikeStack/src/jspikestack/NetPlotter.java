@@ -5,11 +5,19 @@
 package jspikestack;
 
 import java.awt.*;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
+import java.awt.event.HierarchyEvent;
+import java.awt.event.HierarchyListener;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.*;
+import javax.swing.event.AncestorEvent;
+import javax.swing.event.AncestorListener;
 import javax.swing.text.JTextComponent;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -40,15 +48,16 @@ public class NetPlotter {
     
     long lastnanotime=Integer.MIN_VALUE;
     
-    double lastNetTime=0;
+    double lastNetTime=Double.NEGATIVE_INFINITY;
     
     JTextComponent jt;
-    LayerStatePlotter[] layerStatePlots;
-    
+//    LayerStatePlotter[] layerStatePlots;
+    volatile Vector<LayerStatePlotter> layerStatePlots;
     
     
     public NetPlotter(SpikeStack network)
-    {   net=network;        
+    {   net=network;
+        
     }
     
     public void raster()
@@ -122,8 +131,8 @@ public class NetPlotter {
         
         int nLayers=net.nLayers();
         
-        layerStatePlots=new LayerStatePlotter[nLayers];
-        
+//        layerStatePlots=new LayerStatePlotter[nLayers];
+        layerStatePlots=new Vector<LayerStatePlotter>(nLayers);
         
         for (int i=0; i<nLayers; i++)
         {
@@ -168,7 +177,7 @@ public class NetPlotter {
 //            disp.setVisible(true);
 //            pan.setVisible(true);
             
-            layerStatePlots[i]=new LayerStatePlotter(net.lay(i),disp);
+            layerStatePlots.add(new LayerStatePlotter(net.lay(i),disp));
         }
         
         GridBagConstraints c = new GridBagConstraints();
@@ -233,21 +242,56 @@ public class NetPlotter {
         frm=createStatePlot();
         pan.add(frm);
         
+        
+                
         class ViewLoop extends Thread{
             
+            boolean wasshowing;
 
             public ViewLoop() {
                 super();
                 setName("NetPlotter");
             }
             
+            /* TODO: Ponder about whether this is the best solution */
             @Override
             public void run()
             {
+                frm.getTopLevelAncestor().addComponentListener(new ComponentListener(){
+
+                    @Override
+                    public void componentResized(ComponentEvent e) {
+//                        throw new UnsupportedOperationException("Not supported yet.");
+                    }
+
+                    @Override
+                    public void componentMoved(ComponentEvent e) {
+//                        throw new UnsupportedOperationException("Not supported yet.");
+                    }
+
+                    @Override
+                    public void componentShown(ComponentEvent e) {
+//                        throw new UnsupportedOperationException("Not supported yet.");
+                    }
+
+                    @Override
+                    public void componentHidden(ComponentEvent e) {
+                        enable=false; 
+                    }
+
+
+                });
+                
+                
+                
                 while (enable)
                 {
                     
                     // System.out.println("Loop checking in at : "+lastNetTime+updateMillis*timeScale);
+                    
+                    // Initialize display time to starting net time.
+                    if (lastNetTime==Double.NEGATIVE_INFINITY)
+                        lastNetTime=net.time;
                     
                     if (realTime)
                         state();                    
@@ -255,7 +299,6 @@ public class NetPlotter {
                         state(lastNetTime+updateMillis*timeScale);
                     
                     try {
-
                         Thread.sleep(updateMillis);
                     } catch (InterruptedException ex) {
                         Logger.getLogger(NetPlotter.class.getName()).log(Level.SEVERE, null, ex);
@@ -275,10 +318,24 @@ public class NetPlotter {
         
     }
     
+    
+    public void reset()
+    {
+        if (layerStatePlots!=null)
+            for (LayerStatePlotter lsp: layerStatePlots)
+            {   lsp.reset();            
+            }
+    }
+    
     /** Update the state plot to the current time */
     public void state()
     {   state(net.time);        
     }
+    
+//    public LayerStatePlotter layStatePlot(int i)
+//    {
+//        return layerStatePlots[i];
+//    }
     
     /** Update the state plot to the specified time */
     public void state(double upToTime)
@@ -312,8 +369,10 @@ public class NetPlotter {
             if (layerStatePlots==null)
                 createStatePlot();
             
-            for (int i=0; i<net.nLayers(); i++)
-                layerStatePlots[i].update(upToTime);
+            for (int i=0; i<layerStatePlots.size(); i++)
+                layerStatePlots.get(i).update(upToTime);
+//                layStatePlot(i).update(upToTime);
+//                this.layerStatePlots[i].update(upToTime);
             
             
             jt.setText("Time: "+(int)upToTime+"ms\nNetTime: "+(int)net.time+"ms");
@@ -347,12 +406,12 @@ public class NetPlotter {
         ImageDisplay disp;
         float[] state;  // Array of unit states.
         
-        double lastTime;
+        double lastTime=Double.NEGATIVE_INFINITY;
         
         float minState=Float.NaN;
         float maxState=Float.NaN;
         
-        float adaptationRate=1f;  // Adaptation rate of the limits.
+        float adaptationRate=.1f;  // Adaptation rate of the limits.
         
         int outBookmark;
         
@@ -380,9 +439,15 @@ public class NetPlotter {
             float smin=Float.MAX_VALUE;
             float smax=-Float.MAX_VALUE;
             
+            if (toTime==Float.NEGATIVE_INFINITY)
+                return;
+            
             // Step 1: Decay present state
             for (int i=0; i<state.length; i++)
-            {   state[i]*=Math.exp((lastTime-toTime)/tau);     
+            {   state[i]*=Math.exp((lastTime-toTime)/tau);    
+                if (Float.isNaN(state[i]))
+                    System.out.println("STOPP");
+                
                 if (state[i]<smin) smin=state[i];
                 if (state[i]>smax) smax=state[i];
             }
@@ -428,11 +493,16 @@ public class NetPlotter {
             
             lastTime=toTime;
             
-            disp.setTitleLabel("AAA");
+//            disp.setTitleLabel("AAA");
 //            disp.drawCenteredString(1, 1, "A");
             disp.repaint();
         }
         
+        public void reset()
+        {
+            lastTime=Double.NEGATIVE_INFINITY;
+            
+        }
                 
     }
 //        

@@ -27,7 +27,7 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
     transient Queue<Spike> inputBuffer = new LinkedList<Spike>();
     transient Queue<Spike> internalBuffer= new LinkedList<Spike>();
             
-    public double time;    // Current time (millis) (avoids having to pass around time reference)
+    public double time=Double.NEGATIVE_INFINITY;    // Current time (millis) (avoids having to pass around time reference)
         
     public float tau;      // Decay rate (seconds)
         
@@ -186,29 +186,49 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
         
 //        plot.followState();
         
+        
+        
         // If in liveMode, go til inputBuffer is empty, otherwise go til both buffers are empty (or timeout).
         while (!(inputBuffer.isEmpty()&&(internalBuffer.isEmpty() || liveMode )))
         {
-            
+                        
             // Determine whether to read from input or buffer
             boolean readInput=!inputBuffer.isEmpty() && (internalBuffer.isEmpty() || inputBuffer.peek().time<internalBuffer.peek().time);
             Spike ev=readInput?inputBuffer.poll():internalBuffer.poll();
             
             // Update current time to time of this event
+            if (ev.time<time)
+            {   System.out.println("Input Spike time Decrease detected!  Resetting network...");
+                reset();                
+            }
+            
             time=ev.time;
+            
+            
+            
             if (time > timeout)
                 break;
             
-            // Feed Spike to network
-            if (inputCurrents && readInput)     // 1: Input event drives current
-                lay(ev.layer).units[ev.addr].fireTo(inputCurrentStrength);
-            else if (readInput)                 // 2: Input Spike fires unit
-                lay(ev.layer).units[ev.addr].fireFrom();
-            else                                // 3: Internally buffered event propagated
-                lay(ev.layer).units[ev.addr].propagateFrom();
+            try{
             
-            // Post Spike-Feed Actions
-            postFeed();
+                // Feed Spike to network
+                if (inputCurrents && readInput)     // 1: Input event drives current
+                    lay(ev.layer).units[ev.addr].fireTo(inputCurrentStrength);
+                else if (readInput)                 // 2: Input Spike fires unit
+                    lay(ev.layer).units[ev.addr].fireFrom();
+                else                                // 3: Internally buffered event propagated
+                    lay(ev.layer).units[ev.addr].propagateFrom();
+
+                // Post Spike-Feed Actions
+                postFeed();
+            
+            }
+            catch (java.lang.ArrayIndexOutOfBoundsException ex)
+            {   
+                System.out.println("You tried firing an event at address with address "+ev.addr+" to Layer "+ev.layer+", which has just "+lay(ev.layer).nUnits()+" units.");
+                throw ex;
+            }
+            
             
         }
     }
@@ -254,6 +274,8 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
         //time=0;
         for (LayerType l:layers)
             l.reset();
+        
+        plot.reset();
         
     }
     

@@ -422,6 +422,7 @@ public class JspikeStack {
         frm.setPreferredSize(new Dimension(500,300));
         frm.pack();
         frm.setVisible(true);
+        frm.toFront();
         
     }
     

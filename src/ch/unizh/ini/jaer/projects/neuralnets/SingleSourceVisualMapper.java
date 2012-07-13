@@ -16,14 +16,16 @@ public class SingleSourceVisualMapper extends NetMapper{
     short outDimY;
     
     @Override
-    public int loc2addr(short xloc, short yloc, byte source) {
+    public int loc2addr(short xloc, short yloc, byte source) {        
+        return loc2addr(xloc,yloc);
+    }
+    
+    public int loc2addr(short xloc, short yloc) {
         
         short newX=(short)(xloc*outDimX/inDimX);
         short newY=(short)(outDimY-1-(yloc*outDimY/inDimY));
         
         return outDimY*(newX)+newY;
     }
-    
-    
     
 }

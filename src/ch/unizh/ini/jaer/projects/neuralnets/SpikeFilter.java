@@ -67,6 +67,8 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         wrapNet=new SpikeStackWrapper(net,map);
     }
         
+    BasicEvent lastEv=null;
+    
     /** Do standard event processing ops for the given network.  If you'd like
      *  to do more processing, it's recommended that you override this method, with 
      *  "super.filterPacket(in);" as the first line, then your custom code,
@@ -81,9 +83,16 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         else if (!wrapNet.R.isBaseTimeSet())
             wrapNet.R.setBaseTime(in.getFirstTimestamp());
         
+        
+        
         // If it's a clusterset event
         for (BasicEvent ev:in)
         {   wrapNet.addToQueue(ev);
+            
+            if (lastEv!=null && (lastEv.timestamp>ev.timestamp))
+                  System.out.println("Non-mon!");
+            
+            lastEv=ev;
         }
         
         wrapNet.eatEvents();
@@ -116,7 +125,7 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
 
         @Override
         public void setDisplayEnabled(boolean state) {
-            throw new UnsupportedOperationException("Not supported yet.");
+            wrapNet.setEnablePlotting(false);
         }
         
     }

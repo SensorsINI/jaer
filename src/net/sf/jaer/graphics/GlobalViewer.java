@@ -10,29 +10,17 @@
  */
 package net.sf.jaer.graphics;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.GridBagConstraints;
-import java.awt.GridLayout;
-import java.awt.Toolkit;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.concurrent.CyclicBarrier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JToggleButton;
-import javax.swing.JToolBar;
-import javax.swing.UIManager;
+import javax.swing.*;
 import javax.swing.UIManager.LookAndFeelInfo;
-import javax.swing.UnsupportedLookAndFeelException;
+import javax.swing.event.InternalFrameEvent;
+import javax.swing.event.InternalFrameListener;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.eventprocessing.MultiInputFrame;
 import net.sf.jaer.eventprocessing.ProcessingNetwork;
@@ -99,7 +87,7 @@ public class GlobalViewer extends javax.swing.JFrame {
                 v.setID(i);
                 aeviewers.add(v);
                 addPacketStream(v);
-                addDisplayWriter(v);
+                addDisplayWriter(v,new Dimension(400,400));
                 v.setWatched(true);
                 v.setSemaphore(waitFlag);
                 inputDisplays.add(v);
@@ -208,13 +196,18 @@ public class GlobalViewer extends javax.swing.JFrame {
         // <editor-fold defaultstate="collapsed" desc=" GUI Methods " >
         
         JToolBar bottomBar;
-        JPanel viewPanel;
+        Container viewPanel;
         JPanel filterPanel;
         MultiInputFrame multiInputControl;
 //        ArrayList<JPanel> viewPanels=new ArrayList();
         
         void initComponents()
         {
+//            JDesktopPane desk=new JDesktopPane();
+//            this.setContentPane(desk);
+//            deskt.setDragMode(JDesktopPane.OUTLINE_DRAG_MODE);
+//            desk.setDesktopManager(new DesktopManager());
+            
             this.setTitle("Global Viewer");
             
             this.setBackground(Color.DARK_GRAY);
@@ -348,7 +341,13 @@ public class GlobalViewer extends javax.swing.JFrame {
             bottomBar.add(button);
             
             
-            viewPanel=new JPanel();
+            viewPanel=new JDesktopPane();
+//            viewPanel.setLayout(new FlowLayout());
+            viewPanel.setVisible(true);
+            
+            
+            
+//            viewPanel=new JPanel();
             this.add(viewPanel,BorderLayout.CENTER);
             viewPanel.setBackground(Color.DARK_GRAY); 
             viewPanel.setLayout(new FlowLayout());
@@ -368,6 +367,7 @@ public class GlobalViewer extends javax.swing.JFrame {
             
             pack();
             setVisible(true);
+            toFront();
             
             // Hide the Viewers
             for (AEViewer v:jaerView.getViewers())
@@ -419,8 +419,17 @@ public class GlobalViewer extends javax.swing.JFrame {
 //            }
 //        }
 //        
-        public void addDisplayWriter(final DisplayWriter d)
+        
+        public void addDisplayWriter(DisplayWriter d)
         {
+            addDisplayWriter(d,null);
+        }
+        
+        
+        public void addDisplayWriter(final DisplayWriter d, Dimension dim)
+        {
+//            viewPanel.setLayout(new FlowLayout());
+            
             GridBagConstraints c=new GridBagConstraints();
             
             c.weightx=c.weighty=1;
@@ -429,12 +438,13 @@ public class GlobalViewer extends javax.swing.JFrame {
             c.gridy=1;
             c.weightx=c.weighty=1;
 
-            JPanel imagePanel=new JPanel();
+//            JPanel imagePanel=new JPanel();
+            JInternalFrame imagePanel=new JInternalFrame("",true,true);
 //            
             imagePanel.setLayout(new BorderLayout());
 
-
-            imagePanel.setPreferredSize(new Dimension(400,400));
+            
+//           
             imagePanel.setBackground(Color.DARK_GRAY);
 
             viewPanel.add(imagePanel);
@@ -443,26 +453,69 @@ public class GlobalViewer extends javax.swing.JFrame {
             
             imagePanel.add(content);
             
-            imagePanel.setPreferredSize(content.getPreferredSize());
+            if (dim==null)
+                imagePanel.setPreferredSize(content.getPreferredSize());
+            else
+                imagePanel.setPreferredSize(dim);
             
             d.getPanel().setPreferredSize(imagePanel.getSize());
 
-            JToolBar joot=new JToolBar();
-            joot.setLayout(new BorderLayout());
-            imagePanel.add(joot,BorderLayout.NORTH);
+            imagePanel.setResizable(true);
+            
+            
+//            JToolBar joot=new JToolBar();
+//            joot.setLayout(new BorderLayout());
+//            imagePanel.add(joot,BorderLayout.NORTH);
+//
+//            
+//
+//            JButton but = new JButton("X");
+//            joot.add(but, BorderLayout.EAST);
+//            but.addActionListener(new ActionListener() {
+//
+//                @Override
+//                public void actionPerformed(ActionEvent e) {
+//                    killDisplayWriter(d);
+//                }
+//            });
 
-
-            JButton but = new JButton("X");
-            joot.add(but, BorderLayout.EAST);
-            but.addActionListener(new ActionListener() {
+            imagePanel.setVisible(true);
+            
+            
+            imagePanel.addInternalFrameListener(new InternalFrameListener(){
 
                 @Override
-                public void actionPerformed(ActionEvent e) {
-                    killDisplayWriter(d);
+                public void internalFrameOpened(InternalFrameEvent e) {
                 }
+
+                @Override
+                public void internalFrameClosing(InternalFrameEvent e) {
+                }
+
+                @Override
+                public void internalFrameClosed(InternalFrameEvent e) {
+                    d.setDisplayEnabled(false);
+                }
+
+                @Override
+                public void internalFrameIconified(InternalFrameEvent e) {
+                }
+
+                @Override
+                public void internalFrameDeiconified(InternalFrameEvent e) {
+                }
+
+                @Override
+                public void internalFrameActivated(InternalFrameEvent e) {
+                }
+
+                @Override
+                public void internalFrameDeactivated(InternalFrameEvent e) {
+                }
+            
             });
-
-
+            
+//            viewPanel.setLayout(null);
         }
 //                
         
