@@ -105,7 +105,6 @@ public class AEServerSocket extends Thread {
                 synchronized (this) {
                     setSocket(aeSocket);
                 }
-                ;
                 log.info("accepted incoming stream TCP socket request to send events on socket " + newSocket);
                 getSupport().firePropertyChange("clientconnected", oldSocket, aeSocket);
             }catch(SocketException se){

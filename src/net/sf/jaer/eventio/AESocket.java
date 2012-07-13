@@ -254,11 +254,11 @@ public class AESocket implements AESocketSettings{
         int ts=0;
         int addr=0;
         if(isSwapBytesEnabled()){
-            addr=this.swapByteOrder(dis.readInt());
             ts=this.swapByteOrder(normalize(dis.readInt()));
+            addr=this.swapByteOrder(dis.readInt());
         } else {
-            addr=dis.readInt();
             ts=normalize(dis.readInt());
+            addr=dis.readInt();
         }
         // check for non-monotonic increasing timestamps, if we get one, reset our notion of the starting time
         if(isWrappedTime(ts,mostRecentTimestamp,1)){
