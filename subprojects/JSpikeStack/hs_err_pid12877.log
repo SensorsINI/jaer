@@ -1,0 +1,149 @@
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  SIGSEGV (0xb) at pc=0x00007f3a4700c759, pid=12877, tid=139888287790848
+#
+# JRE version: 6.0_32-b05
+# Java VM: Java HotSpot(TM) 64-Bit Server VM (20.7-b02 mixed mode linux-amd64 compressed oops)
+# Problematic frame:
+# C  [libGL.so.1+0x91759]  __float128+0x25289
+#
+# If you would like to submit a bug report, please visit:
+#   http://java.sun.com/webapps/bugreport/crash.jsp
+# The crash happened outside the Java Virtual Machine in native code.
+# See problematic frame for where to report the bug.
+#
+
+---------------  T H R E A D  ---------------
+
+Current thread (0x00007f3a503d4000):  JavaThread "AWT-EventQueue-0" [_thread_in_native, id=12908, stack(0x00007f3a47a3b000,0x00007f3a47b3c000)]
+
+siginfo:si_signo=SIGSEGV: si_errno=0, si_code=1 (SEGV_MAPERR), si_addr=0x00000000405ae000
+
+Registers:
+RAX=0x00000000405ae000, RBX=0x00007f3a5070b3d8, RCX=0x00007f3a4726ace0, RDX=0x00007f3a46d47bc0
+RSP=0x00007f3a47b39090, RBP=0x0000000000000001, RSI=0x00007f3a5070b3d8, RDI=0x00007f3a4726af40
+R8 =0x0000000000000000, R9 =0x000000000000326c, R10=0x0000000000000000, R11=0x0000000000000206
+R12=0x00007f3a47b390b0, R13=0x0000000000000001, R14=0x00007f3a5070b3d8, R15=0x00007f3a4724f750
+RIP=0x00007f3a4700c759, EFLAGS=0x0000000000010202, CSGSFS=0x0000000000000033, ERR=0x0000000000000004
+  TRAPNO=0x000000000000000e
+
+Top of Stack: (sp=0x00007f3a47b39090)
+0x00007f3a47b39090:   00007f3a47b390b0 00000000405ae000
+0x00007f3a47b390a0:   0000012c47b390f0 000000010000012c
+0x00007f3a47b390b0:   00000000405ae000 00007f3a44ba7ee8
+0x00007f3a47b390c0:   0000000000000000 00007f3a47b39178
+0x00007f3a47b390d0:   00007f3a47b39180 00007f3a503d41d0
+0x00007f3a47b390e0:   0000000000000000 00007f3a470127a9
+0x00007f3a47b390f0:   0000000000000000 00007f3a4ad5c33e
+0x00007f3a47b39100:   00007f3a47b391a0 0000000005200035
+0x00007f3a47b39110:   00007f3a46d63f20 000000000000324d
+0x00007f3a47b39120:   00007f3a50553f90 00007f3a460340b0
+0x00007f3a47b39130:   000000009e963ce8 00007f3a5014c760
+0x00007f3a47b39140:   00007f3a5070b390 00007f3a5076a9c0
+0x00007f3a47b39150:   000000009e963ce8 00007f3a47b39288
+0x00007f3a47b39160:   00007f3a503d4000 00007f3a46fe4e27
+0x00007f3a47b39170:   00007f3a4ad57298 00000000a4010ac0
+0x00007f3a47b39180:   00000000a47b8950 00007f3a47b39188
+0x00007f3a47b39190:   000000009e97946d 000000009e963ce8
+0x00007f3a47b391a0:   00007f3a47b391e0 0000000000000000
+0x00007f3a47b391b0:   000000009e963ce8 00007f3a45001b42
+0x00007f3a47b391c0:   0000000005200035 00007f3a5014c760
+0x00007f3a47b391d0:   00007f3a47b39260 00007f3a503d41d0
+0x00007f3a47b391e0:   00007f3a47b39250 00007f3a4ad5bb55
+0x00007f3a47b391f0:   00007f3a47b39230 000000009e93e8d0
+0x00007f3a47b39200:   000000009ec8a688 000000009e92cc38
+0x00007f3a47b39210:   00007f3a47b39210 0000000000000000
+0x00007f3a47b39220:   00007f3a47b39288 000000009e967950
+0x00007f3a47b39230:   0000000000000000 000000009e963ce8
+0x00007f3a47b39240:   0000000000000000 00007f3a47b39270
+0x00007f3a47b39250:   00007f3a47b392d0 00007f3a4ad4ab02
+0x00007f3a47b39260:   000000009e965018 00007f3a4ad57298
+0x00007f3a47b39270:   0000000005200035 00007f3a47b392d0
+0x00007f3a47b39280:   00007f3a5014c760 00000000a408b398 
+
+Instructions: (pc=0x00007f3a4700c759)
+0x00007f3a4700c739:   44 3b 6c 24 1c 75 90 4c 8b 24 24 31 ed 48 8b 0d
+0x00007f3a4700c749:   db bf 23 00 49 8b 04 24 4c 89 f6 ff c5 48 8b 11
+0x00007f3a4700c759:   48 8b 38 ff 92 68 03 00 00 48 8b 15 bf bf 23 00
+0x00007f3a4700c769:   48 89 c3 49 8b 3c 24 49 83 c4 08 48 8b 02 ff 90 
+
+Register to memory mapping:
+
+RAX=0x00000000405ae000 is an unknown value
+RBX=0x00007f3a5070b3d8 is an unknown value
+RCX=0x00007f3a4726ace0: <offset 0x2efce0> in /usr/lib/nvidia-current/libGL.so.1 at 0x00007f3a46f7b000
+RDX=0x00007f3a46d47bc0: <offset 0x1ba7bc0> in /usr/lib/nvidia-current/libnvidia-glcore.so.260.19.06 at 0x00007f3a451a0000
+RSP=0x00007f3a47b39090 is pointing into the stack for thread: 0x00007f3a503d4000
+RBP=0x0000000000000001 is an unknown value
+RSI=0x00007f3a5070b3d8 is an unknown value
+RDI=0x00007f3a4726af40: <offset 0x2eff40> in /usr/lib/nvidia-current/libGL.so.1 at 0x00007f3a46f7b000
+R8 =0x0000000000000000 is an unknown value
+R9 =0x000000000000326c is an unknown value
+R10=0x0000000000000000 is an unknown value
+R11=0x0000000000000206 is an unknown value
+R12=0x00007f3a47b390b0 is pointing into the stack for thread: 0x00007f3a503d4000
+R13=0x0000000000000001 is an unknown value
+R14=0x00007f3a5070b3d8 is an unknown value
+R15=0x00007f3a4724f750: <offset 0x2d4750> in /usr/lib/nvidia-current/libGL.so.1 at 0x00007f3a46f7b000
+
+
+Stack: [0x00007f3a47a3b000,0x00007f3a47b3c000],  sp=0x00007f3a47b39090,  free space=1016k
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+C  [libGL.so.1+0x91759]  __float128+0x25289
+
+Java frames: (J=compiled Java code, j=interpreted, Vv=VM code)
+j  com.sun.opengl.impl.x11.GLX.glXSwapBuffers(JJ)V+0
+j  com.sun.opengl.impl.x11.X11OnscreenGLDrawable.swapBuffers()V+38
+j  com.sun.opengl.impl.GLDrawableHelper.invokeGL(Ljavax/media/opengl/GLDrawable;Ljavax/media/opengl/GLContext;Ljava/lang/Runnable;Ljava/lang/Runnable;)V+435
+j  javax.media.opengl.GLCanvas.maybeDoSingleThreadedWorkaround(Ljava/lang/Runnable;Ljava/lang/Runnable;)V+36
+j  javax.media.opengl.GLCanvas.display()V+9
+j  javax.media.opengl.GLCanvas.paint(Ljava/awt/Graphics;)V+125
+J  sun.awt.RepaintArea.paint(Ljava/lang/Object;Z)V
+j  sun.awt.X11.XComponentPeer.handleEvent(Ljava/awt/AWTEvent;)V+224
+j  java.awt.Component.dispatchEventImpl(Ljava/awt/AWTEvent;)V+861
+J  java.awt.EventQueue$1.run()Ljava/lang/Object;
+v  ~StubRoutines::call_stub
+J  java.security.AccessController.doPrivileged(Ljava/security/PrivilegedAction;Ljava/security/AccessControlContext;)Ljava/lang/Object;
+j  java.security.AccessControlContext$1.doIntersectionPrivilege(Ljava/security/PrivilegedAction;Ljava/security/AccessControlContext;Ljava/security/AccessControlContext;)Ljava/lang/Object;+28
+j  java.security.AccessControlContext$1.doIntersectionPrivilege(Ljava/security/PrivilegedAction;Ljava/security/AccessControlContext;)Ljava/lang/Object;+6
+j  java.awt.EventQueue$2.run()Ljava/lang/Void;+11
+j  java.awt.EventQueue$2.run()Ljava/lang/Object;+1
+v  ~StubRoutines::call_stub
+J  java.security.AccessController.doPrivileged(Ljava/security/PrivilegedAction;Ljava/security/AccessControlContext;)Ljava/lang/Object;
+J  java.awt.EventDispatchThread.pumpOneEventForFilters(I)Z
+j  java.awt.EventDispatchThread.pumpEventsForFilter(ILjava/awt/Conditional;Ljava/awt/EventFilter;)V+30
+j  java.awt.EventDispatchThread.pumpEventsForHierarchy(ILjava/awt/Conditional;Ljava/awt/Component;)V+11
+j  java.awt.EventDispatchThread.pumpEvents(ILjava/awt/Conditional;)V+4
+j  java.awt.EventDispatchThread.pumpEvents(Ljava/awt/Conditional;)V+3
+j  java.awt.EventDispatchThread.run()V+9
+v  ~StubRoutines::call_stub
+
+---------------  P R O C E S S  ---------------
+
+Java Threads: ( => current thread )
+  0x0000000040ecd800 JavaThread "NetPlotter" [_thread_blocked, id=12918, stack(0x00007f3a44aa6000,0x00007f3a44ba7000)]
+  0x0000000040fe9000 JavaThread "Timer-0" daemon [_thread_blocked, id=12917, stack(0x00007f3a47426000,0x00007f3a47527000)]
+  0x00007f3a50418000 JavaThread "TimerQueue" daemon [_thread_blocked, id=12916, stack(0x00007f3a47527000,0x00007f3a47628000)]
+  0x00007f3a40004000 JavaThread "DestroyJavaVM" [_thread_blocked, id=12882, stack(0x00007f3a55446000,0x00007f3a55547000)]
+  0x0000000040f2d000 JavaThread "org.netbeans.modules.debugger.jpda.visual AWT Access Loop" daemon [_thread_blocked, id=12909, stack(0x00007f3a4793a000,0x00007f3a47a3b000)]
+=>0x00007f3a503d4000 JavaThread "AWT-EventQueue-0" [_thread_in_native, id=12908, stack(0x00007f3a47a3b000,0x00007f3a47b3c000)]
+  0x00007f3a503cf800 JavaThread "AWT-Shutdown" [_thread_blocked, id=12907, stack(0x00007f3a47b3c000,0x00007f3a47c3d000)]
+  0x00007f3a5027c800 JavaThread "AWT-XAWT" daemon [_thread_blocked, id=12906, stack(0x00007f3a47e5c000,0x00007f3a47f5d000)]
+  0x0000000040e0f800 JavaThread "Java2D Disposer" daemon [_thread_blocked, id=12905, stack(0x00007f3a47f5d000,0x00007f3a4805e000)]
+  0x00007f3a50138800 JavaThread "Low Memory Detector" daemon [_thread_blocked, id=12903, stack(0x00007f3a48a5f000,0x00007f3a48b60000)]
+  0x00007f3a50136000 JavaThread "C2 CompilerThread1" daemon [_thread_blocked, id=12902, stack(0x00007f3a48b60000,0x00007f3a48c61000)]
+  0x00007f3a50132800 JavaThread "C2 CompilerThread0" daemon [_thread_blocked, id=12901, stack(0x00007f3a48c61000,0x00007f3a48d62000)]
+  0x00007f3a50125800 JavaThread "JDWP Event Helper Thread" daemon [_thread_blocked, id=12897, stack(0x00007f3a48e63000,0x00007f3a48f64000)]
+  0x00007f3a50122000 JavaThread "JDWP Transport Listener: dt_socket" daemon [_thread_in_native, id=12895, stack(0x00007f3a48f64000,0x00007f3a49065000)]
+  0x00007f3a50117000 JavaThread "Signal Dispatcher" daemon [_thread_blocked, id=12894, stack(0x00007f3a49169000,0x00007f3a4926a000)]
+  0x00007f3a500fc000 JavaThread "Finalizer" daemon [_thread_blocked, id=12893, stack(0x00007f3a4926a000,0x00007f3a4936b000)]
+  0x00007f3a500fa000 JavaThread "Reference Handler" daemon [_thread_blocked, id=12892, stack(0x00007f3a4936b000,0x00007f3a4946c000)]
+
+Other Threads:
+  0x00007f3a500f4000 VMThread [stack: 0x00007f3a4946c000,0x00007f3a4956d000] [id=12891]
+  0x0000000040c1b000 WatcherThread [stack: 0x00007f3a4895e000,0x00007f3a48a5f000] [id=12904]
+
+VM state:not at safepoint (normal execution)
+
+VM Mutex/Monitor currently owned by a thread: 

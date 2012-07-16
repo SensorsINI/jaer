@@ -1,0 +1,340 @@
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  SIGSEGV (0xb) at pc=0x00007fc1542f2759, pid=12926, tid=140468328937216
+#
+# JRE version: 6.0_32-b05
+# Java VM: Java HotSpot(TM) 64-Bit Server VM (20.7-b02 mixed mode linux-amd64 compressed oops)
+# Problematic frame:
+# C  [libGL.so.1+0x91759]  __float128+0x25289
+#
+# If you would like to submit a bug report, please visit:
+#   http://java.sun.com/webapps/bugreport/crash.jsp
+# The crash happened outside the Java Virtual Machine in native code.
+# See problematic frame for where to report the bug.
+#
+
+---------------  T H R E A D  ---------------
+
+Current thread (0x00007fc1500a8000):  JavaThread "AWT-EventQueue-0" [_thread_in_native, id=12959, stack(0x00007fc154c93000,0x00007fc154d94000)]
+
+siginfo:si_signo=SIGSEGV: si_errno=0, si_code=1 (SEGV_MAPERR), si_addr=0x000000004023d000
+
+Registers:
+RAX=0x000000004023d000, RBX=0x00007fc15c4b2f78, RCX=0x00007fc154550ce0, RDX=0x00007fc14ffcebc0
+RSP=0x00007fc154d91190, RBP=0x0000000000000001, RSI=0x00007fc15c4b2f78, RDI=0x00007fc154550f40
+R8 =0x000000000000e17f, R9 =0x00007fc15c4f2840, R10=0x0000000000000000, R11=0x0000000000000206
+R12=0x00007fc154d911b0, R13=0x0000000000000001, R14=0x00007fc15c4b2f78, R15=0x00007fc154535750
+RIP=0x00007fc1542f2759, EFLAGS=0x0000000000010202, CSGSFS=0x0000000000000033, ERR=0x0000000000000004
+  TRAPNO=0x000000000000000e
+
+Top of Stack: (sp=0x00007fc154d91190)
+0x00007fc154d91190:   00007fc154d911b0 000000004023d000
+0x00007fc154d911a0:   0000012c00000000 000000010000012c
+0x00007fc154d911b0:   000000004023d000 0000000000000000
+0x00007fc154d911c0:   0000000000000000 0000000000000000
+0x00007fc154d911d0:   0000000000000000 0000000000000000
+0x00007fc154d911e0:   0000000000000000 00007fc1542f87a9
+0x00007fc154d911f0:   00007fc154d91230 00007fc164963ddf
+0x00007fc154d91200:   00007fc1500a8000 000000000520002b
+0x00007fc154d91210:   00007fc14ffeaf20 000000000000327e
+0x00007fc154d91220:   00007fc15c119cf0 00007fc14f2bb0b0
+0x00007fc154d91230:   000000009e963fa0 00007fc15c16de80
+0x00007fc154d91240:   00007fc15c4b2f30 00007fc15c3b16b0
+0x00007fc154d91250:   000000009e963fa0 00007fc154d91388
+0x00007fc154d91260:   00007fc1500a8000 00007fc1542cae27
+0x00007fc154d91270:   00007fc154d912a0 00007fc1500a81d0
+0x00007fc154d91280:   0000000000000000 0000000041609000
+0x00007fc154d91290:   00007fc154d912e0 000000009e963fa0
+0x00007fc154d912a0:   00007fc154d912e0 0000000000000000
+0x00007fc154d912b0:   000000009e963fa0 00007fc14e288b42
+0x00007fc154d912c0:   000000000520002b 00007fc15c16de80
+0x00007fc154d912d0:   00007fc154d91360 00007fc1500a81d0
+0x00007fc154d912e0:   00007fc154d91350 00007fc157f5db55
+0x00007fc154d912f0:   00000000a4401f20 0000000000000000
+0x00007fc154d91300:   00007fc157f59298 00000000a42a7308
+0x00007fc154d91310:   00007fc154d91310 0000000000000000
+0x00007fc154d91320:   00007fc154d91388 000000009e967c08
+0x00007fc154d91330:   0000000000000000 000000009e963fa0
+0x00007fc154d91340:   0000000000000000 00007fc154d91370
+0x00007fc154d91350:   00007fc154d913d0 00007fc157f4cb02
+0x00007fc154d91360:   000000009e9652d0 00007fc157f59298
+0x00007fc154d91370:   000000000520002b 00007fc154d913d0
+0x00007fc154d91380:   00007fc15c16de80 00000000a426fb60 
+
+Instructions: (pc=0x00007fc1542f2759)
+0x00007fc1542f2739:   44 3b 6c 24 1c 75 90 4c 8b 24 24 31 ed 48 8b 0d
+0x00007fc1542f2749:   db bf 23 00 49 8b 04 24 4c 89 f6 ff c5 48 8b 11
+0x00007fc1542f2759:   48 8b 38 ff 92 68 03 00 00 48 8b 15 bf bf 23 00
+0x00007fc1542f2769:   48 89 c3 49 8b 3c 24 49 83 c4 08 48 8b 02 ff 90 
+
+Register to memory mapping:
+
+RAX=0x000000004023d000 is an unknown value
+RBX=0x00007fc15c4b2f78 is an unknown value
+RCX=0x00007fc154550ce0: <offset 0x2efce0> in /usr/lib/nvidia-current/libGL.so.1 at 0x00007fc154261000
+RDX=0x00007fc14ffcebc0: <offset 0x1ba7bc0> in /usr/lib/nvidia-current/libnvidia-glcore.so.260.19.06 at 0x00007fc14e427000
+RSP=0x00007fc154d91190 is pointing into the stack for thread: 0x00007fc1500a8000
+RBP=0x0000000000000001 is an unknown value
+RSI=0x00007fc15c4b2f78 is an unknown value
+RDI=0x00007fc154550f40: <offset 0x2eff40> in /usr/lib/nvidia-current/libGL.so.1 at 0x00007fc154261000
+R8 =0x000000000000e17f is an unknown value
+R9 =0x00007fc15c4f2840 is an unknown value
+R10=0x0000000000000000 is an unknown value
+R11=0x0000000000000206 is an unknown value
+R12=0x00007fc154d911b0 is pointing into the stack for thread: 0x00007fc1500a8000
+R13=0x0000000000000001 is an unknown value
+R14=0x00007fc15c4b2f78 is an unknown value
+R15=0x00007fc154535750: <offset 0x2d4750> in /usr/lib/nvidia-current/libGL.so.1 at 0x00007fc154261000
+
+
+Stack: [0x00007fc154c93000,0x00007fc154d94000],  sp=0x00007fc154d91190,  free space=1016k
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+C  [libGL.so.1+0x91759]  __float128+0x25289
+
+Java frames: (J=compiled Java code, j=interpreted, Vv=VM code)
+j  com.sun.opengl.impl.x11.GLX.glXSwapBuffers(JJ)V+0
+j  com.sun.opengl.impl.x11.X11OnscreenGLDrawable.swapBuffers()V+38
+j  com.sun.opengl.impl.GLDrawableHelper.invokeGL(Ljavax/media/opengl/GLDrawable;Ljavax/media/opengl/GLContext;Ljava/lang/Runnable;Ljava/lang/Runnable;)V+435
+j  javax.media.opengl.GLCanvas.maybeDoSingleThreadedWorkaround(Ljava/lang/Runnable;Ljava/lang/Runnable;)V+36
+j  javax.media.opengl.GLCanvas.display()V+9
+j  javax.media.opengl.GLCanvas.paint(Ljava/awt/Graphics;)V+125
+J  sun.awt.RepaintArea.paint(Ljava/lang/Object;Z)V
+j  sun.awt.X11.XComponentPeer.handleEvent(Ljava/awt/AWTEvent;)V+224
+j  java.awt.Component.dispatchEventImpl(Ljava/awt/AWTEvent;)V+861
+J  java.awt.EventQueue.access$000(Ljava/awt/EventQueue;Ljava/awt/AWTEvent;Ljava/lang/Object;)V
+j  java.awt.EventQueue$1.run()Ljava/lang/Void;+12
+j  java.awt.EventQueue$1.run()Ljava/lang/Object;+1
+v  ~StubRoutines::call_stub
+J  java.security.AccessController.doPrivileged(Ljava/security/PrivilegedAction;Ljava/security/AccessControlContext;)Ljava/lang/Object;
+j  java.security.AccessControlContext$1.doIntersectionPrivilege(Ljava/security/PrivilegedAction;Ljava/security/AccessControlContext;Ljava/security/AccessControlContext;)Ljava/lang/Object;+28
+j  java.security.AccessControlContext$1.doIntersectionPrivilege(Ljava/security/PrivilegedAction;Ljava/security/AccessControlContext;)Ljava/lang/Object;+6
+j  java.awt.EventQueue$2.run()Ljava/lang/Void;+11
+j  java.awt.EventQueue$2.run()Ljava/lang/Object;+1
+v  ~StubRoutines::call_stub
+J  java.security.AccessController.doPrivileged(Ljava/security/PrivilegedAction;Ljava/security/AccessControlContext;)Ljava/lang/Object;
+J  java.awt.EventDispatchThread.pumpOneEventForFilters(I)Z
+J  java.awt.EventDispatchThread.pumpEventsForFilter(ILjava/awt/Conditional;Ljava/awt/EventFilter;)V
+j  java.awt.EventDispatchThread.pumpEventsForHierarchy(ILjava/awt/Conditional;Ljava/awt/Component;)V+11
+j  java.awt.EventDispatchThread.pumpEvents(ILjava/awt/Conditional;)V+4
+j  java.awt.EventDispatchThread.pumpEvents(Ljava/awt/Conditional;)V+3
+j  java.awt.EventDispatchThread.run()V+9
+v  ~StubRoutines::call_stub
+
+---------------  P R O C E S S  ---------------
+
+Java Threads: ( => current thread )
+  0x00007fc1500d2000 JavaThread "NetPlotter" [_thread_blocked, id=12969, stack(0x00007fc14dd2d000,0x00007fc14de2e000)]
+  0x00007fc1500de000 JavaThread "Timer-0" daemon [_thread_blocked, id=12968, stack(0x00007fc15470c000,0x00007fc15480d000)]
+  0x00007fc15c32a000 JavaThread "TimerQueue" daemon [_thread_blocked, id=12967, stack(0x00007fc15480d000,0x00007fc15490e000)]
+  0x000000004117d000 JavaThread "Thread-1" [_thread_blocked, id=12961, stack(0x00007fc154a0f000,0x00007fc154b10000)]
+  0x00007fc15c036000 JavaThread "DestroyJavaVM" [_thread_blocked, id=12931, stack(0x00007fc162921000,0x00007fc162a22000)]
+  0x000000004158d800 JavaThread "org.netbeans.modules.debugger.jpda.visual AWT Access Loop" daemon [_thread_blocked, id=12960, stack(0x00007fc154b92000,0x00007fc154c93000)]
+=>0x00007fc1500a8000 JavaThread "AWT-EventQueue-0" [_thread_in_native, id=12959, stack(0x00007fc154c93000,0x00007fc154d94000)]
+  0x00007fc15009b800 JavaThread "AWT-Shutdown" [_thread_blocked, id=12958, stack(0x00007fc154d94000,0x00007fc154e95000)]
+  0x0000000041515000 JavaThread "AWT-XAWT" daemon [_thread_blocked, id=12957, stack(0x00007fc1550b4000,0x00007fc1551b5000)]
+  0x00000000413b2800 JavaThread "Java2D Disposer" daemon [_thread_blocked, id=12956, stack(0x00007fc1551b5000,0x00007fc1552b6000)]
+  0x00007fc15c12c000 JavaThread "Low Memory Detector" daemon [_thread_blocked, id=12954, stack(0x00007fc155c8a000,0x00007fc155d8b000)]
+  0x00007fc15c12a000 JavaThread "C2 CompilerThread1" daemon [_thread_blocked, id=12953, stack(0x00007fc155d8b000,0x00007fc155e8c000)]
+  0x00007fc15c127000 JavaThread "C2 CompilerThread0" daemon [_thread_blocked, id=12952, stack(0x00007fc155e8c000,0x00007fc155f8d000)]
+  0x00007fc15c124800 JavaThread "JDWP Event Helper Thread" daemon [_thread_blocked, id=12947, stack(0x00007fc15608e000,0x00007fc15618f000)]
+  0x00007fc15c121000 JavaThread "JDWP Transport Listener: dt_socket" daemon [_thread_in_native, id=12946, stack(0x00007fc15618f000,0x00007fc156290000)]
+  0x00007fc15c116000 JavaThread "Signal Dispatcher" daemon [_thread_blocked, id=12945, stack(0x00007fc156394000,0x00007fc156495000)]
+  0x00007fc15c0fb800 JavaThread "Finalizer" daemon [_thread_blocked, id=12944, stack(0x00007fc156495000,0x00007fc156596000)]
+  0x00007fc15c0f9800 JavaThread "Reference Handler" daemon [_thread_blocked, id=12943, stack(0x00007fc156596000,0x00007fc156697000)]
+
+Other Threads:
+  0x00007fc15c0f3000 VMThread [stack: 0x00007fc156697000,0x00007fc156798000] [id=12942]
+  0x00007fc15c13f000 WatcherThread [stack: 0x00007fc155b89000,0x00007fc155c8a000] [id=12955]
+
+VM state:not at safepoint (normal execution)
+
+VM Mutex/Monitor currently owned by a thread: None
+
+Heap
+ PSYoungGen      total 94912K, used 70793K [0x00000000e0e00000, 0x00000000eb730000, 0x0000000100000000)
+  eden space 75520K, 93% used [0x00000000e0e00000,0x00000000e52aa5e8,0x00000000e57c0000)
+  from space 19392K, 2% used [0x00000000e9190000,0x00000000e9208000,0x00000000ea480000)
+  to   space 18944K, 0% used [0x00000000ea4b0000,0x00000000ea4b0000,0x00000000eb730000)
+ PSOldGen        total 63744K, used 43635K [0x00000000a2a00000, 0x00000000a6840000, 0x00000000e0e00000)
+  object space 63744K, 68% used [0x00000000a2a00000,0x00000000a549cc68,0x00000000a6840000)
+ PSPermGen       total 21632K, used 21490K [0x000000009d800000, 0x000000009ed20000, 0x00000000a2a00000)
+  object space 21632K, 99% used [0x000000009d800000,0x000000009ecfc8c8,0x000000009ed20000)
+
+Code Cache  [0x00007fc157f47000, 0x00007fc1581b7000, 0x00007fc15af47000)
+ total_blobs=1202 nmethods=477 adapters=687 free_code_cache=48374336 largest_free_block=27520
+
+Dynamic libraries:
+40000000-40009000 r-xp 00000000 08:08 5900415                            /users/oconnorp/Programs/jdk1.6.0_32/jre/bin/java
+40108000-4010a000 rwxp 00008000 08:08 5900415                            /users/oconnorp/Programs/jdk1.6.0_32/jre/bin/java
+41167000-417c1000 rwxp 00000000 00:00 0                                  [heap]
+9d800000-9ed20000 rwxp 00000000 00:00 0 
+9ed20000-a2a00000 rwxp 00000000 00:00 0 
+a2a00000-a6840000 rwxp 00000000 00:00 0 
+a6840000-e0e00000 rwxp 00000000 00:00 0 
+e0e00000-eb730000 rwxp 00000000 00:00 0 
+eb730000-ef2a0000 ---p 00000000 00:00 0 
+ef2a0000-100000000 rwxp 00000000 00:00 0 
+7fc14db4c000-7fc14dd2d000 rwxs 00000000 00:04 33259536                   /SYSV00000000 (deleted)
+7fc14dd2d000-7fc14dd30000 ---p 00000000 00:00 0 
+7fc14dd30000-7fc14de2e000 rwxp 00000000 00:00 0 
+7fc14de2e000-7fc14de30000 r-xp 00000000 08:08 9176651                    /users/oconnorp/Desktop/jsstest/JSpikeStack/jars/libjogl_awt.so
+7fc14de30000-7fc14df2f000 ---p 00002000 08:08 9176651                    /users/oconnorp/Desktop/jsstest/JSpikeStack/jars/libjogl_awt.so
+7fc14df2f000-7fc14df30000 rwxp 00001000 08:08 9176651                    /users/oconnorp/Desktop/jsstest/JSpikeStack/jars/libjogl_awt.so
+7fc14df30000-7fc14df31000 r-xp 00000000 08:08 5901041                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libjawt.so
+7fc14df31000-7fc14e030000 ---p 00001000 08:08 5901041                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libjawt.so
+7fc14e030000-7fc14e031000 rwxp 00000000 08:08 5901041                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libjawt.so
+7fc14e031000-7fc14e036000 r-xp 00000000 08:02 526129                     /usr/lib/libXxf86vm.so.1.0.0
+7fc14e036000-7fc14e235000 ---p 00005000 08:02 526129                     /usr/lib/libXxf86vm.so.1.0.0
+7fc14e235000-7fc14e236000 r-xp 00004000 08:02 526129                     /usr/lib/libXxf86vm.so.1.0.0
+7fc14e236000-7fc14e237000 rwxp 00005000 08:02 526129                     /usr/lib/libXxf86vm.so.1.0.0
+7fc14e237000-7fc14e326000 r-xp 00000000 08:08 9176644                    /users/oconnorp/Desktop/jsstest/JSpikeStack/jars/libjogl.so
+7fc14e326000-7fc14e426000 ---p 000ef000 08:08 9176644                    /users/oconnorp/Desktop/jsstest/JSpikeStack/jars/libjogl.so
+7fc14e426000-7fc14e427000 rwxp 000ef000 08:08 9176644                    /users/oconnorp/Desktop/jsstest/JSpikeStack/jars/libjogl.so
+7fc14e427000-7fc14f80f000 r-xp 00000000 08:02 666465                     /usr/lib/nvidia-current/libnvidia-glcore.so.260.19.06
+7fc14f80f000-7fc14fa0e000 ---p 013e8000 08:02 666465                     /usr/lib/nvidia-current/libnvidia-glcore.so.260.19.06
+7fc14fa0e000-7fc14ffea000 rwxp 013e7000 08:02 666465                     /usr/lib/nvidia-current/libnvidia-glcore.so.260.19.06
+7fc14ffea000-7fc150000000 rwxp 00000000 00:00 0 
+7fc150000000-7fc151633000 rwxp 00000000 00:00 0 
+7fc151633000-7fc154000000 ---p 00000000 00:00 0 
+7fc15405f000-7fc154060000 r-xp 00000000 08:02 666460                     /usr/lib/nvidia-current/tls/libnvidia-tls.so.260.19.06
+7fc154060000-7fc154260000 ---p 00001000 08:02 666460                     /usr/lib/nvidia-current/tls/libnvidia-tls.so.260.19.06
+7fc154260000-7fc154261000 rwxp 00001000 08:02 666460                     /usr/lib/nvidia-current/tls/libnvidia-tls.so.260.19.06
+7fc154261000-7fc154318000 r-xp 00000000 08:02 666455                     /usr/lib/nvidia-current/libGL.so.260.19.06
+7fc154318000-7fc154518000 ---p 000b7000 08:02 666455                     /usr/lib/nvidia-current/libGL.so.260.19.06
+7fc154518000-7fc154550000 rwxp 000b7000 08:02 666455                     /usr/lib/nvidia-current/libGL.so.260.19.06
+7fc154550000-7fc154566000 rwxp 00000000 00:00 0 
+7fc154566000-7fc154567000 r-xp 00000000 08:08 9176634                    /users/oconnorp/Desktop/jsstest/JSpikeStack/jars/libgluegen-rt.so
+7fc154567000-7fc154666000 ---p 00001000 08:08 9176634                    /users/oconnorp/Desktop/jsstest/JSpikeStack/jars/libgluegen-rt.so
+7fc154666000-7fc154667000 rwxp 00000000 08:08 9176634                    /users/oconnorp/Desktop/jsstest/JSpikeStack/jars/libgluegen-rt.so
+7fc15470c000-7fc15470f000 ---p 00000000 00:00 0 
+7fc15470f000-7fc15480d000 rwxp 00000000 00:00 0 
+7fc15480d000-7fc154810000 ---p 00000000 00:00 0 
+7fc154810000-7fc15490e000 rwxp 00000000 00:00 0 
+7fc15490e000-7fc154911000 ---p 00000000 00:00 0 
+7fc154911000-7fc154a0f000 rwxp 00000000 00:00 0 
+7fc154a0f000-7fc154a12000 ---p 00000000 00:00 0 
+7fc154a12000-7fc154b10000 rwxp 00000000 00:00 0 
+7fc154b92000-7fc154b95000 ---p 00000000 00:00 0 
+7fc154b95000-7fc154c93000 rwxp 00000000 00:00 0 
+7fc154c93000-7fc154c96000 ---p 00000000 00:00 0 
+7fc154c96000-7fc154d94000 rwxp 00000000 00:00 0 
+7fc154d94000-7fc154d97000 ---p 00000000 00:00 0 
+7fc154d97000-7fc154e95000 rwxp 00000000 00:00 0 
+7fc154e95000-7fc154e9c000 r-xp 00000000 08:08 5901017                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libnio.so
+7fc154e9c000-7fc154f9b000 ---p 00007000 08:08 5901017                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libnio.so
+7fc154f9b000-7fc154f9d000 rwxp 00006000 08:08 5901017                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libnio.so
+7fc154f9d000-7fc154fb0000 r-xp 00000000 08:08 5901016                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libnet.so
+7fc154fb0000-7fc1550b1000 ---p 00013000 08:08 5901016                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libnet.so
+7fc1550b1000-7fc1550b4000 rwxp 00014000 08:08 5901016                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libnet.so
+7fc1550b4000-7fc1550b7000 ---p 00000000 00:00 0 
+7fc1550b7000-7fc1551b5000 rwxp 00000000 00:00 0 
+7fc1551b5000-7fc1551b8000 ---p 00000000 00:00 0 
+7fc1551b8000-7fc1552b6000 rwxp 00000000 00:00 0 
+7fc1552b6000-7fc15532f000 r-xp 00000000 08:08 5901025                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libfontmanager.so
+7fc15532f000-7fc15542e000 ---p 00079000 08:08 5901025                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libfontmanager.so
+7fc15542e000-7fc155443000 rwxp 00078000 08:08 5901025                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libfontmanager.so
+7fc155443000-7fc155455000 rwxp 00000000 00:00 0 
+7fc155455000-7fc155463000 r-xp 00000000 08:02 526099                     /usr/lib/libXi.so.6.1.0
+7fc155463000-7fc155663000 ---p 0000e000 08:02 526099                     /usr/lib/libXi.so.6.1.0
+7fc155663000-7fc155664000 r-xp 0000e000 08:02 526099                     /usr/lib/libXi.so.6.1.0
+7fc155664000-7fc155665000 rwxp 0000f000 08:02 526099                     /usr/lib/libXi.so.6.1.0
+7fc155665000-7fc15566a000 r-xp 00000000 08:02 526119                     /usr/lib/libXtst.so.6.1.0
+7fc15566a000-7fc15586a000 ---p 00005000 08:02 526119                     /usr/lib/libXtst.so.6.1.0
+7fc15586a000-7fc15586b000 r-xp 00005000 08:02 526119                     /usr/lib/libXtst.so.6.1.0
+7fc15586b000-7fc15586c000 rwxp 00006000 08:02 526119                     /usr/lib/libXtst.so.6.1.0
+7fc15586c000-7fc1558ae000 r-xp 00000000 08:08 5901014                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/xawt/libmawt.so
+7fc1558ae000-7fc1559ad000 ---p 00042000 08:08 5901014                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/xawt/libmawt.so
+7fc1559ad000-7fc1559b9000 rwxp 00041000 08:08 5901014                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/xawt/libmawt.so
+7fc1559b9000-7fc1559ba000 rwxp 00000000 00:00 0 
+7fc1559ba000-7fc155a4c000 r-xp 00000000 08:08 5901061                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libawt.so
+7fc155a4c000-7fc155b4b000 ---p 00092000 08:08 5901061                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libawt.so
+7fc155b4b000-7fc155b65000 rwxp 00091000 08:08 5901061                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libawt.so
+7fc155b65000-7fc155b89000 rwxp 00000000 00:00 0 
+7fc155b89000-7fc155b8a000 ---p 00000000 00:00 0 
+7fc155b8a000-7fc155c8a000 rwxp 00000000 00:00 0 
+7fc155c8a000-7fc155c8d000 ---p 00000000 00:00 0 
+7fc155c8d000-7fc155d8b000 rwxp 00000000 00:00 0 
+7fc155d8b000-7fc155d8e000 ---p 00000000 00:00 0 
+7fc155d8e000-7fc155e8c000 rwxp 00000000 00:00 0 
+7fc155e8c000-7fc155e8f000 ---p 00000000 00:00 0 
+7fc155e8f000-7fc155f8d000 rwxp 00000000 00:00 0 
+7fc155f8d000-7fc155f90000 ---p 00000000 00:00 0 
+7fc155f90000-7fc15608e000 rwxp 00000000 00:00 0 
+7fc15608e000-7fc156091000 ---p 00000000 00:00 0 
+7fc156091000-7fc15618f000 rwxp 00000000 00:00 0 
+7fc15618f000-7fc156192000 ---p 00000000 00:00 0 
+7fc156192000-7fc156290000 rwxp 00000000 00:00 0 
+7fc156290000-7fc156293000 r-xp 00000000 08:08 5901052                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libdt_socket.so
+7fc156293000-7fc156392000 ---p 00003000 08:08 5901052                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libdt_socket.so
+7fc156392000-7fc156394000 rwxp 00002000 08:08 5901052                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/amd64/libdt_socket.so
+7fc156394000-7fc156397000 ---p 00000000 00:00 0 
+7fc156397000-7fc156495000 rwxp 00000000 00:00 0 
+7fc156495000-7fc156498000 ---p 00000000 00:00 0 
+7fc156498000-7fc156596000 rwxp 00000000 00:00 0 
+7fc156596000-7fc156599000 ---p 00000000 00:00 0 
+7fc156599000-7fc156697000 rwxp 00000000 00:00 0 
+7fc156697000-7fc156698000 ---p 00000000 00:00 0 
+7fc156698000-7fc1570a1000 rwxp 00000000 00:00 0 
+7fc1570a1000-7fc157238000 r-xs 03079000 08:08 5901816                    /users/oconnorp/Programs/jdk1.6.0_32/jre/lib/rt.jar
+7fc157238000-7fc157239000 ---p 00000000 00:00 0 
+7fc157239000-7fc157339000 rwxp 00000000 00:00 0 
+7fc157339000-7fc15733a000 ---p 00000000 00:00 0 
+7fc15733a000-7fc15743a000 rwxp 00000000 00:00 0 
+7fc15743a000-7fc15743b000 ---p 00000000 00:00 0 
+7fc15743b000-7fc15753b000 rwxp 00000000 00:00 0 
+7fc15753b000-7fc15753c000 ---p 00000000 00:00 0 
+7fc15753c000-7fc15763c000 rwxp 00000000 00:00 0 
+7fc15763c000-7fc15763d000 ---p 00000000 00:00 0 
+7fc15763d000-7fc15773d000 rwxp 00000000 00:00 0 
+7fc15773d000-7fc15773e000 ---p 00000000 00:00 0 
+7fc15773e000-7fc15783e000 rwxp 00000000 00:00 0 
+7fc15783e000-7fc15783f000 ---p 00000000 00:00 0 
+7fc15783f000-7fc15793f000 rwxp 00000000 00:00 0 
+7fc15793f000-7fc157940000 ---p 00000000 00:00 0 
+7fc157940000-7fc157a60000 rwxp 00000000 00:00 0 
+7fc157a60000-7fc157c32000 rwxp 00000000 00:00 0 
+7fc157c32000-7fc157c3d000 rwxp 00000000 00:00 0 
+7fc157c3d000-7fc157c5b000 rwxp 00000000 00:00 0 
+7fc157c5b000-7fc157c7b000 rwxp 00000000 00:00 0 
+7fc157c7b000-7fc157e4d000 rwxp 00000000 00:00 0 
+7fc157e4d000-7fc157ea2000 rwxp 00000000 00:00 0 
+7fc157ea2000-7fc157ec0000 ---p 00000000 00:00 0 
+7fc157ec0000-7fc157f46000 rwxp 00000000 00:00 0 
+7fc157f46000-7fc1581b7000 rwxp 00000000 00:00 0 
+7fc1581b7000-7fc15af47000 rwxp 00000000 00:00 0 
+7fc15af47000-7fc15af4c000 r-xp 00000000 08:02 1458517                    /lib/libnss_dns-2.12.1.so
+7fc15af4c000-7fc15b14b000 ---p 00005000 08:02 1458517                    /lib/libnss_dns-2.12.1.so
+7fc15b14b000-7fc15b14c000 r-xp 00004000 08:02 1458517                    /lib/libnss_dns-2.12.1.so
+7fc15b14c000-7fc15b14d000 rwxp 00005000 08:02 1458517                    /lib/libnss_dns-2.12.1.so
+7fc15b14d000-7fc15b14f000 r-xp 00000000 08:02 1439093                    /lib/libnss_mdns4_minimal.so.2
+7fc15b14f000-7fc15b34e000 ---p 00002000 08:02 1439093                    /lib/libnss_mdns4_minimal.so.2
+7fc15b34e000-7fc15b34f000 r-xp 00001000 08:02 1439093                    /lib/libnss_mdns4_minimal.so.2
+7fc15b34f000-7fc15b350000 rwxp 00002000 08:02 1439093                    /lib/libnss_mdns4_minimal.so.2
+7fc15b350000-7fc15b353000 r-xp 00000000 08:02 1439061                    /lib/libgpg-error.so.0.4.0
+7fc15b353000-7fc15b552000 ---p 00003000 08:02 1439061                    /lib/libgpg-error.so.0.4.0
+7fc15b552000-7fc15b553000 r-xp 00002000 08:02 1439061                    /lib/libgpg-error.so.0.4.0
+7fc15b553000-7fc15b554000 rwxp 00003000 08:02 1439061                    /lib/libgpg-error.so.0.4.0
+7fc15b554000-7fc15b5c8000 r-xp 00000000 08:02 1439057                    /lib/libgcrypt.so.11.5.3
+7fc15b5c8000-7fc15b7c8000 ---p 00074000 08:02 1439057                    /lib/libgcrypt.so.11.5.3
+7fc15b7c8000-7fc15b7c9000 r-xp 00074000 08:02 1439057                    /lib/libgcrypt.so.11.5.3
+7fc15b7c9000-7fc15b7cc000 rwxp 00075000 08:02 1439057                    /lib/libgcrypt.so.11.5.3
+7fc15b7cc000-7fc15b7e2000 r-xp 00000000 08:02 1439170                    /lib/libz.so.1.2.3.4
+7fc15b7e2000-7fc15b9e2000 ---p 00016000 08:02 1439170                    /lib/libz.so.1.2.3.4
+7fc15b9e2000-7fc15b9e3000 r-xp 00016000 08:02 1439170                    /lib/libz.so.1.2.3.4
+7fc15b9e3000-7fc15b9e4000 rwxp 00017000 08:02 1439170                    /lib/libz.so.1.2.3.4
+7fc15b9e4000-7fc15b9f4000 r-xp 00000000 08:02 526942                     /usr/lib/libtasn1.so.3.1.9
+7fc15b9f4000-7fc15bbf3000 ---p 00010000 08:02 526942                     /usr/lib/libtasn1.so.3.1.9
+7fc15bbf3000-7fc15bbf4000 r-xp 0000f000 08:02 526942                     /usr/lib/libtasn1.so.3.1.9
+7fc15bbf4000-7fc15bbf5000 rwxp 00010000 08:02 526942                     /usr/lib/libtasn1.so.3.1.9
+7fc15bbf5000-7fc15bbf7000 r-xp 00000000 08:02 1439069                    /lib/libkeyutils.so.1.3
+7fc15bbf7000-7fc15bdf6000 ---p 00002000 08:02 1439069                    /lib/libkeyutils.so.1.3
+7fc15bdf6000-7fc15bdf7000 r-xp 00001000 08:02 1439069                    /lib/libkeyutils.so.1.3
+7fc15bdf7000-7fc15bdf8000 rwxp 00002000 08:02 1439069                    /lib/libkeyutils.so.1.3
+7fc15bdf8000-7fc15bdff000 r-xp 00000000 08:02 527117                     /usr/lib/libkrb5support.so.0.1
+7fc15bdff000-7fc15bffe000 ---p 00007000 08:02 527117                     /usr/lib/libkrb5support.so.0.1
+7fc15bffe000-7fc15bfff000 r-xp 00006000 08:02 527117                     /usr/lib/libkrb5support.so.0.1
+7fc15bfff000-7fc15c000000 rwxp 00007000 08:02 527117                     /usr/lib/libkrb5support.so.0.1
+7fc15c000000-7fc15ca6e000 rwxp 00000000 00:00 0 
+7fc15ca6e000-7fc160000000 ---p 00000000 00:00 0 
+7fc160

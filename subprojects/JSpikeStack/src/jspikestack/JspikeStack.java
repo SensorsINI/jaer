@@ -15,6 +15,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
 import javax.swing.*;
+import jspikestack.LIFUnit.Globals;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
@@ -58,12 +59,24 @@ public class JspikeStack {
     {   
 //        SpikeStack net=new SpikeStack();
         //
-        STPStack<STPStack,STPStack.Layer> net = new STPStack();
+        
+        STPLayer.Factory<STPLayer> layerFactory=new STPLayer.Factory();
+        LIFUnit.Factory unitFactory=new LIFUnit.Factory();        
+        SpikeStack<STPLayer,Spike> net=new SpikeStack(layerFactory,unitFactory);
+        
+        STPLayer.Globals lg= layerFactory.glob;
+                
+        LIFUnit.Globals un = unitFactory.glob;
+             
+        
+//        STPLayer<STPStack,STPLayer.Layer> net = new STPLayer();
         net.read.readFromXML(net);    
        
-        net.tau=100f;
-        net.delay=10f;
-        net.tref=5;
+        un.tau=100000;
+        net.delay=12000;
+        un.tref=5000;
+//        un.delay=12000;
+        
         
         net.plot.timeScale=1f;
         
@@ -79,34 +92,38 @@ public class JspikeStack {
         
         // Up the threshold
         for (int i=0; i<net.layers.size(); i++)
-            for (SpikeStack.Layer.Unit u:net.lay(i).units)
+            for (Unit u:net.lay(i).units)
                 u.thresh*=400;
         
-        net.fastWeightTC=2;
+        
+        lg.fastWeightTC=2000000;
+        
+        net.lay(1).enableSTDP=false;
+        net.lay(3).enableSTDP=false;
         
         net.lay(1).enableFastSTDP=true;
         net.lay(3).enableFastSTDP=true;
         
-        
-        net.fastSTDP.plusStrength=-.001f;
-        net.fastSTDP.minusStrength=-.001f;   
-        net.fastSTDP.stdpTCminus=10;
-        net.fastSTDP.stdpTCplus=10;
+        lg.stdpWin=30000;
+        lg.fastSTDP.plusStrength=-.001f;
+        lg.fastSTDP.minusStrength=-.001f;   
+        lg.fastSTDP.stdpTCminus=10000;
+        lg.fastSTDP.stdpTCplus=10000;
         
         for (int i=0; i<nEvents; i++)
         {   int number=i<nEvents/2?8:2;
-            net.addToQueue(new Spike(number,(double)5000*(i/(float)nEvents),3));
+            net.addToQueue(new Spike((int)(5000000*(i/(float)nEvents)),number,3));
         }
-        
+                
         net.plot.timeScale=1f;
         
-//        STPStack<STPStack,STPStack.Layer> net2=net.read.copy();
+//        STPLayer<STPStack,STPLayer.Layer> net2=net.read.copy();
         
         net.plot.followState();
         
-        net.eatEvents(10000);
+        net.eatEvents(10000000);
         
-//        STPStack net2=net.read.copy();
+//        STPLayer net2=net.read.copy();
         
         
     }
@@ -119,43 +136,54 @@ public class JspikeStack {
         AERFile aef=new AERFile();
         aef.read();
         int nLayers=2;
-        
-        
+//        
+//        
         // Plot Events
+        STPLayer.Factory<STPLayer> layerFactory=new STPLayer.Factory();
+        LIFUnit.Factory unitFactory=new LIFUnit.Factory(); 
+                
+        STPLayer.Globals lg= layerFactory.glob;
+        LIFUnit.Globals ug = unitFactory.glob;
+        
         
         // Initialize Network
-        STDPStack.Initializer ini=new STDPStack.Initializer(nLayers);
+        SpikeStack.Initializer ini=new SpikeStack.Initializer(nLayers);
         
-        ini.tau             = 20f;
-        ini.thresh          = 1;
-        ini.tref            = 5;        
-        ini.stdp.plusStrength    = .001f;
-        ini.stdp.minusStrength    = -.001f;
-        ini.stdp.stdpTCplus      = 10f;
-        ini.stdp.stdpTCminus     = 10f;
+//        
+//        ini.thresh          = 1;
+           
+        lg.stdp.plusStrength    = .018f;
+        lg.stdp.minusStrength    = -.01f;
+        lg.stdp.stdpTCplus      = 5000;
+        lg.stdp.stdpTCminus     = 10000;
         
-        ini.stdpWin         = 30;
+        lg.stdpWin         = 30000;
         
         ini.lay(0).nUnits   = 64;
         ini.lay(0).targ     = 1;
         ini.lay(0).name     = "Input";
         ini.lay(0).WoutMean = .5f;
         ini.lay(0).WoutStd  = 0.3f;
-        ini.lay(0).enableSTDP=true;
+//        ini.lay(0).enableSTDP=true;
         
         ini.lay(0).WlatMean = -0f;
         ini.lay(0).WlatStd  = 0f;
         
         ini.lay(1).nUnits   = 20;
         ini.lay(1).name     = "A1";
-        ini.lay(1).WlatMean = -2f;
-        ini.lay(1).WlatStd  = .0f;
+        ini.lay(1).WlatMean = -1f;
+        ini.lay(1).WlatStd  = .1f;
         
+        ug.tau             = 20000;
+        ug.tref            = 5000;     
+        ug.thresh=1;
         
-        STDPStack<STDPStack,STDPStack.STDPLayer> es=new STDPStack(ini);
+        SpikeStack<STDPLayer,Spike> es=new SpikeStack(ini,layerFactory,unitFactory);
                 
         es.lay(1).latSend=1;
         es.lay(0).latSend=0;
+        
+        es.lay(0).enableSTDP=true;
         
         es.inputCurrents=false;
         es.inputCurrentStrength=0.5f;
@@ -179,9 +207,8 @@ public class JspikeStack {
             es.feedEventsAndGo(events);
         }
         
-        
         es.plot.raster("After "+nEpochs+" training cycles");
-        
+//        
     }
     
     /** Experiment with liquid-state machines */
@@ -195,68 +222,68 @@ public class JspikeStack {
         
         
         // Plot Events
-        
-        // Initialize Network
-        STDPStack.Initializer ini=new STDPStack.Initializer(nLayers);
-        
-        ini.tau             = 500f;
-        ini.thresh          = 1;
-        ini.tref            = 0.005f;        
-        ini.stdp.plusStrength    = .0001f;
-        ini.stdp.stdpTCminus     = 10f;
-        ini.stdp.stdpTCplus      = 10;
-        ini.stdpWin         = 30;
-        
-        ini.lay(0).nUnits   = 64;
-        ini.lay(0).targ     = 1;
-        ini.lay(0).name     = "Input";
-        ini.lay(0).WoutMean = .06f;
-        ini.lay(0).WoutStd  = 0.06f;
-        ini.lay(0).enableSTDP=true;
-        
-        ini.lay(0).WlatMean = -0.5f;
-        ini.lay(0).WlatStd  = 1f;
-        
-        ini.lay(1).nUnits   = 20;
-        ini.lay(1).name     = "A1";
-        ini.lay(1).WlatMean = -.5f;
-        ini.lay(1).WlatStd  = 0f;
-        
-        
-        STDPStack<STDPStack,STDPStack.STDPLayer> es=new STDPStack(ini);
-        
-        
-        es.lay(1).latSend=1;
-        es.lay(0).latSend=1;
-        
-        es.inputCurrents=true;
-        es.inputCurrentStrength=0.8f;
-        
-        
-        int nEpochs     = 5;
-        
-        
-        ArrayList<Spike> events=aevents2events(aef.events);
-        
-        
-        es.lay(0).enableSTDP=false;
-        es.feedEvents(events);
-        es.plot.raster();
-        
-        es.plot.timeScale=0;
-        
-        es.lay(0).enableSTDP=true;
-        // Feed Events to Network
-        for (int i=0; i<nEpochs; i++)
-        {   System.out.println("Pass "+i);
-            es.reset();
-            es.feedEvents(events);
-        }
-        
-        
-        es.eatEvents();
-        es.plot.raster();
-        
+//        
+//        // Initialize Network
+//        STDPStack.Initializer ini=new STDPStack.Initializer(nLayers);
+//        
+//        ini.tau             = 500f;
+//        ini.thresh          = 1;
+//        ini.tref            = 0.005f;        
+//        ini.stdp.plusStrength    = .0001f;
+//        ini.stdp.stdpTCminus     = 10f;
+//        ini.stdp.stdpTCplus      = 10;
+//        ini.stdpWin         = 30;
+//        
+//        ini.lay(0).nUnits   = 64;
+//        ini.lay(0).targ     = 1;
+//        ini.lay(0).name     = "Input";
+//        ini.lay(0).WoutMean = .06f;
+//        ini.lay(0).WoutStd  = 0.06f;
+//        ini.lay(0).enableSTDP=true;
+//        
+//        ini.lay(0).WlatMean = -0.5f;
+//        ini.lay(0).WlatStd  = 1f;
+//        
+//        ini.lay(1).nUnits   = 20;
+//        ini.lay(1).name     = "A1";
+//        ini.lay(1).WlatMean = -.5f;
+//        ini.lay(1).WlatStd  = 0f;
+//        
+//        
+//        STDPStack<STDPStack,STDPStack.Layer> es=new STDPStack(ini);
+//        
+//        
+//        es.lay(1).latSend=1;
+//        es.lay(0).latSend=1;
+//        
+//        es.inputCurrents=true;
+//        es.inputCurrentStrength=0.8f;
+//        
+//        
+//        int nEpochs     = 5;
+//        
+//        
+//        ArrayList<Spike> events=aevents2events(aef.events);
+//        
+//        
+//        es.lay(0).enableSTDP=false;
+//        es.feedEvents(events);
+//        es.plot.raster();
+//        
+//        es.plot.timeScale=0;
+//        
+//        es.lay(0).enableSTDP=true;
+//        // Feed Events to Network
+//        for (int i=0; i<nEpochs; i++)
+//        {   System.out.println("Pass "+i);
+//            es.reset();
+//            es.feedEvents(events);
+//        }
+//        
+//        
+//        es.eatEvents();
+//        es.plot.raster();
+//        
         
         
     }
@@ -264,88 +291,88 @@ public class JspikeStack {
     /** Simple Demo, no Learning */
     public static void simpleDemo()
     {
-        
-        // Read Events
-        AERFile aef=new AERFile();
-        aef.read();
-        ArrayList<Spike> events=aevents2events(aef.events);
-        
-        // Plot Events
-        
-        // Initialize Network
-        int nLayers=2;
-        SpikeStack.Initializer ini=new SpikeStack.Initializer(nLayers);
-        ini.tau=20;
-        ini.thresh=1;
-        ini.lay(0).nUnits=64;
-        ini.lay(0).targ=1;
-        ini.lay(0).name="Input";
-        ini.lay(0).WoutMean=.01f;
-        ini.lay(0).WoutStd=0.005f;
-        
-        ini.lay(1).nUnits=10;
-        ini.lay(1).name="A1";
-        ini.lay(1).WlatMean=-1;
-        ini.lay(1).WlatStd=-1;
-        
-        SpikeStack es=new SpikeStack(ini);
-        
-        // Feed Events to Network
-        es.feedEventsAndGo(events);
-        
-        es.plot.raster();
-        
+//        
+//        // Read Events
+//        AERFile aef=new AERFile();
+//        aef.read();
+//        ArrayList<Spike> events=aevents2events(aef.events);
+//        
+//        // Plot Events
+//        
+//        // Initialize Network
+//        int nLayers=2;
+//        SpikeStack.Initializer ini=new SpikeStack.Initializer(nLayers);
+//        ini.tau=20;
+//        ini.thresh=1;
+//        ini.lay(0).nUnits=64;
+//        ini.lay(0).targ=1;
+//        ini.lay(0).name="Input";
+//        ini.lay(0).WoutMean=.01f;
+//        ini.lay(0).WoutStd=0.005f;
+//        
+//        ini.lay(1).nUnits=10;
+//        ini.lay(1).name="A1";
+//        ini.lay(1).WlatMean=-1;
+//        ini.lay(1).WlatStd=-1;
+//        
+//        SpikeStack es=new SpikeStack(ini);
+//        
+//        // Feed Events to Network
+//        es.feedEventsAndGo(events);
+//        
+//        es.plot.raster();
+//        
     }
     
     /** Best working settings for voice separation */
     public static void voiceSepDemo()
     {
-        // Read Events
-        AERFile aef=new AERFile();
-        aef.read();
-        int nLayers=2;
-        
-        
-        // Plot Events
-        
-        // Initialize Network
-        STDPStack.Initializer ini=new STDPStack.Initializer(nLayers);
-        
-        ini.tau             = 5f;
-        ini.thresh          = 1;
-        ini.tref            = 0;        
-        ini.stdp.plusStrength    = .0001f;
-        ini.stdp.stdpTCminus     = 10f;
-        ini.stdp.stdpTCplus      = 10;
-        ini.stdpWin         = 30;
-        
-        ini.lay(0).nUnits   = 64;
-        ini.lay(0).targ     = 1;
-        ini.lay(0).name     = "Input";
-        ini.lay(0).WoutMean = .05f;
-        ini.lay(0).WoutStd  = 0.0005f;
-        ini.lay(0).enableSTDP=true;
-        
-        ini.lay(1).nUnits   = 10;
-        ini.lay(1).name     = "A1";
-        ini.lay(1).WlatMean = -1;
-        ini.lay(1).WlatStd  = 0f;
-        
-        
-        STDPStack es=new STDPStack(ini);
-        
-        
-        es.lay(1).latSend=1;
-        
-        
-        // Feed Events to Network
-        for (int i=0; i<10; i++)
-        {   es.reset();
-            ArrayList<Spike> events=aevents2events(aef.events);
-            es.feedEvents(events);
-        }
-        es.plot.raster();
-        
+//        // Read Events
+//        AERFile aef=new AERFile();
+//        aef.read();
+//        int nLayers=2;
+//        
+//        
+//        // Plot Events
+//        
+//        // Initialize Network
+//        STDPStack.Initializer ini=new STDPStack.Initializer(nLayers);
+//        
+//        ini.tau             = 5f;
+//        ini.thresh          = 1;
+//        ini.tref            = 0;        
+//        ini.stdp.plusStrength    = .0001f;
+//        ini.stdp.stdpTCminus     = 10f;
+//        ini.stdp.stdpTCplus      = 10;
+//        ini.stdpWin         = 30;
+//        
+//        ini.lay(0).nUnits   = 64;
+//        ini.lay(0).targ     = 1;
+//        ini.lay(0).name     = "Input";
+//        ini.lay(0).WoutMean = .05f;
+//        ini.lay(0).WoutStd  = 0.0005f;
+//        ini.lay(0).enableSTDP=true;
+//        
+//        ini.lay(1).nUnits   = 10;
+//        ini.lay(1).name     = "A1";
+//        ini.lay(1).WlatMean = -1;
+//        ini.lay(1).WlatStd  = 0f;
+//        
+//        
+//        STDPStack es=new STDPStack(ini);
+//        
+//        
+//        es.lay(1).latSend=1;
+//        
+//        
+//        // Feed Events to Network
+//        for (int i=0; i<10; i++)
+//        {   es.reset();
+//            ArrayList<Spike> events=aevents2events(aef.events);
+//            es.feedEvents(events);
+//        }
+//        es.plot.raster();
+//        
     }
     
     /** Convert AEViewer file events to JspikeStack Events */
@@ -358,7 +385,7 @@ public class JspikeStack {
         
             if (ev.addr>255) continue;
         
-            Spike enew=new Spike(ev.addr/4, (double)(ev.timestamp-events.get(0).timestamp)/1000., 0);
+            Spike enew=new Spike((int)(ev.timestamp-events.get(0).timestamp), ev.addr/4, 0);
             
             evts.add(enew);
         }

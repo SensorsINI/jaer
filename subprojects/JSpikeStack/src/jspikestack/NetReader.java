@@ -85,7 +85,7 @@ public class NetReader<NetType extends SpikeStack> implements SpikeStack.Network
 //                net.lay(i).units[j] = net.lay(i).new Unit(j);
                 net.lay(i).units[j] = net.lay(i).makeNewUnit(j);
                 if (nOuts>0)
-                    net.lay(i).units[j].setWout(Arrays.copyOfRange(weights,j*nOuts,(j+1)*nOuts));
+                    net.lay(i).setWout(j,Arrays.copyOfRange(weights,j*nOuts,(j+1)*nOuts));
                 net.lay(i).units[j].thresh=(thresholds.length==1)?thresholds[0]:thresholds[j];                    
             }
 

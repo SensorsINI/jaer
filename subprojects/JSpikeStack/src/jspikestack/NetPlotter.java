@@ -39,16 +39,14 @@ public class NetPlotter {
     
     JPanel frm;
     
-    public int updateMillis=30;           // Update interval, in milliseconds
+    public int updateMicros=30000;           // Update interval, in milliseconds
     public float timeScale=1;               // Number of network-seconds per real-second 0: doesn't advance.  Inf advances as fast as CPU will allow
     
     public boolean realTime=false;         // Set true for real-time computation.  In this case, the network will try to display up to the end of the output queue
     
     public boolean enable=true;
     
-    long lastnanotime=Integer.MIN_VALUE;
-    
-    double lastNetTime=Double.NEGATIVE_INFINITY;
+    int lastNetTime=0;
     
     JTextComponent jt;
 //    LayerStatePlotter[] layerStatePlots;
@@ -70,8 +68,8 @@ public class NetPlotter {
         CombinedDomainXYPlot plot = new CombinedDomainXYPlot(new NumberAxis("Time"));
         
         // Build a plot for each layer
-        for (Object lay:net.layers)
-            plot.add(layerRaster((SpikeStack.Layer)lay),1);
+        for (int i=0; i<net.nLayers(); i++)
+            plot.add(layerRaster(net.lay(i)),1);
         
         
         
@@ -85,7 +83,7 @@ public class NetPlotter {
     }
     
     /* Create a raster plot for a single layer */
-    public XYPlot layerRaster(SpikeStack.Layer lay)
+    public XYPlot layerRaster(BasicLayer lay)
     {
         // Add the data
         Iterator<Spike> itr=lay.outBuffer.iterator();
@@ -283,25 +281,32 @@ public class NetPlotter {
                 });
                 
                 
+                int kk=0;
                 
                 while (enable)
                 {
                     
-                    // System.out.println("Loop checking in at : "+lastNetTime+updateMillis*timeScale);
+                    // System.out.println("Loop checking in at : "+lastNetTime+updateMicros*timeScale);
                     
-                    // Initialize display time to starting net time.
-                    if (lastNetTime==Double.NEGATIVE_INFINITY)
-                        lastNetTime=net.time;
                     
-                    if (realTime)
-                        state();                    
-                    else
-                        state(lastNetTime+updateMillis*timeScale);
+//                    if (lastNetTime==Integer.MIN_VALUE)
+//                    {   // Wait to get initial event time
+//                        lastNetTime=0;
+//                        kk++;
+//                    }
+//                    else
+//                    {   // In normal operation, this block should be on.
+                    
+                        if (realTime)
+                            state();                    
+                        else
+                            state(lastNetTime+(int)(updateMicros*timeScale));
+//                    }
                     
                     try {
-                        Thread.sleep(updateMillis);
+                        Thread.sleep(updateMicros/1000);
                     } catch (InterruptedException ex) {
-                        Logger.getLogger(NetPlotter.class.getName()).log(Level.SEVERE, null, ex);
+                            Logger.getLogger(NetPlotter.class.getName()).log(Level.SEVERE, null, ex);
                     }
                     
                     
@@ -338,8 +343,12 @@ public class NetPlotter {
 //    }
     
     /** Update the state plot to the specified time */
-    public void state(double upToTime)
+    public void state(int upToTime)
     {
+        
+            if (net.time==Integer.MIN_VALUE)
+                return;
+        
             // Can't progress further than present.
                 upToTime=Math.min(upToTime,net.time);
             
@@ -375,13 +384,14 @@ public class NetPlotter {
 //                this.layerStatePlots[i].update(upToTime);
             
             
-            jt.setText("Time: "+(int)upToTime+"ms\nNetTime: "+(int)net.time+"ms");
+            jt.setText("Time: "+(int)upToTime/1000+"ms\nNetTime: "+(int)net.time/1000+"ms");
             
                     
             
                     
                   
-    //        System.out.println(net.time+" "+(t-lastnanotime));
+//            System.out.println("Net: "+net.time+"\tPlot: "+upToTime);
+                    
     // 
     //        lastnanotime=t;
             
@@ -398,15 +408,17 @@ public class NetPlotter {
             lastNetTime=upToTime;
     //        lastNetTime=net.time;
             
+            
+            
     }
     
     public class LayerStatePlotter
     {   float tau;
-        SpikeStack.Layer layer;
+        BasicLayer layer;
         ImageDisplay disp;
         float[] state;  // Array of unit states.
         
-        double lastTime=Double.NEGATIVE_INFINITY;
+        int lastTime=0;
         
         float minState=Float.NaN;
         float maxState=Float.NaN;
@@ -415,8 +427,8 @@ public class NetPlotter {
         
         int outBookmark;
         
-        public LayerStatePlotter(SpikeStack.Layer lay,ImageDisplay display)
-        {   tau=lay.net.tau;
+        public LayerStatePlotter(BasicLayer lay,ImageDisplay display)
+        {   tau=((LIFUnit.Globals)(lay.unitFactory.glob)).tau;
             layer=lay;
             disp=display;
 
@@ -430,7 +442,7 @@ public class NetPlotter {
         }
         
         /* Update layerStatePlots to current network time */
-        public void update(double toTime)
+        public void update(int toTime)
         {
 //            double time=layer.net.time;
             
@@ -439,8 +451,10 @@ public class NetPlotter {
             float smin=Float.MAX_VALUE;
             float smax=-Float.MAX_VALUE;
             
-            if (toTime==Float.NEGATIVE_INFINITY)
+            if (toTime==Integer.MIN_VALUE)
                 return;
+            else if (lastTime==Integer.MIN_VALUE)
+                lastTime=toTime;
             
             // Step 1: Decay present state
             for (int i=0; i<state.length; i++)
@@ -500,7 +514,7 @@ public class NetPlotter {
         
         public void reset()
         {
-            lastTime=Double.NEGATIVE_INFINITY;
+            lastTime=Integer.MIN_VALUE;
             
         }
                 

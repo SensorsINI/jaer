@@ -18,23 +18,22 @@ import java.util.logging.Logger;
  *  
  * @author oconnorp
  */
-public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.Layer> implements Serializable {
+public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> implements Serializable {
     
     // <editor-fold defaultstate="collapsed" desc=" Properties ">
     
-    ArrayList<LayerType> layers=new ArrayList<LayerType>();
+    BasicLayer.Factory<LayerType> layerFactory;
+    Unit.Factory unitFactory;
     
-    transient Queue<Spike> inputBuffer = new LinkedList<Spike>();
-    transient Queue<Spike> internalBuffer= new LinkedList<Spike>();
+    ArrayList<LayerType> layers=new ArrayList();
+    
+    transient Queue<SpikeType> inputBuffer = new LinkedList();
+    transient Queue<SpikeType> internalBuffer= new LinkedList();
             
-    public double time=Double.NEGATIVE_INFINITY;    // Current time (millis) (avoids having to pass around time reference)
-        
-    public float tau;      // Decay rate (seconds)
-        
-    public float tref=0;   // Abs-Refractory period
-        
-    public float delay=0;  // 
+    int delay;
     
+    public int time=Integer.MIN_VALUE;    // Current time (millis) (avoids having to pass around time reference)
+            
     public boolean liveMode=false;     // Live-mode.  If true, it prevents the network from advancing as long as the input buffer is empty
     
     public boolean inputCurrents=false;  
@@ -48,27 +47,36 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
      * input layer units.
      */
         
-    transient public NetReader<NetType> read;    // An object for I/O
+    transient public NetReader<? extends SpikeStack> read;    // An object for I/O
     transient public NetPlotter plot;   // An object for displaying the state of the network
     
     // </editor-fold>
     
     // <editor-fold defaultstate="collapsed" desc=" Builder Functions ">
     
-    public SpikeStack ()
+    public SpikeStack (BasicLayer.Factory<LayerType> layerFac,Unit.Factory unitFac)
     {   plot=new NetPlotter(this);
         read=new NetReader(this);
+        
+        layerFactory=layerFac;
+        unitFactory=unitFac;
+        
+//        layerClass=layClass;
+//        unitClass=unClass;
+        
+        
     };
         
     /** Add a new layer.*/
     public void addLayer(int index)
-    {   layers.add((LayerType)new SpikeStack.Layer(this,index));
+    {   
+        layers.add((LayerType)layerFactory.make(this, unitFactory, index));
     }
     
     /** Copy the structure of the network, but leave the state blank */
-    public NetType copy()
+    public SpikeStack copy()
     {
-        NetType net=this.read.copy();
+        SpikeStack net=this.read.copy();
         
         net.internalBuffer.clear();
         net.inputBuffer.clear();
@@ -80,16 +88,8 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
     }
     
     /** Create an EvtStack based on an Initializer Object */
-    public SpikeStack (Initializer ini)
-    {
-        this();
-        
-//        layers=new Layer[ini.layers.length];
-        //layers=new ArrayList<T>();
-        
-        
-        this.tref=ini.tref;
-        this.tau=ini.tau;
+    public SpikeStack (Initializer ini,BasicLayer.Factory layerFac,Unit.Factory unitFac)
+    {   this(layerFac,unitFac);
         
         // Initial pass, instantiating layers and unit arrays
         for (int i=0; i<ini.layers.length; i++)
@@ -105,7 +105,7 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
         
         // Second pass, filling in values and linking layers
         for (int i=0; i<layers.size(); i++)
-        {   Layer li=lay(i);
+        {   LayerType li=lay(i);
             
             // Connect output layers
             if (ini.layers[i].targ!=-1)
@@ -117,24 +117,25 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
                 if (ini.layers[j].targ==i)
                     li.Lin.add(layers.get(j));
             
+            
+//            li.wOut=new float[ini.lay(ini.lay(i).targ).nUnits][];
+            
             // Initialize Units
             for (int u=0; u<ini.layers[i].nUnits; u++)
             {   //li.units[u]=li.new Unit(u);
                 li.units[u]=li.makeNewUnit(u);
-            
-                li.units[u].thresh=ini.thresh;
                 
                 // Assign random initial weights based on Gaussian distributions with specified parameters
                 if (!Float.isNaN(ini.layers[i].WoutMean))
-                {   li.units[u].Wout=new float[li.Lout.units.length];
-                    for (int w=0; w<li.units[u].Wout.length;w++)
-                        li.units[u].Wout[w]=(float)(ini.layers[i].WoutMean+ini.layers[i].WoutStd*rnd.nextGaussian());
+                {   li.wOut[u]=new float[li.Lout.units.length];
+                    for (int w=0; w<li.wOut[u].length;w++)
+                        li.wOut[u][w]=(float)(ini.layers[i].WoutMean+ini.layers[i].WoutStd*rnd.nextGaussian());
                 }
                 
                 if (!Float.isNaN(ini.layers[i].WlatMean))
-                {   li.units[u].Wlat=new float[li.units.length];
-                    for (int w=0; w<li.units[u].Wlat.length;w++)
-                        li.units[u].Wlat[w]=(float)(ini.layers[i].WlatMean+ini.layers[i].WlatStd*rnd.nextGaussian());
+                {   li.wLat[u]=new float[li.units.length];
+                    for (int w=0; w<li.wLat[u].length;w++)
+                        li.wLat[u][w]=(float)(ini.layers[i].WlatMean+ini.layers[i].WlatStd*rnd.nextGaussian());
                 }
             }
         }
@@ -145,28 +146,28 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
     // <editor-fold defaultstate="collapsed" desc=" Feeding and Eating Events ">
     
     /** Add an event to the input queue */
-    public void addToQueue(Spike ev)
+    public void addToQueue(SpikeType ev)
     {   // TODO: confirm timestamp monotonicity
         inputBuffer.add(ev);
     }    
     
     /** Feed an array of input events to the network and let 'er rip */
-    public void feedEventsAndGo(List<Spike> inputEvents)
+    public void feedEventsAndGo(List<SpikeType> inputEvents)
     {   feedEvents(inputEvents);
         eatEvents();
     }
         
     /** Feed an array of input events to the network and let 'er rip */
-    public void feedEventsAndGo(List<Spike> inputEvents,double timeout)
+    public void feedEventsAndGo(List<SpikeType> inputEvents,double timeout)
     {   
         feedEvents(inputEvents);
         eatEvents(timeout);
     }
     
     /** Feed an array of events into the network */
-    public void feedEvents(List<Spike> inputEvents)
+    public void feedEvents(List<SpikeType> inputEvents)
     {   
-        for (Spike ev: inputEvents)
+        for (SpikeType ev: inputEvents)
             addToQueue(ev);
     }
         
@@ -193,16 +194,16 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
         {
                         
             // Determine whether to read from input or buffer
-            boolean readInput=!inputBuffer.isEmpty() && (internalBuffer.isEmpty() || inputBuffer.peek().time<internalBuffer.peek().time);
+            boolean readInput=!inputBuffer.isEmpty() && (internalBuffer.isEmpty() || inputBuffer.peek().hitTime<internalBuffer.peek().hitTime);
             Spike ev=readInput?inputBuffer.poll():internalBuffer.poll();
             
             // Update current time to time of this event
-            if (ev.time<time)
+            if (ev.hitTime<time)
             {   System.out.println("Input Spike time Decrease detected!  Resetting network...");
                 reset();                
             }
             
-            time=ev.time;
+            time=ev.hitTime;
             
             
             
@@ -213,11 +214,11 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
             
                 // Feed Spike to network
                 if (inputCurrents && readInput)     // 1: Input event drives current
-                    lay(ev.layer).units[ev.addr].fireTo(inputCurrentStrength);
+                    lay(ev.layer).fireTo(ev.addr,inputCurrentStrength);
                 else if (readInput)                 // 2: Input Spike fires unit
-                    lay(ev.layer).units[ev.addr].fireFrom();
+                    lay(ev.layer).fireFrom(ev.addr);
                 else                                // 3: Internally buffered event propagated
-                    lay(ev.layer).units[ev.addr].propagateFrom();
+                    lay(ev.layer).propagateFrom(ev.addr);
 
                 // Post Spike-Feed Actions
                 postFeed();
@@ -225,8 +226,8 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
             }
             catch (java.lang.ArrayIndexOutOfBoundsException ex)
             {   
-                System.out.println("You tried firing an event at address with address "+ev.addr+" to Layer "+ev.layer+", which has just "+lay(ev.layer).nUnits()+" units.");
-                throw ex;
+//                System.out.println("You tried firing an event at address with address "+ev.addr+" to Layer "+ev.layer+", which has just "+lay(ev.layer).nUnits()+" units.");
+                throw new java.lang.ArrayIndexOutOfBoundsException("You tried firing an event at address with address "+ev.addr+" to Layer "+ev.layer+", which has just "+lay(ev.layer).nUnits()+" units.");
             }
             
             
@@ -258,19 +259,23 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
     /* Actions to perform after feeding event.  Yours to overwrite */
     public void postFeed()
     {   
+        for (BasicLayer l : layers) {
+            l.updateActions();
+        }
+        
     }
     
-    /** Scale the thresholds of all units. */
-    public void scaleThresholds(float sc)
-    {   for (Layer l:layers)
-            l.scaleThresholds(sc);
-    }
+//    /** Scale the thresholds of all units. */
+//    public void scaleThresholds(float sc)
+//    {   for (Layer l:layers)
+//            l.scaleThresholds(sc);
+//    }
     
             
     /** Reset Network */ 
     public void reset()
     {   internalBuffer.clear();
-        time=Double.NEGATIVE_INFINITY;
+        time=Integer.MIN_VALUE;
         //time=0;
         for (LayerType l:layers)
             l.reset();
@@ -312,6 +317,12 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
             Logger.getLogger(SpikeStack.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
+    }
+    
+    
+    public void addToInternalQueue(SpikeType ev)
+    {
+        internalBuffer.add(ev);
     }
     
     
@@ -368,263 +379,95 @@ public class SpikeStack<NetType extends SpikeStack,LayerType extends SpikeStack.
         
     }
     
-    
-    public static <NetType extends SpikeStack> NetType makeNet()
-    {
-        return (NetType) new SpikeStack();
-    }
-    
-    
-    
-    
-    
-//    public static class StackFac<SpikeStack> implements NetFactory<SpikeStack>
+//    
+//    public static <NetType extends SpikeStack> NetType makeNet()
 //    {
-//        @Override
-//        public SpikeStack factory() {
-//            
-//            SpikeStack st= new SpikeStack();
-//            
-//        }
+//        return (NetType) new SpikeStack();
+//    }
+//    
+    
+        
+//    public static interface NetFactory<NetworkType> 
+//    {   NetworkType factory();        
+//    }
+    
+//    public interface LayerFactory<NetType extends SpikeStack,LayerType extends BasicLayer> extends Serializable
+//    {
+//        public LayerType make(NetType network, int ix);
+//    }
+//    
+//    public interface UnitFactory<UnitType>
+//    {
+//        public UnitType make(int index);
+//    }
+    
+//    
+//    public interface Layer<NetType extends SpikeStack,UnitType extends SpikeStack.Unit> extends Serializable
+//    {
+//        
+//        public void reset();
+//        
+//        public Layer create(NetType network,int ix);
+//                        
+//        /** Fire Currents to this layer... */
+//        public void fireTo(float[] inputCurrents);
+//        
+//        /** Fire current to particular unit */
+//        public void fireTo(int index, float current);
+//        
+//        /** Set some a default value for dimx,dimy based on the number of units. */
+//        public void setDefaultDims();
+//        
+//        /** Get Reverse connection weights */
+//        public float[] getBackWeights(int destinationUnit);
+//        
+//        /** Initialize the array of units */
+//        public void initializeUnits(int nUnits);
+//        
+//        /** Return a new unit with the given index */
+//        public UnitType makeNewUnit(int index);
+//        
+//        /** Scale thresholds of all units */
+//        public void scaleThresholds(float sc);
+//        
+//        public String getUnitName(int index);        
+//        
+//        public int nUnits();
+//
+//        public Spike getOutputEvent(int outputBufferLocation);
 //        
 //    }
     
-    public static interface NetFactory<NetworkType> 
-    {   NetworkType factory();        
-    }
+    
+//    public static interface Unit<LayerType extends SpikeStack.Layer> extends Serializable
+//    {
+//        Unit create(int index);
+//
+//        /* Send a current to this unit.  If it spikes it will add it to the buffer */
+//        public void fireTo();
+//
+//        /** Fire a neuron and add the spike to the internal buffer */
+//        public void fireFrom();
+//
+//        /** Get the name of this particular unit */
+//        public String getName();
+//
+//        /** Set the output Weight vector */
+//        public void setWout(float[] wvec);
+//
+//        /** Updates the membrane voltage given an input current */
+//        public void updateMem(float current);
+//
+//        /** Boolean.. determines whether to spike */
+//        public boolean doSpike();
+//
+//        /** Reset the unit to a baseline state */
+//        public void reset();
+//
+//    }
     
     
     
-    /** A Layer of LIF Neurons */
-    public static class Layer <NetType extends SpikeStack,LayerType extends SpikeStack.Layer, UnitType extends SpikeStack.Layer.Unit>  implements Serializable 
-    {
-        NetType net;
-        
-        int ixLayer;
-        UnitType[] units;
-        //EvtStack g;     // Pointer to the 'global' stack
-        ArrayList<LayerType> Lin=new ArrayList();
-        LayerType Lout=null;
-        
-        public short dimx;     // For display, purposes.
-        public short dimy;     // dimx,dimy must multiply to units.length
-        
-        float fwdSend=1;    // Strength of feedforward connections
-        float backSend=0;   // Strength of feedback connenctions
-        float latSend=0;    // Strength of lateral connections
-        
-        transient public ArrayList<Spike> outBuffer=new ArrayList<Spike>();
-        
-        /** Instantiate Layer with index */
-        public Layer(NetType network,int ix)
-        {   net=network;
-            ixLayer=ix;    
-            
-        }
-        
-        /** Fire Currents to this layer... */
-        public void fireTo(float[] inputCurrents)
-        {
-            for (int i=0; i<units.length; i++)
-            {   units[i].fireTo(inputCurrents[i]);
-            }
-        }
-
-        /** Reset Layer */
-        public void reset()
-        {   outBuffer.clear();
-            for (Unit u:units)
-            {   u.tlast=Double.NEGATIVE_INFINITY;
-                u.clast=Double.NEGATIVE_INFINITY;
-
-                u.reset();                    
-            }
-        }
-        
-        /** Set some a default value for dimx,dimy based on the number of units. */
-        public void setDefaultDims()
-        {
-            int nunits=nUnits();
-            
-            short start=(short)Math.ceil(Math.sqrt(nunits));
-            
-            dimy=-1;
-            
-            // Try finding a factor that divides evenly into the number of units
-            // up to a certain ratio.
-            for (short i=start; i<nunits-nunits/6; i++)
-                if (nunits%i==0)
-                {   dimy=i;
-                    break;
-                }
-            
-            if (dimy==-1)
-                dimy=start;  
-            
-            dimx=(short)Math.ceil(nUnits()/(float)dimy);
-        }
-        
-        /** Get Reverse connection weights */
-        public float[] getBackWeights(int destinationUnit)
-        {   // Get reverse connection weights (THERE HAS GOT TO BE A BETTER WAY)
-            float[] w=new float[units.length];
-            for (int i=0; i<units.length; i++)
-                w[i]=units[i].getOutWeight(destinationUnit);
-            return w;
-        }
-        
-        /** Initialize the array of units */
-        public void initializeUnits(int nUnits)
-        {   // AHAHAH I tricked you Java! 
-            units=(UnitType[])Array.newInstance(Unit.class, nUnits);
-            setDefaultDims();
-        }
-        
-        /** Return a new unit with the given index */
-        public UnitType makeNewUnit(int index)
-        {   return (UnitType) new Unit(index);            
-        }
-        
-        /** Scale thresholds of all units */
-        public void scaleThresholds(float sc)
-        {   for (Unit u: units)
-                u.thresh*=sc;            
-        }
-        
-        public String getUnitName(int index)
-        {   return units[index].getName();
-        }
-        
-        /** A LIF Neuron */
-        public class Unit implements Serializable
-        {
-            int ixUnit; 
-            boolean resetAfterFire=true;
-            float[] Wout;
-            float[] Wlat;
-            
-            float vmem=0;
-            float thresh;
-            
-            String name="";
-            
-            double tlast=Double.NEGATIVE_INFINITY;   // Last spike time
-            double clast=Double.NEGATIVE_INFINITY;   // Last update time
-
-            public Unit(int index)
-            {   ixUnit=index;
-            }
-                        
-            /* Send a current to this unit.  If it spikes it will add it to the buffer */
-            public void fireTo(float current)
-            {   updateMem(current);
-                if (doSpike())
-                    fireFrom();
-            }
-                        
-            /** Get the forward weights from a given source.  Note: must be kept consistent with getOutWeight */
-            public float[] getForwardWeights()
-            {   return Wout;                
-            }
-            
-            /** Get the lateral weights from a given source */
-            public float[] getLateralWeights()
-            {   return Wlat;                
-            }
-                        
-            /** Over-writable method to get output weight.  Note: Must be kept consistent with getForwardWeights */
-            float getOutWeight(int index)
-            {   return Wout[index];
-            }
-            
-            /** Fire a neuron and add the spike to the internal buffer */
-            public void fireFrom()
-            {   
-                // Add to output buffer at THIS time
-                outBuffer.add(new Spike(ixUnit,net.time,ixLayer));
-                     
-                // Add to internal buffer at delay time.  (Wasteful repetition?)
-                net.internalBuffer.add(new Spike(ixUnit,net.time+net.delay,ixLayer));
-
-                tlast=net.time; 
-                
-                if (resetAfterFire)
-                    reset();
-            }
-            
-            /** Carry out the effects of the firing */
-            public void propagateFrom()
-            {
-                // Fire Ahead!
-                if (Lout!=null && fwdSend!=0) 
-                    if (fwdSend==1)
-                        Lout.fireTo(getForwardWeights());
-                    else
-                        throw new UnsupportedOperationException("Scaling of fwd connections not yet supported");
-                        
-                // Fire Behind!
-//                if (Lin!=null) 
-                for (LayerType l:Lin)
-                {   if (l.backSend==1)
-                        l.fireTo(l.getBackWeights(ixUnit));
-                    else if (l.backSend!=0)
-                        throw new UnsupportedOperationException("Scaling of reverse connections not yet supported");
-                }
-                
-                // Fire Sideways!
-                if (Wlat!=null && latSend!=0)
-                {   
-                    if (latSend==1)
-                        Layer.this.fireTo(getLateralWeights()); 
-                    else
-                        throw new UnsupportedOperationException("Scaling of lateral connections not yet supported");
-                
-                }               
-            }
-            
-            /** Get the name of this particular unit */
-            public String getName()
-            {   return name;                
-            }
-            
-            /** Set the output Weight vector */
-            public void setWout(float[] wvec)
-            {   Wout=wvec;                
-            }
-                    
-            /** Updates the membrane voltage given an input current */
-            public void updateMem(float current){
-                if (net.time>tlast+net.tref) // Refractory period
-                {   vmem=(float)(vmem*Math.exp((clast-net.time)/net.tau)+current);
-                    clast=net.time;
-                }
-            }
-            
-            /** Boolean.. determines whether to spike */
-            public boolean doSpike(){
-                return vmem>thresh;                
-            }
-
-            /** Reset the unit to a baseline state */
-            public void reset()
-            {
-                vmem=0;
-                
-            }
-
-        }
-        
-        
-        
-        public int nUnits()
-        {   return units.length;
-        }
-
-        public Spike getOutputEvent(int outputBufferLocation)
-        {   return outBuffer.get(outputBufferLocation);
-        }
-        
-    }
     
     // </editor-fold>
 }
