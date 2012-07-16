@@ -23,6 +23,7 @@ import java.io.*;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.logging.Level;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.Description;
@@ -503,6 +504,12 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 // is something funny about the timestamps
                 pruneList.add(c);
                 c.prune();
+//                String reason=null;
+//                if(t0>t) reason="time went backwards";
+//                else if(massTooSmall) reason="mass is too small";
+//                else if(timeSinceSupport<0) reason="timeSinceSupport is negative";
+//                else if(hitEdge) reason="cluster hit edge";
+//                log.info("pruning "+c+" because "+reason);
             }
 //            if(t0>t1){
 //                log.warning("last cluster timestamp is later than last packet timestamp");
@@ -526,6 +533,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
      * @param t the global timestamp of the update.
      */
     protected void updateClusterList(EventPacket<BasicEvent> ae, int t) {
+//        log.info("updating cluster list at time="+t);
         pruneClusters(t);
         mergeClusters();
         updateClusterLocations(t);
@@ -606,7 +614,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         float distance;
     }
 
-    private int lastTimestamp=0;
+    protected int lastTimestamp=0;
     
     /** The method that actually does the tracking.
      *
@@ -649,11 +657,12 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 Cluster newCluster = null;
                 if (filterEventsEnabled) {
                     newCluster = createCluster(ev, outItr); //new Cluster(ev, outItr);
-                } else {
+                 } else {
                     newCluster = createCluster(ev); // new Cluster(ev);
                 }
                 clusters.add(newCluster);
-            }
+//                    log.info("created "+newCluster);
+           }
 
             updatedClusterList = maybeCallUpdateObservers(in, (lastTimestamp=ev.timestamp)); // callback to update()
 //            if (!updateTimeInitialized) {
@@ -830,13 +839,13 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
     }
 
-    /** Factory method to create a new Cluster; override when subclassing Cluster.
-     *
-     * @return a new empty Cluster
-     */
-    public Cluster createCluster() {
-        return new Cluster();
-    }
+//    /** Factory method to create a new Cluster; override when subclassing Cluster.
+//     *
+//     * @return a new empty Cluster
+//     */
+//    public Cluster createCluster() {
+//        return new Cluster();
+//    }
 
     /** Factory method to create a new Cluster; override when subclassing Cluster.
      * @param ev the spawning event.
@@ -923,6 +932,66 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
          */
         public void setMass(float mass){
             this.mass=mass;
+        }
+
+        /** Merges information from two source clusters into this cluster to preserve the combined history that is most reliable.
+         * 
+         * @param one
+         * @param two 
+         */
+        protected void mergeTwoClustersToThis(Cluster one, Cluster two) {
+            Cluster stronger = one.mass > two.mass ? one : two; //one.firstEventTimestamp < two.firstEventTimestamp ? one : two;
+//            Cluster older=one.numEvents>two.numEvents? one:two;
+            clusterNumber = stronger.clusterNumber;
+            // merge locations by average weighted by mass of events supporting each cluster
+            mass = one.mass + two.mass;
+            numEvents = one.numEvents + two.numEvents;
+            // change to older for location to avoid discontinuities in postion
+            location.x = stronger.location.x; //(one.location.x * one.mass + two.location.x * two.mass) / (mass);
+            location.y = stronger.location.y; // (one.location.y * one.mass + two.location.y * two.mass) / (mass);
+            
+            velocity.x=0;
+            velocity.y=0;
+            
+            
+            angle = stronger.angle;
+            cosAngle = stronger.cosAngle;
+            sinAngle = stronger.sinAngle;
+            averageEventDistance = (one.averageEventDistance * one.mass + two.averageEventDistance * two.mass) / mass;
+            averageEventXDistance = (one.averageEventXDistance * one.mass + two.averageEventXDistance * two.mass) / mass;
+            averageEventYDistance = (one.averageEventYDistance * one.mass + two.averageEventYDistance * two.mass) / mass;
+
+            lastEventTimestamp = one.lastEventTimestamp > two.lastEventTimestamp ? one.lastEventTimestamp : two.lastEventTimestamp;
+            lastUpdateTime = lastEventTimestamp;
+            lastPacketLocation.x = stronger.location.x;
+            lastPacketLocation.y = stronger.location.y;
+            firstEventTimestamp = stronger.firstEventTimestamp; // make lifetime the oldest src cluster
+            path = stronger.path;
+            birthLocation = stronger.birthLocation;
+//            velocityFitter = stronger.velocityFitter;
+            velocityPPT.x = stronger.velocityPPT.x;
+            velocityPPT.y = stronger.velocityPPT.y;
+            velocityPPS.x = stronger.velocityPPS.x;
+            velocityPPS.y = stronger.velocityPPS.y;
+            velocityValid = stronger.velocityValid;
+            vxFilter = stronger.vxFilter;
+            vyFilter = stronger.vyFilter;
+            avgEventRate = stronger.avgEventRate;
+            avgISI = stronger.avgISI;
+            hasObtainedSupport = stronger.hasObtainedSupport;
+            setAspectRatio(stronger.getAspectRatio());
+
+//            Color c1=one.getColor(), c2=two.getColor();
+            setColor(stronger.getColor());
+//            System.out.println("merged "+one+" with "+two);
+            //the radius should increase
+//            setRadius((one.getRadius()+two.getRadius())/2);
+            if (growMergedSizeEnabled) {
+                float R = (one.getRadius() + two.getRadius()) / 2;
+                setRadius(R + getMixingFactor() * R);
+            } else {
+                setRadius(stronger.getRadius());
+            }
         }
 
         protected void updateAngle(BasicEvent event) {
@@ -1044,8 +1113,15 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 float dmass = normDistance <= 1 ? 1 : -surroundInhibitionCost;
                 mass = dmass + mass * (float) Math.exp((float) (lastEventTimestamp - event.timestamp) / clusterLifetimeWithoutSupportUs);
             } else {
+                boolean wasInfinite=Float.isInfinite(mass);
                 // don't worry about distance, just increment
-                mass = 1 + mass * (float) Math.exp(((float) lastEventTimestamp - event.timestamp) / clusterLifetimeWithoutSupportUs);
+                int dt=lastEventTimestamp - event.timestamp;
+                if(dt<0){
+                    mass = 1 + mass * (float) Math.exp((float) dt/ clusterLifetimeWithoutSupportUs);
+                    if (!wasInfinite && Float.isInfinite(mass)) {
+                        log.log(Level.WARNING, "mass became infinite for {0}", this);
+                    }
+                }
             }
         }
 
@@ -1207,6 +1283,29 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 velocityValid = true;
             }
         }
+        
+                /** Constructs a cluster at the location of an event.
+         * The numEvents, location, birthLocation, first and last timestamps are set.
+         * The radius is set to defaultClusterRadius.
+         *
+         * @param ev the event.
+         */
+        public Cluster(BasicEvent ev) {
+            this();
+            location.x = ev.x;
+            location.y = ev.y;
+            birthLocation.x = ev.x;
+            birthLocation.y = ev.y;
+            lastPacketLocation.x = ev.x;
+            lastPacketLocation.y = ev.y;
+            lastEventTimestamp = ev.timestamp;
+            firstEventTimestamp = lastEventTimestamp;
+            lastUpdateTime = ev.timestamp;
+            numEvents = 1;
+            mass=1;
+            setRadius(defaultClusterRadius);
+        }
+
 
         /** Overrides default hashCode to return {@link #clusterNumber}. This overriding
          * allows for storing clusters in lists and checking for them by their clusterNumber.
@@ -1236,26 +1335,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             return clusterNumber == test.clusterNumber;
         }
 
-        /** Constructs a cluster at the location of an event.
-         * The numEvents, location, birthLocation, first and last timestamps are set.
-         * The radius is set to defaultClusterRadius.
-         *
-         * @param ev the event.
-         */
-        public Cluster(BasicEvent ev) {
-            this();
-            location.x = ev.x;
-            location.y = ev.y;
-            birthLocation.x = ev.x;
-            birthLocation.y = ev.y;
-            lastPacketLocation.x = ev.x;
-            lastPacketLocation.y = ev.y;
-            lastEventTimestamp = ev.timestamp;
-            firstEventTimestamp = lastEventTimestamp;
-            lastUpdateTime = ev.timestamp;
-            numEvents = 1;
-            setRadius(defaultClusterRadius);
-        }
 
         /** Draws this cluster using OpenGL.
          *
@@ -1393,59 +1472,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             // merge locations by just averaging
 //            location.x=(one.location.x+two.location.x)/2;
 //            location.y=(one.location.y+two.location.y)/2;
-
-            Cluster stronger = one.mass > two.mass ? one : two; //one.firstEventTimestamp < two.firstEventTimestamp ? one : two;
-//            Cluster older=one.numEvents>two.numEvents? one:two;
-            clusterNumber = stronger.clusterNumber;
-            // merge locations by average weighted by mass of events supporting each cluster
-            mass = one.mass + two.mass;
-            numEvents = one.numEvents + two.numEvents;
-            // change to older for location to avoid discontinuities in postion
-            location.x = stronger.location.x; //(one.location.x * one.mass + two.location.x * two.mass) / (mass);
-            location.y = stronger.location.y; // (one.location.y * one.mass + two.location.y * two.mass) / (mass);
-            
-            velocity.x=0;
-            velocity.y=0;
-            
-            
-            angle = stronger.angle;
-            cosAngle = stronger.cosAngle;
-            sinAngle = stronger.sinAngle;
-            averageEventDistance = (one.averageEventDistance * one.mass + two.averageEventDistance * two.mass) / mass;
-            averageEventXDistance = (one.averageEventXDistance * one.mass + two.averageEventXDistance * two.mass) / mass;
-            averageEventYDistance = (one.averageEventYDistance * one.mass + two.averageEventYDistance * two.mass) / mass;
-
-            lastEventTimestamp = one.lastEventTimestamp > two.lastEventTimestamp ? one.lastEventTimestamp : two.lastEventTimestamp;
-            lastUpdateTime = lastEventTimestamp;
-            lastPacketLocation.x = stronger.location.x;
-            lastPacketLocation.y = stronger.location.y;
-            firstEventTimestamp = stronger.firstEventTimestamp; // make lifetime the oldest src cluster
-            path = stronger.path;
-            birthLocation = stronger.birthLocation;
-//            velocityFitter = stronger.velocityFitter;
-            velocityPPT.x = stronger.velocityPPT.x;
-            velocityPPT.y = stronger.velocityPPT.y;
-            velocityPPS.x = stronger.velocityPPS.x;
-            velocityPPS.y = stronger.velocityPPS.y;
-            velocityValid = stronger.velocityValid;
-            vxFilter = stronger.vxFilter;
-            vyFilter = stronger.vyFilter;
-            avgEventRate = stronger.avgEventRate;
-            avgISI = stronger.avgISI;
-            hasObtainedSupport = stronger.hasObtainedSupport;
-            setAspectRatio(stronger.getAspectRatio());
-
-//            Color c1=one.getColor(), c2=two.getColor();
-            setColor(stronger.getColor());
-//            System.out.println("merged "+one+" with "+two);
-            //the radius should increase
-//            setRadius((one.getRadius()+two.getRadius())/2);
-            if (growMergedSizeEnabled) {
-                float R = (one.getRadius() + two.getRadius()) / 2;
-                setRadius(R + getMixingFactor() * R);
-            } else {
-                setRadius(stronger.getRadius());
-            }
+            mergeTwoClustersToThis(one, two);
         }
 
         /** Creates a new Cluster using the event and generates a new output event which points back to the Cluster.
@@ -1693,7 +1720,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         /** Computes and returns distance to another cluster.
          * @return distance of this cluster to the other cluster in pixels.
          */
-        protected final float distanceTo(Cluster c) {// TODO doesn't use predicted location of clusters, only present locations
+        public final float distanceTo(Cluster c) {// TODO doesn't use predicted location of clusters, only present locations
             
             float dx = c.location.x - location.x;
             float dy = c.location.y - location.y;
@@ -2294,7 +2321,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     public LinkedList<RectangularClusterTracker.Cluster> getPruneList() {
         return this.pruneList;
     }
-    protected static final float fullbrightnessLifetime = 1000000;
+    protected static final float fullbrightnessLifetime = 100000;
     /** Useful for subclasses. */
     protected Random random = new Random();
 
@@ -2736,10 +2763,10 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         if (!isFilterEnabled()) {
             return;
         }
-        final float BOX_LINE_WIDTH = 2f; // in chip
-        final float PATH_LINE_WIDTH = .5f;
-        final float VEL_LINE_WIDTH = 4f;
-        final float PATH_POINT_SIZE = 4f;
+//        final float BOX_LINE_WIDTH = 2f; // in chip
+//        final float PATH_LINE_WIDTH = .5f;
+//        final float VEL_LINE_WIDTH = 4f;
+//        final float PATH_POINT_SIZE = 4f;
         GL gl = drawable.getGL(); // when we getString this we are already set up with updateShape 1=1 pixel, at LL corner
         if (gl == null) {
             log.warning("null GL in RectangularClusterTracker.annotate");
@@ -2902,7 +2929,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     }
 
     /**
-     * If true, cluster lifetime withtout support increases proportional to the age of the cluster relative to the clusterLifetimeWithoutSupportUs time
+     * If true, cluster lifetime without support increases proportional to the age of the cluster relative to the clusterLifetimeWithoutSupportUs time
      */
     synchronized public void setClusterLifetimeIncreasesWithAge(boolean clusterLifetimeIncreasesWithAge) {
         this.clusterLifetimeIncreasesWithAge = clusterLifetimeIncreasesWithAge;

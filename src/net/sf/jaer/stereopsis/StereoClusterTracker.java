@@ -31,27 +31,20 @@ import net.sf.jaer.util.filter.LowpassFilter3D;
  */
 public class StereoClusterTracker extends RectangularClusterTracker{
     private Logger log = Logger.getLogger ("StereoClassTracker");
-    private float velocityMixingFactor = getPrefs ().getFloat ("StereoClusterTracker.velocityMixingFactor",.001f);
-
-
-    {
-        setPropertyTooltip ("velocityMixingFactor","fraction by which velocity of cluster is updated by each event");
-    }
+    private float velocityMixingFactor = getFloat ("velocityMixingFactor",.001f);
     StereoChipInterface stereoChip = null;
-    /** list of StereoCluster, this field hides the super's 2d image plane Cluster's */
-    protected ArrayList<StereoCluster> clusters = new ArrayList<StereoCluster> ();
+    /** list of Clusters, this field hides the super's 2d image plane Cluster's */
+//    protected ArrayList<Cluster> clusters = new ArrayList<Cluster> ();
     StereoGeometry geom;
     private boolean logDataEnabled = false;
     PrintStream logStream = null;
     private float[] p = new float[ 3 ]; // used for 3d location and velocityPPT computation
     private float[] v = new float[ 3 ]; // used for 3d velocityPPT computation
     static final float TICK_SECONDS = 1e-6f;
-    private boolean playSounds = getPrefs().getBoolean("StereoClusterTracker.playSounds",false);
-    {setPropertyTooltip("playSounds","play wav file when disparity velocity towards us exceeds soundDispVelThr");}
-    private float soundDispVelThr = getPrefs ().getFloat ("StereoClusterTracker.soundDispVelThr",1000);
-    {setPropertyTooltip("soundDispVelThr","when disparity velocity exceeds this threshold play sound effect (punch detector)");}
-    private float disparityMixingFactor=getPrefs().getFloat("StereoClusterTracker.disparityMixingFactor",mixingFactor);
-    {setPropertyTooltip("disparityMixingFactor","mixing factor for cluster disparity value; reduce to smooth more");}
+    private boolean playSounds = getBoolean("playSounds",false);
+    private float soundDispVelThr = getFloat ("soundDispVelThr",1000);
+    private float disparityMixingFactor=getFloat("disparityMixingFactor",mixingFactor);
+    private boolean displayStereoClusterAnnotation=getBoolean("displayStereoClusterAnnotation",true);
 
     /** Creates a new instance of StereoClusterTracker */
     public StereoClusterTracker (AEChip chip){
@@ -61,8 +54,14 @@ public class StereoClusterTracker extends RectangularClusterTracker{
         } else{
             log.warning ("AEChip " + chip + " is not StereoChipInterface");
         }
-        setEnclosedFilter (new StereoTranslateRotate (chip));
-        geom = new StereoGeometry (chip);
+        setEnclosedFilter(new StereoTranslateRotate(chip));
+        geom = new StereoGeometry(chip);
+        String stereotips="Stereo";
+        setPropertyTooltip(stereotips,"playSounds", "play random wave file when disparity velocity towards us exceeds soundDispVelThr");
+        setPropertyTooltip(stereotips,"soundDispVelThr", "when disparity velocity exceeds this threshold play sound effect (punch detector)");
+        setPropertyTooltip(stereotips,"disparityMixingFactor", "mixing factor for cluster disparity value; reduce to smooth more");
+        setPropertyTooltip(stereotips,"displayStereoClusterAnnotation", "draw disparity info for clusters");
+        setPropertyTooltip(stereotips,"velocityMixingFactor","fraction by which velocity of cluster is updated by each event");
     }
 
     public EventPacket filterPacket (EventPacket in){
@@ -79,19 +78,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
         return in;
     }
 
-    /** returns stereo clusters
-    @return list of StereoClusterTracker clusters
-     */
-    public ArrayList<StereoCluster> getclusters (){
-        return this.clusters;
-    }
 
-    /** @return number of StereoCluster's
-     */
-    @Override
-    public int getNumClusters (){
-        return clusters.size ();
-    }
 
     /**
      * returns the physically nearest (to observer) visible cluster based on maximum disparity. Not to be confused with method
@@ -107,7 +94,8 @@ public class StereoClusterTracker extends RectangularClusterTracker{
         }
         float maxDisparity = Float.NEGATIVE_INFINITY;
         StereoCluster cluster = null;
-        for ( StereoCluster c:clusters ){
+        for ( Cluster x:clusters ){
+            StereoCluster c=(StereoCluster)x;
             if ( c.getDisparity () > maxDisparity ){
                 cluster = c;
                 maxDisparity = c.getDisparity ();
@@ -132,7 +120,8 @@ public class StereoClusterTracker extends RectangularClusterTracker{
         float minDistance = Float.MAX_VALUE;
         StereoCluster closest = null;
         float currentDistance = 0;
-        for ( StereoCluster c:clusters ){
+        for ( Cluster x:clusters ){
+            StereoCluster c=(StereoCluster)x;
             if ( ( currentDistance = c.distanceTo (event) ) < minDistance ){
                 closest = c;
                 minDistance = currentDistance;
@@ -146,79 +135,53 @@ public class StereoClusterTracker extends RectangularClusterTracker{
         }
     }
 
+    
+//    /** Factory method to create a new Cluster; override when subclassing Cluster.
+//     *
+//     * @return a new empty Cluster
+//     */
+//    @Override
+//    public Cluster createCluster() {
+//        return new StereoCluster();
+//    }
+
+    /** Factory method to create a new Cluster; override when subclassing Cluster.
+     * @param ev the spawning event.
+     * @return a new empty Cluster
+     */
+    @Override
+    public Cluster createCluster(BasicEvent ev) {
+        return new StereoCluster(ev);
+    }
+
+    /** Factory method to create a new Cluster; override when subclassing Cluster.
+     * @param one the first cluster.
+     * @param two the second cluster.
+     * @return a new empty Cluster
+     */
+    @Override
+    public Cluster createCluster(Cluster one, Cluster two) {
+        return new StereoCluster((StereoCluster)one, (StereoCluster)two);
+    }
+
+    /** Factory method to create a new Cluster; override when subclassing Cluster.
+     * 
+     * @param ev the spawning event.
+     * @param itr the output iterator to write events to when they fall in this cluster.
+     * @return a new empty Cluster
+     */
+    @Override
+    public Cluster createCluster(BasicEvent ev, OutputEventIterator itr) {
+        return new StereoCluster(ev, itr);
+    }
+    
     synchronized protected EventPacket track (EventPacket<BasicEvent> ae){
-        int n = ae.getSize ();
-        if ( n == 0 ){
-            return ae;
-        }
-        int maxNumClusters = getMaxNumClusters ();
-
-        // for each event, see which cluster it is closest to and add it to this cluster.
-        // if its too far from any cluster, make a new cluster if we can
-//        for(int i=0;i<n;i++){
-        for ( BasicEvent ev:ae ){
-//            EventXYType ev=ae.getEvent2D(i);
-            StereoCluster closest = getFirstContainingCluster (ev);
-            if ( closest != null ){
-                closest.addEvent (ev);
-            } else if ( clusters.size () < maxNumClusters ){ // start a new cluster
-                StereoCluster newCluster = new StereoCluster (ev);
-                clusters.add (newCluster);
-//                log.info("added "+newCluster);
-
-            }
-        }
-        // prune out old clusters that don't have support
-        int clusterLifetimeWithoutSupport = getClusterLifetimeWithoutSupportUs ();
-        pruneList.clear ();
-        for ( StereoCluster c:clusters ){
-            if ( ae.getLastTimestamp () - c.getLastEventTimestamp () > clusterLifetimeWithoutSupport ){
-                pruneList.add (c);
-            }
-        }
-        clusters.removeAll (pruneList);
-
-        // merge clusters that are too close to each other.
-        // this must be done interatively, because merging 4 or more clusters feedforward can result in more clusters than
-        // you start with. each time we merge two clusters, we start over, until there are no more merges on iteration.
-
-        // for each cluster, if it is close to another cluster then merge them and start over.
-
-//        int beforeMergeCount=clusters.size();
-        boolean mergePending;
-        StereoCluster c1 = null, c2 = null;
-        do{
-            mergePending = false;
-            int nc = clusters.size ();
-            outer:
-            for ( int i = 0 ; i < nc ; i ++ ){
-                c1 = clusters.get (i);
-                for ( int j = i + 1 ; j < nc ; j ++ ){
-                    c2 = clusters.get (j); // getString the other cluster
-                    if ( c1.distanceTo (c2) < ( c1.getRadius () + c2.getRadius () ) ){ // if distance is less than sum of radii merge them
-                        // if cluster is close to another cluster, merge them
-                        mergePending = true;
-                        break outer; // break out of the outer loop
-                    }
-                }
-            }
-            if ( mergePending && c1 != null && c2 != null ){
-                pruneList.add (c1);
-                pruneList.add (c2);
-                clusters.remove (c1);
-                clusters.remove (c2);
-                clusters.add (new StereoCluster (c1,c2));
-            }
-        } while ( mergePending );
+        super.track(ae);
 
         // iterate over all clusters, updating them for outside values that user may want
         // update position and velocities in 3d space
-        for ( StereoCluster c:clusters ){
-            // update all cluster sizes
-            // note that without this following call, clusters maintain their starting size until they are merged with another cluster.
-            if ( isHighwayPerspectiveEnabled () ){
-                c.setRadius (defaultClusterRadius);
-            }
+        for ( Cluster x:clusters ){
+            StereoCluster c=(StereoCluster)x;
 
             // update location in 3d physical space
             geom.compute3dlocationM (c.location.x,c.location.y,c.getDisparity (),p);
@@ -236,10 +199,10 @@ public class StereoClusterTracker extends RectangularClusterTracker{
             c.updatePath (ae.getLastTimestamp());
         }
 
-        if ( isLogDataEnabled () && getNumClusters () == 1 && clusters.get (0).isVisible () && clusters.get (0).getDisparity () > 4 ){
+        if ( isLogDataEnabled () && getNumClusters () == 1 && clusters.get (0).isVisible () && ((StereoCluster)(clusters.get (0))).getDisparity () > 4 ){
 //            System.out.println(ae.getLastTimestamp()/1e6f+" "+clusters.getString(0));
             if ( logStream != null ){
-                StereoCluster c = clusters.get (0);
+                StereoCluster c = (StereoCluster)(clusters.get (0));
                 logStream.println (String.format ("%d %f %f %f %f",clusterCounter,ae.getLastTimestamp () / 1e6f,c.location3dm.x,c.location3dm.y,c.location3dm.z));
                 if ( logStream.checkError () ){
                     log.warning ("eroror logging data");
@@ -250,6 +213,12 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 //        if(clusters.size()>beforeMergeCount) throw new RuntimeException("more clusters after merge than before");
         return ae;
 
+    }
+
+    @Override
+    public void setMaxNumClusters(int maxNumClusters) {
+        super.setMaxNumClusters(maxNumClusters);
+        resetFilter();
     }
 
     synchronized public void resetFilter (){
@@ -268,6 +237,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
      */
     public void setPlaySounds (boolean playSounds){
         this.playSounds = playSounds;
+        putBoolean("playSounds",playSounds);
     }
 
     /**
@@ -282,7 +252,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
      */
     public void setSoundDispVelThr (float soundDispVelThr){
         this.soundDispVelThr = soundDispVelThr;
-        getPrefs().putFloat("StereoClusterTracker.soundDispVelThr",soundDispVelThr);
+        putFloat("soundDispVelThr",soundDispVelThr);
     }
 
     /**
@@ -298,7 +268,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
     public void setDisparityMixingFactor (float disparityMixingFactor){
         this.disparityMixingFactor = disparityMixingFactor;
         if(disparityMixingFactor>1) disparityMixingFactor=1; else if(disparityMixingFactor<0) disparityMixingFactor=0;
-        getPrefs().putFloat("StereoClusterTracker.disparityMixingFactor",disparityMixingFactor);
+        putFloat("disparityMixingFactor",disparityMixingFactor);
     }
     /**
     Extends the 2-d cluster to include 2.5-d disparity information. Adding an event
@@ -318,67 +288,53 @@ public class StereoClusterTracker extends RectangularClusterTracker{
         private float disparityVelocity = 0; // rate of change of disparity in pixels/second
         /** location of cluster in 3d space as computed from pixel location and disparity, given chip's StereoGeometry.
         Coordinate frame is centered on bridge of viewers nose and z increases with distance. Units are meters.
-        x increses from 0 rightwards from midline in image coordinates (larger to right in image) and y increases upwards in the same way
+        x increases from 0 rightwards from midline in image coordinates (larger to right in image) and y increases upwards in the same way
          */
         public LowpassFilter3D.Point3D location3dm = new LowpassFilter3D.Point3D ();
         /** velocityPPT of cluster in 3d space as computed from pixel location and disparity, given chip's StereoGeometry.
         Coordinate frame is centered on bridge of viewers nose and z increases with distance. Units are meters per second.
-        x increses from 0 rightwards from midline in image coordinates (larger to right in image) and y increases upwards in the same way
+        x increases from 0 rightwards from midline in image coordinates (larger to right in image) and y increases upwards in the same way
          */
         public LowpassFilter3D.Point3D velocity3dmps = new LowpassFilter3D.Point3D ();
 
         public StereoCluster (){
-            setRadius (defaultClusterRadius);
-            float hue = random.nextFloat ();
-            Color color = Color.getHSBColor (hue,1f,1f);
-            setColor (color);
-            setClusterNumber (clusterCounter ++);
+            super();
         }
 
         /** Constructs a new cluster centered on an event
         @param ev the event
          */
         public StereoCluster (BasicEvent ev){
-            this ();
-            location.x = ev.x;
-            location.y = ev.y;
-            lastEventTimestamp = ev.timestamp;
-            firstEventTimestamp = lastEventTimestamp;
-            setRadius (defaultClusterRadius);
-//            System.out.println("constructed "+this);
+            super (ev);
+//        log.info("creating new StereoCluster from "+ev);
         }
+        
+               /** Creates a new Cluster using the event and generates a new output event which points back to the Cluster.
+         *
+         * @param ev the event to center the cluster on.
+         * @param outItr used to generate the new event pointing back to the cluster.
+         */
+        protected StereoCluster(BasicEvent ev, OutputEventIterator outItr) {
+            this(ev);
+            if (!isVisible()) {
+                return;
+            }
+            RectangularClusterTrackerEvent oe = (RectangularClusterTrackerEvent) outItr.nextOutput();
+            oe.copyFrom(ev);
+            oe.setCluster(this);
+        }
+
 
         /** Constructs a cluster by merging two clusters */
         public StereoCluster (StereoCluster one,StereoCluster two){
             this ();
-            // merge locations by just averaging
-//            location.x=(one.location.x+two.location.x)/2;
-//            location.y=(one.location.y+two.location.y)/2;
-
-            // merge locations by average weighted by number of events supporting cluster
-            location.x = ( one.location.x * one.numEvents + two.location.x * two.numEvents ) / ( one.numEvents + two.numEvents );
-            location.y = ( one.location.y * one.numEvents + two.location.y * two.numEvents ) / ( one.numEvents + two.numEvents );
-
-            lastEventTimestamp = ( one.lastEventTimestamp + two.lastEventTimestamp ) / 2;
-            numEvents = one.numEvents + two.numEvents;
-            firstEventTimestamp = Math.min (one.firstEventTimestamp,two.firstEventTimestamp); // make lifetime the oldest src cluster
+            super.mergeTwoClustersToThis(one, two);
             StereoCluster older = one.firstEventTimestamp < two.firstEventTimestamp ? one : two;
-            path = older.path;
             disparity = older.disparity;
             disparityVelocity = older.disparityVelocity;  // don't forget the other fields!!!
-
-//            Color c1=one.getColor(), c2=two.getColor();
-            setColor (older.getColor ());
-//            System.out.println("merged "+one+" with "+two);
-            //the radius should increase
-//            setRadius((one.getRadius()+two.getRadius())/2);
-            if ( growMergedSizeEnabled ){
-                float R = ( one.getRadius () + two.getRadius () ) / 2;
-                setRadius (R + getMixingFactor () * R);
-            } else{
-                setRadius (older.getRadius ());
-            }
-
+            velocityPPS=older.velocityPPS;
+            velocityPPT=older.velocityPPT;
+            
         }
 
         /** adds one BasicEvent event to this cluster, updating its parameters in the process
@@ -389,28 +345,32 @@ public class StereoClusterTracker extends RectangularClusterTracker{
             addEvent ((BinocularEvent)event);
         }
 
+ 
+  
+
         /** adds one BinocularEvent to this cluster, updating its parameters in the process
         @param event the event to add
          */
         public void addEvent (BinocularEvent event){
+            super.addEvent(event);
 
-            // save location for computing velocityPPT
-            float oldx = location.x, oldy = location.y;
+            float oldDisparity = updateDisparity(event);
+            float dt = TICK_SECONDS * ( event.timestamp - lastEventTimestamp );
+            if(dt>0){
+               float dv = ( disparity - oldDisparity ) / dt;
+                disparityVelocity = (1-disparityMixingFactor) * disparityVelocity + disparityMixingFactor * dv;
+                if ( playSounds && disparityVelocity < -soundDispVelThr ){
+                    soundPlayer.playRandom ();
+                }
+            }
+        }
 
-            float m = mixingFactor, m1 = 1 - m;
-
-            // compute new cluster location by mixing old location with event location by using
-            // mixing factor
-
-            location.x = ( m1 * location.x + m * event.x );
-            location.y = ( m1 * location.y + m * event.y );
+        private float updateDisparity(BinocularEvent event) {
             float thisEventDisparity = 0;
-
             // if we add events from each eye, moviing disparity and location according to each event, then a mismatch
             // in the number of events from each eye will putString cluster location closer to this eye; eventually the cluster center
             // will move so far away from one eye that that eye's inputs will be outside the cluster
             // and disparity tracking will be lost.
-
             switch ( event.eye ){
                 case LEFT:
                     thisEventDisparity = 2 * ( location.x - event.x ); // event left of cluster location makes disparity more negative
@@ -423,38 +383,12 @@ public class StereoClusterTracker extends RectangularClusterTracker{
             }
             float oldDisparity = disparity;
             disparity = (1-disparityMixingFactor) * disparity + disparityMixingFactor * thisEventDisparity;
+            return oldDisparity;
+        }
 
-            // update velocityPPT vector using old and new position only if valid dt
-            // and update it by the mixing factors
-
-            float dt = TICK_SECONDS * ( event.timestamp - lastEventTimestamp );
-            if ( dt > 0 ){
-                float oldvelx = velocityPPT.x;
-                float oldvely = velocityPPT.y;
-
-                float velx = ( location.x - oldx ) / dt;
-                float vely = ( location.y - oldy ) / dt;
-
-                float vm1 = 1 - velocityMixingFactor;
-                velocityPPT.x = vm1 * oldvelx + velocityMixingFactor * velx;
-                velocityPPT.y = vm1 * oldvely + velocityMixingFactor * vely;
-
-                float dv = ( disparity - oldDisparity ) / dt;
-                disparityVelocity = (1-disparityMixingFactor) * disparityVelocity + disparityMixingFactor * dv;
-                if ( playSounds && disparityVelocity < -soundDispVelThr ){
-                    soundPlayer.playRandom ();
-                }
-//                disparityVelocity=vm1*disparityVelocity+velocityMixingFactor*velDisp;
-            }
-            int prevLastTimestamp = lastEventTimestamp;
-            lastEventTimestamp = event.timestamp;
-            setNumEvents (getNumEvents () + 1);
-            instantaneousEventRate = 1f / ( lastEventTimestamp - prevLastTimestamp + Float.MIN_VALUE );
-        } // addEvent
-
-        /** Computes ditance of cluster to event
+        /** Computes distance of cluster to event
         @param event the event
-        @return distance of this cluster to the event in manhatten (cheap) metric (sum of abs values of x and y distance
+        @return distance of this cluster to the event in manhattan (cheap) metric (sum of abs values of x and y distance
          */
         public float distanceTo (BasicEvent event){
             BinocularEvent e = (BinocularEvent)event;
@@ -543,6 +477,32 @@ public class StereoClusterTracker extends RectangularClusterTracker{
             this.velocity3dmps = velocity3dmps;
         }
 
+        @Override
+        public void draw(GLAutoDrawable drawable) {
+            super.draw(drawable);
+            GL gl = drawable.getGL();
+            // left
+            gl.glColor3f(0, 1, 0); // green
+            gl.glLineWidth(1f);
+
+            float x = (int) getLocation().x;
+            float y = (int) getLocation().y;
+            float sy = (int) getRadius(); // sx sy are (half) size of rectangle
+            float sx = sy;
+            int x2 = (int) (x - getDisparity() / 2);
+            drawBox(gl, x2, y, sx, sy, 0);
+
+
+            // red right
+            gl.glColor3f(1, 0, 0); // green
+            gl.glLineWidth(1f);
+
+            x2 = (int) (x + getDisparity() / 2);
+            drawBox(gl, x2, y, sx, sy, 0);
+        }
+
+
+
         /** Returns disparity in pixels.
          *
          * @return disparity in pixels
@@ -557,6 +517,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
     }
 
     synchronized public void annotate (GLAutoDrawable drawable){
+        super.annotate(drawable);
         final float LINE_WIDTH = 6f; // in pixels
         if (  ! isFilterEnabled () ){
             return;
@@ -569,31 +530,37 @@ public class StereoClusterTracker extends RectangularClusterTracker{
         float[] rgb = new float[ 4 ];
         gl.glPushMatrix ();
         try{
-            for ( StereoCluster c:clusters ){
-                if ( c.isVisible () ){
+            for ( Cluster b:clusters ){
+                StereoCluster c=(StereoCluster)b;
+                if ( c.isVisible () || isShowAllClusters()){
                     int x = (int)c.getLocation ().x;
                     int y = (int)c.getLocation ().y;
 
 
                     int sy = (int)c.getRadius (); // sx sy are (half) size of rectangle
                     int sx = sy;
-
-                    if ( isColorClustersDifferentlyEnabled () ){
-                    } else{
-                        float brightness = (float)Math.max (0f,Math.min (1f,c.getLifetime () / fullbrightnessLifetime));
-                        Color color = Color.getHSBColor (.5f,1f,brightness);
-                        c.setColor (color);
-                    }
-                    c.getColor ().getRGBComponents (rgb);
-                    gl.glColor3fv (rgb,0);
-                    gl.glLineWidth (LINE_WIDTH);
-
-                    drawBox (gl,x,y,sx,sy,0);
-
-                    // draw left and right disparity clusters
+//
+//                    if ( isColorClustersDifferentlyEnabled () ){
+//                    } else{
+//                        float brightness = (float)Math.max (0.1f,Math.min (1f,c.getLifetime () / fullbrightnessLifetime));
+//                        
+//                        c.setColor(new Color(brightness,brightness,0,1f));
+//                    }
+//                    c.getColor ().getRGBComponents (rgb);
+//                    if (c.isVisible()) {
+//                        gl.glColor3fv(rgb, 0);
+//                    } else {
+//                        gl.glColor3f(.3f, .3f, .3f);
+//                    }
+//                    gl.glLineWidth (LINE_WIDTH);
+//
+//                    drawBox (gl,x,y,sx,sy,0);
+//
+//                    // draw left and right disparity clusters
 
 
                     // left
+                    if(c.isVisible()){
                     gl.glColor3f (0,1,0); // green
                     gl.glLineWidth (LINE_WIDTH / 2);
 
@@ -607,40 +574,42 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 
                     x2 = (int)( x + c.getDisparity () / 2 );
                     drawBox (gl,x2,y,sx,sy,0);
-
-
-
-                    gl.glPointSize (LINE_WIDTH);
-                    gl.glBegin (GL.GL_POINTS);
-                    {
-                        java.util.List<ClusterPathPoint> points = c.getPath ();
-                        for ( Point2D.Float p:points ){
-                            gl.glVertex2f (p.x,p.y);
-                        }
-                    }
-                    gl.glEnd ();
-
-                    // now draw velocityPPT vector
-                    if ( isUseVelocity () ){
-                        gl.glBegin (GL.GL_LINES);
-                        {
-                            gl.glVertex2i (x,y);
-                            gl.glVertex2f (x + c.getVelocityPPS ().x * getVelocityVectorScaling(),y + c.getVelocityPPS ().y * getVelocityVectorScaling());
-                        }
-                        gl.glEnd ();
                     }
 
-                    int font = GLUT.BITMAP_TIMES_ROMAN_24;
-                    GLUT glut = chip.getCanvas ().getGlut ();
-                    gl.glColor3f (1,1,1);
 
-                    gl.glRasterPos3f (c.location.x,c.location.y,0);
-                    glut.glutBitmapString (font,Integer.toString (c.getClusterNumber ()));
+//                    gl.glPointSize (LINE_WIDTH);
+//                    gl.glBegin (GL.GL_POINTS);
+//                    {
+//                        java.util.List<ClusterPathPoint> points = c.getPath ();
+//                        for ( Point2D.Float p:points ){
+//                            gl.glVertex2f (p.x,p.y);
+//                        }
+//                    }
+//                    gl.glEnd ();
+
+//                    // now draw velocityPPT vector
+//                    if ( isUseVelocity () ){
+//                        gl.glBegin (GL.GL_LINES);
+//                        {
+//                            gl.glVertex2i (x,y);
+//                            gl.glVertex2f (x + c.getVelocityPPS ().x * getVelocityVectorScaling(),y + c.getVelocityPPS ().y * getVelocityVectorScaling());
+//                        }
+//                        gl.glEnd ();
+//                    }
+
+                    if (isDisplayStereoClusterAnnotation()) {
+                        int font = GLUT.BITMAP_TIMES_ROMAN_24;
+                        GLUT glut = chip.getCanvas().getGlut();
+                        gl.glColor3f(1, 1, 1);
+
+                        gl.glRasterPos3f(c.location.x, c.location.y, 0);
+                        glut.glutBitmapString(font, Integer.toString(c.getClusterNumber()));
+                    }
 
                 } // visible cluster
             } // clusters
 
-            if ( getNearestCluster () != null ){
+            if ( isDisplayStereoClusterAnnotation() && getNearestCluster () != null ){
                 StereoCluster c = getNearestCluster ();
                 int font = GLUT.BITMAP_TIMES_ROMAN_24;
                 GLUT glut = chip.getCanvas ().getGlut ();
@@ -690,7 +659,22 @@ public class StereoClusterTracker extends RectangularClusterTracker{
             velocityMixingFactor = 1;
         }
         this.velocityMixingFactor = velocityMixingFactor;
-        getPrefs ().putFloat ("StereoClusterTracker.velocityMixingFactor",velocityMixingFactor);
+        putFloat("velocityMixingFactor",velocityMixingFactor);
+    }
+
+    /**
+     * @return the displayStereoClusterAnnotation
+     */
+    public boolean isDisplayStereoClusterAnnotation() {
+        return displayStereoClusterAnnotation;
+    }
+
+    /**
+     * @param displayStereoClusterAnnotation the displayStereoClusterAnnotation to set
+     */
+    public void setDisplayStereoClusterAnnotation(boolean displayStereoClusterAnnotation) {
+        this.displayStereoClusterAnnotation = displayStereoClusterAnnotation;
+        putBoolean("displayStereoClusterAnnotation", displayStereoClusterAnnotation);
     }
     private SoundPlayer soundPlayer = new SoundPlayer ();
     private class SoundPlayer{

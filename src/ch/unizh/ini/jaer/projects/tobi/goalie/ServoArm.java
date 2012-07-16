@@ -66,13 +66,13 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
     final int POINTS_TO_REGRESS_INITIAL=10,  POINTS_TO_REGRESS_ADDITIONAL=5,  POINTS_TO_REGRESS_MAX=20;
     final int POINTS_TO_CHECK=5; // for checking learning
 
-    private final int LEARN_POSITION_DELAY_MS=400; // settling time ms
+    private final int LEARN_POSITION_DELAY_MS=200; // settling time ms
 
     private final int SWEEP_DELAY_MS=250; // arm does sweep at start to capture tracking from any noise, this is delay between sweep left and sweep right
 
     private final int SWEEP_COUNT=3; // arm, sweeps this many times to capture tracking from noisy input
 
-    final float SHAKE_AMOUNT=0.005f; // 1/2 total amount to shake by out of 0-1 range
+    final float SHAKE_AMOUNT=0.004f; // 1/2 total amount to shake by out of 0-1 range
 
     final int SHAKE_COUNT=10; // 1/2 total number of shakes
 
@@ -244,8 +244,6 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
         }
 
     }
-    public void annotate(float[][][] frame){
-    }
 
     public void annotate(GLAutoDrawable drawable){
         if(!isAnnotationEnabled()){
@@ -282,7 +280,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
      * @return arm x position in image space, or the last measurement if no arm is tracked
      */
     public synchronized int getActualPosition(){
-        if(armTracker.getClusters().size()>0&&
+        if(armTracker.getNumClusters()>0&&
                 armTracker.getClusters().get(0).isVisible()){
             getposition_lastpos=(int)armTracker.getClusters().get(0).location.x;
         }
@@ -808,7 +806,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
 
                     //random number between left and right boundary
                     Point p=new Point();
-                    p.y=Math.random()*(rightBoundary-leftBoundary)+leftBoundary;
+                    p.y=(Math.random()*(servoLimitRight-servoLimitLeft))+servoLimitLeft;
                     checkHardware();
                     if(getServoInterface()!=null&&getServoInterface().isOpen()){
                         father.setServo((float)p.y);
@@ -830,6 +828,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
                         }
 
                         pointHistory.addLast(p);
+                        log.info("added learning point attempt #"+attemptNumber+" to result in pixel="+p.x+" for servo="+p.y);
                     }
 
                 }catch(InterruptedException e){
@@ -884,25 +883,27 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
 
         }
         private boolean isAccurate() throws InterruptedException{
-            log.info("checking learning");
+            log.info("checking learning, points set,meas,err:");
             //okay lets see how good we are
             int n;
             int error=0;
-            StringBuilder sb=new StringBuilder("points set,meas,err: ");
-
+            float xmin=30;
+            float xmax=father.chip.getSizeX()-30;
+            float dx=(xmax-xmin)/POINTS_TO_CHECK;
             for(n=0;n<POINTS_TO_CHECK;n++){
-                int pointToCheck=(int)(Math.random()*(double)father.chip.getSizeX()); // choose a pixel x position for arm
+                int pointToCheck=(int)(xmin+n*dx); // choose a pixel x position for arm
+                
                 int measuredPoint=measureArmPosition(getOutputFromPosition(pointToCheck)); // putString the arm there, wiggle it, and measure the arm cluster location
                 int thisErr=Math.abs(pointToCheck-measuredPoint);
                 error+=thisErr;
-                sb.append(String.format("%d,%d,%d, ",pointToCheck,measuredPoint,thisErr));
+                System.out.println(String.format("%d,%d,%d",pointToCheck,measuredPoint,thisErr));
             }
 
             if(error/POINTS_TO_CHECK<getAcceptableAccuracyPixels()){
-                log.info("learning ok: "+sb.toString()+"\navg abs error="+error/POINTS_TO_CHECK+" pixels");
+                log.info("learning OK: \navg abs error="+error/POINTS_TO_CHECK+" pixels");
                 return true;
             }else{
-                log.warning("learning NOT OK: "+sb.toString()+"\navg abs error="+error/POINTS_TO_CHECK+" pixels");
+                log.warning("learning *NOT* OK: \navg abs error="+error/POINTS_TO_CHECK+" pixels");
                 return false;
             }
         }

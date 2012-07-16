@@ -35,14 +35,16 @@ import javax.media.opengl.glu.*;
 import net.sf.jaer.Description;
 import net.sf.jaer.eventprocessing.filter.RotateFilter;
 import net.sf.jaer.stereopsis.StereoClusterTracker;
+import org.ine.telluride.jaer.tell2011.head6axis.Head6DOF_ServoController;
 
 /**
- * Controls a servo motor that swings an arm in the way of a ball rolling towards a goal box.
+ * Controls a servo arm in the way of a ball rolling towards a goal box.
  * Calibrates itself as well.
+ * Uses stereo pair of DVS.
  *
  * @author tGoalielbruck/manuel lang
  */
-@Description("Goalie robot")
+@Description("Stereo Vision Binocular Goalie robot from Telluride 2012")
 public class StereoGoalie extends EventFilter2D implements FrameAnnotater, Observer{
 
     final String LOGGING_FILENAME="goalie.csv";
@@ -135,6 +137,7 @@ public class StereoGoalie extends EventFilter2D implements FrameAnnotater, Obser
         xYFilter = new XYTypeFilter(chip);
         tableFilter=new GoalieTableFilter(chip);
 
+        trackingFilterChain.add(new Head6DOF_ServoController(chip));
         trackingFilterChain.add(new RotateFilter(chip));
         trackingFilterChain.add(new BackgroundActivityFilter(chip));
         trackingFilterChain.add(tableFilter);
@@ -331,14 +334,6 @@ public class StereoGoalie extends EventFilter2D implements FrameAnnotater, Obser
         }
     }
 
-    /** not used */
-    public void annotate(float[][][] frame) {
-    }
-
-    /** not used */
-    public void annotate(Graphics2D g) {
-    }
-
     GLUquadric ballQuad;
     GLU glu;
     float[] ballColor=new float[3];
@@ -360,7 +355,7 @@ public class StereoGoalie extends EventFilter2D implements FrameAnnotater, Obser
         }
         if(glu==null) glu=new GLU();
         if(ballQuad==null) ballQuad = glu.gluNewQuadric();
-        gl.glColor3fv(ballColor,0);
+        gl.glColor3f(1,1,0);
         gl.glPushMatrix();
         gl.glTranslatef(x,y,0);
         glu.gluQuadricDrawStyle(ballQuad,GLU.GLU_FILL);
