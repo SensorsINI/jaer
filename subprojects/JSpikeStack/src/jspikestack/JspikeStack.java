@@ -450,6 +450,7 @@ public class JspikeStack {
         frm.pack();
         frm.setVisible(true);
         frm.toFront();
+        frm.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         
     }
     
