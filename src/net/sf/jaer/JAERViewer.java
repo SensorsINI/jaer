@@ -51,7 +51,14 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
  * @author tobi
  */
 public class JAERViewer {
-
+    
+    // Set default arg to true for multi-start mode */
+    public JAERViewer()
+    {   this(true);
+    }
+    
+    
+    
     /** Root preferences object for jAER
      * 
      */
@@ -86,10 +93,6 @@ public class JAERViewer {
     boolean multistartmode=true;
     
     
-    // Set default arg to true for multi-start mode */
-    public JAERViewer()
-    {   this(false);
-    }
     
     /** Creates a new instance of JAERViewer */
     public JAERViewer(boolean multimode) {

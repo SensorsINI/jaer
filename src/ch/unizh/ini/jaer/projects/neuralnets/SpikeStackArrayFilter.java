@@ -11,8 +11,10 @@ import ch.unizh.ini.jaer.projects.integrateandfire.ClusterEvent;
 import ch.unizh.ini.jaer.projects.integrateandfire.ClusterSet;
 import java.awt.GridBagLayout;
 import java.io.File;
-import jspikestack.STPStack;
+import jspikestack.LIFUnit;
+import jspikestack.STPLayer;
 import jspikestack.SpikeStack;
+import jspikestack.Unit;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -26,6 +28,10 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 public class SpikeStackArrayFilter extends EventFilter2D{
 
     NetworkList netArr;
+    
+    SpikeStack net;
+    STPLayer.Globals lg;
+    LIFUnit.Globals ug;
     
     File startDir=new File(getClass().getClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../subprojects/JSpikeStack/files/nets");
     
@@ -69,7 +75,14 @@ public class SpikeStackArrayFilter extends EventFilter2D{
     {
         
         /* Step 1: Grab the network */
-        SpikeStack net=new SpikeStack();
+        STPLayer.Factory<STPLayer> layerFactory=new STPLayer.Factory();
+        LIFUnit.Factory unitFactory=new LIFUnit.Factory(); 
+                
+        lg= layerFactory.glob;
+        ug = unitFactory.glob;
+                
+        net=new SpikeStack(layerFactory,unitFactory);
+//        buildFromXML(net);
 //        STPStack<STPStack,STPStack.Layer> net = new STPStack();
         
         net.read.readFromXML(net,startDir);    
@@ -77,9 +90,13 @@ public class SpikeStackArrayFilter extends EventFilter2D{
         if (!net.isBuilt())
             return;
         
-        net.tau=200f;
-        net.delay=10f;
-        net.tref=5;
+               
+        if (!net.isBuilt())
+            return;
+        
+        ug.setTau(200000);
+        net.delay=10000;
+        ug.setTref(5);
         
         net.plot.timeScale=1f;
         
@@ -90,7 +107,13 @@ public class SpikeStackArrayFilter extends EventFilter2D{
         net.setBackwardStrength(sigb);
         
         // Up the threshold
-        net.scaleThresholds(500);
+//        net.scaleThresholds(500);
+        
+        
+        for (int i=0; i<net.nLayers(); i++)
+            for (Unit u:net.lay(i).units)
+                u.thresh*=400;
+        
         
 //        net.fastWeightTC=2;
 //        
@@ -108,11 +131,10 @@ public class SpikeStackArrayFilter extends EventFilter2D{
         net.liveMode=true;
         net.plot.realTime=true;
         
-        net.plot.updateMillis=100;
+        net.plot.updateMicros=100000;
         
         net.inputCurrents=true;
-        net.inputCurrentStrength=.1f;
-        
+        net.lay(0).inputCurrentStrength=.5f;
         
 //        STPStack<STPStack,STPStack.Layer> net2=net.read.copy();
         

@@ -127,7 +127,7 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
         
         public static class Factory<LayerType extends BasicLayer> extends BasicLayer.Factory<LayerType>
         {
-            Globals glob;
+            public Globals glob;
             
             public Factory()
             {   glob = new Globals();
@@ -141,11 +141,16 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
         }
         
         
-        public static class Globals
+        public static class Globals extends NetController
         {
             public STDPrule stdp=new STDPrule();;
     
             public int stdpWin;
+
+            @Override
+            public String getName() {
+                return "Layer Conroller Globals";
+            }
 
             public static class STDPrule implements Serializable{
 
@@ -163,9 +168,76 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
                         return (float) (minusStrength * (Math.exp(dt / stdpTCminus)));
                     }
                 }
+                
             }
             
+            
+            /** Strength Constant of Pre-Before-Post */
+            public float getPlusStrength() {
+                return stdp.plusStrength;
+            }
+
+            /** Strength Constant of Pre-Before-Post */
+            public void setPlusStrength(float plusStrength) {
+                this.stdp.plusStrength = plusStrength;
+            }
+
+            /** Strength Constant of Post-Before-Pre */
+            public float getMinusStrength() {
+                return stdp.minusStrength;
+            }
+
+            /** Strength Constant of Post-Before-Pre */
+            public void setMinusStrength(float minusStrength) {
+                this.stdp.minusStrength = minusStrength;
+            }
+
+            /** Time constant of Pre-before-Post */
+            public float getStdpTCplus() {
+                return stdp.stdpTCplus;
+            }
+
+            /** Time constant of Pre-before-Post */
+            public void setStdpTCplus(float stdpTCplus) {
+                this.stdp.stdpTCplus = stdpTCplus;
+            }
+
+            /** Time Constant of Post-Before-Pre */
+            public float getStdpTCminus() {
+                return stdp.stdpTCminus;
+            }
+
+            /** Time Constant of Post-Before-Pre */
+            public void setStdpTCminus(float stdpTCminus) {
+                this.stdp.stdpTCminus = stdpTCminus;
+            }
+                
+            
+            
+            
+            
         }
+        
+        
+        
+        @Override
+        public NetController getControls()
+        {   return new Controller();
+        }
+        
+        class Controller extends BasicLayer.Controller
+        {   /** enable STDP learning? */
+            public boolean isEnableSTDP() {
+                return enableSTDP;
+            }
+
+            /** enable STDP learning? */
+            public void setEnableSTDP(boolean enableSTDP) {
+                STDPLayer.this.enableSTDP = enableSTDP;
+            }
+        }
+        
+        
         
 
 //    }

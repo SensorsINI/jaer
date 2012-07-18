@@ -14,15 +14,16 @@ import java.util.ArrayList;
 public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer> 
 {
     NetType net;
-
+    
     float[][] wOut;
     float[][] wLat;
 
+    String name="";
     
     Unit.Factory unitFactory; // Factory class for making units
 
     int ixLayer;
-    Unit[] units;
+    public Unit[] units;
     //EvtStack g;     // Pointer to the 'global' stack
     ArrayList<LayerType> Lin=new ArrayList();
     LayerType Lout=null;
@@ -34,6 +35,8 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer>
     float backSend=0;   // Strength of feedback connenctions
     float latSend=0;    // Strength of lateral connections
 
+    public float inputCurrentStrength=1;
+    
     transient public ArrayList<Spike> outBuffer=new ArrayList();
 
     /** Instantiate Layer with index */
@@ -55,7 +58,21 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer>
         }
     }
     
-    /** Fire Currents to this layer... */
+    /** Return unit at index */
+    public Unit getUnit(int index)
+    {
+        return units[index];
+    }
+    
+    /** Fires to an input unit, but weights is by the inputCurrentStrength for this layer */
+    public void fireInputTo(int unitIndex)
+    {
+        fireTo(unitIndex,inputCurrentStrength);
+        
+    }
+    
+    
+    /** Fire current to a given unit in this layer... */
     public void fireTo(int unitIndex,float inputCurrent)
     {
         Spike ev=units[unitIndex].fireTo(net.time,inputCurrent);
@@ -81,7 +98,6 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer>
         
         
     }
-    
     
 
     /** Reset Layer */
@@ -181,6 +197,9 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer>
         wLat=new float[nUnits][];
         
         setDefaultDims();
+        
+        for (int i=0;i<nUnits;i++)
+            units[i]=makeNewUnit(i);
     }
 
     /** Return a new unit with the given index */
@@ -254,6 +273,65 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer>
         
         
     }
+    
+    public NetController getControls()
+    {   return new Controller();
+    }
+    
+    public class Controller extends NetController
+    {
+
+        @Override
+        public String getName() {
+            return "Layer "+ixLayer;
+        }
+        
+
+        /** Get the weight of the external-input currents */
+        public float getInputCurrentStrength() {
+            return inputCurrentStrength;
+        }
+
+        /** Set the weight of the external-input currents */
+        public void setInputCurrentStrength(float inputCurrentStreng) {
+            inputCurrentStrength = inputCurrentStreng;
+        }
+        
+        /** Send Forwards? */
+        public boolean isFwdSend() {
+            return fwdSend>0;
+        }
+
+        /** Send Forwards? */
+        public void setFwdSend(boolean fwdSend) {
+            BasicLayer.this.fwdSend = fwdSend?1:0;
+        }
+
+        /** Send Backwards? */
+        public boolean isBackSend() {
+            return backSend>0;
+        }
+
+        /** Send Backwards? */
+        public void setBackSend(boolean bckSend) {
+            backSend = bckSend?1:0;
+        }
+
+        /** Send Laterally? */
+        public boolean isLatSend() {
+            return  latSend>0;
+        }
+
+        /** Send Laterally? */
+        public void setLatSend(boolean latSend) {
+            BasicLayer.this.latSend = latSend?1:0;
+        }
+        
+        
+        
+        
+    }
+    
     
     
 }

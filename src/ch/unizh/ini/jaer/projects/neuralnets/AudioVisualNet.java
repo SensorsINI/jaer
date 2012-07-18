@@ -4,7 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.neuralnets;
 
-import jspikestack.SpikeStack;
+import jspikestack.*;
 import net.sf.jaer.chip.AEChip;
 
 /**
@@ -13,18 +13,10 @@ import net.sf.jaer.chip.AEChip;
  */
 public class AudioVisualNet extends SpikeFilter {
 
-    SpikeStack net;
     
     public AudioVisualNet(AEChip chip)
     {   super(chip,2);  // 2 inputs
         
-    }
-    
-    @Override
-    public SpikeStack getInitialNet() {
-        net=new SpikeStack();
-        buildFromXML(net);
-        return net;
     }
 
     @Override
@@ -35,6 +27,9 @@ public class AudioVisualNet extends SpikeFilter {
         map.inDimY=(short)chip.getSizeY(); 
         map.outDimX=net.lay(0).dimx;
         map.outDimY=net.lay(0).dimy;
+        
+        if (map.outDimX==0)
+            throw new RuntimeException("Chip Appears to have 0 dimension.  This will mess up the mapping of events.");
         
         return new NetMapper(){
 
@@ -67,14 +62,14 @@ public class AudioVisualNet extends SpikeFilter {
     }
 
     @Override
-    public void customizeNet(SpikeStack net) {
+    public void customizeNet(SpikeStack neet) {
         
         if (!net.isBuilt())
             return;
         
-        net.tau=200f;
-        net.delay=10f;
-        net.tref=5;
+        unitGlobs.setTau(200000);
+        net.delay=10000;
+        unitGlobs.setTref(5000);
         
         net.plot.timeScale=1f;
         
@@ -85,33 +80,62 @@ public class AudioVisualNet extends SpikeFilter {
         net.setBackwardStrength(sigb);
         
         // Up the threshold
-        net.scaleThresholds(500);
+        layGlobs.setFastWeightTC(2);
         
-//        net.fastWeightTC=2;
-//        
-//        net.lay(1).enableFastSTDP=true;
-//        net.lay(3).enableFastSTDP=true;
-//        
-//        
-//        net.fastSTDP.plusStrength=-.001f;
-//        net.fastSTDP.minusStrength=-.001f;   
-//        net.fastSTDP.stdpTCminus=10;
-//        net.fastSTDP.stdpTCplus=10;
+        net.lay(1).enableFastSTDP=true;
+        net.lay(3).enableFastSTDP=true;        
+        layGlobs.fastSTDP.plusStrength=(-.01f);
+        layGlobs.fastSTDP.minusStrength=(-.01f);   
+        layGlobs.fastSTDP.stdpTCminus=(10000);
+        layGlobs.fastSTDP.stdpTCplus=(10000);
+        
+        
+        
+        for (int i=0; i<net.nLayers(); i++)
+            for (Unit u:net.lay(i).units)
+                u.thresh*=400;
         
         net.plot.timeScale=1f;
         
         net.liveMode=true;
         net.plot.realTime=true;
         
-        net.plot.updateMillis=100;
+        net.plot.updateMicros=100000;
         
         net.inputCurrents=true;
-        net.inputCurrentStrength=.5f;
+        
+        
+        setVisualInputStrength(getVisualInputStrength());
+        setAudioInputStrength(getAudioInputStrength());
+//        net.lay(0).inputCurrentStrength=2f;
+//        
+//        net.lay(3).inputCurrentStrength=.2f;
+//        
+        
+        net.unrollRBMs();
+        
     }
 
     @Override
     public String[] getInputNames() {
         return new String[] {"Retina","Cochlea"};
+    }
+    
+    
+    float visualInputStrength=2;
+    public void setVisualInputStrength(float s)
+    {   net.lay(0).inputCurrentStrength=visualInputStrength=s;
+    }
+    public float getVisualInputStrength()
+    {   return visualInputStrength;        
+    }
+    
+    float audioInputStrength=2;
+    public void setAudioInputStrength(float s)
+    {   net.lay(3).inputCurrentStrength=audioInputStrength=s;
+    }
+    public float getAudioInputStrength()
+    {   return audioInputStrength;        
     }
     
 }

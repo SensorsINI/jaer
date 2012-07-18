@@ -101,7 +101,7 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
     public float currentFastWeightValue(int source,int dest)
     {   
 
-        return wOutFast[source][dest]*(float)Math.exp((wOutFastTimes[source][dest]-net.time)/glob.fastWeightTC);
+        return wOutFast[source][dest]*(float)Math.exp((wOutFastTimes[source][dest]-net.time)/glob.getFastWeightTC());
 
     }
 
@@ -116,7 +116,7 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
 
     public static class Factory<LayerType extends BasicLayer> extends BasicLayer.Factory<LayerType>
     {
-        Globals glob;
+        public Globals glob;
 
         public Factory()
         {   glob = new Globals();
@@ -133,12 +133,40 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
     public static class Globals extends STDPLayer.Globals
     {
 
-        public float fastWeightTC;
+        private float fastWeightTC;
 
         public STDPLayer.Globals.STDPrule fastSTDP=new STDPLayer.Globals.STDPrule();
 
+        /** Time Constant for fast-weights */
+        public float getFastWeightTC() {
+            return fastWeightTC;
+        }
+
+        /** Time Constant for fast-weights */
+        public void setFastWeightTC(float fastWeightTC) {
+            this.fastWeightTC = fastWeightTC;
+        }
+
     }
 
+
+
+    @Override
+    public NetController getControls()
+    {   return new Controller();
+    }
+
+    class Controller extends BasicLayer.Controller
+    {   /** enable STDP learning? */
+        public boolean isEnableFastWeights() {
+            return enableFastSTDP;
+        }
+
+        /** enable STDP learning? */
+        public void setEnableFastWeights(boolean enable) {
+            STPLayer.this.enableFastSTDP = enable;
+        }
+    }
     
     
     

@@ -4,7 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.neuralnets;
 
-import jspikestack.SpikeStack;
+import jspikestack.*;
 import net.sf.jaer.chip.AEChip;
 
 /**
@@ -13,8 +13,11 @@ import net.sf.jaer.chip.AEChip;
  */
 public class NumberNet extends SpikeFilter {
 
-    SpikeStack net;
-    
+//    SpikeStack<STPLayer,Spike> net;
+//    
+//    STPLayer.Globals lg;
+//    LIFUnit.Globals ug;
+//    
     public NumberNet(AEChip chip)
     {   super(chip,2);
     }
@@ -31,13 +34,22 @@ public class NumberNet extends SpikeFilter {
         
     }
 
-    @Override
-    public SpikeStack getInitialNet() {
-        net=new SpikeStack();
-        buildFromXML(net);
-//        net.read.readFromXML(net);
-        return net;
-    }
+//    @Override
+//    public SpikeStack getInitialNet() {
+//        
+//        STPLayer.Factory<STPLayer> layerFactory=new STPLayer.Factory();
+//        LIFUnit.Factory unitFactory=new LIFUnit.Factory(); 
+//                
+//        lg= layerFactory.glob;
+//        ug = unitFactory.glob;
+//        
+//        
+//        
+//        net=new SpikeStack(layerFactory,unitFactory);
+//        buildFromXML(net);
+////        net.read.readFromXML(net);
+//        return net;
+//    }
 
     @Override
     public void customizeNet(SpikeStack netw) {
@@ -45,41 +57,50 @@ public class NumberNet extends SpikeFilter {
         if (!net.isBuilt())
             return;
         
-        net.tau=200f;
-        net.delay=10f;
-        net.tref=5;
+        unitGlobs.setTau(100000);
+        net.delay=12000;
+        unitGlobs.setTref(5000);
         
         net.plot.timeScale=1f;
         
         // Set up connections
-        float[] sigf={1, 1, 0, 0};
+        float[] sigf={1, 1, 0, 1};
         net.setForwardStrength(sigf);
-        float[] sigb={0, 0, 0, 1};
+        float[] sigb={0, 1, 0, 1};
         net.setBackwardStrength(sigb);
         
         // Up the threshold
-        net.scaleThresholds(500);
+//        net.scaleThresholds(500);
         
-//        net.fastWeightTC=2;
+        
+        for (int i=0; i<net.nLayers(); i++)
+            for (Unit u:net.lay(i).units)
+                u.thresh*=600;
+        
+        
+//        lg.fastWeightTC=2;
 //        
 //        net.lay(1).enableFastSTDP=true;
 //        net.lay(3).enableFastSTDP=true;
 //        
+//            
 //        
-//        net.fastSTDP.plusStrength=-.001f;
-//        net.fastSTDP.minusStrength=-.001f;   
-//        net.fastSTDP.stdpTCminus=10;
-//        net.fastSTDP.stdpTCplus=10;
-        
+//        lg.fastSTDP.plusStrength=-.001f;
+//        lg.fastSTDP.minusStrength=-.001f;   
+//        lg.fastSTDP.stdpTCminus=10;
+//        lg.fastSTDP.stdpTCplus=10;
+//        
         net.plot.timeScale=1f;
         
         net.liveMode=true;
         net.plot.realTime=true;
         
-        net.plot.updateMillis=100;
+        net.plot.updateMicros=100000;
         
         net.inputCurrents=true;
-        net.inputCurrentStrength=.5f;
+        net.lay(0).inputCurrentStrength=.5f;
+        
+        net.unrollRBMs();
         
     }
 
@@ -87,5 +108,24 @@ public class NumberNet extends SpikeFilter {
     public String[] getInputNames() {
         return new String[] {"Retina"};
     }
+    
+    
+    public float getInputCurrentStrength() {
+        
+        if (net==null)
+            return 0;
+        
+        return net.lay(0).inputCurrentStrength;
+    }
+
+    
+    public void setInputCurrentStrength(float inputCurrentStrength) {
+        if (net==null)
+            return;
+        
+        this.net.lay(0).inputCurrentStrength = inputCurrentStrength;
+    }
+    
+    
 
 }

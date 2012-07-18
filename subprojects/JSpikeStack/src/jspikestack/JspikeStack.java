@@ -7,15 +7,19 @@ package jspikestack;
 //import org.ejml.data.DenseMatrix64F;
 
 
-import java.awt.*;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
-import javax.swing.*;
-import jspikestack.LIFUnit.Globals;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JTextArea;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
@@ -32,6 +36,9 @@ import org.jfree.experimental.chart.plot.CombinedXYPlot;
  * 
  * HAVE FUN.
  * 
+ * WebSite:
+ * 
+ * @se  http://sites.google.com/site/thebrainbells/home/jspikestack
  * @author oconnorp
  */
 public class JspikeStack {
@@ -64,17 +71,22 @@ public class JspikeStack {
         LIFUnit.Factory unitFactory=new LIFUnit.Factory();        
         SpikeStack<STPLayer,Spike> net=new SpikeStack(layerFactory,unitFactory);
         
+//        GeneralController cont=new GeneralController();
+//        cont.addController(unitFactory.glob);
+        
+        
         STPLayer.Globals lg= layerFactory.glob;
-                
         LIFUnit.Globals un = unitFactory.glob;
+        
+        
              
         
 //        STPLayer<STPStack,STPLayer.Layer> net = new STPLayer();
         net.read.readFromXML(net);    
        
-        un.tau=100000;
+        un.setTau(200000);
         net.delay=12000;
-        un.tref=5000;
+        un.setTref(5000);
 //        un.delay=12000;
         
         
@@ -93,22 +105,22 @@ public class JspikeStack {
         // Up the threshold
         for (int i=0; i<net.layers.size(); i++)
             for (Unit u:net.lay(i).units)
-                u.thresh*=400;
+                u.thresh*=600;
         
         
-        lg.fastWeightTC=2000000;
+        lg.setFastWeightTC(2000000);
         
-        net.lay(1).enableSTDP=false;
-        net.lay(3).enableSTDP=false;
-        
-        net.lay(1).enableFastSTDP=true;
-        net.lay(3).enableFastSTDP=true;
+//        net.lay(1).enableSTDP=false;
+//        net.lay(3).enableSTDP=false;
+//        
+//        net.lay(1).enableFastSTDP=false;
+//        net.lay(3).enableFastSTDP=false;
         
         lg.stdpWin=30000;
-        lg.fastSTDP.plusStrength=-.001f;
-        lg.fastSTDP.minusStrength=-.001f;   
-        lg.fastSTDP.stdpTCminus=10000;
-        lg.fastSTDP.stdpTCplus=10000;
+        lg.fastSTDP.plusStrength=(-.001f);
+        lg.fastSTDP.minusStrength=(-.001f);   
+        lg.fastSTDP.stdpTCminus=(10000);
+        lg.fastSTDP.stdpTCplus=(10000);
         
         for (int i=0; i<nEvents; i++)
         {   int number=i<nEvents/2?8:2;
@@ -119,9 +131,18 @@ public class JspikeStack {
         
 //        STPLayer<STPStack,STPLayer.Layer> net2=net.read.copy();
         
+        
+        net.plot.addControls(net.getControls());
+        net.plot.addControls(unitFactory.glob);
+        net.plot.addControls(layerFactory.glob);
+        for (BasicLayer l:net.layers)
+            net.plot.addControls(l.getControls());
+        
+        
+        
         net.plot.followState();
         
-        net.eatEvents(10000000);
+        net.eatEvents(20000000);
         
 //        STPLayer net2=net.read.copy();
         
@@ -152,10 +173,10 @@ public class JspikeStack {
 //        
 //        ini.thresh          = 1;
            
-        lg.stdp.plusStrength    = .018f;
-        lg.stdp.minusStrength    = -.01f;
-        lg.stdp.stdpTCplus      = 5000;
-        lg.stdp.stdpTCminus     = 10000;
+        lg.stdp.plusStrength=(.018f);
+        lg.stdp.minusStrength=(-.01f);
+        lg.stdp.stdpTCplus=(5000);
+        lg.stdp.stdpTCminus=(10000);
         
         lg.stdpWin         = 30000;
         
@@ -174,9 +195,9 @@ public class JspikeStack {
         ini.lay(1).WlatMean = -1f;
         ini.lay(1).WlatStd  = .1f;
         
-        ug.tau             = 20000;
-        ug.tref            = 5000;     
-        ug.thresh=1;
+        ug.setTau(20000);
+        ug.setTref(5000);     
+        ug.setThresh(1);
         
         SpikeStack<STDPLayer,Spike> es=new SpikeStack(ini,layerFactory,unitFactory);
                 
@@ -186,7 +207,7 @@ public class JspikeStack {
         es.lay(0).enableSTDP=true;
         
         es.inputCurrents=false;
-        es.inputCurrentStrength=0.5f;
+        es.lay(0).inputCurrentStrength=0.5f;
         
         
         int nEpochs     = 10;

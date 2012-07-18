@@ -7,6 +7,9 @@ package ch.unizh.ini.jaer.projects.neuralnets;
 import java.awt.Component;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import jspikestack.LIFUnit;
+import jspikestack.STPLayer;
+import jspikestack.Spike;
 import jspikestack.SpikeStack;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -17,58 +20,25 @@ import net.sf.jaer.graphics.DisplayWriter;
 /**
  * This should be a superclass for all SpikeStack-based filters.  If you'd like 
  * to build a spiking-network filter, simply extend this class, implement all
- * abstract methods and add a constructer with (AEChip chip, int nInputs) as 
+ * abstract methods and add a constructor with (AEChip chip, int nInputs) as 
  * arguments
  * 
  * @author Peter
  */
 public abstract class SpikeFilter extends MultiSourceProcessor {
 
-    SpikeStackWrapper wrapNet;
+    // <editor-fold desc=" Properties ">
     
-    /** Create a spikeFilter with the given chip and number of input event sources */
-    public SpikeFilter(AEChip chip, int sensoryInputs)
-    {   super(chip,sensoryInputs);    
-    }
-    
-    /** Return an initialized network */
-    public abstract SpikeStack getInitialNet();
-    
-    /** Given the network, make a NetMapper object */
-    public abstract NetMapper makeMapper(SpikeStack net);
-    
-    /** Apply various parameters on the network. */
-    public abstract void customizeNet(SpikeStack net);
+    SpikeStackWrapper wrapNet;    
+    SpikeStack<STPLayer,Spike> net;
+    STPLayer.Globals layGlobs;  // Layer Global Controls
+    LIFUnit.Globals unitGlobs; // Unit Global Controls
         
-    // ---------------- Implemented Filter Methods -----------------------------
     
-    @Override
-    public void initFilter()
-    {
-    }
-    
-    /** Build the given network from XML (you can also do this directly though
-     the SpikeStack.read object, but this method will start the file finder in 
-     the appropriate directory.)
-     */
-    public void buildFromXML(SpikeStack net)
-    {
-        SpikeStackWrapper.buildFromXML(net);
-    }
-    
-    @Override
-    public void resetFilter()
-    {   if (wrapNet!=null)
-            wrapNet.reset();        
-    }
-    
-    public void setNetwork(SpikeStack net,NetMapper map)
-    {
-        wrapNet=new SpikeStackWrapper(net,map);
-    }
+    // </editor-fold>
+            
+    // <editor-fold desc=" Obligatory Filter Methods ">
         
-    BasicEvent lastEv=null;
-    
     /** Do standard event processing ops for the given network.  If you'd like
      *  to do more processing, it's recommended that you override this method, with 
      *  "super.filterPacket(in);" as the first line, then your custom code,
@@ -100,6 +70,77 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         return in;
     }
     
+    /** Create a spikeFilter with the given chip and number of input event sources */
+    public SpikeFilter(AEChip chip, int sensoryInputs)
+    {   super(chip,sensoryInputs);    
+    }
+    
+    @Override
+    public void initFilter()
+    {
+    }
+        
+    @Override
+    public void resetFilter()
+    {   
+        wrapNet=null;
+    }
+        
+    // </editor-fold>
+    
+    // <editor-fold desc=" Neural Network Builders ">
+    
+    /** Grab a network from file. */
+    public SpikeStack getInitialNet() {
+                
+        STPLayer.Factory<STPLayer> layerFactory=new STPLayer.Factory();
+        LIFUnit.Factory unitFactory=new LIFUnit.Factory(); 
+                
+        net=new SpikeStack(layerFactory,unitFactory);
+        buildFromXML(net);
+        
+        layGlobs=layerFactory.glob;
+        unitGlobs=unitFactory.glob;
+        
+        
+        return net;
+    }
+    
+    
+    /** Build the given network from XML (you can also do this directly though
+     the SpikeStack.read object, but this method will start the file finder in 
+     the appropriate directory.)
+     */
+    public void buildFromXML(SpikeStack net)
+    {
+        SpikeStackWrapper.buildFromXML(net);
+    }
+    
+    
+    public void setNetwork(SpikeStack net,NetMapper map)
+    {
+        wrapNet=new SpikeStackWrapper(net,map);
+    }
+        
+    BasicEvent lastEv=null;
+    
+    
+    
+    
+    // </editor-fold>
+    
+    // <editor-fold desc=" Abstract Methods ">
+        
+    /** Given the network, make a NetMapper object */
+    public abstract NetMapper makeMapper(SpikeStack net);
+    
+    /** Apply various parameters on the network. */
+    public abstract void customizeNet(SpikeStack net);
+            
+    // </editor-fold>
+        
+    // <editor-fold desc=" GUI Methods ">
+    
     public class NetworkPlot implements DisplayWriter
     {
 
@@ -130,15 +171,18 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         
     }
     
-    
-    // ------------------ Gui Filter Methods -----------------------------------
-    
     /** Grab the network from and XML file */
     public void doInitialize_Network()
     {
         SpikeStack net=getInitialNet();
         wrapNet=new SpikeStackWrapper(net,makeMapper(net));
         customizeNet(net);
+    }
+    
+    /** Grab the network from and XML file */
+    public void doReload_Parameters()
+    {
+        customizeNet(wrapNet.net);
     }
     
     /** Start plotting the network */
@@ -156,4 +200,27 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         
     }
     
+    public void doReset_Network()
+    {
+        
+        if (wrapNet!=null)
+            wrapNet.reset();
+    }
+    
+    
+    // </editor-fold>
+    
+    // <editor-fold desc=" Controller Methods ">
+    
+    public void setThing(boolean t)
+    {
+        
+    }
+    
+    public boolean getThing()
+    {
+        return true;
+    }
+    
+    // </editor-fold>
 }

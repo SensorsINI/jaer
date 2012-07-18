@@ -10,16 +10,13 @@ package jspikestack;
  */
 public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals,Spike>
 {
-    int ixUnit; 
-
+    int ixUnit;
     float vmem=0;
-//    float thresh;
-
-    Globals glob;
-    
+    public Globals glob;
     int tlast=-1;   // Last spike time
     int clast=0;   // Last update time
 
+    
     public LIFUnit(Globals globs,int index)
     {   glob=globs;
         ixUnit=index;
@@ -38,15 +35,21 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals,Sp
 
     /** Updates the membrane voltage given an input current */
     public void updateMem(int time,float current){
-        if (time>tlast+glob.tref) // Refractory period
-        {   vmem=(float)(vmem*Math.exp((clast-time)/glob.tau)+current);
+        if (time>tlast+glob.getTref()) // Refractory period
+        {   vmem=(float)(vmem*Math.exp((clast-time)/glob.getTau())+current);
             clast=time;
         }
     }
 
     /** Boolean.. determines whether to spike */
     public boolean doSpike(){
-        return vmem>(thresh<0?glob.thresh:thresh);                
+        return vmem>(getThresh()<0?glob.getThresh():thresh);                
+    }
+    
+    /** Get the neuron threshold (it can be either local or global */
+    public float getThresh()
+    {
+        return glob.globalThresh?glob.getThresh():thresh;
     }
 
     /** Reset the unit to a baseline state */
@@ -59,6 +62,17 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals,Sp
     
     public void resetmem()
     {   vmem=0;
+    }
+
+    /** Copy this unit to create a new one.. keeping the same global params object! */
+    @Override
+    public LIFUnit copy() {
+        LIFUnit cop=new LIFUnit(glob,ixUnit);
+        
+        cop.thresh=thresh;
+        cop.name=name;
+        
+        return cop;
     }
     
     
@@ -109,13 +123,52 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals,Sp
         return new Spike(time,ixUnit);
     }
                
-    public static class Globals
-    {   float tref=5000;
-        float tau=100000;
-        boolean resetAfterFire=true;
-        float thresh;
+    public static class Globals extends NetController
+    {   private float tref=5000;
+        private float tau=100000;
+        public boolean resetAfterFire=true;
+        private float thresh;
         
-//        int delay;
+        public boolean globalThresh;
+        
+        public void setGlobalThresh(float newThresh)
+        {   setThresh(newThresh);     
+        }                
+        
+        /** Get Global Threshold */
+        public float getThresh() {
+            return thresh;
+        }
+
+        /** Set Global Threshold */
+        public void setThresh(float thresh) {
+            this.thresh = thresh;
+        }
+
+        /** Get Membrane time constant (microseconds) */
+        public float getTau() {
+            return tau;
+        }
+
+        /** Set Membrane time constant (microseconds) */
+        public void setTau(float tau) {
+            this.tau = tau;
+        }
+
+        @Override
+        public String getName() {
+            return "LIF Global Controls";
+        }
+
+        /** Get Refractory Period (microseconds) */
+        public float getTref() {
+            return tref;
+        }
+
+         /** Set Refractory Period (microseconds) */
+        public void setTref(float tref) {
+            this.tref = tref;
+        }
     }
 
 }

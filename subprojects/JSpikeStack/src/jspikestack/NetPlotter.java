@@ -10,6 +10,7 @@ import java.awt.event.ComponentListener;
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
 import java.lang.reflect.InvocationTargetException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Vector;
@@ -39,6 +40,8 @@ public class NetPlotter {
     
     JPanel frm;
     
+    GeneralController controlPanel;
+    
     public int updateMicros=30000;           // Update interval, in milliseconds
     public float timeScale=1;               // Number of network-seconds per real-second 0: doesn't advance.  Inf advances as fast as CPU will allow
     
@@ -50,7 +53,7 @@ public class NetPlotter {
     
     JTextComponent jt;
 //    LayerStatePlotter[] layerStatePlots;
-    volatile Vector<LayerStatePlotter> layerStatePlots;
+    volatile ArrayList<LayerStatePlotter> layerStatePlots;
     
     
     public NetPlotter(SpikeStack network)
@@ -124,13 +127,18 @@ public class NetPlotter {
     public JPanel createStatePlot()
     {
         JPanel hostPanel=new JPanel();
+        hostPanel.setLayout(new BorderLayout());
         
-        hostPanel.setLayout(new GridBagLayout());
+        
+        JPanel statePanel=new JPanel();
+        statePanel.setBackground(Color.BLACK);
+        
+        statePanel.setLayout(new GridBagLayout());
         
         int nLayers=net.nLayers();
         
 //        layerStatePlots=new LayerStatePlotter[nLayers];
-        layerStatePlots=new Vector<LayerStatePlotter>(nLayers);
+        layerStatePlots=new ArrayList<LayerStatePlotter>(nLayers);
         
         for (int i=0; i<nLayers; i++)
         {
@@ -170,7 +178,7 @@ public class NetPlotter {
             c.gridheight=2;
             
             pan.add(disp);  
-            hostPanel.add(pan,c);
+            statePanel.add(pan,c);
             
 //            disp.setVisible(true);
 //            pan.setVisible(true);
@@ -198,10 +206,10 @@ public class NetPlotter {
         
         j.add(jt);
         
-        hostPanel.add(j,c);
+        hostPanel.add(j,BorderLayout.SOUTH);
         
-        hostPanel.setVisible(true);
-        hostPanel.repaint();
+        statePanel.setVisible(true);
+        statePanel.repaint();
 //        j.setVisible(true);
         
 //        fr.getContentPane().add(j,c);
@@ -216,7 +224,27 @@ public class NetPlotter {
 ////        fr.repaint();
 //        
 //        return fr;
+        
+        hostPanel.add(statePanel,BorderLayout.CENTER);
+        
+        // If controls have been added, create control panel.
+        if (controlPanel!=null)
+        {   //controlPanel.setBackground(Color.BLACK);
+            hostPanel.add(controlPanel,BorderLayout.WEST);
+            
+        }
+        
         return hostPanel;
+    }
+    
+    
+    public void addControls(NetController con)
+    {
+        if (controlPanel==null)
+            controlPanel=new GeneralController();
+        
+        controlPanel.addController(con);
+        
     }
         
     public void followState()
@@ -326,6 +354,7 @@ public class NetPlotter {
     
     public void reset()
     {
+        lastNetTime=0;
         if (layerStatePlots!=null)
             for (LayerStatePlotter lsp: layerStatePlots)
             {   lsp.reset();            
@@ -428,12 +457,15 @@ public class NetPlotter {
         int outBookmark;
         
         public LayerStatePlotter(BasicLayer lay,ImageDisplay display)
-        {   tau=((LIFUnit.Globals)(lay.unitFactory.glob)).tau;
+        {   tau=((LIFUnit.Globals)(lay.unitFactory.glob)).getTau();
             layer=lay;
             disp=display;
 
             state=new float[lay.nUnits()];
             outBookmark=0;
+            
+            
+            disp.setFontSize(14);
             
         }
         
@@ -471,8 +503,6 @@ public class NetPlotter {
             
 //        System.out.println(net.time);
         
-                
-            
             // Step 2: Add new events to state
             while (outBookmark<layer.outBuffer.size())
             {   Spike ev=layer.getOutputEvent(outBookmark);
@@ -500,14 +530,20 @@ public class NetPlotter {
                 maxState=smax*adaptationRate+invad*maxState;                
             }
             
-            // Step 4: plot                        
+            DecimalFormat myFormatter = new DecimalFormat("#");
+            
+            // Step 4: plot           
+            float rate=0;
             for (int i=0; i<state.length; i++)
-            {   disp.setPixmapGray(i,(state[i]-minState)/(maxState-minState));                
+            {   disp.setPixmapGray(i,(state[i]-minState)/(maxState-minState));    
+                rate=Math.max(state[i],rate);
             }
+            rate=rate*1000000/tau;
+            
             
             lastTime=toTime;
             
-//            disp.setTitleLabel("AAA");
+            disp.setTitleLabel("Max Rate: "+myFormatter.format(rate)+"Hz");
 //            disp.drawCenteredString(1, 1, "A");
             disp.repaint();
         }

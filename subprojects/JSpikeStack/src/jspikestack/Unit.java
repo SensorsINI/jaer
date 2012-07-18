@@ -26,9 +26,12 @@ public abstract class Unit<GlobalParams,SpikeType extends Spike> {
     
 //    public abstract Factory getFactory();
     
+    /** Make a copy of this unit */
+    public abstract Unit copy();
+    
     public static abstract class Factory<GlobalParams,UnitType extends Unit>{
         
-        GlobalParams glob;
+        public GlobalParams glob;
         
         public Factory()
         {   

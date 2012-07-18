@@ -4,6 +4,7 @@
  */
 package net.sf.jaer.eventprocessing;
 
+import java.awt.Component;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -34,6 +35,8 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
     private int maxWaitTime=100000; // Maximum time to wait (in microseconds) for events from one source before continuing
     
     boolean[] queueAlive;
+    
+    public int lastEventTime=Integer.MIN_VALUE;
     
     /** Initialize a MultiSensoryFilter with the chip, and the number of inputs
      it will take
@@ -67,6 +70,13 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
         this.getChip().getAeViewer().getJaerViewer().globalViewer.addDisplayWriter(disp);
     }
         
+    public void addControls(Component controls)
+    {
+        this.getChip().getAeViewer().getJaerViewer().globalViewer.addControlsToFilter(controls, this);
+               
+    }
+    
+    
     /** Number of inputs that this filter takes */
     public int nInputs()
     {   return getInputNames().length;
@@ -189,7 +199,9 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
             Logger.getLogger(MultiSourceProcessor.class.getName()).log(Level.SEVERE, null, ex);
         }
         
+        
         goToTime-=getMaxWaitTime();
+        
         
         /* Step 2, if dead queues have received events, revive them, add their 
          * elements back into the priority queue.
@@ -199,7 +211,19 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
             {   if (!queueAlive[i] && !buffers.get(i).isEmpty())
                 {   BasicEvent ev=buffers.get(i).poll();
                     ev.source=(byte)i;
+                    
+                    
+                    if (ev.timestamp<lastEventTime)
+                    {   resynchronize();
+                        
+                        throw new RuntimeException("The event-streams from your sources are out of synch. "
+                                + "by "+(ev.timestamp+-lastEventTime)/1000+"ms, which is more than the max wait time of "+
+                                maxWaitTime/1000+"ms.  Either synchronize your sources or set a bigger maxWaitTime.");
+                    
+                    }
                     pq.add(ev);
+                    
+                    
                     queueAlive[i]=true;
                 }
             }
@@ -211,6 +235,7 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
 //            }
 //            // Each source will now have an event in the priority queue
         }
+                
             
         /* Step 3: pull ordered events from priority queue.  Replace each pulled
          * event with an event originating from the same buffer as the pulled 
@@ -223,6 +248,7 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
 //        String lastEventType="";
         
 //        int lastTimestamp=Integer.MIN_VALUE;
+        BasicEvent ev=null;
         while(!pq.isEmpty())
         {
             
@@ -230,7 +256,7 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
                 break;
             
             // Pull next output event from head of Priority Queue, write to output
-            BasicEvent ev=pq.poll();
+            ev=pq.poll();
                         
             outItr.writeToNextOutput(ev);
 //            if (ev.timestamp<lastTimestamp) // Check for monotonicity
@@ -262,6 +288,9 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
 //            if (ev.source==0) nA++; else if (ev.source==1) nB++;
             
         }
+        
+        if (ev!=null)
+            lastEventTime=ev.timestamp;
         
         // Confirm ordering
         
@@ -318,6 +347,7 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
     
     public void resynchronize()
     {
+        lastEventTime=Integer.MIN_VALUE;
         for (int i=0;i<buffers.size();i++)
         {   buffers.get(i).clear();
             queueAlive[i]=false;

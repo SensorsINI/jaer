@@ -71,14 +71,14 @@ public class SpikeStackWrapper <NetType extends SpikeStack> {
     /** Convert a basic event to spike */
     public Spike event2spike(BasicEvent ev)
     {
-        return new Spike(R.loc2addr(ev.x, ev.y,ev.source),R.translateTimeDouble(ev.timestamp,.001f),R.source2layer(ev.source));
+        return new Spike(R.translateTime(ev.timestamp),R.loc2addr(ev.x, ev.y,ev.source),R.source2layer(ev.source));
     }
     
-//    /** Convert a cluster event to spike, using its cluster-relative position */
-//    public Spike event2spike(ClusterEvent ev)
-//    {
-//        return new Spike(R.loc2addr(ev.xp, ev.yp,ev.source),R.translateTimeDouble(ev.timestamp,.001f),R.source2layer(ev.source));
-//    }
+    /** Convert a cluster event to spike, using its cluster-relative position */
+    public Spike event2spike(ClusterEvent ev)
+    {
+        return new Spike(R.translateTime(ev.timestamp),R.loc2addr(ev.xp, ev.yp,ev.source),R.source2layer(ev.source));
+    }
 
     /**
      * @return The "enabled" status of plotting

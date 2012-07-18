@@ -43,6 +43,7 @@ public class ProcessingNetwork {
             
         } catch (Exception ME) {
             nodes.get(i).setEnabled(false);
+            nodes.get(i).filt.setFilterEnabled(false);
             ME.printStackTrace();
         }
     }   
@@ -68,6 +69,7 @@ public class ProcessingNetwork {
         inputStreams=ins;
     }
     
+       
     
     class Node implements PacketStream, DisplayWriter
     {   

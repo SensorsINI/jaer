@@ -22,10 +22,7 @@ import javax.swing.UIManager.LookAndFeelInfo;
 import javax.swing.event.InternalFrameEvent;
 import javax.swing.event.InternalFrameListener;
 import net.sf.jaer.JAERViewer;
-import net.sf.jaer.eventprocessing.MultiInputFrame;
-import net.sf.jaer.eventprocessing.ProcessingNetwork;
-import net.sf.jaer.eventprocessing.PacketStream;
-import net.sf.jaer.eventprocessing.SourceSynchronizer;
+import net.sf.jaer.eventprocessing.*;
 
 /**
  *
@@ -53,13 +50,12 @@ public class GlobalViewer extends javax.swing.JFrame {
         boolean synchDisp=false;
         SourceSynchronizer srcSync;
         
-        
+        boolean makeitsynch=true;
         
         // </editor-fold>
         
         // <editor-fold defaultstate="collapsed" desc=" Builder/Startup Methods " >
-        
-                
+         
         // Methods -----------------------------------------
         public void collectAllInputs(ArrayList<AEViewer> viewers){
             
@@ -183,6 +179,13 @@ public class GlobalViewer extends javax.swing.JFrame {
                 if (synchDisp) //Update if window is open, otherwise turn off.
                 {   synchDisp=srcSync.update();
                 }
+                
+                if (makeitsynch)
+                {
+                    resynchronize();
+                    makeitsynch=false;
+                }
+                
 
                 // 1) Process Packets
                 procNet.crunch();
@@ -200,6 +203,14 @@ public class GlobalViewer extends javax.swing.JFrame {
         JPanel filterPanel;
         MultiInputFrame multiInputControl;
 //        ArrayList<JPanel> viewPanels=new ArrayList();
+        
+        /** Add Custom Controls Panel to your filter! */
+        public void addControlsToFilter(Component Controls,EventFilter2D filt)
+        {
+            
+            
+        }
+        
         
         void initComponents()
         {

@@ -30,7 +30,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     transient Queue<SpikeType> inputBuffer = new LinkedList();
     transient Queue<SpikeType> internalBuffer= new LinkedList();
             
-    int delay;
+    public int delay;
     
     public int time=Integer.MIN_VALUE;    // Current time (millis) (avoids having to pass around time reference)
             
@@ -42,7 +42,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
      * in the input layer. 
      */
     
-    public float inputCurrentStrength=1; 
+//    public float inputCurrentStrength=1; 
     /* If inputCurrents==true, this is the strength with which input events drive
      * input layer units.
      */
@@ -63,14 +63,58 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
         
 //        layerClass=layClass;
 //        unitClass=unClass;
-        
-        
     };
         
     /** Add a new layer.*/
     public void addLayer(int index)
     {   
         layers.add((LayerType)layerFactory.make(this, unitFactory, index));
+    }
+    
+    /** Unroll this network so that just the top two layers are symmetrically
+     * connected.  Lower layers are duplicated, with one being up-connected, the
+     * other being down-connected.
+     */
+    public void unrollRBMs()
+    {
+        int nLay=nLayers();
+        for (int i=0; i<nLay; i++)
+        {   BasicLayer upLayer=lay(i);
+            if (upLayer.Lout!=null && upLayer.Lout.Lout!=null && upLayer.Lout.Lout.Lout==null) // If layer is below a pair of top-level rbms, start a recursive unzipping chain
+                copyAndAdopt(upLayer,upLayer.Lout);                
+        }
+    }
+    
+    /** Recursive function for copying layers and adopting them to new parent layers */
+    public void copyAndAdopt(BasicLayer<SpikeStack,BasicLayer> source,BasicLayer<SpikeStack,BasicLayer> newParent)
+    {
+        int ix=nLayers();
+        addLayer(ix);
+
+        BasicLayer copy=lay(ix);
+
+        copy.initializeUnits(source.nUnits());
+        
+        for (int i=0; i<source.nUnits(); i++)
+        {   copy.units[i]=source.getUnit(i).copy();
+        }
+
+        copy.wOut=source.wOut;
+        copy.wLat=source.wLat;
+
+        source.fwdSend=1;
+        source.backSend=0;
+
+        copy.fwdSend=0;
+        copy.backSend=1;
+        
+        copy.Lout=newParent;
+        newParent.Lin.add(copy);
+        
+        /* Now, the recursive part, if source-layer has children, copy them and assign the new copy as their parent */     
+        for (BasicLayer kid:source.Lin)
+            copyAndAdopt(kid,copy);
+        
     }
     
     /** Copy the structure of the network, but leave the state blank */
@@ -123,7 +167,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
             // Initialize Units
             for (int u=0; u<ini.layers[i].nUnits; u++)
             {   //li.units[u]=li.new Unit(u);
-                li.units[u]=li.makeNewUnit(u);
+//                li.units[u]=li.makeNewUnit(u);
                 
                 // Assign random initial weights based on Gaussian distributions with specified parameters
                 if (!Float.isNaN(ini.layers[i].WoutMean))
@@ -180,15 +224,6 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     /** Eat up the events in the input queue until some timeout */
     public void eatEvents(double timeout)
     {   
-//        inputBuffer=inputEvents;
-        
-        int k=1;
-        k++;
-        
-//        plot.followState();
-        
-        
-        
         // If in liveMode, go til inputBuffer is empty, otherwise go til both buffers are empty (or timeout).
         while (!(inputBuffer.isEmpty()&&(internalBuffer.isEmpty() || liveMode )))
         {
@@ -214,7 +249,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
             
                 // Feed Spike to network
                 if (inputCurrents && readInput)     // 1: Input event drives current
-                    lay(ev.layer).fireTo(ev.addr,inputCurrentStrength);
+                    lay(ev.layer).fireInputTo(ev.addr);
                 else if (readInput)                 // 2: Input Spike fires unit
                     lay(ev.layer).fireFrom(ev.addr);
                 else                                // 3: Internally buffered event propagated
@@ -270,11 +305,11 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
 //    {   for (Layer l:layers)
 //            l.scaleThresholds(sc);
 //    }
-    
             
     /** Reset Network */ 
     public void reset()
-    {   internalBuffer.clear();
+    {   inputBuffer.clear();
+        internalBuffer.clear();
         time=Integer.MIN_VALUE;
         //time=0;
         for (LayerType l:layers)
@@ -468,6 +503,37 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     
     
     
+    
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc=" Access Methods ">
+    
+    public Controls getControls()
+    {
+        return new Controls();
+    }
+    
+    
+    public class Controls extends NetController
+    {
+        @Override
+        public String getName() {
+            return "Network Controls";
+        }
+        
+        
+        /** Spike Propagation Delay (milliseconds) */
+        public int getDelay() {
+            return delay;
+        }
+
+        /** Spike Propagation Delay (milliseconds) */
+        public void setDelay(int delay) {
+            SpikeStack.this.delay = delay;
+        }
+        
+        
+    }
     
     // </editor-fold>
 }
