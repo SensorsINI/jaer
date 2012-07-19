@@ -54,7 +54,7 @@ public class JAERViewer {
     
     // Set default arg to true for multi-start mode */
     public JAERViewer()
-    {   this(true);
+    {   this(false);
     }
     
     
@@ -90,7 +90,7 @@ public class JAERViewer {
     public GlobalViewer globalViewer=new GlobalViewer();
     
     // Internal switch: go into multiple-display mode right away?
-    boolean multistartmode=true;
+    boolean multistartmode=false;
     
     
     
