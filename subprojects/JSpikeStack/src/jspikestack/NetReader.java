@@ -90,6 +90,8 @@ public class NetReader<NetType extends SpikeStack> implements SpikeStack.Network
             }
 
         }
+        
+        net.init();
 
     }
 

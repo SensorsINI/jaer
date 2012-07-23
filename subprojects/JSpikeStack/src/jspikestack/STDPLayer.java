@@ -5,6 +5,7 @@
 package jspikestack;
 
 import java.io.Serializable;
+import java.util.Queue;
 
 /**
  *
@@ -23,18 +24,47 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
         
 //    public static class Layer <NetType extends STDPLayer,LayerType extends BasicLayer, UnitType extends Unit,GlobalParams extends STDPLayer.Layer.Globals> extends BasicLayer<NetType,LayerType,UnitType>
 //    {
-        int outBufferBookmark=0;   // Bookmark used for stdp learning
-        int thisBufferBookmark=0;
+//        int outBufferBookmark=0;   // Bookmark used for stdp learning
+//        int thisBufferBookmark=0;
 
         
         GlobalParams glob;
+        
+        Queue<Spike> presyn;   // Queue of presynaptic spikes
+        Queue<Spike> postsyn;  // Queue of postsynaptic spikes
     
         
-        public boolean enableSTDP=false;     // Enable STDP on the slow weights
+        boolean enableSTDP=false;     // Enable STDP on the slow weights
 
         public STDPLayer(NetType network,Unit.Factory uf,int ind,GlobalParams glo)
         {   super(network,uf,ind);   
             glob=glo;
+        }
+        
+        /** For performance: enable/disable queues */
+        public void setSTDPstate()
+        {
+            if (isLearningEnabled() && Lout!=null && presyn ==null)
+            {
+                postsyn=Lout.outBuffer.addReader();
+                presyn=outBuffer.addReader();
+            }
+            else
+            {
+                outBuffer.removerReader(presyn);
+                Lout.outBuffer.removerReader(postsyn);
+            }
+            
+        }
+        
+        
+        @Override
+        public void init()
+        {
+            if (Lout!=null)
+            {
+                
+            }
         }
         
         
@@ -54,8 +84,15 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
         @Override
         public void reset()
         {   super.reset();
-            outBufferBookmark=0;
-            thisBufferBookmark=0;
+        
+//            if (presyn!=null)
+//            {
+//                presyn.clear();
+//                postsyn.clear();
+//            }
+        
+//            outBufferBookmark=0;
+//            thisBufferBookmark=0;
         }
 
         /** Apply STDP learning rule
@@ -75,43 +112,53 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
             * postsyn: post-synaptic layer
             * 
             */ 
-            if (Lout.outBuffer.isEmpty() || outBuffer.isEmpty()) return;
+//            if (Lout.outBuffer.isEmpty() || outBuffer.isEmpty()) return;
 
+            if (postsyn.isEmpty() || presyn.isEmpty() )
+                return;
 
             // While (postsyn buffer has events) && ( (current postsyn bookmark time) + (stdp window limit) < (current time) )
-            while ((Lout.outBuffer.size() > outBufferBookmark) && (Lout.getOutputEvent(outBufferBookmark).time + glob.stdpWin < net.time))
+//            while ((Lout.outBuffer.size() > outBufferBookmark) && (Lout.getOutputEvent(outBufferBookmark).time + glob.stdpWin < net.time))
+            while (!postsyn.isEmpty() && (postsyn.peek().time + glob.stdpWin < net.time))      
             {   // Iterate over new output spikes
 
                 // Get current output event
-                Spike evout=Lout.getOutputEvent(outBufferBookmark); // TODO: REMOVE THIS F'ING CAST
-
+//                Spike evout=Lout.getOutputEvent(outBufferBookmark); // TODO: REMOVE THIS F'ING CAST
+                Spike evout=postsyn.poll();
+                
 
                 // Adjust the out-time back by the delay so it can be compared with the input time that caused it.
                 double outTime=evout.time-net.delay;
 
-                int tempBookmark=thisBufferBookmark;    // Temporary bookmark for iterating through presyn spikes around an output spike
+//                int tempBookmark=thisBufferBookmark;    // Temporary bookmark for iterating through presyn spikes around an output spike
 
                 // While (there are presynapic events available) && (they come before the end of the relevant stdp window for the post-synaptic spike)
-                while ((outBuffer.size() > tempBookmark) && (getOutputEvent(tempBookmark).time < evout.time+glob.stdpWin)) 
+                while (!presyn.isEmpty() && (presyn.peek().time < evout.time+glob.stdpWin)) 
                 {   // Iterate over input events (from this layer) pertaining to the output event
 
 //                    Spike evin=outBuffer.get(tempBookmark);
-                    Spike evin=getOutputEvent(tempBookmark);
+//                    Spike evin=getOutputEvent(tempBookmark);
+                    Spike evin=presyn.poll();
 
-                    if (evin.time + glob.stdpWin < outTime) // If input event is too early to be relevant
-                    {   thisBufferBookmark++; // Shift up starting bookmark
-                    }
-                    else // presyn event is within relevant window, do STDP!
-                    {   //System.out.println("dW: "+net.stdpRule(evout.time-evin.time));
-
+//                    if (evin.time + glob.stdpWin < outTime) // If input event is too early to be relevant
+//                    {   //thisBufferBookmark++; // Shift up starting bookmark
+//                    }
+//                    else // presyn event is within relevant window, do STDP!
+//                    {   //System.out.println("dW: "+net.stdpRule(evout.time-evin.time));
+//
+//                        updateWeight(evin.addr,evout.addr,outTime-evin.time);
+//
+//
+//                    }
+                    
+                    // If input event is in relevant time window
+                    if (evin.time + glob.stdpWin >= outTime)
                         updateWeight(evin.addr,evout.addr,outTime-evin.time);
-
-
-                    }
-                    tempBookmark++;
+                    
+//                    tempBookmark++;
                 } 
     //                System.out.println("t: "+evout.time+" outAddr:"+evout.addr+" nin:"+(tempBookmark-thisBufferBookmark));
-                outBufferBookmark++;
+//                outBufferBookmark++;
             }
         }
 
@@ -138,10 +185,15 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
             {
                 return (LayerType) new STDPLayer(net,unitFactory,layerIndex,glob); // TODO: BAAAD.  I'm confused
             }
+
+            @Override
+            public Controllable getGlobalControls() {
+                return glob;
+            }
         }
         
         
-        public static class Globals extends NetController
+        public static class Globals extends Controllable
         {
             public STDPrule stdp=new STDPrule();;
     
@@ -149,7 +201,7 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
 
             @Override
             public String getName() {
-                return "Layer Conroller Globals";
+                return "Layer Controller Globals";
             }
 
             public static class STDPrule implements Serializable{
@@ -221,7 +273,7 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
         
         
         @Override
-        public NetController getControls()
+        public Controllable getControls()
         {   return new Controller();
         }
         
@@ -233,7 +285,10 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
 
             /** enable STDP learning? */
             public void setEnableSTDP(boolean enableSTDP) {
+                setSTDPstate();
                 STDPLayer.this.enableSTDP = enableSTDP;
+                
+                
             }
         }
         

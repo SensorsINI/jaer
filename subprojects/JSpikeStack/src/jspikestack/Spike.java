@@ -9,7 +9,7 @@ package jspikestack;
  * @author oconnorp
  */
 /* Basic "Spike" class */
-public class Spike
+public class Spike implements Comparable<Spike>
 {   int addr;   
     int time; // Time at which spike is sent
     int hitTime;  // Time at which spike effect is felt.
@@ -40,4 +40,10 @@ public class Spike
     {
         return "Time: "+time+", +Addr:"+addr+", Layer:"+layer;
     }
+
+    @Override
+    public int compareTo(Spike o) {
+        return this.hitTime-o.hitTime;
+    }
+
 }    

@@ -42,6 +42,8 @@ public abstract class Unit<GlobalParams,SpikeType extends Spike> {
         
         public abstract GlobalParams newGlobalObject();
         
+        public abstract Controllable getGlobalControls();
+        
     }
     
     

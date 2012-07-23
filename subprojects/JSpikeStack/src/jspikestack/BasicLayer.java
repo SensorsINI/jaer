@@ -37,7 +37,7 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer>
 
     public float inputCurrentStrength=1;
     
-    transient public ArrayList<Spike> outBuffer=new ArrayList();
+    transient public MultiReaderQueue<Spike> outBuffer=new MultiReaderQueue();
 
     /** Instantiate Layer with index */
     public BasicLayer(NetType network,Unit.Factory<?,Unit> ufac,int ix)
@@ -94,6 +94,7 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer>
 //        net.addToInternalQueue(ev);
         outBuffer.add(ev);
         
+        
         propagateFrom(unitIndex);
         
         
@@ -132,6 +133,11 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer>
         dimx=(short)Math.ceil(nUnits()/(float)dimy);
     }
 
+    /** Called after network construction */
+    public void init()
+    {
+        
+    }
 
     /** Carry out the effects of the firing */
     public void propagateFrom(int unitIndex)
@@ -231,9 +237,13 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer>
     {   return units.length;
     }
 
-    public Spike getOutputEvent(int outputBufferLocation)
-    {   return outBuffer.get(outputBufferLocation);
-    }
+//    public Spike getOutputEvent(int outputBufferLocation)
+//    {   return outBuffer.get(outputBufferLocation);
+//    }
+    
+//    public Spike getOutputEvent(Object ob)
+//    {   return outBuffer.read(ob);
+//    }
 
     
     public static Factory getFactory()
@@ -264,6 +274,11 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer>
             return new BasicLayer(net,unitFactory,layerIndex); // TODO: BAAAD.  I'm confused
         }
 
+        @Override
+        public Controllable getGlobalControls() {
+            return null;
+        }
+
     }
     
     
@@ -272,13 +287,15 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer>
         public abstract <NetType extends SpikeStack,UnitType extends Unit> LayerType make(NetType net,Unit.Factory<?,UnitType> unitFactory,int layerIndex);
         
         
+        public abstract Controllable getGlobalControls();
+        
     }
     
-    public NetController getControls()
+    public Controllable getControls()
     {   return new Controller();
     }
     
-    public class Controller extends NetController
+    public class Controller extends Controllable
     {
 
         @Override

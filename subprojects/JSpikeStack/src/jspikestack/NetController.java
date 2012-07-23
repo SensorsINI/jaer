@@ -4,169 +4,222 @@
  */
 package jspikestack;
 
-import java.beans.PropertyChangeSupport;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
- * @author Peter, but most code stolen from Tobi's EventFilter
+ *  This is the controller in the semi-MVC architecture setup we got going on here.
+ * 
+ * @author Peter
  */
-public abstract class NetController {
+public class NetController<LayerType extends BasicLayer,LayerGlobalType extends Controllable,UnitGlobalType extends Controllable> {
+    
+    public SpikeStack<LayerType,Spike> net;
+    public UnitGlobalType unitGlobals;
+    public LayerGlobalType layerGlobals;
+    
+    public int inputTime=0; // Tracker of time to add input events from
+    
+    NetPlotter view;
+    
+    public static enum Types {LIFNET,BINTHRESHNET};
     
     
-    protected PropertyChangeSupport support = new PropertyChangeSupport(this);
-
-    /** The key,value table of property tooltip strings. */
-    protected HashMap<String, String> propertyTooltipMap = null;
-//    /** The key,value table of propery group associations.
-//     * The key the property name and the value is the group name.*/
-//    protected HashMap<String, String> property2GroupMap = null;
-//    /** The keys are the names of property groups, and the values are lists of properties in the key's group.*/
-//    protected HashMap<String, ArrayList<String>> group2PropertyListMap = null;
-
+    public boolean enable=true;
+    public float timeScaling=1f;
     
     
-//    public SpikeStack net;
-    
-//    public static enum Options {LIF_STP_RBM,LIF_BASIC_RBM};
-        
     public NetController()
+    {   this(Types.LIFNET);        
+    }
+    
+    public NetController(Types t)
     {
-        
-        
-        
-    }
-    
-    /** Fires PropertyChangeEvents when filter is enabled or disabled with key "filterEnabled"
-     * @return change support
-     */
-    public PropertyChangeSupport getPropertyChangeSupport() {
-        return support;
-    }
-    
-    
-    public abstract String getName();
-    
-    
-    
-     /** Developers can use setPropertyTooltip to add an optional tooltip for a filter property so that the tip is shown
-     * as the tooltip for the label or checkbox property in the generated GUI.
-     * <p>
-     * In netbeans, you can add this macro to ease entering tooltips for filter parameters:
-     * <pre>
-     * select-word copy-to-clipboard caret-begin-line caret-down "{setPropertyTooltip(\"" paste-from-clipboard "\",\"\");}" insert-break caret-up caret-end-line caret-backward caret-backward caret-backward caret-backward
-     * </pre>
-     *
-     * @param propertyName the name of the property (e.g. an int, float, or boolean, e.g. "dt")
-     * @param tooltip the tooltip String to display
-     */
-    protected void setPropertyTooltip(String propertyName, String tooltip) {
-        if (propertyTooltipMap == null) {
-            propertyTooltipMap = new HashMap<String, String>();
+        switch(t)
+        {
+            case LIFNET:
+                
+                STPLayer.Factory<STPLayer> layerFactory=new STPLayer.Factory();
+                LIFUnit.Factory unitFactory=new LIFUnit.Factory();        
+                net=new SpikeStack(layerFactory,unitFactory);
+
+                layerGlobals = (LayerGlobalType) layerFactory.glob;
+                unitGlobals = (UnitGlobalType) unitFactory.glob;            
+            
+                break;
+                
+            case BINTHRESHNET:
+                throw new UnsupportedOperationException("Not supported yet");                
         }
-        propertyTooltipMap.put(propertyName.toLowerCase(), tooltip);
+        view=net.plot;
+    }
+    
+    public void readXML()
+    {
+        net.read.readFromXML(net);         
+    }
+    
+    public void startDisplay()
+    {   
+        net.plot.followState();
+    }
+    
+    /** Return a representation */
+//    public NetController<STPLayer,STPLayer.Globals,LIFUnit.Globals> getSTDPLIFControls()
+//    {
+//        
+//    }
+    
+    public void reset()
+    {
+        net.reset();
     }
     
     
-    /** Convenience method to add properties to groups along with adding a tip for the property.
-     *
-     * @param groupName the property group name.
-     * @param propertyName the property name.
-     * @param tooltip the tip.
-     * @see #PARAM_GROUP_GLOBAL
+    /** Shorthand for enabling/disabling forward connections: pass a string like 
+     * "1101", to indicate first layer CAN send forward, second can't, etc.
+     * @param s 
      */
-//    protected void setPropertyTooltip(String groupName, String propertyName, String tooltip) {
-//        setPropertyTooltip(propertyName.toLowerCase(), tooltip);
-//        addPropertyToGroup(groupName, propertyName.toLowerCase());
-//    }
-
-    /** @return the tooltip for the property */
-    protected String getPropertyTooltip(String propertyName) {
-        if (propertyTooltipMap == null) {
-            return null;
+    public void setForwardStrengths(boolean[] vals)
+    {   for (int i=0; i<vals.length; i++) 
+            net.lay(i).fwdSend=vals[i]?1:0;
+    }
+    
+    /** Shorthand for enabling/disabling backwards connections: pass a string like 
+     * "1101", to indicate first layer CAN send forward, second can't, etc.
+     * @param s 
+     */
+    public void setBackwardStrengths(boolean[] vals)
+    {   for (int i=0; i<vals.length; i++) 
+            net.lay(i).backSend=vals[i]?1:0;
+    }
+    
+    /** Set Lateral Connection Strengths */
+    public void setLateralStrengths(boolean[] vals)
+    {   for (int i=0; i<vals.length; i++) 
+            net.lay(i).latSend=vals[i]?1:0;
+    }
+    
+    public void addAllControls()
+    {    
+        view.addControls(makeControlPanel());
+        
+//        view.addControls(new Controls());
+//        view.addControls(net.getControls());
+//        view.addControls(unitGlobals);
+//        view.addControls(layerGlobals);
+//        for (BasicLayer l:net.getLayers())
+//        {
+//            view.addControls(l.getControls());
+//        }
+    }
+    
+    public ControlPanel makeControlPanel()
+    {
+        ControlPanel cp=new ControlPanel();
+        
+        cp.addController(new Controls());
+        cp.addController(net.getControls());
+        cp.addController(unitGlobals);
+        cp.addController(layerGlobals);
+        for (BasicLayer l:net.getLayers())
+        {
+            cp.addController(l.getControls());
         }
-        return propertyTooltipMap.get(propertyName.toLowerCase());
+        return cp;
     }
+    
+    
+    /** Add a bunch of events to the network input for a given timespan at a given rate. */
+    public void generateInputSpikes(float rate,int timeMicros,int unit,int layer)
+    {
+        int timeStep=(int)(1000000/rate); // timestep in us
+        if (timeStep==0)
+            System.out.println("Timestep is zero here.  Can't do that.");
+        
+        
+        int endTime=inputTime+timeMicros;
+        
+        while(inputTime<endTime)
+        {   //int number=i<nEvents/2?8:2;
+            net.addToQueue(new Spike(inputTime,unit,layer));            
+            inputTime+=timeStep;
+        }
+    }
+    
+    
+    
+    public void realTimeRun(float forSeconds)
+    {
+        int plotIntervalMillis=30;
+        int plotIntervalMicros=plotIntervalMillis*1000;
+        
+        net.plot.realTime=true;
+        net.plot.followState();
+                
+        int finalTime=net.time+(int)(1000000*forSeconds);
+        
+        
+        int targetNetTime=net.time;
+        long targetSystemTime=System.currentTimeMillis();
+        
+        // Loop along, allowing the network to progress up to a certain time 
+        // in each iteration.
+        while (net.time<finalTime && enable)
+        {
+            targetNetTime+=plotIntervalMicros*timeScaling;
+            targetSystemTime+=plotIntervalMillis;
+            
+            net.eatEvents(targetNetTime);
+            
+            try {
+                long sleepTime=Math.max(targetSystemTime-System.currentTimeMillis(),0);
+                System.out.println(sleepTime);
+                Thread.sleep(sleepTime);
+            } catch (InterruptedException ex) {
+                Logger.getLogger(NetController.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        enable=true;
+               
+    }
+    
+    
+    
+    public class Controls extends Controllable
+    {
 
-    /** Adds a property to a group, creating the group if needed.
-     * 
-     * @param groupName a named parameter group.
-     * @param propertyName the property name.
-     */
-//    protected void addPropertyToGroup(String groupName, String propertyName) {
-//        if (property2GroupMap == null) {
-//            property2GroupMap = new HashMap();
-//        }
-//        if (group2PropertyListMap == null) {
-//            group2PropertyListMap = new HashMap();
-//        }
-//        // add the mapping from property to group
-//        property2GroupMap.put(propertyName.toLowerCase(), groupName);
-//
-//        // create the list of properties in the group
-//        ArrayList<String> propList;
-//        if (!group2PropertyListMap.containsKey(groupName)) {
-//            propList = new ArrayList<String>(2);
-//            group2PropertyListMap.put(groupName, propList);
-//        } else {
-//            propList = group2PropertyListMap.get(groupName);
-//        }
-//        propList.add(propertyName.toLowerCase());
-//    }
+        @Override
+        public String getName() {
+            return "Simulation Controls";
+        }        
 
-    /** Returns the name of the property group for a property.
-     *
-     * @param propertyName the property name string.
-     * @return the property group name.
-     */
-//    public String getPropertyGroup(String propertyName) {
-//        if (property2GroupMap == null) {
-//            return null;
-//        }
-//        return property2GroupMap.get(propertyName.toLowerCase());
-//    }
+        /** Stop the simulation */
+        public void doSTOP()
+        {
+            enable=false;
+        }
 
-    /** Gets the list of property names in a particular group.
-     *
-     * @param groupName the name of the group.
-     * @return the ArrayList of property names in the group.
-     */
-//    protected ArrayList<String> getPropertyGroupList(String groupName) {
-//        if (group2PropertyListMap == null) {
-//            return null;
-//        }
-//        return group2PropertyListMap.get(groupName);
-//    }
+        /**
+         * @return the timeScaling
+         */
+        public float getTimeScaling() {
+            return timeScaling;
+        }
 
-    /** Returns the set of property groups.
-     * 
-     * @return Set view of property groups.
-     */
-//    protected Set<String> getPropertyGroupSet() {
-//        if (group2PropertyListMap == null) {
-//            return null;
-//        }
-//        return group2PropertyListMap.keySet();
-//    }
-
-    /**
-     * Returns the mapping from property name to group name.
-     * If null, no groups have been declared.
-     * 
-     * @return the map, or null if no groups have been declared by adding any properties.
-     * @see #property2GroupMap
-     */
-//    public HashMap<String, String> getPropertyGroupMap() {
-//        return property2GroupMap;
-//    }
-
-    /** Returns true if the filter has property groups.
-     *
-     */
-//    public boolean hasPropertyGroups() {
-//        return property2GroupMap != null;
-//    }
+        /**
+         * @param timeScaling the timeScaling to set
+         */
+        public void setTimeScaling(float timeScalin) {
+            timeScaling = timeScalin;
+        }
+                
+    }
+    
+    
+    
+    
+    
     
 }

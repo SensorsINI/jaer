@@ -17,7 +17,7 @@ import java.lang.reflect.Array;
  */
 public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> extends STDPLayer<NetType,LayerType,STPLayer.Globals> {
 
-    public boolean enableFastSTDP=false;
+    private boolean enableFastSTDP=false;
 
     float[][] wOutFast;
     float[][] wLatFast;
@@ -31,9 +31,15 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
                 
         @Override
         public boolean isLearningEnabled()
-        {   return enableFastSTDP || enableSTDP;            
+        {   return enableFastSTDP || enableSTDP; 
         }
 
+    public void setEnableFastSTDP(boolean enable)
+    {
+        enableFastSTDP=enable;
+        this.setSTDPstate();
+    }
+        
     public STPLayer(NetType network,jspikestack.Unit.Factory uf,int ind,Globals glo)
     {   super(network,uf,ind,glo);   
     }
@@ -127,13 +133,19 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
         {
             return (LayerType) new STPLayer(net,unitFactory,layerIndex,glob); // TODO: BAAAD.  I'm confused
         }
+        
+        @Override
+        public Controllable getGlobalControls() {
+            return glob;
+        }
+        
     }
         
 
     public static class Globals extends STDPLayer.Globals
     {
 
-        private float fastWeightTC;
+        public float fastWeightTC;
 
         public STDPLayer.Globals.STDPrule fastSTDP=new STDPLayer.Globals.STDPrule();
 
@@ -147,16 +159,56 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
             this.fastWeightTC = fastWeightTC;
         }
 
+        /** Strength Constant of Pre-Before-Post */
+        public float getFastPlusStrength() {
+            return fastSTDP.plusStrength;
+        }
+
+        /** Strength Constant of Pre-Before-Post */
+        public void setFastPlusStrength(float plusStrength) {
+            this.fastSTDP.plusStrength = plusStrength;
+        }
+
+        /** Strength Constant of Post-Before-Pre */
+        public float getFastMinusStrength() {
+            return fastSTDP.minusStrength;
+        }
+
+        /** Strength Constant of Post-Before-Pre */
+        public void setFastMinusStrength(float minusStrength) {
+            this.fastSTDP.minusStrength = minusStrength;
+        }
+
+        /** Time constant of Pre-before-Post */
+        public float getFastStdpTCplus() {
+            return fastSTDP.stdpTCplus;
+        }
+
+        /** Time constant of Pre-before-Post */
+        public void setFastStdpTCplus(float stdpTCplus) {
+            this.fastSTDP.stdpTCplus = stdpTCplus;
+        }
+
+        /** Time Constant of Post-Before-Pre */
+        public float getFastStdpTCminus() {
+            return fastSTDP.stdpTCminus;
+        }
+
+        /** Time Constant of Post-Before-Pre */
+        public void setFastStdpTCminus(float stdpTCminus) {
+            this.fastSTDP.stdpTCminus = stdpTCminus;
+        }
+       
     }
 
 
 
     @Override
-    public NetController getControls()
+    public Controllable getControls()
     {   return new Controller();
     }
 
-    class Controller extends BasicLayer.Controller
+    class Controller extends STDPLayer.Controller
     {   /** enable STDP learning? */
         public boolean isEnableFastWeights() {
             return enableFastSTDP;
@@ -164,10 +216,15 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
 
         /** enable STDP learning? */
         public void setEnableFastWeights(boolean enable) {
-            STPLayer.this.enableFastSTDP = enable;
-        }
+            STPLayer.this.setEnableFastSTDP(enable);
+        }       
+        
+        
+        
+        
+        
     }
-    
+//    
     
     
 

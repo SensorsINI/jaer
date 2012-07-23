@@ -36,9 +36,8 @@ import org.jfree.experimental.chart.plot.CombinedXYPlot;
  * 
  * HAVE FUN.
  * 
- * WebSite:
+ * WebSite:  <a href="http://sites.google.com/site/thebrainbells/home/jspikestack">http://sites.google.com/site/thebrainbells/home/jspikestack</a>
  * 
- * @se  http://sites.google.com/site/thebrainbells/home/jspikestack
  * @author oconnorp
  */
 public class JspikeStack {
@@ -63,88 +62,49 @@ public class JspikeStack {
     
     /** Read in a network from XML, do stuff with it */
     public static void readNet()
-    {   
-//        SpikeStack net=new SpikeStack();
-        //
+    {           
+        NetController<STPLayer,STPLayer.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.LIFNET);
+        SpikeStack<STPLayer,Spike> net=nc.net;
+        LIFUnit.Globals un=nc.unitGlobals;
+        STPLayer.Globals lg=nc.layerGlobals;
         
-        STPLayer.Factory<STPLayer> layerFactory=new STPLayer.Factory();
-        LIFUnit.Factory unitFactory=new LIFUnit.Factory();        
-        SpikeStack<STPLayer,Spike> net=new SpikeStack(layerFactory,unitFactory);
-        
-//        GeneralController cont=new GeneralController();
-//        cont.addController(unitFactory.glob);
-        
-        
-        STPLayer.Globals lg= layerFactory.glob;
-        LIFUnit.Globals un = unitFactory.glob;
-        
-        
-             
-        
-//        STPLayer<STPStack,STPLayer.Layer> net = new STPLayer();
-        net.read.readFromXML(net);    
+        nc.readXML();
        
-        un.setTau(200000);
+        un.tau=200000;
         net.delay=12000;
-        un.setTref(5000);
-//        un.delay=12000;
-        
-        
+        un.tref=5000;
         net.plot.timeScale=1f;
         
-        // Set up connections
-        float[] sigf={0, 1, 0, 1};
-        net.setForwardStrength(sigf);
-        float[] sigb={1, 1, 0, 1};
-        net.setBackwardStrength(sigb);
-                
-        // Create input events
-        int nEvents=500;
-        LinkedList evts=new LinkedList();
-        
-        // Up the threshold
-        for (int i=0; i<net.layers.size(); i++)
-            for (Unit u:net.lay(i).units)
-                u.thresh*=600;
-        
+        nc.setForwardStrengths(new boolean[] {false,true,false,true});
+        nc.setBackwardStrengths(new boolean[] {true,true,false,true});
+                        
+        un.useGlobalThresh=true;
+        un.thresh=3f;
         
         lg.setFastWeightTC(2000000);
         
-//        net.lay(1).enableSTDP=false;
-//        net.lay(3).enableSTDP=false;
-//        
-//        net.lay(1).enableFastSTDP=false;
-//        net.lay(3).enableFastSTDP=false;
+        net.lay(1).setEnableFastSTDP(true);
         
         lg.stdpWin=30000;
-        lg.fastSTDP.plusStrength=(-.001f);
-        lg.fastSTDP.minusStrength=(-.001f);   
-        lg.fastSTDP.stdpTCminus=(10000);
-        lg.fastSTDP.stdpTCplus=(10000);
+        lg.fastSTDP.plusStrength=-.001f;
+        lg.fastSTDP.minusStrength=-.001f;   
+        lg.fastSTDP.stdpTCminus=10000;
+        lg.fastSTDP.stdpTCplus=10000;
         
-        for (int i=0; i<nEvents; i++)
-        {   int number=i<nEvents/2?8:2;
-            net.addToQueue(new Spike((int)(5000000*(i/(float)nEvents)),number,3));
-        }
-                
-        net.plot.timeScale=1f;
+        // Run the numbers!
+        float rate=100;
+        int timeMicros=1000000;
+        for (int i=0; i<10; i++)
+        {    nc.generateInputSpikes(rate,timeMicros,i,3);
+        }              
         
-//        STPLayer<STPStack,STPLayer.Layer> net2=net.read.copy();
+        nc.addAllControls();        
+        nc.realTimeRun(20);
         
+        // Why does this not give identical results?
+//        nc.startDisplay();
+//        net.eatEvents(20000000);
         
-        net.plot.addControls(net.getControls());
-        net.plot.addControls(unitFactory.glob);
-        net.plot.addControls(layerFactory.glob);
-        for (BasicLayer l:net.layers)
-            net.plot.addControls(l.getControls());
-        
-        
-        
-        net.plot.followState();
-        
-        net.eatEvents(20000000);
-        
-//        STPLayer net2=net.read.copy();
         
         
     }

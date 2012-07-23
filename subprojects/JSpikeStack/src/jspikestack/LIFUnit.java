@@ -43,13 +43,13 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals,Sp
 
     /** Boolean.. determines whether to spike */
     public boolean doSpike(){
-        return vmem>(getThresh()<0?glob.getThresh():thresh);                
+        return vmem>(glob.useGlobalThresh?glob.getThresh():thresh);                
     }
     
     /** Get the neuron threshold (it can be either local or global */
     public float getThresh()
     {
-        return glob.globalThresh?glob.getThresh():thresh;
+        return glob.useGlobalThresh?glob.getThresh():thresh;
     }
 
     /** Reset the unit to a baseline state */
@@ -109,6 +109,11 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals,Sp
             return new Globals();
         }
 
+        @Override
+        public Controllable getGlobalControls() {
+            return glob;
+        }
+
     }
     
     
@@ -123,17 +128,14 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals,Sp
         return new Spike(time,ixUnit);
     }
                
-    public static class Globals extends NetController
-    {   private float tref=5000;
-        private float tau=100000;
+    public static class Globals extends Controllable
+    {   
+        // Properties
+        public float tref=5000;
+        public float tau=100000;
         public boolean resetAfterFire=true;
-        private float thresh;
-        
-        public boolean globalThresh;
-        
-        public void setGlobalThresh(float newThresh)
-        {   setThresh(newThresh);     
-        }                
+        public float thresh;        
+        public boolean useGlobalThresh;
         
         /** Get Global Threshold */
         public float getThresh() {

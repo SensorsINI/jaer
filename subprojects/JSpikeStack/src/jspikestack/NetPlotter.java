@@ -7,28 +7,21 @@ package jspikestack;
 import java.awt.*;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
-import java.awt.event.HierarchyEvent;
-import java.awt.event.HierarchyListener;
-import java.lang.reflect.InvocationTargetException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.*;
-import javax.swing.event.AncestorEvent;
-import javax.swing.event.AncestorListener;
+import java.util.Queue;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 import javax.swing.text.JTextComponent;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
-import org.jfree.chart.renderer.xy.XYDotRenderer;
-import org.jfree.data.xy.XYDataset;
-import org.jfree.data.xy.XYSeries;
-import org.jfree.data.xy.XYSeriesCollection;
 
 /**
  *
@@ -40,7 +33,7 @@ public class NetPlotter {
     
     JPanel frm;
     
-    GeneralController controlPanel;
+    ControlPanel controlPanel;
     
     public int updateMicros=30000;           // Update interval, in milliseconds
     public float timeScale=1;               // Number of network-seconds per real-second 0: doesn't advance.  Inf advances as fast as CPU will allow
@@ -88,21 +81,23 @@ public class NetPlotter {
     /* Create a raster plot for a single layer */
     public XYPlot layerRaster(BasicLayer lay)
     {
-        // Add the data
-        Iterator<Spike> itr=lay.outBuffer.iterator();
-        XYSeries data=new XYSeries("Events");
-        for (int i=0; i<lay.outBuffer.size(); i++)
-        {   Spike evt=itr.next();
-            data.add((float)evt.time,evt.addr);
-        }
-        XYDataset raster = new XYSeriesCollection(data);
+        throw new UnsupportedOperationException("This is broken for now!");
         
-        //SamplingXYLineAndShapeRenderer renderer = new SamplingXYLineAndShapeRenderer(false, true);
-        XYDotRenderer renderer = new XYDotRenderer();
-        renderer.setDotWidth(2);
-        renderer.setDotHeight(5);
-
-        return new XYPlot(raster, null, new NumberAxis("Layer "+lay.ixLayer), renderer);
+        // Add the data
+//        Iterator<Spike> itr=lay.outBuffer.iterator();
+//        XYSeries data=new XYSeries("Events");
+//        for (int i=0; i<lay.outBuffer.size(); i++)
+//        {   Spike evt=itr.next();
+//            data.add((float)evt.time,evt.addr);
+//        }
+//        XYDataset raster = new XYSeriesCollection(data);
+//        
+//        //SamplingXYLineAndShapeRenderer renderer = new SamplingXYLineAndShapeRenderer(false, true);
+//        XYDotRenderer renderer = new XYDotRenderer();
+//        renderer.setDotWidth(2);
+//        renderer.setDotHeight(5);
+//
+//        return new XYPlot(raster, null, new NumberAxis("Layer "+lay.ixLayer), renderer);
         
     }
 
@@ -237,33 +232,51 @@ public class NetPlotter {
         return hostPanel;
     }
     
-    
-    public void addControls(NetController con)
+    public void addControls(ControlPanel cp)
     {
-        if (controlPanel==null)
-            controlPanel=new GeneralController();
-        
-        controlPanel.addController(con);
-        
+        controlPanel=cp;
     }
+    
+//    public void addControls(Controllable con)
+//    {
+//        if (controlPanel==null)
+//            controlPanel=new ControlPanel();
+//        
+//        controlPanel.addController(con);
+//        
+//    }
         
     public void followState()
-    {   JFrame fr=new JFrame();
-        followState(fr.getContentPane());   
+    {   
+        SwingUtilities.invokeLater(new Runnable()
+        {
+            @Override
+            public void run() {
+                JFrame fr=new JFrame();
+                
+                JPanel pan=new JPanel();
+                               
+                
+                followState(pan);   
+
+                fr.getContentPane().setBackground(Color.GRAY);
+                fr.setLayout(new GridBagLayout());
+                fr.setContentPane(pan);
+                
+                
+
+                fr.pack();
+                fr.setVisible(true);   
+            }
+            
+        });
         
-        fr.getContentPane().setBackground(Color.GRAY);
-        fr.setLayout(new GridBagLayout());
-        fr.setContentPane(createStatePlot());
         
-        fr.pack();
-//        fr.setSize(1000,400);
-        
-        fr.setVisible(true);   
     }
     
     
     /** Create a plot of the network state and launch a thread that updates this plot.*/
-    public void followState(Container pan)
+    public void followState(final Container pan)
     {
         frm=createStatePlot();
         pan.add(frm);
@@ -283,7 +296,8 @@ public class NetPlotter {
             @Override
             public void run()
             {
-                frm.getTopLevelAncestor().addComponentListener(new ComponentListener(){
+//                frm.getTopLevelAncestor().addComponentListener(new ComponentListener(){
+                 pan.addComponentListener(new ComponentListener(){
 
                     @Override
                     public void componentResized(ComponentEvent e) {
@@ -325,10 +339,17 @@ public class NetPlotter {
 //                    else
 //                    {   // In normal operation, this block should be on.
                     
-                        if (realTime)
-                            state();                    
-                        else
-                            state(lastNetTime+(int)(updateMicros*timeScale));
+                    
+                    SwingUtilities.invokeLater(new Runnable()
+                        { public void run(){
+
+
+                            if (realTime)
+                                state();                    
+                            else
+                                state(lastNetTime+(int)(updateMicros*timeScale));
+                            
+                    }});
 //                    }
                     
                     try {
@@ -454,7 +475,10 @@ public class NetPlotter {
         
         float adaptationRate=.1f;  // Adaptation rate of the limits.
         
-        int outBookmark;
+        Queue<Spike> spikeQueue;
+        
+//        int outBookmark;
+        
         
         public LayerStatePlotter(BasicLayer lay,ImageDisplay display)
         {   tau=((LIFUnit.Globals)(lay.unitFactory.glob)).getTau();
@@ -462,10 +486,12 @@ public class NetPlotter {
             disp=display;
 
             state=new float[lay.nUnits()];
-            outBookmark=0;
+//            outBookmark=0;
             
             
             disp.setFontSize(14);
+            
+            spikeQueue=layer.outBuffer.addReader();
             
         }
         
@@ -483,10 +509,13 @@ public class NetPlotter {
             float smin=Float.MAX_VALUE;
             float smax=-Float.MAX_VALUE;
             
-            if (toTime==Integer.MIN_VALUE)
+//            if (toTime==Integer.MIN_VALUE)
+//                return;
+//            else if (lastTime==Integer.MIN_VALUE)
+//                lastTime=toTime;
+            
+            if (toTime==lastTime) // Nothing has changed.  Return
                 return;
-            else if (lastTime==Integer.MIN_VALUE)
-                lastTime=toTime;
             
             // Step 1: Decay present state
             for (int i=0; i<state.length; i++)
@@ -504,14 +533,16 @@ public class NetPlotter {
 //        System.out.println(net.time);
         
             // Step 2: Add new events to state
-            while (outBookmark<layer.outBuffer.size())
-            {   Spike ev=layer.getOutputEvent(outBookmark);
+//            while (outBookmark<layer.outBuffer.size())
+            while (!spikeQueue.isEmpty()) 
+            {   //Spike ev=layer.getOutputEvent(outBookmark);
+                Spike ev=spikeQueue.poll();
                 if (ev.time>toTime)
                     break;
                 state[ev.addr]+=Math.exp((ev.time-toTime)/tau);
                 if (state[ev.addr]<smin) smin=state[ev.addr];
                 if (state[ev.addr]>smax) smax=state[ev.addr];
-                outBookmark++;
+//                outBookmark++;
             }
             
             
@@ -549,8 +580,8 @@ public class NetPlotter {
         }
         
         public void reset()
-        {
-            lastTime=Integer.MIN_VALUE;
+        {   // outBookmark=0;
+            lastTime=0;
             
         }
                 

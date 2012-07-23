@@ -28,12 +28,15 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     ArrayList<LayerType> layers=new ArrayList();
     
     transient Queue<SpikeType> inputBuffer = new LinkedList();
-    transient Queue<SpikeType> internalBuffer= new LinkedList();
-            
+//    transient Queue<SpikeType> internalBuffer= new LinkedList();
+    transient PriorityQueue<SpikeType> internalBuffer= new PriorityQueue();
+//            
     public int delay;
     
-    public int time=Integer.MIN_VALUE;    // Current time (millis) (avoids having to pass around time reference)
+    public int time=0;    // Current time (millis) (avoids having to pass around time reference)
             
+//    boolean enabled=true;
+    
     public boolean liveMode=false;     // Live-mode.  If true, it prevents the network from advancing as long as the input buffer is empty
     
     public boolean inputCurrents=false;  
@@ -64,6 +67,11 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
 //        layerClass=layClass;
 //        unitClass=unClass;
     };
+    
+    public ArrayList<LayerType> getLayers()
+    {
+        return layers;
+    }
         
     /** Add a new layer.*/
     public void addLayer(int index)
@@ -183,6 +191,9 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
                 }
             }
         }
+        
+        // Finally, run init function to catch any necessary initializations.
+        init();
     }
     
     // </editor-fold>
@@ -267,6 +278,8 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
             
             
         }
+        
+//        enabled=true;  // Re-enable network when done.
     }
     
     
@@ -308,13 +321,13 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
             
     /** Reset Network */ 
     public void reset()
-    {   inputBuffer.clear();
+    {   
+        inputBuffer.clear();
         internalBuffer.clear();
         time=Integer.MIN_VALUE;
         //time=0;
         for (LayerType l:layers)
             l.reset();
-        
         plot.reset();
         
     }
@@ -358,6 +371,12 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     public void addToInternalQueue(SpikeType ev)
     {
         internalBuffer.add(ev);
+    }
+
+    
+    void init() {
+        for (BasicLayer l:layers)
+            l.init();
     }
     
     
@@ -514,7 +533,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     }
     
     
-    public class Controls extends NetController
+    public class Controls extends Controllable
     {
         @Override
         public String getName() {
@@ -530,9 +549,13 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
         /** Spike Propagation Delay (milliseconds) */
         public void setDelay(int delay) {
             SpikeStack.this.delay = delay;
-        }
+        }        
         
-        
+//        public void doSTOP()
+//        {
+//            enabled=false;
+//        }
+                
     }
     
     // </editor-fold>

@@ -122,7 +122,7 @@ setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for a
  *@see net.sf.jaer.eventprocessing.EventFilter#setPropertyTooltip(java.lang.String, java.lang.String, java.lang.String)
  * @see net.sf.jaer.eventprocessing.EventFilter
  */
-public class GeneralController extends javax.swing.JPanel implements PropertyChangeListener {
+public class ControlPanel extends javax.swing.JPanel implements PropertyChangeListener {
 
     private interface HasSetter {
 
@@ -142,13 +142,14 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
     private JPanel inheritedPanel = null;
     private float DEFAULT_REAL_VALUE=0.01f; // value jumped to from zero on key or wheel up
 
-    NetController controllable;
+    Controllable controllable;
     
     
     /** Creates new form FilterPanel */
-    public GeneralController() {
+    public ControlPanel() {
         titledBorder = new TitledBorder("Network Controls");
         titledBorder.getBorderInsets(this).set(1, 1, 1, 1);
+        titledBorder.setBorder(BorderFactory.createLineBorder(Color.blue));
         setBorder(titledBorder);
         initComponents();
     }
@@ -219,7 +220,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
 //    }
     
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
-    void addController(NetController filter) {
+    void addController(Controllable filter) {
         JPanel control = null;
 //        NetController filter = getControllable();
         setControllable(filter);
@@ -241,7 +242,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
                     JButton button = new JButton(m.getName().substring(2));
                     button.setMargin(butInsets);
                     button.setFont(button.getFont().deriveFont(9f));
-                    final NetController f = filter;
+                    final Controllable f = filter;
                     final Method meth = m;
                     button.addActionListener(new ActionListener() {
 
@@ -264,10 +265,10 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
 
             //if at least one button then we show the actions panel
             if (control.getComponentCount() > 0) {
-                TitledBorder tb = new TitledBorder("Filter Actions");
-                tb.getBorderInsets(this).set(1, 1, 1, 1);
-                control.setBorder(tb);
-                control.setMinimumSize(new Dimension(0, 0));
+                TitledBorder tb = new TitledBorder("Actions");
+//                tb.getBorderInsets(this).set(1, 1, 1, 1);
+//                control.setBorder(tb);
+//                control.setMinimumSize(new Dimension(0, 0));
                 add(control);
                 controls.add(control);
             }
@@ -461,7 +462,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
 //        System.out.println("added glue to "+this);
     }
 
-    void addTip(NetController f, JLabel label) {
+    void addTip(Controllable f, JLabel label) {
         String s = f.getPropertyTooltip(label.getText());
         if (s == null) {
             return;
@@ -470,7 +471,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
         label.setForeground(Color.BLUE);
     }
 
-    void addTip(NetController f, JButton b) {
+    void addTip(Controllable f, JButton b) {
         String s = f.getPropertyTooltip(b.getText());
         if (s == null) {
             return;
@@ -479,7 +480,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
         b.setForeground(Color.BLUE);
     }
 
-    void addTip(NetController f, JCheckBox label) {
+    void addTip(Controllable f, JCheckBox label) {
         String s = f.getPropertyTooltip(label.getText());
         if (s == null) {
             return;
@@ -491,7 +492,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
     class EnumControl extends JPanel implements HasSetter {
 
         Method write, read;
-        NetController filter;
+        Controllable filter;
         boolean initValue = false, nval;
         final JComboBox control;
 
@@ -499,7 +500,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
             control.setSelectedItem(o);
         }
 
-        public EnumControl(final Class<? extends Enum> c, final NetController f, final String name, final Method w, final Method r) {
+        public EnumControl(final Class<? extends Enum> c, final Controllable f, final String name, final Method w, final Method r) {
             super();
             setterMap.put(name, this);
             filter = f;
@@ -546,7 +547,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
     class StringControl extends JPanel implements HasSetter {
 
         Method write, read;
-        NetController filter;
+        Controllable filter;
         boolean initValue = false, nval;
         final JTextField textField;
 
@@ -557,7 +558,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
             }
         }
 
-        public StringControl(final NetController f, final String name, final Method w, final Method r) {
+        public StringControl(final Controllable f, final String name, final Method w, final Method r) {
             super();
             setterMap.put(name, this);
             filter = f;
@@ -607,11 +608,11 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
     class BooleanControl extends JPanel implements HasSetter {
 
         Method write, read;
-        NetController filter;
+        Controllable filter;
         boolean initValue = false, nval;
         final JCheckBox checkBox;
 
-        public BooleanControl(final NetController f, final String name, final Method w, final Method r) {
+        public BooleanControl(final Controllable f, final String name, final Method w, final Method r) {
             super();
             setterMap.put(name, this);
             filter = f;
@@ -677,7 +678,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
             }
         }
 
-        public IntSliderControl(final NetController f, final String name, final Method w, final Method r, SliderParams params) {
+        public IntSliderControl(final Controllable f, final String name, final Method w, final Method r, SliderParams params) {
             super();
             setterMap.put(name, this);
             filter = f;
@@ -726,7 +727,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
     class FloatSliderControl extends JPanel implements HasSetter {
 
         Method write, read;
-        NetController filter;
+        Controllable filter;
         JSlider slider;
         JTextField tf;
         EngineeringFormat engFmt;
@@ -746,7 +747,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
             }
         }
 
-        public FloatSliderControl(final NetController f, final String name, final Method w, final Method r, SliderParams params) {
+        public FloatSliderControl(final Controllable f, final String name, final Method w, final Method r, SliderParams params) {
             super();
             setterMap.put(name, this);
             filter = f;
@@ -801,7 +802,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
     class IntControl extends JPanel implements HasSetter {
 
         Method write, read;
-        NetController filter;
+        Controllable filter;
         int initValue = 0, nval;
         final JTextField tf;
 
@@ -812,7 +813,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
             }
         }
 
-        public IntControl(final NetController f, final String name, final Method w, final Method r) {
+        public IntControl(final Controllable f, final String name, final Method w, final Method r) {
             super();
             setterMap.put(name, this);
             filter = f;
@@ -1029,7 +1030,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
 //        final String format="%.6f";
 
         Method write, read;
-        NetController filter;
+        Controllable filter;
         float initValue = 0, nval;
         final JTextField tf;
 
@@ -1040,7 +1041,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
             }
         }
 
-        public FloatControl(final NetController f, final String name, final Method w, final Method r) {
+        public FloatControl(final Controllable f, final String name, final Method w, final Method r) {
             super();
             setterMap.put(name, this);
             filter = f;
@@ -1404,11 +1405,11 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
         setControlsVisible(controlsVisible);
     }
 
-    public NetController getControllable() {
+    public Controllable getControllable() {
         return controllable;
     }
 
-    public void setControllable(NetController filter) {
+    public void setControllable(Controllable filter) {
         this.controllable = filter;
     }
 
@@ -1463,7 +1464,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
         }
     }
 
-    private SliderParams isSliderType(PropertyDescriptor p, NetController filter) throws SecurityException {
+    private SliderParams isSliderType(PropertyDescriptor p, Controllable filter) throws SecurityException {
 //                if(c instanceof Class) System.out.println("filter="+filter+" propertyType="+c);
         //TODO add slider control type if property has getMin and getMax methods
         boolean isSliderType = false;
@@ -1496,7 +1497,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
     class Point2DControl extends JPanel implements HasSetter {
 
         Method write, read;
-        NetController filter;
+        Controllable filter;
         Point2D.Float point;
         float initValue = 0, nval;
         final JTextField tfx, tfy;
@@ -1541,7 +1542,7 @@ public class GeneralController extends javax.swing.JPanel implements PropertyCha
             }
         }
 
-        public Point2DControl(final NetController f, final String name, final Method w, final Method r) {
+        public Point2DControl(final Controllable f, final String name, final Method w, final Method r) {
             super();
             setterMap.put(name, this);
             filter = f;
