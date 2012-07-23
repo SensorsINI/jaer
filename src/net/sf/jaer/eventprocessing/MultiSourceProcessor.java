@@ -13,6 +13,7 @@ import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JPanel;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -70,11 +71,21 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
         this.getChip().getAeViewer().getJaerViewer().globalViewer.addDisplayWriter(disp);
     }
         
-    public void addControls(Component controls)
+    public void addControls(JPanel controls)
     {
-        this.getChip().getAeViewer().getJaerViewer().globalViewer.addControlsToFilter(controls, this);
-               
+//        this.getChip().getAeViewer().getJaerViewer().globalViewer.addControlsToFilter(controls, this);
+        
+        getControlPanel().addControls(controls);
+        
     }
+    
+    /** Retrieves the control panel for this filter, allowing you to customize it */
+    private MultiInputPanel getControlPanel()
+    {
+        return this.getChip().getAeViewer().getJaerViewer().globalViewer.procNet.getControlPanelFromFilter(this);
+    }
+    
+    
     
     
     /** Number of inputs that this filter takes */
@@ -217,7 +228,7 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
                     {   resynchronize();
                         
                         throw new RuntimeException("The event-streams from your sources are out of synch. "
-                                + "by "+(ev.timestamp+-lastEventTime)/1000+"ms, which is more than the max wait time of "+
+                                + "by "+(ev.timestamp-lastEventTime)/1000+"ms, which is more than the max wait time of "+
                                 maxWaitTime/1000+"ms.  Either synchronize your sources or set a bigger maxWaitTime.");
                     
                     }
@@ -242,6 +253,8 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
          * event, ensuring that pq always contains 1 element from each source.  
          * Run until one of the source buffers is empty.
          */
+        if (out==null)// Why does this happen?
+            out=new EventPacket();
         out.clear();
         OutputEventIterator<BasicEvent> outItr=out.outputIterator();
         

@@ -120,7 +120,7 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
     }
     
 
-    public static class Factory<LayerType extends BasicLayer> extends BasicLayer.Factory<LayerType>
+    public static class Factory<LayerType extends BasicLayer> implements BasicLayer.AbstractFactory<LayerType>
     {
         public Globals glob;
 
@@ -140,7 +140,6 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
         }
         
     }
-        
 
     public static class Globals extends STDPLayer.Globals
     {
@@ -200,8 +199,6 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
         }
        
     }
-
-
 
     @Override
     public Controllable getControls()

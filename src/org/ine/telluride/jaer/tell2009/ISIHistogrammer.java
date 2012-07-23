@@ -45,7 +45,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
     }
 
     private void checkBins (){
-        if(lastTs.length!=nChans) resetBins();
+        if(lastTs==null || lastTs.length!=nChans) resetBins();
     }
     public enum Direction{
         XDirection, YDirection, XtimesYDirection;

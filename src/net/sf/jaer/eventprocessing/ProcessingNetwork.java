@@ -48,6 +48,43 @@ public class ProcessingNetwork {
         }
     }   
     
+    /** Return the node corresponding to the given filter, or null if none found. */
+    Node getNodeFromFilter(EventFilter filt)
+    {   Node returnNode=null;
+        for (Node n:nodes)
+        {   if (n.filt==filt)
+            {   returnNode=n;
+                break;
+            }
+        }
+        
+        return returnNode;
+    }
+    
+    public MultiInputPanel getControlPanelFromFilter(EventFilter filt)
+    {
+        Node n=getNodeFromFilter(filt); 
+        
+        if (n!=null)
+            return n.controlPanel;
+        else
+        {   throw new RuntimeException("Specified Filter not found!  Could not add controls");
+        }
+    }
+    
+    /** Add controls to the control panel of the specified filter */
+//    public void addControlsToFilter(JPanel controls,EventFilter filt)
+//    {
+//        Node n=getNodeFromFilter(filt);
+//        
+//        if (n!=null)
+//            n.addControls(controls);
+//        else
+//        {   throw new RuntimeException("Specified Filter not found!  Could not add controls");
+//            
+//        
+//        }
+//    }
     
     /** Mainly for back-compatibility.  Build the processing network out of a 
      * filter-chain.
@@ -69,7 +106,6 @@ public class ProcessingNetwork {
         inputStreams=ins;
     }
     
-       
     
     class Node implements PacketStream, DisplayWriter
     {   
@@ -80,6 +116,22 @@ public class ProcessingNetwork {
         PacketStream[] sources;
         EventPacket outputPacket;
         boolean ready=false;
+        MultiInputPanel controlPanel;
+        
+        public JPanel getControlPanel()
+        {
+            return controlPanel;
+        }
+        
+        public void setControlPanel(MultiInputPanel cp)
+        {   
+            controlPanel=cp;
+        }
+        
+        public void addControls(JPanel cont)
+        {
+            controlPanel.addControls(cont);
+        }
         
         public Node(EventFilter2D philt,int id)
         {

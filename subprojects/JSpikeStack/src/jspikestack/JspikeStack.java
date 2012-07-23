@@ -70,8 +70,8 @@ public class JspikeStack {
         
         nc.readXML();
        
-        un.tau=200000;
-        net.delay=12000;
+        un.tau=100000;
+        net.delay=20000;
         un.tref=5000;
         net.plot.timeScale=1f;
         
@@ -79,17 +79,20 @@ public class JspikeStack {
         nc.setBackwardStrengths(new boolean[] {true,true,false,true});
                         
         un.useGlobalThresh=true;
-        un.thresh=3f;
+        un.thresh=2.6f;
         
         lg.setFastWeightTC(2000000);
+        lg.doRandomJitter=true;
         
         net.lay(1).setEnableFastSTDP(true);
+        net.lay(3).setEnableFastSTDP(true);
         
         lg.stdpWin=30000;
-        lg.fastSTDP.plusStrength=-.001f;
-        lg.fastSTDP.minusStrength=-.001f;   
-        lg.fastSTDP.stdpTCminus=10000;
-        lg.fastSTDP.stdpTCplus=10000;
+        lg.fastSTDP.plusStrength=-.1f;
+        lg.fastSTDP.minusStrength=-.1f;   
+        lg.fastSTDP.stdpTCminus=20000;
+        lg.fastSTDP.stdpTCplus=20000;
+        
         
         // Run the numbers!
         float rate=100;
@@ -99,13 +102,11 @@ public class JspikeStack {
         }              
         
         nc.addAllControls();        
-        nc.realTimeRun(20);
+        nc.simulate(100,false);
         
         // Why does this not give identical results?
 //        nc.startDisplay();
 //        net.eatEvents(20000000);
-        
-        
         
     }
     

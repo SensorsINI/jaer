@@ -11,7 +11,7 @@ import java.util.Queue;
  *
  * @author oconnorp
  */
-public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,GlobalParams extends STDPLayer.Globals> extends BasicLayer<NetType,LayerType> {
+public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,GlobalParams extends STDPLayer.Globals> extends BasicLayer<NetType,LayerType,GlobalParams> {
     
     
 //    
@@ -28,7 +28,6 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
 //        int thisBufferBookmark=0;
 
         
-        GlobalParams glob;
         
         Queue<Spike> presyn;   // Queue of presynaptic spikes
         Queue<Spike> postsyn;  // Queue of postsynaptic spikes
@@ -37,8 +36,8 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
         boolean enableSTDP=false;     // Enable STDP on the slow weights
 
         public STDPLayer(NetType network,Unit.Factory uf,int ind,GlobalParams glo)
-        {   super(network,uf,ind);   
-            glob=glo;
+        {   super(network,uf,ind,glo);   
+//            glob=glo;
         }
         
         /** For performance: enable/disable queues */
@@ -128,7 +127,8 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
                 
 
                 // Adjust the out-time back by the delay so it can be compared with the input time that caused it.
-                double outTime=evout.time-net.delay;
+//                double outTime=evout.time-net.delay;
+                int outTime=evout.time;
 
 //                int tempBookmark=thisBufferBookmark;    // Temporary bookmark for iterating through presyn spikes around an output spike
 
@@ -150,9 +150,10 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
 //
 //
 //                    }
+                    int inTime=evin.hitTime;
                     
                     // If input event is in relevant time window
-                    if (evin.time + glob.stdpWin >= outTime)
+                    if (inTime + glob.stdpWin >= outTime)
                         updateWeight(evin.addr,evout.addr,outTime-evin.time);
                     
 //                    tempBookmark++;
@@ -172,7 +173,7 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
 
 
         
-        public static class Factory<LayerType extends BasicLayer> extends BasicLayer.Factory<LayerType>
+        public static class Factory<LayerType extends BasicLayer> implements BasicLayer.AbstractFactory<LayerType>
         {
             public Globals glob;
             
@@ -193,16 +194,12 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
         }
         
         
-        public static class Globals extends Controllable
+        public static class Globals extends BasicLayer.Globals
         {
             public STDPrule stdp=new STDPrule();;
     
             public int stdpWin;
 
-            @Override
-            public String getName() {
-                return "Layer Controller Globals";
-            }
 
             public static class STDPrule implements Serializable{
 

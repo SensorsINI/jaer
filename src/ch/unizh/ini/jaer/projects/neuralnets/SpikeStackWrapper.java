@@ -35,7 +35,8 @@ public class SpikeStackWrapper <NetType extends SpikeStack> {
     
     
     public void reset()
-    {   net.reset();
+    {   R.baseTimeSet=false; // Reinitialize baseline-time
+        net.reset();
     }
     
     public void eatEvents()

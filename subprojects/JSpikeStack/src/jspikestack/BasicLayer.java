@@ -6,18 +6,21 @@ package jspikestack;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Random;
 
 /**
  *
  * @author oconnorp
  */
-public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer> 
+public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer,GlobalParams extends BasicLayer.Globals> 
 {
     NetType net;
     
     float[][] wOut;
     float[][] wLat;
-
+    
+    GlobalParams glob;
+    
     String name="";
     
     Unit.Factory unitFactory; // Factory class for making units
@@ -37,13 +40,17 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer>
 
     public float inputCurrentStrength=1;
     
+    
+    Random rand=new Random();
+    
     transient public MultiReaderQueue<Spike> outBuffer=new MultiReaderQueue();
 
     /** Instantiate Layer with index */
-    public BasicLayer(NetType network,Unit.Factory<?,Unit> ufac,int ix)
+    public BasicLayer(NetType network,Unit.Factory<?,Unit> ufac,int ix,GlobalParams glo)
     {   net=network;
         ixLayer=ix;    
         unitFactory=ufac;
+        glob=glo;
     }
 
     /** Fire Currents to this layer... */
@@ -79,7 +86,12 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer>
                 
         if (ev!=null)
         {   ev.layer=ixLayer;
+        if (glob.doRandomJitter)
+            ev.defineDelay(net.delay+rand.nextInt(1000));
+        else
             ev.defineDelay(net.delay);
+        
+//            ev.defineDelay(rand.nextInt(net.delay));
             net.addToInternalQueue(ev);
             outBuffer.add(ev);
         }
@@ -246,9 +258,9 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer>
 //    }
 
     
-    public static Factory getFactory()
+    public static AbstractFactory getFactory()
     {
-        return new BasicFactory();
+        return new Factory();
     }
     
     /** Actions to perform after input spike is processed */
@@ -257,32 +269,67 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer>
     }
 
         
-    public static class BasicFactory extends Factory<BasicLayer>
+    public static class Factory implements AbstractFactory<BasicLayer>
     {
 //        Unit.Factory unitFactory;
 //        NetworkType net;
+        public Globals glob;
 //
-//        public Factory(NetworkType nt,Unit.Factory uf)
-//        {
-//            unitFactory=uf;
-//            net=nt;
-//        }
+        public Factory()
+        {
+            glob=new Globals();
+        }
 
         @Override
         public <NetType extends SpikeStack,UnitType extends Unit> BasicLayer make(NetType net,Unit.Factory<?,UnitType> unitFactory,int layerIndex)
         {
-            return new BasicLayer(net,unitFactory,layerIndex); // TODO: BAAAD.  I'm confused
+            return new BasicLayer(net,unitFactory,layerIndex,glob); // TODO: BAAAD.  I'm confused
         }
 
         @Override
         public Controllable getGlobalControls() {
-            return null;
+            return new Globals();
         }
 
     }
     
     
-    public abstract static class Factory<LayerType extends BasicLayer>
+    public static class Globals extends Controllable
+    {   
+        public boolean doRandomJitter=true;    
+        
+        /** Random spike time jitter, us.  Useful for breaking ties */
+        public int randomJitter=100; 
+
+        
+        @Override
+        public String getName() {
+            return "Layer Controller Globals";
+        }
+
+        /** Add Random spike time Jitter */
+        public boolean isDoRandomJitter() {
+            return doRandomJitter;
+        }
+
+        /** Add Random spike time Jitter */
+        public void setDoRandomJitter(boolean doRandomJitter) {
+            this.doRandomJitter = doRandomJitter;
+        }
+
+        /** Random spike time Jitter (us) */
+        public int getRandomJitter() {
+            return randomJitter;
+        }
+
+        /** Random spike time Jitter (us) */
+        public void setRandomJitter(int randomJitter) {
+            this.randomJitter = randomJitter;
+        }
+    }
+    
+    
+    public interface AbstractFactory<LayerType extends BasicLayer>
     {
         public abstract <NetType extends SpikeStack,UnitType extends Unit> LayerType make(NetType net,Unit.Factory<?,UnitType> unitFactory,int layerIndex);
         

@@ -21,6 +21,7 @@ import javax.swing.border.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import net.sf.jaer.chip.Chip2D;
+import net.sf.jaer.graphics.GlobalViewer;
 import net.sf.jaer.util.EngineeringFormat;
 
 /**
@@ -1318,13 +1319,20 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             p.invalidate();
         }
 
+        boolean globalEnable=false; // For compatibility with new version
         invalidate();
         Container c = getTopLevelAncestor();
         if (c == null) {
             return;
         }
+        else if (c instanceof GlobalViewer) // Added for compatibility with multi-input mode
+        {    c=((GlobalViewer)c).getFilterPane();
+            globalEnable=true;
+        
+        }
+        
         // TODO fix bug here with enclosed filters not showing up if they are enclosed in enclosed filter, unless they are declared as enclosed
-        if (!getFilter().isEnclosed() && c instanceof Window) {
+        if (!getFilter().isEnclosed() && (c instanceof Window || globalEnable)) {
             if (c instanceof FilterFrame) {
                 // hide all filters except one that is being modified, *unless* we are an enclosed filter
                 FilterFrame<FilterPanel> ff = (FilterFrame) c;
@@ -1338,12 +1346,15 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 }
 
             }
-            ((Window) c).pack();
+//            if (c instanceof Window) // Redundant
+//                ((Window) c).pack();
+                
         }
 
         if (c instanceof Window) {
             ((Window) c).pack();
         }
+        
         if(!getFilter().isEnclosed()){ // store last selected top level filter
             if (visible) {
                 getFilter().getChip().getPrefs().put(FilterFrame.LAST_FILTER_SELECTED_KEY, getFilter().getClass().toString());

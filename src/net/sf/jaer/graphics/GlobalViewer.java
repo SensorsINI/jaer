@@ -37,7 +37,7 @@ public class GlobalViewer extends javax.swing.JFrame {
         JAERViewer jaerView;
         public boolean enabled=true;
         
-        ProcessingNetwork procNet=new ProcessingNetwork();
+        public ProcessingNetwork procNet=new ProcessingNetwork();
                 
         public final ArrayList<AEViewer.Ambassador> aeviewers=new ArrayList();
         public final ArrayList<DisplayWriter> inputDisplays=new ArrayList();
@@ -205,12 +205,12 @@ public class GlobalViewer extends javax.swing.JFrame {
 //        ArrayList<JPanel> viewPanels=new ArrayList();
         
         /** Add Custom Controls Panel to your filter! */
-        public void addControlsToFilter(Component Controls,EventFilter2D filt)
-        {
-            
-            
-        }
-        
+//        public void addControlsToFilter(JPanel controls,EventFilter2D filt)
+//        {
+//            procNet.addControlsToFilter(controls,filt);
+//            
+//        }
+//        JScrollPane jsc;
         
         void initComponents()
         {
@@ -225,8 +225,13 @@ public class GlobalViewer extends javax.swing.JFrame {
             this.setLayout(new BorderLayout());
             
             
+            
             filterPanel=new JPanel();
-            this.add(filterPanel,BorderLayout.WEST);
+            filterPanel.setLayout(new FlowLayout());
+//            jsc=new JScrollPane(filterPanel);
+//            jsc.add(filterPanel);
+            this.add(new JScrollPane(filterPanel,JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,JScrollPane.HORIZONTAL_SCROLLBAR_NEVER),BorderLayout.WEST);
+//            this.add(jsc);
 //            filterPanel.setBackground(Color.GRAY);
 //            filterPanel.setLayout(new BorderLayout());
             
@@ -284,6 +289,9 @@ public class GlobalViewer extends javax.swing.JFrame {
                             multiInputControl = new MultiInputFrame(jaerView.getViewers().get(0).getChip(), procNet,filterPanel);
 //                            MultiInputFrame mif = new MultiInputFrame(jaerView.getViewers().get(0).getChip(), procNet,filterPanel);
 
+                            
+//                            jsc.setVisible(true);
+                            
 //                            mif.setVisible(true);
 //                            
 //                            mif.getComponents();
@@ -295,20 +303,24 @@ public class GlobalViewer extends javax.swing.JFrame {
                         }
                         else
                             multiInputControl.setHidden(false);
+//                            multiInputControl.setVisible(true);
 //                            filterPanel.add(multiInputControl,BorderLayout.CENTER);
 //                        GlobalViewer.this.add(mifp,BorderLayout.WEST);
 
                         but.setText("Hide Filters");
-                        GlobalViewer.this.pack();
                     }
                     else
                     {   multiInputControl.setHidden(true);
 //                        filterPanel.remove(multiInputControl);
+                        multiInputControl.setVisible(false);
+                        
+//                        filterPanel.remove(multiInputControl);
                         but.setText("Show Filters");
-                        GlobalViewer.this.pack();
+                        
                         
                     }
-                
+                    GlobalViewer.this.pack();
+//                            jsc.revalidate();
                 
                     
                 }
@@ -534,6 +546,11 @@ public class GlobalViewer extends javax.swing.JFrame {
         {   viewPanel.remove(disp.getPanel().getParent());
             
             disp.setDisplayEnabled(false);
+        }
+        
+        public Container getFilterPane()
+        {
+            return multiInputControl;
         }
         
         

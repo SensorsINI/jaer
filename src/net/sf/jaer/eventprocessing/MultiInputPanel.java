@@ -4,23 +4,13 @@
  */
 package net.sf.jaer.eventprocessing;
 
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.ComponentOrientation;
-import java.awt.Container;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.BoxLayout;
-import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JToggleButton;
+import javax.swing.*;
 
 /**
  *
@@ -34,11 +24,15 @@ public class MultiInputPanel extends FilterPanel {
     Container sourcePanel;
     Container controlPanel;
     
+    JPanel customControls;
+    
     public MultiInputPanel(ProcessingNetwork.Node p) {
         super(p.filt);
         node=p;
         
 //        this.setLayout(new GridBagLayout());
+        
+        node.setControlPanel(this); 
         
         
         // Hackity hackity hack hack hack hack
@@ -86,6 +80,18 @@ public class MultiInputPanel extends FilterPanel {
         
         
     }
+    
+    public void addControls(JPanel controls)
+    {   
+        if (customControls!=null)
+            this.controls.remove(customControls);
+            
+        customControls=controls;
+        this.controls.add(controls);
+        
+        setControlsVisible(true);
+    }
+    
         
     @Override
     public void setControlsVisible(boolean visible)
@@ -100,8 +106,21 @@ public class MultiInputPanel extends FilterPanel {
             }
         
         this.revalidate();
-//        this.getParent().getParent().revalidate();
         
+        
+        
+//        ((JPanel)this.getParent().getParent()).revalidate();
+        
+        
+        Container ancest = this.getTopLevelAncestor();
+        if (ancest!=null)
+        {   //this.setPreferredSize(this.getSize());
+            ((Window)this.getTopLevelAncestor()).pack();
+        }
+//        if (this.getParent()!=null)
+//            ((JPanel)this.getParent().getParent().getParent()).revalidate();
+        
+//        this.getParent()
         this.repaint();
         
     }

@@ -7,15 +7,13 @@ package ch.unizh.ini.jaer.projects.neuralnets;
 import java.awt.Component;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import jspikestack.LIFUnit;
-import jspikestack.STPLayer;
-import jspikestack.Spike;
-import jspikestack.SpikeStack;
+import jspikestack.*;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.MultiSourceProcessor;
 import net.sf.jaer.graphics.DisplayWriter;
+import sun.nio.cs.ext.GB18030;
 
 /**
  * This should be a superclass for all SpikeStack-based filters.  If you'd like 
@@ -34,6 +32,7 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     STPLayer.Globals layGlobs;  // Layer Global Controls
     LIFUnit.Globals unitGlobs; // Unit Global Controls
         
+    NetController<STPLayer,STPLayer.Globals,LIFUnit.Globals> nc;
     
     // </editor-fold>
             
@@ -84,6 +83,8 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     public void resetFilter()
     {   
         wrapNet=null;
+//        net.plot.enable=false;
+        
     }
         
     // </editor-fold>
@@ -93,14 +94,23 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     /** Grab a network from file. */
     public SpikeStack getInitialNet() {
                 
-        STPLayer.Factory<STPLayer> layerFactory=new STPLayer.Factory();
-        LIFUnit.Factory unitFactory=new LIFUnit.Factory(); 
+        nc=new NetController(NetController.Types.LIFNET);
+        net=nc.net;
+//        LIFUnit.Globals un=nc.unitGlobals;
+//        STPLayer.Globals lg=nc.layerGlobals;
+        
+        
+//        STPLayer.Factory<STPLayer> layerFactory=new STPLayer.Factory();
+//        LIFUnit.Factory unitFactory=new LIFUnit.Factory(); 
+        
+//        STPLayer.Factory<STPLayer> layerFactory=nc.l
+//        LIFUnit.Factory unitFactory=new LIFUnit.Factory(); 
                 
-        net=new SpikeStack(layerFactory,unitFactory);
+//        net=new SpikeStack(layerFactory,unitFactory);
         buildFromXML(net);
         
-        layGlobs=layerFactory.glob;
-        unitGlobs=unitFactory.glob;
+        layGlobs=nc.layerGlobals;
+        unitGlobs=nc.unitGlobals;
         
         
         return net;
@@ -177,6 +187,9 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         SpikeStack net=getInitialNet();
         wrapNet=new SpikeStackWrapper(net,makeMapper(net));
         customizeNet(net);
+        
+        addControls();
+        
     }
     
     /** Grab the network from and XML file */
@@ -197,16 +210,23 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         
         super.addDisplayWriter(new NetworkPlot());
         
-        
     }
     
     public void doReset_Network()
     {
-        
+        super.resynchronize();
         if (wrapNet!=null)
             wrapNet.reset();
     }
     
+    public void addControls()
+    {
+        JPanel jp=nc.makeControlPanel();
+        
+        super.addControls(jp);
+        
+    }
+        
     
     // </editor-fold>
     

@@ -148,9 +148,21 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
         }
     }
     
+    public void simulate()
+    {
+        simulate(Float.POSITIVE_INFINITY);
+    }
     
+    public void simulate(float forSeconds)
+    {   simulate(forSeconds,true);        
+    }
     
-    public void realTimeRun(float forSeconds)
+    public void simulate(boolean realTime)
+    {
+        simulate(Float.POSITIVE_INFINITY,realTime);
+    }
+    
+    public void simulate(float forSeconds,boolean realtime)
     {
         int plotIntervalMillis=30;
         int plotIntervalMicros=plotIntervalMillis*1000;
@@ -161,28 +173,35 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
         int finalTime=net.time+(int)(1000000*forSeconds);
         
         
+//        float timeScale=realtime?timeScaling:Float.POSITIVE_INFINITY;
+        
         int targetNetTime=net.time;
         long targetSystemTime=System.currentTimeMillis();
         
-        // Loop along, allowing the network to progress up to a certain time 
-        // in each iteration.
-        while (net.time<finalTime && enable)
+        if (realtime)
         {
-            targetNetTime+=plotIntervalMicros*timeScaling;
-            targetSystemTime+=plotIntervalMillis;
-            
-            net.eatEvents(targetNetTime);
-            
-            try {
-                long sleepTime=Math.max(targetSystemTime-System.currentTimeMillis(),0);
-                System.out.println(sleepTime);
-                Thread.sleep(sleepTime);
-            } catch (InterruptedException ex) {
-                Logger.getLogger(NetController.class.getName()).log(Level.SEVERE, null, ex);
+            // Loop along, allowing the network to progress up to a certain time 
+            // in each iteration.
+            while (net.time<finalTime && enable)
+            {
+                targetNetTime+=plotIntervalMicros*timeScaling;
+                targetSystemTime+=plotIntervalMillis;
+
+                net.eatEvents(targetNetTime);
+
+                try {
+                    long sleepTime=Math.max(targetSystemTime-System.currentTimeMillis(),0);
+    //                System.out.println(sleepTime);
+                    Thread.sleep(sleepTime);
+                } catch (InterruptedException ex) {
+                    Logger.getLogger(NetController.class.getName()).log(Level.SEVERE, null, ex);
+                }
             }
+            enable=true;
         }
-        enable=true;
-               
+        else
+            net.eatEvents(finalTime);
+        
     }
     
     

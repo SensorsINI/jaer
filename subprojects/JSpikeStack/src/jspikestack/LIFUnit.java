@@ -4,6 +4,8 @@
  */
 package jspikestack;
 
+import java.util.Random;
+
 /**
  *
  * @author oconnorp
@@ -136,6 +138,7 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals,Sp
         public boolean resetAfterFire=true;
         public float thresh;        
         public boolean useGlobalThresh;
+        
         
         /** Get Global Threshold */
         public float getThresh() {

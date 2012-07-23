@@ -473,7 +473,7 @@ public class NetPlotter {
         float minState=Float.NaN;
         float maxState=Float.NaN;
         
-        float adaptationRate=.1f;  // Adaptation rate of the limits.
+        float adaptationRate=.03f;  // Adaptation rate of the limits.
         
         Queue<Spike> spikeQueue;
         

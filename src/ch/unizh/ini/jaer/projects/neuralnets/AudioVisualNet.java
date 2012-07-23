@@ -67,33 +67,35 @@ public class AudioVisualNet extends SpikeFilter {
         if (!net.isBuilt())
             return;
         
-        unitGlobs.setTau(200000);
+//        NetController<STPLayer,STPLayer.Globals,LIFUnit.Globals> netcon= nc;
+        
+        
+        unitGlobs.tau=200000;
         net.delay=10000;
-        unitGlobs.setTref(5000);
+        unitGlobs.tref=5000;
         
         net.plot.timeScale=1f;
         
+        
         // Set up connections
-        float[] sigf={1, 1, 0, 1};
-        net.setForwardStrength(sigf);
-        float[] sigb={1, 1, 0, 1};
-        net.setBackwardStrength(sigb);
+        nc.setForwardStrengths(new boolean[] {true,true,false,true});
+        nc.setBackwardStrengths(new boolean[] {true,true,false,true});
+        
         
         // Up the threshold
-        layGlobs.setFastWeightTC(2);
+        unitGlobs.useGlobalThresh=true;
+        unitGlobs.thresh=2;
         
-        net.lay(1).enableFastSTDP=true;
-        net.lay(3).enableFastSTDP=true;        
+        
+        layGlobs.fastWeightTC=2;
+        
+        net.lay(1).setEnableFastSTDP(true);
+        net.lay(3).setEnableFastSTDP(true);        
         layGlobs.fastSTDP.plusStrength=(-.01f);
         layGlobs.fastSTDP.minusStrength=(-.01f);   
         layGlobs.fastSTDP.stdpTCminus=(10000);
         layGlobs.fastSTDP.stdpTCplus=(10000);
         
-        
-        
-        for (int i=0; i<net.nLayers(); i++)
-            for (Unit u:net.lay(i).units)
-                u.thresh*=400;
         
         net.plot.timeScale=1f;
         
@@ -107,10 +109,6 @@ public class AudioVisualNet extends SpikeFilter {
         
         setVisualInputStrength(getVisualInputStrength());
         setAudioInputStrength(getAudioInputStrength());
-//        net.lay(0).inputCurrentStrength=2f;
-//        
-//        net.lay(3).inputCurrentStrength=.2f;
-//        
         
         net.unrollRBMs();
         

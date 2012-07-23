@@ -7,6 +7,7 @@ package jspikestack;
 import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.util.*;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -22,13 +23,14 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     
     // <editor-fold defaultstate="collapsed" desc=" Properties ">
     
-    BasicLayer.Factory<LayerType> layerFactory;
+    BasicLayer.AbstractFactory<LayerType> layerFactory;
     Unit.Factory unitFactory;
     
     ArrayList<LayerType> layers=new ArrayList();
     
     transient Queue<SpikeType> inputBuffer = new LinkedList();
 //    transient Queue<SpikeType> internalBuffer= new LinkedList();
+//    transient Queue<SpikeType> internalBuffer= new PriorityBlockingQueue();
     transient PriorityQueue<SpikeType> internalBuffer= new PriorityQueue();
 //            
     public int delay;
@@ -57,7 +59,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     
     // <editor-fold defaultstate="collapsed" desc=" Builder Functions ">
     
-    public SpikeStack (BasicLayer.Factory<LayerType> layerFac,Unit.Factory unitFac)
+    public SpikeStack (BasicLayer.AbstractFactory<LayerType> layerFac,Unit.Factory unitFac)
     {   plot=new NetPlotter(this);
         read=new NetReader(this);
         
@@ -94,7 +96,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     }
     
     /** Recursive function for copying layers and adopting them to new parent layers */
-    public void copyAndAdopt(BasicLayer<SpikeStack,BasicLayer> source,BasicLayer<SpikeStack,BasicLayer> newParent)
+    public void copyAndAdopt(BasicLayer source,BasicLayer newParent)
     {
         int ix=nLayers();
         addLayer(ix);
@@ -120,9 +122,9 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
         newParent.Lin.add(copy);
         
         /* Now, the recursive part, if source-layer has children, copy them and assign the new copy as their parent */     
-        for (BasicLayer kid:source.Lin)
-            copyAndAdopt(kid,copy);
-        
+        for (Object kid:source.Lin)
+        {    copyAndAdopt((BasicLayer)kid,copy);
+        }
     }
     
     /** Copy the structure of the network, but leave the state blank */
@@ -140,7 +142,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     }
     
     /** Create an EvtStack based on an Initializer Object */
-    public SpikeStack (Initializer ini,BasicLayer.Factory layerFac,Unit.Factory unitFac)
+    public SpikeStack (Initializer ini,BasicLayer.AbstractFactory layerFac,Unit.Factory unitFac)
     {   this(layerFac,unitFac);
         
         // Initial pass, instantiating layers and unit arrays
