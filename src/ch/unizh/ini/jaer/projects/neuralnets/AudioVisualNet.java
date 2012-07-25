@@ -6,6 +6,7 @@ package ch.unizh.ini.jaer.projects.neuralnets;
 
 import jspikestack.*;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  *
@@ -33,29 +34,42 @@ public class AudioVisualNet extends SpikeFilter {
         
         return new NetMapper(){
 
+//            @Override
+//            public int loc2addr(short xloc, short yloc, byte source) {
+//                if (source==0)
+//                {   return map.loc2addr(xloc,yloc);
+//                }
+//                else if (source==1)
+//                {   return xloc;
+//                }
+//                else 
+//                    throw new UnsupportedOperationException("Source bit "+source+"does not map to any layer!");
+//                
+//            }
+////            
+//            @Override
+//            public int source2layer(byte source)
+//            {
+//                // Map retina events to layer 0, cochlea events to layer 3.
+//                if (source==0)
+//                    return 0;
+//                else if (source==1)
+//                    return 3;
+//                else 
+//                    throw new UnsupportedOperationException("Source bit "+source+"does not map to any layer!");
+//            }
+
             @Override
-            public int loc2addr(short xloc, short yloc, byte source) {
-                if (source==0)
-                {   return map.loc2addr(xloc,yloc);
+            public int ev2addr(BasicEvent ev) {
+                if (ev.source==0)
+                {   return map.ev2addr(ev);
                 }
-                else if (source==1)
-                {   return xloc;
+                else if (ev.source==1)
+                {   return ev.x;
                 }
                 else 
-                    throw new UnsupportedOperationException("Source bit "+source+"does not map to any layer!");
+                    throw new UnsupportedOperationException("Source bit "+ev.source+"does not map to any layer!");
                 
-            }
-            
-            @Override
-            public int source2layer(byte source)
-            {
-                // Map retina events to layer 0, cochlea events to layer 3.
-                if (source==0)
-                    return 0;
-                else if (source==1)
-                    return 3;
-                else 
-                    throw new UnsupportedOperationException("Source bit "+source+"does not map to any layer!");
             }
             
         };
@@ -69,12 +83,11 @@ public class AudioVisualNet extends SpikeFilter {
         
 //        NetController<STPLayer,STPLayer.Globals,LIFUnit.Globals> netcon= nc;
         
-        
         unitGlobs.tau=200000;
         net.delay=10000;
         unitGlobs.tref=5000;
         
-        net.plot.timeScale=1f;
+        nc.view.timeScale=1f;
         
         
         // Set up connections
@@ -86,23 +99,24 @@ public class AudioVisualNet extends SpikeFilter {
         unitGlobs.useGlobalThresh=true;
         unitGlobs.thresh=2;
         
+        STPLayer.Globals lG=(STPLayer.Globals)layGlobs;
         
-        layGlobs.fastWeightTC=2;
+        lG.fastWeightTC=2;
         
         net.lay(1).setEnableFastSTDP(true);
         net.lay(3).setEnableFastSTDP(true);        
-        layGlobs.fastSTDP.plusStrength=(-.01f);
-        layGlobs.fastSTDP.minusStrength=(-.01f);   
-        layGlobs.fastSTDP.stdpTCminus=(10000);
-        layGlobs.fastSTDP.stdpTCplus=(10000);
+        lG.fastSTDP.plusStrength=(-.01f);
+        lG.fastSTDP.minusStrength=(-.01f);   
+        lG.fastSTDP.stdpTCminus=(10000);
+        lG.fastSTDP.stdpTCplus=(10000);
         
         
-        net.plot.timeScale=1f;
+        nc.view.timeScale=1f;
         
         net.liveMode=true;
-        net.plot.realTime=true;
+        nc.view.realTime=true;
         
-        net.plot.updateMicros=100000;
+        nc.view.updateMicros=100000;
         
         net.inputCurrents=true;
         

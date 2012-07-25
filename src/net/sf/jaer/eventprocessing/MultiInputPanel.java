@@ -24,7 +24,7 @@ public class MultiInputPanel extends FilterPanel {
     Container sourcePanel;
     Container controlPanel;
     
-    JPanel customControls;
+    ArrayList<JPanel> customControls=new ArrayList();
     
     public MultiInputPanel(ProcessingNetwork.Node p) {
         super(p.filt);
@@ -81,15 +81,25 @@ public class MultiInputPanel extends FilterPanel {
         
     }
     
-    public void addControls(JPanel controls)
+    public void addCustomControls(JPanel controls)
     {   
-        if (customControls!=null)
-            this.controls.remove(customControls);
-            
-        customControls=controls;
+//        if (customControls!=null)
+//            this.controls.remove(customControls);
+//            
+//        customControls=controls;
         this.controls.add(controls);
+        this.customControls.add(controls);
         
         setControlsVisible(true);
+    }
+    
+    public void removeCustomControls()
+    {   
+        for (JPanel p:customControls)
+            controls.remove(p);
+        
+        customControls.clear();
+        
     }
     
         

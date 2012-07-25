@@ -75,74 +75,74 @@ public class SpikeStackArrayFilter extends EventFilter2D{
     {
         
         /* Step 1: Grab the network */
-        STPLayer.Factory<STPLayer> layerFactory=new STPLayer.Factory();
-        LIFUnit.Factory unitFactory=new LIFUnit.Factory(); 
-                
-        lg= layerFactory.glob;
-        ug = unitFactory.glob;
-                
-        net=new SpikeStack(layerFactory,unitFactory);
-//        buildFromXML(net);
-//        STPStack<STPStack,STPStack.Layer> net = new STPStack();
-        
-        net.read.readFromXML(net,startDir);    
-       
-        if (!net.isBuilt())
-            return;
-        
-               
-        if (!net.isBuilt())
-            return;
-        
-        ug.setTau(200000);
-        net.delay=10000;
-        ug.setTref(5);
-        
-        net.plot.timeScale=1f;
-        
-        // Set up connections
-        float[] sigf={1, 1, 0, 0};
-        net.setForwardStrength(sigf);
-        float[] sigb={0, 0, 0, 1};
-        net.setBackwardStrength(sigb);
-        
-        // Up the threshold
-//        net.scaleThresholds(500);
-        
-        
-        for (int i=0; i<net.nLayers(); i++)
-            for (Unit u:net.lay(i).units)
-                u.thresh*=400;
-        
-        
-//        net.fastWeightTC=2;
+//        STPLayer.Factory<STPLayer> layerFactory=new STPLayer.Factory();
+//        LIFUnit.Factory unitFactory=new LIFUnit.Factory(); 
+//                
+//        lg= layerFactory.glob;
+//        ug = (LIFUnit.Globals)unitFactory.getGlobalControls();
+//                
+//        net=new SpikeStack(layerFactory,unitFactory);
+////        buildFromXML(net);
+////        STPStack<STPStack,STPStack.Layer> net = new STPStack();
 //        
-//        net.lay(1).enableFastSTDP=true;
-//        net.lay(3).enableFastSTDP=true;
+//        net.read.readFromXML(net,startDir);    
+//       
+//        if (!net.isBuilt())
+//            return;
+//        
+//               
+//        if (!net.isBuilt())
+//            return;
+//        
+//        ug.setTau(200000);
+//        net.delay=10000;
+//        ug.setTref(5);
+//        
+//        nc.view.timeScale=1f;
+//        
+//        // Set up connections
+//        float[] sigf={1, 1, 0, 0};
+//        net.setForwardStrength(sigf);
+//        float[] sigb={0, 0, 0, 1};
+//        net.setBackwardStrength(sigb);
+//        
+//        // Up the threshold
+////        net.scaleThresholds(500);
 //        
 //        
-//        net.fastSTDP.plusStrength=-.001f;
-//        net.fastSTDP.minusStrength=-.001f;   
-//        net.fastSTDP.stdpTCminus=10;
-//        net.fastSTDP.stdpTCplus=10;
-        
-        net.plot.timeScale=1f;
-        
-        net.liveMode=true;
-        net.plot.realTime=true;
-        
-        net.plot.updateMicros=100000;
-        
-        net.inputCurrents=true;
-        net.lay(0).inputCurrentStrength=.5f;
-        
-//        STPStack<STPStack,STPStack.Layer> net2=net.read.copy();
-        
-//        net.eatEvents(10000);
-        
-       
-
-        netArr=new NetworkList(net,getNetMapper(net));
+//        for (int i=0; i<net.nLayers(); i++)
+//            for (Unit u:net.lay(i).units)
+//                u.thresh*=400;
+//        
+//        
+////        net.fastWeightTC=2;
+////        
+////        net.lay(1).enableFastSTDP=true;
+////        net.lay(3).enableFastSTDP=true;
+////        
+////        
+////        net.fastSTDP.plusStrength=-.001f;
+////        net.fastSTDP.minusStrength=-.001f;   
+////        net.fastSTDP.stdpTCminus=10;
+////        net.fastSTDP.stdpTCplus=10;
+//        
+//        net.plot.timeScale=1f;
+//        
+//        net.liveMode=true;
+//        net.plot.realTime=true;
+//        
+//        net.plot.updateMicros=100000;
+//        
+//        net.inputCurrents=true;
+//        net.lay(0).inputCurrentStrength=.5f;
+//        
+////        STPStack<STPStack,STPStack.Layer> net2=net.read.copy();
+//        
+////        net.eatEvents(10000);
+//        
+//       
+//
+//        netArr=new NetworkList(net,getNetMapper(net));
     }
     
     public NetMapper getNetMapper(SpikeStack net)

@@ -130,7 +130,7 @@ public class ProcessingNetwork {
         
         public void addControls(JPanel cont)
         {
-            controlPanel.addControls(cont);
+            controlPanel.addCustomControls(cont);
         }
         
         public Node(EventFilter2D philt,int id)

@@ -28,6 +28,7 @@ import net.sf.jaer.graphics.DisplayWriter;
  */
 public abstract class MultiSourceProcessor extends EventFilter2D {
     
+    ArrayList<JPanel> customControls;
     
     ArrayList<Queue<BasicEvent>> buffers=new ArrayList();   // Stores events to ensure monotonicity between calls.
     
@@ -75,8 +76,14 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
     {
 //        this.getChip().getAeViewer().getJaerViewer().globalViewer.addControlsToFilter(controls, this);
         
-        getControlPanel().addControls(controls);
+        getControlPanel().addCustomControls(controls);
         
+    }
+    
+    /** Remove all added controls */
+    public void removeControls()
+    {
+        getControlPanel().removeCustomControls();
     }
     
     /** Retrieves the control panel for this filter, allowing you to customize it */
@@ -150,6 +157,13 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
 //            
 //        }
         
+//        if (packets.size()==1)
+//        {    //out.setElementData(packets.get(0).getElementData());
+//             
+//            //return out;
+//            return packets.get(0);
+//        }
+        
         int goToTime=Integer.MIN_VALUE;
         
         try {
@@ -189,7 +203,7 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
                     LinkedList<BasicEvent> testBuf=(LinkedList)buffers.get(i);
                     
 //                    if(!testBuf.isEmpty() && lastEvts.get(i)!=testBuf.peekLast())
-//                    if(ev!=packets.get(i).getEvent(k))  
+//                    if(itr.next()!=packets.get(i).getEvent(k))  
 //                        System.out.println("Sumething funny going on");
                         
                     if (!testBuf.isEmpty() && testBuf.getLast().timestamp>evo.timestamp)

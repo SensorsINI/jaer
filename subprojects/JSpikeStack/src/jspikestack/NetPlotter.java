@@ -78,6 +78,10 @@ public class NetPlotter {
         fr.setVisible(true);
     }
     
+    
+    
+    
+    
     /* Create a raster plot for a single layer */
     public XYPlot layerRaster(BasicLayer lay)
     {
@@ -386,12 +390,7 @@ public class NetPlotter {
     public void state()
     {   state(net.time);        
     }
-    
-//    public LayerStatePlotter layStatePlot(int i)
-//    {
-//        return layerStatePlots[i];
-//    }
-    
+        
     /** Update the state plot to the specified time */
     public void state(int upToTime)
     {
@@ -401,30 +400,7 @@ public class NetPlotter {
         
             // Can't progress further than present.
                 upToTime=Math.min(upToTime,net.time);
-            
-    //        long t=System.nanoTime();
-            
-            // 
-    //        float updatemillis=(float)updateTime;
-            
-                    
-    //        if (realTime) {
-    //            try {
-    //                Thread.sleep(updatemillis);
-    //            } catch (InterruptedException ex) {
-    //                Logger.getLogger(NetPlotter.class.getName()).log(Level.SEVERE, null, ex);
-    //            }
-    //        }
-            
-    //        // If not yet ready for next frame, return
-    //        if ((net.time-lastNetTime)*timeScale < updateTime)
-    //            return;
-            
-    //        double newNetTime=net.time;
-                  
-            
-            
-              
+                          
             if (layerStatePlots==null)
                 createStatePlot();
             
@@ -437,23 +413,6 @@ public class NetPlotter {
             jt.setText("Time: "+(int)upToTime/1000+"ms\nNetTime: "+(int)net.time/1000+"ms");
             
                     
-            
-                    
-                  
-//            System.out.println("Net: "+net.time+"\tPlot: "+upToTime);
-                    
-    // 
-    //        lastnanotime=t;
-            
-            
-    //        try {
-    //            
-    //            Thread.sleep((int)updatemillis);
-    //        } catch (InterruptedException ex) {
-    //            Logger.getLogger(NetPlotter.class.getName()).log(Level.SEVERE, null, ex);
-    //        }
-            
-    //        frm.getContentPane().setVisible(true);
             
             lastNetTime=upToTime;
     //        lastNetTime=net.time;
@@ -481,7 +440,7 @@ public class NetPlotter {
         
         
         public LayerStatePlotter(BasicLayer lay,ImageDisplay display)
-        {   tau=((LIFUnit.Globals)(lay.unitFactory.glob)).getTau();
+        {   tau=((LIFUnit.Globals)(lay.unitFactory.getGlobalControls())).getTau();
             layer=lay;
             disp=display;
 
@@ -491,7 +450,12 @@ public class NetPlotter {
             
             disp.setFontSize(14);
             
-            spikeQueue=layer.outBuffer.addReader();
+            spikeQueue=net.outputQueue.addReader(new Comparable<Spike>(){
+                @Override
+                public int compareTo(Spike o) {
+                    return o.layer==layer.ixLayer?1:0;
+                }
+            });
             
         }
         

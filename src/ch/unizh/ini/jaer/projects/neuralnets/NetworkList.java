@@ -6,6 +6,7 @@ package ch.unizh.ini.jaer.projects.neuralnets;
 
 import ch.unizh.ini.jaer.projects.integrateandfire.ClusterEvent;
 import java.util.ArrayList;
+import jspikestack.NetController;
 import jspikestack.SpikeStack;
 import net.sf.jaer.event.BasicEvent;
 
@@ -19,6 +20,8 @@ import net.sf.jaer.event.BasicEvent;
 public class NetworkList<NetType extends SpikeStack> 
 {
     NetType initialNet;     // The network off which other networks are based.
+    NetController nc;
+    
     NetMapper R;             // The remapper object
     
     ArrayList<SpikeStackWrapper<NetType>> nets=new ArrayList<SpikeStackWrapper<NetType>>();     // The list of networks to feed events to
@@ -67,7 +70,7 @@ public class NetworkList<NetType extends SpikeStack>
                 
         initialNet=network;
         
-        nets.add(wrapNet(initialNet));
+        nets.add(wrapNet(nc));
         
                 
         setNetCount(len);
@@ -112,14 +115,15 @@ public class NetworkList<NetType extends SpikeStack>
     }
     
     public SpikeStackWrapper newWrappedNet()
-    {
-        return wrapNet((NetType)initialNet.copy());
+    {   
+        throw new UnsupportedOperationException();
+//        return wrapNet(nc.copy());
         
     }
     
-    public SpikeStackWrapper wrapNet(NetType net)
+    public SpikeStackWrapper wrapNet(NetController net)
     {
-        return new SpikeStackWrapper(net,R);
+        return new SpikeStackWrapper(nc,R);
     }
     
     /** Route Cluster Events to network by cluster id */

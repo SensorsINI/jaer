@@ -29,10 +29,12 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     
     SpikeStackWrapper wrapNet;    
     SpikeStack<STPLayer,Spike> net;
-    STPLayer.Globals layGlobs;  // Layer Global Controls
+    BasicLayer.Globals layGlobs;  // Layer Global Controls
     LIFUnit.Globals unitGlobs; // Unit Global Controls
         
     NetController<STPLayer,STPLayer.Globals,LIFUnit.Globals> nc;
+    
+    NetController.Types netType=NetController.Types.STP_LIF;
     
     // </editor-fold>
             
@@ -56,13 +58,15 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         
         // If it's a clusterset event
         for (BasicEvent ev:in)
-        {   wrapNet.addToQueue(ev);
-            
+        {   
             if (lastEv!=null && (lastEv.timestamp>ev.timestamp))
-                  System.out.println("Non-mon!");
+                  throw new RuntimeException("Non-Monotonic timestamps ("+ev.timestamp+"<"+lastEv.timestamp+")!");
+            
+            wrapNet.addToQueue(ev);
             
             lastEv=ev;
         }
+        
         
         wrapNet.eatEvents();
                 
@@ -79,10 +83,22 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     {
     }
         
+    /** This should reset the filter back to where it was before you did anything with it.*/
     @Override
     public void resetFilter()
-    {   
+    {           
         wrapNet=null;
+        net=null;
+        unitGlobs=null;
+        layGlobs=null;
+        if (nc!=null)
+        {   nc.view.enable=false;
+            super.removeControls();
+        }
+        nc=null;
+        
+        
+        
 //        net.plot.enable=false;
         
     }
@@ -94,24 +110,12 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     /** Grab a network from file. */
     public SpikeStack getInitialNet() {
                 
-        nc=new NetController(NetController.Types.LIFNET);
+        nc=new NetController(netType);
         net=nc.net;
-//        LIFUnit.Globals un=nc.unitGlobals;
-//        STPLayer.Globals lg=nc.layerGlobals;
-        
-        
-//        STPLayer.Factory<STPLayer> layerFactory=new STPLayer.Factory();
-//        LIFUnit.Factory unitFactory=new LIFUnit.Factory(); 
-        
-//        STPLayer.Factory<STPLayer> layerFactory=nc.l
-//        LIFUnit.Factory unitFactory=new LIFUnit.Factory(); 
-                
-//        net=new SpikeStack(layerFactory,unitFactory);
-        buildFromXML(net);
+        net.liveMode=true;
         
         layGlobs=nc.layerGlobals;
         unitGlobs=nc.unitGlobals;
-        
         
         return net;
     }
@@ -121,7 +125,7 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
      the SpikeStack.read object, but this method will start the file finder in 
      the appropriate directory.)
      */
-    public void buildFromXML(SpikeStack net)
+    public void buildFromXML()
     {
         SpikeStackWrapper.buildFromXML(net);
     }
@@ -129,7 +133,7 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     
     public void setNetwork(SpikeStack net,NetMapper map)
     {
-        wrapNet=new SpikeStackWrapper(net,map);
+        wrapNet=new SpikeStackWrapper(nc,map);
     }
         
     BasicEvent lastEv=null;
@@ -166,7 +170,8 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
             
             if (disp==null)
             {   disp=new JPanel();
-                wrapNet.net.plot.followState(disp);
+                nc.view.realTime=true;
+                nc.view.followState(disp);
             }            
             
             return disp;
@@ -184,14 +189,20 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     /** Grab the network from and XML file */
     public void doInitialize_Network()
     {
-        SpikeStack net=getInitialNet();
-        wrapNet=new SpikeStackWrapper(net,makeMapper(net));
-        customizeNet(net);
-        
+        initializeNetwork();
         addControls();
         
     }
     
+    /** Start the thing */
+    public void initializeNetwork()
+    {
+        SpikeStack net=getInitialNet();
+        customizeNet(net);
+        wrapNet=new SpikeStackWrapper(nc,makeMapper(net));
+    }
+    
+        
     /** Grab the network from and XML file */
     public void doReload_Parameters()
     {
@@ -208,15 +219,30 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
             return;            
         }
         
-        super.addDisplayWriter(new NetworkPlot());
+//        super.addDisplayWriter(new NetworkPlot());
+        plotNet(true);
         
     }
+    
+    public void plotNet(boolean internal)
+    {
+        if (internal)
+            super.addDisplayWriter(new NetworkPlot());
+        else
+            nc.startDisplay();
+        
+        
+    }
+    
     
     public void doReset_Network()
     {
         super.resynchronize();
         if (wrapNet!=null)
             wrapNet.reset();
+        if (nc.view!=null)
+            nc.view.reset();
+        
     }
     
     public void addControls()

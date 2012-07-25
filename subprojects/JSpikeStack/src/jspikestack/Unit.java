@@ -29,14 +29,14 @@ public abstract class Unit<GlobalParams,SpikeType extends Spike> {
     /** Make a copy of this unit */
     public abstract Unit copy();
     
-    public static abstract class Factory<GlobalParams,UnitType extends Unit>{
+    public static interface AbstractFactory<GlobalParams,UnitType extends Unit>{
         
-        public GlobalParams glob;
-        
-        public Factory()
-        {   
-            glob=newGlobalObject();       
-        }
+//        public GlobalParams glob;
+//        
+//        public AbstractFactory()
+//        {   
+//            glob=newGlobalObject();       
+//        }
         
         public abstract UnitType make(int unitIndex);
         

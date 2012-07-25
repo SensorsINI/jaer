@@ -23,7 +23,7 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer,
     
     String name="";
     
-    Unit.Factory unitFactory; // Factory class for making units
+    Unit.AbstractFactory unitFactory; // Factory class for making units
 
     int ixLayer;
     public Unit[] units;
@@ -43,10 +43,10 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer,
     
     Random rand=new Random();
     
-    transient public MultiReaderQueue<Spike> outBuffer=new MultiReaderQueue();
+//    transient public MultiReaderQueue<Spike> outBuffer=new MultiReaderQueue();
 
     /** Instantiate Layer with index */
-    public BasicLayer(NetType network,Unit.Factory<?,Unit> ufac,int ix,GlobalParams glo)
+    public BasicLayer(NetType network,Unit.AbstractFactory<?,Unit> ufac,int ix,GlobalParams glo)
     {   net=network;
         ixLayer=ix;    
         unitFactory=ufac;
@@ -86,14 +86,14 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer,
                 
         if (ev!=null)
         {   ev.layer=ixLayer;
-        if (glob.doRandomJitter)
-            ev.defineDelay(net.delay+rand.nextInt(1000));
-        else
+            if (glob.doRandomJitter)
+                ev.defineDelay(net.delay+rand.nextInt(1000));
+            else
             ev.defineDelay(net.delay);
         
 //            ev.defineDelay(rand.nextInt(net.delay));
             net.addToInternalQueue(ev);
-            outBuffer.add(ev);
+//            net.outputQueue.add(ev);
         }
     }
     
@@ -104,7 +104,7 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer,
 //        ev.layer=ixLayer;
 //        ev.defineDelay(net.delay);
 //        net.addToInternalQueue(ev);
-        outBuffer.add(ev);
+//        net.outputQueue.add(ev);
         
         
         propagateFrom(unitIndex);
@@ -115,7 +115,7 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer,
 
     /** Reset Layer */
     public void reset()
-    {   outBuffer.clear();
+    {   //outBuffer.clear();
         for (Unit u:units)
         {   
             u.reset();                    
@@ -281,7 +281,7 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer,
         }
 
         @Override
-        public <NetType extends SpikeStack,UnitType extends Unit> BasicLayer make(NetType net,Unit.Factory<?,UnitType> unitFactory,int layerIndex)
+        public <NetType extends SpikeStack,UnitType extends Unit> BasicLayer make(NetType net,Unit.AbstractFactory<?,UnitType> unitFactory,int layerIndex)
         {
             return new BasicLayer(net,unitFactory,layerIndex,glob); // TODO: BAAAD.  I'm confused
         }
@@ -331,7 +331,7 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer,
     
     public interface AbstractFactory<LayerType extends BasicLayer>
     {
-        public abstract <NetType extends SpikeStack,UnitType extends Unit> LayerType make(NetType net,Unit.Factory<?,UnitType> unitFactory,int layerIndex);
+        public abstract <NetType extends SpikeStack,UnitType extends Unit> LayerType make(NetType net,Unit.AbstractFactory<?,UnitType> unitFactory,int layerIndex);
         
         
         public abstract Controllable getGlobalControls();

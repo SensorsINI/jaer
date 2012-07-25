@@ -63,7 +63,7 @@ public class JspikeStack {
     /** Read in a network from XML, do stuff with it */
     public static void readNet()
     {           
-        NetController<STPLayer,STPLayer.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.LIFNET);
+        NetController<STPLayer,STPLayer.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
         SpikeStack<STPLayer,Spike> net=nc.net;
         LIFUnit.Globals un=nc.unitGlobals;
         STPLayer.Globals lg=nc.layerGlobals;
@@ -73,7 +73,7 @@ public class JspikeStack {
         un.tau=100000;
         net.delay=20000;
         un.tref=5000;
-        net.plot.timeScale=1f;
+        nc.view.timeScale=1f;
         
         nc.setForwardStrengths(new boolean[] {false,true,false,true});
         nc.setBackwardStrengths(new boolean[] {true,true,false,true});
@@ -101,8 +101,11 @@ public class JspikeStack {
         {    nc.generateInputSpikes(rate,timeMicros,i,3);
         }              
         
+        nc.setRecordingState(true);
         nc.addAllControls();        
-        nc.simulate(100,false);
+        nc.simulate(false);
+        
+        nc.saveRecoding();
         
         // Why does this not give identical results?
 //        nc.startDisplay();
@@ -160,8 +163,10 @@ public class JspikeStack {
         ug.setTref(5000);     
         ug.setThresh(1);
         
-        SpikeStack<STDPLayer,Spike> es=new SpikeStack(ini,layerFactory,unitFactory);
+        SpikeStack<STDPLayer,Spike> es=new SpikeStack(layerFactory,unitFactory);
                 
+        es.buildFromInitializer(ini);
+        
         es.lay(1).latSend=1;
         es.lay(0).latSend=0;
         
@@ -177,9 +182,9 @@ public class JspikeStack {
         
         es.lay(0).enableSTDP=false;
         es.feedEventsAndGo(events);
-        es.plot.raster("Random Initializations");
-        
-        es.plot.timeScale=0;
+//        es.plot.raster("Random Initializations");
+//        
+//        es.plot.timeScale=0;
         
         es.lay(0).enableSTDP=true;
         // Feed Events to Network
@@ -189,7 +194,7 @@ public class JspikeStack {
             es.feedEventsAndGo(events);
         }
         
-        es.plot.raster("After "+nEpochs+" training cycles");
+//        es.plot.raster("After "+nEpochs+" training cycles");
 //        
     }
     

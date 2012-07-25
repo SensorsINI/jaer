@@ -4,12 +4,14 @@
  */
 package jspikestack;
 
+import java.io.Serializable;
+
 /**
  *
  * @author oconnorp
  */
 /* Basic "Spike" class */
-public class Spike implements Comparable<Spike>
+public class Spike implements Comparable<Spike>, Serializable
 {   int addr;   
     int time; // Time at which spike is sent
     int hitTime;  // Time at which spike effect is felt.

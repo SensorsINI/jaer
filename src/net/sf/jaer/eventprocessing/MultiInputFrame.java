@@ -5,6 +5,8 @@
 package net.sf.jaer.eventprocessing;
 
 import java.awt.Container;
+import java.awt.Window;
+import javax.swing.JPanel;
 import javax.swing.JRootPane;
 import net.sf.jaer.chip.AEChip;
 
@@ -81,8 +83,13 @@ public class MultiInputFrame extends FilterFrame{
             h += p.getHeight();
             w = p.getWidth();
         }
-//            pack();
-//        pack();
+        
+        if (parentContainer!=null)
+        {   //this.setPreferredSize(this.getSize());
+            ((Window)((JPanel)parentContainer).getTopLevelAncestor()).pack();
+//            ((Window)this.getTopLevelAncestor()).pack();
+        }
+//        if (this.getRoot)
         
 //        if (parentContainer!=null)
 //            this.parentContainer.revalidate();

@@ -21,9 +21,11 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
     
     public int inputTime=0; // Tracker of time to add input events from
     
-    NetPlotter view;
+    public NetPlotter view;
     
-    public static enum Types {LIFNET,BINTHRESHNET};
+    public SpikeRecorder recorder;
+    
+    public static enum Types {STP_LIF,STATIC_LIF,BINTHRESHNET};
     
     
     public boolean enable=true;
@@ -31,18 +33,31 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
     
     
     public NetController()
-    {   this(Types.LIFNET);        
+    {   this(Types.STP_LIF);        
     }
     
     public NetController(Types t)
     {
         switch(t)
         {
-            case LIFNET:
+            case STATIC_LIF:
+                
+                BasicLayer.Factory bLayerFactory=new BasicLayer.Factory();
+                LIFUnit.Factory unitFactoryy=new LIFUnit.Factory();        
+                net=new SpikeStack(bLayerFactory,unitFactoryy);
+                view=new NetPlotter(net);
+
+                layerGlobals = (LayerGlobalType) bLayerFactory.glob;
+                unitGlobals = (UnitGlobalType) unitFactoryy.glob;            
+            
+                break;                
+            
+            case STP_LIF:
                 
                 STPLayer.Factory<STPLayer> layerFactory=new STPLayer.Factory();
                 LIFUnit.Factory unitFactory=new LIFUnit.Factory();        
                 net=new SpikeStack(layerFactory,unitFactory);
+                view=new NetPlotter(net);
 
                 layerGlobals = (LayerGlobalType) layerFactory.glob;
                 unitGlobals = (UnitGlobalType) unitFactory.glob;            
@@ -52,7 +67,9 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
             case BINTHRESHNET:
                 throw new UnsupportedOperationException("Not supported yet");                
         }
-        view=net.plot;
+        
+        recorder=new SpikeRecorder(net);
+//        view=net.plot;
     }
     
     public void readXML()
@@ -62,8 +79,22 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
     
     public void startDisplay()
     {   
-        net.plot.followState();
+        view.followState();
     }
+    
+    
+    public void setRecordingState(boolean state)
+    {   
+                
+        recorder.setRecodingState(state);
+    }
+    
+    public void saveRecoding()
+    {
+        recorder.printToFile();
+    }
+    
+    
     
     /** Return a representation */
 //    public NetController<STPLayer,STPLayer.Globals,LIFUnit.Globals> getSTDPLIFControls()
@@ -74,28 +105,23 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
     public void reset()
     {
         net.reset();
+        view.reset();
     }
     
     
-    /** Shorthand for enabling/disabling forward connections: pass a string like 
-     * "1101", to indicate first layer CAN send forward, second can't, etc.
-     * @param s 
-     */
+    /** Enable Forward Connections */
     public void setForwardStrengths(boolean[] vals)
     {   for (int i=0; i<vals.length; i++) 
             net.lay(i).fwdSend=vals[i]?1:0;
     }
     
-    /** Shorthand for enabling/disabling backwards connections: pass a string like 
-     * "1101", to indicate first layer CAN send forward, second can't, etc.
-     * @param s 
-     */
+    /** Enable Backward Connections */
     public void setBackwardStrengths(boolean[] vals)
     {   for (int i=0; i<vals.length; i++) 
             net.lay(i).backSend=vals[i]?1:0;
     }
     
-    /** Set Lateral Connection Strengths */
+    /** Enable Lateral Connections */
     public void setLateralStrengths(boolean[] vals)
     {   for (int i=0; i<vals.length; i++) 
             net.lay(i).latSend=vals[i]?1:0;
@@ -167,8 +193,8 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
         int plotIntervalMillis=30;
         int plotIntervalMicros=plotIntervalMillis*1000;
         
-        net.plot.realTime=true;
-        net.plot.followState();
+        view.realTime=true;
+        view.followState();
                 
         int finalTime=net.time+(int)(1000000*forSeconds);
         
@@ -206,6 +232,10 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
     
     
     
+    
+    
+    
+    
     public class Controls extends Controllable
     {
 
@@ -216,8 +246,9 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
 
         /** Stop the simulation */
         public void doSTOP()
-        {
+        {   net.enable=false;
             enable=false;
+            
         }
 
         /**
@@ -232,6 +263,11 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
          */
         public void setTimeScaling(float timeScalin) {
             timeScaling = timeScalin;
+        }
+        
+        public void doSaveRecording()
+        {
+            recorder.printToFile();
         }
                 
     }

@@ -8,6 +8,7 @@ import ch.unizh.ini.jaer.projects.integrateandfire.ClusterEvent;
 import ch.unizh.ini.jaer.projects.integrateandfire.Remapper;
 import java.io.File;
 import java.net.URL;
+import jspikestack.NetController;
 import jspikestack.Spike;
 import jspikestack.SpikeStack;
 import net.sf.jaer.event.BasicEvent;
@@ -22,14 +23,17 @@ import net.sf.jaer.event.BasicEvent;
  */
 public class SpikeStackWrapper <NetType extends SpikeStack> {
     
-    NetType net;
+    NetController nc;
+    SpikeStack net;
     NetMapper R;
     static File readingDir=new File(ClassLoader.getSystemClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../subprojects/JSpikeStack/files/nets");
     
         
-    public SpikeStackWrapper(NetType network, NetMapper rem)
+    public SpikeStackWrapper(NetController netCon, NetMapper rem)
     {
-        net=network;
+        nc=netCon;
+        net=netCon.net;
+//        net=network;
         R=rem;
     }
     
@@ -48,12 +52,16 @@ public class SpikeStackWrapper <NetType extends SpikeStack> {
     }
     
     public void addToQueue(BasicEvent ev)
-    {   net.addToQueue(event2spike(ev));
+    {   
+        Spike sp=event2spike(ev);
+        
+        if (sp!=null)
+            net.addToQueue(sp);
     }
     
-    public void addToQueue(ClusterEvent ev)
-    {   net.addToQueue(event2spike(ev));
-    }
+//    public void addToQueue(ClusterEvent ev)
+//    {   net.addToQueue(event2spike(ev));
+//    }
     
     /** Build the existing network from XML */
     public void buildFromXML()
@@ -72,28 +80,38 @@ public class SpikeStackWrapper <NetType extends SpikeStack> {
     /** Convert a basic event to spike */
     public Spike event2spike(BasicEvent ev)
     {
-        return new Spike(R.translateTime(ev.timestamp),R.loc2addr(ev.x, ev.y,ev.source),R.source2layer(ev.source));
+        int addr=R.ev2addr(ev);
+        
+        if (addr==-1)
+            return null;
+        else 
+            return new Spike(R.translateTime(ev.timestamp),addr,R.ev2layer(ev));
     }
     
     /** Convert a cluster event to spike, using its cluster-relative position */
-    public Spike event2spike(ClusterEvent ev)
-    {
-        return new Spike(R.translateTime(ev.timestamp),R.loc2addr(ev.xp, ev.yp,ev.source),R.source2layer(ev.source));
-    }
+//    public Spike event2spike(ClusterEvent ev)
+//    {
+//        int addr=R.loc2addr(ev.x, ev.y,ev.source,ev.timestamp);
+//        
+//        if (addr<0)
+//            return null;
+//        else 
+//            return new Spike(R.translateTime(ev.timestamp),addr,R.source2layer(ev.source));
+//    }
 
     /**
      * @return The "enabled" status of plotting
      */
     public boolean isEnablePlotting() {
-        return net.plot.enable;    }
+        return nc.view.enable;    }
 
     /** Enable plotting for the given network.  If set to true, this will launch 
      * a new plot.
      */
     public void setEnablePlotting(boolean enablePlotting) {
-        net.plot.enable=enablePlotting;
+        nc.view.enable=enablePlotting;
         if (enablePlotting)
-            net.plot.followState();
+            nc.view.followState();
     }
     
 //    public void closePlot()

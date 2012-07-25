@@ -35,7 +35,7 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
         
         boolean enableSTDP=false;     // Enable STDP on the slow weights
 
-        public STDPLayer(NetType network,Unit.Factory uf,int ind,GlobalParams glo)
+        public STDPLayer(NetType network,Unit.AbstractFactory uf,int ind,GlobalParams glo)
         {   super(network,uf,ind,glo);   
 //            glob=glo;
         }
@@ -45,13 +45,30 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
         {
             if (isLearningEnabled() && Lout!=null && presyn ==null)
             {
-                postsyn=Lout.outBuffer.addReader();
-                presyn=outBuffer.addReader();
+                final int outLayer=Lout.ixLayer;
+                postsyn=net.outputQueue.addReader(new Comparable<Spike>() 
+                    {   @Override
+                        public int compareTo(Spike o) 
+                        {   return o.layer==outLayer?1:0;
+                        }
+                    });
+                
+                final int thisLayer=ixLayer;
+                presyn=net.outputQueue.addReader(new Comparable<Spike>()
+                    {   @Override
+                        public int compareTo(Spike o) 
+                        {   return o.layer==thisLayer?1:0;
+                        }
+                    });
             }
             else
             {
-                outBuffer.removerReader(presyn);
-                Lout.outBuffer.removerReader(postsyn);
+                net.outputQueue.removerReader(presyn);
+                net.outputQueue.removerReader(postsyn);
+                
+                presyn=null;
+                postsyn=null;
+                
             }
             
         }
@@ -182,7 +199,7 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
             }
             
             @Override
-            public <NetType extends SpikeStack,UnitType extends Unit> LayerType make(NetType net,Unit.Factory<?,UnitType> unitFactory,int layerIndex)
+            public <NetType extends SpikeStack,UnitType extends Unit> LayerType make(NetType net,Unit.AbstractFactory<?,UnitType> unitFactory,int layerIndex)
             {
                 return (LayerType) new STDPLayer(net,unitFactory,layerIndex,glob); // TODO: BAAAD.  I'm confused
             }

@@ -94,11 +94,12 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals,Sp
 //        };
 //    }
     
-    public static class Factory extends Unit.Factory<Globals,LIFUnit>
+    public static class Factory implements Unit.AbstractFactory<Globals,LIFUnit>
     {
+        Globals glob;
         
         public Factory()
-        {   super();            
+        {   glob=newGlobalObject();    
         }
                 
         @Override

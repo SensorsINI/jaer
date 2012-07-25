@@ -53,15 +53,15 @@ public class NumberNet extends SpikeFilter {
 
     @Override
     public void customizeNet(SpikeStack netw) {
-               
-        if (!net.isBuilt())
-            return;
+        
+        this.buildFromXML();
+//        if (!net.isBuilt())
+//            return;
         
         unitGlobs.setTau(100000);
         net.delay=12000;
         unitGlobs.setTref(5000);
         
-        net.plot.timeScale=1f;
         
         // Set up connections
         float[] sigf={1, 1, 0, 1};
@@ -73,9 +73,12 @@ public class NumberNet extends SpikeFilter {
 //        net.scaleThresholds(500);
         
         
-        for (int i=0; i<net.nLayers(); i++)
-            for (Unit u:net.lay(i).units)
-                u.thresh*=600;
+//        for (int i=0; i<net.nLayers(); i++)
+//            for (Unit u:net.lay(i).units)
+//                u.thresh*=600;
+        
+        unitGlobs.useGlobalThresh=true;
+        unitGlobs.thresh=3;
         
         
 //        lg.fastWeightTC=2;
@@ -90,12 +93,12 @@ public class NumberNet extends SpikeFilter {
 //        lg.fastSTDP.stdpTCminus=10;
 //        lg.fastSTDP.stdpTCplus=10;
 //        
-        net.plot.timeScale=1f;
-        
-        net.liveMode=true;
-        net.plot.realTime=true;
-        
-        net.plot.updateMicros=100000;
+//        net.plot.timeScale=1f;
+//        
+//        net.liveMode=true;
+//        net.plot.realTime=true;
+//        
+//        net.plot.updateMicros=100000;
         
         net.inputCurrents=true;
         net.lay(0).inputCurrentStrength=.5f;

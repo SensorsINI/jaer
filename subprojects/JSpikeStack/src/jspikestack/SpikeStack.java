@@ -24,7 +24,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     // <editor-fold defaultstate="collapsed" desc=" Properties ">
     
     BasicLayer.AbstractFactory<LayerType> layerFactory;
-    Unit.Factory unitFactory;
+    Unit.AbstractFactory unitFactory;
     
     ArrayList<LayerType> layers=new ArrayList();
     
@@ -33,6 +33,8 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
 //    transient Queue<SpikeType> internalBuffer= new PriorityBlockingQueue();
     transient PriorityQueue<SpikeType> internalBuffer= new PriorityQueue();
 //            
+    transient MultiReaderQueue<SpikeType> outputQueue=new MultiReaderQueue();
+        
     public int delay;
     
     public int time=0;    // Current time (millis) (avoids having to pass around time reference)
@@ -41,11 +43,14 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     
     public boolean liveMode=false;     // Live-mode.  If true, it prevents the network from advancing as long as the input buffer is empty
     
-    public boolean inputCurrents=false;  
     /* True if you'd like to interpret input events as currents coming into the 
      * input layer.  False if you'd like input events to directly cause spikes
      * in the input layer. 
      */
+    public boolean inputCurrents=false;  // sfdafds
+    
+    
+    boolean enable=true;
     
 //    public float inputCurrentStrength=1; 
     /* If inputCurrents==true, this is the strength with which input events drive
@@ -53,14 +58,14 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
      */
         
     transient public NetReader<? extends SpikeStack> read;    // An object for I/O
-    transient public NetPlotter plot;   // An object for displaying the state of the network
+    //transient public NetPlotter plot;   // An object for displaying the state of the network
     
     // </editor-fold>
     
     // <editor-fold defaultstate="collapsed" desc=" Builder Functions ">
     
-    public SpikeStack (BasicLayer.AbstractFactory<LayerType> layerFac,Unit.Factory unitFac)
-    {   plot=new NetPlotter(this);
+    public SpikeStack (BasicLayer.AbstractFactory<LayerType> layerFac,Unit.AbstractFactory unitFac)
+    {   //plot=new NetPlotter(this);
         read=new NetReader(this);
         
         layerFactory=layerFac;
@@ -68,6 +73,9 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
         
 //        layerClass=layClass;
 //        unitClass=unClass;
+        
+        
+        
     };
     
     public ArrayList<LayerType> getLayers()
@@ -134,23 +142,24 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
         
         net.internalBuffer.clear();
         net.inputBuffer.clear();
+        net.outputQueue.clear();
         
-        for (int i=0; i<net.nLayers(); i++)
-            net.lay(i).outBuffer.clear();
+//        for (int i=0; i<net.nLayers(); i++)
+//            net.lay(i).outBuffer.clear();
         
         return net;
     }
     
     /** Create an EvtStack based on an Initializer Object */
-    public SpikeStack (Initializer ini,BasicLayer.AbstractFactory layerFac,Unit.Factory unitFac)
-    {   this(layerFac,unitFac);
+    public void buildFromInitializer (Initializer ini)
+    {  
         
         // Initial pass, instantiating layers and unit arrays
-        for (int i=0; i<ini.layers.length; i++)
+        for (int i=0; i<ini.layers.size(); i++)
         {   
             addLayer(i);
             //lay(i).units=new Layer.Unit[ini.layers[i].nUnits];
-            lay(i).initializeUnits(ini.layers[i].nUnits);
+            lay(i).initializeUnits(ini.lay(i).nUnits);
 //            layers[i]=new Layer(i);
 //            layers[i].units=new Layer.Unit[ini.layers[i].nUnits];
         }
@@ -162,34 +171,34 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
         {   LayerType li=lay(i);
             
             // Connect output layers
-            if (ini.layers[i].targ!=-1)
-                li.Lout=layers.get(ini.layers[i].targ);
+            if (ini.lay(i).targ!=-1)
+                li.Lout=layers.get(ini.lay(i).targ);
             
             // Connect input layers
             li.Lin=new ArrayList();
-            for (int j=0; j<ini.layers.length; j++)
-                if (ini.layers[j].targ==i)
+            for (int j=0; j<ini.layers.size(); j++)
+                if (ini.lay(j).targ==i)
                     li.Lin.add(layers.get(j));
             
             
 //            li.wOut=new float[ini.lay(ini.lay(i).targ).nUnits][];
             
             // Initialize Units
-            for (int u=0; u<ini.layers[i].nUnits; u++)
+            for (int u=0; u<ini.lay(i).nUnits; u++)
             {   //li.units[u]=li.new Unit(u);
 //                li.units[u]=li.makeNewUnit(u);
                 
                 // Assign random initial weights based on Gaussian distributions with specified parameters
-                if (!Float.isNaN(ini.layers[i].WoutMean))
+                if (!Float.isNaN(ini.lay(i).WoutMean))
                 {   li.wOut[u]=new float[li.Lout.units.length];
                     for (int w=0; w<li.wOut[u].length;w++)
-                        li.wOut[u][w]=(float)(ini.layers[i].WoutMean+ini.layers[i].WoutStd*rnd.nextGaussian());
+                        li.wOut[u][w]=(float)(ini.lay(i).WoutMean+ini.lay(i).WoutStd*rnd.nextGaussian());
                 }
                 
-                if (!Float.isNaN(ini.layers[i].WlatMean))
+                if (!Float.isNaN(ini.lay(i).WlatMean))
                 {   li.wLat[u]=new float[li.units.length];
                     for (int w=0; w<li.wLat[u].length;w++)
-                        li.wLat[u][w]=(float)(ini.layers[i].WlatMean+ini.layers[i].WlatStd*rnd.nextGaussian());
+                        li.wLat[u][w]=(float)(ini.lay(i).WlatMean+ini.lay(i).WlatStd*rnd.nextGaussian());
                 }
             }
         }
@@ -238,12 +247,12 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     public void eatEvents(double timeout)
     {   
         // If in liveMode, go til inputBuffer is empty, otherwise go til both buffers are empty (or timeout).
-        while (!(inputBuffer.isEmpty()&&(internalBuffer.isEmpty() || liveMode )))
+        while (!(inputBuffer.isEmpty()&&(internalBuffer.isEmpty() || liveMode )) && enable)
         {
                         
             // Determine whether to read from input or buffer
             boolean readInput=!inputBuffer.isEmpty() && (internalBuffer.isEmpty() || inputBuffer.peek().hitTime<internalBuffer.peek().hitTime);
-            Spike ev=readInput?inputBuffer.poll():internalBuffer.poll();
+            SpikeType ev=readInput?inputBuffer.poll():internalBuffer.poll();
             
             // Update current time to time of this event
             if (ev.hitTime<time)
@@ -254,22 +263,26 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
             time=ev.hitTime;
             
             
-            
             if (time > timeout)
                 break;
             
             try{
             
-                // Feed Spike to network
+                // Feed Spike to network, add to ouput queue if they're either either forced spikes or internally generated spikes
                 if (inputCurrents && readInput)     // 1: Input event drives current
-                    lay(ev.layer).fireInputTo(ev.addr);
+                {    lay(ev.layer).fireInputTo(ev.addr);
+                
+                }
                 else if (readInput)                 // 2: Input Spike fires unit
-                    lay(ev.layer).fireFrom(ev.addr);
+                {   lay(ev.layer).fireFrom(ev.addr);
+                    outputQueue.add(ev);
+                }
                 else                                // 3: Internally buffered event propagated
-                    lay(ev.layer).propagateFrom(ev.addr);
-
+                {   lay(ev.layer).propagateFrom(ev.addr);
+                    outputQueue.add(ev);
+                }
                 // Post Spike-Feed Actions
-                postFeed();
+                digest();
             
             }
             catch (java.lang.ArrayIndexOutOfBoundsException ex)
@@ -281,7 +294,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
             
         }
         
-//        enabled=true;  // Re-enable network when done.
+        enable=true;  // Re-enable network when done.
     }
     
     
@@ -307,7 +320,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     }
     
     /* Actions to perform after feeding event.  Yours to overwrite */
-    public void postFeed()
+    public void digest()
     {   
         for (BasicLayer l : layers) {
             l.updateActions();
@@ -330,7 +343,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
         //time=0;
         for (LayerType l:layers)
             l.reset();
-        plot.reset();
+//        plot.reset();
         
     }
     
@@ -388,34 +401,40 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
         
         public Initializer(){};
         public Initializer(int nLayers)
-        {   layers=new LayerInitializer[nLayers];
-            for (int i=0; i<layers.length; i++)
-                layers[i]=new LayerInitializer();
+        {   layers=new ArrayList<LayerInitializer>();
+            for (int i=0; i<nLayers; i++)
+                layers.add(new LayerInitializer());
         }
         
-        float tref=0f;         // Absolute refractory period
-        float tau;          // Time-constant (millis)
-        float thresh;       // Threshold (currently set uniformly for all untis)
-        double delay=0;     // Delay time
+//        public float tref=0f;         // Absolute refractory period
+//        public float tau;          // Time-constant (millis)
+//        public float thresh;       // Threshold (currently set uniformly for all untis)
+//        public double delay=0;     // Delay time
         
-        LayerInitializer[] layers;
+        ArrayList<LayerInitializer> layers=new ArrayList();
         
         
         
         public LayerInitializer lay(int n)
-        {   return layers[n];            
+        {   
+//            if (layers.size()<n)
+            for (int i=layers.size(); i<=n; i++)
+                layers.add(new LayerInitializer());
+            
+            
+            return layers.get(n);            
         }
                 
         public static class LayerInitializer
         {
-            String name;
-            int targ=-1;
-            int nUnits;
+            public String name;
+            public int targ=-1;
+            public int nUnits;
             
-            float WoutMean=Float.NaN; // NaN indicates "don't make a weight matrix"
-            float WoutStd=0;
-            float WlatMean=Float.NaN;
-            float WlatStd=0;
+            public float WoutMean=Float.NaN; // NaN indicates "don't make a weight matrix"
+            public float WoutStd=0;
+            public float WlatMean=Float.NaN;
+            public float WlatStd=0;
         }
     }
     

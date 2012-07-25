@@ -40,7 +40,7 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
         this.setSTDPstate();
     }
         
-    public STPLayer(NetType network,jspikestack.Unit.Factory uf,int ind,Globals glo)
+    public STPLayer(NetType network,jspikestack.Unit.AbstractFactory uf,int ind,Globals glo)
     {   super(network,uf,ind,glo);   
     }
     
@@ -129,7 +129,7 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
         }
 
         @Override
-        public <NetType extends SpikeStack,UnitType extends Unit> LayerType make(NetType net,Unit.Factory<?,UnitType> unitFactory,int layerIndex)
+        public <NetType extends SpikeStack,UnitType extends Unit> LayerType make(NetType net,Unit.AbstractFactory<?,UnitType> unitFactory,int layerIndex)
         {
             return (LayerType) new STPLayer(net,unitFactory,layerIndex,glob); // TODO: BAAAD.  I'm confused
         }
