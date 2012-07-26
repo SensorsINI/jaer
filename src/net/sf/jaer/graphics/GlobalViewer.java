@@ -83,10 +83,10 @@ public class GlobalViewer extends javax.swing.JFrame {
                 v.setID(i);
                 aeviewers.add(v);
                 addPacketStream(v);
-                addDisplayWriter(v,new Dimension(400,400));
+                addDisplayWriter(v.getPanel(),new Dimension(400,400));
                 v.setWatched(true);
                 v.setSemaphore(waitFlag);
-                inputDisplays.add(v);
+//                inputDisplays.add(v);
             }
             
             resynchronize();
@@ -243,24 +243,23 @@ public class GlobalViewer extends javax.swing.JFrame {
             JButton button;
             
             button=new JButton("Old View");
-            
             button.addActionListener(new ActionListener(){
 
                 @Override
                 public void actionPerformed(ActionEvent e) {
                     
-                    for (DisplayWriter v:inputDisplays)
+                    for (AEViewer.Ambassador v:aeviewers)
                     {   
-                        
-                        ((AEViewer) v).getContentPane().add(v.getPanel());
-//                        v.getPanel().removeAll();
-                        
-                        
-                        GlobalViewer.this.enabled=false;
-//                        GlobalViewer.this.dispose();                        
-//                        v.getContentPane().add
-                        ((AEViewer) v).setVisible(true);
-                        ((AEViewer) v).globalized=false;
+//                        
+//                        ((AEViewer) v).getContentPane().add(v.getPanel());
+////                        v.getPanel().removeAll();
+//                        
+//                        
+//                        GlobalViewer.this.enabled=false;
+////                        GlobalViewer.this.dispose();                        
+////                        v.getContentPane().add
+//                        ((AEViewer) v).setVisible(true);
+//                        ((AEViewer) v).globalized=false;
                     }
                     
 //                    GlobalViewer.this.inputDisplays.clear();
@@ -485,23 +484,6 @@ public class GlobalViewer extends javax.swing.JFrame {
 
             imagePanel.setResizable(true);
             
-            
-//            JToolBar joot=new JToolBar();
-//            joot.setLayout(new BorderLayout());
-//            imagePanel.add(joot,BorderLayout.NORTH);
-//
-//            
-//
-//            JButton but = new JButton("X");
-//            joot.add(but, BorderLayout.EAST);
-//            but.addActionListener(new ActionListener() {
-//
-//                @Override
-//                public void actionPerformed(ActionEvent e) {
-//                    killDisplayWriter(d);
-//                }
-//            });
-
             imagePanel.setVisible(true);
             
             
@@ -537,10 +519,51 @@ public class GlobalViewer extends javax.swing.JFrame {
                 }
             
             });
-            
-//            viewPanel.setLayout(null);
         }
-//                
+//              
+        
+        
+        public void addDisplayWriter(Component d)
+        {
+            addDisplayWriter(d,null);
+        }
+        
+        public void addDisplayWriter(final Component d, Dimension dim)
+        {
+//            viewPanel.setLayout(new FlowLayout());
+            
+            GridBagConstraints c=new GridBagConstraints();
+            
+            c.weightx=c.weighty=1;
+            
+            c.gridx=GridBagConstraints.RELATIVE;
+            c.gridy=1;
+            c.weightx=c.weighty=1;
+
+//            JPanel imagePanel=new JPanel();
+            JInternalFrame imagePanel=new JInternalFrame("",true,true);
+//            
+            imagePanel.setLayout(new BorderLayout());
+
+            imagePanel.setBackground(Color.DARK_GRAY);
+
+            viewPanel.add(imagePanel);
+                        
+            imagePanel.add(d);
+            
+            if (dim==null)
+                imagePanel.setPreferredSize(d.getPreferredSize());
+            else
+                imagePanel.setPreferredSize(dim);
+            
+            d.setPreferredSize(imagePanel.getSize());
+
+            imagePanel.setResizable(true);
+            
+            imagePanel.setVisible(true);
+            
+        }
+        
         
         public void killDisplayWriter(DisplayWriter disp)
         {   viewPanel.remove(disp.getPanel().getParent());

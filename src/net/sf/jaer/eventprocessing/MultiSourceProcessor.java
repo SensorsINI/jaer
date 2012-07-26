@@ -4,6 +4,7 @@
  */
 package net.sf.jaer.eventprocessing;
 
+import java.awt.BorderLayout;
 import java.awt.Component;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -67,9 +68,17 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
     }
     
     
-    public void addDisplayWriter(DisplayWriter disp)
+//    public void addDisplayWriter(DisplayWriter disp)
+//    {
+//        this.getChip().getAeViewer().getJaerViewer().globalViewer.addDisplayWriter(disp);
+//    }
+    
+    public void addDisplayWriter(Component disp)
     {
-        this.getChip().getAeViewer().getJaerViewer().globalViewer.addDisplayWriter(disp);
+        if (this.getChip().getAeViewer().globalized) 
+            this.getChip().getAeViewer().getJaerViewer().globalViewer.addDisplayWriter(disp);
+        else
+            this.getChip().getAeViewer().getImagePanel().add(disp,BorderLayout.EAST);
     }
         
     public void addControls(JPanel controls)
@@ -87,13 +96,15 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
     }
     
     /** Retrieves the control panel for this filter, allowing you to customize it */
-    private MultiInputPanel getControlPanel()
+    private FilterPanel getControlPanel()
     {
-        return this.getChip().getAeViewer().getJaerViewer().globalViewer.procNet.getControlPanelFromFilter(this);
+        
+        if (this.getChip().getAeViewer().globalized) //
+            return this.getChip().getAeViewer().getJaerViewer().globalViewer.procNet.getControlPanelFromFilter(this);
+        else // Backwards compatibility
+            return this.getChip().getAeViewer().getFilterFrame().getFilterPanelForFilter(this);
     }
-    
-    
-    
+        
     
     /** Number of inputs that this filter takes */
     public int nInputs()

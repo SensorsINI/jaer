@@ -56,9 +56,7 @@ public class JAERViewer {
     public JAERViewer()
     {   this(false);
     }
-    
-    
-    
+        
     /** Root preferences object for jAER
      * 
      */

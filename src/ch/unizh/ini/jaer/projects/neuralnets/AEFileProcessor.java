@@ -40,11 +40,19 @@ public class AEFileProcessor {
         AERProcessor aerp=new AERProcessor(filt);
         aerp.loadFile();
         
-        customize(filt);
+        if (aerp.aeFile==null)
+            return;
         
-        aerp.run();
         
+        filt.initializeNetwork();
+        filt.plotNet(false);
+        filt.nc.setRecordingState(true);
+        filt.nc.addAllControls();
+        filt.nc.view.realTime=true;
+                
+        aerp.run(); // Run the events through the filter!
         
+        filt.nc.saveRecoding();
         
         
         
@@ -52,14 +60,6 @@ public class AEFileProcessor {
         
     }
     
-    public static void customize(ISIspikeFilter filt)
-    {
-        filt.initializeNetwork();
-        filt.plotNet(false);
-        
-        
-        
-    }
     
 }
 
@@ -81,7 +81,7 @@ class AERProcessor
     
     public void loadFile()
     {
-        JFileChooser fc=new JFileChooser();
+        JFileChooser fc=new JFileChooser("Select Cochlea Spike File!");
         fc.addChoosableFileFilter(new FileNameExtensionFilter("AER Data File", "aedat"));
         fc.showOpenDialog(null);
         aeFile=fc.getSelectedFile();

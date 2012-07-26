@@ -5715,7 +5715,7 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
     
     
      /** This class allows the AEviewer to serve as a global communicator. */
-    public class Ambassador implements PacketStream, DisplayWriter
+    public class Ambassador implements PacketStream
     {        
         int id;    // Number identifying this viewer
         
@@ -5731,7 +5731,7 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
             AEViewer.this.zeroTimestamps();
         }
         
-        @Override
+        
         public void setPanel(JPanel imagePanel) {
 //            imagePanel.
             
@@ -5762,7 +5762,7 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
             globalized=displayed;
         }
 
-        @Override
+//        @Override
         public Component getPanel() {
 //            return getRootPane();
             return chip.getCanvas().getCanvas();
@@ -5797,10 +5797,10 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
             throw new UnsupportedOperationException("This call should never be made");
         }
 
-        @Override
-        public void setDisplayEnabled(boolean state) {
-            // TODO: disable rendering
-        }
+//        @Override
+//        public void setDisplayEnabled(boolean state) {
+//            // TODO: disable rendering
+//        }
         
     }
     

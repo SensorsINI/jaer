@@ -24,8 +24,6 @@ public class MultiInputPanel extends FilterPanel {
     Container sourcePanel;
     Container controlPanel;
     
-    ArrayList<JPanel> customControls=new ArrayList();
-    
     public MultiInputPanel(ProcessingNetwork.Node p) {
         super(p.filt);
         node=p;
@@ -35,41 +33,61 @@ public class MultiInputPanel extends FilterPanel {
         node.setControlPanel(this); 
         
         
+        
         // Hackity hackity hack hack hack hack
-        
-        JPanel old=this.jPanel1;
-        
-        this.removeAll();
-        
-        this.setLayout(new BorderLayout());
-        
-        this.add(old,BorderLayout.CENTER);
-        
-        JCheckBox butdisp = new JCheckBox("Display");
-        butdisp.addActionListener(new ActionListener(){
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                
-            }        
-        });
-        
-        old.add(butdisp);
-        
-        
+//        
+//        JPanel old=this.jPanel1;
+//        
+//        this.removeAll();
+//        
+//        this.setLayout(new BorderLayout());
+//        
+//        this.add(old,BorderLayout.CENTER);
+//        
+//        JCheckBox butdisp = new JCheckBox("Display");
+//        butdisp.addActionListener(new ActionListener(){
+//            @Override
+//            public void actionPerformed(ActionEvent e) {
+//                
+//            }        
+//        });
+//        
+//        old.add(butdisp);
+//        
+//        
         sourcePanel=new JPanel();
         sourcePanel.setLayout(new GridBagLayout());
         
-//        this.add(sourcePanel,BoxLayout.PAGE_AXIS);
-        
-        this.add(sourcePanel,BorderLayout.EAST);
-        
-        controlPanel=new JPanel(); 
-        controlPanel.setLayout(new BoxLayout(controlPanel,BoxLayout.Y_AXIS));
-        this.add(controlPanel,BorderLayout.SOUTH);
-        
+//        
+////        this.add(sourcePanel,BoxLayout.PAGE_AXIS);
+//        
+        this.jPanel1.add(sourcePanel);
+//        
+////        controlPanel=new JPanel(); 
+////        controlPanel.setLayout(new BoxLayout(controlPanel,BoxLayout.Y_AXIS));
+////        this.add(controlPanel,BorderLayout.SOUTH);
+//        
         addSources();
         
+//        this.jPanel1.revalidate();
+//        this.jPanel1.repaint();
         
+        Dimension size2=sourcePanel.getPreferredSize();
+        
+        Dimension size=jPanel1.getPreferredSize();
+        
+        jPanel1.setPreferredSize(new Dimension(size.width,size2.height));
+        
+//        Container c=this.getTopLevelAncestor();
+//        if (c instanceof Window)
+//            ((Window)c).pack();
+        
+//        this.setVisible(true);
+        
+//        ((JPanel)this.getParent()).revalidate();
+//        this.repaint();
+//        
+//        
         this.enabledCheckBox.addActionListener(new ActionListener(){
 
             @Override
@@ -77,30 +95,13 @@ public class MultiInputPanel extends FilterPanel {
                 node.setEnabled(enabledCheckBox.isSelected());
             }
         });
+//        
+        
+        
         
         
     }
     
-    public void addCustomControls(JPanel controls)
-    {   
-//        if (customControls!=null)
-//            this.controls.remove(customControls);
-//            
-//        customControls=controls;
-        this.controls.add(controls);
-        this.customControls.add(controls);
-        
-        setControlsVisible(true);
-    }
-    
-    public void removeCustomControls()
-    {   
-        for (JPanel p:customControls)
-            controls.remove(p);
-        
-        customControls.clear();
-        
-    }
     
         
     @Override
@@ -108,15 +109,15 @@ public class MultiInputPanel extends FilterPanel {
     {   super.setControlsVisible(visible);
 //        this.revalidate();
         
-        
-        if (visible)
-            for (Container c:controls)
-            {
-                controlPanel.add(c,Component.LEFT_ALIGNMENT);
-            }
-        
-        this.revalidate();
-        
+//        
+//        if (visible)
+//            for (Container c:controls)
+//            {
+//                controlPanel.add(c,Component.LEFT_ALIGNMENT);
+//            }
+//        
+//        this.revalidate();
+//        
         
         
 //        ((JPanel)this.getParent().getParent()).revalidate();
@@ -131,7 +132,11 @@ public class MultiInputPanel extends FilterPanel {
 //            ((JPanel)this.getParent().getParent().getParent()).revalidate();
         
 //        this.getParent()
-        this.repaint();
+//        this.repaint();
+        
+        
+        
+        
         
     }
            

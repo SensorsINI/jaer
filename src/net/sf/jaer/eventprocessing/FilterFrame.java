@@ -647,6 +647,18 @@ private void updateIntervalFieldActionPerformed(java.awt.event.ActionEvent evt) 
         filterPanels.add((PanelType)p);
     }
     
+    /** Return the filter panel for the specified filter.  This can be used when adding custom controls */
+    public FilterPanel getFilterPanelForFilter(EventFilter filt)
+    {
+        for (FilterPanel p:filterPanels)
+            if (p.getFilter()==filt)
+                return p;
+        
+        return null;
+    }
+    
+    
+    
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JRadioButtonMenuItem acquisitionModeMenuItem;

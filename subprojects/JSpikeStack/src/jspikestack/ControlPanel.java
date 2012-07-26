@@ -149,7 +149,9 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
     public ControlPanel() {
         titledBorder = new TitledBorder("Network Controls");
         titledBorder.getBorderInsets(this).set(1, 1, 1, 1);
-        titledBorder.setBorder(BorderFactory.createLineBorder(Color.blue));
+//        titledBorder.setBorder(BorderFactory.createLineBorder(Color.blue));
+//        normalBorder = BorderFactory.createLineBorder(Color.blue);
+        redLineBorder = BorderFactory.createLineBorder(Color.blue);
         setBorder(titledBorder);
         initComponents();
     }

@@ -1271,7 +1271,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         });
         jPanel1.add(enabledCheckBox);
 
-        resetButton.setFont(new java.awt.Font("Tahoma", 0, 9));
+        resetButton.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
         resetButton.setText("Reset");
         resetButton.setToolTipText("Resets the filter");
         resetButton.setMargin(new java.awt.Insets(1, 5, 1, 5));
@@ -1282,7 +1282,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         });
         jPanel1.add(resetButton);
 
-        showControlsToggleButton.setFont(new java.awt.Font("Tahoma", 0, 9));
+        showControlsToggleButton.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
         showControlsToggleButton.setText("Controls");
         showControlsToggleButton.setToolTipText("Show filter parameters, hides other filters. Click again to see all filters.");
         showControlsToggleButton.setMargin(new java.awt.Insets(1, 5, 1, 5));
@@ -1350,6 +1350,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                ((Window) c).pack();
                 
         }
+        
+        
+        if (controlPanel!=null)
+        {
+            controlPanel.setVisible(visible);
+        }
+        
 
         if (c instanceof Window) {
             ((Window) c).pack();
@@ -1586,6 +1593,39 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
 
         }
+    }
+    
+    
+    // Addition by Peter: Allow user to add custom filter controls
+    
+//    ArrayList<JPanel> customControls=new ArrayList();
+    
+    JPanel controlPanel;
+    public void addCustomControls(JPanel control)
+    {   
+        if (controlPanel==null)
+        {   controlPanel=new JPanel(); 
+//            controlPanel.setLayout(new BoxLayout(controlPanel,BoxLayout.Y_AXIS));
+            this.add(controlPanel);
+        }
+        
+        
+        this.controlPanel.add(control);
+//        this.customControls.add(controls);
+        
+        setControlsVisible(true);
+//        this.repaint();
+//        this.revalidate();
+    }
+    
+    public void removeCustomControls()
+    {   
+//        for (JPanel p:customControls)
+//            controls.remove(p);
+        controlPanel.removeAll();
+        
+//        customControls.clear();
+        
     }
     
 //    public class ShowControlsAction extends AbstractAction{

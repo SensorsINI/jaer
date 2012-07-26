@@ -25,8 +25,8 @@ public class ISIspikeFilter extends SpikeFilter {
         super(chip,1);
         
         ISIMapper isi=new ISIMapper(64,nOutputs);
-        isi.setMinFreqHz(10);
-        isi.setMaxFreqHz(5000);
+        isi.setMinFreqHz(300);
+        isi.setMaxFreqHz(1000);
         isiMap=isi;
         
         this.netType=NetController.Types.STATIC_LIF;
@@ -52,7 +52,7 @@ public class ISIspikeFilter extends SpikeFilter {
         
         ini.lay(0).nUnits=nOutputs;
         
-        ini.lay(0).WlatMean=-10;
+        ini.lay(0).WlatMean=-1;
         ini.lay(0).WlatStd=0;
         
         

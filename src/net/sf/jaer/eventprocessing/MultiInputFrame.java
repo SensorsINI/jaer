@@ -84,6 +84,7 @@ public class MultiInputFrame extends FilterFrame{
             w = p.getWidth();
         }
         
+        
         if (parentContainer!=null)
         {   //this.setPreferredSize(this.getSize());
             ((Window)((JPanel)parentContainer).getTopLevelAncestor()).pack();

@@ -67,9 +67,13 @@ public class SpikeRecorder<SpikeType extends Spike> {
         fc.setDialogTitle("Save Spike data file");
         fc.showOpenDialog(null);
         FileNameExtensionFilter filter = new FileNameExtensionFilter("Spike Data Files", "spdat");
-        fc.setFileFilter(filter);
+//        fc.setFileFilter(filter);
+        fc.addChoosableFileFilter(filter);
         
         File file = fc.getSelectedFile();
+        
+        if (file==null)
+            return;
         
         FileOutputStream fos=null;
         try {

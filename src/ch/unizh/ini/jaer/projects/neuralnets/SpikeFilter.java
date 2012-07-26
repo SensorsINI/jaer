@@ -25,7 +25,7 @@ import sun.nio.cs.ext.GB18030;
  */
 public abstract class SpikeFilter extends MultiSourceProcessor {
 
-    // <editor-fold desc=" Properties ">
+    // <editor-fold  defaultstate="collapsed" desc=" Properties ">
     
     SpikeStackWrapper wrapNet;    
     SpikeStack<STPLayer,Spike> net;
@@ -38,7 +38,7 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     
     // </editor-fold>
             
-    // <editor-fold desc=" Obligatory Filter Methods ">
+    // <editor-fold  defaultstate="collapsed" desc=" Obligatory Filter Methods ">
         
     /** Do standard event processing ops for the given network.  If you'd like
      *  to do more processing, it's recommended that you override this method, with 
@@ -54,19 +54,34 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         else if (!wrapNet.R.isBaseTimeSet())
             wrapNet.R.setBaseTime(in.getFirstTimestamp());
         
+//        int skipped=0;
         
+        if (lastEv==null && !in.isEmpty())
+        {   lastEv=new BasicEvent();
+            lastEv.copyFrom(in.getFirstEvent());
+        }
         
         // If it's a clusterset event
-        for (BasicEvent ev:in)
+        for (int k=0; k<in.getSize(); k++)
+//        for (BasicEvent ev:in)
         {   
+            BasicEvent ev=in.getEvent(k);
+            
             if (lastEv!=null && (lastEv.timestamp>ev.timestamp))
-                  throw new RuntimeException("Non-Monotonic timestamps ("+ev.timestamp+"<"+lastEv.timestamp+")!");
+            {   
+                System.out.println("Non-Monotinic Timestamps detected ("+lastEv.timestamp+"-->"+ev.timestamp+").  Resetting");                
+                lastEv=null;                
+                wrapNet.reset();                
+                return in;
+            }
             
             wrapNet.addToQueue(ev);
             
-            lastEv=ev;
+            lastEv.copyFrom(ev);
         }
         
+//        if (skipped>0)
+            
         
         wrapNet.eatEvents();
                 
@@ -105,7 +120,7 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         
     // </editor-fold>
     
-    // <editor-fold desc=" Neural Network Builders ">
+    // <editor-fold  defaultstate="collapsed" desc=" Neural Network Builders ">
     
     /** Grab a network from file. */
     public SpikeStack getInitialNet() {
@@ -136,14 +151,14 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         wrapNet=new SpikeStackWrapper(nc,map);
     }
         
-    BasicEvent lastEv=null;
+    BasicEvent lastEv;
     
     
     
     
     // </editor-fold>
     
-    // <editor-fold desc=" Abstract Methods ">
+    // <editor-fold  defaultstate="collapsed" desc=" Abstract Methods ">
         
     /** Given the network, make a NetMapper object */
     public abstract NetMapper makeMapper(SpikeStack net);
@@ -153,7 +168,7 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
             
     // </editor-fold>
         
-    // <editor-fold desc=" GUI Methods ">
+    // <editor-fold  defaultstate="collapsed" desc=" GUI Methods ">
     
     public class NetworkPlot implements DisplayWriter
     {
@@ -227,7 +242,11 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     public void plotNet(boolean internal)
     {
         if (internal)
-            super.addDisplayWriter(new NetworkPlot());
+        {   JPanel disp=new JPanel();
+            nc.view.realTime=true;
+            nc.view.followState(disp);
+            super.addDisplayWriter(disp);
+        }    //super.addDisplayWriter(new NetworkPlot());
         else
             nc.startDisplay();
         
@@ -256,17 +275,8 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     
     // </editor-fold>
     
-    // <editor-fold desc=" Controller Methods ">
+    // <editor-fold  defaultstate="collapsed" desc=" Controller Methods ">
     
-    public void setThing(boolean t)
-    {
         
-    }
-    
-    public boolean getThing()
-    {
-        return true;
-    }
-    
     // </editor-fold>
 }

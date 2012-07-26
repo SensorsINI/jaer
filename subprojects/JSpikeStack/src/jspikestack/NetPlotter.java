@@ -239,6 +239,8 @@ public class NetPlotter {
     public void addControls(ControlPanel cp)
     {
         controlPanel=cp;
+        
+        
     }
     
 //    public void addControls(Controllable con)

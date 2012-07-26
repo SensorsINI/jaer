@@ -131,7 +131,7 @@ public class SensoryFusionExample extends MultiSourceProcessor {
     public void doStartImage()
     {
         makeImage();
-        this.addDisplayWriter(disp);
+//        this.addDisplayWriter(disp);
 //        this.addDisplayWriter(new TestButton());
         
         
