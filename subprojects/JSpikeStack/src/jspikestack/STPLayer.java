@@ -31,7 +31,7 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
                 
         @Override
         public boolean isLearningEnabled()
-        {   return enableFastSTDP || enableSTDP; 
+        {   return enableFastSTDP || isEnableSTDP(); 
         }
 
     public void setEnableFastSTDP(boolean enable)

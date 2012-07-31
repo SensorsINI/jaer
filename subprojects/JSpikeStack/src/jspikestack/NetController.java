@@ -4,8 +4,11 @@
  */
 package jspikestack;
 
+import java.awt.Component;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JOptionPane;
+import javax.swing.JScrollPane;
 
 /**
  *
@@ -95,17 +98,25 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
     }
     
     
+    public void plotRaster()
+    {   plotRaster("");
+    }
     
-    /** Return a representation */
-//    public NetController<STPLayer,STPLayer.Globals,LIFUnit.Globals> getSTDPLIFControls()
-//    {
-//        
-//    }
+    public void plotRaster(String title)
+    {
+        if (recorder.spikes==null)
+        {   JOptionPane.showMessageDialog(null,"No spikes have been recorded","No Spike Recording",JOptionPane.ERROR_MESSAGE);
+        }
+        view.raster(recorder.spikes,title);
+    }
+    
     
     public void reset()
     {
         net.reset();
         view.reset();
+        recorder.clear();
+        inputTime=0;
     }
     
     
@@ -174,46 +185,101 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
         }
     }
     
+    
+    public static class SimulationSettings{
+        
+        boolean waitForInputs=false;     // True if network stops when input events run out
+        boolean controlledTime=true;      // True if simulation should run slower than max speed of CPU
+        float timeScaling=1;        // If controlledTime==true, scale factor between real-time and simulation time.  High=fast
+        
+        float simTimeSeconds=Float.POSITIVE_INFINITY; // Timeout for simulation, in simulation time.
+        
+    }
+    
     public void simulate()
     {
-        simulate(Float.POSITIVE_INFINITY);
+        simulate(new SimulationSettings());
     }
     
-    public void simulate(float forSeconds)
-    {   simulate(forSeconds,true);        
-    }
-    
-    public void simulate(boolean realTime)
+    public void simulate(final boolean isControlledTime)
     {
-        simulate(Float.POSITIVE_INFINITY,realTime);
-    }
-    
-    public void simulate(float forSeconds,boolean realtime)
-    {
-        int plotIntervalMillis=30;
-        int plotIntervalMicros=plotIntervalMillis*1000;
+        SimulationSettings sim=new SimulationSettings();
+        sim.controlledTime=isControlledTime;
         
-        view.realTime=true;
-        view.followState();
+        simulate(sim);
+    }
+    
+    public void simulate(final float simulationTime)
+    {
+        SimulationSettings sim=new SimulationSettings();
+//        sim.controlledTime=isControllerTime;
+        sim.simTimeSeconds=simulationTime;
+        
+        simulate(sim);
+    }
+    
+    public void simulate(boolean isControlledTime, float simulationTime)
+    {
+        SimulationSettings sim=new SimulationSettings();
+        sim.controlledTime=isControlledTime;
+        sim.simTimeSeconds=simulationTime;
+        
+        simulate(sim);
+    }
+    
+    public void printStats()
+    {
+        
+        
+        
+        String s=recorder.nSpikes() +" spikes recorded\n";
+        
+//        for (int i=0; i<net.nLayers(); i++)
+//        {
+//            for (int j=0; j<)
+//            
+//        }
+        
+        System.out.println(s);
+    }
+    
+    
+    
+    public void simulate(SimulationSettings settings)
+    {
+        
+        net.liveMode=settings.waitForInputs;
+        
+        int finalTime;
+//        if (settings.simTimeSeconds>Integer.MAX_VALUE/1000000)
+//            finalTime=Integer.MAX_VALUE;
+//        else
+            finalTime=net.time+(int)(1000000*settings.simTimeSeconds);
                 
-        int finalTime=net.time+(int)(1000000*forSeconds);
+        view.realTime=true;
         
         
-//        float timeScale=realtime?timeScaling:Float.POSITIVE_INFINITY;
-        
-        int targetNetTime=net.time;
-        long targetSystemTime=System.currentTimeMillis();
-        
-        if (realtime)
+        if (settings.controlledTime)
         {
+            int plotIntervalMillis=30;
+            int plotIntervalMicros=plotIntervalMillis*1000;
+
+
+            int targetNetTime=net.time;
+            long targetSystemTime=System.currentTimeMillis();
+
+
             // Loop along, allowing the network to progress up to a certain time 
             // in each iteration.
             while (net.time<finalTime && enable)
             {
-                targetNetTime+=plotIntervalMicros*timeScaling;
+                targetNetTime+=plotIntervalMicros*settings.timeScaling;
                 targetSystemTime+=plotIntervalMillis;
 
                 net.eatEvents(targetNetTime);
+                
+                if (!net.hasEvents())
+                    break;
 
                 try {
                     long sleepTime=Math.max(targetSystemTime-System.currentTimeMillis(),0);
@@ -271,9 +337,6 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
         }
                 
     }
-    
-    
-    
     
     
     

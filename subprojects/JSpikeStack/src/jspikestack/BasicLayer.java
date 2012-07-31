@@ -54,13 +54,13 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer,
     }
 
     /** Fire Currents to this layer... */
-    public void fireTo(float[] inputCurrents)
+    public void fireTo(Spike sp,float[] inputCurrents)
     {
         for (int i=0; i<units.length; i++)
         {   //Spike ev=units[i].fireTo(net.time,inputCurrents[i]);
             //if (ev==null)
             //    return;
-            fireTo(i,inputCurrents[i]);
+            fireTo(sp,i,inputCurrents[i]);
             
         }
     }
@@ -72,24 +72,24 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer,
     }
     
     /** Fires to an input unit, but weights is by the inputCurrentStrength for this layer */
-    public void fireInputTo(int unitIndex)
+    public void fireInputTo(Spike sp)
     {
-        fireTo(unitIndex,inputCurrentStrength);
+        fireTo(sp,sp.addr,inputCurrentStrength);
         
     }
     
     
     /** Fire current to a given unit in this layer... */
-    public void fireTo(int unitIndex,float inputCurrent)
+    public void fireTo(Spike sp,int ix,float inputCurrent)
     {
-        Spike ev=units[unitIndex].fireTo(net.time,inputCurrent);
+        Spike ev=units[ix].fireTo(sp,inputCurrent);
                 
         if (ev!=null)
         {   ev.layer=ixLayer;
             if (glob.doRandomJitter)
-                ev.defineDelay(net.delay+rand.nextInt(1000));
+                ev.defineDelay(net.delay+rand.nextInt(glob.randomJitter));
             else
-            ev.defineDelay(net.delay);
+                ev.defineDelay(net.delay);
         
 //            ev.defineDelay(rand.nextInt(net.delay));
             net.addToInternalQueue(ev);
@@ -107,7 +107,7 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer,
 //        net.outputQueue.add(ev);
         
         
-        propagateFrom(unitIndex);
+        propagateFrom(ev,unitIndex);
         
         
     }
@@ -152,19 +152,19 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer,
     }
 
     /** Carry out the effects of the firing */
-    public void propagateFrom(int unitIndex)
+    public void propagateFrom(Spike sp,int unitIndex)
     {
         // Fire Ahead!
         if (Lout!=null && fwdSend!=0) 
             if (fwdSend==1)
-                Lout.fireTo(getForwardWeights(unitIndex));
+                Lout.fireTo(sp,getForwardWeights(unitIndex));
             else
                 throw new UnsupportedOperationException("Scaling of fwd connections not yet supported");
 
         // Fire Behind!
         for (LayerType l:Lin)
         {   if (l.backSend==1)
-                l.fireTo(l.getBackWeights(unitIndex));
+                l.fireTo(sp,l.getBackWeights(unitIndex));
             else if (l.backSend!=0)
                 throw new UnsupportedOperationException("Scaling of reverse connections not yet supported");
         }
@@ -173,7 +173,7 @@ public class BasicLayer<NetType extends SpikeStack,LayerType extends BasicLayer,
         if (wLat[unitIndex]!=null && latSend!=0)
         {   
             if (latSend==1)
-                fireTo(getLateralWeights(unitIndex)); 
+                fireTo(sp,getLateralWeights(unitIndex)); 
             else
                 throw new UnsupportedOperationException("Scaling of lateral connections not yet supported");
 

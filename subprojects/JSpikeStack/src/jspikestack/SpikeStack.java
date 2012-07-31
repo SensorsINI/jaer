@@ -71,7 +71,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
         layerFactory=layerFac;
         unitFactory=unitFac;
         
-//        layerClass=layClass;
+//        layerClass=layClass;  
 //        unitClass=unClass;
         
         
@@ -224,7 +224,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     }
         
     /** Feed an array of input events to the network and let 'er rip */
-    public void feedEventsAndGo(List<SpikeType> inputEvents,double timeout)
+    public void feedEventsAndGo(List<SpikeType> inputEvents,int timeout)
     {   
         feedEvents(inputEvents);
         eatEvents(timeout);
@@ -240,11 +240,11 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     
     /** Eat up the events in the input queue */
     public void eatEvents()
-    {   eatEvents(Double.POSITIVE_INFINITY);        
+    {   eatEvents(Integer.MAX_VALUE);        
     }
     
     /** Eat up the events in the input queue until some timeout */
-    public void eatEvents(double timeout)
+    public void eatEvents(int timeout)
     {   
         // If in liveMode, go til inputBuffer is empty, otherwise go til both buffers are empty (or timeout).
         while (!(inputBuffer.isEmpty()&&(internalBuffer.isEmpty() || liveMode )) && enable)
@@ -270,7 +270,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
             
                 // Feed Spike to network, add to ouput queue if they're either either forced spikes or internally generated spikes
                 if (inputCurrents && readInput)     // 1: Input event drives current
-                {    lay(ev.layer).fireInputTo(ev.addr);
+                {    lay(ev.layer).fireInputTo(ev);
                 
                 }
                 else if (readInput)                 // 2: Input Spike fires unit
@@ -278,7 +278,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
                     outputQueue.add(ev);
                 }
                 else                                // 3: Internally buffered event propagated
-                {   lay(ev.layer).propagateFrom(ev.addr);
+                {   lay(ev.layer).propagateFrom(ev, ev.addr);
                     outputQueue.add(ev);
                 }
                 // Post Spike-Feed Actions
@@ -328,6 +328,14 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
         
     }
     
+    /** Does the network have any events to process> */
+    public boolean hasEvents()
+    {
+        return !(inputBuffer.isEmpty() && internalBuffer.isEmpty());
+    }
+    
+    
+    
 //    /** Scale the thresholds of all units. */
 //    public void scaleThresholds(float sc)
 //    {   for (Layer l:layers)
@@ -339,7 +347,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     {   
         inputBuffer.clear();
         internalBuffer.clear();
-        time=Integer.MIN_VALUE;
+        time=0;
         //time=0;
         for (LayerType l:layers)
             l.reset();
@@ -546,7 +554,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     
     // </editor-fold>
     
-    // <editor-fold defaultstate="collapsed" desc=" Access Methods ">
+    // <editor-fold defaultstate="collapsed" desc=" Controls ">
     
     public Controls getControls()
     {

@@ -9,19 +9,22 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Queue;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.JTextArea;
-import javax.swing.SwingUtilities;
+import javax.swing.*;
 import javax.swing.text.JTextComponent;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.xy.XYDotRenderer;
+import org.jfree.data.xy.XYDataset;
+import org.jfree.data.xy.XYSeries;
+import org.jfree.data.xy.XYSeriesCollection;
 
 /**
  *
@@ -33,7 +36,7 @@ public class NetPlotter {
     
     JPanel frm;
     
-    ControlPanel controlPanel;
+    Component controlPanel;
     
     public int updateMicros=30000;           // Update interval, in milliseconds
     public float timeScale=1;               // Number of network-seconds per real-second 0: doesn't advance.  Inf advances as fast as CPU will allow
@@ -54,21 +57,19 @@ public class NetPlotter {
         
     }
     
-    public void raster()
-    {   raster("");
+    public void raster(Collection<Spike> spikes)
+    {   raster(spikes,"");
         
     }
    
-    public void raster(String title)
+    public void raster(Collection<Spike> spikes,String title)
     {   
         CombinedDomainXYPlot plot = new CombinedDomainXYPlot(new NumberAxis("Time"));
         
         // Build a plot for each layer
         for (int i=0; i<net.nLayers(); i++)
-            plot.add(layerRaster(net.lay(i)),1);
-        
-        
-        
+            plot.add(layerRaster(spikes,net.lay(i)),1);
+                
         JFreeChart chart= new JFreeChart("Raster: "+title,JFreeChart.DEFAULT_TITLE_FONT, plot,true);
         
         // Put it in a frame!
@@ -77,31 +78,28 @@ public class NetPlotter {
         fr.setSize(1200,1000);
         fr.setVisible(true);
     }
-    
-    
-    
-    
-    
+        
     /* Create a raster plot for a single layer */
-    public XYPlot layerRaster(BasicLayer lay)
+    public XYPlot layerRaster(Collection<Spike> spikes,BasicLayer lay)
     {
-        throw new UnsupportedOperationException("This is broken for now!");
+//        throw new UnsupportedOperationException("This is broken for now!");
         
         // Add the data
-//        Iterator<Spike> itr=lay.outBuffer.iterator();
-//        XYSeries data=new XYSeries("Events");
-//        for (int i=0; i<lay.outBuffer.size(); i++)
-//        {   Spike evt=itr.next();
-//            data.add((float)evt.time,evt.addr);
-//        }
-//        XYDataset raster = new XYSeriesCollection(data);
-//        
-//        //SamplingXYLineAndShapeRenderer renderer = new SamplingXYLineAndShapeRenderer(false, true);
-//        XYDotRenderer renderer = new XYDotRenderer();
-//        renderer.setDotWidth(2);
-//        renderer.setDotHeight(5);
-//
-//        return new XYPlot(raster, null, new NumberAxis("Layer "+lay.ixLayer), renderer);
+        Iterator<Spike> itr=spikes.iterator();
+        XYSeries data=new XYSeries("Events");
+        for (int i=0; i<spikes.size(); i++)
+        {   Spike evt=itr.next();
+            if (evt.layer==lay.ixLayer)
+                data.add((float)evt.time/1000,evt.addr);
+        }
+        XYDataset raster = new XYSeriesCollection(data);
+        
+        //SamplingXYLineAndShapeRenderer renderer = new SamplingXYLineAndShapeRenderer(false, true);
+        XYDotRenderer renderer = new XYDotRenderer();
+        renderer.setDotWidth(2);
+        renderer.setDotHeight(5);
+
+        return new XYPlot(raster, null, new NumberAxis("Layer "+lay.ixLayer), renderer);
         
     }
 
@@ -109,12 +107,26 @@ public class NetPlotter {
     {
         JFrame fr=new JFrame();
         
-        fr.getContentPane().setBackground(Color.GRAY);
-        fr.setLayout(new GridBagLayout());
-        fr.setContentPane(createStatePlot());
+//        fr.getContentPane().setBackground(Color.GRAY);
+//        fr.setLayout(new GridBagLayout());
+        
+        JPanel hostPanel=createStatePlot();
+        
+        
+        
+        fr.setContentPane(hostPanel);
+        
+        
+        
+        
+        
+//        fr.setPreferredSize(new Dimension(1000,1200));
+//        fr.setPreferredSize(new Dimension(1000,1200));
+        fr.setSize(1200,800);
+        hostPanel.setPreferredSize(fr.getSize());
         
         fr.pack();
-//        fr.setSize(1000,400);
+        
         
         fr.setVisible(true);        
         
@@ -128,6 +140,7 @@ public class NetPlotter {
         JPanel hostPanel=new JPanel();
         hostPanel.setLayout(new BorderLayout());
         
+//        hostPanel.setPreferredSize(new Dimension(1000,800));
         
         JPanel statePanel=new JPanel();
         statePanel.setBackground(Color.BLACK);
@@ -145,7 +158,8 @@ public class NetPlotter {
             
             pan.setBackground(Color.darkGray);
             
-            pan.setLayout(new GridBagLayout());
+//            pan.setLayout(new GridBagLayout());
+            pan.setLayout(new BorderLayout());
             
             ImageDisplay disp=ImageDisplay.createOpenGLCanvas();
             
@@ -164,10 +178,13 @@ public class NetPlotter {
             }
             disp.setImageSize(sizeX,sizeY);
             
+            disp.setSize(300,300);
             
 //            disp.setBorderSpacePixels(5);
             
-            disp.setPreferredSize(new Dimension(300,300));
+//            disp.setMinimumSize(new Dimension(100,100));
+            
+//            disp.setPreferredSize(new Dimension(300,300));
                         
             
             GridBagConstraints c = new GridBagConstraints();
@@ -176,7 +193,7 @@ public class NetPlotter {
             c.gridy=0;
             c.gridheight=2;
             
-            pan.add(disp);  
+            pan.add(disp,BorderLayout.CENTER);  
             statePanel.add(pan,c);
             
 //            disp.setVisible(true);
@@ -228,8 +245,13 @@ public class NetPlotter {
         
         // If controls have been added, create control panel.
         if (controlPanel!=null)
-        {   //controlPanel.setBackground(Color.BLACK);
-            hostPanel.add(controlPanel,BorderLayout.WEST);
+        {   
+            
+            JScrollPane jsp=new JScrollPane(controlPanel,JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            
+            jsp.setPreferredSize(new Dimension(controlPanel.getPreferredSize().width,800));
+            
+            hostPanel.add(jsp,BorderLayout.WEST);
             
         }
         
@@ -237,9 +259,13 @@ public class NetPlotter {
     }
     
     public void addControls(ControlPanel cp)
-    {
-        controlPanel=cp;
+    {   //JScrollPane js=new JScrollPane();
+//        js.setLayout(new BorderLayout());
+//        js.add(cp,BorderLayout.CENTER);
+//        controlPanel=js;
         
+        controlPanel=cp;
+    
         
     }
     
@@ -470,7 +496,8 @@ public class NetPlotter {
         {
 //            double time=layer.net.time;
             
-            
+            synchronized(this)
+            {
                         
             float smin=Float.MAX_VALUE;
             float smax=-Float.MAX_VALUE;
@@ -488,6 +515,8 @@ public class NetPlotter {
             {   state[i]*=Math.exp((lastTime-toTime)/tau);    
                 if (Float.isNaN(state[i]))
                     System.out.println("STOPP");
+//                else if (lastTime>toTime)
+//                    System.out.println("Troubles");
                 
                 if (state[i]<smin) smin=state[i];
                 if (state[i]>smax) smax=state[i];
@@ -506,6 +535,12 @@ public class NetPlotter {
                 if (ev.time>toTime)
                     break;
                 state[ev.addr]+=Math.exp((ev.time-toTime)/tau);
+                
+//                if (ev.time>toTime)
+//                {
+//                    System.out.println("Heere");
+//                }
+                    
                 if (state[ev.addr]<smin) smin=state[ev.addr];
                 if (state[ev.addr]>smax) smax=state[ev.addr];
 //                outBookmark++;
@@ -540,15 +575,25 @@ public class NetPlotter {
             
             lastTime=toTime;
             
-            disp.setTitleLabel("Max Rate: "+myFormatter.format(rate)+"Hz");
+            disp.setTitleLabel("Max Rate: "+myFormatter.format(rate)+"Hz, Time: " +toTime/1000);
 //            disp.drawCenteredString(1, 1, "A");
             disp.repaint();
+            
+            }
         }
         
         public void reset()
         {   // outBookmark=0;
-            lastTime=0;
             
+            synchronized(this)
+            {
+            
+                lastTime=0;
+                minState=Float.NaN;
+                maxState=Float.NaN;
+                for (int i=0; i<state.length; i++)
+                    state[i]=0;
+            }
         }
                 
     }

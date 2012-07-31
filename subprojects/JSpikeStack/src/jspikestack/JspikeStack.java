@@ -81,6 +81,7 @@ public class JspikeStack {
         un.useGlobalThresh=true;
         un.thresh=2.6f;
         
+        
         lg.setFastWeightTC(2000000);
         lg.doRandomJitter=true;
         
@@ -88,8 +89,8 @@ public class JspikeStack {
         net.lay(3).setEnableFastSTDP(true);
         
         lg.stdpWin=30000;
-        lg.fastSTDP.plusStrength=-.1f;
-        lg.fastSTDP.minusStrength=-.1f;   
+        lg.fastSTDP.plusStrength=-.001f;
+        lg.fastSTDP.minusStrength=-.001f;   
         lg.fastSTDP.stdpTCminus=20000;
         lg.fastSTDP.stdpTCplus=20000;
         
@@ -102,10 +103,18 @@ public class JspikeStack {
         }              
         
         nc.setRecordingState(true);
-        nc.addAllControls();        
-        nc.simulate(false);
+        nc.addAllControls();   
         
-        nc.saveRecoding();
+        NetController.SimulationSettings sim=new NetController.SimulationSettings();        
+        sim.controlledTime=false;
+        sim.timeScaling=1;
+        sim.waitForInputs=false;
+        
+        
+        nc.startDisplay();
+        nc.simulate(sim);
+        
+//        nc.saveRecoding();
         
         // Why does this not give identical results?
 //        nc.startDisplay();
@@ -120,81 +129,79 @@ public class JspikeStack {
         // Read Events
         AERFile aef=new AERFile();
         aef.read();
-        int nLayers=2;
-//        
-//        
-        // Plot Events
-        STPLayer.Factory<STPLayer> layerFactory=new STPLayer.Factory();
-        LIFUnit.Factory unitFactory=new LIFUnit.Factory(); 
-                
-        STPLayer.Globals lg= layerFactory.glob;
-        LIFUnit.Globals ug = unitFactory.glob;
+        ArrayList<Spike> events=aevents2events(aef.events);
         
-        
-        // Initialize Network
-        SpikeStack.Initializer ini=new SpikeStack.Initializer(nLayers);
-        
-//        
-//        ini.thresh          = 1;
-           
-        lg.stdp.plusStrength=(.018f);
-        lg.stdp.minusStrength=(-.01f);
-        lg.stdp.stdpTCplus=(5000);
-        lg.stdp.stdpTCminus=(10000);
-        
+        // Construct Network
+        NetController<STPLayer,STPLayer.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
+        SpikeStack<STPLayer,Spike> net=nc.net;
+        LIFUnit.Globals ug=nc.unitGlobals;
+        STPLayer.Globals lg=nc.layerGlobals;
+                   
+        // Set Layer Global Controls
+        lg.stdp.plusStrength=0.0002f;
+        lg.stdp.minusStrength=-0.0001f;
+        lg.stdp.stdpTCplus=5000;
+        lg.stdp.stdpTCminus=10000;
+        lg.doRandomJitter=true;
+        lg.randomJitter=10;
         lg.stdpWin         = 30000;
+        net.delay=0;
         
+        // Set Unit Global Controls
+        ug.setTau(100000);
+        ug.setTref(10000);     
+        ug.setThresh(1);
+        ug.useGlobalThresh=true;
+        
+        // Assemble Network
+        SpikeStack.Initializer ini=new SpikeStack.Initializer();                
         ini.lay(0).nUnits   = 64;
         ini.lay(0).targ     = 1;
         ini.lay(0).name     = "Input";
-        ini.lay(0).WoutMean = .5f;
-        ini.lay(0).WoutStd  = 0.3f;
-//        ini.lay(0).enableSTDP=true;
-        
-        ini.lay(0).WlatMean = -0f;
-        ini.lay(0).WlatStd  = 0f;
-        
+        ini.lay(0).WoutMean = .4f;
+        ini.lay(0).WoutStd  = .1f;
+//        ini.lay(0).WlatMean = -0f;
+//        ini.lay(0).WlatStd  = 0f;        
         ini.lay(1).nUnits   = 20;
         ini.lay(1).name     = "A1";
-        ini.lay(1).WlatMean = -1f;
-        ini.lay(1).WlatStd  = .1f;
-        
-        ug.setTau(20000);
-        ug.setTref(5000);     
-        ug.setThresh(1);
-        
-        SpikeStack<STDPLayer,Spike> es=new SpikeStack(layerFactory,unitFactory);
+        ini.lay(1).WlatMean = -5;
+        ini.lay(1).WlatStd  = .1f;        
+        net.buildFromInitializer(ini);
                 
-        es.buildFromInitializer(ini);
+        // Some More post-initialization settings        
+        nc.setLateralStrengths(new boolean[] {false, true});
+        net.inputCurrents=false;
+        net.lay(0).inputCurrentStrength=0.5f;
+        net.lay(0).setEnableSTDP(false);
+                
+        // Prepare Simulation
+        nc.addAllControls();
+        nc.setRecordingState(true);        
+//        NetController.SimulationSettings sim=new NetController.SimulationSettings();        
+//        sim.controlledTime=true;
+//        sim.timeScaling=10;        
+//        nc.startPlotting();
         
-        es.lay(1).latSend=1;
-        es.lay(0).latSend=0;
         
-        es.lay(0).enableSTDP=true;
-        
-        es.inputCurrents=false;
-        es.lay(0).inputCurrentStrength=0.5f;
+        // Run the first round, plot.
+        net.feedEventsAndGo(events);      
         
         
+        nc.printStats();
+        nc.plotRaster("Before Learning");
+        
+        // Run the next rounds
+        net.lay(0).setEnableSTDP(true);
+//        sim.controlledTime=false;        
         int nEpochs     = 10;
-                        
-        ArrayList<Spike> events=aevents2events(aef.events);
-        
-        es.lay(0).enableSTDP=false;
-        es.feedEventsAndGo(events);
-//        es.plot.raster("Random Initializations");
-//        
-//        es.plot.timeScale=0;
-        
-        es.lay(0).enableSTDP=true;
-        // Feed Events to Network
         for (int i=0; i<nEpochs; i++)
         {   System.out.println("Pass "+i);
-            es.reset();
-            es.feedEventsAndGo(events);
+            nc.reset();
+            net.feedEventsAndGo(events);
         }
-        
-//        es.plot.raster("After "+nEpochs+" training cycles");
+        nc.printStats();
+        nc.plotRaster("After "+nEpochs+" training cycles");
+         
 //        
     }
     

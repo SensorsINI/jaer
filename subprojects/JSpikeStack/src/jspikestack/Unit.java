@@ -20,7 +20,7 @@ public abstract class Unit<GlobalParams,SpikeType extends Spike> {
      * @param current
      * @return 
      */
-    public abstract SpikeType fireTo(int time, float current);
+    public abstract SpikeType fireTo(SpikeType sp, float current);
 
     public abstract SpikeType fireFrom(int time);
     

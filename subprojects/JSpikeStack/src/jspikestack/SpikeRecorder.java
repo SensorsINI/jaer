@@ -7,7 +7,10 @@ package jspikestack;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
@@ -30,6 +33,11 @@ public class SpikeRecorder<SpikeType extends Spike> {
     SpikeRecorder(SpikeStack network)
     {
         net=network;
+    }
+    
+    public int nSpikes()
+    {
+        return ((LinkedBlockingQueue) spikes).size();
     }
     
     public void setRecodingState(boolean state)

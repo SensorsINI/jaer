@@ -25,7 +25,7 @@ public class NumberNet extends SpikeFilter {
     @Override
     public NetMapper makeMapper(SpikeStack net) {
         
-        SingleSourceVisualMapper map=new SingleSourceVisualMapper();
+        VisualMapper map=new VisualMapper();
         map.inDimX=(short)chip.getSizeX();
         map.inDimY=(short)chip.getSizeY(); 
         map.outDimX=net.lay(0).dimx;

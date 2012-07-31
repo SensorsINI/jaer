@@ -26,10 +26,10 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals,Sp
 
     /* Send a current to this unit.  If it spikes it will add it to the buffer */
     @Override
-    public Spike fireTo(int time,float current)
-    {   updateMem(time,current);
+    public Spike fireTo(Spike sp,float current)
+    {   updateMem(sp.hitTime,current);
         if (doSpike())
-        {   return fireFrom(time);
+        {   return fireFrom(sp.hitTime);
         }
         else 
             return null;

@@ -5,6 +5,7 @@
 package jspikestack;
 
 import java.io.Serializable;
+import java.util.Iterator;
 import java.util.Queue;
 
 /**
@@ -33,12 +34,24 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
         Queue<Spike> postsyn;  // Queue of postsynaptic spikes
     
         
-        boolean enableSTDP=false;     // Enable STDP on the slow weights
+        private boolean enableSTDP=false;     // Enable STDP on the slow weights
 
         public STDPLayer(NetType network,Unit.AbstractFactory uf,int ind,GlobalParams glo)
         {   super(network,uf,ind,glo);   
 //            glob=glo;
         }
+        
+        public boolean isEnableSTDP() {
+            return enableSTDP;
+        }
+
+        public void setEnableSTDP(boolean enableSTDP) {
+            this.enableSTDP = enableSTDP;
+            setSTDPstate();
+        }
+
+        
+        
         
         /** For performance: enable/disable queues */
         public void setSTDPstate()
@@ -94,7 +107,7 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
         
         /** Determine whether to spend time looping through spikes */
         public boolean isLearningEnabled()
-        {   return enableSTDP;            
+        {   return isEnableSTDP();            
         }
 
         @Override
@@ -130,6 +143,8 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
             */ 
 //            if (Lout.outBuffer.isEmpty() || outBuffer.isEmpty()) return;
 
+            
+            
             if (postsyn.isEmpty() || presyn.isEmpty() )
                 return;
 
@@ -149,32 +164,70 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
 
 //                int tempBookmark=thisBufferBookmark;    // Temporary bookmark for iterating through presyn spikes around an output spike
 
+                
+                
                 // While (there are presynapic events available) && (they come before the end of the relevant stdp window for the post-synaptic spike)
-                while (!presyn.isEmpty() && (presyn.peek().time < evout.time+glob.stdpWin)) 
+                
+                
+                //while (!presyn.isEmpty() && (presyn.peek().time < evout.time+glob.stdpWin)) 
+                
+                Iterator<Spike> preit=presyn.iterator();
+                int i=0;
+                while (preit.hasNext() ) 
                 {   // Iterate over input events (from this layer) pertaining to the output event
 
+                    
+                    
+                    
 //                    Spike evin=outBuffer.get(tempBookmark);
 //                    Spike evin=getOutputEvent(tempBookmark);
-                    Spike evin=presyn.poll();
-
-//                    if (evin.time + glob.stdpWin < outTime) // If input event is too early to be relevant
-//                    {   //thisBufferBookmark++; // Shift up starting bookmark
-//                    }
-//                    else // presyn event is within relevant window, do STDP!
-//                    {   //System.out.println("dW: "+net.stdpRule(evout.time-evin.time));
-//
-//                        updateWeight(evin.addr,evout.addr,outTime-evin.time);
-//
-//
-//                    }
+//                    Spike evin=presyn.peek();
+                    Spike evin=preit.next();
+                    
+                    
                     int inTime=evin.hitTime;
                     
                     // If input event is in relevant time window
-                    if (inTime + glob.stdpWin >= outTime)
+//                    if (inTime + glob.stdpWin >= outTime)
+//                        updateWeight(evin.addr,evout.addr,outTime-evin.time);
+                    
+                    
+                    
+//                    if (inTime >= evout.time+glob.stdpWin)
+//                        
+                    
+                    
+                    
+                    
+                    
+                    if (inTime + glob.stdpWin < outTime) // If input event is too early to be relevant
+                    {   //thisBufferBookmark++; // Shift up starting bookmark
+                        
+                        // Mark item in presynaptic queue for later removal
+                        i++;
+                        
+//                        presyn.poll();
+                    }
+                    else if (inTime >= evout.time+glob.stdpWin) // If input event is too late to be relevant
+                    {
+                        break;
+                    }
+                    else // presyn event is within relevant window, do STDP!
+                    {   //System.out.println("dW: "+net.stdpRule(evout.time-evin.time));
+
                         updateWeight(evin.addr,evout.addr,outTime-evin.time);
+
+
+                    }
+                    
                     
 //                    tempBookmark++;
                 } 
+                
+                // Remove the used-up presynaptic events.
+                for (int j=0;j<i;j++)
+                    presyn.poll();
+                
     //                System.out.println("t: "+evout.time+" outAddr:"+evout.addr+" nin:"+(tempBookmark-thisBufferBookmark));
 //                outBufferBookmark++;
             }
@@ -183,11 +236,12 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
 
         public void updateWeight(int inAddress,int outAddress,double deltaT)
         {
-            if (this.enableSTDP)
+            if (this.isEnableSTDP())
                 wOut[inAddress][outAddress]+=glob.stdp.calc(deltaT);  // Change weight!
 
         }
 
+   
 
         
         public static class Factory<LayerType extends BasicLayer> implements BasicLayer.AbstractFactory<LayerType>
@@ -299,10 +353,8 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
 
             /** enable STDP learning? */
             public void setEnableSTDP(boolean enableSTDP) {
-                setSTDPstate();
-                STDPLayer.this.enableSTDP = enableSTDP;
                 
-                
+                STDPLayer.this.setEnableSTDP(enableSTDP);
             }
         }
         

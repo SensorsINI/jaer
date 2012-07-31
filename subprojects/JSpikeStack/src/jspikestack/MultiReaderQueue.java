@@ -5,6 +5,7 @@
 package jspikestack;
 
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -19,10 +20,11 @@ public class MultiReaderQueue<T> {
     
     
     class Subscriber<T>
-    {   LinkedBlockingQueue<T> queue;
+    {   Queue<T> queue;
         Comparable<T> comp;
+        boolean kill=false;
         
-        public Subscriber(LinkedBlockingQueue<T> que,Comparable<T> com)
+        public Subscriber(Queue<T> que,Comparable<T> com)
         {
             queue=que;
             comp=com;
@@ -37,28 +39,47 @@ public class MultiReaderQueue<T> {
     
     public void removerReader(Queue r)
     {
-        for (Subscriber s: subs)
-            if (s.queue==r)
-                subs.remove(s);
+        
+        
+        
+        synchronized(subs)
+        {   
+            for (Subscriber s: subs)
+                if (s.queue==r)
+                    s.kill=true;
+//                    subs.remove(s);
+        }
     }
             
     public boolean add(T el)
     {   //synchronized(subs)
 //    {
-        for (Subscriber s:subs)
-            if (s.comp.compareTo(el)>0)
-                s.queue.add(el);
-//            else
-//                System.out.println("aa");
+//        synchronized(subs){
+        
+            int i=0;
+            while (i<subs.size())
+            {   Subscriber s=subs.get(i);
+                if (s.kill)
+                {   subs.remove(i);
+                    continue;
+                }
+                else if (s.comp.compareTo(el)>0)
+                    s.queue.add(el);
+                
+                i++;
+            }
+                //else
+    //                System.out.println("aa");
     //}//   
+//        }
         return true;
     }
     
     @Override
     synchronized public String toString()
     {   
-        synchronized(subs)
-        {
+//        synchronized(subs)
+//        {
             int nReaders=subs.size();
 
             String st= "MultiReaderQueue: "+ nReaders + " readers";
@@ -73,31 +94,58 @@ public class MultiReaderQueue<T> {
                 st+="], respectively";
         }
         return st;
-        }
+//        }
     }
     
     public void clear()
     {
+        synchronized(subs)
+        {
         for (Subscriber s:subs)
             s.queue.clear();
+        }
     }
     
-    synchronized public Queue<T> addReader(Comparable c)
+    public Queue<T> addReader(Comparable c)
     {
+        synchronized(subs)
+        {
             LinkedBlockingQueue q=new LinkedBlockingQueue();
             subs.add(new Subscriber(q,c));
             return q;
+        }
     }
     
-    synchronized public Queue<T> addReader()
+//    synchronized public Queue<T> addArrayReader(Comparable c)
+//    {
+//            ArrayBlockingQueue q=new ArrayBlockingQueue(10000);
+//            subs.add(new Subscriber(q,c));
+//            return q;
+//    }
+    
+    
+    public Queue<T> addReader()
+    {   synchronized(subs)
+        {        
+            return addReader(alwaysHappy());
+        }
+    }
+    
+//    public Queue<T> addArrayReader()
+//    {   synchronized(subs)
+//        {        
+//            return addArrayReader(alwaysHappy());
+//        }
+//    }
+    
+    Comparable alwaysHappy()
     {
-        return addReader(new Comparable<T>(){
+        return new Comparable<T>(){
             @Override
             public int compareTo(T o) {
                 return 1;
             }
-        });
-        
+        };
     }
     
     

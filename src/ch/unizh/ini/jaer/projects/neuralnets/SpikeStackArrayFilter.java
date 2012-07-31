@@ -147,7 +147,7 @@ public class SpikeStackArrayFilter extends EventFilter2D{
     
     public NetMapper getNetMapper(SpikeStack net)
     {
-        SingleSourceVisualMapper R=new SingleSourceVisualMapper();
+        VisualMapper R=new VisualMapper();
         R.inDimX=(short)chip.getSizeX();
         R.inDimY=(short)chip.getSizeY(); 
         R.outDimX=net.lay(0).dimx;

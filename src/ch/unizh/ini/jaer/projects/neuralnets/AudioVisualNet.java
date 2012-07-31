@@ -23,7 +23,7 @@ public class AudioVisualNet extends SpikeFilter {
     @Override
     public NetMapper makeMapper(SpikeStack net) {
         
-        final SingleSourceVisualMapper map=new SingleSourceVisualMapper();
+        final VisualMapper map=new VisualMapper();
         map.inDimX=(short)chip.getSizeX();
         map.inDimY=(short)chip.getSizeY(); 
         map.outDimX=net.lay(0).dimx;

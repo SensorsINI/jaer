@@ -86,6 +86,8 @@ class AERProcessor
         fc.showOpenDialog(null);
         aeFile=fc.getSelectedFile();
         
+        
+        
     }
     
     public void run()
