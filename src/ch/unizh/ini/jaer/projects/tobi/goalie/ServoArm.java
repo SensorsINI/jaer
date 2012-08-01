@@ -30,11 +30,11 @@ import java.util.Observable;
 import java.util.Observer;
 import java.awt.Color;
 import java.io.*;
+import java.util.*;
 import javax.media.opengl.*;
 import javax.media.opengl.GLAutoDrawable;
-import java.util.Timer;
-import java.util.TimerTask;
 import net.sf.jaer.stereopsis.StereoClusterTracker;
+import net.sf.jaer.util.PlayWavFile;
 /**
  * Controls the servo arm in StereoGoalie to decouple the motor actions from the sensory processing and manages self-calibration of the arm.
  This arm can also be controlled directly with visual feedback control using the tracked arm position. In this mode, the servo command is formed
@@ -173,6 +173,8 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
     }
 //    PnPNotify pnp;
 
+    private boolean playedSound=false;
+    
     /** Creates a new instance of ServoArm */
     public ServoArm(AEChip chip){
         super(chip);
@@ -214,8 +216,19 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
         synchronized(armTracker){
             armTracker.filterPacket(in);
         }
+        if (servo != null && servo.isOpen()) {
+            if ((servo.getPort2()&1)==1 && !playedSound) {
+//                log.info("*********************blocked !!!!!!");
+                soundPlayer.playRandom();
+                playedSound=true;
+            }
+            if(servo.getPort2()==0){
+                playedSound=false;
+            }
+        }
         return in;
     }
+    Random random=new Random();
     
     public Object getFilterState(){
         return null;
@@ -224,7 +237,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
         armTracker.resetFilter();
     }
     public void initFilter(){
-        LearningInit();
+        initLearning();
         ((XYTypeFilter)armTracker.getEnclosedFilter()).setTypeEnabled(false);
         this.setCaptureRange(0,0,chip.getSizeX(),0);
         armTracker.setMaxNumClusters(1);
@@ -349,7 +362,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
     final float DEFAULT_K=1/500f, //1f/210,
              DEFAULT_D=0; //.21f;
 
-    /** resets parameters in case they are off someplace wierd that results in no arm movement, e.g. k=0 */
+    /** resets parameters in case they are off someplace weird that results in no arm movement, e.g. k=0 */
     void resetLearning(){
 //        setLearnedParam(DEFAULT_K,DEFAULT_D);
         if(learningTask!=null){
@@ -360,10 +373,18 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
 
     // learning algorithm (and learning thread control)
 
-    private void LearningInit(){
+    private void initLearning(){
         learned_k=getPrefs().getFloat("ServoArm.learned_k",DEFAULT_K);
+        if(Float.isNaN(learned_k)){
+            log.warning("reset learned_k from NaN to default");
+            learned_k=DEFAULT_K;
+        }
         learned_d=getPrefs().getFloat("ServoArm.learned_d",DEFAULT_D);
-    }
+        if(Float.isNaN(learned_d)){
+            log.warning("reset learned_d from NaN to default");
+            learned_d=DEFAULT_D;
+        }
+   }
     private void setLearnedParam(float k,float d){
         synchronized(learningLock){
             learned_k=k;
@@ -496,6 +517,9 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
                     return false;
                 }
                 servo.open();
+                if(servo instanceof SiLabsC8051F320_USBIO_ServoController){
+                    SiLabsC8051F320_USBIO_ServoController silabs=(SiLabsC8051F320_USBIO_ServoController)servo;
+                }
             }catch(HardwareInterfaceException e){
                 servo=null;
                 log.warning(e.toString());
@@ -634,6 +658,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
             StereoGoalie g=(StereoGoalie)getEnclosingFilter();
             return g;
         }
+        log.warning("enclosing filter is "+getEnclosedFilter()+" which is not instanceof StereoGoalie - returning null instance");
         return null;
     }
     class RenableFilterTask extends TimerTask{
@@ -1111,5 +1136,20 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
             errorLowpass.setTauMs(visualFeedbackPIDControllerTauMs);
         }
     }
+    
+        private SoundPlayer soundPlayer = new SoundPlayer ();
+    private class SoundPlayer{
+        private String[] soundFiles = { "ow.wav","oof.wav","hah.wav","oof.wav" };
+        PlayWavFile player;
+        Random r = new Random ();
+        PlayWavFile T;
+        void playRandom (){
+            if(T!=null && T.isAlive ()) return;
+            T=new PlayWavFile (soundFiles[r.nextInt (soundFiles.length)]);
+            T.start ();
+
+        }
+    }
+
 }
 

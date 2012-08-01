@@ -193,7 +193,7 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
         return false;
     }
     
-    /** constrcuts a new USB connection, opens it.
+    /** constructs a new USB connection, opens it.
      */
     public void open() throws HardwareInterfaceException {
         openUsbIo();
@@ -646,6 +646,11 @@ public class SiLabsC8051F320_USBIO_CarServoController implements UsbIoErrorCodes
 
     @Override
     public float setServoPWMFrequencyHz(float freq) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public int getPort2() {
         throw new UnsupportedOperationException("Not supported yet.");
     }
     

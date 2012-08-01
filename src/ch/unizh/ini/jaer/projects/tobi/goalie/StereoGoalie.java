@@ -83,7 +83,7 @@ public class StereoGoalie extends EventFilter2D implements FrameAnnotater, Obser
     {setPropertyTooltip(geomCat,"topRowsToIgnore","top rows in scene to ignore for purposes of active ball blocking (balls are still tracked there)");}
     private int rangeOutsideViewToBlockPixels=getPrefs().getInt("Goalie.rangeOutsideViewToBlockPixels",10); // we only block shots that are this much outside scene, to avoid reacting continuously to people moving around laterally
     {setPropertyTooltip(geomCat,"rangeOutsideViewToBlockPixels","goalie will ignore balls that are more than this many pixels outside end of goal line");}
-    private float parallaxFactor=getPrefs().getFloat("Goalie.parallaxFactor",1.3f);
+    private float parallaxFactor=getFloat("parallaxFactor",1.3f);
     {setPropertyTooltip(geomCat,"parallaxFactor","correct for goalie hand parallax (top of hand which is tracked for learning is closer than bottom which blocks ball)");}
 
     
@@ -725,6 +725,7 @@ public class StereoGoalie extends EventFilter2D implements FrameAnnotater, Obser
      */
     public void setParallaxFactor(float parallaxFactor) {
         this.parallaxFactor = parallaxFactor;
+        putFloat("parallaxFactor",parallaxFactor);
     }
 
 }
