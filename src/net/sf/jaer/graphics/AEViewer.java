@@ -640,7 +640,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewActiveRenderingEnabledMenuItem.setSelected(isActiveRenderingEnabled());
         viewOpenGLEnabledMenuItem.setSelected(isOpenGLRenderingEnabled());
         loggingPlaybackImmediatelyCheckBoxMenuItem.setSelected(isLoggingPlaybackImmediatelyEnabled());
-        subsampleEnabledCheckBoxMenuItem.setSelected(chip.isSubSamplingEnabled());
+        if(chip==null) log.warning("null chip object - some problem occurred constructing chip instance");
+        else subsampleEnabledCheckBoxMenuItem.setSelected(chip.isSubSamplingEnabled());
         acccumulateImageEnabledCheckBoxMenuItem.setSelected(getRenderer().isAccumulateEnabled());
         autoscaleContrastEnabledCheckBoxMenuItem.setSelected(getRenderer().isAutoscaleEnabled());
         pauseRenderingCheckBoxMenuItem.setSelected(false);// not isPaused because aePlayer doesn't exist yet

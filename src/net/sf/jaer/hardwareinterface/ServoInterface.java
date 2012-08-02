@@ -51,6 +51,12 @@ public interface ServoInterface extends HardwareInterface {
      */
     public void setPort2(int portValue);
 
+    /** Reads the port 2 byte value.
+     * This port is presently set to open-drain mode on all bits.
+     * @returns portValue the bits of port 2; only the rightmost 8 bits are meaningful.
+     */
+    public int getPort2();
+
     /** Sets servo outputs to produce full duty cycle output rather than standard 1-2ms servo output.
      *
      * @param yes true to set full duty cycle mode.

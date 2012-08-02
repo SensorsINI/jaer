@@ -365,6 +365,24 @@ public class StereoClusterTracker extends RectangularClusterTracker{
             }
         }
 
+        /** Updates position of cluster given that event comes from right or left eye and the cluster
+         * has a disparity.
+         * @param event
+         * @param m 
+         */
+        @Override
+        protected void updatePosition(BasicEvent e, float m) {
+            BinocularEvent event = (BinocularEvent) e;
+            float m1 = 1 - m;
+            float d=event.eye==BinocularEvent.Eye.RIGHT?-this.disparity:this.disparity;
+
+            location.x = (m1 * location.x + m * (event.x+d/2));
+            location.y = (m1 * location.y + m * event.y);
+
+        }
+
+        
+
         private float updateDisparity(BinocularEvent event) {
             float thisEventDisparity = 0;
             // if we add events from each eye, moviing disparity and location according to each event, then a mismatch
@@ -598,12 +616,12 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 //                    }
 
                     if (isDisplayStereoClusterAnnotation()) {
-                        int font = GLUT.BITMAP_TIMES_ROMAN_24;
+                        int font = GLUT.BITMAP_TIMES_ROMAN_10;
                         GLUT glut = chip.getCanvas().getGlut();
                         gl.glColor3f(1, 1, 1);
 
                         gl.glRasterPos3f(c.location.x, c.location.y, 0);
-                        glut.glutBitmapString(font, Integer.toString(c.getClusterNumber()));
+                        glut.glutBitmapString(font, String.format("d=%.1f, dv=%.1f",c.disparity,c.disparityVelocity));
                     }
 
                 } // visible cluster
@@ -611,7 +629,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 
             if ( isDisplayStereoClusterAnnotation() && getNearestCluster () != null ){
                 StereoCluster c = getNearestCluster ();
-                int font = GLUT.BITMAP_TIMES_ROMAN_24;
+                int font = GLUT.BITMAP_TIMES_ROMAN_10;
                 GLUT glut = chip.getCanvas ().getGlut ();
                 gl.glColor3f (1,1,1);
 

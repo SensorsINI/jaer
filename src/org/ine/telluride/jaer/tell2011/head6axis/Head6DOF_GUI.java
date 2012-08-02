@@ -213,6 +213,7 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        log.info("got property change event "+evt.getPropertyName());
         repaint();
     }
 }
