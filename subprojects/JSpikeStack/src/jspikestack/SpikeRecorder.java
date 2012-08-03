@@ -6,10 +6,7 @@ package jspikestack;
 
 import java.io.*;
 import java.nio.ByteBuffer;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -119,6 +116,22 @@ public class SpikeRecorder<SpikeType extends Spike> {
         }
         
         
+    }
+    
+    
+    // Return a spike array
+    public ArrayList<Spike> toArray()
+    {
+//        Spike[] sp=new Spike[nSpikes()];
+        
+//        Iterator itr=spikes.iterator();
+        
+        ArrayList<Spike> spikeList=new ArrayList();
+        
+        for (Spike sp:spikes)
+            spikeList.add(sp);
+        
+        return spikeList;
     }
     
     

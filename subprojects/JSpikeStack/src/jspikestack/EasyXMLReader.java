@@ -62,10 +62,11 @@ public class EasyXMLReader {
     public EasyXMLReader(File infile){
         
         
-        if (infile.isDirectory())
+        if (infile!=null && infile.isDirectory())
             file=grabFile(infile.toString());
-        else if (!infile.isFile())
-            file=grabFile(null);
+        else if (infile!=null && infile.isFile())
+//        else if (infile!=null && !infile.isFile())
+            file=infile;
         else{
             System.out.println("The file you gave s neither a file not a directory");
             file=grabFile(null);

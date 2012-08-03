@@ -104,6 +104,16 @@ public class StatCollector {
         
     }
     
+    
+//    public static ArrayList netRun(NetController nc,Stat st)
+//    {
+//        
+//        
+//        
+//    }
+    
+    
+    
     public static class Stat
     {
         float thresh;

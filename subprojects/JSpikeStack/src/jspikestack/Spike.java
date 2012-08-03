@@ -12,10 +12,10 @@ import java.io.Serializable;
  */
 /* Basic "Spike" class */
 public class Spike implements Comparable<Spike>, Serializable
-{   int addr;   
-    int time; // Time at which spike is sent
-    int hitTime;  // Time at which spike effect is felt.
-    int layer;
+{   public int addr;   
+    public int time; // Time at which spike is sent
+    public int hitTime;  // Time at which spike effect is felt.
+    public int layer;
     
         
     public Spike(int timei)

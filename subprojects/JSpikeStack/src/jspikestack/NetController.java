@@ -5,6 +5,7 @@
 package jspikestack;
 
 import java.awt.Component;
+import java.io.File;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
@@ -79,6 +80,12 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
     {
         net.read.readFromXML(net);         
     }
+    
+    public void readXML(String loc)
+    {
+        net.read.readFromXML(net,new File(loc));         
+    }
+    
     
     public void startDisplay()
     {   

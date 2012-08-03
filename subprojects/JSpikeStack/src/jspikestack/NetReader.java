@@ -23,10 +23,21 @@ public class NetReader<NetType extends SpikeStack> implements SpikeStack.Network
     NetType net;        
     
     // Default Directory 
-    File startDir=new File(getClass().getClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../files/nets");
+    File startDir;
+//    File startDir=new File(getClass().getClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../files/nets");
     
     public NetReader(NetType network)
     {   net=network;        
+    
+        try{
+            startDir=new File(getClass().getClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../files/nets");
+    
+        }   
+        catch (Exception e)
+        {
+            System.out.println("Failed to load default start directory.  That's ok, no big deal.");
+        }
+        
     }
     
     @Override

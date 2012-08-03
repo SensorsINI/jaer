@@ -256,7 +256,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
             
             // Update current time to time of this event
             if (ev.hitTime<time)
-            {   System.out.println("Input Spike time Decrease detected!  Resetting network...");
+            {   System.out.println("Input Spike time Decrease detected!  ("+time+"-->"+ev.hitTime+")  Resetting network...");
                 reset();                
             }
             
