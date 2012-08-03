@@ -412,7 +412,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
     /**
      * merge clusters that are too close to each other and that have sufficiently similar velocities (if velocityAngleToRad).
-    this must be done interatively, because merging 4 or more clusters feedforward can result in more clusters than
+    this must be done interactively, because feed-forward merging of 4 or more clusters can result in more clusters than
     you start with. each time we merge two clusters, we start over, until there are no more merges on iteration.
     for each cluster, if it is close to another cluster then merge them and start over.
      */
@@ -495,7 +495,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 ////                    System.out.println("pruning unzupported "+c);
 //                }
 //            }
-            if (c.getMassNow(t) < thresholdEventsForVisibleCluster) {
+            if (c.getLifetime()>=clusterLifetimeWithoutSupportUs && c.getMassNow(t) < thresholdEventsForVisibleCluster) {
                 massTooSmall = true;
             }
             boolean hitEdge = c.hasHitEdge();
@@ -504,9 +504,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 // is something funny about the timestamps
                 pruneList.add(c);
                 c.prune();
-//                String reason=null;
+                String reason=null;
 //                if(t0>t) reason="time went backwards";
-//                else if(massTooSmall) reason="mass is too small";
+//                else if(massTooSmall) reason="mass is too small and cluster has existed at least clusterLifetimeWithoutSupportUs";
 //                else if(timeSinceSupport<0) reason="timeSinceSupport is negative";
 //                else if(hitEdge) reason="cluster hit edge";
 //                log.info("pruning "+c+" because "+reason);
@@ -987,7 +987,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             //the radius should increase
 //            setRadius((one.getRadius()+two.getRadius())/2);
             if (growMergedSizeEnabled) {
-                float R = (one.getRadius() + two.getRadius()) / 2;
+                float R = (one.getRadius() + two.getRadius()); // tobi changed to sum radii
                 setRadius(R + getMixingFactor() * R);
             } else {
                 setRadius(stronger.getRadius());
@@ -1415,10 +1415,10 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             }
             
             //annotate the cluster with the velocityPPT in pps
-            if (showClusterVelocity) {
-//                Point2D.Float velpps = getVelocityPPS();
-                chip.getCanvas().getGlut().glutBitmapString(font, String.format("v=%.0fpps ", getSpeedPPS()));
-            }
+//            if (showClusterVelocity) {
+////                Point2D.Float velpps = getVelocityPPS();
+//                chip.getCanvas().getGlut().glutBitmapString(font, String.format("v=%.0fpps ", getSpeedPPS()));
+//            }
 
             if (showClusterMass) {
                 chip.getCanvas().getGlut().glutBitmapString(font, String.format("m=%.1f ", getMassNow(lastUpdateTime)));
