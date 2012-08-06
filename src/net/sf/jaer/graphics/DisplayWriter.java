@@ -14,7 +14,7 @@ import javax.swing.JPanel;
  * Generally, a GUI class with either implement this class or contain object(s) 
  * of this class as fields.
  * 
- * 
+ * @TODO: delete - this class is obselete.
  * @author Peter
  */
 public interface DisplayWriter {    
