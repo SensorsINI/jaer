@@ -281,6 +281,8 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
             
             time=ev.hitTime;
             
+//            System.out.println(internalBuffer.size());
+            
             
             if (time > timeout)
                 break;

@@ -139,7 +139,7 @@ disp.repaint();
  */
 public class ImageDisplay extends GLCanvas implements GLEventListener {
 
-    protected Preferences prefs = Preferences.userNodeForPackage(ImageDisplay.class);
+//    protected Preferences prefs = Preferences.userNodeForPackage(ImageDisplay.class);
     protected Logger log = Logger.getLogger("ImageDisplay");
     private int fontSize = 20;
     private int sizeX = 0, sizeY = 0;

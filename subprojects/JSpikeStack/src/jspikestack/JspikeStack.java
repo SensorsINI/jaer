@@ -86,6 +86,7 @@ public class JspikeStack {
         lg.delay=20000;
         
         lg.setFastWeightTC(2000000);
+        lg.doRandomJitter=false;
         
         net.ax(1,2).setEnableFastSTDP(true);
         net.ax(3,2).setEnableFastSTDP(true);

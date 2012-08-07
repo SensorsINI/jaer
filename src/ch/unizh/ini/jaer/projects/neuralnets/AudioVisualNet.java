@@ -99,12 +99,12 @@ public class AudioVisualNet extends SpikeFilter {
         unitGlobs.useGlobalThresh=true;
         unitGlobs.thresh=2;
         
-        STPLayer.Globals lG=(STPLayer.Globals)layGlobs;
+        STPAxons.Globals lG=(STPAxons.Globals)layGlobs;
         
         lG.fastWeightTC=2;
         
-        net.lay(1).setEnableFastSTDP(true);
-        net.lay(3).setEnableFastSTDP(true);        
+        ((STPAxons)net.ax(1,2)).setEnableFastSTDP(true);
+        ((STPAxons)net.ax(3,2)).setEnableFastSTDP(true);        
         lG.fastSTDP.plusStrength=(-.01f);
         lG.fastSTDP.minusStrength=(-.01f);   
         lG.fastSTDP.stdpTCminus=(10000);

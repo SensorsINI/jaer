@@ -4,8 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.neuralnets;
 
-import javax.swing.JToggleButton;
-import jspikestack.BasicLayer;
+
 import jspikestack.NetController;
 import jspikestack.SpikeStack;
 import net.sf.jaer.chip.AEChip;
@@ -52,15 +51,13 @@ public class ISIspikeFilter extends SpikeFilter {
         
         ini.lay(0).nUnits=nOutputs;
         
-        ini.lay(0).WlatMean=-1;
-        ini.lay(0).WlatStd=0;
+        ini.ax(0,0).wMean=-1;
+        ini.ax(0,0).wStd=0;
         
         
         net.buildFromInitializer(ini);
         
-        
-        nc.setLateralStrengths(new boolean[] {true});
-        
+                
         unitGlobs.useGlobalThresh=true;
         unitGlobs.thresh=5;
         unitGlobs.tau=200000;  

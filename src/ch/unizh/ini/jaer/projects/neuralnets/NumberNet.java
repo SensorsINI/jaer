@@ -64,10 +64,10 @@ public class NumberNet extends SpikeFilter {
         
         
         // Set up connections
-        float[] sigf={1, 1, 0, 1};
-        net.setForwardStrength(sigf);
-        float[] sigb={0, 1, 0, 1};
-        net.setBackwardStrength(sigb);
+//        float[] sigf={1, 1, 0, 1};
+        nc.setForwardStrengths(new boolean[]{true,true,false,true});
+//        float[] sigb={0, 1, 0, 1};
+        nc.setBackwardStrengths(new boolean[]{true,false,true,true});
         
         // Up the threshold
 //        net.scaleThresholds(500);
