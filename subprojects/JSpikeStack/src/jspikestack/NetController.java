@@ -17,7 +17,7 @@ import javax.swing.JScrollPane;
  * 
  * @author Peter
  */
-public class NetController<LayerType extends BasicLayer,LayerGlobalType extends Controllable,UnitGlobalType extends Controllable> {
+public class NetController<LayerType extends Axons,LayerGlobalType extends Controllable,UnitGlobalType extends Controllable> {
     
     public SpikeStack<LayerType,Spike> net;
     public UnitGlobalType unitGlobals;
@@ -29,7 +29,7 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
     
     public SpikeRecorder recorder;
     
-    public static enum Types {STP_LIF,STATIC_LIF,BINTHRESHNET};
+    public static enum Types {STP_LIF,STATIC_LIF,BINTHRESHNET,SPARSE_LIF};
     
     
     public boolean enable=true;
@@ -42,35 +42,44 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
     
     public NetController(Types t)
     {
+        
+        Axons.AbstractFactory axonFactory;
+        Unit.AbstractFactory unitFactory;
+        
+        
         switch(t)
         {
-            case STATIC_LIF:
-                
-                BasicLayer.Factory bLayerFactory=new BasicLayer.Factory();
-                LIFUnit.Factory unitFactoryy=new LIFUnit.Factory();        
-                net=new SpikeStack(bLayerFactory,unitFactoryy);
-                view=new NetPlotter(net);
-
-                layerGlobals = (LayerGlobalType) bLayerFactory.glob;
-                unitGlobals = (UnitGlobalType) unitFactoryy.glob;            
-            
+            case STATIC_LIF:                
+                axonFactory=new Axons.Factory();
+                unitFactory=new LIFUnit.Factory();            
                 break;                
             
-            case STP_LIF:
+            case STP_LIF:                
+                axonFactory=new STPAxons.Factory();
+                unitFactory=new LIFUnit.Factory();   
+                break;
                 
-                STPLayer.Factory<STPLayer> layerFactory=new STPLayer.Factory();
-                LIFUnit.Factory unitFactory=new LIFUnit.Factory();        
-                net=new SpikeStack(layerFactory,unitFactory);
-                view=new NetPlotter(net);
-
-                layerGlobals = (LayerGlobalType) layerFactory.glob;
-                unitGlobals = (UnitGlobalType) unitFactory.glob;            
-            
+            case SPARSE_LIF:                
+                axonFactory=new SparseAxon.Factory();
+                unitFactory=new LIFUnit.Factory();       
                 break;
                 
             case BINTHRESHNET:
-                throw new UnsupportedOperationException("Not supported yet");                
+                throw new UnsupportedOperationException("Not supported yet");   
+                
+            default:
+                axonFactory=new Axons.Factory();
+                unitFactory=new LIFUnit.Factory();            
+                break;     
+                
         }
+        
+        
+        net=new SpikeStack(axonFactory,unitFactory);
+        view=new NetPlotter(net);
+        
+        layerGlobals = (LayerGlobalType) axonFactory.getGlobalControls();
+        unitGlobals = (UnitGlobalType) unitFactory.getGlobalControls();  
         
         recorder=new SpikeRecorder(net);
 //        view=net.plot;
@@ -130,19 +139,13 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
     /** Enable Forward Connections */
     public void setForwardStrengths(boolean[] vals)
     {   for (int i=0; i<vals.length; i++) 
-            net.lay(i).fwdSend=vals[i]?1:0;
+            net.lay(i).enableForwards(vals[i]);
     }
     
     /** Enable Backward Connections */
     public void setBackwardStrengths(boolean[] vals)
     {   for (int i=0; i<vals.length; i++) 
-            net.lay(i).backSend=vals[i]?1:0;
-    }
-    
-    /** Enable Lateral Connections */
-    public void setLateralStrengths(boolean[] vals)
-    {   for (int i=0; i<vals.length; i++) 
-            net.lay(i).latSend=vals[i]?1:0;
+            net.lay(i).enableBackwards(vals[i]);
     }
     
     public void addAllControls()
@@ -153,7 +156,7 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
 //        view.addControls(net.getControls());
 //        view.addControls(unitGlobals);
 //        view.addControls(layerGlobals);
-//        for (BasicLayer l:net.getLayers())
+//        for (Axons l:net.getLayers())
 //        {
 //            view.addControls(l.getControls());
 //        }
@@ -167,7 +170,7 @@ public class NetController<LayerType extends BasicLayer,LayerGlobalType extends 
         cp.addController(net.getControls());
         cp.addController(unitGlobals);
         cp.addController(layerGlobals);
-        for (BasicLayer l:net.getLayers())
+        for (Axons l:net.getAxons())
         {
             cp.addController(l.getControls());
         }

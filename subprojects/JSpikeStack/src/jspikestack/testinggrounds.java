@@ -29,26 +29,18 @@ public class testinggrounds {
     public static void main(String[] args)
     {   
         
-        MultiReaderQueue<Spike> q=new MultiReaderQueue();
-        
-        Reader r1=new Reader();
-        Reader r2=new Reader();
-        
-//        Iterator it=q.listIterator();
-//        q.addReader(r1);
-//        q.addReader(r2);
-        
-        q.add(new Spike(1,2,3));
-        q.add(new Spike(1,2,3));
-        
-//        it.next();
-//        it.next();
+        System.out.println(Math.floor(-2.5));
         
         
-//        q.read(r1);
-//        q.read(r2);
 //        
-//        q.read(r1);
+//        MultiReaderQueue<Spike> q=new MultiReaderQueue();
+//        
+//        Reader r1=new Reader();
+//        Reader r2=new Reader();
+//        
+//        q.add(new Spike(1,2,3));
+//        q.add(new Spike(1,2,3));
+//        
         
     }
     

@@ -12,7 +12,7 @@ import java.util.Queue;
  *
  * @author oconnorp
  */
-public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,GlobalParams extends STDPLayer.Globals> extends BasicLayer<NetType,LayerType,GlobalParams> {
+public class STDPAxons<GlobalParams extends STDPAxons.Globals> extends Axons<GlobalParams> {
     
     
 //    
@@ -23,7 +23,7 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
     
     
         
-//    public static class Layer <NetType extends STDPLayer,LayerType extends BasicLayer, UnitType extends Unit,GlobalParams extends STDPLayer.Layer.Globals> extends BasicLayer<NetType,LayerType,UnitType>
+//    public static class Layer <NetType extends STDPAxons,LayerType extends Axons, UnitType extends Unit,GlobalParams extends STDPAxons.Layer.Globals> extends Axons<NetType,LayerType,UnitType>
 //    {
 //        int outBufferBookmark=0;   // Bookmark used for stdp learning
 //        int thisBufferBookmark=0;
@@ -36,8 +36,8 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
         
         private boolean enableSTDP=false;     // Enable STDP on the slow weights
 
-        public STDPLayer(NetType network,Unit.AbstractFactory uf,int ind,GlobalParams glo)
-        {   super(network,uf,ind,glo);   
+        public STDPAxons(Layer inLayer,Layer outLayer,GlobalParams glo)
+        {   super(inLayer,outLayer,glo);   
 //            glob=glo;
         }
         
@@ -56,9 +56,9 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
         /** For performance: enable/disable queues */
         public void setSTDPstate()
         {
-            if (isLearningEnabled() && Lout!=null && presyn ==null)
+            if (isLearningEnabled() && postLayer!=null && presyn ==null)
             {
-                final int outLayer=Lout.ixLayer;
+                final int outLayer=postLayer.ixLayer;
                 postsyn=net.outputQueue.addReader(new Comparable<Spike>() 
                     {   @Override
                         public int compareTo(Spike o) 
@@ -66,7 +66,7 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
                         }
                     });
                 
-                final int thisLayer=ixLayer;
+                final int thisLayer=preLayer.ixLayer;
                 presyn=net.outputQueue.addReader(new Comparable<Spike>()
                     {   @Override
                         public int compareTo(Spike o) 
@@ -86,15 +86,6 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
             
         }
         
-        
-        @Override
-        public void init()
-        {
-            if (Lout!=null)
-            {
-                
-            }
-        }
         
         
         /** Actions to perform after input spike is processed */
@@ -141,7 +132,7 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
             * postsyn: post-synaptic layer
             * 
             */ 
-//            if (Lout.outBuffer.isEmpty() || outBuffer.isEmpty()) return;
+//            if (postLayer.outBuffer.isEmpty() || outBuffer.isEmpty()) return;
 
             
             
@@ -149,12 +140,12 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
                 return;
 
             // While (postsyn buffer has events) && ( (current postsyn bookmark time) + (stdp window limit) < (current time) )
-//            while ((Lout.outBuffer.size() > outBufferBookmark) && (Lout.getOutputEvent(outBufferBookmark).time + glob.stdpWin < net.time))
+//            while ((postLayer.outBuffer.size() > outBufferBookmark) && (postLayer.getOutputEvent(outBufferBookmark).time + glob.stdpWin < net.time))
             while (!postsyn.isEmpty() && (postsyn.peek().time + glob.stdpWin < net.time))      
             {   // Iterate over new output spikes
 
                 // Get current output event
-//                Spike evout=Lout.getOutputEvent(outBufferBookmark); // TODO: REMOVE THIS F'ING CAST
+//                Spike evout=postLayer.getOutputEvent(outBufferBookmark); // TODO: REMOVE THIS F'ING CAST
                 Spike evout=postsyn.poll();
                 
 
@@ -237,14 +228,14 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
         public void updateWeight(int inAddress,int outAddress,double deltaT)
         {
             if (this.isEnableSTDP())
-                wOut[inAddress][outAddress]+=glob.stdp.calc(deltaT);  // Change weight!
+                w[inAddress][outAddress]+=glob.stdp.calc(deltaT);  // Change weight!
 
         }
 
    
 
         
-        public static class Factory<LayerType extends BasicLayer> implements BasicLayer.AbstractFactory<LayerType>
+        public static class Factory<AxonType extends STDPAxons> implements Axons.AbstractFactory<STDPAxons>
         {
             public Globals glob;
             
@@ -252,20 +243,20 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
             {   glob = new Globals();
             }
             
-            @Override
-            public <NetType extends SpikeStack,UnitType extends Unit> LayerType make(NetType net,Unit.AbstractFactory<?,UnitType> unitFactory,int layerIndex)
-            {
-                return (LayerType) new STDPLayer(net,unitFactory,layerIndex,glob); // TODO: BAAAD.  I'm confused
-            }
 
             @Override
             public Controllable getGlobalControls() {
                 return glob;
             }
+
+            @Override
+            public AxonType make(Layer inLayer, Layer outLayer) {
+                return (AxonType) new STDPAxons(inLayer,outLayer,glob);
+            }
         }
         
         
-        public static class Globals extends BasicLayer.Globals
+        public static class Globals extends Axons.Globals
         {
             public STDPrule stdp=new STDPrule();;
     
@@ -345,7 +336,7 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
         {   return new Controller();
         }
         
-        class Controller extends BasicLayer.Controller
+        class Controller extends Axons.Controller
         {   /** enable STDP learning? */
             public boolean isEnableSTDP() {
                 return enableSTDP;
@@ -354,7 +345,7 @@ public class STDPLayer<NetType extends SpikeStack,LayerType extends BasicLayer,G
             /** enable STDP learning? */
             public void setEnableSTDP(boolean enableSTDP) {
                 
-                STDPLayer.this.setEnableSTDP(enableSTDP);
+                STDPAxons.this.setEnableSTDP(enableSTDP);
             }
         }
         

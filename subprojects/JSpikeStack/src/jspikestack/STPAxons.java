@@ -15,7 +15,7 @@ import java.lang.reflect.Array;
  * 
  * @author oconnorp
  */
-public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> extends STDPLayer<NetType,LayerType,STPLayer.Globals> {
+public class STPAxons extends STDPAxons<STPAxons.Globals> {
 
     private boolean enableFastSTDP=false;
 
@@ -40,8 +40,13 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
         this.setSTDPstate();
     }
         
-    public STPLayer(NetType network,jspikestack.Unit.AbstractFactory uf,int ind,Globals glo)
-    {   super(network,uf,ind,glo);   
+    public STPAxons(Layer inLayer, Layer outLayer,Globals glo)
+    {   super(inLayer,outLayer,glo);   
+    
+        
+        wOutFast=new float[preLayer.nUnits()][postLayer.nUnits()];
+        wOutFastTimes=new int[preLayer.nUnits()][postLayer.nUnits()];
+    
     }
     
 //        @Override
@@ -49,7 +54,7 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
 //        {   return (UnitType) new Unit(index);            
 //        }
 //        
-//        public Layer(STPLayer st,int index)
+//        public Layer(STPAxons st,int index)
 //        {   super((NetType)st,index);   
 //        }        
 
@@ -59,12 +64,6 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
 //    {   return enableSTDP || enableFast;            
 //    }
 
-    @Override
-    public void initializeUnits(int nUnits)
-    {   super.initializeUnits(nUnits);
-        wOutFast=new float[nUnits][];
-        wOutFastTimes=new int[nUnits][];
-    }
     
     @Override
     public void updateWeight(int inAddress,int outAddress,double deltaT)
@@ -84,23 +83,23 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
     public float[] getForwardWeights(int index) {
 
         if (!enableFastSTDP)
-            return wOut[index];
+            return w[index];
 
-        float[] w=new float[wOut[index].length];
+        float[] ww=new float[w[index].length];
 
-        for (int i=0; i<w.length; i++)
-            w[i]=getOutWeight(index,i);
+        for (int i=0; i<ww.length; i++)
+            ww[i]=getOutWeight(index,i);
 
-        return w;
+        return ww;
     }
 
     @Override
     public float getOutWeight(int source,int dest)
     {
         if (!enableFastSTDP)
-            return wOut[source][dest];
+            return w[source][dest];
 
-        return wOut[source][dest]+currentFastWeightValue(source,dest);
+        return w[source][dest]+currentFastWeightValue(source,dest);
     }
 
     /** Compute present value of the fast weight */
@@ -120,7 +119,7 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
     }
     
 
-    public static class Factory<LayerType extends BasicLayer> implements BasicLayer.AbstractFactory<LayerType>
+    public static class Factory<LayerType extends Axons> implements Axons.AbstractFactory<LayerType>
     {
         public Globals glob;
 
@@ -129,9 +128,9 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
         }
 
         @Override
-        public <NetType extends SpikeStack,UnitType extends Unit> LayerType make(NetType net,Unit.AbstractFactory<?,UnitType> unitFactory,int layerIndex)
+        public LayerType make(Layer inLayer, Layer outLayer)
         {
-            return (LayerType) new STPLayer(net,unitFactory,layerIndex,glob); // TODO: BAAAD.  I'm confused
+            return (LayerType) new STPAxons(inLayer,outLayer,glob); // TODO: BAAAD.  I'm confused
         }
         
         @Override
@@ -141,12 +140,12 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
         
     }
 
-    public static class Globals extends STDPLayer.Globals
+    public static class Globals extends STDPAxons.Globals
     {
 
         public float fastWeightTC;
 
-        public STDPLayer.Globals.STDPrule fastSTDP=new STDPLayer.Globals.STDPrule();
+        public STDPAxons.Globals.STDPrule fastSTDP=new STDPAxons.Globals.STDPrule();
 
         /** Time Constant for fast-weights */
         public float getFastWeightTC() {
@@ -205,7 +204,7 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
     {   return new Controller();
     }
 
-    class Controller extends STDPLayer.Controller
+    class Controller extends STDPAxons.Controller
     {   /** enable STDP learning? */
         public boolean isEnableFastWeights() {
             return enableFastSTDP;
@@ -213,7 +212,7 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
 
         /** enable STDP learning? */
         public void setEnableFastWeights(boolean enable) {
-            STPLayer.this.setEnableFastSTDP(enable);
+            STPAxons.this.setEnableFastSTDP(enable);
         }       
         
         
@@ -280,9 +279,9 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
     
     
     
-//    public static class Initializer extends STDPLayer.Initializer
+//    public static class Initializer extends STDPAxons.Initializer
 //    {   
-//        STDPrule fastSTDP=new STDPLayer.STDPrule();;
+//        STDPrule fastSTDP=new STDPAxons.STDPrule();;
 //        float fastWeightTC;
 //        
 //        public Initializer(int nLayers)
@@ -294,7 +293,7 @@ public class STPLayer <NetType extends SpikeStack,LayerType extends STPLayer> ex
 //        {   return (LayerInitializer)layers[n];            
 //        }
 //        
-//        public static class LayerInitializer extends STDPLayer.Initializer.LayerInitializer
+//        public static class LayerInitializer extends STDPAxons.Initializer.LayerInitializer
 //        {   
 //            boolean enableFastSTDP=false;
 //            float fastWeightInfluence=0;

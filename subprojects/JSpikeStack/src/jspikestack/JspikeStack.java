@@ -15,7 +15,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.Queue;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -58,15 +57,17 @@ public class JspikeStack {
         
         demoMenu();
         
+//        convDemo();
+        
     }
     
     /** Read in a network from XML, do stuff with it */
     public static void readNet()
     {           
-        NetController<STPLayer,STPLayer.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
-        SpikeStack<STPLayer,Spike> net=nc.net;
+        NetController<STPAxons,STPAxons.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
+        SpikeStack<STPAxons,Spike> net=nc.net;
         LIFUnit.Globals un=nc.unitGlobals;
-        STPLayer.Globals lg=nc.layerGlobals;
+        STPAxons.Globals lg=nc.layerGlobals;
         
         nc.readXML();
        
@@ -82,11 +83,12 @@ public class JspikeStack {
         un.thresh=2.6f;
         
         
-        lg.setFastWeightTC(2000000);
-        lg.doRandomJitter=true;
+        lg.delay=20000;
         
-        net.lay(1).setEnableFastSTDP(true);
-        net.lay(3).setEnableFastSTDP(true);
+        lg.setFastWeightTC(2000000);
+        
+        net.ax(1,2).setEnableFastSTDP(true);
+        net.ax(3,2).setEnableFastSTDP(true);
         
         lg.stdpWin=30000;
         lg.fastSTDP.plusStrength=-.001f;
@@ -94,6 +96,8 @@ public class JspikeStack {
         lg.fastSTDP.stdpTCminus=20000;
         lg.fastSTDP.stdpTCplus=20000;
         
+        lg.doRandomJitter=true;
+        lg.randomJitter=10;
         
         // Run the numbers!
         float rate=100;
@@ -116,26 +120,24 @@ public class JspikeStack {
         
 //        nc.saveRecoding();
         
-        // Why does this not give identical results?
-//        nc.startDisplay();
-//        net.eatEvents(20000000);
         
     }
     
     /** Read an AEFile and do STDP learning beginning from a random net */
     public static void learningDemo()
-    {
-        
+    {        
         // Read Events
-        AERFile aef=new AERFile();
-        aef.read();
-        ArrayList<Spike> events=aevents2events(aef.events);
-        
+        AERFile aef=new AERFile();          
+        aef.read("VowelSounds.aedat");
+        if (!aef.hasValidFile())
+            return;      
+        ArrayList<Spike> events=cochlea2spikes(aef.events);
+                
         // Construct Network
-        NetController<STPLayer,STPLayer.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
-        SpikeStack<STPLayer,Spike> net=nc.net;
+        NetController<STPAxons,STPAxons.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
+        SpikeStack<STPAxons,Spike> net=nc.net;
         LIFUnit.Globals ug=nc.unitGlobals;
-        STPLayer.Globals lg=nc.layerGlobals;
+        STPAxons.Globals lg=nc.layerGlobals;
                    
         // Set Layer Global Controls
         lg.stdp.plusStrength=0.0002f;
@@ -156,23 +158,23 @@ public class JspikeStack {
         // Assemble Network
         SpikeStack.Initializer ini=new SpikeStack.Initializer();                
         ini.lay(0).nUnits   = 64;
-        ini.lay(0).targ     = 1;
         ini.lay(0).name     = "Input";
-        ini.lay(0).WoutMean = .4f;
-        ini.lay(0).WoutStd  = .1f;
-//        ini.lay(0).WlatMean = -0f;
-//        ini.lay(0).WlatStd  = 0f;        
+        
         ini.lay(1).nUnits   = 20;
         ini.lay(1).name     = "A1";
-        ini.lay(1).WlatMean = -5;
-        ini.lay(1).WlatStd  = .1f;        
+        
+        ini.ax(0,1).wMean = .4f;
+        ini.ax(0,1).wStd  = .1f;
+        ini.ax(1,1).wMean = -5;
+        ini.ax(1,1).wStd  = .1f;  
+        
         net.buildFromInitializer(ini);
                 
         // Some More post-initialization settings        
-        nc.setLateralStrengths(new boolean[] {false, true});
+//        nc..net.ax((new boolean[] {false, true});
         net.inputCurrents=false;
         net.lay(0).inputCurrentStrength=0.5f;
-        net.lay(0).setEnableSTDP(false);
+        net.ax(0,1).setEnableSTDP(false);
                 
         // Prepare Simulation
         nc.addAllControls();
@@ -191,7 +193,7 @@ public class JspikeStack {
         nc.plotRaster("Before Learning");
         
         // Run the next rounds
-        net.lay(0).setEnableSTDP(true);
+        net.ax(0,1).setEnableSTDP(true);
 //        sim.controlledTime=false;        
         int nEpochs     = 10;
         for (int i=0; i<nEpochs; i++)
@@ -205,186 +207,105 @@ public class JspikeStack {
 //        
     }
     
-    /** Experiment with liquid-state machines */
-    public static void liquidDemo()
+    /** Load some AER data and test a convolutional kernel */
+    public static void convDemo()
     {
+        NetController<SparseAxon,SparseAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.SPARSE_LIF);
+        SpikeStack<SparseAxon,Spike> net=nc.net;
+        LIFUnit.Globals un=nc.unitGlobals;
+        SparseAxon.Globals lg=nc.layerGlobals;
+        
+        // Initialize
+        SpikeStack.Initializer ini=new SpikeStack.Initializer();        
+        ini.lay(0).nUnits=128*128;
+        ini.lay(1).nUnits=128*128;       
+        ini.lay(2).nUnits=128*128;       
+        ini.ax(0,1); 
+        ini.ax(0,2);
+        net.buildFromInitializer(ini);  
+        
+        float[][] w=new float[4][];
+        w[0]=new float[]{-10, -5, 2, 4, 2, -5, -10};
+        w[1]=new float[]{-10, -2, 2, 4, 2, -2, -10};
+        w[2]=new float[]{-10, -2, 2, 4, 2, -2, -10};
+        w[3]=new float[]{-10, -2, 2, 4, 2, -2, -10};
+        net.ax(0,1).defineKernel(w);
+                
+        float[][] wt=SparseAxon.transpose(w);
+        net.ax(0,2).defineKernel(wt);
+        
+        
+//        w[1]=new float[]{-2, 2, 2, -2};
+//        w[2]=new float[]{-2, 2, 2, -2};        
+        
+        
+                
+        // Define global parameters
+        un.useGlobalThresh=true;
+        un.thresh=5;
+        un.tau=10000;
+        un.tref=5000;  
         
         // Read Events
-        AERFile aef=new AERFile();
-        aef.read();
-        int nLayers=2;
+        AERFile aef=new AERFile();        
+        aef.read("MovingDarkBox.aedat");
+        if (!aef.hasValidFile())
+            return;        
+        ArrayList<Spike> events=retina2spikes(aef.events);
+        
+        // Setup simulation
+        nc.addAllControls();
+        nc.setRecordingState(true);   
+        nc.startDisplay();       
+        NetController.SimulationSettings sim=new NetController.SimulationSettings();        
+        sim.controlledTime=true;
+        sim.timeScaling=1;
+        sim.waitForInputs=false;
+        
+        // And GO
+        net.feedEvents(events);        
+        nc.simulate(sim);
         
         
-        // Plot Events
-//        
-//        // Initialize Network
-//        STDPStack.Initializer ini=new STDPStack.Initializer(nLayers);
-//        
-//        ini.tau             = 500f;
-//        ini.thresh          = 1;
-//        ini.tref            = 0.005f;        
-//        ini.stdp.plusStrength    = .0001f;
-//        ini.stdp.stdpTCminus     = 10f;
-//        ini.stdp.stdpTCplus      = 10;
-//        ini.stdpWin         = 30;
-//        
-//        ini.lay(0).nUnits   = 64;
-//        ini.lay(0).targ     = 1;
-//        ini.lay(0).name     = "Input";
-//        ini.lay(0).WoutMean = .06f;
-//        ini.lay(0).WoutStd  = 0.06f;
-//        ini.lay(0).enableSTDP=true;
-//        
-//        ini.lay(0).WlatMean = -0.5f;
-//        ini.lay(0).WlatStd  = 1f;
-//        
-//        ini.lay(1).nUnits   = 20;
-//        ini.lay(1).name     = "A1";
-//        ini.lay(1).WlatMean = -.5f;
-//        ini.lay(1).WlatStd  = 0f;
-//        
-//        
-//        STDPStack<STDPStack,STDPStack.Layer> es=new STDPStack(ini);
-//        
-//        
-//        es.lay(1).latSend=1;
-//        es.lay(0).latSend=1;
-//        
-//        es.inputCurrents=true;
-//        es.inputCurrentStrength=0.8f;
-//        
-//        
-//        int nEpochs     = 5;
-//        
-//        
-//        ArrayList<Spike> events=aevents2events(aef.events);
-//        
-//        
-//        es.lay(0).enableSTDP=false;
-//        es.feedEvents(events);
-//        es.plot.raster();
-//        
-//        es.plot.timeScale=0;
-//        
-//        es.lay(0).enableSTDP=true;
-//        // Feed Events to Network
-//        for (int i=0; i<nEpochs; i++)
-//        {   System.out.println("Pass "+i);
-//            es.reset();
-//            es.feedEvents(events);
-//        }
-//        
-//        
-//        es.eatEvents();
-//        es.plot.raster();
-//        
         
         
     }
     
-    /** Simple Demo, no Learning */
-    public static void simpleDemo()
-    {
-//        
-//        // Read Events
-//        AERFile aef=new AERFile();
-//        aef.read();
-//        ArrayList<Spike> events=aevents2events(aef.events);
-//        
-//        // Plot Events
-//        
-//        // Initialize Network
-//        int nLayers=2;
-//        SpikeStack.Initializer ini=new SpikeStack.Initializer(nLayers);
-//        ini.tau=20;
-//        ini.thresh=1;
-//        ini.lay(0).nUnits=64;
-//        ini.lay(0).targ=1;
-//        ini.lay(0).name="Input";
-//        ini.lay(0).WoutMean=.01f;
-//        ini.lay(0).WoutStd=0.005f;
-//        
-//        ini.lay(1).nUnits=10;
-//        ini.lay(1).name="A1";
-//        ini.lay(1).WlatMean=-1;
-//        ini.lay(1).WlatStd=-1;
-//        
-//        SpikeStack es=new SpikeStack(ini);
-//        
-//        // Feed Events to Network
-//        es.feedEventsAndGo(events);
-//        
-//        es.plot.raster();
-//        
-    }
     
-    /** Best working settings for voice separation */
-    public static void voiceSepDemo()
-    {
-//        // Read Events
-//        AERFile aef=new AERFile();
-//        aef.read();
-//        int nLayers=2;
-//        
-//        
-//        // Plot Events
-//        
-//        // Initialize Network
-//        STDPStack.Initializer ini=new STDPStack.Initializer(nLayers);
-//        
-//        ini.tau             = 5f;
-//        ini.thresh          = 1;
-//        ini.tref            = 0;        
-//        ini.stdp.plusStrength    = .0001f;
-//        ini.stdp.stdpTCminus     = 10f;
-//        ini.stdp.stdpTCplus      = 10;
-//        ini.stdpWin         = 30;
-//        
-//        ini.lay(0).nUnits   = 64;
-//        ini.lay(0).targ     = 1;
-//        ini.lay(0).name     = "Input";
-//        ini.lay(0).WoutMean = .05f;
-//        ini.lay(0).WoutStd  = 0.0005f;
-//        ini.lay(0).enableSTDP=true;
-//        
-//        ini.lay(1).nUnits   = 10;
-//        ini.lay(1).name     = "A1";
-//        ini.lay(1).WlatMean = -1;
-//        ini.lay(1).WlatStd  = 0f;
-//        
-//        
-//        STDPStack es=new STDPStack(ini);
-//        
-//        
-//        es.lay(1).latSend=1;
-//        
-//        
-//        // Feed Events to Network
-//        for (int i=0; i<10; i++)
-//        {   es.reset();
-//            ArrayList<Spike> events=aevents2events(aef.events);
-//            es.feedEvents(events);
-//        }
-//        es.plot.raster();
-//        
-    }
     
     /** Convert AEViewer file events to JspikeStack Events */
-    public static ArrayList<Spike> aevents2events(ArrayList<AERFile.Event> events)
+    public static ArrayList<Spike> cochlea2spikes(ArrayList<AERFile.Event> events)
     {   
         ArrayList<Spike> evts =new ArrayList<Spike>();
         
         for (int i=0; i<events.size(); i++)
-        {   AERFile.Event ev=events.get(i);
-        
-            if (ev.addr>255) continue;
-        
-            Spike enew=new Spike((int)(ev.timestamp-events.get(0).timestamp), ev.addr/4, 0);
-            
+        {   AERFile.Event ev=events.get(i);        
+            if (ev.addr>255) continue;        
+            Spike enew=new Spike((int)(ev.timestamp-events.get(0).timestamp), ev.addr/4, 0);            
             evts.add(enew);
         }
         return evts;
     }
+    
+    /** Convert AEViewer file events to JspikeStack Events */
+    public static ArrayList<Spike> retina2spikes(ArrayList<AERFile.Event> events)
+    {   
+        ArrayList<Spike> evts =new ArrayList<Spike>();
+        
+        for (int i=0; i<events.size(); i++)
+        {   AERFile.Event ev=events.get(i); 
+        
+            int addr=ev.addr>>1;
+            int x=addr%128;
+            int y=addr/128;
+            addr=y+x*128;
+            
+            Spike enew=new Spike((int)(ev.timestamp-events.get(0).timestamp), addr, 0);            
+            evts.add(enew);
+        }
+        return evts;
+    }
+    
     
     /** Plot a list of events read from a file */
     public static void plotEvents(Queue<Spike> evts)
@@ -418,13 +339,13 @@ public class JspikeStack {
     }
     
     /** Enumeration of the list of available demos */
-    public static enum Demos {GENERATE,LEARN};
+    public static enum Demos {GENERATE,LEARN,CONV};
     
     /** Start a menu that allows the user to launch a number of demos for the 
      * JSpikeStack package.  To add a new demo to the menu:
-     * 1) Add the appropriate element to the "Demos" enumerator;
+     * 1) Add the appropriate element to the "Demos" enumerator (above);
      * 2) Add the button in demoMenu
-     * 3) Connect the enumerator element to the appropriate function in DemoLauncher
+     * 3) Connect the enumerator element to the appropriate function in DemoLauncher through the switch statement in DemoLauncher.
      */
     public static void demoMenu()
     {
@@ -438,9 +359,10 @@ public class JspikeStack {
         
         addDemoButton("Network Generation Demo","Read a network From XML and let it generate",Demos.GENERATE,pane);
         addDemoButton("Learning Demo","Read an AER file, initialize a random net, and run STDP learning",Demos.LEARN,pane);
+        addDemoButton("Convolution Demo",  "Here we read data from the Silicon retina.  Two output layers respond to vertically and horizontally oriented features.",Demos.CONV,pane);
         
         
-        frm.setPreferredSize(new Dimension(500,300));
+        frm.setPreferredSize(new Dimension(500,500));
         frm.pack();
         frm.setVisible(true);
         frm.toFront();
@@ -463,6 +385,9 @@ public class JspikeStack {
                     case LEARN:
                         learningDemo();
                         break;
+                    case CONV:
+                        convDemo();
+                        break;
                 }
             }
         }        
@@ -480,7 +405,6 @@ public class JspikeStack {
         
         
         GridBagConstraints c = new GridBagConstraints();
-        
         c.fill=GridBagConstraints.BOTH;
         c.gridx=0;
         c.gridy=demoNumber.ordinal();
@@ -493,7 +417,7 @@ public class JspikeStack {
         jt.setWrapStyleWord(true);
         
         c.gridx=1;
-        //c.anchor=GridBagConstraints.CENTER;
+        
         c.fill=GridBagConstraints.CENTER;
         
         pane.add(jt,c);

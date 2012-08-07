@@ -9,10 +9,10 @@ package jspikestack;
  *
  * @author oconnorp
  */
-public class BinThreshStack extends SpikeStack<BasicLayer,BinaryTransEvent> {
+public class BinThreshStack extends SpikeStack<Axons,BinaryTransEvent> {
     
     
-     public BinThreshStack (BasicLayer.AbstractFactory layerFac,Unit.AbstractFactory unitFac)
+     public BinThreshStack (Axons.AbstractFactory layerFac,Unit.AbstractFactory unitFac)
     {   super(layerFac,unitFac);
     
                

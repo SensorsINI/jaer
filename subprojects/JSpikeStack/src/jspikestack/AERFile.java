@@ -21,7 +21,7 @@ import javax.swing.SwingUtilities;
  */
 public class AERFile {
     
-    String startPath="/users/oconnorp/Desktop/Dropbox/MNIST/Cochlea";
+    String startPath=getClass().getClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../files/aerdata/";
     
     ArrayList<Event> events;
     
@@ -43,12 +43,24 @@ public class AERFile {
         return ((file!=null)&&file.isFile());
     }
     
-    /* Read an aer file, build an array of events from it.*/
     public void read(){
+        read(null);
+    }
+    
+    /* Read an aer file, build an array of events from it.*/
+    public void read(String url){
         try {
             
-            File startDir = new File(startPath);
-            file=getfile(startDir);
+            if (url==null)
+                url=startPath;
+                        
+            File startDir = new File(url);                        
+            if (startDir.isFile())
+                file=startDir;
+            else if (new File(startPath+url).isFile())
+                file=new File(startPath+url);
+            else
+                file=getfile(startDir);
             
             //FileInputStream fis=new FileInputStream(file);
             
@@ -104,7 +116,7 @@ public class AERFile {
     static class FileChoice implements Runnable {
 
         File file;
-        File startDir=new File(getClass().getClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../files/aerdata");
+        File startDir=new File(getClass().getClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../files/");
     
 
         @Override
@@ -123,6 +135,8 @@ public class AERFile {
         FileChoice fc = new FileChoice();
         if (startDir!=null && startDir.isDirectory())
             fc.startDir=startDir;
+        else if (startDir!=null && startDir.isFile())
+            return startDir;
         
         if (SwingUtilities.isEventDispatchThread()) {
             fc.run();            

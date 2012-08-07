@@ -80,7 +80,7 @@ public class NetPlotter {
     }
         
     /* Create a raster plot for a single layer */
-    public XYPlot layerRaster(Collection<Spike> spikes,BasicLayer lay)
+    public XYPlot layerRaster(Collection<Spike> spikes,Layer lay)
     {
 //        throw new UnsupportedOperationException("This is broken for now!");
         
@@ -451,7 +451,7 @@ public class NetPlotter {
     
     public class LayerStatePlotter
     {   float tau;
-        BasicLayer layer;
+        Layer layer;
         ImageDisplay disp;
         float[] state;  // Array of unit states.
         
@@ -467,7 +467,7 @@ public class NetPlotter {
 //        int outBookmark;
         
         
-        public LayerStatePlotter(BasicLayer lay,ImageDisplay display)
+        public LayerStatePlotter(Layer lay,ImageDisplay display)
         {   tau=((LIFUnit.Globals)(lay.unitFactory.getGlobalControls())).getTau();
             layer=lay;
             disp=display;

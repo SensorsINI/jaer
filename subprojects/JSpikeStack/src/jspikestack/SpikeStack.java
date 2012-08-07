@@ -19,14 +19,20 @@ import java.util.logging.Logger;
  *  
  * @author oconnorp
  */
-public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> implements Serializable {
+public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implements Serializable {
     
     // <editor-fold defaultstate="collapsed" desc=" Properties ">
     
-    BasicLayer.AbstractFactory<LayerType> layerFactory;
+//    Axons.AbstractFactory<AxonType> layerFactory;
+    Axons.AbstractFactory axonFactory;    
     Unit.AbstractFactory unitFactory;
     
-    ArrayList<LayerType> layers=new ArrayList();
+    
+    
+    ArrayList<Layer> layers=new ArrayList();
+    
+    ArrayList<Axons> axons=new ArrayList();
+    
     
     transient Queue<SpikeType> inputBuffer = new LinkedList();
 //    transient Queue<SpikeType> internalBuffer= new LinkedList();
@@ -64,11 +70,11 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     
     // <editor-fold defaultstate="collapsed" desc=" Builder Functions ">
     
-    public SpikeStack (BasicLayer.AbstractFactory<LayerType> layerFac,Unit.AbstractFactory unitFac)
+    public SpikeStack (Axons.AbstractFactory axonFac,Unit.AbstractFactory unitFac)
     {   //plot=new NetPlotter(this);
         read=new NetReader(this);
         
-        layerFactory=layerFac;
+        axonFactory=axonFac;
         unitFactory=unitFac;
         
 //        layerClass=layClass;  
@@ -78,15 +84,31 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
         
     };
     
-    public ArrayList<LayerType> getLayers()
+    public ArrayList<Layer> getLayers()
     {
         return layers;
     }
+    
+    public ArrayList<Axons> getAxons()
+    {
+        return axons;
+    }
+    
         
     /** Add a new layer.*/
     public void addLayer(int index)
     {   
-        layers.add((LayerType)layerFactory.make(this, unitFactory, index));
+        layers.add(new Layer(this, unitFactory, index));
+        
+    }
+    
+    public Axons addAxon(Layer preSyn, Layer postSyn)
+    {
+        // Note, the axon constructor takes care of linking the layers to the axon.
+        Axons ax=axonFactory.make(preSyn,postSyn);
+        axons.add(ax);
+        return ax;
+        
     }
     
     /** Unroll this network so that just the top two layers are symmetrically
@@ -95,44 +117,44 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
      */
     public void unrollRBMs()
     {
-        int nLay=nLayers();
-        for (int i=0; i<nLay; i++)
-        {   BasicLayer upLayer=lay(i);
-            if (upLayer.Lout!=null && upLayer.Lout.Lout!=null && upLayer.Lout.Lout.Lout==null) // If layer is below a pair of top-level rbms, start a recursive unzipping chain
-                copyAndAdopt(upLayer,upLayer.Lout);                
-        }
+//        int nLay=nLayers();
+//        for (int i=0; i<nLay; i++)
+//        {   Axons upLayer=lay(i);
+//            if (upLayer.postLayer!=null && upLayer.postLayer.postLayer!=null && upLayer.postLayer.postLayer.postLayer==null) // If layer is below a pair of top-level rbms, start a recursive unzipping chain
+//                copyAndAdopt(upLayer,upLayer.postLayer);                
+//        }
     }
     
     /** Recursive function for copying layers and adopting them to new parent layers */
-    public void copyAndAdopt(BasicLayer source,BasicLayer newParent)
+    public void copyAndAdopt(Axons source,Axons newParent)
     {
-        int ix=nLayers();
-        addLayer(ix);
-
-        BasicLayer copy=lay(ix);
-
-        copy.initializeUnits(source.nUnits());
-        
-        for (int i=0; i<source.nUnits(); i++)
-        {   copy.units[i]=source.getUnit(i).copy();
-        }
-
-        copy.wOut=source.wOut;
-        copy.wLat=source.wLat;
-
-        source.fwdSend=1;
-        source.backSend=0;
-
-        copy.fwdSend=0;
-        copy.backSend=1;
-        
-        copy.Lout=newParent;
-        newParent.Lin.add(copy);
-        
-        /* Now, the recursive part, if source-layer has children, copy them and assign the new copy as their parent */     
-        for (Object kid:source.Lin)
-        {    copyAndAdopt((BasicLayer)kid,copy);
-        }
+//        int ix=nLayers();
+//        addLayer(ix);
+//
+//        Axons copy=lay(ix);
+//
+//        copy.initializeUnits(source.nUnits());
+//        
+//        for (int i=0; i<source.nUnits(); i++)
+//        {   copy.units[i]=source.getUnit(i).copy();
+//        }
+//
+//        copy.w=source.w;
+//        copy.wLat=source.wLat;
+//
+//        source.fwdSend=1;
+//        source.backSend=0;
+//
+//        copy.fwdSend=0;
+//        copy.backSend=1;
+//        
+//        copy.postLayer=newParent;
+//        newParent.preLayer.add(copy);
+//        
+//        /* Now, the recursive part, if source-layer has children, copy them and assign the new copy as their parent */     
+//        for (Object kid:source.preLayer)
+//        {    copyAndAdopt((Axons)kid,copy);
+//        }
     }
     
     /** Copy the structure of the network, but leave the state blank */
@@ -158,53 +180,50 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
         for (int i=0; i<ini.layers.size(); i++)
         {   
             addLayer(i);
-            //lay(i).units=new Layer.Unit[ini.layers[i].nUnits];
             lay(i).initializeUnits(ini.lay(i).nUnits);
-//            layers[i]=new Layer(i);
-//            layers[i].units=new Layer.Unit[ini.layers[i].nUnits];
         }
         
         Random rnd=new Random();
-        
-        // Second pass, filling in values and linking layers
-        for (int i=0; i<layers.size(); i++)
-        {   LayerType li=lay(i);
-            
-            // Connect output layers
-            if (ini.lay(i).targ!=-1)
-                li.Lout=layers.get(ini.lay(i).targ);
-            
-            // Connect input layers
-            li.Lin=new ArrayList();
-            for (int j=0; j<ini.layers.size(); j++)
-                if (ini.lay(j).targ==i)
-                    li.Lin.add(layers.get(j));
-            
-            
-//            li.wOut=new float[ini.lay(ini.lay(i).targ).nUnits][];
-            
-            // Initialize Units
-            for (int u=0; u<ini.lay(i).nUnits; u++)
-            {   //li.units[u]=li.new Unit(u);
-//                li.units[u]=li.makeNewUnit(u);
                 
-                // Assign random initial weights based on Gaussian distributions with specified parameters
-                if (!Float.isNaN(ini.lay(i).WoutMean))
-                {   li.wOut[u]=new float[li.Lout.units.length];
-                    for (int w=0; w<li.wOut[u].length;w++)
-                        li.wOut[u][w]=(float)(ini.lay(i).WoutMean+ini.lay(i).WoutStd*rnd.nextGaussian());
+        // Second pass, wire together layers
+        for (Initializer.AxonInitializer ax:ini.axons)
+        {
+            Axons axon=addAxon(lay(ax.inLayer),lay(ax.outLayer));
+            
+            // Assign random initial weights based on Gaussian distributions with specified parameters
+            if (!Float.isNaN(ax.wMean))
+            {   for (int u=0; u<axon.w.length; u++)
+                {   //ax.w[u]=new float[ax.postLayer.nUnits()];
+                    for (int w=0; w<axon.w[u].length;w++)
+                        axon.w[u][w]=(float)(ax.wMean+ax.wStd*rnd.nextGaussian());
                 }
-                
-                if (!Float.isNaN(ini.lay(i).WlatMean))
-                {   li.wLat[u]=new float[li.units.length];
-                    for (int w=0; w<li.wLat[u].length;w++)
-                        li.wLat[u][w]=(float)(ini.lay(i).WlatMean+ini.lay(i).WlatStd*rnd.nextGaussian());
-                }
-            }
+            }            
         }
         
+        
+//        // Second pass, filling in values and linking layers
+//        for (int i=0; i<layers.size(); i++)
+//        {   
+//            
+//            
+//            
+//            
+//            Layer<Axons> li=lay(i);
+//            
+//            // Connect output layers
+//            if (ini.lay(i).targ!=-1)
+//                addAxon(lay(i),lay(ini.lay(i).targ));
+//                
+//            // Initialize Units
+//            for (int u=0; u<ini.lay(i).nUnits; u++)
+//            {   
+//                
+//                
+//            }
+//        }
+        
         // Finally, run init function to catch any necessary initializations.
-        init();
+//        init();
     }
     
     // </editor-fold>
@@ -266,6 +285,8 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
             if (time > timeout)
                 break;
             
+//            System.out.println(internalBuffer.size());
+            
             try{
             
                 // Feed Spike to network, add to ouput queue if they're either either forced spikes or internally generated spikes
@@ -311,8 +332,13 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     }
     
     /** Return the layer from its index */
-    public LayerType lay(int i)
+    public Layer lay(int i)
     {   return layers.get(i);        
+    }
+    
+    public AxonType ax(int sourceLayer,int destLayer)
+    {
+        return (AxonType) lay(sourceLayer).axByLayer(destLayer);
     }
     
     public int nLayers()
@@ -322,7 +348,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
     /* Actions to perform after feeding event.  Yours to overwrite */
     public void digest()
     {   
-        for (BasicLayer l : layers) {
+        for (Layer l : layers) {
             l.updateActions();
         }
         
@@ -349,24 +375,24 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
         internalBuffer.clear();
         time=0;
         //time=0;
-        for (LayerType l:layers)
+        for (Layer l:layers)
             l.reset();
 //        plot.reset();
         
     }
     
     
-    /** Set strength of forward connections for each layer */
-    public void setForwardStrength(float[] st)
-    {   for (int i=0; i<st.length; i++)
-            lay(i).fwdSend=st[i];
-    }
-    
-    /** Set strength of backward connections for each layer */
-    public void setBackwardStrength(float[] st)
-    {   for (int i=0; i<st.length; i++)
-            lay(i).backSend=st[i];
-    }
+//    /** Set strength of forward connections for each layer */
+//    public void setForwardStrength(float[] st)
+//    {   for (int i=0; i<st.length; i++)
+//            lay(i).fwdSend=st[i];
+//    }
+//    
+//    /** Set strength of backward connections for each layer */
+//    public void setBackwardStrength(float[] st)
+//    {   for (int i=0; i<st.length; i++)
+//            lay(i).backSend=st[i];
+//    }
     
     // </editor-fold>
     
@@ -396,53 +422,76 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
         internalBuffer.add(ev);
     }
 
-    
-    void init() {
-        for (BasicLayer l:layers)
-            l.init();
-    }
-    
+        
     
     /** Initializer Object - Use this to enter properties with which to instantiate EvtStack */
     public static class Initializer
     {   // Class for initializing an evtstack
         
         public Initializer(){};
-        public Initializer(int nLayers)
-        {   layers=new ArrayList<LayerInitializer>();
-            for (int i=0; i<nLayers; i++)
-                layers.add(new LayerInitializer());
-        }
+//        public Initializer(int nLayers)
+//        {   layers=new ArrayList<LayerInitializer>();
+//            for (int i=0; i<nLayers; i++)
+//                layers.add(new LayerInitializer());
+//        }
         
 //        public float tref=0f;         // Absolute refractory period
 //        public float tau;          // Time-constant (millis)
 //        public float thresh;       // Threshold (currently set uniformly for all untis)
 //        public double delay=0;     // Delay time
         
-        ArrayList<LayerInitializer> layers=new ArrayList();
-        
-        
+        ArrayList<LayerInitializer> layers=new ArrayList();        
+        ArrayList<AxonInitializer> axons=new ArrayList();
         
         public LayerInitializer lay(int n)
         {   
 //            if (layers.size()<n)
             for (int i=layers.size(); i<=n; i++)
                 layers.add(new LayerInitializer());
-            
-            
             return layers.get(n);            
+        }
+        
+        public AxonInitializer ax(int preLayer,int postLayer)
+        {
+            if (preLayer>=layers.size() || postLayer>=layers.size())
+                throw new RuntimeException("You're trying to wire an axon to layer "+Math.max(preLayer,postLayer)+", which don't exist yet!  First define the layers.");
+            
+            // Seach for axon with described signatures
+            for (AxonInitializer ax:axons)
+                if (ax.isConnectedTo(preLayer, postLayer))
+                    return ax;
+            
+            // If axon not found, make a new one..
+            AxonInitializer ax=new AxonInitializer(preLayer,postLayer);
+            axons.add(ax);
+            return ax;
+                    
+        }
+        
+        public static class AxonInitializer
+        {            
+            public int inLayer;
+            public int outLayer;
+            
+            public float wMean=Float.NaN; // NaN indicates "don't make a weight matrix"
+            public float wStd=0;    
+            
+            public AxonInitializer(int pre,int post)
+            {
+                inLayer=pre;
+                outLayer=post;
+            }
+            
+            public boolean isConnectedTo(int pre, int post)
+            {   return (inLayer==pre && outLayer==post);            
+            }
         }
                 
         public static class LayerInitializer
         {
             public String name;
-            public int targ=-1;
             public int nUnits;
             
-            public float WoutMean=Float.NaN; // NaN indicates "don't make a weight matrix"
-            public float WoutStd=0;
-            public float WlatMean=Float.NaN;
-            public float WlatStd=0;
         }
     }
     
@@ -474,7 +523,7 @@ public class SpikeStack<LayerType extends BasicLayer,SpikeType extends Spike> im
 //    {   NetworkType factory();        
 //    }
     
-//    public interface LayerFactory<NetType extends SpikeStack,LayerType extends BasicLayer> extends Serializable
+//    public interface LayerFactory<NetType extends SpikeStack,LayerType extends Axons> extends Serializable
 //    {
 //        public LayerType make(NetType network, int ix);
 //    }

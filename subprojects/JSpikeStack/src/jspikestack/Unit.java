@@ -38,6 +38,7 @@ public abstract class Unit<GlobalParams,SpikeType extends Spike> {
 //            glob=newGlobalObject();       
 //        }
         
+        
         public abstract UnitType make(int unitIndex);
         
         public abstract GlobalParams newGlobalObject();
@@ -45,6 +46,9 @@ public abstract class Unit<GlobalParams,SpikeType extends Spike> {
         public abstract Controllable getGlobalControls();
         
     }
+    
+    
+    
     
     
     public abstract void reset();
