@@ -145,13 +145,12 @@ public class STDPAxons<GlobalParams extends STDPAxons.Globals> extends Axons<Glo
             {   // Iterate over new output spikes
 
                 // Get current output event
-//                Spike evout=postLayer.getOutputEvent(outBufferBookmark); // TODO: REMOVE THIS F'ING CAST
                 Spike evout=postsyn.poll();
                 
 
                 // Adjust the out-time back by the delay so it can be compared with the input time that caused it.
 //                double outTime=evout.time-net.delay;
-                int outTime=evout.time;
+                int outTime=evout.time-glob.delay;
 
 //                int tempBookmark=thisBufferBookmark;    // Temporary bookmark for iterating through presyn spikes around an output spike
 
@@ -167,37 +166,19 @@ public class STDPAxons<GlobalParams extends STDPAxons.Globals> extends Axons<Glo
                 while (preit.hasNext() ) 
                 {   // Iterate over input events (from this layer) pertaining to the output event
 
-                    
-                    
-                    
 //                    Spike evin=outBuffer.get(tempBookmark);
 //                    Spike evin=getOutputEvent(tempBookmark);
 //                    Spike evin=presyn.peek();
                     Spike evin=preit.next();
                     
-                    
                     int inTime=evin.hitTime;
-                    
-                    // If input event is in relevant time window
-//                    if (inTime + glob.stdpWin >= outTime)
-//                        updateWeight(evin.addr,evout.addr,outTime-evin.time);
-                    
-                    
-                    
-//                    if (inTime >= evout.time+glob.stdpWin)
-//                        
-                    
-                    
-                    
-                    
-                    
+                                        
                     if (inTime + glob.stdpWin < outTime) // If input event is too early to be relevant
                     {   //thisBufferBookmark++; // Shift up starting bookmark
                         
                         // Mark item in presynaptic queue for later removal
                         i++;
-                        
-//                        presyn.poll();
+//                        presyn.poll(); // Can't do this because you can't edit a list that's being iterated.
                     }
                     else if (inTime >= evout.time+glob.stdpWin) // If input event is too late to be relevant
                     {
@@ -205,22 +186,15 @@ public class STDPAxons<GlobalParams extends STDPAxons.Globals> extends Axons<Glo
                     }
                     else // presyn event is within relevant window, do STDP!
                     {   //System.out.println("dW: "+net.stdpRule(evout.time-evin.time));
-
                         updateWeight(evin.addr,evout.addr,outTime-evin.time);
-
-
                     }
                     
-                    
-//                    tempBookmark++;
                 } 
                 
                 // Remove the used-up presynaptic events.
                 for (int j=0;j<i;j++)
                     presyn.poll();
                 
-    //                System.out.println("t: "+evout.time+" outAddr:"+evout.addr+" nin:"+(tempBookmark-thisBufferBookmark));
-//                outBufferBookmark++;
             }
         }
 
