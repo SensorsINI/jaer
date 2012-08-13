@@ -397,6 +397,9 @@ public class NetPlotter {
                     }});
 //                    }
                     
+                    
+//                    System.out.println("PlotThread: "+lastNetTime/1000);
+                    
                     try {
                         Thread.sleep(updateMicros/1000);
                     } catch (InterruptedException ex) {
@@ -505,7 +508,7 @@ public class NetPlotter {
         }
         
         /* Update layerStatePlots to current network time */
-        public void update(int toTime)
+        public void update(final int toTime)
         {
 //            double time=layer.net.time;
             
@@ -575,22 +578,33 @@ public class NetPlotter {
                 maxState=smax*adaptationRate+invad*maxState;                
             }
             
-            DecimalFormat myFormatter = new DecimalFormat("#");
-            
-            // Step 4: plot           
-            float rate=0;
-            for (int i=0; i<state.length; i++)
-            {   disp.setPixmapGray(i,(state[i]-minState)/(maxState-minState));    
-                rate=Math.max(state[i],rate);
-            }
-            rate=rate*1000000/tau;
+            final DecimalFormat myFormatter = new DecimalFormat("#");
             
             
-            lastTime=toTime;
+            SwingUtilities.invokeLater(new Runnable(){
+                    @Override
+                    public void run() {
             
-            disp.setTitleLabel("Max Rate: "+myFormatter.format(rate)+"Hz, Time: " +toTime/1000);
-//            disp.drawCenteredString(1, 1, "A");
-            disp.repaint();
+                        // Step 4: plot           
+                        float rate=0;
+                        for (int i=0; i<state.length; i++)
+                        {   disp.setPixmapGray(i,(state[i]-minState)/(maxState-minState));    
+                            rate=Math.max(state[i],rate);
+                        }
+                        rate=rate*1000000/tau;
+
+
+                        lastTime=toTime;
+
+                        disp.setTitleLabel(layer.getName()+"  Max Rate: "+myFormatter.format(rate)+"Hz, Time: " +toTime/1000);
+            //            disp.drawCenteredString(1, 1, "A");
+
+            
+                        disp.repaint();
+                    }
+            });
+            
+//            disp.repaint();
             
             }
         }

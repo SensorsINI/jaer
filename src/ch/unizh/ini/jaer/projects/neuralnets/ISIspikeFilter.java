@@ -21,7 +21,7 @@ public class ISIspikeFilter extends SpikeFilter {
     
     public ISIspikeFilter(AEChip chip)
     {
-        super(chip,1);
+        super(chip);
         
         ISIMapper isi=new ISIMapper(64,nOutputs);
         isi.setMinFreqHz(300);

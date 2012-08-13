@@ -19,7 +19,7 @@ public class NumberNet extends SpikeFilter {
 //    LIFUnit.Globals ug;
 //    
     public NumberNet(AEChip chip)
-    {   super(chip,2);
+    {   super(chip);
     }
     
     @Override
@@ -59,7 +59,7 @@ public class NumberNet extends SpikeFilter {
 //            return;
         
         unitGlobs.setTau(100000);
-        nc.layerGlobals.delay=12000;
+        axonGlobs.delay=12000;
         unitGlobs.setTref(5000);
         
         

@@ -229,23 +229,38 @@ public class JspikeStack {
         
         // Initialize
         SpikeStack.Initializer ini=new SpikeStack.Initializer();        
-        ini.lay(0).nUnits=128*128;
-        ini.lay(1).nUnits=128*128;       
-        ini.lay(2).nUnits=128*128;       
+//        ini.lay(0).nUnits=128*128;
+//        ini.lay(1).nUnits=128*128;    
+        
+        ini.lay(0).dimx=ini.lay(0).dimy=128;
+        ini.lay(1).dimx=ini.lay(1).dimy=64;
+        ini.lay(2).dimx=ini.lay(2).dimy=64;    
+        
         ini.ax(0,1); 
         ini.ax(0,2);
         net.buildFromInitializer(ini);  
         
-        float[][] w=new float[4][];
-        w[0]=new float[]{-10, -5, 2, 4, 2, -5, -10};
-        w[1]=new float[]{-10, -2, 2, 4, 2, -2, -10};
-        w[2]=new float[]{-10, -2, 2, 4, 2, -2, -10};
-        w[3]=new float[]{-10, -2, 2, 4, 2, -2, -10};
+//        float[][] w=new float[5][];
+//        w[0]=new float[]{-6, -4, 1, 4, 1, -4, -6};
+//        w[1]=new float[]{ -8, -2, 2, 6, 2, -2, -8};
+//        w[2]=new float[]{-10, -2, 2, 8, 2, -2, -10};
+//        w[3]=new float[]{-8, -2, 2, 6, 2, -2, -8};
+//        w[4]=new float[]{-6, -4, 1, 4, 1, -4, -6};
+        
+        
+        KernelMaker2D.MexiHat hat=new KernelMaker2D.MexiHat();
+        hat.majorWidth1=5;
+        hat.majorWidth2=5;
+        hat.minorWidth1=1.5f;
+        hat.minorWidth2=3;
+        
+        float[][] w=KernelMaker2D.makeKernel(hat, 10, 10);        
+        KernelMaker2D.plot(w);
         net.ax(0,1).defineKernel(w);
                 
-        float[][] wt=SparseAxon.transpose(w);
+        float[][] wt=KernelMaker2D.transpose(w);
         net.ax(0,2).defineKernel(wt);
-        
+        KernelMaker2D.plot(wt);
                 
         // Define global parameters
         un.useGlobalThresh=true;

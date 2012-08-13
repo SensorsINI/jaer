@@ -10,7 +10,7 @@ package jspikestack;
  */
 public class BinaryTransEvent extends Spike {
     
-    boolean trans;
+    boolean trans=true;
     
     public BinaryTransEvent(int time,int addr,int layer,boolean transition)
     {

@@ -5,6 +5,7 @@
 package ch.unizh.ini.jaer.projects.neuralnets;
 
 import javax.swing.JToggleButton;
+import jspikestack.Axons;
 import jspikestack.NetController;
 import jspikestack.SpikeStack;
 import net.sf.jaer.chip.AEChip;
@@ -71,7 +72,7 @@ public class ISItriggeredHist extends SpikeFilter {
     
     public ISItriggeredHist(AEChip chip)
     {
-        super(chip,1);  
+        super(chip);  
         
 //        ISIMapper isi=new ISIMapper(64,nOutputs){
 //            
@@ -107,14 +108,11 @@ public class ISItriggeredHist extends SpikeFilter {
     
     
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<?> filterPacket(EventPacket<?> in) 
+    {
         
         // Initialize Remapper
-        if (wrapNet==null)
-        {   this.doInitialize_Network();
-            this.doPlot_Network();
-        }
-        else if (!wrapNet.R.isBaseTimeSet())
+        if (wrapNet!=null && !wrapNet.R.isBaseTimeSet())
             wrapNet.R.setBaseTime(in.getFirstTimestamp());
         
 //        int skipped=0;
@@ -170,14 +168,6 @@ public class ISItriggeredHist extends SpikeFilter {
                 wrapNet.addToQueue(ev);
                 
             }
-                
-                
-                
-            
-            
-            
-            
-            
             lastEvTime=ev.timestamp;
         }
         

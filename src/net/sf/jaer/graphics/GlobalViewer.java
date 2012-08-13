@@ -565,10 +565,10 @@ public class GlobalViewer extends javax.swing.JFrame {
         }
         
         
-        public void killDisplayWriter(DisplayWriter disp)
-        {   viewPanel.remove(disp.getPanel().getParent());
+        public void removeDisplay(Component disp)
+        {   viewPanel.remove(disp);
             
-            disp.setDisplayEnabled(false);
+//            disp.setDisplayEnabled(false);
         }
         
         public Container getFilterPane()

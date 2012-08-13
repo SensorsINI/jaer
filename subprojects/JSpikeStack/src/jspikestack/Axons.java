@@ -77,18 +77,14 @@ public class Axons<GlobalParams extends Axons.Globals>
             
             ev.defineDelay(glob.delay);
             
-            
-//            if (preLayer.ixLayer==1 && postLayer.ixLayer==2)
-//                System.out.println("IN");
-            
-//            ev.layer=lay.ixLayer;
-//            System.out.println(sp.hitTime-net.time);    
-            
             net.addToInternalQueue(ev);
             
         }
 //            sendSpikeToLayer(sp,getWeights(preUnit),postLayer);
     }
+    
+    
+    
     
     
 //    public void sendBackwards(Spike sp,int postUnit)
@@ -381,6 +377,28 @@ public class Axons<GlobalParams extends Axons.Globals>
         return "Axons from "+preLayer.toString()+" to "+postLayer.toString();
     }
 
+    
+    
+//    public static class Initializer
+//    {            
+//        public int inLayer;
+//        public int outLayer;
+//
+//        public float wMean=Float.NaN; // NaN indicates "don't make a weight matrix"
+//        public float wStd=0;    
+//
+//        public Initializer(int pre,int post)
+//        {
+//            inLayer=pre;
+//            outLayer=post;
+//        }
+//
+//        public boolean isConnectedTo(int pre, int post)
+//        {   return (inLayer==pre && outLayer==post);            
+//        }
+//    }
+//    
+    
     
     
 }

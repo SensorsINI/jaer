@@ -15,7 +15,7 @@ import net.sf.jaer.eventprocessing.MultiSourceProcessor;
 public class SensoryFusionNet extends MultiSourceProcessor {
 
     SensoryFusionNet(AEChip chip)
-    {   super(chip,2);
+    {   super(chip);
         
     }
     

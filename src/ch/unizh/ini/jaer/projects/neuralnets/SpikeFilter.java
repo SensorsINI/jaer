@@ -29,7 +29,7 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     
     SpikeStackWrapper wrapNet;    
     SpikeStack<Axons,Spike> net;
-    Axons.Globals layGlobs;  // Layer Global Controls
+    Axons.Globals axonGlobs;  // Layer Global Controls
     LIFUnit.Globals unitGlobs; // Unit Global Controls
         
     NetController<Axons,STPAxons.Globals,LIFUnit.Globals> nc;
@@ -55,6 +55,8 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
             wrapNet.R.setBaseTime(in.getFirstTimestamp());
         
 //        int skipped=0;
+        
+//        System.out.println("FilterThread: "+in.getFirstTimestamp()/1000);
         
         if (lastEvTime==Integer.MAX_VALUE && !in.isEmpty())
         {   lastEvTime=in.getFirstTimestamp();
@@ -90,8 +92,8 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     }
     
     /** Create a spikeFilter with the given chip and number of input event sources */
-    public SpikeFilter(AEChip chip, int sensoryInputs)
-    {   super(chip,sensoryInputs);    
+    public SpikeFilter(AEChip chip)
+    {   super(chip);    
     }
     
     @Override
@@ -106,11 +108,14 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         wrapNet=null;
         net=null;
         unitGlobs=null;
-        layGlobs=null;
+        axonGlobs=null;
         if (nc!=null)
         {   nc.view.enable=false;
             super.removeControls();
         }
+        super.removeDisplays();
+        
+        
         nc=null;
         
         
@@ -130,7 +135,7 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         net=nc.net;
         net.liveMode=true;
         
-        layGlobs=nc.layerGlobals;
+        axonGlobs=nc.layerGlobals;
         unitGlobs=nc.unitGlobals;
         
         return net;
@@ -207,6 +212,7 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     {
         initializeNetwork();
         addControls();
+        plotNet(true);
         
     }
     
@@ -216,37 +222,31 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         SpikeStack net=getInitialNet();
         customizeNet(net);
         wrapNet=new SpikeStackWrapper(nc,makeMapper(net));
+        
     }
     
         
     /** Grab the network from and XML file */
-    public void doReload_Parameters()
-    {
-        customizeNet(wrapNet.net);
-    }
+//    public void doReload_Parameters()
+//    {
+//        customizeNet(wrapNet.net);
+//    }
     
-    /** Start plotting the network */
-    public void doPlot_Network()
+    
+    public void plotNet(boolean internal)
     {
         if (wrapNet==null)
         {
             JOptionPane.showMessageDialog ( 
-                null, "First grab a network!" );
+                null, "You need to load a network before plotting it!" );
             return;            
-        }
+        }        
         
-//        super.addDisplayWriter(new NetworkPlot());
-        plotNet(true);
-        
-    }
-    
-    public void plotNet(boolean internal)
-    {
         if (internal)
         {   JPanel disp=new JPanel();
             nc.view.realTime=true;
             nc.view.followState(disp);
-            super.addDisplayWriter(disp);
+            super.addDisplay(disp);
         }    //super.addDisplayWriter(new NetworkPlot());
         else
             nc.startDisplay();

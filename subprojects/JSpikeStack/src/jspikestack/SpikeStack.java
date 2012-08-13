@@ -222,6 +222,15 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
         for (int i=0; i<ini.layers.size(); i++)
         {   
             addLayer(i);
+            
+            if (ini.lay(i).nUnits>0 && ini.lay(i).dimx>0 && ini.lay(i).dimx*ini.lay(i).dimy!=ini.lay(i).nUnits)
+                throw new RuntimeException("You specified both dimensions and units for layer "+i+", but the product of the dimensions ("+ini.lay(i).dimx*ini.lay(i).dimy+" does not add up to the number of units "+ini.lay(i).nUnits);
+            else if(ini.lay(i).dimx>0)
+            {    ini.lay(i).nUnits=ini.lay(i).dimx*ini.lay(i).dimy;
+                lay(i).dimx=(short)ini.lay(i).dimx;
+                lay(i).dimy=(short)ini.lay(i).dimy;
+            }                
+            
             lay(i).initializeUnits(ini.lay(i).nUnits);
         }
         
@@ -241,31 +250,67 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
                 }
             }            
         }
+    }
+    
+    /** Initializer Object - Use this to enter properties with which to instantiate EvtStack */
+    public static class Initializer
+    {   // Class for initializing an evtstack
+                
+        ArrayList<Initializer.LayerInitializer> layers=new ArrayList();        
+        ArrayList<Initializer.AxonInitializer> axons=new ArrayList();
         
+        public Initializer.LayerInitializer lay(int n)
+        {   
+//            if (layers.size()<n)
+            for (int i=layers.size(); i<=n; i++)
+                layers.add(new Initializer.LayerInitializer());
+            return layers.get(n);            
+        }
         
-//        // Second pass, filling in values and linking layers
-//        for (int i=0; i<layers.size(); i++)
-//        {   
-//            
-//            
-//            
-//            
-//            Layer<Axons> li=lay(i);
-//            
-//            // Connect output layers
-//            if (ini.lay(i).targ!=-1)
-//                addAxon(lay(i),lay(ini.lay(i).targ));
-//                
-//            // Initialize Units
-//            for (int u=0; u<ini.lay(i).nUnits; u++)
-//            {   
-//                
-//                
-//            }
-//        }
+        public Initializer.AxonInitializer ax(int preLayer,int postLayer)
+        {
+            if (preLayer>=layers.size() || postLayer>=layers.size())
+                throw new RuntimeException("You're trying to wire an axon to layer "+Math.max(preLayer,postLayer)+", which don't exist yet!  First define the layers.");
+            
+            // Seach for axon with described signatures
+            for (Initializer.AxonInitializer ax:axons)
+                if (ax.isConnectedTo(preLayer, postLayer))
+                    return ax;
+            
+            // If axon not found, make a new one..
+            Initializer.AxonInitializer ax=new Initializer.AxonInitializer(preLayer,postLayer);
+            axons.add(ax);
+            return ax;
+                    
+        }
         
-        // Finally, run init function to catch any necessary initializations.
-//        init();
+        public static class AxonInitializer
+        {            
+            public int inLayer;
+            public int outLayer;
+            
+            public float wMean=Float.NaN; // NaN indicates "don't make a weight matrix"
+            public float wStd=0;    
+            
+            public AxonInitializer(int pre,int post)
+            {
+                inLayer=pre;
+                outLayer=post;
+            }
+            
+            public boolean isConnectedTo(int pre, int post)
+            {   return (inLayer==pre && outLayer==post);            
+            }
+        }
+                
+        public static class LayerInitializer
+        {
+            public String name;
+            public int nUnits;
+            public int dimx;
+            public int dimy;
+            
+        }
     }
     
     // </editor-fold>
@@ -482,76 +527,6 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
 
         
     
-    /** Initializer Object - Use this to enter properties with which to instantiate EvtStack */
-    public static class Initializer
-    {   // Class for initializing an evtstack
-        
-        public Initializer(){};
-//        public Initializer(int nLayers)
-//        {   layers=new ArrayList<LayerInitializer>();
-//            for (int i=0; i<nLayers; i++)
-//                layers.add(new LayerInitializer());
-//        }
-        
-//        public float tref=0f;         // Absolute refractory period
-//        public float tau;          // Time-constant (millis)
-//        public float thresh;       // Threshold (currently set uniformly for all untis)
-//        public double delay=0;     // Delay time
-        
-        ArrayList<LayerInitializer> layers=new ArrayList();        
-        ArrayList<AxonInitializer> axons=new ArrayList();
-        
-        public LayerInitializer lay(int n)
-        {   
-//            if (layers.size()<n)
-            for (int i=layers.size(); i<=n; i++)
-                layers.add(new LayerInitializer());
-            return layers.get(n);            
-        }
-        
-        public AxonInitializer ax(int preLayer,int postLayer)
-        {
-            if (preLayer>=layers.size() || postLayer>=layers.size())
-                throw new RuntimeException("You're trying to wire an axon to layer "+Math.max(preLayer,postLayer)+", which don't exist yet!  First define the layers.");
-            
-            // Seach for axon with described signatures
-            for (AxonInitializer ax:axons)
-                if (ax.isConnectedTo(preLayer, postLayer))
-                    return ax;
-            
-            // If axon not found, make a new one..
-            AxonInitializer ax=new AxonInitializer(preLayer,postLayer);
-            axons.add(ax);
-            return ax;
-                    
-        }
-        
-        public static class AxonInitializer
-        {            
-            public int inLayer;
-            public int outLayer;
-            
-            public float wMean=Float.NaN; // NaN indicates "don't make a weight matrix"
-            public float wStd=0;    
-            
-            public AxonInitializer(int pre,int post)
-            {
-                inLayer=pre;
-                outLayer=post;
-            }
-            
-            public boolean isConnectedTo(int pre, int post)
-            {   return (inLayer==pre && outLayer==post);            
-            }
-        }
-                
-        public static class LayerInitializer
-        {
-            public String name;
-            public int nUnits;
-            
-        }
-    }
     
     /** Interface for plotting the network */
     public interface Plotter

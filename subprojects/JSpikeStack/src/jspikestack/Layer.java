@@ -23,6 +23,7 @@ public class Layer<AxonType extends Axons> {
         
     public Unit[] units;
     
+    public String name;
     
     public float inputCurrentStrength=1;
     
@@ -295,11 +296,15 @@ public class Layer<AxonType extends Axons> {
         
     }
     
+    public String getName()
+    {
+        return name==null?"L"+ixLayer:name;
+    }
     
     @Override
     public String toString()
     {
-        return "L"+ixLayer +"("+nUnits()+"Units)";
+        return getName() +"("+nUnits()+"Units)";
     }
     
     

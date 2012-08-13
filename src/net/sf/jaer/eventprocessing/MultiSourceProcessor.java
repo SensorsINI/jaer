@@ -31,6 +31,8 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
     
     ArrayList<JPanel> customControls;
     
+    ArrayList<Component> customDisplays=new ArrayList();
+    
     ArrayList<Queue<BasicEvent>> buffers=new ArrayList();   // Stores events to ensure monotonicity between calls.
     
     PriorityQueue<BasicEvent> pq;
@@ -44,8 +46,14 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
     /** Initialize a MultiSensoryFilter with the chip, and the number of inputs
      it will take
      */
-    public MultiSourceProcessor(AEChip chip,int nInputs) // Why is "chip" so tightly bound with viewing options??
+    public MultiSourceProcessor(AEChip chip) // Why is "chip" so tightly bound with viewing options??
     {   super(chip);        
+    
+    
+        int nInputs=getInputNames().length;
+    
+        if (nInputs==0)
+            nInputs=1;
     
         pq=new PriorityQueue(nInputs,new EventComp());
         
@@ -73,12 +81,24 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
 //        this.getChip().getAeViewer().getJaerViewer().globalViewer.addDisplayWriter(disp);
 //    }
     
-    public void addDisplayWriter(Component disp)
+    public void addDisplay(Component disp)
     {
+        customDisplays.add(disp);
+        
         if (this.getChip().getAeViewer().globalized) 
             this.getChip().getAeViewer().getJaerViewer().globalViewer.addDisplayWriter(disp);
         else
             this.getChip().getAeViewer().getImagePanel().add(disp,BorderLayout.EAST);
+    }
+    
+    public void removeDisplays()
+    {
+        if (this.getChip().getAeViewer().globalized) 
+            for (Component c:customDisplays)
+                this.getChip().getAeViewer().getJaerViewer().globalViewer.removeDisplay(c);
+        else 
+            for (Component c:customDisplays)
+              this.getChip().getAeViewer().getImagePanel().remove(c);
     }
         
     public void addControls(JPanel controls)

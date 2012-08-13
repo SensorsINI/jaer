@@ -173,7 +173,7 @@ public class SlowResponse extends MultiSourceProcessor {
     }
         
     public SlowResponse(AEChip chip)
-    {   super(chip,1);
+    {   super(chip);
     
     
         setPropertyTooltip("thresh", "Firing threshold of slow-response neurons");
@@ -243,6 +243,14 @@ public class SlowResponse extends MultiSourceProcessor {
         
     }
     
+    public void doStartDisplay()
+    {
+        
+        
+        initDisplay();
+        
+    }
+    
     public void build()
     {
         
@@ -257,7 +265,6 @@ public class SlowResponse extends MultiSourceProcessor {
         
         updateEpscScale();
         
-        initDisplay();
         
         
         
@@ -278,7 +285,7 @@ public class SlowResponse extends MultiSourceProcessor {
         JPanel p=new JPanel();
         p.add(im);
         
-        this.addDisplayWriter(p);
+        this.addDisplay(p);
         
 //        JFrame j=new JFrame();
 //        j.getContentPane().add(im);        
@@ -292,6 +299,12 @@ public class SlowResponse extends MultiSourceProcessor {
     
     public void updateDisplay()
     {
+        if (im==null)
+        {
+            return;
+        }
+            
+        
         
         float minAct=Float.MAX_VALUE;
         float maxAct=Float.MIN_VALUE;

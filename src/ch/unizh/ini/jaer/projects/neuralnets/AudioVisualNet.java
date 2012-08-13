@@ -16,7 +16,7 @@ public class AudioVisualNet extends SpikeFilter {
 
     
     public AudioVisualNet(AEChip chip)
-    {   super(chip,2);  // 2 inputs
+    {   super(chip);  // 2 inputs
         
     }
 
@@ -88,7 +88,7 @@ public class AudioVisualNet extends SpikeFilter {
         
         net.unrollRBMs();
         
-        STPAxons.Globals lG=(STPAxons.Globals)layGlobs;
+        STPAxons.Globals lG=(STPAxons.Globals)axonGlobs;
         
         unitGlobs.tau=200000;
         lG.delay=10000;
