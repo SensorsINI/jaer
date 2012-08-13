@@ -47,6 +47,9 @@ public class NetPlotter {
     
     int lastNetTime=0;
     
+    public ArrayList<StatDisplay> stats=new ArrayList();
+    
+    
     JTextComponent jt;
 //    LayerStatePlotter[] layerStatePlots;
     volatile ArrayList<LayerStatePlotter> layerStatePlots;
@@ -59,6 +62,12 @@ public class NetPlotter {
     
     public void raster(Collection<Spike> spikes)
     {   raster(spikes,"");
+        
+    }
+    
+    public void addStatDisplay(StatDisplay st)
+    {
+        stats.add(st);
         
     }
    
@@ -380,6 +389,10 @@ public class NetPlotter {
                                 state();                    
                             else
                                 state(lastNetTime+(int)(updateMicros*timeScale));
+                            
+                            
+                            for (StatDisplay st:stats)
+                                st.display();
                             
                     }});
 //                    }

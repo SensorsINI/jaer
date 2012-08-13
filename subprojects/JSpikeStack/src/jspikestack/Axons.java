@@ -18,13 +18,16 @@ public class Axons<GlobalParams extends Axons.Globals>
     
     float[][] w;
     
+    public Reverse reverse;
+    
+    
     GlobalParams glob;
         
     Layer preLayer=null;
     Layer postLayer=null;
     
-    boolean fwdSend=true;    // Strength of feedforward connections
-    boolean backSend=false;   // Strength of feedback connenctions
+    boolean enable=true;    // Strength of feedforward connections
+//    boolean backSend=false;   // Strength of feedback connenctions
 
     Random rand=new Random();
     
@@ -35,10 +38,10 @@ public class Axons<GlobalParams extends Axons.Globals>
         
         
         // Wire it up!
-            preLayer=inLayer;
+        preLayer=inLayer;
         postLayer=outLayer;        
         preLayer.addOutputAxon(this);
-        postLayer.addInputAxon(this);
+//        postLayer.addInputAxon(this);
         
         net=inLayer.net;
         
@@ -54,62 +57,88 @@ public class Axons<GlobalParams extends Axons.Globals>
         
     }
     
-    
+    public boolean isForwardAxon()
+    {
+        return true;
+    }
     
     
 
     /** Carry out the effects of the firing */
-    public void sendForwards(Spike sp,int preUnit)
+    public void spikeIn(Spike sp)
     {
         // Fire Ahead!
-        if (fwdSend)
-            sendSpikeToLayer(sp,getForwardWeights(preUnit),postLayer);
-    }
-    
-    
-    public void sendBackwards(Spike sp,int postUnit)
-    {
-        // Fire Ahead!
-        if (backSend) 
-            sendSpikeToLayer(sp,getBackWeights(postUnit),preLayer);
-    }
-    
-    void sendSpikeToLayer(Spike sp, float[] wgt, Layer lay)
-    {
-        for (int i=0; i < lay.nUnits(); i++)
-        {   
+        if (enable)
+        {
+//            Spike ev=new Spike(net.time,preUnit,postLayer.ixLayer);
+            Spike ev=sp.copyOf();
             
-            Spike ev=lay.fireTo(sp, i, wgt[i]);
-        
-            if (ev==null)
-                continue;
-            else
-            {   
-                int delay=glob.getDelay();
-                if (glob.doRandomJitter)
-                    delay+=rand.nextInt(glob.getRandomJitter());
-                
-//                int delay=glob.doRandomJitter?glob.getDelay()+rand.
-                ev.defineDelay(delay);
-                                                
-                ev.layer=lay.ixLayer;
-                
-                net.addToInternalQueue(ev);
-//                net.internalBuffer.add(ev);
-            }
+            ev.setAxon(this);
+            
+            ev.defineDelay(glob.delay);
+            
+            
+//            if (preLayer.ixLayer==1 && postLayer.ixLayer==2)
+//                System.out.println("IN");
+            
+//            ev.layer=lay.ixLayer;
+//            System.out.println(sp.hitTime-net.time);    
+            
+            net.addToInternalQueue(ev);
+            
         }
+//            sendSpikeToLayer(sp,getWeights(preUnit),postLayer);
     }
+    
+    
+//    public void sendBackwards(Spike sp,int postUnit)
+//    {
+//        // Fire Ahead!
+//        if (backSend) 
+//            sendSpikeToLayer(sp,getBackWeights(postUnit),preLayer);
+//    }
+    
         
-    /** Get Reverse connection weights */
-    public float[] getBackWeights(int destinationUnit)
-    {   // Get reverse connection weights (THERE HAS GOT TO BE A BETTER WAY)
-        float[] ww=new float[w.length];
-        for (int i=0; i<w.length; i++)
-            ww[i]=getOutWeight(i,destinationUnit);
-        return ww;
+    void spikeOut(Spike sp)
+    {
+//        postLayer.fireTo(sp,w[sp.addr]);
+        postLayer.fireTo(sp,getWeights(sp.addr));
+        
+//        System.out.println("pre: "+preLayer.ixLayer+"\tpost: "+postLayer.ixLayer);
+        
+        
+//        if (preLayer.ixLayer==1 && postLayer.ixLayer==2)
+//            System.out.println("OUT");
+        
+        
+//        for (int i=0; i < postLayer.nUnits(); i++)
+//        {   
+//            
+//            Spike ev=postLayer.fireTo(sp, i, w[i]);
+//        
+//            if (ev==null)
+//                continue;
+//            else
+//            {   
+//                int delay=glob.getDelay();
+//                if (glob.doRandomJitter)
+//                    delay+=rand.nextInt(glob.getRandomJitter());
+//                
+////                int delay=glob.doRandomJitter?glob.getDelay()+rand.
+//                ev.defineDelay(delay);
+//                                                
+//                ev.layer=lay.ixLayer;
+//                
+//                net.addToInternalQueue(ev);
+////                net.internalBuffer.add(ev);
+//            }
+//        }
     }
+    
+        
+    
 
-    public float[] getForwardWeights(int unitIndex)
+    public float[] getWeights(int unitIndex)
     {
         return w[unitIndex];
     }
@@ -245,35 +274,105 @@ public class Axons<GlobalParams extends Axons.Globals>
         }
         
         /** Send Forwards? */
-        public boolean isFwdSend() {
-            return fwdSend;
+        public boolean isEnable() {
+            return enable;
         }
 
         /** Send Forwards? */
-        public void setFwdSend(boolean fwdSend) {
-            Axons.this.fwdSend = fwdSend;
+        public void setEnable(boolean fwdSend) {
+            Axons.this.enable = fwdSend;
         }
 
-        /** Send Backwards? */
-        public boolean isBackSend() {
-            return backSend;
-        }
-
-        /** Send Backwards? */
-        public void setBackSend(boolean bckSend) {
-            backSend = bckSend;
-        }
+//        /** Send Backwards? */
+//        public boolean isBackSend() {
+//            return backSend;
+//        }
+//
+//        /** Send Backwards? */
+//        public void setBackSend(boolean bckSend) {
+//            backSend = bckSend;
+//        }
         
         
         
     }
     
     
+    public Reverse getReverseAxon()
+    {
+        if (reverse==null)
+            reverse=new Reverse(this);
+        
+        return reverse;
+        
+    }
+    
+    public boolean hasReverseAxon()
+    {
+        return reverse!=null;
+    }
+    
+
+    /**
+    * This acts as a reverse connection to some other axon, such that units that are
+    * post-synaptic in the forward axon can fire to their pre-synaptic units through
+    * this axon.  This is useful when implementing some kind of symmetrically connected
+    * network like a Boltzmann Machine
+    * 
+    * @author Peter
+    */
+    public static class Reverse extends Axons {
+
+        Axons forwardAxon;
+
+        public Reverse(Axons fwdAx)
+        {
+            super(fwdAx.postLayer,fwdAx.preLayer,fwdAx.glob);
+
+            forwardAxon=fwdAx;
+
+        }
+        
+        
+        @Override
+        public boolean isForwardAxon()
+        {
+            return false;
+        }
+
+        @Override
+        public void initWeights()
+        {
+        }
+
+        /** Get Reverse connection weights */
+        @Override
+        public float[] getWeights(int destinationUnit)
+        {   // Get reverse connection weights (THERE HAS GOT TO BE A BETTER WAY)
+            float[][] forwardWeights=forwardAxon.w;
+            float[] reverseWeightsFromDest=new float[forwardWeights.length];
+            for (int i=0; i<reverseWeightsFromDest.length; i++)
+                reverseWeightsFromDest[i]=forwardAxon.getOutWeight(i,destinationUnit);
+            return reverseWeightsFromDest;
+        }
+        
+        @Override
+        public String getName()
+        {
+            return "Reverse "+super.getName();
+        }
+
+
+    }
+
+    
+    
+    
 
     @Override
     public String toString()
     {
-        return getName();
+        return getName()+(enable?" - enabled":" - disabled");
     }
 
 

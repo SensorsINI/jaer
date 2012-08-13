@@ -26,21 +26,21 @@ public class SparseAxon<GlobalParams extends Axons.Globals>  extends Axons {
     
     /** Carry out the effects of the firing */
     @Override
-    public void sendForwards(Spike sp,int preUnit)
+    public void spikeIn(Spike sp)
     {
         // Fire Ahead!
-        if (fwdSend)
-            sendSpikeToLayer(sp,getForwardWeights(preUnit),fwdIX[preUnit],postLayer);
+        if (enable)
+            sendSpikeToLayer(sp,getWeights(sp.addr),fwdIX[sp.addr],postLayer);
             
     }
         
-    @Override
-    public void sendBackwards(Spike sp,int postUnit)
-    {
-        // Fire Ahead!
-        if (backSend) 
-            sendSpikeToLayer(sp,getBackWeights(postUnit),backIX[postUnit],preLayer);
-    }
+//    @Override
+//    public void sendBackwards(Spike sp,int postUnit)
+//    {
+//        // Fire Ahead!
+//        if (backSend) 
+//            sendSpikeToLayer(sp,getBackWeights(postUnit),backIX[postUnit],preLayer);
+//    }
     
     
     void sendSpikeToLayer(Spike sp, float[] wgt, int[] destinations, Layer lay)
@@ -51,11 +51,14 @@ public class SparseAxon<GlobalParams extends Axons.Globals>  extends Axons {
                 continue;
             
             Spike ev=lay.fireTo(sp, destinations[i], wgt[i]);
+            
         
             if (ev==null)
                 continue;
             else
             {   
+                
+                ev.ax=this;
                 int delay=glob.getDelay();
                 if (glob.doRandomJitter)
                     delay+=rand.nextInt(glob.getRandomJitter());
@@ -67,6 +70,15 @@ public class SparseAxon<GlobalParams extends Axons.Globals>  extends Axons {
                 net.addToInternalQueue(ev);
             }
         }
+    }
+    
+    
+    @Override
+    void spikeOut(Spike sp)
+    {
+//        postLayer.fireTo(sp,w[sp.addr]);
+        postLayer.fireTo(sp,fwdIX[sp.addr],getWeights(sp.addr));
+        
     }
     
     /** Define a the sparse weights based on a convolutional kernel 

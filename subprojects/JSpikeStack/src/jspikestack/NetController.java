@@ -40,6 +40,8 @@ public class NetController<LayerType extends Axons,LayerGlobalType extends Contr
     {   this(Types.STP_LIF);        
     }
     
+    
+    
     public NetController(Types t)
     {
         
@@ -137,16 +139,16 @@ public class NetController<LayerType extends Axons,LayerGlobalType extends Contr
     
     
     /** Enable Forward Connections */
-    public void setForwardStrengths(boolean[] vals)
-    {   for (int i=0; i<vals.length; i++) 
-            net.lay(i).enableForwards(vals[i]);
-    }
-    
-    /** Enable Backward Connections */
-    public void setBackwardStrengths(boolean[] vals)
-    {   for (int i=0; i<vals.length; i++) 
-            net.lay(i).enableBackwards(vals[i]);
-    }
+//    public void setForwardStrengths(boolean[] vals)
+//    {   for (int i=0; i<net.nLayers(); i++) 
+//            for (int j=i; )
+//    }
+//    
+//    /** Enable Backward Connections */
+//    public void setBackwardStrengths(boolean[] vals)
+//    {  // for (int i=0; i<vals.length; i++) 
+////            net.lay(i).enableBackwards(vals[i]);
+//    }
     
     public void addAllControls()
     {    
@@ -347,6 +349,54 @@ public class NetController<LayerType extends Axons,LayerGlobalType extends Contr
         }
                 
     }
+    
+    
+    
+    
+    
+    
+    public enum Stats {FastWeights}
+    public void addStatDisplay(Stats stat)
+    {
+     
+        StatDisplay st;
+        
+        switch (stat)
+        {
+            case FastWeights:
+                st=new StatDisplay(net,"Ave Fastweight"){                    
+                    @Override
+                    public float compute() {
+
+                        STPAxons ax=(STPAxons) net.ax(1,2);
+                        float w=0;
+                        float k=0;
+
+                        for (int i=0; i<ax.w.length; i++)
+                            for (int j=0; j<ax.w.length; j++)
+                            {   w+=ax.currentFastWeightValue(i, j);
+                                k+=1;
+                            }
+                        return w/k;
+                    }
+                };
+            
+                break;
+            default:
+                return;
+            
+        }
+        
+               
+        
+        view.addStatDisplay(st);
+    }
+    
+    
+    
+    
+    
+    
     
     
     

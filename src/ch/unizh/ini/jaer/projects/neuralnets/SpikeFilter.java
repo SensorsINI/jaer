@@ -56,9 +56,10 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         
 //        int skipped=0;
         
-        if (lastEv==null && !in.isEmpty())
-        {   lastEv=new BasicEvent();
-            lastEv.copyFrom(in.getFirstEvent());
+        if (lastEvTime==Integer.MAX_VALUE && !in.isEmpty())
+        {   lastEvTime=in.getFirstTimestamp();
+//            lastEv=new BasicEvent();
+//            lastEv.copyFrom(in.getFirstEvent());
         }
         
         // If it's a clusterset event
@@ -67,17 +68,17 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         {   
             BasicEvent ev=in.getEvent(k);
             
-            if (lastEv!=null && (lastEv.timestamp>ev.timestamp))
+            if (lastEvTime!=Integer.MAX_VALUE && (lastEvTime>ev.timestamp))
             {   
-                System.out.println("Non-Monotinic Timestamps detected ("+lastEv.timestamp+"-->"+ev.timestamp+").  Resetting");                
-                lastEv=null;                
+                System.out.println("Non-Monotinic Timestamps detected ("+lastEvTime+"-->"+ev.timestamp+").  Resetting");                
+                lastEvTime=Integer.MAX_VALUE;        
                 wrapNet.reset();                
                 return in;
             }
             
             wrapNet.addToQueue(ev);
             
-            lastEv.copyFrom(ev);
+            lastEvTime=ev.timestamp;
         }
         
 //        if (skipped>0)
@@ -151,7 +152,7 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         wrapNet=new SpikeStackWrapper(nc,map);
     }
         
-    BasicEvent lastEv;
+    int lastEvTime=Integer.MAX_VALUE;
     
     
     
@@ -249,8 +250,6 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         }    //super.addDisplayWriter(new NetworkPlot());
         else
             nc.startDisplay();
-        
-        
     }
     
     

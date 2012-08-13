@@ -80,7 +80,7 @@ public class STPAxons extends STDPAxons<STPAxons.Globals> {
     }
 
     @Override
-    public float[] getForwardWeights(int index) {
+    public float[] getWeights(int index) {
 
         if (!enableFastSTDP)
             return w[index];

@@ -17,6 +17,15 @@ public class Spike implements Comparable<Spike>, Serializable
     public int hitTime;  // Time at which spike effect is felt.
     public int layer;
     
+    Axons ax;       // Axon through which spike is transmitted.  If it's an input spike, this stays null
+    
+    
+    protected void setAxon(Axons axe)
+    {
+        ax=axe;
+        
+    }
+    
         
     public Spike(int timei)
     {   time=timei;
@@ -32,6 +41,12 @@ public class Spike implements Comparable<Spike>, Serializable
     {   this(timei,addri);
         layer=layeri;
     }
+    
+    public Spike copyOf()
+    {
+        Spike sp=new Spike(time,addr,layer);
+        return sp;
+    }
 
     public void defineDelay(int delay)
     {   hitTime=time+delay;        
@@ -39,8 +54,10 @@ public class Spike implements Comparable<Spike>, Serializable
     
     @Override
     public String toString()
-    {
-        return "Time: "+time+", +Addr:"+addr+", Layer:"+layer;
+    {   if (ax!=null)
+            return "Time: "+time+", Addr:"+addr+", Layer:"+layer+", Axon:"+ax.toString();
+        else        
+            return "Time: "+time+", +Addr:"+addr+", Layer:"+layer;
     }
 
     @Override

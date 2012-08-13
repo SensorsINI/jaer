@@ -41,7 +41,7 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
 //            
     transient MultiReaderQueue<SpikeType> outputQueue=new MultiReaderQueue();
         
-    public int delay;
+//    public int delay;
     
     public int time=0;    // Current time (millis) (avoids having to pass around time reference)
             
@@ -111,33 +111,75 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
         
     }
     
+    public Axons addReverseAxon(Axons fwdAx)
+    {
+        if (fwdAx.hasReverseAxon() && axons.contains(fwdAx.reverse))
+        {   System.out.println("Warning: Axon: '"+fwdAx.reverse.toString()+"' has already been added.  Doing nothing.");
+            return fwdAx.getReverseAxon();
+        }
+        
+        Axons ax=fwdAx.getReverseAxon();
+        axons.add(ax);
+        return ax;
+    }
+    
+    public void addAllReverseAxons()
+    {
+        ArrayList<Axons> oldAxons=(ArrayList<Axons>)axons.clone();
+        
+        for (Axons old:oldAxons)
+            addReverseAxon(old);
+        
+        
+    }
+    
+    
+    public void rbmify(boolean unRoll)
+    {
+        addAllReverseAxons();
+        
+        if (unRoll)
+            unrollRBMs();
+                
+        
+    }
+    
+    
     /** Unroll this network so that just the top two layers are symmetrically
      * connected.  Lower layers are duplicated, with one being up-connected, the
      * other being down-connected.
      */
     public void unrollRBMs()
     {
-//        int nLay=nLayers();
-//        for (int i=0; i<nLay; i++)
-//        {   Axons upLayer=lay(i);
-//            if (upLayer.postLayer!=null && upLayer.postLayer.postLayer!=null && upLayer.postLayer.postLayer.postLayer==null) // If layer is below a pair of top-level rbms, start a recursive unzipping chain
-//                copyAndAdopt(upLayer,upLayer.postLayer);                
-//        }
+        int nLay=nLayers();
+        for (int i=0; i<nLay; i++)
+        {   Layer upLayer=lay(i);
+            if (upLayer.nForwardAxons()>0 && upLayer.ax(0).postLayer.nForwardAxons()>0 && upLayer.ax(0).postLayer.ax(0).postLayer.nForwardAxons()==0) // If layer is below a pair of top-level rbms, start a recursive unzipping chain
+                copyAndAdopt(upLayer);                
+        }
     }
     
     /** Recursive function for copying layers and adopting them to new parent layers */
-    public void copyAndAdopt(Axons source,Axons newParent)
+    public void copyAndAdopt(Layer source)
     {
-//        int ix=nLayers();
-//        addLayer(ix);
+        int ix=nLayers();
+        addLayer(ix);
+        
+        
+        Layer copy=lay(ix);
 //
-//        Axons copy=lay(ix);
-//
-//        copy.initializeUnits(source.nUnits());
+        copy.initializeUnits(source.nUnits());
 //        
-//        for (int i=0; i<source.nUnits(); i++)
-//        {   copy.units[i]=source.getUnit(i).copy();
-//        }
+        for (int i=0; i<source.nUnits(); i++)
+        {   copy.units[i]=source.getUnit(i).copy();
+        }
+        
+        Axons revcon=source.ax(0).getReverseAxon();
+        
+//        Axons revcon=source.ax(0).postLayer.axByLayer(source.ixLayer);
+        
+        revcon.postLayer=copy;
+        
 //
 //        copy.w=source.w;
 //        copy.wLat=source.wLat;
@@ -237,7 +279,7 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
     }    
     
     /** Feed an array of input events to the network and let 'er rip */
-    public void feedEventsAndGo(List<SpikeType> inputEvents)
+    public void feedEventsAndGo(List<? extends SpikeType> inputEvents)
     {   feedEvents(inputEvents);
         eatEvents();
     }
@@ -250,7 +292,7 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
     }
     
     /** Feed an array of events into the network */
-    public void feedEvents(List<SpikeType> inputEvents)
+    public void feedEvents(List<? extends SpikeType> inputEvents)
     {   
         for (SpikeType ev: inputEvents)
             addToQueue(ev);
@@ -289,7 +331,7 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
             
 //            System.out.println(internalBuffer.size());
             
-            try{
+//            try{
             
                 // Feed Spike to network, add to ouput queue if they're either either forced spikes or internally generated spikes
                 if (inputCurrents && readInput)     // 1: Input event drives current
@@ -298,21 +340,26 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
                 }
                 else if (readInput)                 // 2: Input Spike fires unit
                 {   lay(ev.layer).fireFrom(ev.addr);
-                    outputQueue.add(ev);
+//                    outputQueue.add(ev);
                 }
                 else                                // 3: Internally buffered event propagated
-                {   lay(ev.layer).propagateFrom(ev, ev.addr);
-                    outputQueue.add(ev);
+                {   
+                    ev.ax.spikeOut(ev);
+//                    lay(ev.layer).propagateFrom(ev, ev.addr);
+//                    outputQueue.add(ev);
                 }
+                
+//                System.out.println(internalBuffer.size());
+                
                 // Post Spike-Feed Actions
                 digest();
             
-            }
-            catch (java.lang.ArrayIndexOutOfBoundsException ex)
-            {   
-//                System.out.println("You tried firing an event at address with address "+ev.addr+" to Layer "+ev.layer+", which has just "+lay(ev.layer).nUnits()+" units.");
-                throw new java.lang.ArrayIndexOutOfBoundsException("You tried firing an event at address with address "+ev.addr+" to Layer "+ev.layer+", which has just "+lay(ev.layer).nUnits()+" units.");
-            }
+//            }
+//            catch (java.lang.ArrayIndexOutOfBoundsException ex)
+//            {   
+////                System.out.println("You tried firing an event at address with address "+ev.addr+" to Layer "+ev.layer+", which has just "+lay(ev.layer).nUnits()+" units.");
+//                throw new java.lang.ArrayIndexOutOfBoundsException("You tried firing an event at address with address "+ev.addr+" to Layer "+ev.layer+", which has just "+lay(ev.layer).nUnits()+" units.");
+//            }
             
             
         }
@@ -339,8 +386,13 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
     }
     
     public AxonType ax(int sourceLayer,int destLayer)
-    {
+    {        
         return (AxonType) lay(sourceLayer).axByLayer(destLayer);
+    }
+    
+    public Axons rax(int sourceLayer,int destLayer)
+    {
+        return lay(sourceLayer).axByLayer(destLayer);
     }
     
     public int nLayers()
@@ -418,9 +470,13 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
         return null;
     }
     
+    public void addToOutputQueue(SpikeType ev)
+    {
+        outputQueue.add(ev);
+    }
     
     public void addToInternalQueue(SpikeType ev)
-    {
+    {        
         internalBuffer.add(ev);
     }
 
@@ -622,14 +678,14 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
         
         
         /** Spike Propagation Delay (milliseconds) */
-        public int getDelay() {
-            return delay;
-        }
-
-        /** Spike Propagation Delay (milliseconds) */
-        public void setDelay(int delay) {
-            SpikeStack.this.delay = delay;
-        }        
+//        public int getDelay() {
+//            return delay;
+//        }
+//
+//        /** Spike Propagation Delay (milliseconds) */
+//        public void setDelay(int delay) {
+//            SpikeStack.this.delay = delay;
+//        }        
         
 //        public void doSTOP()
 //        {

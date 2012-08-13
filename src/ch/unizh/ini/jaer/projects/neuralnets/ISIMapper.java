@@ -35,7 +35,7 @@ public class ISIMapper extends NetMapper{
     
 //    private float minFreqHz;
 //    private float maxFreqHz;
-    public float nBins;
+    public int nBins;
     
     
     public ISIMapper(int nChannels,int nBin)

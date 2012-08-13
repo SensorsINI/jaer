@@ -55,7 +55,7 @@ public class StatCollector {
         int timeMicros=1000000;
                 
         
-        net.delay=10000;
+        lg.delay=10000;
         
         lg.doRandomJitter=true;
         lg.randomJitter=100;
@@ -65,8 +65,8 @@ public class StatCollector {
         nc.readXML();
         
         
-        nc.setForwardStrengths(new boolean[] {false,true,false,true});
-        nc.setBackwardStrengths(new boolean[] {true,true,false,true});
+//        nc.setForwardStrengths(new boolean[] {false,true,false,true});
+//        nc.setBackwardStrengths(new boolean[] {true,true,false,true});
         
         
         ArrayList<Stat> stats=new ArrayList();

@@ -108,7 +108,7 @@ public class SlowResponse extends MultiSourceProcessor {
                 
         float vmem;
         
-        public Neuron(short xloc,short yloc)
+        public Neuron(short xloc,short yloc)    
         {   locx=xloc;
             locy=yloc;            
         }

@@ -19,7 +19,11 @@ public class BinaryTransEvent extends Spike {
         trans=transition;
     }
     
-    
+    @Override
+    public String toString()
+    {
+        return super.toString()+(trans?", ON":", OFF");
+    }
     
     
 }

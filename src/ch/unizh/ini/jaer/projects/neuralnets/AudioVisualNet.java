@@ -83,23 +83,30 @@ public class AudioVisualNet extends SpikeFilter {
         
 //        NetController<STPLayer,STPLayer.Globals,LIFUnit.Globals> netcon= nc;
         
+        
+        net.addAllReverseAxons();
+        
+        net.unrollRBMs();
+        
+        STPAxons.Globals lG=(STPAxons.Globals)layGlobs;
+        
         unitGlobs.tau=200000;
-        net.delay=10000;
+        lG.delay=10000;
         unitGlobs.tref=5000;
         
         nc.view.timeScale=1f;
         
         
         // Set up connections
-        nc.setForwardStrengths(new boolean[] {true,true,false,true});
-        nc.setBackwardStrengths(new boolean[] {true,true,false,true});
+//        net.ax(0,1)
+//        nc.setForwardStrengths(new boolean[] {true,true,false,true});
+//        nc.setBackwardStrengths(new boolean[] {true,true,false,true});
         
         
         // Up the threshold
         unitGlobs.useGlobalThresh=true;
         unitGlobs.thresh=2;
         
-        STPAxons.Globals lG=(STPAxons.Globals)layGlobs;
         
         lG.fastWeightTC=2;
         

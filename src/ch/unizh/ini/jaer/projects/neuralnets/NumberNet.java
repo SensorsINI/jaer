@@ -59,15 +59,17 @@ public class NumberNet extends SpikeFilter {
 //            return;
         
         unitGlobs.setTau(100000);
-        net.delay=12000;
+        nc.layerGlobals.delay=12000;
         unitGlobs.setTref(5000);
+        
+        
         
         
         // Set up connections
 //        float[] sigf={1, 1, 0, 1};
-        nc.setForwardStrengths(new boolean[]{true,true,false,true});
+//        nc.setForwardStrengths(new boolean[]{true,true,false,true});
 //        float[] sigb={0, 1, 0, 1};
-        nc.setBackwardStrengths(new boolean[]{true,false,true,true});
+//        nc.setBackwardStrengths(new boolean[]{true,false,true,true});
         
         // Up the threshold
 //        net.scaleThresholds(500);

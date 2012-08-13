@@ -18,7 +18,7 @@ public class Layer<AxonType extends Axons> {
     public short dimx;     // For display, purposes.
     public short dimy;     // dimx,dimy must multiply to units.length
 
-    public ArrayList<AxonType> inAxons=new ArrayList();
+//    public ArrayList<AxonType> inAxons=new ArrayList();
     public ArrayList<AxonType> outAxons=new ArrayList();
         
     public Unit[] units;
@@ -60,9 +60,9 @@ public class Layer<AxonType extends Axons> {
     {   outAxons.add(ax);
     }
     
-    public void addInputAxon(AxonType ax)
-    {   inAxons.add(ax);
-    }
+//    public void addInputAxon(AxonType ax)
+//    {   inAxons.add(ax);
+//    }
 
     /** Fire Currents to this layer... */
 //    public void fireTo(Spike sp,float[] inputCurrents)
@@ -77,13 +77,17 @@ public class Layer<AxonType extends Axons> {
 //    }
     
     /** Carry out the effects of the firing */
-    public void propagateFrom(Spike sp,int unitIndex)
+    public void propagateFrom(Spike sp)
     {
+        sp.layer=ixLayer;
+        
+        net.addToOutputQueue(sp);
+        
         for (Axons ax:outAxons)
-            ax.sendForwards(sp, unitIndex);
+            ax.spikeIn(sp);
                 
-        for (Axons ax:inAxons)
-            ax.sendBackwards(sp, unitIndex);
+//        for (Axons ax:inAxons)
+//            ax.sendBackwards(sp, unitIndex);
         
     }
     
@@ -118,7 +122,8 @@ public class Layer<AxonType extends Axons> {
         
         if (spOut!=null)
         {
-            net.addToInternalQueue(spOut);
+            propagateFrom(sp);
+//            net.addToInternalQueue(spOut);
 //            net.internalBuffer.add(spOut);
         }
     }
@@ -127,15 +132,57 @@ public class Layer<AxonType extends Axons> {
     public void fireFrom(int unitIndex)
     {
         Spike ev=units[unitIndex].fireFrom(net.time);
-        ev.layer=ixLayer;
-        ev.defineDelay(net.delay);
-        net.addToInternalQueue(ev);
+//        ev.layer=ixLayer;
+        
+//        for (Axons ax:outAxons)
+//            ax.spikeIn(ev, unitIndex);
+                
+//        for (Axons ax:inAxons)
+//            ax.sendBackwards(ev, unitIndex);
+        
+        
+//        ev.defineDelay(net.delay);
+//        net.addToInternalQueue(ev);
 //        net.outputQueue.add(ev);
         
-//        propagateFrom(ev,unitIndex);
+        propagateFrom(ev);
         
     }
+    
+    public void fireTo(Spike sp,float[] inputCurrents)
+    {
         
+        for (int i=0; i<units.length; i++)
+        {
+            Spike spout=fireTo(sp,i,inputCurrents[i]);
+            
+            if (spout!=null)
+            {
+                
+                propagateFrom(spout);
+            }            
+        }
+    }
+    
+    
+    public void fireTo(Spike sp,int[] addresses, float[] inputCurrents)
+    {
+        for (int i=0; i<addresses.length; i++)
+        {
+            if (addresses[i]==-1)
+                continue;
+            
+            Spike spout=fireTo(sp,addresses[i],inputCurrents[i]);
+            
+            if (spout!=null)
+            {
+                propagateFrom(spout);
+            }            
+        }
+    }
+        
+    
+    
     
     /** Fire current to a given unit in this layer... */
     public Spike fireTo(Spike sp,int ix,float inputCurrent)
@@ -201,15 +248,15 @@ public class Layer<AxonType extends Axons> {
         dimx=(short)Math.ceil(nUnits()/(float)dimy);
     }
     
-    public void enableForwards(boolean st)
-    {   for (Axons ax:outAxons)
-            ax.fwdSend=st;
-    }
+//    public void enableForwardsInputs(boolean st)
+//    {   for (int i=0; i<nLayers)
+//            ax.enable=st;
+//    }
     
-    public void enableBackwards(boolean st)
-    {   for (Axons ax:outAxons)
-            ax.backSend=st;
-    }
+//    public void enableBackwards(boolean st)
+//    {   for (Axons ax:outAxons)
+//            ax.backSend=st;
+//    }
         
     public AxonType ax()
     {   return ax(0);
@@ -227,12 +274,25 @@ public class Layer<AxonType extends Axons> {
             if (ax.postLayer.ixLayer==destLayerIndex)
                 return ax;
         
-        throw new RuntimeException("No Axon connects layer "+ixLayer+" with layer "+destLayerIndex);
+        return null;
+//        throw new RuntimeException("No Axon connects layer "+ixLayer+" with layer "+destLayerIndex);
     }
         
     public int nAxons()
     {
         return outAxons.size();
+    }
+    
+    public int nForwardAxons()
+    {
+        int count=0;
+        for (Axons ax:outAxons)
+        {   if (ax.isForwardAxon())
+                count++;
+            
+        }
+        return count;
+        
     }
     
     

@@ -56,7 +56,7 @@ public class BinThreshStack extends SpikeStack<Axons,BinaryTransEvent> {
                     outputQueue.add(ev);
                 }
                 else                                // 3: Internally buffered event propagated
-                {   lay(ev.layer).propagateFrom(ev, ev.addr);
+                {  // lay(ev.layer).propagateFrom(ev, ev.addr);
                     outputQueue.add(ev);
                 }
                 // Post Spike-Feed Actions

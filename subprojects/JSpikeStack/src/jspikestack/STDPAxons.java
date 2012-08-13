@@ -150,7 +150,7 @@ public class STDPAxons<GlobalParams extends STDPAxons.Globals> extends Axons<Glo
 
                 // Adjust the out-time back by the delay so it can be compared with the input time that caused it.
 //                double outTime=evout.time-net.delay;
-                int outTime=evout.time-glob.delay;
+                int outTime=evout.time;//-glob.delay;
 
 //                int tempBookmark=thisBufferBookmark;    // Temporary bookmark for iterating through presyn spikes around an output spike
 

@@ -59,6 +59,8 @@ public class JspikeStack {
         
 //        convDemo();
         
+//        numberDemo();
+        
     }
     
     /** Read in a network from XML, do stuff with it */
@@ -71,29 +73,36 @@ public class JspikeStack {
         
         nc.readXML();
        
+        net.addAllReverseAxons();
+        net.rax(0,1).enable=false;
+        
         un.tau=100000;
-        net.delay=20000;
+//        net.delay=20000;
+        lg.delay=20000;
         un.tref=5000;
         nc.view.timeScale=1f;
-        
-        nc.setForwardStrengths(new boolean[] {false,true,false,true});
-        nc.setBackwardStrengths(new boolean[] {true,true,false,true});
-                        
+//        
+//        nc.setForwardStrengths(new boolean[] {false,true,false,true});
+//        nc.setBackwardStrengths(new boolean[] {true,true,false,true});
+                
         un.useGlobalThresh=true;
-        un.thresh=2.6f;
+        un.thresh=2.1f;
         
         
         lg.delay=20000;
         
-        lg.setFastWeightTC(2000000);
-        lg.doRandomJitter=false;
+        lg.setFastWeightTC(1000000);
+        lg.doRandomJitter=true;
+        lg.randomJitter=20;
+        
+        
         
         net.ax(1,2).setEnableFastSTDP(true);
         net.ax(3,2).setEnableFastSTDP(true);
         
         lg.stdpWin=30000;
-        lg.fastSTDP.plusStrength=-.001f;
-        lg.fastSTDP.minusStrength=-.001f;   
+        lg.fastSTDP.plusStrength=-.0005f;
+        lg.fastSTDP.minusStrength=-.0005f;   
         lg.fastSTDP.stdpTCminus=20000;
         lg.fastSTDP.stdpTCplus=20000;
         
@@ -128,11 +137,12 @@ public class JspikeStack {
     public static void learningDemo()
     {        
         // Read Events
-        AERFile aef=new AERFile();          
-        aef.read("VowelSounds.aedat");
-        if (!aef.hasValidFile())
-            return;      
-        ArrayList<Spike> events=cochlea2spikes(aef.events);
+//        AERFile aef=new AERFile();          
+//        aef.read("VowelSounds.aedat");
+//        if (!aef.hasValidFile())
+//            return;      
+//        ArrayList<Spike> events=cochlea2spikes(aef.events);
+        ArrayList<Spike> events=AERFile.getCochleaEvents("VowelSounds.aedat");
                 
         // Construct Network
         NetController<STPAxons,STPAxons.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
@@ -148,7 +158,8 @@ public class JspikeStack {
         lg.doRandomJitter=true;
         lg.randomJitter=10;
         lg.stdpWin         = 30000;
-        net.delay=0;
+//        net.delay=0;
+        lg.delay=0;
         
         // Set Unit Global Controls
         ug.setTau(100000);
@@ -235,11 +246,6 @@ public class JspikeStack {
         float[][] wt=SparseAxon.transpose(w);
         net.ax(0,2).defineKernel(wt);
         
-        
-//        w[1]=new float[]{-2, 2, 2, -2};
-//        w[2]=new float[]{-2, 2, 2, -2};        
-        
-        
                 
         // Define global parameters
         un.useGlobalThresh=true;
@@ -248,11 +254,8 @@ public class JspikeStack {
         un.tref=5000;  
         
         // Read Events
-        AERFile aef=new AERFile();        
-        aef.read("MovingDarkBox.aedat");
-        if (!aef.hasValidFile())
-            return;        
-        ArrayList<Spike> events=retina2spikes(aef.events);
+        ArrayList<BinaryTransEvent> events=AERFile.getRetinaEvents("MovingDarkBox.aedat");
+        
         
         // Setup simulation
         nc.addAllControls();
@@ -266,46 +269,84 @@ public class JspikeStack {
         // And GO
         net.feedEvents(events);        
         nc.simulate(sim);
+                
+    }
+    
+    /** Number Recognition Demo */
+    public static void numberDemo()
+    {
+        
+        NetController<STPAxons,STPAxons.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
+        SpikeStack<STPAxons,Spike> net=nc.net;
+        LIFUnit.Globals un=nc.unitGlobals;
+        STPAxons.Globals lg=nc.layerGlobals;
+        
+        nc.readXML();
+        net.rbmify(true);
+       
+        un.tau=100000;
+        un.tref=5000;
+        un.useGlobalThresh=true;
+        un.thresh=2.4f;
+        
+        nc.view.timeScale=1f;
+        
+        
+//        net.rax(1,0).enable=false;
+        
+//        nc.setForwardStrengths(new boolean[] {true,true,false,false});
+//        nc.setBackwardStrengths(new boolean[] {false,true,false,true});
+        
+        
+        
+        lg.delay=20000;
+        
+        lg.setFastWeightTC(500000);
+        lg.doRandomJitter=true;
+        lg.randomJitter=100;
+        
+        net.ax(1,2).setEnableFastSTDP(true);
+        net.ax(3,2).setEnableFastSTDP(true);
+        
+        lg.stdpWin=30000;
+        lg.fastSTDP.plusStrength=-.00008f;
+        lg.fastSTDP.minusStrength=-.00008f;   
+        lg.fastSTDP.stdpTCminus=20000;
+        lg.fastSTDP.stdpTCplus=20000;
+        
+        lg.doRandomJitter=true;
+        lg.randomJitter=10;
+        
+        
+        net.inputCurrents=true;
+        net.lay(0).inputCurrentStrength=.4f;
+        
+        // Get statistics
+        
+        
+        // Read Events
+        ArrayList<BinaryTransEvent> events=AERFile.getRetinaEvents(null);
+        AERFile.filterPolarity(events, true);
+        AERFile.resampleSpikes(events, 128, 128, 28, 28);
+        
+        // Setup simulation
+        nc.addAllControls();
+        nc.setRecordingState(true);   
+        nc.startDisplay();       
+        NetController.SimulationSettings sim=new NetController.SimulationSettings();        
+        sim.controlledTime=false;
+        sim.timeScaling=1;
+        sim.waitForInputs=false;
+        
+        // And GO
+        net.feedEvents(events);        
+        nc.simulate(sim);
         
         
         
         
     }
-    
-    
-    
-    /** Convert AEViewer file events to JspikeStack Events */
-    public static ArrayList<Spike> cochlea2spikes(ArrayList<AERFile.Event> events)
-    {   
-        ArrayList<Spike> evts =new ArrayList<Spike>();
         
-        for (int i=0; i<events.size(); i++)
-        {   AERFile.Event ev=events.get(i);        
-            if (ev.addr>255) continue;        
-            Spike enew=new Spike((int)(ev.timestamp-events.get(0).timestamp), ev.addr/4, 0);            
-            evts.add(enew);
-        }
-        return evts;
-    }
-    
-    /** Convert AEViewer file events to JspikeStack Events */
-    public static ArrayList<Spike> retina2spikes(ArrayList<AERFile.Event> events)
-    {   
-        ArrayList<Spike> evts =new ArrayList<Spike>();
-        
-        for (int i=0; i<events.size(); i++)
-        {   AERFile.Event ev=events.get(i); 
-        
-            int addr=ev.addr>>1;
-            int x=addr%128;
-            int y=addr/128;
-            addr=y+x*128;
-            
-            Spike enew=new Spike((int)(ev.timestamp-events.get(0).timestamp), addr, 0);            
-            evts.add(enew);
-        }
-        return evts;
-    }
     
     
     /** Plot a list of events read from a file */
