@@ -5,7 +5,7 @@
 package ch.unizh.ini.jaer.projects.neuralnets;
 
 import javax.swing.JToggleButton;
-import jspikestack.Axons;
+import jspikestack.AxonBundle;
 import jspikestack.NetController;
 import jspikestack.SpikeStack;
 import net.sf.jaer.chip.AEChip;

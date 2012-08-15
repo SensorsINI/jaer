@@ -17,10 +17,10 @@ public class Spike implements Comparable<Spike>, Serializable
     public int hitTime;  // Time at which spike effect is felt.
     public int layer;
     
-    Axons ax;       // Axon through which spike is transmitted.  If it's an input spike, this stays null
+    AxonBundle ax;       // Axon through which spike is transmitted.  If it's an input spike, this stays null
     
     
-    protected void setAxon(Axons axe)
+    protected void setAxon(AxonBundle axe)
     {
         ax=axe;
         

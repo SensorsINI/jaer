@@ -15,7 +15,7 @@ import java.lang.reflect.Array;
  * 
  * @author oconnorp
  */
-public class STPAxons extends STDPAxons<STPAxons.Globals> {
+public class STPAxon extends STDPAxon<STPAxon.Globals> {
 
     private boolean enableFastSTDP=false;
 
@@ -40,7 +40,7 @@ public class STPAxons extends STDPAxons<STPAxons.Globals> {
         this.setSTDPstate();
     }
         
-    public STPAxons(Layer inLayer, Layer outLayer,Globals glo)
+    public STPAxon(Layer inLayer, Layer outLayer,Globals glo)
     {   super(inLayer,outLayer,glo);   
     
         
@@ -54,7 +54,7 @@ public class STPAxons extends STDPAxons<STPAxons.Globals> {
 //        {   return (UnitType) new Unit(index);            
 //        }
 //        
-//        public Layer(STPAxons st,int index)
+//        public Layer(STPAxon st,int index)
 //        {   super((NetType)st,index);   
 //        }        
 
@@ -119,7 +119,7 @@ public class STPAxons extends STDPAxons<STPAxons.Globals> {
     }
     
 
-    public static class Factory<LayerType extends Axons> implements Axons.AbstractFactory<LayerType>
+    public static class Factory<LayerType extends AxonBundle> implements AxonBundle.AbstractFactory<LayerType>
     {
         public Globals glob;
 
@@ -130,7 +130,7 @@ public class STPAxons extends STDPAxons<STPAxons.Globals> {
         @Override
         public LayerType make(Layer inLayer, Layer outLayer)
         {
-            return (LayerType) new STPAxons(inLayer,outLayer,glob); // TODO: BAAAD.  I'm confused
+            return (LayerType) new STPAxon(inLayer,outLayer,glob); // TODO: BAAAD.  I'm confused
         }
         
         @Override
@@ -140,12 +140,12 @@ public class STPAxons extends STDPAxons<STPAxons.Globals> {
         
     }
 
-    public static class Globals extends STDPAxons.Globals
+    public static class Globals extends STDPAxon.Globals
     {
 
         public float fastWeightTC;
 
-        public STDPAxons.Globals.STDPrule fastSTDP=new STDPAxons.Globals.STDPrule();
+        public STDPAxon.Globals.STDPrule fastSTDP=new STDPAxon.Globals.STDPrule();
 
         /** Time Constant for fast-weights */
         public float getFastWeightTC() {
@@ -204,7 +204,7 @@ public class STPAxons extends STDPAxons<STPAxons.Globals> {
     {   return new Controller();
     }
 
-    class Controller extends STDPAxons.Controller
+    class Controller extends STDPAxon.Controller
     {   /** enable STDP learning? */
         public boolean isEnableFastWeights() {
             return enableFastSTDP;
@@ -212,7 +212,7 @@ public class STPAxons extends STDPAxons<STPAxons.Globals> {
 
         /** enable STDP learning? */
         public void setEnableFastWeights(boolean enable) {
-            STPAxons.this.setEnableFastSTDP(enable);
+            STPAxon.this.setEnableFastSTDP(enable);
         }       
         
         
@@ -279,9 +279,9 @@ public class STPAxons extends STDPAxons<STPAxons.Globals> {
     
     
     
-//    public static class Initializer extends STDPAxons.Initializer
+//    public static class Initializer extends STDPAxon.Initializer
 //    {   
-//        STDPrule fastSTDP=new STDPAxons.STDPrule();;
+//        STDPrule fastSTDP=new STDPAxon.STDPrule();;
 //        float fastWeightTC;
 //        
 //        public Initializer(int nLayers)
@@ -293,7 +293,7 @@ public class STPAxons extends STDPAxons<STPAxons.Globals> {
 //        {   return (LayerInitializer)layers[n];            
 //        }
 //        
-//        public static class LayerInitializer extends STDPAxons.Initializer.LayerInitializer
+//        public static class LayerInitializer extends STDPAxon.Initializer.LayerInitializer
 //        {   
 //            boolean enableFastSTDP=false;
 //            float fastWeightInfluence=0;

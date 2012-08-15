@@ -66,10 +66,10 @@ public class JspikeStack {
     /** Read in a network from XML, do stuff with it */
     public static void readNet()
     {           
-        NetController<STPAxons,STPAxons.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
-        SpikeStack<STPAxons,Spike> net=nc.net;
+        NetController<STPAxon,STPAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
+        SpikeStack<STPAxon,Spike> net=nc.net;
         LIFUnit.Globals un=nc.unitGlobals;
-        STPAxons.Globals lg=nc.layerGlobals;
+        STPAxon.Globals lg=nc.layerGlobals;
         
         nc.readXML();
        
@@ -145,10 +145,10 @@ public class JspikeStack {
         ArrayList<Spike> events=AERFile.getCochleaEvents("VowelSounds.aedat");
                 
         // Construct Network
-        NetController<STPAxons,STPAxons.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
-        SpikeStack<STPAxons,Spike> net=nc.net;
+        NetController<STPAxon,STPAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
+        SpikeStack<STPAxon,Spike> net=nc.net;
         LIFUnit.Globals ug=nc.unitGlobals;
-        STPAxons.Globals lg=nc.layerGlobals;
+        STPAxon.Globals lg=nc.layerGlobals;
                    
         // Set Layer Global Controls
         lg.stdp.plusStrength=0.0002f;
@@ -291,10 +291,10 @@ public class JspikeStack {
     public static void numberDemo()
     {
         
-        NetController<STPAxons,STPAxons.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
-        SpikeStack<STPAxons,Spike> net=nc.net;
+        NetController<STPAxon,STPAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
+        SpikeStack<STPAxon,Spike> net=nc.net;
         LIFUnit.Globals un=nc.unitGlobals;
-        STPAxons.Globals lg=nc.layerGlobals;
+        STPAxon.Globals lg=nc.layerGlobals;
         
         nc.readXML();
         net.rbmify(true);

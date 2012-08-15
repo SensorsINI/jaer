@@ -88,7 +88,7 @@ public class AudioVisualNet extends SpikeFilter {
         
         net.unrollRBMs();
         
-        STPAxons.Globals lG=(STPAxons.Globals)axonGlobs;
+        STPAxon.Globals lG=(STPAxon.Globals)axonGlobs;
         
         unitGlobs.tau=200000;
         lG.delay=10000;
@@ -110,8 +110,8 @@ public class AudioVisualNet extends SpikeFilter {
         
         lG.fastWeightTC=2;
         
-        ((STPAxons)net.ax(1,2)).setEnableFastSTDP(true);
-        ((STPAxons)net.ax(3,2)).setEnableFastSTDP(true);        
+        ((STPAxon)net.ax(1,2)).setEnableFastSTDP(true);
+        ((STPAxon)net.ax(3,2)).setEnableFastSTDP(true);        
         lG.fastSTDP.plusStrength=(-.01f);
         lG.fastSTDP.minusStrength=(-.01f);   
         lG.fastSTDP.stdpTCminus=(10000);

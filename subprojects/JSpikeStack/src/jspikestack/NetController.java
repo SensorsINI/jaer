@@ -17,7 +17,7 @@ import javax.swing.JScrollPane;
  * 
  * @author Peter
  */
-public class NetController<LayerType extends Axons,LayerGlobalType extends Controllable,UnitGlobalType extends Controllable> {
+public class NetController<LayerType extends AxonBundle,LayerGlobalType extends Controllable,UnitGlobalType extends Controllable> {
     
     public SpikeStack<LayerType,Spike> net;
     public UnitGlobalType unitGlobals;
@@ -45,19 +45,19 @@ public class NetController<LayerType extends Axons,LayerGlobalType extends Contr
     public NetController(Types t)
     {
         
-        Axons.AbstractFactory axonFactory;
+        AxonBundle.AbstractFactory axonFactory;
         Unit.AbstractFactory unitFactory;
         
         
         switch(t)
         {
             case STATIC_LIF:                
-                axonFactory=new Axons.Factory();
+                axonFactory=new AxonBundle.Factory();
                 unitFactory=new LIFUnit.Factory();            
                 break;                
             
             case STP_LIF:                
-                axonFactory=new STPAxons.Factory();
+                axonFactory=new STPAxon.Factory();
                 unitFactory=new LIFUnit.Factory();   
                 break;
                 
@@ -70,7 +70,7 @@ public class NetController<LayerType extends Axons,LayerGlobalType extends Contr
                 throw new UnsupportedOperationException("Not supported yet");   
                 
             default:
-                axonFactory=new Axons.Factory();
+                axonFactory=new AxonBundle.Factory();
                 unitFactory=new LIFUnit.Factory();            
                 break;     
                 
@@ -158,7 +158,7 @@ public class NetController<LayerType extends Axons,LayerGlobalType extends Contr
 //        view.addControls(net.getControls());
 //        view.addControls(unitGlobals);
 //        view.addControls(layerGlobals);
-//        for (Axons l:net.getLayers())
+//        for (AxonBundle l:net.getLayers())
 //        {
 //            view.addControls(l.getControls());
 //        }
@@ -172,7 +172,7 @@ public class NetController<LayerType extends Axons,LayerGlobalType extends Contr
         cp.addController(net.getControls());
         cp.addController(unitGlobals);
         cp.addController(layerGlobals);
-        for (Axons l:net.getAxons())
+        for (AxonBundle l:net.getAxons())
         {
             cp.addController(l.getControls());
         }
@@ -368,7 +368,7 @@ public class NetController<LayerType extends Axons,LayerGlobalType extends Contr
                     @Override
                     public float compute() {
 
-                        STPAxons ax=(STPAxons) net.ax(1,2);
+                        STPAxon ax=(STPAxon) net.ax(1,2);
                         float w=0;
                         float k=0;
 

@@ -12,7 +12,7 @@ import java.util.Queue;
  *
  * @author oconnorp
  */
-public class STDPAxons<GlobalParams extends STDPAxons.Globals> extends Axons<GlobalParams> {
+public class STDPAxon<GlobalParams extends STDPAxon.Globals> extends AxonBundle<GlobalParams> {
     
     
 //    
@@ -23,7 +23,7 @@ public class STDPAxons<GlobalParams extends STDPAxons.Globals> extends Axons<Glo
     
     
         
-//    public static class Layer <NetType extends STDPAxons,LayerType extends Axons, UnitType extends Unit,GlobalParams extends STDPAxons.Layer.Globals> extends Axons<NetType,LayerType,UnitType>
+//    public static class Layer <NetType extends STDPAxon,LayerType extends AxonBundle, UnitType extends Unit,GlobalParams extends STDPAxon.Layer.Globals> extends AxonBundle<NetType,LayerType,UnitType>
 //    {
 //        int outBufferBookmark=0;   // Bookmark used for stdp learning
 //        int thisBufferBookmark=0;
@@ -36,7 +36,7 @@ public class STDPAxons<GlobalParams extends STDPAxons.Globals> extends Axons<Glo
         
         private boolean enableSTDP=false;     // Enable STDP on the slow weights
 
-        public STDPAxons(Layer inLayer,Layer outLayer,GlobalParams glo)
+        public STDPAxon(Layer inLayer,Layer outLayer,GlobalParams glo)
         {   super(inLayer,outLayer,glo);   
 //            glob=glo;
         }
@@ -209,7 +209,7 @@ public class STDPAxons<GlobalParams extends STDPAxons.Globals> extends Axons<Glo
    
 
         
-        public static class Factory<AxonType extends STDPAxons> implements Axons.AbstractFactory<STDPAxons>
+        public static class Factory<AxonType extends STDPAxon> implements AxonBundle.AbstractFactory<STDPAxon>
         {
             public Globals glob;
             
@@ -225,12 +225,12 @@ public class STDPAxons<GlobalParams extends STDPAxons.Globals> extends Axons<Glo
 
             @Override
             public AxonType make(Layer inLayer, Layer outLayer) {
-                return (AxonType) new STDPAxons(inLayer,outLayer,glob);
+                return (AxonType) new STDPAxon(inLayer,outLayer,glob);
             }
         }
         
         
-        public static class Globals extends Axons.Globals
+        public static class Globals extends AxonBundle.Globals
         {
             public STDPrule stdp=new STDPrule();;
     
@@ -310,7 +310,7 @@ public class STDPAxons<GlobalParams extends STDPAxons.Globals> extends Axons<Glo
         {   return new Controller();
         }
         
-        class Controller extends Axons.Controller
+        class Controller extends AxonBundle.Controller
         {   /** enable STDP learning? */
             public boolean isEnableSTDP() {
                 return enableSTDP;
@@ -319,7 +319,7 @@ public class STDPAxons<GlobalParams extends STDPAxons.Globals> extends Axons<Glo
             /** enable STDP learning? */
             public void setEnableSTDP(boolean enableSTDP) {
                 
-                STDPAxons.this.setEnableSTDP(enableSTDP);
+                STDPAxon.this.setEnableSTDP(enableSTDP);
             }
         }
         

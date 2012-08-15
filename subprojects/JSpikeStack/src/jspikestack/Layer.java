@@ -11,7 +11,7 @@ import java.util.ArrayList;
  *
  * @author oconnorp
  */
-public class Layer<AxonType extends Axons> {
+public class Layer<AxonType extends AxonBundle> {
     
     public int ixLayer;
     
@@ -84,10 +84,10 @@ public class Layer<AxonType extends Axons> {
         
         net.addToOutputQueue(sp);
         
-        for (Axons ax:outAxons)
+        for (AxonBundle ax:outAxons)
             ax.spikeIn(sp);
                 
-//        for (Axons ax:inAxons)
+//        for (AxonBundle ax:inAxons)
 //            ax.sendBackwards(sp, unitIndex);
         
     }
@@ -95,7 +95,7 @@ public class Layer<AxonType extends Axons> {
     
     public void updateActions()
     {
-        for (Axons ax:outAxons)
+        for (AxonBundle ax:outAxons)
             ax.updateActions();
     }
     
@@ -135,10 +135,10 @@ public class Layer<AxonType extends Axons> {
         Spike ev=units[unitIndex].fireFrom(net.time);
 //        ev.layer=ixLayer;
         
-//        for (Axons ax:outAxons)
+//        for (AxonBundle ax:outAxons)
 //            ax.spikeIn(ev, unitIndex);
                 
-//        for (Axons ax:inAxons)
+//        for (AxonBundle ax:inAxons)
 //            ax.sendBackwards(ev, unitIndex);
         
         
@@ -220,7 +220,7 @@ public class Layer<AxonType extends Axons> {
         {   
             u.reset();                    
         }
-        for (Axons ax:outAxons)
+        for (AxonBundle ax:outAxons)
         {   ax.reset();
         }
         
@@ -255,7 +255,7 @@ public class Layer<AxonType extends Axons> {
 //    }
     
 //    public void enableBackwards(boolean st)
-//    {   for (Axons ax:outAxons)
+//    {   for (AxonBundle ax:outAxons)
 //            ax.backSend=st;
 //    }
         
@@ -287,7 +287,7 @@ public class Layer<AxonType extends Axons> {
     public int nForwardAxons()
     {
         int count=0;
-        for (Axons ax:outAxons)
+        for (AxonBundle ax:outAxons)
         {   if (ax.isForwardAxon())
                 count++;
             

@@ -19,19 +19,19 @@ import java.util.logging.Logger;
  *  
  * @author oconnorp
  */
-public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implements Serializable {
+public class SpikeStack<AxonType extends AxonBundle,SpikeType extends Spike> implements Serializable {
     
     // <editor-fold defaultstate="collapsed" desc=" Properties ">
     
-//    Axons.AbstractFactory<AxonType> layerFactory;
-    Axons.AbstractFactory axonFactory;    
+//    AxonBundle.AbstractFactory<AxonType> layerFactory;
+    AxonBundle.AbstractFactory axonFactory;    
     Unit.AbstractFactory unitFactory;
     
     
     
     ArrayList<Layer> layers=new ArrayList();
     
-    ArrayList<Axons> axons=new ArrayList();
+    ArrayList<AxonBundle> axons=new ArrayList();
     
     
     transient Queue<SpikeType> inputBuffer = new LinkedList();
@@ -70,7 +70,7 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
     
     // <editor-fold defaultstate="collapsed" desc=" Builder Functions ">
     
-    public SpikeStack (Axons.AbstractFactory axonFac,Unit.AbstractFactory unitFac)
+    public SpikeStack (AxonBundle.AbstractFactory axonFac,Unit.AbstractFactory unitFac)
     {   //plot=new NetPlotter(this);
         read=new NetReader(this);
         
@@ -89,7 +89,7 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
         return layers;
     }
     
-    public ArrayList<Axons> getAxons()
+    public ArrayList<AxonBundle> getAxons()
     {
         return axons;
     }
@@ -102,32 +102,32 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
         
     }
     
-    public Axons addAxon(Layer preSyn, Layer postSyn)
+    public AxonBundle addAxon(Layer preSyn, Layer postSyn)
     {
         // Note, the axon constructor takes care of linking the layers to the axon.
-        Axons ax=axonFactory.make(preSyn,postSyn);
+        AxonBundle ax=axonFactory.make(preSyn,postSyn);
         axons.add(ax);
         return ax;
         
     }
     
-    public Axons addReverseAxon(Axons fwdAx)
+    public AxonBundle addReverseAxon(AxonBundle fwdAx)
     {
         if (fwdAx.hasReverseAxon() && axons.contains(fwdAx.reverse))
         {   System.out.println("Warning: Axon: '"+fwdAx.reverse.toString()+"' has already been added.  Doing nothing.");
             return fwdAx.getReverseAxon();
         }
         
-        Axons ax=fwdAx.getReverseAxon();
+        AxonBundle ax=fwdAx.getReverseAxon();
         axons.add(ax);
         return ax;
     }
     
     public void addAllReverseAxons()
     {
-        ArrayList<Axons> oldAxons=(ArrayList<Axons>)axons.clone();
+        ArrayList<AxonBundle> oldAxons=(ArrayList<AxonBundle>)axons.clone();
         
-        for (Axons old:oldAxons)
+        for (AxonBundle old:oldAxons)
             addReverseAxon(old);
         
         
@@ -174,9 +174,9 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
         {   copy.units[i]=source.getUnit(i).copy();
         }
         
-        Axons revcon=source.ax(0).getReverseAxon();
+        AxonBundle revcon=source.ax(0).getReverseAxon();
         
-//        Axons revcon=source.ax(0).postLayer.axByLayer(source.ixLayer);
+//        AxonBundle revcon=source.ax(0).postLayer.axByLayer(source.ixLayer);
         
         revcon.postLayer=copy;
         
@@ -195,7 +195,7 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
 //        
 //        /* Now, the recursive part, if source-layer has children, copy them and assign the new copy as their parent */     
 //        for (Object kid:source.preLayer)
-//        {    copyAndAdopt((Axons)kid,copy);
+//        {    copyAndAdopt((AxonBundle)kid,copy);
 //        }
     }
     
@@ -239,7 +239,7 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
         // Second pass, wire together layers
         for (Initializer.AxonInitializer ax:ini.axons)
         {
-            Axons axon=addAxon(lay(ax.inLayer),lay(ax.outLayer));
+            AxonBundle axon=addAxon(lay(ax.inLayer),lay(ax.outLayer));
             
             // Assign random initial weights based on Gaussian distributions with specified parameters
             if (!Float.isNaN(ax.wMean))
@@ -435,7 +435,7 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
         return (AxonType) lay(sourceLayer).axByLayer(destLayer);
     }
     
-    public Axons rax(int sourceLayer,int destLayer)
+    public AxonBundle rax(int sourceLayer,int destLayer)
     {
         return lay(sourceLayer).axByLayer(destLayer);
     }
@@ -556,7 +556,7 @@ public class SpikeStack<AxonType extends Axons,SpikeType extends Spike> implemen
 //    {   NetworkType factory();        
 //    }
     
-//    public interface LayerFactory<NetType extends SpikeStack,LayerType extends Axons> extends Serializable
+//    public interface LayerFactory<NetType extends SpikeStack,LayerType extends AxonBundle> extends Serializable
 //    {
 //        public LayerType make(NetType network, int ix);
 //    }

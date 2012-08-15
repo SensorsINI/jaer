@@ -12,7 +12,7 @@ import java.util.Random;
  *
  * @author oconnorp
  */
-public class Axons<GlobalParams extends Axons.Globals> 
+public class AxonBundle<GlobalParams extends AxonBundle.Globals> 
 {
     SpikeStack net;
     
@@ -33,7 +33,7 @@ public class Axons<GlobalParams extends Axons.Globals>
     
     
     
-    public Axons(Layer inLayer, Layer outLayer,GlobalParams glo)
+    public AxonBundle(Layer inLayer, Layer outLayer,GlobalParams glo)
     {
         
         
@@ -186,7 +186,7 @@ public class Axons<GlobalParams extends Axons.Globals>
     }
 
         
-    public static class Factory implements AbstractFactory<Axons>
+    public static class Factory implements AbstractFactory<AxonBundle>
     {
         public Globals glob;
         public Factory()
@@ -194,8 +194,8 @@ public class Axons<GlobalParams extends Axons.Globals>
         }
 
         @Override
-        public Axons make(Layer inLayer,Layer outLayer)
-        {   return new Axons(inLayer,outLayer,glob); // TODO: BAAAD.  I'm confused
+        public AxonBundle make(Layer inLayer,Layer outLayer)
+        {   return new AxonBundle(inLayer,outLayer,glob); // TODO: BAAAD.  I'm confused
         }
 
         @Override
@@ -249,7 +249,7 @@ public class Axons<GlobalParams extends Axons.Globals>
     }
     
     
-    public interface AbstractFactory<AxonType extends Axons>
+    public interface AbstractFactory<AxonType extends AxonBundle>
     {
         public abstract AxonType make(Layer inLayer,Layer outLayer);
                 
@@ -276,7 +276,7 @@ public class Axons<GlobalParams extends Axons.Globals>
 
         /** Send Forwards? */
         public void setEnable(boolean fwdSend) {
-            Axons.this.enable = fwdSend;
+            AxonBundle.this.enable = fwdSend;
         }
 
 //        /** Send Backwards? */
@@ -317,11 +317,11 @@ public class Axons<GlobalParams extends Axons.Globals>
     * 
     * @author Peter
     */
-    public static class Reverse extends Axons {
+    public static class Reverse extends AxonBundle {
 
-        Axons forwardAxon;
+        AxonBundle forwardAxon;
 
-        public Reverse(Axons fwdAx)
+        public Reverse(AxonBundle fwdAx)
         {
             super(fwdAx.postLayer,fwdAx.preLayer,fwdAx.glob);
 

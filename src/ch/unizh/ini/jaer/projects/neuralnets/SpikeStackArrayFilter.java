@@ -12,7 +12,7 @@ import ch.unizh.ini.jaer.projects.integrateandfire.ClusterSet;
 import java.awt.GridBagLayout;
 import java.io.File;
 import jspikestack.LIFUnit;
-import jspikestack.STPAxons;
+import jspikestack.STPAxon;
 import jspikestack.SpikeStack;
 import jspikestack.Unit;
 import net.sf.jaer.chip.AEChip;
@@ -30,7 +30,7 @@ public class SpikeStackArrayFilter extends EventFilter2D{
     NetworkList netArr;
     
     SpikeStack net;
-    STPAxons.Globals lg;
+    STPAxon.Globals lg;
     LIFUnit.Globals ug;
     
     File startDir=new File(getClass().getClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../subprojects/JSpikeStack/files/nets");

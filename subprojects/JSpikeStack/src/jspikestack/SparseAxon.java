@@ -11,7 +11,7 @@ import java.util.Random;
  *
  * @author oconnorp
  */
-public class SparseAxon<GlobalParams extends Axons.Globals>  extends Axons {
+public class SparseAxon<GlobalParams extends AxonBundle.Globals>  extends AxonBundle {
     
     int[][] targets;  // Addresses of forward connections
     
@@ -259,13 +259,13 @@ public class SparseAxon<GlobalParams extends Axons.Globals>  extends Axons {
     
     
     
-    public static class Factory extends Axons.Factory
+    public static class Factory extends AxonBundle.Factory
     {
         
         
         
         @Override
-        public Axons make(Layer inLayer,Layer outLayer)
+        public AxonBundle make(Layer inLayer,Layer outLayer)
         {   return new SparseAxon(inLayer,outLayer,glob); // TODO: BAAAD.  I'm confused
         }
         
@@ -276,7 +276,7 @@ public class SparseAxon<GlobalParams extends Axons.Globals>  extends Axons {
     
     
     
-//    public static class Initializer extends Axons.Initializer
+//    public static class Initializer extends AxonBundle.Initializer
 //    {
 //        public Initializer(int preLayer, int postLayer)
 //        {
