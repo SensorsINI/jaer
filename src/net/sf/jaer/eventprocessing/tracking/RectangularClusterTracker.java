@@ -450,6 +450,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 pruneList.add(c2);
                 clusters.remove(c1);
                 clusters.remove(c2);
+                fastClusterFinder.removeCluster(c1);
+                fastClusterFinder.removeCluster(c2);
                 
                 // clusters.add(new Cluster(c1, c2)); // No good for cluster-class overriding!
                 clusters.add(createCluster(c1,c2));
@@ -520,6 +522,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
         clusters.removeAll(pruneList);
         for(Cluster c:pruneList){
+            fastClusterFinder.removeCluster(c);
             c=null;
         }
         
@@ -581,6 +584,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     public void initFilter() {
         initDefaults();
         defaultClusterRadius = (int) Math.max(chip.getSizeX(), chip.getSizeY()) * getClusterSize();
+        fastClusterFinder.init();
     }
 
     private void initDefaults() {
@@ -641,12 +645,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         // if its too far from any cluster, make a new cluster if we can
         for (BasicEvent ev : in) {
 //            EventXYType ev=ae.getEvent2D(i);
-            Cluster closest = null;
-            if (useNearestCluster) {
-                closest = getNearestCluster(ev);
-            } else {
-                closest = getFirstContainingCluster(ev); // find cluster that event falls within (or also within surround if scaling enabled)
-            }
+            Cluster closest = fastClusterFinder.findClusterNear(ev);
+
             if (closest != null) {
                 if (filterEventsEnabled) {
                     closest.addEvent(ev, outItr);
@@ -821,6 +821,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 }
                 c.lastUpdateTime = t;
             }
+            fastClusterFinder.update(c);
         }
     }
 
@@ -1884,6 +1885,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
          *
          */
         protected void updateVelocity() {
+            if(path.size()<2) return;
+//            if(!isVisible()) return;
 //            velocityFitter.update();
 //            if (velocityFitter.valid) {
 //                velocityPPT.x = velocityFitter.getXVelocity();
@@ -1896,33 +1899,37 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //            }
 
             // update velocityPPT of cluster using last two path points
-            if (path.size() > 1) {
-                ClusterPathPoint c1 = path.get(path.size() - 2);
-                ClusterPathPoint c2 = path.get(path.size() - 1);
-                int dt = c2.t - c1.t;
-                if (dt > MIN_DT_FOR_VELOCITY_UPDATE) {
-                    float vx = (c2.x - c1.x) / dt;
-                    float vy = (c2.y - c1.y) / dt;
-                    velocityPPT.x = vxFilter.filter(vx, lastEventTimestamp);
-                    velocityPPT.y = vyFilter.filter(vy, lastEventTimestamp);
-                    if(!Float.isNaN(frictionTauMs)){
-                        float factor=(float)Math.exp(-dt/(frictionTauMs*1000));
-                         velocityPPT.x=velocityPPT.x*factor;
-                         velocityPPT.y=velocityPPT.y*factor;
-                    }
-                    if (c2.velocityPPT == null) {
-                        c2.velocityPPT = new Point2D.Float(velocityPPT.x, velocityPPT.y);
-                    } else {
-                        c2.velocityPPT.setLocation(velocityPPT.x, velocityPPT.y); // = new Point2D.Float(velocityPPT.x, velocityPPT.y);
-                    }
+            final int MIN_EVENTS_TO_UPDATE_VELOCITY=10;
+            Iterator<ClusterPathPoint> itr=path.descendingIterator();
+            ClusterPathPoint plast=itr.next();
+            int nevents=plast.getNEvents();
+            ClusterPathPoint pfirst=itr.next();
+            while(nevents<thresholdEventsForVisibleCluster && itr.hasNext() ){
+                nevents+=pfirst.getNEvents();
+                pfirst=itr.next();
+            }
+            if(nevents<thresholdEventsForVisibleCluster) return;
+            int dt = plast.t - pfirst.t;
+            float vx = (plast.x - pfirst.x) / dt;
+            float vy = (plast.y - pfirst.y) / dt;
+            velocityPPT.x = vxFilter.filter(vx, lastEventTimestamp);
+            velocityPPT.y = vyFilter.filter(vy, lastEventTimestamp);
+            if (!Float.isNaN(frictionTauMs)) {
+                float factor = (float) Math.exp(-dt / (frictionTauMs * 1000));
+                velocityPPT.x = velocityPPT.x * factor;
+                velocityPPT.y = velocityPPT.y * factor;
+            }
+            if (plast.velocityPPT == null) {
+                plast.velocityPPT = new Point2D.Float(velocityPPT.x, velocityPPT.y);
+            } else {
+                plast.velocityPPT.setLocation(velocityPPT.x, velocityPPT.y); // = new Point2D.Float(velocityPPT.x, velocityPPT.y);
+            }
 //                    float m1=1-velocityMixingFactor;
 //                    velocityPPT.x=m1*velocityPPT.x+velocityMixingFactor*vx;
 //                    velocityPPT.y=m1*velocityPPT.y+velocityMixingFactor*vy;
-                    velocityPPS.x = velocityPPT.x * VELPPS_SCALING;
-                    velocityPPS.y = velocityPPT.y * VELPPS_SCALING;
-                    setVelocityValid(true);
-                }
-            }
+            velocityPPS.x = velocityPPT.x * VELPPS_SCALING;
+            velocityPPS.y = velocityPPT.y * VELPPS_SCALING;
+            setVelocityValid(true);
         }
 
         @Override
@@ -2520,6 +2527,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         logFrameNumber = 0;
         averageVelocityPPT.x = 0;
         averageVelocityPPT.y = 0;
+        fastClusterFinder.reset();
     }
 
     /** Processes the incoming events to output RectangularClusterTrackerEvent's.
@@ -2759,7 +2767,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         gl.glPopMatrix();
     }
 
-    synchronized public void annotate(GLAutoDrawable drawable) {
+     public void annotate(GLAutoDrawable drawable) {
         if (!isFilterEnabled()) {
             return;
         }
@@ -3300,8 +3308,86 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     public float getSurroundInhibitionCost()
     {return surroundInhibitionCost;}
     
+    protected FastClusterFinder fastClusterFinder=new FastClusterFinder();
     
-    
+    /** Speeds up finding the nearest cluster to an event.
+     * 
+     */
+    protected class FastClusterFinder {
+
+        /** How much the map is subsampled in bits relative to the pixel array
+         * 
+         */
+        final int SUBSAMPLE_BY = 2;
+        private Cluster[][] grid = null;
+        private HashMap<Cluster, Point> map=new HashMap();
+        int nx=0, ny=0;
+        
+        void init(){
+            nx=chip.getSizeX()>>SUBSAMPLE_BY;
+            ny=chip.getSizeY()>>SUBSAMPLE_BY;
+            grid=new Cluster[nx][ny];
+        }
+
+        /** Finds the nearest cluster to an event. If the cluster has been cached
+         * in the grid map it is returned, otherwise either nearest or first cluster is returned 
+         * depending on useNearestCluster flag.
+         * @param e the event
+         * @return the nearest cluster or null
+         */
+        protected Cluster findClusterNear(BasicEvent e) {
+            Cluster c=null;
+            c = grid[(int) (e.x)>>SUBSAMPLE_BY][(int) (e.y )>>SUBSAMPLE_BY];
+            if (c == null) {
+                if (useNearestCluster) {
+                    c = getNearestCluster(e);
+                } else {
+                    c = getFirstContainingCluster(e); // find cluster that event falls within (or also within surround if scaling enabled)
+                }
+            }
+            return c;
+
+        }
+
+        /** updates the lookup table for this cluster.
+         * 
+         * @param c the cluster to update 
+         */
+        protected void update(Cluster c) {
+            removeCluster(c);
+            int x=(int) (c.location.x)>>SUBSAMPLE_BY;
+            if(x<0)x=0; else if(x>=nx)x=nx-1;
+            int y=(int) (c.location.y )>>SUBSAMPLE_BY;
+            if(y<0)y=0; else if(y>=ny)y=ny-1;
+            grid[x][y] = c;
+            map.put(c,new Point(x,y));
+        }
+        
+        /** Clears the map
+         * 
+         */
+        protected void reset() {
+            if (grid == null) {
+                init();
+            } else {
+                for (Cluster[] ca : grid) {
+                    Arrays.fill(ca, null);
+                }
+            }
+        }
+        
+        /** Removes the cluster
+         * 
+         * @param c the cluster to be removed 
+         */
+        protected void removeCluster(Cluster c){
+                       if(map.containsKey(c)){
+                Point p=map.get(c);
+                grid[p.x][p.y]=null;
+                map.remove(c);
+            }
+        }
+    }
     
     
 }

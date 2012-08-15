@@ -29,7 +29,10 @@ public class ClusterPathPoint extends Point2D.Float {
     public int getT() {
         return t;
     }
-
+   /** Returns number of events that contributed to this point. 
+    * 
+    * @return number of events
+    */
     public int getNEvents() {
         return nEvents;
     }
