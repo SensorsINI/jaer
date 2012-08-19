@@ -1622,8 +1622,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     {   
 //        for (JPanel p:customControls)
 //            controls.remove(p);
-        controlPanel.removeAll();
-        
+        if (controlPanel!=null)
+        {
+            controlPanel.removeAll();
+            controlPanel.repaint();
+        }
 //        customControls.clear();
         
     }

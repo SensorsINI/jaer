@@ -7,6 +7,7 @@ package jspikestack;
 import java.awt.*;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
+import java.lang.reflect.InvocationTargetException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -143,10 +144,36 @@ public class NetPlotter {
     }
         
     
-    /** Create a figure for plotting the state of the network for the network */
     public JPanel createStatePlot()
     {
-        JPanel hostPanel=new JPanel();
+        final JPanel hostPanel=new JPanel();
+                
+        if (!SwingUtilities.isEventDispatchThread())
+        {  
+            try {
+                SwingUtilities.invokeAndWait(new Runnable(){
+                    @Override
+                    public void run() {
+                        createStatePlot(hostPanel);
+                    }
+                });
+            } catch (InterruptedException ex) {
+                Logger.getLogger(NetPlotter.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (InvocationTargetException ex) {
+                Logger.getLogger(NetPlotter.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        else
+            createStatePlot(hostPanel);
+        return hostPanel;
+    }
+   
+    
+    /** Create a figure for plotting the state of the network for the network */
+    public void createStatePlot(JPanel hostPanel)
+    {
+        
+//        JPanel hostPanel=new JPanel();
         hostPanel.setLayout(new BorderLayout());
         
 //        hostPanel.setPreferredSize(new Dimension(1000,800));
@@ -264,7 +291,7 @@ public class NetPlotter {
             
         }
         
-        return hostPanel;
+//        return hostPanel;
     }
     
     public void addControls(ControlPanel cp)

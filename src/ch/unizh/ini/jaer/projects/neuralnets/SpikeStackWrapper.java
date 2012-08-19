@@ -85,7 +85,13 @@ public class SpikeStackWrapper <NetType extends SpikeStack> {
         if (addr==-1)
             return null;
         else 
-            return new Spike(R.translateTime(ev.timestamp),addr,R.ev2layer(ev));
+        {   int layer=R.ev2layer(ev);
+            if (layer!=-1)
+                return new Spike(R.translateTime(ev.timestamp),addr,R.ev2layer(ev));
+            else
+                return null;
+        }
+            
     }
     
     /** Convert a cluster event to spike, using its cluster-relative position */

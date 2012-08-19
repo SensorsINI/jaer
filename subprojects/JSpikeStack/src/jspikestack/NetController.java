@@ -110,7 +110,7 @@ public class NetController<LayerType extends AxonBundle,LayerGlobalType extends 
         recorder.setRecodingState(state);
     }
     
-    public void saveRecoding()
+    public void saveRecording()
     {
         recorder.printToFile();
     }

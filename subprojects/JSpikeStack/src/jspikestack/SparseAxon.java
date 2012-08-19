@@ -5,6 +5,7 @@
 package jspikestack;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Random;
 
 /**
@@ -92,7 +93,7 @@ public class SparseAxon<GlobalParams extends AxonBundle.Globals>  extends AxonBu
      * 
      * @param wk 
      */
-    public void defineKernel(float wk[][])
+    public void defineKernel(final float wk[][])
     {
         if (preLayer.dimx * preLayer.dimy != preLayer.nUnits())
             throw new RuntimeException("The product of dimensions of the pre-Synaptic layer ("+preLayer.dimx * preLayer.dimy +") don't match the number of units (" + preLayer.nUnits() + ")");
@@ -150,62 +151,177 @@ public class SparseAxon<GlobalParams extends AxonBundle.Globals>  extends AxonBu
             this.targets=targies;
 
 
-        }
-        else{
+        } else{
             // Iterate through output units and add the connection for each input unit.
             
-            ArrayList<Float>[] weights=new ArrayList[preLayer.nUnits()];
-            ArrayList<Integer>[] targs=new ArrayList[preLayer.nUnits()];
+            LinkedList<Float>[] weights=new LinkedList[preLayer.nUnits()];
+            LinkedList<Integer>[] targs=new LinkedList[preLayer.nUnits()];
             for (int i=0; i<weights.length; i++)
-            {   weights[i]=new ArrayList();
-                targs[i]=new ArrayList();
-            }
-            for (int i=0; i<postLayer.nUnits(); i++)
-            {
-                
-                int odimx=i/postLayer.dimy;
-                int odimy=i%postLayer.dimy;
-                
-                // Find the input around which this output should be centred
-                int idimx=(preLayer.dimx*odimx)/postLayer.dimx;            
-                int idimy=(preLayer.dimy*odimy)/postLayer.dimy;           
-                
-               
-                // Create target units
-                for (int j=0; j<wk.length; j++)
-                    for (int k=0; k<wk[j].length; k++)
-                    {
-                        // Location of input neuron of this synapse
-                        int ix=idimx-wk[j].length/2+k;
-                        int iy=idimy-wk.length/2+j;
-                        
-                        if (ix<0 || ix>=preLayer.dimx || iy<0 || iy>=preLayer.dimy)
-                            continue;
-                        
-                        // Input neuron address
-                        int index=iy+ix*preLayer.dimy;
-                        
-                        weights[index].add(wk[j][k]);
-                        targs[index].add(i);
-                    }
+            {   weights[i]=new LinkedList();
+                targs[i]=new LinkedList();
             }
             
+            
+            abstract class Operation
+            {
+                abstract void run(int inputix,int outputix,float kernval);
+            }
+            
+            final int[] preUnitOutputCount=new int[preLayer.nUnits()];
+            
+            // Define a class to iterate through post units, find their pre-units.
+            class IterateThrough
+            {
+                public void run(Operation op)
+                {
+                    // Step 1: go through all output units, find the associated input units, and find the number of outputs that each input will have
+                    
+                    for (int i=0; i<postLayer.nUnits(); i++)
+                    {
 
-            // Rebuild everything as a good old fashoned array
-            w=new float[weights.length][];
-            targets=new int[weights.length][];
-            for (int i=0; i<weights.length; i++)
-            {   w[i]=new float[weights[i].size()];
-                targets[i]=new int[weights[i].size()];
-                for (int j=0; j<weights[i].size(); j++)
-                {   w[i][j]=weights[i].get(j);
-                    targets[i][j]=targs[i].get(j);
+                        int odimx=i/postLayer.dimy;
+                        int odimy=i%postLayer.dimy;
+
+                        // Find the input around which this output should be centred
+                        int idimx=(preLayer.dimx*odimx)/postLayer.dimx;            
+                        int idimy=(preLayer.dimy*odimy)/postLayer.dimy;           
+
+                        // Create target units
+                        for (int j=0; j<wk.length; j++)
+                        {   for (int k=0; k<wk[j].length; k++)
+                            {
+                                // Location of input neuron of this synapse
+                                int ix=idimx-wk[j].length/2+k;
+                                int iy=idimy-wk.length/2+j;
+
+                                if (ix<0 || ix>=preLayer.dimx || iy<0 || iy>=preLayer.dimy)
+                                    continue;
+
+                                // Input neuron address
+                                int index=iy+ix*preLayer.dimy;
+
+                                preUnitOutputCount[index]++;
+
+                                op.run(index,i,wk[j][k]);
+                                
+                            }
+                        }
+                    }
                 }
             }
+            
+            IterateThrough it=new IterateThrough();
+            
+            // Step 1: Count how many outputs each input will send to.
+            it.run(new Operation(){
+                @Override
+                void run(int inputix,int outputix,float ken) {
+                    preUnitOutputCount[inputix]++;
+                }           
+            });
+            
+            // Step 2: Allocate arrays
+            w=new float[preLayer.nUnits()][];
+            targets=new int[preLayer.nUnits()][];
+            for (int i=0; i<w.length; i++)
+            {   w[i]=new float[preUnitOutputCount[i]];
+                targets[i]=new int[preUnitOutputCount[i]];
+                preUnitOutputCount[i]=0;
+            }
+            
+            // Step 3, fill in values            
+            it.run(new Operation(){
+                @Override
+                void run(int inputix,int outputix,float kernval) {
+                    w[inputix][preUnitOutputCount[inputix]]=kernval;
+                    targets[inputix][preUnitOutputCount[inputix]++]=outputix;
+                }           
+            });
+            
+            
+                                
+            
+            
+            
+//
+//            // Rebuild everything as a good old fashoned array
+//            w=new float[weights.length][];
+//            targets=new int[weights.length][];
+//            for (int i=0; i<weights.length; i++)
+//            {   w[i]=new float[weights[i].size()];
+//                targets[i]=new int[weights[i].size()];
+//                for (int j=0; j<weights[i].size(); j++)
+//                {   w[i][j]=weights[i].get(j);
+//                    targets[i][j]=targs[i].get(j);
+//                }
+//            }
                 
-            System.out.println("STOPP");    
+//            System.out.println("STOPP");    
             
         }
+        
+        
+        
+        
+//        else{
+//            // Iterate through output units and add the connection for each input unit.
+//            
+//            LinkedList<Float>[] weights=new LinkedList[preLayer.nUnits()];
+//            LinkedList<Integer>[] targs=new LinkedList[preLayer.nUnits()];
+//            for (int i=0; i<weights.length; i++)
+//            {   weights[i]=new LinkedList();
+//                targs[i]=new LinkedList();
+//            }
+//            
+//            
+//            // Step 1: go through all output units, find the associated input units, and 
+//            
+//            for (int i=0; i<postLayer.nUnits(); i++)
+//            {
+//                
+//                int odimx=i/postLayer.dimy;
+//                int odimy=i%postLayer.dimy;
+//                
+//                // Find the input around which this output should be centred
+//                int idimx=(preLayer.dimx*odimx)/postLayer.dimx;            
+//                int idimy=(preLayer.dimy*odimy)/postLayer.dimy;           
+//                
+//               
+//                // Create target units
+//                for (int j=0; j<wk.length; j++)
+//                    for (int k=0; k<wk[j].length; k++)
+//                    {
+//                        // Location of input neuron of this synapse
+//                        int ix=idimx-wk[j].length/2+k;
+//                        int iy=idimy-wk.length/2+j;
+//                        
+//                        if (ix<0 || ix>=preLayer.dimx || iy<0 || iy>=preLayer.dimy)
+//                            continue;
+//                        
+//                        // Input neuron address
+//                        int index=iy+ix*preLayer.dimy;
+//                        
+//                        weights[index].add(wk[j][k]);
+//                        targs[index].add(i);
+//                    }
+//            }
+//            
+//
+//            // Rebuild everything as a good old fashoned array
+//            w=new float[weights.length][];
+//            targets=new int[weights.length][];
+//            for (int i=0; i<weights.length; i++)
+//            {   w[i]=new float[weights[i].size()];
+//                targets[i]=new int[weights[i].size()];
+//                for (int j=0; j<weights[i].size(); j++)
+//                {   w[i][j]=weights[i].get(j);
+//                    targets[i][j]=targs[i].get(j);
+//                }
+//            }
+//                
+//            System.out.println("STOPP");    
+//            
+//        }
         
         
         

@@ -48,11 +48,11 @@ public class AEFileProcessor {
         filt.plotNet(false);
         filt.nc.setRecordingState(true);
         filt.nc.addAllControls();
-        filt.nc.view.realTime=true;
+        filt.nc.view.realTime=false;
                 
         aerp.run(); // Run the events through the filter!
         
-        filt.nc.saveRecoding();
+        filt.nc.saveRecording();
         
         
         

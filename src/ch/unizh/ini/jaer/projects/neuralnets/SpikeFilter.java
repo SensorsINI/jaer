@@ -111,8 +111,8 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         axonGlobs=null;
         if (nc!=null)
         {   nc.view.enable=false;
-            super.removeControls();
         }
+        super.removeControls();
         super.removeDisplays();
         
         
@@ -219,6 +219,8 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     /** Start the thing */
     public void initializeNetwork()
     {
+        resetFilter();
+        
         SpikeStack net=getInitialNet();
         customizeNet(net);
         wrapNet=new SpikeStackWrapper(nc,makeMapper(net));

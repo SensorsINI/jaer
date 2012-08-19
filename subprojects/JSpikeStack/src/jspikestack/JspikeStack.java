@@ -99,6 +99,10 @@ public class JspikeStack {
         
         net.ax(1,2).setEnableFastSTDP(true);
         net.ax(3,2).setEnableFastSTDP(true);
+//        net.ax(1,4).setEnableFastSTDP(true);
+//        net.ax(2,4).setEnableFastSTDP(true);
+//        net.ax(3,4).setEnableFastSTDP(true);
+//        un.thresh=1.5f;
         
         lg.stdpWin=30000;
         lg.fastSTDP.plusStrength=-.0005f;

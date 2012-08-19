@@ -155,6 +155,17 @@ public class AxonBundle<GlobalParams extends AxonBundle.Globals>
     }
     
     
+    public void setAllWeights(float wval)
+    {
+//        w=new float[preLayer.nUnits()][postLayer.nUnits()];
+        
+        for (int i=0; i<w.length; i++)
+            for (int j=0; j<w[i].length; j++)
+                w[i][j]=wval;
+    }
+    
+    
+    
 //        /** Scale thresholds of all units */
 //        public void scaleThresholds(float sc)
 //        {   for (SpikeStack.Unit u: units)
@@ -377,6 +388,22 @@ public class AxonBundle<GlobalParams extends AxonBundle.Globals>
         return "Axons from "+preLayer.toString()+" to "+postLayer.toString();
     }
 
+    
+    public static class AxonEvent extends PSP
+    {
+        final AxonBundle ax;
+        
+        public AxonEvent(Spike sp,AxonBundle axe)
+        {   super(sp);
+            ax=axe;
+        }
+
+        @Override
+        public int getHitTime() {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+        
+    }
     
     
 //    public static class Initializer

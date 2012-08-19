@@ -93,6 +93,9 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
     
     public void removeDisplays()
     {
+        if (this.getChip().getAeViewer()==null)
+            return;
+        
         if (this.getChip().getAeViewer().globalized) 
             for (Component c:customDisplays)
                 this.getChip().getAeViewer().getJaerViewer().globalViewer.removeDisplay(c);
@@ -111,18 +114,27 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
     
     /** Remove all added controls */
     public void removeControls()
-    {
-        getControlPanel().removeCustomControls();
+    {   FilterPanel p=getControlPanel();
+        if (p!=null)
+            p.removeCustomControls();
     }
     
     /** Retrieves the control panel for this filter, allowing you to customize it */
     private FilterPanel getControlPanel()
     {
+        if((this.getChip().getAeViewer())==null)
+            return null;
         
         if (this.getChip().getAeViewer().globalized) //
             return this.getChip().getAeViewer().getJaerViewer().globalViewer.procNet.getControlPanelFromFilter(this);
         else // Backwards compatibility
-            return this.getChip().getAeViewer().getFilterFrame().getFilterPanelForFilter(this);
+        {
+            if (this.getChip().getAeViewer().getFilterFrame()==null)
+                return null;
+            else
+                return this.getChip().getAeViewer().getFilterFrame().getFilterPanelForFilter(this);
+            
+        }
     }
         
     

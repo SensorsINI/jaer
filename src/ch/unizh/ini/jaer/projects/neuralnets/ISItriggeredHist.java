@@ -111,8 +111,11 @@ public class ISItriggeredHist extends SpikeFilter {
     public EventPacket<?> filterPacket(EventPacket<?> in) 
     {
         
+        
+         if (wrapNet==null)
+             return in;
         // Initialize Remapper
-        if (wrapNet!=null && !wrapNet.R.isBaseTimeSet())
+        if (!wrapNet.R.isBaseTimeSet())
             wrapNet.R.setBaseTime(in.getFirstTimestamp());
         
 //        int skipped=0;
