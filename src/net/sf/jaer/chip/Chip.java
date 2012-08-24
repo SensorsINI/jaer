@@ -293,6 +293,14 @@ public class Chip extends Observable {
     public boolean isDefaultPreferencesLoadedOnce(){
         return getPrefs().getBoolean(PREFERENCES_LOADED_ONCE_KEY, false);
     }
-
+    
+    
+    /** Returns the logger used to log info
+     * 
+     * @return logger of the chip
+     */
+    public Logger getLog(){
+        return Chip.log;
+    }
 
 }

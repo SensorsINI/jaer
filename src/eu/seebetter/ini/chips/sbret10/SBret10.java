@@ -10,6 +10,7 @@ import ch.unizh.ini.jaer.chip.retina.*;
 import com.sun.opengl.util.j2d.TextRenderer;
 import eu.seebetter.ini.chips.*;
 import eu.seebetter.ini.chips.config.*;
+import eu.seebetter.ini.chips.sbret10.SBret10.SBret10Config.*;
 import java.awt.event.ActionEvent;
 import java.awt.geom.Point2D.Float;
 import java.util.Observer;
@@ -23,7 +24,6 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.hardwareinterface.*;
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Insets;
 import java.awt.Rectangle;
@@ -33,16 +33,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
-import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Observable;
-import java.util.StringTokenizer;
-import java.util.concurrent.Semaphore;
+import java.util.*;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.AbstractAction;
@@ -59,8 +52,6 @@ import javax.swing.border.TitledBorder;
 import net.sf.jaer.Description;
 import net.sf.jaer.biasgen.Pot.Sex;
 import net.sf.jaer.biasgen.Pot.Type;
-import net.sf.jaer.biasgen.VDAC.DAC;
-import net.sf.jaer.biasgen.VDAC.VPotGUIControl;
 import net.sf.jaer.biasgen.coarsefine.AddressedIPotCF;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceControlsCF;
@@ -68,8 +59,6 @@ import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.RetinaRenderer;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.util.ParameterControlPanel;
-import net.sf.jaer.util.RemoteControlCommand;
-import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 
 /**
@@ -464,25 +453,13 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
      */
     public class SBret10Config extends SBretChipConfig { // extends Config to give us containers for various configuration data
 
-        /** Number of ADC clock cycles per us, for converting from GUIs to config values */
-        public static final int ADC_CLK_CYCLES_PER_US = 15;
-        /** Number of state transitions for one row without the readout of B (without wait times) */
-        public static final int ROW_CC_WO_B = 7;
-        /** Number of state transitions for one row with the readout of B (without wait times) */
-        public static final int ROW_CC = 13;
-        /** Number of additional state transitions (in addition to row readout) for one column (without wait times) */
-        public static final int COL_CC = 6;
-        /** Number of additional state transitions (in addition to row & col readout) for one frame (without wait times) */
-        public static final int FRAME_CC = 4;
         /** VR for handling all configuration changes in firmware */
         public static final byte VR_WRITE_CONFIG = (byte) 0xB8;
         ArrayList<HasPreference> hasPreferencesList = new ArrayList<HasPreference>();
-        AllMuxes allMuxes = null; // the output muxes
-        private ShiftedSourceBiasCF ssn, ssp, ssnMid, sspMid;
+        ChipConfigChain chipConfigChain = null;
+        private ShiftedSourceBiasCF ssn, ssp;
         private ShiftedSourceBiasCF[] ssBiases = new ShiftedSourceBiasCF[2];
 //        private VPot thermometerDAC;
-        ExtraOnChipConfigBits extraOnchipConfigBits = null;
-        ExtraBiasDiagBits extraBiasDiagBits = null;
         int address = 0;
         JPanel bPanel;
         JTabbedPane bgTabbedPane;
@@ -496,20 +473,18 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
         PortBit powerDown = new PortBit(SBret10.this, "e2", "powerDown", "High to disable master bias and tie biases to default rails", false);
         PortBit nChipReset = new PortBit(SBret10.this, "e3", "nChipReset", "Low to reset AER circuits and hold pixels in reset, High to run", true); // shouldn't need to manipulate from host
         // CPLD shift register contents specified here by CPLDInt and CPLDBit
-        private CPLDInt adcConfig = new CPLDInt(SBret10.this, 15, 0, "adcConfig", "ADC configuration bits; computed by ADC with channel and sequencing parameters", 352);
-        private CPLDInt exposureB = new CPLDInt(SBret10.this, 31, 16, "exposureB", "time between reset and readout of a pixel", 0);
-        private CPLDInt exposureC = new CPLDInt(SBret10.this, 47, 32, "exposureC", "time between reset and readout of a pixel for a second time (min 240!)", 240);
-        private CPLDInt colSettle = new CPLDInt(SBret10.this, 63, 48, "colSettle", "time to settle a column select before readout", 0);
-        private CPLDInt rowSettle = new CPLDInt(SBret10.this, 79, 64, "rowSettle", "time to settle a row select before readout", 0);
-        private CPLDInt resSettle = new CPLDInt(SBret10.this, 95, 80, "resSettle", "time to settle a reset before readout", 0);
-        private CPLDInt frameDelay = new CPLDInt(SBret10.this, 111, 96, "frameDelay", "time between two frames", 0);
-        private CPLDInt padding = new CPLDInt(SBret10.this, 117, 112, "pad", "used to zeros", 0);
-        private CPLDBit testpixel = new CPLDBit(SBret10.this, 118, "testPixel", "enables continuous scanning of testpixel", false);
-        private CPLDBit useC = new CPLDBit(SBret10.this, 119, "useC", "enables a second readout", false);
+        private CPLDInt exposureB = new CPLDInt(SBret10.this, 15, 0, "exposureB", "time between reset and readout of a pixel", 0);
+        private CPLDInt exposureC = new CPLDInt(SBret10.this, 31, 16, "exposureC", "time between reset and readout of a pixel for a second time (min 240!)", 240);
+        private CPLDInt colSettle = new CPLDInt(SBret10.this, 47, 32, "colSettle", "time to settle a column select before readout", 0);
+        private CPLDInt rowSettle = new CPLDInt(SBret10.this, 63, 48, "rowSettle", "time to settle a row select before readout", 0);
+        private CPLDInt resSettle = new CPLDInt(SBret10.this, 79, 64, "resSettle", "time to settle a reset before readout", 0);
+        private CPLDInt frameDelay = new CPLDInt(SBret10.this, 95, 80, "frameDelay", "time between two frames", 0);
+        private CPLDBit testpixel = new CPLDBit(SBret10.this, 96, "testPixel", "enables continuous scanning of testpixel", false);
+        private CPLDBit useC = new CPLDBit(SBret10.this, 97, "useC", "enables a second readout", false);
         //
         // lists of ports and CPLD config
         private ADC adc;
-//        private Scanner scanner;
+//        private Scanner scanner; 
         private ApsReadoutControl apsReadoutControl;
         // other options
         private boolean autoResetEnabled; // set in loadPreferences
@@ -532,14 +507,12 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             addConfigValue(resetTestpixel);
 
             // cpld shift register stuff
-            addConfigValue(adcConfig);
             addConfigValue(exposureB);
             addConfigValue(exposureC);
             addConfigValue(resSettle);
             addConfigValue(rowSettle);
             addConfigValue(colSettle);
             addConfigValue(frameDelay);
-            addConfigValue(padding);
             addConfigValue(testpixel);
             addConfigValue(useC);
 
@@ -598,17 +571,10 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             } catch (Exception e) {
                 throw new Error(e.toString());
             }
-            // on-chip diagnose bits for the bias generator
-            extraBiasDiagBits = new ExtraBiasDiagBits();
-            extraBiasDiagBits.addObserver(this);
             
-            // on-chip output muxes
-            allMuxes = new AllMuxes();
-            allMuxes.addObserver(this);
-
-            // extra configuration bits
-            extraOnchipConfigBits = new ExtraOnChipConfigBits();
-            extraOnchipConfigBits.addObserver(this);
+            // on-chip configuration chain
+            chipConfigChain = new ChipConfigChain(chip);
+            chipConfigChain.addObserver(this);
 
             // adc 
             adc = new ADC();
@@ -704,23 +670,20 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             }   
             
             //diagnose SR
-            sendMuxAndConfigBits();
+            sendChipConfig();
             return true;
         }
         
-        public boolean sendMuxAndConfigBits() throws HardwareInterfaceException{
-            //diagnose SR
-            String biasConfigBits = extraBiasDiagBits.getBitString();
-            String configBitsBits = extraOnchipConfigBits.getBitString();
-            String muxBitsBits = allMuxes.getBitString(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
-            String onChipConfigBits = ("0"+configBitsBits + muxBitsBits + biasConfigBits);
-            byte[] muxAndConfigBytes = bitString2Bytes(onChipConfigBits); // returns bytes padded at end
-            if (muxAndConfigBytes == null) {
-                return false; // not ready yet, called by super
+        public boolean sendChipConfig() throws HardwareInterfaceException{
+            
+            byte[] onChipConfigBits = chipConfigChain.getBitString();
+            if(onChipConfigBits == null){
+                return false;
+            } else {
+                //System.out.println("Send on chip config (length"+onChipConfigBits.length()+"): "+onChipConfigBits);
+                sendConfig(CMD_CHIP_CONFIG, 0, onChipConfigBits);
+                return true;
             }
-            //System.out.println("Send on chip config (length"+onChipConfigBits.length()+"): "+onChipConfigBits);
-            sendConfig(CMD_CHIP_CONFIG, 0, muxAndConfigBytes);
-            return true;
         }
 
         /**
@@ -831,8 +794,8 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             try {
                 if (observable instanceof IPot || observable instanceof VPot) { // must send all of the onchip shift register values to replace shift register contents
                     sendOnchipConfig();
-                } else if (observable instanceof AllMuxes || observable instanceof OnchipConfigBit) {
-                    sendMuxAndConfigBits();
+                } else if (observable instanceof OutputMux || observable instanceof OnchipConfigBit) {
+                    sendChipConfig();
                 } else if (observable instanceof Masterbias) {
                     powerDown.set(getMasterbias().isPowerDownEnabled());
                 } else if (observable instanceof TriStateablePortBit) { // tristateable should come first before configbit since it is subclass
@@ -947,7 +910,7 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
 
         /**
          *
-         * Overrides the default method to addConfigValue the custom control panel for configuring the cDVSTest output muxes
+         * Overrides the default method to addConfigValue the custom control panel for configuring the SBret10 output muxes
          * and many other chip and board controls.
          *
          * @return a new panel for controlling this chip and board configuration
@@ -959,10 +922,7 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             bPanel.setLayout(new BorderLayout());
             // add a reset button on top of everything
             final Action resetChipAction = new AbstractAction("Reset chip") {
-
-                {
-                    putValue(Action.SHORT_DESCRIPTION, "Resets the pixels and the AER logic momentarily");
-                }
+                {putValue(Action.SHORT_DESCRIPTION, "Resets the pixels and the AER logic momentarily");}
 
                 @Override
                 public void actionPerformed(ActionEvent evt) {
@@ -971,20 +931,17 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             };
 
             final Action autoResetAction = new AbstractAction("Enable automatic chip reset") {
-
-                {
-                    putValue(Action.SHORT_DESCRIPTION, "Enables reset after no activity when nChipReset is inactive");
-                    putValue(Action.SELECTED_KEY,isAutoResetEnabled());
-                }
+                {putValue(Action.SHORT_DESCRIPTION, "Enables reset after no activity when nChipReset is inactive");
+                    putValue(Action.SELECTED_KEY,isAutoResetEnabled());}
 
                 @Override
                 public void actionPerformed(ActionEvent e) {
                     setAutoResetEnabled(!autoResetEnabled);
                 }
             };
+            
             JPanel specialButtons = new JPanel();
             specialButtons.setLayout(new BoxLayout(specialButtons, BoxLayout.X_AXIS));
-//            specialButtons.add(new JButton(sendConfigAction));
             specialButtons.add(new JButton(resetChipAction));
             specialButtons.add(new JCheckBoxMenuItem(autoResetAction));
             bPanel.add(specialButtons, BorderLayout.NORTH);
@@ -997,34 +954,17 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssn));
             combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssp));
             bgTabbedPane.addTab("Biases", combinedBiasShiftedSourcePanel);
-            bgTabbedPane.addTab("Output MUX control", allMuxes.buildControlPanel());
-            JPanel adcScannerLogPanel = new JPanel();
-            adcScannerLogPanel.setLayout(new BoxLayout(adcScannerLogPanel, BoxLayout.Y_AXIS));
-            bgTabbedPane.add("Analog output", adcScannerLogPanel);
-            adcScannerLogPanel.add(new ParameterControlPanel(adc));
-//            adcScannerLogPanel.add(new ParameterControlPanel(scanner));
-            adcScannerLogPanel.add(new ParameterControlPanel(apsReadoutControl));
+            bgTabbedPane.addTab("Output MUX control", chipConfigChain.buildMuxControlPanel());
+            
+            JPanel apsReadoutPanel = new JPanel();
+            apsReadoutPanel.setLayout(new BoxLayout(apsReadoutPanel, BoxLayout.Y_AXIS));
+            bgTabbedPane.add("APS Readout", apsReadoutPanel);
+            apsReadoutPanel.add(new ParameterControlPanel(adc));
+            apsReadoutPanel.add(new ParameterControlPanel(apsReadoutControl));
 
-            JPanel moreConfig = new JPanel(new BorderLayout());
+            JPanel chipConfigPanel = chipConfigChain.getChipConfigPanel();
 
-            JPanel extraPanel = extraOnchipConfigBits.makeControlPanel();
-            extraPanel.setBorder(new TitledBorder("Extra on-chip bits"));
-            moreConfig.add(extraPanel, BorderLayout.NORTH);
-               
-            JPanel diagPanel = extraBiasDiagBits.makeControlPanel();
-            diagPanel.setBorder(new TitledBorder("Extra bias diagnose bits"));
-            moreConfig.add(diagPanel, BorderLayout.WEST);
-
-            JPanel portBitsPanel = new JPanel();
-            portBitsPanel.setLayout(new BoxLayout(portBitsPanel, BoxLayout.Y_AXIS));
-            for (PortBit p : portBits) {
-                portBitsPanel.add(new JRadioButton(p.getAction()));
-            }
-            portBitsPanel.setBorder(new TitledBorder("Cypress FX2 port bits"));
-
-            moreConfig.add(portBitsPanel, BorderLayout.CENTER);
-
-            bgTabbedPane.addTab("More config", moreConfig);
+            bgTabbedPane.addTab("Chip configuration", chipConfigPanel);
 
             bPanel.add(bgTabbedPane, BorderLayout.CENTER);
             // only select panel after all added
@@ -1052,81 +992,7 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             getPrefs().putInt("SBret10.bgTabbedPaneSelectedIndex", bgTabbedPane.getSelectedIndex());
         }
 
-        /** Formats the data sent to the microcontroller to load bias and other configuration to the chip (not FX2 or CPLD configuration). 
-        <p>
-         * Data is sent in bytes. Each byte is loaded into the shift register in big-endian bit order, starting with the msb and ending with the lsb.
-         * Bytes are loaded starting with the first byte from formatConfigurationBytes (element 0). Therefore the last bit in the on-chip shift register (the one
-         * that is furthest away from the bit input pin) should be in the msb of the first byte returned by formatConfigurationBytes.
-         * @return byte array to be sent, which will be loaded into the chip starting with element 0 msb.
-         * @param biasgen this SeeBetterConfig
-         */
-//        @Override
-//        public byte[] formatConfigurationBytes(Biasgen biasgen) {
-//            ByteBuffer bb = ByteBuffer.allocate(1000);
-//
-//            if (getPotArray() == null) {
-//                return null; // array not yet contructed, we were called here by super()
-//            }            // must return integral number of bytes and on-chip biasgen must be integral number of bytes, by method contract
-////            ByteBuffer potbytes = ByteBuffer.allocate(300);
-//
-//
-//            AddressedIPotArray ipots = (AddressedIPotArray) potArray;
-//
-//            byte[] bytes = new byte[potArray.getNumPots() * 8];
-//            int byteIndex = 0;
-//
-//
-//            Iterator i = ipots.getShiftRegisterIterator();
-//            while (i.hasNext()) {
-//                // for each bias starting with the first one (the one closest to the ** END ** of the shift register
-//                // we get the binary representation in byte[] form and from MSB ro LSB stuff these values into the byte array
-//                AddressedIPot iPot = (AddressedIPot) i.next();
-//                byte[] thisBiasBytes = iPot.getBinaryRepresentation();
-//                System.arraycopy(thisBiasBytes, 0, bytes, byteIndex, thisBiasBytes.length);
-//                byteIndex += thisBiasBytes.length;
-////                log.info("added bytes for "+iPot);
-//            }
-//            byte[] potbytes = new byte[byteIndex];
-//            System.arraycopy(bytes, 0, potbytes, 0, byteIndex);
-//
-//
-//
-////        for (Pot p : getPotArray().getPots()) {
-////                potbytes.put(p.getBinaryRepresentation());
-////            }
-////            potbytes.flip(); // written in order 
-//
-//            String configBitsBits = extraOnchipConfigBits.getBitString();
-//            String muxBitsBits = allMuxes.getBitString(); // the first nibble is the imux in big endian order, bit3 of the imux is the very first bit.
-//
-//            byte[] muxAndConfigBytes = bitString2Bytes((configBitsBits + muxBitsBits)); // returns bytes padded at end
-//
-//            bb.put(muxAndConfigBytes); // loaded first to go to far end of shift register
-//
-//            // 256 value (8 bit) VDAC for amplifier reference
-//            byte vdac = (byte) thermometerDAC.getBitValue(); //Byte.valueOf("9");
-//            bb.put(vdac);   // VDAC needs 8 bits
-//            bb.put(potbytes);
-//
-//            // the 4 shifted sources, each 2 bytes
-//            for (ShiftedSourceBiasCF ss : ssBiases) {
-//                bb.put(ss.getBinaryRepresentation());
-//            }
-//
-//            // make buffer for all output bytes
-//            byte[] allBytes = new byte[bb.position()];
-//            bb.flip(); // flips to read them out in order of putting them in, i.e., get configBitBytes first
-//            bb.get(allBytes); // we write these in vendor request
-//
-////            StringBuilder sb = new StringBuilder(allBytes.length + " bytes sent to FX2 to be loaded big endian into on-chip shift register for each byte in order \n");
-////            for (byte b : allBytes) {
-////                sb.append(String.format("%02x ", b));
-////            }
-////            log.info(sb.toString());
-//            return allBytes; // configBytes may be padded with extra bits to make up a byte, board needs to know this to chop off these bits
-//        }
-
-        /** Controls the log intensity readout by wrapping the relevant bits */
+        /** Controls the APS intensity readout by wrapping the relevant bits */
         public class ApsReadoutControl implements Observer {
 
             private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
@@ -1142,38 +1008,6 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
                 testpixel.addObserver(this);
                 useC.addObserver(this);
             }
-            
-            private int getColCCwoB(){
-                return(COL_CC+resSettle.get()+colSettle.get()+32*(ROW_CC_WO_B+rowSettle.get()));
-            }
-            
-            private int getColCC(){
-                return(COL_CC+resSettle.get()+colSettle.get()+32*(ROW_CC+rowSettle.get()));
-            }
-            
-            private int getFrameCC(){
-                return(exposureB.get()*getColCCwoB()+240*getColCC());
-            }
-
-//            public void setColSettleTime(int timeUs) {
-//                colSettle.set(timeUs * ADC_CLK_CYCLES_PER_US);
-//            }
-//
-//            public void setRowSettleTime(int timeUs) {
-//                rowSettle.set(timeUs * ADC_CLK_CYCLES_PER_US);
-//            }
-//            
-//            public void setResSettleTime(int timeUs) {
-//                colSettle.set(timeUs * ADC_CLK_CYCLES_PER_US);
-//            }
-//            
-//            public void setFrameDelay(int timeUs){
-//                frameTime.set(timeUs * ADC_CLK_CYCLES_PER_US);
-//            }
-//            
-//            public void setExposureDelay(int timeUs){
-//                exposureB.set(timeUs * ADC_CLK_CYCLES_PER_US);
-//            }
             
             public void setColSettleCC(int cc) {
                 colSettle.set(cc);
@@ -1214,53 +1048,6 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             public void setUseC(boolean useC) {
                 SBret10Config.this.useC.set(useC);
             }
-
-//            public void setExposureTime(int timeUs) {
-//                int desiredCC = timeUs * ADC_CLK_CYCLES_PER_US;
-//                int actualCC = getColCCwoB();
-//                if(desiredCC < actualCC){
-//                    exposureB.set(0);
-//                } else {
-//                    int diff = desiredCC-actualCC;
-//                    exposureB.set((int)diff/(actualCC));
-//                }
-//            }
-            
-//            public void setFramePeriodTime(int timeUs) {
-//                int desiredCC = timeUs * ADC_CLK_CYCLES_PER_US;
-//                int actualCC = getFrameCC();
-//                if(desiredCC < actualCC){
-//                    frameTime.set(0);
-//                } else {
-//                    int diff = desiredCC-actualCC;
-//                    frameTime.set((int)diff/(actualCC));
-//                }
-//            }
-            
-//            public void setFrameRefreshFrequency(int hz){
-//                setFramePeriodTime((int) 1000000/hz);
-//            }
-            
-
-//            public int getColSettleTime() {
-//                return colSettle.get() / ADC_CLK_CYCLES_PER_US;
-//            }
-//
-//            public int getRowSettleTime() {
-//                return rowSettle.get() / ADC_CLK_CYCLES_PER_US;
-//            }
-//            
-//            public int getResSettleTime() {
-//                return resSettle.get() / ADC_CLK_CYCLES_PER_US;
-//            }
-//            
-//            public int getFrameDelay() {
-//                return frameTime.get() / ADC_CLK_CYCLES_PER_US;
-//            }
-//            
-//            public int getExposureDelay() {
-//                return exposureB.get() / ADC_CLK_CYCLES_PER_US;
-//            }
             
             public int getColSettleCC() {
                 return colSettle.get();
@@ -1285,19 +1072,6 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             public int getExposureCDelayCC() {
                 return exposureC.get();
             }
-            
-//            public int getExposureTime() {
-//                return exposureB.get()*getColCCwoB() / ADC_CLK_CYCLES_PER_US;
-//            }
-            
-            
-//            public int getFrameTime() {
-//                return (frameTime.get()+getFrameCC()) / ADC_CLK_CYCLES_PER_US;
-//            }
-            
-//            public int getFrameRefreshFrequency() {
-//                return (int)(1000000/getFrameTime());
-//            }
 
             @Override
             public void update(Observable o, Object arg) {
@@ -1317,9 +1091,7 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
         }
 
         public class ADC extends Observable implements Observer {
-
-            private final int ADCchannelshift = 5;
-            private final short ADCconfig = (short) 0x160;   //normal power mode, single ended, channel 3, sequencer unused : (short) 0x908;
+;
             int channel = getPrefs().getInt("ADC.channel", 3);
             public final String EVENT_ADC_ENABLED = "adcEnabled", EVENT_ADC_CHANNEL = "adcChannel";
             private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
@@ -1350,21 +1122,6 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
                     }
                 }
                 runAdc.set(yes);
-            }
-            
-            public void setAdcChannel(int chan) {
-                if (chan <= 0) {
-                    chan = 0;
-                } else if (chan > 3) {
-                    chan = 3;
-                }
-                if (this.channel != chan) {
-                    setChanged();
-                }
-                this.channel = chan;
-                getPrefs().putInt("ADC.channel", chan);
-                adcConfig.set((ADCconfig | (chan << ADCchannelshift)));
-                notifyObservers();
             }
 
             @Override
@@ -1398,319 +1155,126 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
          * @param bitString in msb to lsb order from left end, where msb will be in msb of first output byte
          * @return array of bytes to send
          */
-        protected byte[] bitString2Bytes(String bitString) {
-            int nbits = bitString.length();
-            // compute needed number of bytes
-            int nbytes = (nbits % 8 == 0) ? (nbits / 8) : (nbits / 8 + 1); // 4->1, 8->1, 9->2
-            // for simplicity of following, left pad with 0's right away to get integral byte string
-            int npad = nbytes * 8 - nbits;
-            String pad = new String(new char[npad]).replace("\0", "0"); // http://stackoverflow.com/questions/1235179/simple-way-to-repeat-a-string-in-java
-            bitString = pad + bitString;
-            byte[] byteArray = new byte[nbytes];
-            int bit = 0;
-            for (int bite = 0; bite < nbytes; bite++) { // for each byte
-                for (int i = 0; i < 8; i++) { // iterate over each bit of this byte
-                    byteArray[bite] = (byte) ((0xff & byteArray[bite]) << 1); // first left shift previous value, with 0xff to avoid sign extension
-                    if (bitString.charAt(bit) == '1') { // if there is a 1 at this position of string (starting from left side) 
-                        // this conditional and loop structure ensures we count in bytes and that we left shift for each bit position in the byte, padding on the right with 0's
-                        byteArray[bite] |= 1; // put a 1 at the lsb of the byte
-                    }
-                    bit++; // go to next bit of string to the right
-
-                }
-            }
-            return byteArray;
-        }
-
-        /** Bits on the on-chip shift register but not an output mux control, added to end of shift register. Control
-         * holding different pixel arrays in reset and how the RC delays are configured.
         
-         */
-        public class ExtraOnChipConfigBits extends Observable implements HasPreference, Observer { // TODO fix for config bit of pullup
-
-            final int TOTAL_NUM_BITS = 24;  // number of these bits on this chip, at end of biasgen shift register
-            boolean value = false;
-            OnchipConfigBit pullupX = new OnchipConfigBit(SBret10.this, "useStaticPullupX", 0, "turn on static pullup for X addresses (columns)", false),
-                    pullupY = new OnchipConfigBit(SBret10.this, "useStaticPullupY", 1, "turn on static pullup for Y addresses (rows)", true);
-            OnchipConfigBit[] bits = {pullupX, pullupY};
-
-            public ExtraOnChipConfigBits() {
-                hasPreferencesList.add(this);
-                for (OnchipConfigBit b : bits) {
-                    b.addObserver(this);
-                }
-            }
-
-            @Override
-            public void loadPreference() {
-                for (OnchipConfigBit b : bits) {
-                    b.loadPreference();
-                }
-            }
-
-            @Override
-            public void storePreference() {
-                for (OnchipConfigBit b : bits) {
-                    b.storePreference();
-                }
-            }
-
-            /** Returns the bit string to send to the firmware to load a bit sequence for the config bits in the shift register.
-             * 
-             * Bytes sent to FX2 are loaded big endian into shift register (msb first). 
-             * Here returned string has named config bits at right end and unused bits at left end. Right most character is pullupX.
-             * Think of the entire on-chip shift register laid out from right to left with input at right end and extra config bits at left end.
-             * Bits are loaded in order of bit string here starting from left end (the unused registers)
-             * 
-             * @return string of 0 and 1 with first element of extraOnchipConfigBits at right hand end, and starting with padding bits to fill unused registers.
-             */
-            String getBitString() {
-                StringBuilder s = new StringBuilder();
-                // iterate over list
-                for (int i = 0; i < TOTAL_NUM_BITS - bits.length; i++) {
-                    s.append("1"); // loaded first into unused parts of final shift register
-                }
-                for (int i = bits.length - 1; i >= 0; i--) {
-                    s.append(bits[i].isSet() ? "1" : "0");
-                }
-//                log.info(s.length() + " extra config bits with unused registers at left end =" + s);
-                return s.toString();
-            }
-
-            /** Returns a control panel for setting the bits, using the Actions
-             * 
-             * @return the panel, with BoxLayout.Y_AXIS layout
-             */
-            JPanel makeControlPanel() {
-                JPanel pan = new JPanel();
-                pan.setLayout(new BoxLayout(pan, BoxLayout.Y_AXIS));
-                for (OnchipConfigBit b : bits) {
-                    JRadioButton but = new JRadioButton(b.getAction());
-                    pan.add(but);
-                }
-                return pan;
-            }
-
-            @Override
-            public void update(Observable o, Object arg) {
-                SBret10Config.this.update(o, arg); // pass update up to biasgen
-            }
-        } // ExtraOnChipConfigBits
-        
-        public class ExtraBiasDiagBits extends Observable implements HasPreference, Observer { // TODO fix for config bit of pullup
-
-            final int TOTAL_NUM_BITS = 7;  
-            boolean value = false;
-            OnchipConfigBit 
-                    resetTestPixel = new OnchipConfigBit(SBret10.this, "resetTestPixel", 4, "Reset the test pixel", true),
-                    resetCalibCircuit = new OnchipConfigBit(SBret10.this, "resetCalibCircuit", 5, "Reset the calibration circuit", true),
-                    nTypeCalibCircuit = new OnchipConfigBit(SBret10.this, "nTypeCalibCircuit", 7, "N type calibration circuit", true);
-            OnchipConfigBit[] bits = { resetTestPixel, resetCalibCircuit, nTypeCalibCircuit};
-
-            public ExtraBiasDiagBits() {
-                hasPreferencesList.add(this);
-                for (OnchipConfigBit b : bits) {
-                    b.addObserver(this);
-                }
-            }
-
-            @Override
-            public void loadPreference() {
-                for (OnchipConfigBit b : bits) {
-                    b.loadPreference();
-                }
-            }
-
-            @Override
-            public void storePreference() {
-                for (OnchipConfigBit b : bits) {
-                    b.storePreference();
-                }
-            }
-
-            /** Returns the bit string to send to the firmware to load a bit sequence for the config bits in the shift register.
-             * 
-             * Bytes sent to FX2 are loaded big endian into shift register (msb first). 
-             * Here returned string has named config bits at right end and unused bits at left end. Right most character is pullupX.
-             * Think of the entire on-chip shift register laid out from right to left with input at right end and extra config bits at left end.
-             * Bits are loaded in order of bit string here starting from left end (the unused registers)
-             * 
-             * @return string of 0 and 1 with first element of extraOnchipConfigBits at right hand end, and starting with padding bits to fill unused registers.
-             */
-            String getBitString() {
-                StringBuilder s = new StringBuilder();
-                for (int i = bits.length - 1; i >= 0; i--) {
-                    s.append(bits[i].isSet() ? "1" : "0");
-                }
-                //add bias mux
-                s.append(allMuxes.bmuxes[0].getBitString());
-//                log.info(s.length() + " extra config bits with unused registers at left end =" + s);
-                return s.toString();
-            }
-
-            /** Returns a control panel for setting the bits, using the Actions
-             * 
-             * @return the panel, with BoxLayout.Y_AXIS layout
-             */
-            JPanel makeControlPanel() {
-                JPanel pan = new JPanel();
-                pan.setLayout(new BoxLayout(pan, BoxLayout.Y_AXIS));
-                for (OnchipConfigBit b : bits) {
-                    JRadioButton but = new JRadioButton(b.getAction());
-                    pan.add(but);
-                }
-                return pan;
-            }
-
-            @Override
-            public void update(Observable o, Object arg) {
-                SBret10Config.this.update(o, arg); // pass update up to biasgen
-            }
-        } // ExtraOnChipConfigBits
-
-        /** the output multiplexors for on-chip diagnostic output */
-        public class AllMuxes extends Observable implements Observer {
-
-            OutputMux[] vmuxes = {new VoltageOutputMux(1), new VoltageOutputMux(2), new VoltageOutputMux(3)};
-            OutputMux[] dmuxes = {new LogicMux(1), new LogicMux(2), new LogicMux(3), new LogicMux(4), new LogicMux(5)};
-            OutputMux[] bmuxes = {new LogicMux(0)};
+        public class ChipConfigChain extends Observable implements HasPreference, Observer {
+            
+            Chip sbChip;
+            
+            //Config Bits
+            OnchipConfigBit resetCalib = new OnchipConfigBit(SBret10.this, "resetCalib", 0, "turn the calibration neuron off", true),
+                    typePCalib = new OnchipConfigBit(SBret10.this, "typePCalib", 1, "make the calibration neuron P type", false),
+                    resetTestpixel = new OnchipConfigBit(SBret10.this, "resetTestpixel", 2, "keept the testpixel in reset", true),
+                    hotPixelSuppression = new OnchipConfigBit(SBret10.this, "hotPixelSuppression", 3, "keept turn the hot pixel suppression on", false),
+                    nArow = new OnchipConfigBit(SBret10.this, "nArow", 4, "use nArow in the AER state machine", false),
+                    useAout = new OnchipConfigBit(SBret10.this, "useAout", 5, "turn the pads for the analog MUX outputs on", true)
+                    ;
+            OnchipConfigBit[] configBits = {resetCalib, typePCalib, resetTestpixel, hotPixelSuppression, nArow, useAout};
+            int TOTAL_CONFIG_BITS = 24;
+            
+            //Muxes
+            OutputMux[] amuxes = {new AnalogOutputMux(1), new AnalogOutputMux(2), new AnalogOutputMux(3)};
+            OutputMux[] dmuxes = {new DigitalOutputMux(1), new DigitalOutputMux(2), new DigitalOutputMux(3), new DigitalOutputMux(4)};
+            OutputMux[] bmuxes = {new DigitalOutputMux(0)};
             ArrayList<OutputMux> muxes = new ArrayList();
             MuxControlPanel controlPanel = null;
+            
+            public ChipConfigChain(Chip chip){  
+                
+                this.sbChip = chip;
+                
+                hasPreferencesList.add(this);
+                for (OnchipConfigBit b : configBits) {
+                    b.addObserver(this);
+                }
+            
+                muxes.addAll(Arrays.asList(bmuxes)); 
+                muxes.addAll(Arrays.asList(dmuxes)); // 4 digital muxes, first in list since at end of chain - bits must be sent first, before any biasgen bits
+                muxes.addAll(Arrays.asList(amuxes)); // finally send the 3 voltage muxes
 
-            /** A MUX for selecting output on the on-chip configuration/biasgen shift register. */
-            public class OutputMux extends Observable implements HasPreference, RemoteControlled {
-
-                int nSrBits;
-                int nInputs;
-                OutputMap map;
-                private String name = "OutputMux";
-                int selectedChannel = -1; // defaults to no input selected in the case of voltage and current, and channel 0 in the case of logic
-                String bitString = null;
-                final String CMD_SELECTMUX = "selectMux";
-
-                /**
-                 *  A set of output mux channels.
-                 * @param nsr number of shift register bits
-                 * @param nin number of input ports to mux
-                 * @param m the map where the info is stored
-                 */
-                OutputMux(int nsr, int nin, OutputMap m) {
-                    nSrBits = nsr;
-                    nInputs = nin;
-                    map = m;
-                    hasPreferencesList.add(this);
-                    setName(name); // stores remote contol command, maybe redundantly (which overwrites previous)
+                for (OutputMux m : muxes) {
+                    m.addObserver(this);
+                    m.setChip(chip);
                 }
 
-                @Override
-                public String toString() {
-                    return "OutputMux name=" + name + " nSrBits=" + nSrBits + " nInputs=" + nInputs + " selectedChannel=" + selectedChannel + " channelName=" + getChannelName(selectedChannel) + " code=" + getCode(selectedChannel) + " getBitString=" + bitString;
+                bmuxes[0].setName("BiasOutMux");
+
+                bmuxes[0].put(0,"IFThrBn");
+                bmuxes[0].put(1,"AEPuYBp");
+                bmuxes[0].put(2,"AEPuXBp");
+                bmuxes[0].put(3,"LColTimeout");
+                bmuxes[0].put(4,"AEPdBn");
+                bmuxes[0].put(5,"RefrBp");
+                bmuxes[0].put(6,"PrSFBp");
+                bmuxes[0].put(7,"PrBp");
+                bmuxes[0].put(8,"PixInvBn");
+                bmuxes[0].put(9,"LocalBufBn");
+                bmuxes[0].put(10,"ApsROSFBn");
+                bmuxes[0].put(11,"DiffCasBnc");
+                bmuxes[0].put(12,"ApsCasBpc");
+                bmuxes[0].put(13,"OffBn");
+                bmuxes[0].put(14,"OnBn");
+                bmuxes[0].put(15,"DiffBn");
+
+                dmuxes[0].setName("DigMux4");
+                dmuxes[1].setName("DigMux3");
+                dmuxes[2].setName("DigMux2");
+                dmuxes[3].setName("DigMux1");
+
+                for (int i = 0; i < 4; i++) {
+                    dmuxes[i].put(0, "AY179right");
+                    dmuxes[i].put(1, "Acol");
+                    dmuxes[i].put(2, "ColArbTopA");
+                    dmuxes[i].put(3, "ColArbTopR");
+                    dmuxes[i].put(4, "FF1");
+                    dmuxes[i].put(5, "FF2");
+                    dmuxes[i].put(6, "Rcarb");
+                    dmuxes[i].put(7, "Rcol");
+                    dmuxes[i].put(8, "Rrow");
+                    dmuxes[i].put(9, "RxarbE");
+                    dmuxes[i].put(10, "nAX0");
+                    dmuxes[i].put(11, "nArowBottom");
+                    dmuxes[i].put(12, "nArowTop");
+                    dmuxes[i].put(13, "nRxOn");
+
                 }
 
-                void select(int i) {
-                    if (this.selectedChannel != i) {
-                        setChanged();
-                    }
-                    this.selectedChannel = i;
-                    notifyObservers();
+                dmuxes[0].put(14, "AY179");
+                dmuxes[0].put(15, "RY179");
+                dmuxes[1].put(14, "AY179");
+                dmuxes[1].put(15, "RY179");
+                dmuxes[2].put(14, "biasCalibSpike");
+                dmuxes[2].put(15, "nRY179right");
+                dmuxes[3].put(14, "nResetRxCol");
+                dmuxes[3].put(15, "nRYtestpixel");
+
+                amuxes[0].setName("AnaMux2");
+                amuxes[1].setName("AnaMux1");
+                amuxes[2].setName("AnaMux0");
+
+                for (int i = 0; i < 3; i++) {
+                    amuxes[i].put(0, "on");
+                    amuxes[i].put(1, "off");
+                    amuxes[i].put(2, "vdiff");
+                    amuxes[i].put(3, "nResetPixel");
+                    amuxes[i].put(4, "pr");
+                    amuxes[i].put(5, "pd");
                 }
+                
+                amuxes[0].put(6, "apsgate");
+                amuxes[0].put(7, "apsout");
 
-                void put(int k, String name) { // maps from channel to string name
-                    map.put(k, name);
-                }
+                amuxes[1].put(6, "apsgate");
+                amuxes[1].put(7, "apsout");
 
-                OutputMap getMap() {
-                    return map;
-                }
-
-                int getCode(int i) { // returns shift register binary code for channel i
-                    return map.get(i);
-                }
-
-                /** Returns the bit string to send to the firmware to load a bit sequence for this mux in the shift register;
-                 * bits are loaded big endian, msb first but returned string has msb at right-most position, i.e. end of string.
-                 * @return big endian string e.g. code=11, s='1011', code=7, s='0111' for nSrBits=4.
-                 */
-                String getBitString() {
-                    StringBuilder s = new StringBuilder();
-                    int code = selectedChannel != -1 ? getCode(selectedChannel) : 0; // code 0 if no channel selected
-                    int k = nSrBits - 1;
-                    while (k >= 0) {
-                        int x = code & (1 << k); // start with msb
-                        boolean b = (x == 0); // get bit
-                        s.append(b ? '0' : '1'); // append to string 0 or 1, string grows with msb on left
-                        k--;
-                    } // construct big endian string e.g. code=14, s='1011'
-                    bitString = s.toString();
-                    return bitString;
-                }
-
-                String getChannelName(int i) { // returns this channel name
-                    return map.nameMap.get(i);
-                }
-
-                public String getName() { // returns name of entire mux
-                    return name;
-                }
-
-                public void setName(String name) { // TODO should remove previous remote control command and add new one for this mux
-                    this.name = name;
-                   if (getRemoteControl() != null) {
-                        getRemoteControl().addCommandListener(this, String.format("%s_%s <n>",CMD_SELECTMUX, getName()), "Selects mux "+getName()+" output number n");
-                    }
-                 }
-
-                private String key() {
-                    return getClass().getSimpleName() + "." + name + ".selectedChannel";
-                }
-
-                @Override
-                public void loadPreference() {
-                    select(getPrefs().getInt(key(), -1));
-                }
-
-                @Override
-                public void storePreference() {
-                    getPrefs().putInt(key(), selectedChannel);
-                }
-
-                /** Command is e.g. "selectMux_Currents 1".
-                 *
-                 * @param command the first token which dispatches the command here for this class of Mux.
-                 * @param input the command string.
-                 * @return some informative string for debugging bad commands.
-                 */
-                @Override
-                public String processRemoteControlCommand(RemoteControlCommand command, String input) {
-                    String[] t = input.split("\\s");
-                    if (t.length < 2) {
-                        return "? " + this + "\n";
-                    } else {
-                        String s = t[0], a = t[1];
-                        try {
-                            select(Integer.parseInt(a));
-                            log.info(getName()+": selected channel "+a);
-                            return this + "\n";
-                        } catch (NumberFormatException e) {
-                            log.warning("Bad number format: " + input + " caused " + e);
-                            return e.toString() + "\n";
-                        } catch (Exception ex) {
-                            log.warning(ex.toString());
-                            return ex.toString();
-                        }
-                    }
-                }
-//            public void preferenceChange(PreferenceChangeEvent evt) {
-//                if(evt.getKey().equals(key())){
-//                    select(Integer.parseInt(evt.getNewValue()));
-//                }
-//            }
-            } // OutputMux
-
-            class OutputMap extends HashMap<Integer, Integer> {
+                amuxes[2].put(6, "calibNeuron");
+                amuxes[2].put(7, "nTimeout_AI");
+            
+            }
+            
+            class SBret10OutputMap extends OutputMap {
 
                 HashMap<Integer, String> nameMap = new HashMap<Integer, String>();
-
+                
                 void put(int k, int v, String name) {
                     put(k, v);
                     nameMap.put(k, name);
@@ -1721,7 +1285,7 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
                 }
             }
 
-            class VoltageOutputMap extends OutputMap {
+            class VoltageOutputMap extends SBret10OutputMap {
 
                 final void put(int k, int v) {
                     put(k, v, "Voltage " + k);
@@ -1735,11 +1299,11 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
                     put(4, 9);
                     put(5, 11);
                     put(6, 13);
-                    put(7, ADC_CLK_CYCLES_PER_US);
+                    put(7, 15);
                 }
             }
 
-            class DigitalOutputMap extends OutputMap {
+            class DigitalOutputMap extends SBret10OutputMap {
 
                 DigitalOutputMap() {
                     for (int i = 0; i < 16; i++) {
@@ -1748,215 +1312,128 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
                 }
             }
 
-            class VoltageOutputMux extends OutputMux {
+            class AnalogOutputMux extends OutputMux {
 
-                VoltageOutputMux(int n) {
-                    super(4, 8, new VoltageOutputMap());
+                AnalogOutputMux(int n) {
+                    super(sbChip, 4, 8, (OutputMap)(new VoltageOutputMap()));
                     setName("Voltages" + n);
                 }
             }
 
-            class LogicMux extends OutputMux {
+            class DigitalOutputMux extends OutputMux {
 
-                LogicMux(int n) {
-                    super(4, 16, new DigitalOutputMap());
+                DigitalOutputMux(int n) {
+                    super(sbChip, 4, 16, (OutputMap)(new DigitalOutputMap()));
                     setName("LogicSignals" + n);
                 }
             }
+            
+            public byte[] getBitString(){
+                String dMuxBits = getMuxBitString(dmuxes);
+                String configBits = getConfigBitString();
+                String aMuxBits = getMuxBitString(amuxes);
+                String bMuxBits = getMuxBitString(bmuxes);
+                
+                String chipConfigChain = (dMuxBits + configBits + aMuxBits + bMuxBits);
 
-            String getBitString() {
-                int nBits = 0;
+                return bitString2Bytes(chipConfigChain); // returns bytes padded at end
+            }
+            
+            String getMuxBitString(OutputMux[] muxs){
                 StringBuilder s = new StringBuilder();
-                for (OutputMux m : muxes) {
+                for (OutputMux m : muxs) {
                     if(m.getName() != "BiasOutMux"){
                         s.append(m.getBitString());
-                        nBits += m.nSrBits;
                     }
                 }
-
                 return s.toString();
             }
-
-            AllMuxes() {
-                
-                muxes.addAll(Arrays.asList(bmuxes)); 
-                muxes.addAll(Arrays.asList(dmuxes)); // 5 logic muxes, first in list since at end of chain - bits must be sent first, before any biasgen bits
-                muxes.addAll(Arrays.asList(vmuxes)); // finally send the 3 voltage muxes
-                
-                for (OutputMux m : muxes) {
-                    m.addObserver(this);
+            
+            String getConfigBitString() {
+                StringBuilder s = new StringBuilder();
+                for (int i = 0; i < TOTAL_CONFIG_BITS - configBits.length; i++) {
+                    s.append("1"); 
                 }
-                
-                bmuxes[0].setName("BiasOutMux");
-                
-                bmuxes[0].put(0,"IFThrBn");
-                bmuxes[0].put(1,"AEPuYBp");
-                bmuxes[0].put(2,"AEPuXBp");
-                bmuxes[0].put(3,"AERxEBn");
-                bmuxes[0].put(4,"AEPdBn");
-                bmuxes[0].put(5,"RefrBp");
-                bmuxes[0].put(6,"PrSFBp");
-                bmuxes[0].put(7,"PrBp");
-                bmuxes[0].put(8,"PixInvBn");
-                bmuxes[0].put(9,"LocalBufBn");
-                bmuxes[0].put(10,"ApsROSFBn");
-                bmuxes[0].put(11,"PrCasBnc");
-                bmuxes[0].put(12,"ApsCasBnc");
-                bmuxes[0].put(13,"OffBn");
-                bmuxes[0].put(14,"OnBn");
-                bmuxes[0].put(15,"DiffBn");
-
-                dmuxes[0].setName("DigMux4");
-                dmuxes[1].setName("DigMux3");
-                dmuxes[2].setName("DigMux2");
-                dmuxes[3].setName("DigMux1");
-                dmuxes[4].setName("DigMux0");
-
-                for (int i = 0; i < 5; i++) {
-                    dmuxes[i].put(0, "nRxcolE");
-                    dmuxes[i].put(1, "nAxcolE");
-                    dmuxes[i].put(2, "nRY0");
-                    dmuxes[i].put(3, "biasCalibSpikes");
-                    dmuxes[i].put(4, "nAX0");
-                    dmuxes[i].put(5, "nRXon");
-                    dmuxes[i].put(6, "arbtopR");
-                    dmuxes[i].put(7, "arbtopA");
-                    dmuxes[i].put(8, "FF1");
-                    dmuxes[i].put(9, "Acol");
-                    dmuxes[i].put(10, "Rcol");
-                    dmuxes[i].put(11, "Rrow");
-                    dmuxes[i].put(12, "RxcolG");
-                    dmuxes[i].put(13, "nArow");
-
+                for (int i = configBits.length - 1; i >= 0; i--) {
+                    s.append(configBits[i].isSet() ? "1" : "0");
                 }
+                return s.toString();
+            }
+            
+            public MuxControlPanel buildMuxControlPanel() {
+                return new MuxControlPanel(muxes);
+            }
+            
+            public JPanel getChipConfigPanel(){
+                JPanel chipConfigPanel = new JPanel(new BorderLayout());
 
-                dmuxes[0].put(14, "nResetRxcol");
-                dmuxes[0].put(15, "nArowBottom");
-                dmuxes[1].put(14, "AY1right");
-                dmuxes[1].put(15, "nRY1right");
-                dmuxes[2].put(14, "AY1right");
-                dmuxes[2].put(15, "nRY1right");
-                dmuxes[3].put(14, "FF2");
-                dmuxes[3].put(15, "RCarb");
-                dmuxes[4].put(14, "FF2");
-                dmuxes[4].put(15, "RCarb");
+                //On-Chip config bits
+                JPanel extraPanel = new JPanel();
+                extraPanel.setLayout(new BoxLayout(extraPanel, BoxLayout.Y_AXIS));
+                for (OnchipConfigBit b : configBits) {
+                    extraPanel.add(new JRadioButton(b.getAction()));
+                }
+                extraPanel.setBorder(new TitledBorder("Extra on-chip bits"));
+                chipConfigPanel.add(extraPanel, BorderLayout.NORTH);
 
-                vmuxes[0].setName("AnaMux2");
-                vmuxes[1].setName("AnaMux1");
-                vmuxes[2].setName("AnaMux0");
-
-                vmuxes[0].put(0, "vDiff_test");
-                vmuxes[0].put(1, "photocurrent");
-                vmuxes[0].put(2, "CalibVm");
-                vmuxes[0].put(3, "-");
-                vmuxes[0].put(4, "-");
-                vmuxes[0].put(5, "- ");
-                vmuxes[0].put(6, "colorColDiff");
-                vmuxes[0].put(7, "colorVs");
-
-                vmuxes[1].put(0, "pr_test");
-                vmuxes[1].put(1, "prc_test");
-                vmuxes[1].put(2, "pd_test");
-                vmuxes[1].put(3, "-");
-                vmuxes[1].put(4, "-");
-                vmuxes[1].put(5, "-");
-                vmuxes[1].put(6, "colorDiff");
-                vmuxes[1].put(7, "colorTop");
-
-                vmuxes[2].put(0, "apsOut_test");
-                vmuxes[2].put(1, "apsGate_test");
-                vmuxes[2].put(2, "-");
-                vmuxes[2].put(3, "-");
-                vmuxes[2].put(4, "-");
-                vmuxes[2].put(5, "-");
-                vmuxes[2].put(6, "colorVt");
-                vmuxes[2].put(7, "colorSum");
+                //FX2 port bits
+                JPanel portBitsPanel = new JPanel();
+                portBitsPanel.setLayout(new BoxLayout(portBitsPanel, BoxLayout.Y_AXIS));
+                for (PortBit p : portBits) {
+                    portBitsPanel.add(new JRadioButton(p.getAction()));
+                }
+                portBitsPanel.setBorder(new TitledBorder("Cypress FX2 port bits"));
+                chipConfigPanel.add(portBitsPanel, BorderLayout.CENTER);
                 
+                return chipConfigPanel;
+            }
+            
+            @Override
+            public void loadPreference() {
+                for (OnchipConfigBit b : configBits) {
+                    b.loadPreference();
+                }
             }
 
-            /** Passes on notifies from MUX's
-             * 
-             * @param o ignored
-             * @param arg passed on to Observers
-             */
+            @Override
+            public void storePreference() {
+                for (OnchipConfigBit b : configBits) {
+                    b.storePreference();
+                }
+            }
+            
             @Override
             public void update(Observable o, Object arg) {
                 setChanged();
                 notifyObservers(arg);
+                SBret10Config.this.update(o, arg); // pass update up to biasgen
             }
-
-            public MuxControlPanel buildControlPanel() {
-                return new MuxControlPanel();
-            }
-
-            /**
-             * Control panel for cDVSTest10 diagnostic output configuration.
-             * @author  tobi
-             */
-            public class MuxControlPanel extends javax.swing.JPanel {
-
-                class OutputSelectionAction extends AbstractAction implements Observer {
-
-                    OutputMux mux;
-                    int channel;
-                    JRadioButton button;
-
-                    OutputSelectionAction(OutputMux m, int i) {
-                        super(m.getChannelName(i));
-                        mux = m;
-                        channel = i;
-                        m.addObserver(this);
-                    }
-
-                    void setButton(JRadioButton b) {
-                        button = b;
-                    }
-
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        mux.select(channel);
-                        log.info("Selected " + mux);
-                    }
-
-                    @Override
-                    public void update(Observable o, Object arg) {
-                        if (channel == mux.selectedChannel) {
-                            button.setSelected(true);
+            
+            protected byte[] bitString2Bytes(String bitString) {
+                int nbits = bitString.length();
+                // compute needed number of bytes
+                int nbytes = (nbits % 8 == 0) ? (nbits / 8) : (nbits / 8 + 1); // 4->1, 8->1, 9->2
+                // for simplicity of following, left pad with 0's right away to get integral byte string
+                int npad = nbytes * 8 - nbits;
+                String pad = new String(new char[npad]).replace("\0", "0"); // http://stackoverflow.com/questions/1235179/simple-way-to-repeat-a-string-in-java
+                bitString = pad + bitString;
+                byte[] byteArray = new byte[nbytes];
+                int bit = 0;
+                for (int bite = 0; bite < nbytes; bite++) { // for each byte
+                    for (int i = 0; i < 8; i++) { // iterate over each bit of this byte
+                        byteArray[bite] = (byte) ((0xff & byteArray[bite]) << 1); // first left shift previous value, with 0xff to avoid sign extension
+                        if (bitString.charAt(bit) == '1') { // if there is a 1 at this position of string (starting from left side) 
+                            // this conditional and loop structure ensures we count in bytes and that we left shift for each bit position in the byte, padding on the right with 0's
+                            byteArray[bite] |= 1; // put a 1 at the lsb of the byte
                         }
+                        bit++; // go to next bit of string to the right
+
                     }
                 }
-
-                /** Creates new control panel for this MUX
-                 * 
-                 * @param chip the chip
-                 */
-                public MuxControlPanel() {
-                    for (OutputMux m : muxes) {
-                        JPanel p = new JPanel();
-                        p.setAlignmentY(0);
-                        p.setBorder(new TitledBorder(m.getName()));
-                        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-                        ButtonGroup group = new ButtonGroup();
-                        final Insets insets = new Insets(0, 0, 0, 0);
-                        for (int i = 0; i < m.nInputs; i++) {
-
-                            OutputSelectionAction action = new OutputSelectionAction(m, i);
-                            JRadioButton b = new JRadioButton(action);
-                            action.setButton(b); // needed to update button state
-                            b.setSelected(i == m.selectedChannel);
-                            b.setFont(b.getFont().deriveFont(10f));
-                            b.setToolTipText(b.getText());
-                            b.setMargin(insets);
-//                b.setMinimumSize(new Dimension(30, 14));
-                            group.add(b);
-                            p.add(b);
-                        }
-                        add(p);
-                    }
-                }
+                return byteArray;
             }
-        } // AllMuxes
-    } // SeeBetterConfig
+        }
+    }
 
     /**
      * @return the displayLogIntensity
@@ -2804,4 +2281,5 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
         }
 
     }
+    
 }
