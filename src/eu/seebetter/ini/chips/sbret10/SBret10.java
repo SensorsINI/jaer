@@ -551,10 +551,10 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
                 addAIPot("DiffBn,n,normal,differencing amp"); // at input end of shift register
                 addAIPot("OnBn,n,normal,DVS brighter threshold");
                 addAIPot("OffBn,n,normal,DVS darker threshold");
-                addAIPot("ApsCasEpc,p,cascode,xxx"); // TODO what's this?
+                addAIPot("ApsCasEpc,p,cascode,cascode between APS und DVS"); 
                 addAIPot("PrCasBnc,n,cascode,Photoreceptor cascode (when used in pixel type bDVS sDVS and some of the small DVS pixels)");
                 addAIPot("ApsROSF,n,normal,APS readout source follower bias");
-                addAIPot("LocalBufBn,n,normal,xxx"); // TODO what's this?
+                addAIPot("LocalBufBn,n,normal,Local buffer bias"); // TODO what's this?
                 addAIPot("PixInvBn,n,normal,Pixel request inversion static inverter bias");
                 addAIPot("PrBp,p,normal,Photoreceptor bias current");
                 addAIPot("PrSFBp,p,normal,Photoreceptor follower bias current (when used in pixel type)");

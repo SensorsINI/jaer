@@ -18,6 +18,7 @@ import ch.unizh.ini.jaer.chip.dvs320.cDVSTestHardwareInterface;
 import net.sf.jaer.util.HexString;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
+import eu.seebetter.ini.chips.sbret10.SBret10HardwareInterface;
 import eu.seebetter.ini.chips.seebetter1011.SeeBetterHardwareInterface;
 import eu.seebetter.ini.chips.seebetter20.SeeBetter20HardwareInterface;
 import java.util.*;
@@ -224,6 +225,8 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
                 } else {
                     return new SeeBetterHardwareInterface(n);
                 }
+            case SBret10HardwareInterface.PID:
+                return new SBret10HardwareInterface(n);
             case DVS320HardwareInterface.PID:
                 return new DVS320HardwareInterface(n);
             case CochleaAMS1bHardwareInterface.PID:
