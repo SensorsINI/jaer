@@ -33,6 +33,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
+import java.math.BigInteger;
 import java.nio.FloatBuffer;
 import java.text.ParseException;
 import java.util.*;
@@ -77,7 +78,7 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
  * @author tobi
  */
 @Description("SBret version 1.0")
-public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
+public class SBret10 extends AETemporalConstastRetina {
 
     /** Describes size of array of pixels on the chip, in the pixels address space */
     public static class PixelArray extends Rectangle {
@@ -107,10 +108,9 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
      */
     public static final int POLMASK = 1,
             XSHIFT = Integer.bitCount(POLMASK),
-            XMASK = 127 << XSHIFT, // 7 bits
+            XMASK = 255 << XSHIFT, // 8 bits
             YSHIFT = 16, // so that y addresses don't overlap ADC bits and cause fake ADC events Integer.bitCount(POLMASK | XMASK),
-            YMASK = 63 << YSHIFT, // 6 bits
-            INTENSITYMASK = 0x40000000;
+            YMASK = 255 << YSHIFT; // 6 bits
 
     /*
      * data type fields
@@ -120,10 +120,8 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
     /** Address-type refers to data if is it an "address". This data is either an AE address or ADC reading.*/
     public static final int ADDRESS_TYPE_MASK = 0x2000, EVENT_ADDRESS_MASK = POLMASK | XMASK | YMASK, ADDRESS_TYPE_EVENT = 0x0000, ADDRESS_TYPE_ADC = 0x2000;
     /** For ADC data, the data is defined by the ADC channel and whether it is the first ADC value from the scanner. */
-    public static final int ADC_TYPE_MASK = 0x1000, ADC_DATA_MASK = 0x7ff, ADC_START_BIT = 0x1000, ADC_CHANNEL_MASK = 0x0000, ADC_MODE_BIT = 0x0800; // right now there is no channel info in the data word
-    public static final int MAX_ADC = (int) ((1 << 11) - 1);
-    /** The computed intensity value. */
-    private float globalIntensity = 0;
+    public static final int ADC_TYPE_MASK = 0x1000, ADC_DATA_MASK = 0x3ff, ADC_START_BIT = 0x1000, ADC_READCYCLE_MASK = 0x0C00; 
+    public static final int MAX_ADC = (int) ((1 << 10) - 1);
     private FrameEventPacket frameEventPacket = new FrameEventPacket(PolarityADCSampleEvent.class);
     private SBret10DisplayMethod sbretDisplayMethod = null;
     private boolean displayIntensity;
@@ -160,7 +158,6 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
         sbretDisplayMethod = new SBret10DisplayMethod(this);
         getCanvas().addDisplayMethod(sbretDisplayMethod);
         getCanvas().setDisplayMethod(sbretDisplayMethod);
-        sbretDisplayMethod.setIntensitySource(this);
 
     }
 
@@ -212,53 +209,19 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
         setHardwareInterface(hardwareInterface);
     }
 
-//        @Override
-//    public AEFileInputStream constuctFileInputStream(File file) throws IOException {
-//        return new SeeBetterFileInputStream(file);
-//    }
-//
-    /** Returns the measured global intensity from the global intensity neuron processed events.
-     * The intensity is computed from the ISIs in us of the intensity neuron from 
-     * <pre>
-     * if (dt > 50) {
-    avdt = 0.05f * dt + 0.95f * avdt; // avg over time
-    setIntensity(1000f / avdt); // ISI of this much, e.g. 1ms, gives intensity 1
-    }
-     * </pre>
-     * 
-     * @return an average spike rate in kHz. Note this breaks the interface contract which calls for 0-1 value.
-     */
-    @Override
-    public float getIntensity() {
-        return globalIntensity;
-    }
-
-    @Override
-    public void setIntensity(float f) {
-        globalIntensity = f;
-    }
-
 //    int pixcnt=0; // TODO debug
     /** The event extractor. Each pixel has two polarities 0 and 1.
-     * There is one extra neuron which signals absolute intensity.
+     * 
      * <p>
      *The bits in the raw data coming from the device are as follows.
      * <p>
      *Bit 0 is polarity, on=1, off=0<br>
      *Bits 1-9 are x address (max value 320)<br>
      *Bits 10-17 are y address (max value 240) <br>
-     *Bit 18 signals the special intensity neuron, 
-     * but it always comes together with an x address.
-     * It means there was an intensity spike AND a normal pixel spike.
      *<p>
      */
     public class SBret10Extractor extends RetinaExtractor {
 
-        private long lastEventTime = System.currentTimeMillis();
-        private final long AUTO_RESET_TIMEOUT_MS = 1000;
-        // according to  D:\Users\tobi\Documents\avlsi-svn\db\Firmware\cDVSTest20\cDVSTest_dataword_spec.pdf
-//        public static final int XMASK = 0x3fe,  XSHIFT = 1,  YMASK = 0x000,  YSHIFT = 12,  INTENSITYMASK = 0x40000;
-        private int lastIntenTs = 0;
         private int firstFrameTs = 0;
         private short[] countX;
         private short[] countY;
@@ -269,11 +232,10 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             super(chip);
             resetCounters();
         }
-        private float avdt = 100; // used to compute rolling average of intensity
 
         
         private void resetCounters(){
-            int numReadoutTypes = 2;
+            int numReadoutTypes = 3;
             if(countX == null || countY == null){
                 countX = new short[numReadoutTypes];
                 countY = new short[numReadoutTypes];
@@ -305,12 +267,6 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             }
             int n = in.getNumEvents(); //addresses.length;
 
-            int skipBy = 1;
-            if (isSubSamplingEnabled()) {
-                while (n / skipBy > getSubsampleThresholdEventCount()) {
-                    skipBy++;
-                }
-            }
             int[] datas = in.getAddresses();
             int[] timestamps = in.getTimestamps();
             OutputEventIterator outItr = out.outputIterator();
@@ -318,58 +274,52 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             // at this point the raw data from the USB IN packet has already been digested to extract timestamps, including timestamp wrap events and timestamp resets.
             // The datas array holds the data, which consists of a mixture of AEs and ADC values.
             // Here we extract the datas and leave the timestamps alone.
-            boolean gotAEREvent = false;
+            
             for (int i = 0; i < n; i++) {  // TODO implement skipBy
                 int data = datas[i];
 
                 if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_EVENT) {
-                    if ((data & INTENSITYMASK) == INTENSITYMASK) {// intensity spike
-                        int dt = timestamps[i] - lastIntenTs;
-                        if (dt > 50) {
-                            avdt = 0.05f * dt + 0.95f * avdt; // avg over time
-                            setIntensity(1000f / avdt); // ISI of this much, e.g. 1ms, gives intensity 1
-                        }
-                        lastIntenTs = timestamps[i];
-
-                    } else {
-                        if(!ignore){
-                            PolarityADCSampleEvent e = (PolarityADCSampleEvent) outItr.nextOutput();
-                            e.adcSample = -1; // TODO hack to mark as not an ADC sample
-                            e.startOfFrame = false;
-                            e.address = data;
-                            e.timestamp = (timestamps[i]);
-                            e.polarity = (data & 1) == 1 ? PolarityADCSampleEvent.Polarity.On : PolarityADCSampleEvent.Polarity.Off;
-                            e.x = (short) (((data & XMASK) >>> XSHIFT));
-                            e.y = (short) ((data & YMASK) >>> YSHIFT);
-                            if (e.x < EntirePixelArray.width * EntirePixelArray.pitch) { // cDVS pixel array // *2 because size is defined to be 32 and event types are still different x's
-                                e.x = (short) (e.x >>> 1);
-                                e.y = (short) (e.y >>> 1); // cDVS array is clumped into 32x32
-                            } 
-                            gotAEREvent = true;
-                        } 
-                  //      String eventData = "address:"+Integer.toBinaryString(e.address)+"( x: "+Integer.toString(e.x)+", y: "+Integer.toString(e.y)+"), timestamp "+Integer.toString(e.timestamp);
-                  //      System.out.println("Addressed Event: "+eventData);
-                    }
+                    if(!ignore){
+                        PolarityADCSampleEvent e = (PolarityADCSampleEvent) outItr.nextOutput();
+                        e.adcSample = -1; // TODO hack to mark as not an ADC sample
+                        e.startOfFrame = false;
+                        e.address = data;
+                        e.timestamp = (timestamps[i]);
+                        e.polarity = (data & 1) == 1 ? PolarityADCSampleEvent.Polarity.On : PolarityADCSampleEvent.Polarity.Off;
+                        e.x = (short) (((data & XMASK) >>> XSHIFT));
+                        e.y = (short) ((data & YMASK) >>> YSHIFT); 
+                        //System.out.println(data);
+                    } 
                 } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
 
                     PolarityADCSampleEvent e = (PolarityADCSampleEvent) outItr.nextOutput();
                     e.adcSample = data & ADC_DATA_MASK;
-                    int sampleType = (data & ADC_MODE_BIT)>>Integer.numberOfTrailingZeros(ADC_MODE_BIT);
-                    if(sampleType == 0){
-                        e.readoutType = PolarityADCSampleEvent.Type.A;
-                    }else if(countX[sampleType]<240){
-                        e.readoutType = PolarityADCSampleEvent.Type.B;
-                    }else{
-                        e.readoutType = PolarityADCSampleEvent.Type.C;
+                    int sampleType = (data & ADC_READCYCLE_MASK)>>Integer.numberOfTrailingZeros(ADC_READCYCLE_MASK);
+                    switch(sampleType){
+                        case 0:
+                            e.readoutType = PolarityADCSampleEvent.Type.A;
+                            break;
+                        case 1:
+                            e.readoutType = PolarityADCSampleEvent.Type.B;
+                            break;
+                        case 2:
+                            e.readoutType = PolarityADCSampleEvent.Type.C;
+                            break;
+                        case 3:
+                            log.warning("Event with cycle null was sent out!");
+                            break;
+                        default:
+                            log.warning("Event with unknown cycle was sent out!");
                     }
                     e.timestamp = (timestamps[i]);
                     e.address = data;
                     e.startOfFrame = (data & ADC_START_BIT) == ADC_START_BIT;
                     if(e.startOfFrame){
-                        //if(pixCnt!=4096) System.out.println("New frame, pixCnt was incorrectly "+pixCnt+" instead of 4096 but this could happen at end of file");
+                        if(pixCnt!=129600) System.out.println("New frame, pixCnt was incorrectly "+pixCnt+" instead of 4096 but this could happen at end of file");
                         if(ignoreReadout){
                             ignore = true;
                         }
+                        //System.out.println("SOF - pixcount: "+pixCnt);
                         resetCounters();
                         pixCnt=0;
                         if(snapshot){
@@ -379,16 +329,13 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
                         frameTime = e.timestamp - firstFrameTs;
                         firstFrameTs = e.timestamp;
                     }
-                    if(!(countY[sampleType]<chip.getSizeY()/2)){
+                    if(!(countY[sampleType]<chip.getSizeY())){
                         countY[sampleType] = 0;
                         countX[sampleType]++;
                     }
-                    if(!e.isC()){
-                        e.x=countX[sampleType];
-                    }else{
-                        e.x=(short)(countX[sampleType]-240);
-                    }
-                    e.y=countY[sampleType]++;
+                    e.x=countX[sampleType];
+                    e.y=(short)(chip.getSizeY()-1-countY[sampleType]);
+                    countY[sampleType]++;
                     pixCnt++;
 //                    String type = "";
 //                    if(e.isB){type = "B";}else{type = "A";}
@@ -400,9 +347,10 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
                     if(e.isC() && e.x == 1 && e.y == 1){
                         exposureC = e.timestamp-firstFrameTs;
                     }
-                    if(((config.useC.isSet() && e.isC()) || (!config.useC.isSet() && e.isB()))  && e.x == (short)((chip.getSizeX()/2)-1) && e.y == (short)((chip.getSizeY()/2)-1)){
+                    if(((config.useC.isSet() && e.isC()) || (!config.useC.isSet() && e.isB()))  && e.x == (short)(chip.getSizeX()-1) && e.y == (short)(chip.getSizeY()-1)){
                         lastADCevent();
                     }
+                    //System.out.println("New ADC event: type "+sampleType+", x "+e.x+", y "+e.y);
                 }
 
             }
@@ -451,7 +399,7 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
      *
      * @author tobi
      */
-    public class SBret10Config extends SBretChipConfig { // extends Config to give us containers for various configuration data
+    public class SBret10Config extends SBretCPLDConfig { // extends Config to give us containers for various configuration data
 
         /** VR for handling all configuration changes in firmware */
         public static final byte VR_WRITE_CONFIG = (byte) 0xB8;
@@ -464,14 +412,14 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
         JPanel bPanel;
         JTabbedPane bgTabbedPane;
         // portA
-        private PortBit runCpld = new PortBit(SBret10.this, "a3", "runCpld", "Set high to run CPLD which enables event capture, low to hold logic in reset", true);
-        private PortBit resetTestpixel = new PortBit(SBret10.this, "a1", "resetTestpixel", "Set high to assign '11' to Column Mode in the idle state", false);
+        private PortBit runCpld = new PortBit(SBret10.this, "a3", "runCpld", "(A3) Set high to run CPLD which enables event capture, low to hold logic in reset", true);
+        private PortBit extTrigger = new PortBit(SBret10.this, "a1", "extTrigger", "(A1) External trigger to debug APS statemachine", false);
         // portC
-        private PortBit runAdc = new PortBit(SBret10.this, "c0", "runAdc", "High to run ADC", true);
+        private PortBit runAdc = new PortBit(SBret10.this, "c0", "runAdc", "(C0) High to run ADC", true);
         // portE
         /** Bias generator power down bit */
-        PortBit powerDown = new PortBit(SBret10.this, "e2", "powerDown", "High to disable master bias and tie biases to default rails", false);
-        PortBit nChipReset = new PortBit(SBret10.this, "e3", "nChipReset", "Low to reset AER circuits and hold pixels in reset, High to run", true); // shouldn't need to manipulate from host
+        PortBit powerDown = new PortBit(SBret10.this, "e2", "powerDown", "(E2) High to disable master bias and tie biases to default rails", false);
+        PortBit nChipReset = new PortBit(SBret10.this, "e3", "nChipReset", "(E3) Low to reset AER circuits and hold pixels in reset, High to run", true); // shouldn't need to manipulate from host
         // CPLD shift register contents specified here by CPLDInt and CPLDBit
         private CPLDInt exposureB = new CPLDInt(SBret10.this, 15, 0, "exposureB", "time between reset and readout of a pixel", 0);
         private CPLDInt exposureC = new CPLDInt(SBret10.this, 31, 16, "exposureC", "time between reset and readout of a pixel for a second time (min 240!)", 240);
@@ -479,7 +427,7 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
         private CPLDInt rowSettle = new CPLDInt(SBret10.this, 63, 48, "rowSettle", "time to settle a row select before readout", 0);
         private CPLDInt resSettle = new CPLDInt(SBret10.this, 79, 64, "resSettle", "time to settle a reset before readout", 0);
         private CPLDInt frameDelay = new CPLDInt(SBret10.this, 95, 80, "frameDelay", "time between two frames", 0);
-        private CPLDBit testpixel = new CPLDBit(SBret10.this, 96, "testPixel", "enables continuous scanning of testpixel", false);
+        private CPLDBit testPixAPSread = new CPLDBit(SBret10.this, 96, "testPixAPSread", "enables continuous scanning of testpixel", false);
         private CPLDBit useC = new CPLDBit(SBret10.this, 97, "useC", "enables a second readout", false);
         //
         // lists of ports and CPLD config
@@ -495,16 +443,13 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
         public SBret10Config(Chip chip) {
             super(chip);
             setName("SBret10Biasgen");
-            
-            // setup listeners
-
 
             // port bits
             addConfigValue(nChipReset);
             addConfigValue(powerDown);
             addConfigValue(runAdc);
             addConfigValue(runCpld);
-            addConfigValue(resetTestpixel);
+            addConfigValue(extTrigger);
 
             // cpld shift register stuff
             addConfigValue(exposureB);
@@ -513,9 +458,8 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             addConfigValue(rowSettle);
             addConfigValue(colSettle);
             addConfigValue(frameDelay);
-            addConfigValue(testpixel);
+            addConfigValue(testPixAPSread);
             addConfigValue(useC);
-
 
             // masterbias
             getMasterbias().setKPrimeNFet(55e-3f); // estimated from tox=42A, mu_n=670 cm^2/Vs // TODO fix for UMC18 process
@@ -552,15 +496,15 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
                 addAIPot("OnBn,n,normal,DVS brighter threshold");
                 addAIPot("OffBn,n,normal,DVS darker threshold");
                 addAIPot("ApsCasEpc,p,cascode,cascode between APS und DVS"); 
-                addAIPot("PrCasBnc,n,cascode,Photoreceptor cascode (when used in pixel type bDVS sDVS and some of the small DVS pixels)");
-                addAIPot("ApsROSF,n,normal,APS readout source follower bias");
+                addAIPot("DiffCasBnc,n,cascode,differentiator cascode bias");
+                addAIPot("ApsROSFBn,n,normal,APS readout source follower bias");
                 addAIPot("LocalBufBn,n,normal,Local buffer bias"); // TODO what's this?
                 addAIPot("PixInvBn,n,normal,Pixel request inversion static inverter bias");
                 addAIPot("PrBp,p,normal,Photoreceptor bias current");
                 addAIPot("PrSFBp,p,normal,Photoreceptor follower bias current (when used in pixel type)");
                 addAIPot("RefrBp,p,normal,DVS refractory period current");
                 addAIPot("AEPdBn,n,normal,Request encoder pulldown static current");
-                addAIPot("AERxEBn,n,normal,Handshake state machine pulldown bias current");
+                addAIPot("LcolTimeoutBn,n,normal,No column request timeout");
                 addAIPot("AEPuXBp,p,normal,AER column pullup");
                 addAIPot("AEPuYBp,p,normal,AER row pullup");
                 addAIPot("IFThrBn,n,normal,Integrate and fire intensity neuron threshold");
@@ -676,12 +620,15 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
         
         public boolean sendChipConfig() throws HardwareInterfaceException{
             
-            byte[] onChipConfigBits = chipConfigChain.getBitString();
+            String onChipConfigBits = chipConfigChain.getBitString();
+            byte[] onChipConfigBytes = bitString2Bytes(onChipConfigBits);
             if(onChipConfigBits == null){
                 return false;
             } else {
-                //System.out.println("Send on chip config (length"+onChipConfigBits.length()+"): "+onChipConfigBits);
-                sendConfig(CMD_CHIP_CONFIG, 0, onChipConfigBits);
+                BigInteger bi = new BigInteger(onChipConfigBits);
+                //System.out.println("Send on chip config (length "+onChipConfigBits.length+" bytes): "+String.format("%0"+(onChipConfigBits.length<<1)+"X", bi));
+                log.info("Send on chip config: "+onChipConfigBits);
+                sendConfig(CMD_CHIP_CONFIG, 0, onChipConfigBytes);
                 return true;
             }
         }
@@ -702,6 +649,30 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             }
             this.autoResetEnabled = autoResetEnabled;
             notifyObservers();
+        }
+
+        private byte[] bitString2Bytes(String bitString) {
+            int nbits = bitString.length();
+            // compute needed number of bytes
+            int nbytes = (nbits % 8 == 0) ? (nbits / 8) : (nbits / 8 + 1); // 4->1, 8->1, 9->2
+            // for simplicity of following, left pad with 0's right away to get integral byte string
+            int npad = nbytes * 8 - nbits;
+            String pad = new String(new char[npad]).replace("\0", "0"); // http://stackoverflow.com/questions/1235179/simple-way-to-repeat-a-string-in-java
+            bitString = pad + bitString;
+            byte[] byteArray = new byte[nbytes];
+            int bit = 0;
+            for (int bite = 0; bite < nbytes; bite++) { // for each byte
+                for (int i = 0; i < 8; i++) { // iterate over each bit of this byte
+                    byteArray[bite] = (byte) ((0xff & byteArray[bite]) << 1); // first left shift previous value, with 0xff to avoid sign extension
+                    if (bitString.charAt(bit) == '1') { // if there is a 1 at this position of string (starting from left side) 
+                        // this conditional and loop structure ensures we count in bytes and that we left shift for each bit position in the byte, padding on the right with 0's
+                        byteArray[bite] |= 1; // put a 1 at the lsb of the byte
+                    }
+                    bit++; // go to next bit of string to the right
+
+                }
+            }
+            return byteArray;
         }
 
         /** Command sent to firmware by vendor request */
@@ -796,6 +767,8 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
                     sendOnchipConfig();
                 } else if (observable instanceof OutputMux || observable instanceof OnchipConfigBit) {
                     sendChipConfig();
+                } else if (observable instanceof ChipConfigChain) {
+                    sendChipConfig();
                 } else if (observable instanceof Masterbias) {
                     powerDown.set(getMasterbias().isPowerDownEnabled());
                 } else if (observable instanceof TriStateablePortBit) { // tristateable should come first before configbit since it is subclass
@@ -824,7 +797,7 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
         private void sendCPLDConfig() throws HardwareInterfaceException {
             byte[] bytes = cpldConfig.getBytes();
             
-            log.info("Send Chip Cofig: "+cpldConfig.toString());
+            log.info("Send CPLD Config: "+cpldConfig.toString());
             sendConfig(CMD_CPLD_CONFIG, 0, bytes);
         }
 
@@ -1005,7 +978,7 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
                 exposureC.addObserver(this);
                 resSettle.addObserver(this);
                 frameDelay.addObserver(this);
-                testpixel.addObserver(this);
+                testPixAPSread.addObserver(this);
                 useC.addObserver(this);
             }
             
@@ -1034,11 +1007,11 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             }
             
             public boolean isTestpixelEnabled() {
-                return SBret10Config.this.testpixel.isSet();
+                return SBret10Config.this.testPixAPSread.isSet();
             }
 
             public void setTestpixelEnabled(boolean testpixel) {
-                SBret10Config.this.testpixel.set(testpixel);
+                SBret10Config.this.testPixAPSread.set(testpixel);
             }
             
             public boolean isUseC() {
@@ -1077,8 +1050,8 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             public void update(Observable o, Object arg) {
                 setChanged();
                 notifyObservers(arg);
-                if (o == testpixel) {
-                    getPropertyChangeSupport().firePropertyChange(EVENT_TESTPIXEL, null, testpixel.isSet());
+                if (o == testPixAPSread) {
+                    getPropertyChangeSupport().firePropertyChange(EVENT_TESTPIXEL, null, testPixAPSread.isSet());
                 }
             }
 
@@ -1215,10 +1188,10 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
                 bmuxes[0].put(14,"OnBn");
                 bmuxes[0].put(15,"DiffBn");
 
-                dmuxes[0].setName("DigMux4");
-                dmuxes[1].setName("DigMux3");
-                dmuxes[2].setName("DigMux2");
-                dmuxes[3].setName("DigMux1");
+                dmuxes[0].setName("DigMux3");
+                dmuxes[1].setName("DigMux2");
+                dmuxes[2].setName("DigMux1");
+                dmuxes[3].setName("DigMux0");
 
                 for (int i = 0; i < 4; i++) {
                     dmuxes[i].put(0, "AY179right");
@@ -1328,35 +1301,40 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
                 }
             }
             
-            public byte[] getBitString(){
+            public String getBitString(){
+                //System.out.print("dig muxes ");
                 String dMuxBits = getMuxBitString(dmuxes);
+                //System.out.print("config bits ");
                 String configBits = getConfigBitString();
+                //System.out.print("analog muxes ");
                 String aMuxBits = getMuxBitString(amuxes);
+                //System.out.print("bias muxes ");
                 String bMuxBits = getMuxBitString(bmuxes);
                 
                 String chipConfigChain = (dMuxBits + configBits + aMuxBits + bMuxBits);
+                //System.out.println("On chip config chain: "+chipConfigChain);
 
-                return bitString2Bytes(chipConfigChain); // returns bytes padded at end
+                return chipConfigChain; // returns bytes padded at end
             }
             
             String getMuxBitString(OutputMux[] muxs){
                 StringBuilder s = new StringBuilder();
                 for (OutputMux m : muxs) {
-                    if(m.getName() != "BiasOutMux"){
-                        s.append(m.getBitString());
-                    }
+                    s.append(m.getBitString());
                 }
+                //System.out.println(s);
                 return s.toString();
             }
             
             String getConfigBitString() {
                 StringBuilder s = new StringBuilder();
                 for (int i = 0; i < TOTAL_CONFIG_BITS - configBits.length; i++) {
-                    s.append("1"); 
+                    s.append("0"); 
                 }
                 for (int i = configBits.length - 1; i >= 0; i--) {
                     s.append(configBits[i].isSet() ? "1" : "0");
                 }
+                //System.out.println(s);
                 return s.toString();
             }
             
@@ -1406,31 +1384,6 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             public void update(Observable o, Object arg) {
                 setChanged();
                 notifyObservers(arg);
-                SBret10Config.this.update(o, arg); // pass update up to biasgen
-            }
-            
-            protected byte[] bitString2Bytes(String bitString) {
-                int nbits = bitString.length();
-                // compute needed number of bytes
-                int nbytes = (nbits % 8 == 0) ? (nbits / 8) : (nbits / 8 + 1); // 4->1, 8->1, 9->2
-                // for simplicity of following, left pad with 0's right away to get integral byte string
-                int npad = nbytes * 8 - nbits;
-                String pad = new String(new char[npad]).replace("\0", "0"); // http://stackoverflow.com/questions/1235179/simple-way-to-repeat-a-string-in-java
-                bitString = pad + bitString;
-                byte[] byteArray = new byte[nbytes];
-                int bit = 0;
-                for (int bite = 0; bite < nbytes; bite++) { // for each byte
-                    for (int i = 0; i < 8; i++) { // iterate over each bit of this byte
-                        byteArray[bite] = (byte) ((0xff & byteArray[bite]) << 1); // first left shift previous value, with 0xff to avoid sign extension
-                        if (bitString.charAt(bit) == '1') { // if there is a 1 at this position of string (starting from left side) 
-                            // this conditional and loop structure ensures we count in bytes and that we left shift for each bit position in the byte, padding on the right with 0's
-                            byteArray[bite] |= 1; // put a 1 at the lsb of the byte
-                        }
-                        bit++; // go to next bit of string to the right
-
-                    }
-                }
-                return byteArray;
             }
         }
     }
@@ -1599,7 +1552,7 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
 
         private SBret10 cDVSChip = null;
 //        private final float[] redder = {1, 0, 0}, bluer = {0, 0, 1}, greener={0,1,0}, brighter = {1, 1, 1}, darker = {-1, -1, -1};
-        private final float[] brighter = {1, 0, 0}, darker = {0, 1, 0};
+        private final float[] brighter = {0, 1, 0}, darker = {1, 0, 0};
         private int sizeX = 1;
         private LowpassFilter2d agcFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
         private boolean agcEnabled;
@@ -1694,9 +1647,6 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
                         if(displayLogIntensityChangeEvents){
                             if (xsel >= 0 && ysel >= 0) { // find correct mouse pixel interpretation to make sounds for large pixels
                                 int xs = xsel, ys = ysel;
-                                xs >>= 1;
-                                ys >>= 1;
-
                                 if (e.x == xs && e.y == ys) {
                                     playSpike(type);
                                 }
@@ -1704,10 +1654,10 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
                             int x = e.x, y = e.y;
                             switch (e.polarity) {
                                 case On:
-                                    changeCDVSPixel(x, y, pm, brighter, step);
+                                    changePixel(x, y, pm, brighter, step);
                                     break;
                                 case Off:
-                                    changeCDVSPixel(x, y, pm, darker, step);
+                                    changePixel(x, y, pm, darker, step);
                                     break;
                             }
                         }
@@ -1729,7 +1679,7 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
                             }
                             float v = adc01normalized(count);
                             float[] vv = {v, v, v};
-                            changeCDVSPixel(x, y, pm, vv, 1);
+                            changePixel(x, y, pm, vv, 1);
                         }
                     }
                     if (agcEnabled && (minADC > 0 && maxADC > 0)) { // don't adapt to first frame which is all zeros
@@ -1758,29 +1708,13 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             f[ind] += r;
             f[ind + 1] += g;
             f[ind + 2] += b;
-
-            ind += 3;
-            f[ind] += r;
-            f[ind + 1] += g;
-            f[ind + 2] += b;
-
-            ind += sizeX * 3;
-            f[ind] += r;
-            f[ind + 1] += g;
-            f[ind + 2] += b;
-
-            ind -= 3;
-            f[ind] += r;
-            f[ind + 1] += g;
-            f[ind + 2] += b;
         }
 
-        /** Changes all 4 pixmap locations for each large pixel affected by this event. 
-         * x,y refer to space of large pixels each of which is 2x2 block of pixmap pixels
-         * 
+        /** Changes pixmap location for pixel affected by this event. 
+         * x,y refer to space of pixels 
          */
-        private void changeCDVSPixel(int x, int y, float[] f, float[] c, float step) {
-            int ind = 3 * (2 * x + 2 * y * sizeX);
+        private void changePixel(int x, int y, float[] f, float[] c, float step) {
+            int ind = 3* (x + y * sizeX);
             changeCDVSPixel(ind, f, c, step);
         }
 
@@ -2053,7 +1987,7 @@ public class SBret10 extends AETemporalConstastRetina implements HasIntensity {
             switch(type){
                 case C: 
                     if (index >= cData.length) {
-        //            log.info("buffer overflowed - missing start frame bit?");
+                    log.info("buffer overflowed - missing start frame bit? index "+index);
                         return;
                     }
                     if (index == NUMSAMPLES-1) {

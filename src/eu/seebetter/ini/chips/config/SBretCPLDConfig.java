@@ -14,7 +14,7 @@ import net.sf.jaer.chip.Chip;
  * 
  * @author tobi
  */
-public class SBretChipConfig extends Biasgen implements HasPreference {
+public class SBretCPLDConfig extends Biasgen implements HasPreference {
 
     /** Active container for CPLD configuration, which know how to format the data for the CPLD shift register.
      * 
@@ -33,7 +33,7 @@ public class SBretChipConfig extends Biasgen implements HasPreference {
      */
     protected ArrayList<CPLDConfigValue> cpldConfigValues = new ArrayList();
 
-    public SBretChipConfig(Chip chip) {
+    public SBretCPLDConfig(Chip chip) {
         super(chip);
     }
 

@@ -300,9 +300,8 @@ public class SBret10HardwareInterface extends CypressFX2Biasgen {
          *@param b the data buffer
          *@see #translateEvents
          */
-        static private final byte Xmask = (byte) 0x01;
-        static private final byte IntensityMask = (byte) 0x40;
-        static private final byte triggerMask = (byte) 0x10;
+        static private final byte Xbit = (byte) 0x02;
+        static private final byte triggerBit = (byte) 0x10;
         private int lasty = 0;
         private int currentts = 0;
         private int lastts = 0;
@@ -360,42 +359,22 @@ public class SBret10HardwareInterface extends CypressFX2Biasgen {
                                         timestamps[eventCounter] = currentts;  // ADC event gets last timestamp
                                         eventCounter++;
 //                                              System.out.println("ADC word: " + (dataword&SeeBetter20.ADC_DATA_MASK));
-                                    } else if ((buf[i + 1] & triggerMask) == triggerMask) { 
+                                    } else if ((buf[i + 1] & triggerBit) == triggerBit) { 
                                         addresses[eventCounter] = 256;  // combine current bits with last y address bits and send
                                         timestamps[eventCounter] = currentts;
                                         eventCounter++;
-                                     } else if ((buf[i + 1] & Xmask) == Xmask) {////  received an X address, write out event to addresses/timestamps output arrays
+                                     } else if ((buf[i + 1] & Xbit) == Xbit) {////  received an X address, write out event to addresses/timestamps output arrays
                                         // x adddress
-                                        //xadd = (buf[i] & 0xff);  //
                                         addresses[eventCounter] = (lasty << SBret10.YSHIFT) | (dataword & (SBret10.XMASK | SBret10.POLMASK));  // combine current bits with last y address bits and send
                                         timestamps[eventCounter] = currentts; // add in the wrap offset and convert to 1us tick
                                         eventCounter++;
-                                        //    log.info("received x address");
+                                        //log.info("X: "+((dataword & SBret10.XMASK)>>1));
                                         gotY = false;
-//                                        if (doubleY)
-//                                        {
-//                                            doubleY=false;
-//                                            System.out.println(yonlycons+ " Y addresses consecutively recieved in SeeBetter20HardwareInterface, total y only: "+ yonlycount); // this printout makes display very jerky!!!
-//                                            yonlycons=0;
-//                                        }
-                                    } else {// y address
-                                        // lasty = (0xFF & buf[i]); //
-//                                        if (gotY) {// TODO creates bogus event to see y without x. This should not normally occur.
-//                                  //          addresses[eventCounter] = (lasty << SeeBetter20.YSHIFT) + (SeeBetter20.SIZEX_TOTAL - 1 << 1);                 //(0xffff&((short)buf[i]&0xff | ((short)buf[i+1]&0xff)<<8));
-//                                  //          timestamps[eventCounter] = lastts; //*TICK_US; //add in the wrap offset and convert to 1us tick
-//                                  //          eventCounter++;
-//                                            yonlycount++;
-//                                            yonlycons++;
-//                                            doubleY=true;
-//                                        }
-                                        if ((buf[i] & IntensityMask) != 0) { // intensity spike
-                                            // log.info("received intensity bit");
-                                            addresses[eventCounter] = SBret10.INTENSITYMASK;
-                                            timestamps[eventCounter] = currentts;
-                                            eventCounter++;
-                                        }
+                                    } else {
+                                        // y address
                                         lasty = (SBret10.YMASK >>> SBret10.YSHIFT) & dataword; //(0xFF & buf[i]); //
                                         gotY = true;
+                                        //log.info("Y: "+lasty+" - data "+dataword+" - mask: "+(SBret10.YMASK >>> SBret10.YSHIFT));
                                     }
                                 }
                                 break;
