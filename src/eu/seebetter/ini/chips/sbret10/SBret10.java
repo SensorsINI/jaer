@@ -11,6 +11,7 @@ import com.sun.opengl.util.j2d.TextRenderer;
 import eu.seebetter.ini.chips.*;
 import eu.seebetter.ini.chips.config.*;
 import eu.seebetter.ini.chips.sbret10.SBret10.SBret10Config.*;
+import eu.seebetter.ini.chips.seebetter20.SeeBetter20;
 import java.awt.event.ActionEvent;
 import java.awt.geom.Point2D.Float;
 import java.util.Observer;
@@ -301,9 +302,11 @@ public class SBret10 extends AETemporalConstastRetina {
                             break;
                         case 1:
                             e.readoutType = PolarityADCSampleEvent.Type.B;
+                            //log.info("got B event");
                             break;
                         case 2:
                             e.readoutType = PolarityADCSampleEvent.Type.C;
+                            //log.info("got C event");
                             break;
                         case 3:
                             log.warning("Event with cycle null was sent out!");
@@ -315,7 +318,7 @@ public class SBret10 extends AETemporalConstastRetina {
                     e.address = data;
                     e.startOfFrame = (data & ADC_START_BIT) == ADC_START_BIT;
                     if(e.startOfFrame){
-                        if(pixCnt!=129600) System.out.println("New frame, pixCnt was incorrectly "+pixCnt+" instead of 4096 but this could happen at end of file");
+                        //if(pixCnt!=129600) System.out.println("New frame, pixCnt was incorrectly "+pixCnt+" instead of 129600 but this could happen at end of file");
                         if(ignoreReadout){
                             ignore = true;
                         }
@@ -427,8 +430,9 @@ public class SBret10 extends AETemporalConstastRetina {
         private CPLDInt rowSettle = new CPLDInt(SBret10.this, 63, 48, "rowSettle", "time to settle a row select before readout", 0);
         private CPLDInt resSettle = new CPLDInt(SBret10.this, 79, 64, "resSettle", "time to settle a reset before readout", 0);
         private CPLDInt frameDelay = new CPLDInt(SBret10.this, 95, 80, "frameDelay", "time between two frames", 0);
-        private CPLDBit testPixAPSread = new CPLDBit(SBret10.this, 96, "testPixAPSread", "enables continuous scanning of testpixel", false);
-        private CPLDBit useC = new CPLDBit(SBret10.this, 97, "useC", "enables a second readout", false);
+        private CPLDInt padding = new CPLDInt(SBret10.this, 109, 96, "pad", "used to zeros", 0);
+        private CPLDBit testPixAPSread = new CPLDBit(SBret10.this, 110, "testPixAPSread", "enables continuous scanning of testpixel", false);
+        private CPLDBit useC = new CPLDBit(SBret10.this, 111, "useC", "enables a second readout", false);
         //
         // lists of ports and CPLD config
         private ADC adc;
@@ -458,6 +462,7 @@ public class SBret10 extends AETemporalConstastRetina {
             addConfigValue(rowSettle);
             addConfigValue(colSettle);
             addConfigValue(frameDelay);
+            addConfigValue(padding);
             addConfigValue(testPixAPSread);
             addConfigValue(useC);
 
@@ -1987,7 +1992,7 @@ public class SBret10 extends AETemporalConstastRetina {
             switch(type){
                 case C: 
                     if (index >= cData.length) {
-                    log.info("buffer overflowed - missing start frame bit? index "+index);
+                    //log.info("buffer overflowed - missing start frame bit? index "+index);
                         return;
                     }
                     if (index == NUMSAMPLES-1) {
