@@ -144,8 +144,8 @@ public class SBret10 extends AETemporalConstastRetina {
         setSizeX(EntirePixelArray.width*EntirePixelArray.pitch);
         setSizeY(EntirePixelArray.height*EntirePixelArray.pitch);
         setNumCellTypes(3); // two are polarity and last is intensity
-        setPixelHeightUm(14.5f);
-        setPixelWidthUm(14.5f);
+        setPixelHeightUm(18.5f);
+        setPixelWidthUm(18.5f);
 
         setEventExtractor(new SBret10Extractor(this));
 
@@ -344,10 +344,10 @@ public class SBret10 extends AETemporalConstastRetina {
 //                    if(e.isB){type = "B";}else{type = "A";}
 //                    String eventData = "x: "+e.x+", y:"+e.y+", type: "+type+", start of frame: "+Boolean.toString(e.startOfFrame)+" timestamp: "+Integer.toString(e.timestamp)+", data "+Integer.toBinaryString(e.adcSample)+" ("+Integer.toString(e.adcSample)+")";
                     //System.out.println("ADC Event: "+eventData);
-                    if(e.isB() && e.x == 1 && e.y == 1){
+                    if(e.isB() && e.x == 0 && e.y == (chip.getSizeY()-1)){
                         exposureB = e.timestamp-firstFrameTs;
                     }
-                    if(e.isC() && e.x == 1 && e.y == 1){
+                    if(e.isC() && e.x == 0 && e.y == (chip.getSizeY()-1)){
                         exposureC = e.timestamp-firstFrameTs;
                     }
                     if(((config.useC.isSet() && e.isC()) || (!config.useC.isSet() && e.isB()))  && e.x == (short)(chip.getSizeX()-1) && e.y == (short)(chip.getSizeY()-1)){
