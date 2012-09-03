@@ -169,9 +169,13 @@ public class ISIFilter extends EventFilter2D implements Observer {
     }
 
     public void update(Observable o, Object arg) {
-        if (arg.equals(Chip2D.EVENT_SIZEX) || arg.equals(Chip2D.EVENT_SIZEY)) {
-            resetBins();
-        }
+        
+        // THIS FUNCTION CAUSES A NULL POINTER EXCEPTION WHEN CHANGING THE HARDWARE, SO I COMMENTED IT OUT
+        // -Peter
+        
+//        if (arg.equals(Chip2D.EVENT_SIZEX) || arg.equals(Chip2D.EVENT_SIZEY)) {
+//            resetBins();
+//        }
     }
 
     /**

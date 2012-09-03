@@ -5,12 +5,16 @@
 package ch.unizh.ini.jaer.projects.neuralnets;
 
 import jspikestack.*;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.PolarityEvent;
 
 /**
  * 
  * @author Peter
  */
+@Description("Implements a spiking Restricted Boltzmann Machine for handwritten digit recognition.")
 public class NumberNet extends SpikeFilter {
 
 //    SpikeStack<STPLayer,Spike> net;
@@ -25,12 +29,27 @@ public class NumberNet extends SpikeFilter {
     @Override
     public NetMapper makeMapper(SpikeStack net) {
         
-        VisualMapper map=new VisualMapper();
+        VisualMapper<PolarityEvent> map=new VisualMapper<PolarityEvent>(){
+        
+            @Override
+            public int ev2addr(PolarityEvent ev) {
+                if (ev.polarity==PolarityEvent.Polarity.On)
+                    return -1;
+                else
+                    return super.ev2addr(ev);
+
+            }
+        
+        };
         map.inDimX=(short)chip.getSizeX();
         map.inDimY=(short)chip.getSizeY(); 
         map.outDimX=net.lay(0).dimx;
         map.outDimY=net.lay(0).dimy;
         return map;
+        
+        
+        
+        
         
     }
 
@@ -90,10 +109,11 @@ public class NumberNet extends SpikeFilter {
 //        
 //            
 //        
-//        lg.fastSTDP.plusStrength=-.001f;
-//        lg.fastSTDP.minusStrength=-.001f;   
-//        lg.fastSTDP.stdpTCminus=10;
-//        lg.fastSTDP.stdpTCplus=10;
+        ((STPAxon)net.ax(1,2)).setEnableFastSTDP(false);
+        nc.layerGlobals.fastSTDP.plusStrength=-.001f;
+        nc.layerGlobals.fastSTDP.minusStrength=-.001f;   
+        nc.layerGlobals.fastSTDP.stdpTCminus=10;
+        nc.layerGlobals.fastSTDP.stdpTCplus=10;
 //        
 //        net.plot.timeScale=1f;
 //        
@@ -103,7 +123,9 @@ public class NumberNet extends SpikeFilter {
 //        net.plot.updateMicros=100000;
         
         net.inputCurrents=true;
-        net.lay(0).inputCurrentStrength=.5f;
+        net.lay(0).inputCurrentStrength=1.5f;
+        
+        net.addAllReverseAxons();
         
         net.unrollRBMs();
         

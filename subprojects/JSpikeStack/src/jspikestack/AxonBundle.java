@@ -26,7 +26,7 @@ public class AxonBundle<GlobalParams extends AxonBundle.Globals>
     Layer preLayer=null;
     Layer postLayer=null;
     
-    boolean enable=true;    // Strength of feedforward connections
+    public boolean enable=true;    // Strength of feedforward connections
 //    boolean backSend=false;   // Strength of feedback connenctions
 
     Random rand=new Random();

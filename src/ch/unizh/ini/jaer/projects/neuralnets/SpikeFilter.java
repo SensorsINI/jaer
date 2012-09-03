@@ -36,6 +36,9 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     
     NetController.Types netType=NetController.Types.STP_LIF;
     
+    boolean pause=false;
+    
+    
     // </editor-fold>
             
     // <editor-fold  defaultstate="collapsed" desc=" Obligatory Filter Methods ">
@@ -64,10 +67,20 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
 //            lastEv.copyFrom(in.getFirstEvent());
         }
         
+        
         // If it's a clusterset event
         for (int k=0; k<in.getSize(); k++)
 //        for (BasicEvent ev:in)
         {   
+            
+            
+            if (pause)
+                return in;
+        
+        
+            
+            
+            
             BasicEvent ev=in.getEvent(k);
             
             if (lastEvTime!=Integer.MAX_VALUE && (lastEvTime>ev.timestamp))
@@ -85,8 +98,8 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         
 //        if (skipped>0)
             
-        
-        wrapNet.eatEvents();
+        if (lastEvTime!=Integer.MAX_VALUE)
+            wrapNet.eatEvents(wrapNet.R.translateTime(lastEvTime));
                 
         return in;
     }
@@ -277,6 +290,22 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     // </editor-fold>
     
     // <editor-fold  defaultstate="collapsed" desc=" Controller Methods ">
+    
+    public boolean isDreamMode()
+    {
+        if (net==null)
+            return false;
+        else
+            return !net.liveMode;
+        
+    }
+    
+    public void setDreamMode(boolean dreamMode)
+    {
+        net.liveMode=!dreamMode;
+        
+    }
+    
     
         
     // </editor-fold>

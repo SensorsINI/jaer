@@ -10,7 +10,7 @@ import net.sf.jaer.event.BasicEvent;
  *
  * @author Peter
  */
-public class VisualMapper extends NetMapper{
+public class VisualMapper<T extends BasicEvent> extends NetMapper<T>{
 
     short inDimX;
     short inDimY;
@@ -31,7 +31,7 @@ public class VisualMapper extends NetMapper{
 //    }
 
     @Override
-    public int ev2addr(BasicEvent ev) {
+    public int ev2addr(T ev) {
         short newX=(short)(ev.x*outDimX/inDimX);
         short newY=(short)(outDimY-1-(ev.y*outDimY/inDimY));
         

@@ -308,6 +308,33 @@ public class Layer<AxonType extends AxonBundle> {
     }
     
     
+    public Controller getControls()
+    {
+        return new Controller();
+    }
+    
+    
+    public class Controller extends Controllable
+    {
+
+        @Override
+        public String getName() {
+            return Layer.this.getName()+" Controls";
+        }
+        
+        
+        public void setInputCurrentStrength(float val)
+        {
+            inputCurrentStrength=val;
+        }
+        
+        public float getInputCurrentStrength()
+        {
+            return inputCurrentStrength;
+        }
+
+    }
+    
 //    
 //    public class Factory
 //    {

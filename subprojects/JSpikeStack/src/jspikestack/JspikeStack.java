@@ -105,8 +105,8 @@ public class JspikeStack {
 //        un.thresh=1.5f;
         
         lg.stdpWin=30000;
-        lg.fastSTDP.plusStrength=-.0005f;
-        lg.fastSTDP.minusStrength=-.0005f;   
+        lg.fastSTDP.plusStrength=-.0001f;
+        lg.fastSTDP.minusStrength=-.0001f;   
         lg.fastSTDP.stdpTCminus=20000;
         lg.fastSTDP.stdpTCplus=20000;
         
@@ -116,8 +116,9 @@ public class JspikeStack {
         // Run the numbers!
         float rate=100;
         int timeMicros=1000000;
+        int targetLayer=3;
         for (int i=0; i<10; i++)
-        {    nc.generateInputSpikes(rate,timeMicros,i,3);
+        {    nc.generateInputSpikes(rate,timeMicros,i,targetLayer);
         }              
         
         nc.setRecordingState(true);

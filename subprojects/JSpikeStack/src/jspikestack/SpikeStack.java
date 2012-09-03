@@ -358,21 +358,38 @@ public class SpikeStack<AxonType extends AxonBundle,SpikeType extends Spike> imp
                         
             // Determine whether to read from input or buffer
             boolean readInput=!inputBuffer.isEmpty() && (internalBuffer.isEmpty() || inputBuffer.peek().hitTime<internalBuffer.peek().hitTime);
-            SpikeType ev=readInput?inputBuffer.poll():internalBuffer.poll();
+            
+            
+            
+            int newtime=readInput?inputBuffer.peek().hitTime:internalBuffer.peek().hitTime;
+            
+            
             
             // Update current time to time of this event
-            if (ev.hitTime<time)
-            {   System.out.println("Input Spike time Decrease detected!  ("+time+"-->"+ev.hitTime+")  Resetting network...");
-                reset();                
+            if (newtime<time)
+            {   System.out.println("Input Spike time Decrease detected!  ("+time+"-->"+newtime+")  Resetting network...");
+                reset();            
+                break;
             }
             
-            time=ev.hitTime;
+            if (newtime > timeout)
+                break;
+            
+            
+            time=newtime;
+            
+            
+            
+            SpikeType ev=readInput?inputBuffer.poll():internalBuffer.poll();
+            
+            
+            
+//            time=ev.hitTime;
             
 //            System.out.println(internalBuffer.size());
             
             
-            if (time > timeout)
-                break;
+            
             
 //            System.out.println(internalBuffer.size());
             

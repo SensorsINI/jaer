@@ -5,14 +5,17 @@
 package ch.unizh.ini.jaer.projects.neuralnets;
 
 import jspikestack.*;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.PolarityEvent;
 
 /**
- *
+ * 
+ * 
  * @author Peter
  */
+@Description("Implements an associative memory between audio and visual stimuli using a network of spiking neurons.")
 public class AudioVisualNet extends SpikeFilter {
 
     
@@ -77,6 +80,8 @@ public class AudioVisualNet extends SpikeFilter {
         
         this.buildFromXML();
         
+        this.setMaxWaitTime(200000);
+        
         // Add inhibitory laterals to the audio input layer.
 //        AxonBundle.Factory fac=new AxonBundle.Factory();
 //        AxonBundle ax=fac.make(net.lay(2), net.lay(2));
@@ -88,18 +93,17 @@ public class AudioVisualNet extends SpikeFilter {
 //        NetController<STPLayer,STPLayer.Globals,LIFUnit.Globals> netcon= nc;
         
         
-        net.addAllReverseAxons();
         
 //        net.unrollRBMs();
         
         STPAxon.Globals lG=(STPAxon.Globals)axonGlobs;
         
-        unitGlobs.tau=50000;
-        lG.delay=10000;
+        unitGlobs.tau=100000;
+        lG.delay=12000;
         unitGlobs.tref=5000;
         
-        nc.view.timeScale=1f;
-        
+//        nc.view.timeScale=1f;
+//        
         
         // Set up connections
 //        net.ax(0,1)
@@ -112,22 +116,47 @@ public class AudioVisualNet extends SpikeFilter {
         unitGlobs.thresh=2;
         
         
+        
         lG.fastWeightTC=2000000;
         
 //        ((STPAxon)net.ax(1,2)).setEnableFastSTDP(true);
 //        ((STPAxon)net.ax(3,2)).setEnableFastSTDP(true);        
-        lG.fastSTDP.plusStrength=(-.01f);
-        lG.fastSTDP.minusStrength=(-.01f);   
-        lG.fastSTDP.stdpTCminus=(10000);
-        lG.fastSTDP.stdpTCplus=(10000);
+//        lG.fastSTDP.plusStrength=(-.01f);
+//        lG.fastSTDP.minusStrength=(-.01f);   
+//        lG.fastSTDP.stdpTCminus=(10000);
+//        lG.fastSTDP.stdpTCplus=(10000);
+//        
+        
+        ((STPAxon)net.ax(1,4)).setEnableFastSTDP(false);
+        ((STPAxon)net.ax(2,4)).setEnableFastSTDP(false);
+        ((STPAxon)net.ax(3,4)).setEnableFastSTDP(false);
+//        un.thresh=1.5f;
+        
+        nc.layerGlobals.stdpWin=30000;
+        nc.layerGlobals.fastSTDP.plusStrength=-.0003f;
+        nc.layerGlobals.fastSTDP.minusStrength=-.0003f;   
+        nc.layerGlobals.fastSTDP.stdpTCminus=20000;
+        nc.layerGlobals.fastSTDP.stdpTCplus=20000;
         
         net.inputCurrents=true;
-        
+        net.lay(0).inputCurrentStrength=.5f;
+        net.lay(2).inputCurrentStrength=.1f;
         
         setVisualInputStrength(getVisualInputStrength());
         setAudioInputStrength(getAudioInputStrength());
         
+        net.addAllReverseAxons();
         net.unrollRBMs();
+        
+        
+        net.lay(0).name="VI (up)";
+        net.lay(1).name="VA";
+        net.lay(2).name="AU";
+        net.lay(3).name="LB";
+        net.lay(4).name="AS";
+        net.lay(5).name="VI (down)";
+        
+        net.liveMode=true;
         
     }
 
@@ -137,7 +166,7 @@ public class AudioVisualNet extends SpikeFilter {
     }
     
     
-    float visualInputStrength=2;
+    float visualInputStrength=.5f;
     public void setVisualInputStrength(float s)
     {   net.lay(0).inputCurrentStrength=visualInputStrength=s;
     }
@@ -145,12 +174,40 @@ public class AudioVisualNet extends SpikeFilter {
     {   return visualInputStrength;        
     }
     
-    float audioInputStrength=2;
+    float audioInputStrength=.1f;
     public void setAudioInputStrength(float s)
-    {   net.lay(3).inputCurrentStrength=audioInputStrength=s;
+    {   net.lay(2).inputCurrentStrength=audioInputStrength=s;
     }
     public float getAudioInputStrength()
     {   return audioInputStrength;        
     }
+    
+    
+    
+    @Override
+    public void setDreamMode(boolean dreamMode)
+    {
+        
+        pause=true;
+        
+        net.liveMode=!dreamMode;
+        
+        net.ax(0,1).enable=!dreamMode;
+        
+        unitGlobs.tau*=dreamMode?2:.5;
+        unitGlobs.thresh*=dreamMode?1.8:1/1.8f;
+        
+        
+        ((STPAxon)net.ax(1,4)).setEnableFastSTDP(dreamMode);
+        ((STPAxon)net.ax(2,4)).setEnableFastSTDP(dreamMode);
+        ((STPAxon)net.ax(3,4)).setEnableFastSTDP(dreamMode);
+        
+               
+//        super.setDreamMode(dreamMode);
+              
+        pause=false;
+        
+    }
+    
     
 }

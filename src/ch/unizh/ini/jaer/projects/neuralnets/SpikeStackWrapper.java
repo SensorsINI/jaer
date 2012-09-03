@@ -47,6 +47,10 @@ public class SpikeStackWrapper <NetType extends SpikeStack> {
     {   net.eatEvents();
     }
     
+    public void eatEvents(int toTimestamp)
+    {   net.eatEvents(toTimestamp);
+    }
+    
     public void addToQueue(Spike sp)
     {   net.addToQueue(sp);
     }

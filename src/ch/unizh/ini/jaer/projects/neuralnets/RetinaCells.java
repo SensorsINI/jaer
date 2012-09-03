@@ -45,6 +45,8 @@ public class RetinaCells extends SpikeFilter {
             public int ev2layer(PolarityEvent ev)
             {   return ev.polarity==PolarityEvent.Polarity.On?1:0;
             }
+            
+           
         };
     }
 

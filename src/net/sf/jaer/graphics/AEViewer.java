@@ -1639,7 +1639,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         /* TODO synchronized tobi removed sync because it was causing deadlocks on exit. */
             
             
-            BasicEvent lastEvent=new BasicEvent();
+//            BasicEvent lastEvent=new BasicEvent();
             
             while (!isVisible() && !globalized) {
                 try {
@@ -1678,13 +1678,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                    System.out.println(packet.getEventClass());
                     
                     // Monotonicity test code
-                    for (int i = 0; i < packet.getSize(); i++) {
-                        BasicEvent currentEvent = packet.getEvent(i);
-                        if ((lastEvent != null) && (currentEvent.timestamp < lastEvent.timestamp)) {
-                            System.out.println("TimeStamp Nonmonotonicity: "+currentEvent.timestamp+" < "+ lastEvent.timestamp);
-                        }
-                        lastEvent.copyFrom(currentEvent);
-                    }
+//                    for (int i = 0; i < packet.getSize(); i++) {
+//                        BasicEvent currentEvent = packet.getEvent(i);
+//                        if ((lastEvent != null) && (currentEvent.timestamp < lastEvent.timestamp)) {
+//                            System.out.println("TimeStamp Nonmonotonicity: "+currentEvent.timestamp+" < "+ lastEvent.timestamp);
+//                        }
+//                        lastEvent.copyFrom(currentEvent);
+//                    }
                     
                     // Filter Packet (unless part of global viewer, in which case it's done later)
                     if (!globalized)

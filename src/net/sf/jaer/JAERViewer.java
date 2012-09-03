@@ -92,7 +92,11 @@ public class JAERViewer {
     
     
     
-    /** Creates a new instance of JAERViewer */
+    /** Creates a new instance of JAERViewer
+     * 
+     * @param multimode set to true to enable global viewer so that all sources are aggregated to one window.
+     * @see net.sf.jaer.graphics.GlobalViewer
+     */
     public JAERViewer(boolean multimode) {
         
         multistartmode=multimode;

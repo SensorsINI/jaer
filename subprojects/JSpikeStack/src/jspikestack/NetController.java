@@ -176,6 +176,10 @@ public class NetController<LayerType extends AxonBundle,LayerGlobalType extends 
         {
             cp.addController(l.getControls());
         }
+        for (Layer l:net.getLayers())
+        {
+            cp.addController(l.getControls());
+        }
         return cp;
     }
     
