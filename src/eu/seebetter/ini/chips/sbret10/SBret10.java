@@ -287,7 +287,7 @@ public class SBret10 extends AETemporalConstastRetina {
                         e.address = data;
                         e.timestamp = (timestamps[i]);
                         e.polarity = (data & 1) == 1 ? PolarityADCSampleEvent.Polarity.On : PolarityADCSampleEvent.Polarity.Off;
-                        e.x = (short) (((data & XMASK) >>> XSHIFT));
+                        e.x = (short) (chip.getSizeX()-1-((data & XMASK) >>> XSHIFT));
                         e.y = (short) ((data & YMASK) >>> YSHIFT); 
                         //System.out.println(data);
                     } 
@@ -332,24 +332,20 @@ public class SBret10 extends AETemporalConstastRetina {
                         frameTime = e.timestamp - firstFrameTs;
                         firstFrameTs = e.timestamp;
                     }
+                    if(e.isB() && countX[1] == 0 && countY[2] == 0){
+                        exposureB = e.timestamp-firstFrameTs;
+                    }
+                    if(e.isC() && countX[2] == 0 && countY[2] == 0){
+                        exposureC = e.timestamp-firstFrameTs;
+                    }
                     if(!(countY[sampleType]<chip.getSizeY())){
                         countY[sampleType] = 0;
                         countX[sampleType]++;
                     }
-                    e.x=countX[sampleType];
+                    e.x=(short)(chip.getSizeX()-1-countX[sampleType]);
                     e.y=(short)(chip.getSizeY()-1-countY[sampleType]);
                     countY[sampleType]++;
                     pixCnt++;
-//                    String type = "";
-//                    if(e.isB){type = "B";}else{type = "A";}
-//                    String eventData = "x: "+e.x+", y:"+e.y+", type: "+type+", start of frame: "+Boolean.toString(e.startOfFrame)+" timestamp: "+Integer.toString(e.timestamp)+", data "+Integer.toBinaryString(e.adcSample)+" ("+Integer.toString(e.adcSample)+")";
-                    //System.out.println("ADC Event: "+eventData);
-                    if(e.isB() && e.x == 0 && e.y == (chip.getSizeY()-1)){
-                        exposureB = e.timestamp-firstFrameTs;
-                    }
-                    if(e.isC() && e.x == 0 && e.y == (chip.getSizeY()-1)){
-                        exposureC = e.timestamp-firstFrameTs;
-                    }
                     if(((config.useC.isSet() && e.isC()) || (!config.useC.isSet() && e.isB()))  && e.x == (short)(chip.getSizeX()-1) && e.y == (short)(chip.getSizeY()-1)){
                         lastADCevent();
                     }
@@ -1895,7 +1891,6 @@ public class SBret10 extends AETemporalConstastRetina {
         private int writeCounterB = 0;
         private boolean useDVSExtrapolation = getPrefs().getBoolean("useDVSExtrapolation", false);
         private boolean invertADCvalues = getPrefs().getBoolean("invertADCvalues", true); // true by default for log output which goes down with increasing intensity
-        private int lasttimestamp=-1;
         private Read displayRead = Read.DIFF_B;
         
         public IntensityFrameData() {
@@ -1977,13 +1972,12 @@ public class SBret10 extends AETemporalConstastRetina {
         }
 
         private void putEvent(PolarityADCSampleEvent e) {
-            if(!e.isAdcSample() || e.timestamp==lasttimestamp) return;
+            if(!e.isAdcSample()) return;
             if(e.startOfFrame) {
                 resetWriteCounter();
                 setTimestamp(e.timestamp);
             }
             putNextSampleValue(e.adcSample, e.readoutType, index(e.x, e.y));
-            lasttimestamp=e.timestamp; // so we don't put the same sample over and over again
         }
         
         private void putNextSampleValue(int val, PolarityADCSampleEvent.Type type, int index) {
@@ -2032,9 +2026,9 @@ public class SBret10 extends AETemporalConstastRetina {
         //            log.info("buffer overflowed - missing start frame bit?");
                         return;
                     }
-                    if (index == NUMSAMPLES-1) {
-                        updateDVSintensities();
-                    }
+//                    if (index == NUMSAMPLES-1) {
+//                        updateDVSintensities();
+//                    }
                     bData[index] = val;
                     bDiffData[index] = aData[index]-bData[index];
                     if(!config.useC.isSet()){
