@@ -183,10 +183,13 @@ public class NetPlotter {
         
         statePanel.setLayout(new GridBagLayout());
         
-        int nLayers=net.nLayers();
+        final int nLayers=net.nLayers();
         
 //        layerStatePlots=new LayerStatePlotter[nLayers];
         layerStatePlots=new ArrayList<LayerStatePlotter>(nLayers);
+        
+//        Toolkit toolkit =  Toolkit.getDefaultToolkit ().getS
+        
         
         for (int i=0; i<nLayers; i++)
         {
@@ -197,7 +200,7 @@ public class NetPlotter {
 //            pan.setLayout(new GridBagLayout());
             pan.setLayout(new BorderLayout());
             
-            ImageDisplay disp=ImageDisplay.createOpenGLCanvas();
+            final ImageDisplay disp=ImageDisplay.createOpenGLCanvas();
             
            // disp.resetFrame(.5f);
             
@@ -214,7 +217,35 @@ public class NetPlotter {
             }
             disp.setImageSize(sizeX,sizeY);
             
-            disp.setSize(300,300);
+//            disp.setSize(200,200);
+            disp.setPreferredSize(new Dimension(150,150));
+            disp.setBorderSpacePixels(18);
+            
+            
+//            hostPanel.addComponentListener(new ComponentListener(){
+//
+//                @Override
+//                public void componentResized(ComponentEvent e) {
+//                    int dim=e.getComponent().getWidth()/nLayers;
+//                    disp.setPreferredSize(new Dimension(dim,dim));
+//                }
+//
+//                @Override
+//                public void componentMoved(ComponentEvent e) {
+//                }
+//
+//                @Override
+//                public void componentShown(ComponentEvent e) {
+//                }
+//
+//                @Override
+//                public void componentHidden(ComponentEvent e) {
+//                }
+//            
+//
+//            });
+
+            
             
 //            disp.setBorderSpacePixels(5);
             
@@ -290,6 +321,9 @@ public class NetPlotter {
             hostPanel.add(jsp,BorderLayout.WEST);
             
         }
+        
+        
+        
         
 //        return hostPanel;
     }
@@ -622,8 +656,8 @@ public class NetPlotter {
 
 
                         lastTime=toTime;
-
-                        disp.setTitleLabel(layer.getName()+"  Max Rate: "+myFormatter.format(rate)+"Hz, Time: " +toTime/1000);
+                        disp.setTitleLabel(layer.getName()+"  Max: "+myFormatter.format(rate)+"Hz");
+//                        disp.setTitleLabel(layer.getName()+"  Max Rate: "+myFormatter.format(rate)+"Hz, Time: " +toTime/1000);
             //            disp.drawCenteredString(1, 1, "A");
 
             

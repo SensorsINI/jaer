@@ -86,7 +86,7 @@ public class JspikeStack {
 //        nc.setBackwardStrengths(new boolean[] {true,true,false,true});
                 
         un.useGlobalThresh=true;
-        un.thresh=2.1f;
+        un.thresh=2.6f;
         
         
         lg.delay=20000;

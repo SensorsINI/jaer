@@ -372,7 +372,7 @@ public class GlobalViewer extends javax.swing.JFrame {
 //            viewPanel=new JPanel();
             this.add(viewPanel,BorderLayout.CENTER);
             viewPanel.setBackground(Color.DARK_GRAY); 
-            viewPanel.setLayout(new FlowLayout());
+//            viewPanel.setLayout(new FlowLayout());
             
             
 //            buildDisplay();
@@ -528,6 +528,8 @@ public class GlobalViewer extends javax.swing.JFrame {
             addDisplayWriter(d,null);
         }
         
+        Point windowPos=new Point(20,20);
+        
         public void addDisplayWriter(final Component d, Dimension dim)
         {
 //            viewPanel.setLayout(new FlowLayout());
@@ -551,10 +553,32 @@ public class GlobalViewer extends javax.swing.JFrame {
                         
             imagePanel.add(d);
             
+            
+            
+            
             if (dim==null)
-                imagePanel.setPreferredSize(d.getPreferredSize());
+                if (d.getPreferredSize()==null)
+                    dim=new Dimension(300,300);
+                else
+                    dim=d.getPreferredSize();
             else
-                imagePanel.setPreferredSize(dim);
+                
+            imagePanel.setPreferredSize(dim);
+                        
+            imagePanel.setSize(dim);
+            
+            boolean hori=windowPos.x+dim.width>viewPanel.getWidth() && (windowPos.x>0.1*viewPanel.getWidth());            
+            if (hori)
+            {   windowPos.x=0;           
+                windowPos.y=(windowPos.y+imagePanel.getHeight())%viewPanel.getHeight();            
+            }
+            
+            
+            imagePanel.setLocation(windowPos);
+            
+            windowPos.x+=imagePanel.getWidth();
+            
+            
             
             d.setPreferredSize(imagePanel.getSize());
 

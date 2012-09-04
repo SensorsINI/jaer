@@ -4,6 +4,8 @@
  */
 package ch.unizh.ini.jaer.projects.neuralnets;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import jspikestack.*;
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
@@ -188,14 +190,24 @@ public class AudioVisualNet extends SpikeFilter {
     public void setDreamMode(boolean dreamMode)
     {
         
+        
         pause=true;
+        
+        // Nasty Little Hack!
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException ex) {
+            Logger.getLogger(AudioVisualNet.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        
         
         net.liveMode=!dreamMode;
         
         net.ax(0,1).enable=!dreamMode;
         
         unitGlobs.tau*=dreamMode?2:.5;
-        unitGlobs.thresh*=dreamMode?1.8:1/1.8f;
+        unitGlobs.thresh*=dreamMode?1/1.8f:1.8;
         
         
         ((STPAxon)net.ax(1,4)).setEnableFastSTDP(dreamMode);
