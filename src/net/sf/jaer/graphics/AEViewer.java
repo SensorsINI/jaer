@@ -1242,12 +1242,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    
+    
+    
+    private synchronized void buildInterfaceMenu()
+    {
+        buildInterfaceMenu(interfaceMenu);
+    }
+    
     /** Builds list of attached hardware interfaces by asking the
      * hardware interface factories for the interfaces. Populates the Interface menu with these items,
     and with a "None" item to close and set the chip's HardwareInterface to null.
      * Various specialized interfaces customize the code below.
      */
-    private synchronized void buildInterfaceMenu() {
+    synchronized void buildInterfaceMenu(JMenu interfaceMenu) {
         ButtonGroup bg = new ButtonGroup();
         interfaceMenu.removeAll();
 
@@ -5730,6 +5738,16 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
         public void resetTimeStamps()
         {
             AEViewer.this.zeroTimestamps();
+        }
+        
+        public JMenuBar getToolBar()
+        {
+            JMenuBar jt=new JMenuBar();
+//            JMenu jm=new JMenu("Interface");
+//            buildInterfaceMenu(jm);
+            
+            jt.add(interfaceMenu);
+            return jt;
         }
         
         

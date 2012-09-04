@@ -80,10 +80,27 @@ public class GlobalViewer extends javax.swing.JFrame {
             for (int i=0; i<viewers.size(); i++) 
             {   
                 AEViewer.Ambassador v=viewers.get(i).getAmbassador();
+                
+//                Component jp=v.getPanel();
+                
+                JPanel jp=new JPanel();
+                jp.setLayout(new BorderLayout());
+                jp.add(v.getPanel(),BorderLayout.CENTER);
+//                JToolBar jt=new JToolBar();
+                
+//                JMenu men=new JMenu("Interface");
+//                
+//                jt.add(men);
+                JMenuBar m=v.getToolBar();
+                jp.add(m,BorderLayout.NORTH);
+                
+                
+                
                 v.setID(i);
                 aeviewers.add(v);
                 addPacketStream(v);
-                addDisplayWriter(v.getPanel(),new Dimension(400,400));
+//                addDisplayWriter(v.getPanel(),new Dimension(400,400));
+                addDisplayWriter(jp,new Dimension(400,400));
                 v.setWatched(true);
                 v.setSemaphore(waitFlag);
 //                inputDisplays.add(v);

@@ -82,7 +82,7 @@ public class AudioVisualNet extends SpikeFilter {
         
         this.buildFromXML();
         
-        this.setMaxWaitTime(200000);
+        this.setMaxWaitTime(300000);
         
         // Add inhibitory laterals to the audio input layer.
 //        AxonBundle.Factory fac=new AxonBundle.Factory();
