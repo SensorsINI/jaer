@@ -80,7 +80,7 @@ public class AudioVisualNet extends SpikeFilter {
     public void customizeNet(SpikeStack neet) {
         
         
-        this.buildFromXML();
+        this.buildFromXML("AssociativeNetworkE.xml");
         
         this.setMaxWaitTime(300000);
         

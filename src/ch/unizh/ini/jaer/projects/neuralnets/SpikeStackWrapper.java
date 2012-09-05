@@ -80,6 +80,19 @@ public class SpikeStackWrapper <NetType extends SpikeStack> {
         
         net.read.readFromXML(net,readingDir);
     }    
+    
+    /** Build the input network from XML */
+    public static void buildFromXML(SpikeStack net, String relativeFileName)
+    {
+//        URL f=ClassLoader.getSystemClassLoader().getResource(".");
+        
+        File f=new File(readingDir+"/"+relativeFileName);
+        
+        if (f.isFile())
+            net.read.readFromXML(net,f);
+        else
+            net.read.readFromXML(net,readingDir);
+    }  
             
     /** Convert a basic event to spike */
     public Spike event2spike(BasicEvent ev)

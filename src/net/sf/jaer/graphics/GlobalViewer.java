@@ -216,7 +216,7 @@ public class GlobalViewer extends javax.swing.JFrame {
         // <editor-fold defaultstate="collapsed" desc=" GUI Methods " >
         
         JToolBar bottomBar;
-        Container viewPanel;
+        JDesktopPane viewPanel;
         JPanel filterPanel;
         MultiInputFrame multiInputControl;
 //        ArrayList<JPanel> viewPanels=new ArrayList();
@@ -607,8 +607,9 @@ public class GlobalViewer extends javax.swing.JFrame {
         
         
         public void removeDisplay(Component disp)
-        {   viewPanel.remove(disp);
+        {   viewPanel.remove(disp.getParent().getParent().getParent().getParent());
             
+//            viewPanel.repaint();
 //            disp.setDisplayEnabled(false);
         }
         

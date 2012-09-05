@@ -209,6 +209,7 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
         
         int goToTime=Integer.MIN_VALUE;
         
+        
         try {
 
             
@@ -271,6 +272,8 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
         goToTime-=getMaxWaitTime();
         
         
+        
+        
         /* Step 2, if dead queues have received events, revive them, add their 
          * elements back into the priority queue.
          */
@@ -281,7 +284,7 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
                     ev.source=(byte)i;
                     
                     
-                    if (ev.timestamp<lastEventTime)
+                    if (lastEventTime!=Integer.MIN_VALUE && ev.timestamp-lastEventTime<0)
                     {   resynchronize();
                         
                         throw new RuntimeException("The event-streams from your sources are out of synch. "

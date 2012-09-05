@@ -164,6 +164,11 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         SpikeStackWrapper.buildFromXML(net);
     }
     
+    public void buildFromXML(String filename)
+    {
+        SpikeStackWrapper.buildFromXML(net,filename);
+    }
+    
     
     public void setNetwork(SpikeStack net,NetMapper map)
     {
