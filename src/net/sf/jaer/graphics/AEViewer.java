@@ -1806,9 +1806,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         } // viewLoop.run()
         
-        /** Grab the input.  Outputs true if the code should continue from here and skip future processing
+        /** Grab the input.  
          * 
-         * @return 
+         * @return returns true if the code should continue from here and skip future processing
          */
         boolean grabInput(){
             
