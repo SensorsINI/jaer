@@ -6,13 +6,14 @@ package jspikestack;
 
 import java.io.Serializable;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Queue;
 
 /**
  *
  * @author oconnorp
  */
-public class STDPAxon<GlobalParams extends STDPAxon.Globals> extends AxonBundle<GlobalParams> {
+public class STDPAxon<GlobalParams extends STDPAxon.Globals> extends AxonBundle<GlobalParams,PSPUnitToLayer> {
     
     
 //    
@@ -30,7 +31,7 @@ public class STDPAxon<GlobalParams extends STDPAxon.Globals> extends AxonBundle<
 
         
         
-        Queue<Spike> presyn;   // Queue of presynaptic spikes
+        Queue<PSP> presyn;   // Queue of presynaptic PSPs
         Queue<Spike> postsyn;  // Queue of postsynaptic spikes
     
         
@@ -50,7 +51,13 @@ public class STDPAxon<GlobalParams extends STDPAxon.Globals> extends AxonBundle<
             setSTDPstate();
         }
 
-        
+        @Override
+        public void postSpike(PSP p)
+        {
+            if(this.isLearningEnabled())
+                presyn.add(p);
+            
+        }
         
         
         /** For performance: enable/disable queues */
@@ -67,12 +74,13 @@ public class STDPAxon<GlobalParams extends STDPAxon.Globals> extends AxonBundle<
                     });
                 
                 final int thisLayer=preLayer.ixLayer;
-                presyn=net.outputQueue.addReader(new Comparable<Spike>()
-                    {   @Override
-                        public int compareTo(Spike o) 
-                        {   return o.layer==thisLayer?1:0;
-                        }
-                    });
+                presyn=new LinkedList<PSP>();
+//                presyn=net.outputQueue.addReader(new Comparable<Spike>()
+//                    {   @Override
+//                        public int compareTo(Spike o) 
+//                        {   return o.layer==thisLayer?1:0;
+//                        }
+//                    });
             }
             else
             {
@@ -161,7 +169,7 @@ public class STDPAxon<GlobalParams extends STDPAxon.Globals> extends AxonBundle<
                 
                 //while (!presyn.isEmpty() && (presyn.peek().time < evout.time+glob.stdpWin)) 
                 
-                Iterator<Spike> preit=presyn.iterator();
+                Iterator<PSP> preit=presyn.iterator();
                 int i=0;
                 while (preit.hasNext() ) 
                 {   // Iterate over input events (from this layer) pertaining to the output event
@@ -169,7 +177,7 @@ public class STDPAxon<GlobalParams extends STDPAxon.Globals> extends AxonBundle<
 //                    Spike evin=outBuffer.get(tempBookmark);
 //                    Spike evin=getOutputEvent(tempBookmark);
 //                    Spike evin=presyn.peek();
-                    Spike evin=preit.next();
+                    PSP evin=preit.next();
                     
                     int inTime=evin.hitTime;
                                         
@@ -186,7 +194,7 @@ public class STDPAxon<GlobalParams extends STDPAxon.Globals> extends AxonBundle<
                     }
                     else // presyn event is within relevant window, do STDP!
                     {   //System.out.println("dW: "+net.stdpRule(evout.time-evin.time));
-                        updateWeight(evin.addr,evout.addr,outTime-evin.time);
+                        updateWeight(evin.sp.addr,evout.addr,outTime-inTime);
                     }
                     
                 } 

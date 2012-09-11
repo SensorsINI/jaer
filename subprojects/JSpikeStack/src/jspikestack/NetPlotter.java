@@ -50,6 +50,7 @@ public class NetPlotter {
     
     public ArrayList<StatDisplay> stats=new ArrayList();
     
+//    public boolean useneuronstates=true;
     
     JTextComponent jt;
 //    LayerStatePlotter[] layerStatePlots;
@@ -218,7 +219,7 @@ public class NetPlotter {
             disp.setImageSize(sizeX,sizeY);
             
 //            disp.setSize(200,200);
-            disp.setPreferredSize(new Dimension(150,150));
+            disp.setPreferredSize(new Dimension(250,250));
             disp.setBorderSpacePixels(18);
             
             
@@ -519,11 +520,7 @@ public class NetPlotter {
             
                     
             
-            lastNetTime=upToTime;
-    //        lastNetTime=net.time;
-            
-            
-            
+            lastNetTime=upToTime;            
     }
     
     public class LayerStatePlotter
@@ -533,7 +530,7 @@ public class NetPlotter {
         float[] state;  // Array of unit states.
         
         int lastTime=0;
-        
+               
         float minState=Float.NaN;
         float maxState=Float.NaN;
         
@@ -541,11 +538,16 @@ public class NetPlotter {
         
         Queue<Spike> spikeQueue;
         
+        Unit.StateTracker[] stateTrackers;
+        
 //        int outBookmark;
         
         
         public LayerStatePlotter(Layer lay,ImageDisplay display)
-        {   tau=((LIFUnit.Globals)(lay.unitFactory.getGlobalControls())).getTau();
+        {   
+//            if (!useneuronstates)
+//                tau=((LIFUnit.Globals)(lay.unitFactory.getGlobalControls())).getTau();
+            
             layer=lay;
             disp=display;
 
@@ -562,6 +564,13 @@ public class NetPlotter {
                 }
             });
             
+            
+            stateTrackers=new Unit.StateTracker[lay.nUnits()];
+            for (int i=0; i<stateTrackers.length; i++)
+                stateTrackers[i]=lay.units[i].getStateTracker();
+            
+            
+            
         }
         
         public void update()
@@ -573,11 +582,17 @@ public class NetPlotter {
         {
 //            double time=layer.net.time;
             
-            synchronized(this)
-            {
+//            synchronized(this)
+//            {
+            
+//            final int toTime=net.time;
+            
                         
             float smin=Float.MAX_VALUE;
             float smax=-Float.MAX_VALUE;
+            int imin=0;
+            int imax=0;
+            
             
 //            if (toTime==Integer.MIN_VALUE)
 //                return;
@@ -587,41 +602,74 @@ public class NetPlotter {
             if (toTime==lastTime) // Nothing has changed.  Return
                 return;
             
-            // Step 1: Decay present state
-            for (int i=0; i<state.length; i++)
-            {   state[i]*=Math.exp((lastTime-toTime)/tau);    
-                if (Float.isNaN(state[i]))
-                    System.out.println("STOPP");
-//                else if (lastTime>toTime)
-//                    System.out.println("Troubles");
+//            if (useneuronstates)
+//            {
+                // Step 1: Add new events to state
+                while (!spikeQueue.isEmpty()) 
+                {   
+                    if (spikeQueue.peek().time>toTime)
+                        break;
+
+                    Spike ev=spikeQueue.poll();
+
+                    stateTrackers[ev.addr].updatestate(ev);
+
+                }
                 
-                if (state[i]<smin) smin=state[i];
-                if (state[i]>smax) smax=state[i];
-            }
+                // Step 2: Advance to present time
+                for (int i=0; i<state.length; i++)
+                {   state[i]=stateTrackers[i].getState(toTime); 
+                    if (Float.isNaN(state[i]))
+                        System.out.println("Trying to plot NaN state");
+
+                    if (state[i]<smin) {smin=state[i]; imin=i;}
+                    if (state[i]>smax) {smax=state[i]; imax=i;}
+                }
+                               
+//                
+//            }
+//            else
+//            {
+//                // Step 1: Decay present state
+//                for (int i=0; i<state.length; i++)
+//                {   state[i]*=Math.exp((lastTime-toTime)/tau);    
+//                    if (Float.isNaN(state[i]))
+//                        System.out.println("Trying to plot NaN state");
+//    //                else if (lastTime>toTime)
+//    //                    System.out.println("Troubles");
+//
+//                    if (state[i]<smin) smin=state[i];
+//                    if (state[i]>smax) smax=state[i];
+//                }
+//
+//                
+//                // Step 2: Add new events to state
+//                while (!spikeQueue.isEmpty()) 
+//                {   
+//                    if (spikeQueue.peek().time>toTime)
+//                        break;
+//
+//                    Spike ev=spikeQueue.poll();
+//
+//                    state[ev.addr]+=Math.exp((ev.time-toTime)/tau);
+//
+//                    if (state[ev.addr]<smin) smin=state[ev.addr];
+//                    if (state[ev.addr]>smax) smax=state[ev.addr];
+//                }
+//                
+//                
+//            }
+            
+            
+            
+            
             
             
             
             
 //        System.out.println(net.time);
         
-            // Step 2: Add new events to state
-//            while (outBookmark<layer.outBuffer.size())
-            while (!spikeQueue.isEmpty()) 
-            {   //Spike ev=layer.getOutputEvent(outBookmark);
-                Spike ev=spikeQueue.poll();
-                if (ev.time>toTime)
-                    break;
-                state[ev.addr]+=Math.exp((ev.time-toTime)/tau);
-                
-//                if (ev.time>toTime)
-//                {
-//                    System.out.println("Heere");
-//                }
-                    
-                if (state[ev.addr]<smin) smin=state[ev.addr];
-                if (state[ev.addr]>smax) smax=state[ev.addr];
-//                outBookmark++;
-            }
+            
             
             
             // Step 3: Set the color scale limits
@@ -639,8 +687,9 @@ public class NetPlotter {
                 maxState=smax*adaptationRate+invad*maxState;                
             }
             
-            final DecimalFormat myFormatter = new DecimalFormat("#");
             
+            final int iimax=imax;
+            final float ssmax=smax;
             
             SwingUtilities.invokeLater(new Runnable(){
                     @Override
@@ -656,8 +705,8 @@ public class NetPlotter {
 
 
                         lastTime=toTime;
-                        disp.setTitleLabel(layer.getName()+"  Max: "+myFormatter.format(rate)+"Hz");
-//                        disp.setTitleLabel(layer.getName()+"  Max Rate: "+myFormatter.format(rate)+"Hz, Time: " +toTime/1000);
+
+                        disp.setTitleLabel(layer.getName()+"  Max: "+stateTrackers[iimax].getLabel(ssmax));
             //            disp.drawCenteredString(1, 1, "A");
 
             
@@ -667,7 +716,7 @@ public class NetPlotter {
             
 //            disp.repaint();
             
-            }
+//            }
         }
         
         public void reset()

@@ -9,7 +9,7 @@ package jspikestack;
  *
  * @author oconnorp
  */
-public class BinThreshStack extends SpikeStack<AxonBundle,BinaryTransEvent> {
+public class BinThreshStack extends SpikeStack<AxonBundle> {
     
     
      public BinThreshStack (AxonBundle.AbstractFactory layerFac,Unit.AbstractFactory unitFac)
@@ -30,7 +30,7 @@ public class BinThreshStack extends SpikeStack<AxonBundle,BinaryTransEvent> {
                         
             // Determine whether to read from input or buffer
             boolean readInput=!inputBuffer.isEmpty() && (internalBuffer.isEmpty() || inputBuffer.peek().hitTime<internalBuffer.peek().hitTime);
-            BinaryTransEvent ev=readInput?inputBuffer.poll():internalBuffer.poll();
+            PSP ev=readInput?inputBuffer.poll():internalBuffer.poll();
             
             // Update current time to time of this event
             if (ev.hitTime<time)
@@ -46,27 +46,29 @@ public class BinThreshStack extends SpikeStack<AxonBundle,BinaryTransEvent> {
             
             try{
             
-                // Feed Spike to network, add to ouput queue if they're either either forced spikes or internally generated spikes
-                if (inputCurrents && readInput)     // 1: Input event drives current
-                {    lay(ev.layer).fireInputTo(ev);
+                ev.affect(this);
                 
-                }
-                else if (readInput)                 // 2: Input Spike fires unit
-                {   lay(ev.layer).fireFrom(ev.addr);
-                    outputQueue.add(ev);
-                }
-                else                                // 3: Internally buffered event propagated
-                {  // lay(ev.layer).propagateFrom(ev, ev.addr);
-                    outputQueue.add(ev);
-                }
-                // Post Spike-Feed Actions
-                digest();
+                // Feed Spike to network, add to ouput queue if they're either either forced spikes or internally generated spikes
+//                if (inputCurrents && readInput)     // 1: Input event drives current
+//                {    lay(ev.layer).fireInputTo(ev);
+//                
+//                }
+//                else if (readInput)                 // 2: Input Spike fires unit
+//                {   lay(ev.layer).fireFrom(ev.addr);
+//                    outputQueue.add(ev);
+//                }
+//                else                                // 3: Internally buffered event propagated
+//                {  // lay(ev.layer).propagateFrom(ev, ev.addr);
+//                    outputQueue.add(ev);
+//                }
+//                // Post Spike-Feed Actions
+//                digest();
             
             }
             catch (java.lang.ArrayIndexOutOfBoundsException ex)
             {   
 //                System.out.println("You tried firing an event at address with address "+ev.addr+" to Layer "+ev.layer+", which has just "+lay(ev.layer).nUnits()+" units.");
-                throw new java.lang.ArrayIndexOutOfBoundsException("You tried firing an event at address with address "+ev.addr+" to Layer "+ev.layer+", which has just "+lay(ev.layer).nUnits()+" units.");
+                throw new java.lang.ArrayIndexOutOfBoundsException("You tried firing an event at address with address "+ev.sp.addr+" to Layer "+ev.sp.layer+", which has just "+lay(ev.sp.layer).nUnits()+" units.");
             }
             
             

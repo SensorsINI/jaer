@@ -19,7 +19,7 @@ import java.util.logging.Logger;
  *  
  * @author oconnorp
  */
-public class SpikeStack<AxonType extends AxonBundle,SpikeType extends Spike> implements Serializable {
+public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
     
     // <editor-fold defaultstate="collapsed" desc=" Properties ">
     
@@ -34,12 +34,12 @@ public class SpikeStack<AxonType extends AxonBundle,SpikeType extends Spike> imp
     ArrayList<AxonBundle> axons=new ArrayList();
     
     
-    transient Queue<SpikeType> inputBuffer = new LinkedList();
+    transient Queue<PSP> inputBuffer = new LinkedList();
 //    transient Queue<SpikeType> internalBuffer= new LinkedList();
 //    transient Queue<SpikeType> internalBuffer= new PriorityBlockingQueue();
-    transient PriorityQueue<SpikeType> internalBuffer= new PriorityQueue();
+    transient PriorityQueue<PSP> internalBuffer= new PriorityQueue();
 //            
-    transient MultiReaderQueue<SpikeType> outputQueue=new MultiReaderQueue();
+    transient MultiReaderQueue<Spike> outputQueue=new MultiReaderQueue();
         
 //    public int delay;
     
@@ -53,7 +53,7 @@ public class SpikeStack<AxonType extends AxonBundle,SpikeType extends Spike> imp
      * input layer.  False if you'd like input events to directly cause spikes
      * in the input layer. 
      */
-    public boolean inputCurrents=false;  // sfdafds
+//    public boolean inputCurrents=false;  // sfdafds
     
     
     boolean enable=true;
@@ -93,21 +93,55 @@ public class SpikeStack<AxonType extends AxonBundle,SpikeType extends Spike> imp
     {
         return axons;
     }
-    
+       
         
-    /** Add a new layer.*/
-    public void addLayer(int index)
-    {   
-        layers.add(new Layer(this, unitFactory, index));
+    /** Add a layer to the network at the specified index */
+    public void addLayer(int index,Layer lay)
+    {
+        // If index is higher than list-size, fill with null elements
+        for(int i=layers.size(); i<=index; i++)
+            layers.add(null);
+        
+        layers.set(index,lay);
         
     }
     
-    public AxonBundle addAxon(Layer preSyn, Layer postSyn)
+    /** Add a layer to the network at the specified index */
+    public void addLayer(Layer lay)
+    {   addLayer(lay.ixLayer,lay);
+    }
+    
+    /** Add a new layer at the specified index.*/
+    public void addLayer(int index)
+    {   addLayer(index,new Layer(this, unitFactory, index));
+    }
+    
+    /** Add a new layer, define the number of units.*/
+    public void addLayer(int index,int nUnits)
+    {   addLayer(index);
+        lay(index).initializeUnits(nUnits);
+    }
+    
+    /** Add a new layer, define the x,y dimensions (and therefore nUnits) */
+    public void addLayer(int index,int dimx,int dimy)
+    {   addLayer(index);        
+        lay(index).initializeUnits(dimx,dimy);
+    }
+        
+    /** Add a new axon based on the indeces of the pre- and post- layers */
+    public AxonType addAxon(int preLayer,int postLayer)
+    {   AxonBundle ax=axonFactory.make(lay(preLayer),lay(postLayer));
+        axons.add(ax);
+        return (AxonType) ax;
+    }
+    
+    
+    public AxonType addAxon(Layer preSyn, Layer postSyn)
     {
         // Note, the axon constructor takes care of linking the layers to the axon.
         AxonBundle ax=axonFactory.make(preSyn,postSyn);
         axons.add(ax);
-        return ax;
+        return (AxonType)ax;
         
     }
     
@@ -318,28 +352,28 @@ public class SpikeStack<AxonType extends AxonBundle,SpikeType extends Spike> imp
     // <editor-fold defaultstate="collapsed" desc=" Feeding and Eating Events ">
     
     /** Add an event to the input queue */
-    public void addToQueue(SpikeType ev)
+    public void addToQueue(PSP ev)
     {   // TODO: confirm timestamp monotonicity
         inputBuffer.add(ev);
     }    
     
     /** Feed an array of input events to the network and let 'er rip */
-    public void feedEventsAndGo(List<? extends SpikeType> inputEvents)
+    public void feedEventsAndGo(List<? extends PSP> inputEvents)
     {   feedEvents(inputEvents);
         eatEvents();
     }
         
     /** Feed an array of input events to the network and let 'er rip */
-    public void feedEventsAndGo(List<SpikeType> inputEvents,int timeout)
+    public void feedEventsAndGo(List<PSP> inputEvents,int timeout)
     {   
         feedEvents(inputEvents);
         eatEvents(timeout);
     }
     
     /** Feed an array of events into the network */
-    public void feedEvents(List<? extends SpikeType> inputEvents)
+    public void feedEvents(List<? extends PSP> inputEvents)
     {   
-        for (SpikeType ev: inputEvents)
+        for (PSP ev: inputEvents)
             addToQueue(ev);
     }
         
@@ -356,14 +390,12 @@ public class SpikeStack<AxonType extends AxonBundle,SpikeType extends Spike> imp
         while (!(inputBuffer.isEmpty()&&(internalBuffer.isEmpty() || liveMode )) && enable)
         {
                         
+            
+            
             // Determine whether to read from input or buffer
             boolean readInput=!inputBuffer.isEmpty() && (internalBuffer.isEmpty() || inputBuffer.peek().hitTime<internalBuffer.peek().hitTime);
             
-            
-            
             int newtime=readInput?inputBuffer.peek().hitTime:internalBuffer.peek().hitTime;
-            
-            
             
             // Update current time to time of this event
             if (newtime<time)
@@ -374,13 +406,10 @@ public class SpikeStack<AxonType extends AxonBundle,SpikeType extends Spike> imp
             
             if (newtime > timeout)
                 break;
-            
-            
+                        
             time=newtime;
-            
-            
-            
-            SpikeType ev=readInput?inputBuffer.poll():internalBuffer.poll();
+                        
+            PSP psp=readInput?inputBuffer.poll():internalBuffer.poll();
             
             
             
@@ -395,21 +424,27 @@ public class SpikeStack<AxonType extends AxonBundle,SpikeType extends Spike> imp
             
 //            try{
             
+            psp.affect(this);
+            
+            
+            
+            
                 // Feed Spike to network, add to ouput queue if they're either either forced spikes or internally generated spikes
-                if (inputCurrents && readInput)     // 1: Input event drives current
-                {    lay(ev.layer).fireInputTo(ev);
-                
-                }
-                else if (readInput)                 // 2: Input Spike fires unit
-                {   lay(ev.layer).fireFrom(ev.addr);
-//                    outputQueue.add(ev);
-                }
-                else                                // 3: Internally buffered event propagated
-                {   
-                    ev.ax.spikeOut(ev);
-//                    lay(ev.layer).propagateFrom(ev, ev.addr);
-//                    outputQueue.add(ev);
-                }
+//                if (inputCurrents && readInput)     // 1: Input event drives current
+//                {    lay(psp.layer).fireInputTo(psp);
+//                
+//                }
+//                else if (readInput)                 // 2: Input Spike fires unit
+//                {   lay(psp.layer).fireFrom(psp.addr);
+////                    outputQueue.add(ev);
+//                }
+//                else                                // 3: Internally buffered event propagated
+//                {   
+//                    psp.
+//                    
+////                    lay(ev.layer).propagateFrom(ev, ev.addr);
+////                    outputQueue.add(ev);
+//                }
                 
 //                System.out.println(internalBuffer.size());
                 
@@ -424,6 +459,8 @@ public class SpikeStack<AxonType extends AxonBundle,SpikeType extends Spike> imp
 //            }
             
             
+//            if (time > timeout)
+//                break;
         }
         
         enable=true;  // Re-enable network when done.
@@ -497,6 +534,12 @@ public class SpikeStack<AxonType extends AxonBundle,SpikeType extends Spike> imp
         
     }
     
+    @Override
+    public String toString()
+    {
+        return "SpikeStack with "+nLayers()+" layers@"+hashCode();
+    }
+    
     
 //    /** Set strength of forward connections for each layer */
 //    public void setForwardStrength(float[] st)
@@ -532,12 +575,12 @@ public class SpikeStack<AxonType extends AxonBundle,SpikeType extends Spike> imp
         return null;
     }
     
-    public void addToOutputQueue(SpikeType ev)
+    public void addToOutputQueue(Spike ev)
     {
         outputQueue.add(ev);
     }
     
-    public void addToInternalQueue(SpikeType ev)
+    public void addToInternalQueue(PSP ev)
     {        
         internalBuffer.add(ev);
     }

@@ -46,7 +46,7 @@ public class StatCollector {
         
         // Construct Network
         NetController<STPAxon,STPAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
-        SpikeStack<STPAxon,Spike> net=nc.net;
+        SpikeStack<STPAxon> net=nc.net;
         LIFUnit.Globals ug=nc.unitGlobals;
         STPAxon.Globals lg=nc.layerGlobals;
         
@@ -89,9 +89,11 @@ public class StatCollector {
                     ug.tref=tref;
                     
                     nc.reset();
-                    nc.generateInputSpikes(initRate,timeMicros,0,3);
-                                        
-                    nc.simulate(false,5);
+                    nc.sim.generateInputSpikes(initRate,timeMicros,0,3);
+                                     
+                    nc.sim.controlledTime=false;
+                    nc.sim.simTimeSeconds=5;
+                    nc.sim.run();
                     
                     s.nSpikes=nc.recorder.spikes.size();
                     s.endTime=net.time;

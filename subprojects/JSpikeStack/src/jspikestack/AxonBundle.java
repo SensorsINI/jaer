@@ -12,7 +12,7 @@ import java.util.Random;
  *
  * @author oconnorp
  */
-public class AxonBundle<GlobalParams extends AxonBundle.Globals> 
+public class AxonBundle<GlobalParams extends AxonBundle.Globals,PSPtype extends PSP> 
 {
     SpikeStack net;
     
@@ -71,19 +71,26 @@ public class AxonBundle<GlobalParams extends AxonBundle.Globals>
         if (enable)
         {
 //            Spike ev=new Spike(net.time,preUnit,postLayer.ixLayer);
-            Spike ev=sp.copyOf();
             
-            ev.setAxon(this);
+            PSP psp=new PSPUnitToLayer(sp,glob.delay,this);
             
-            ev.defineDelay(glob.delay);
+//            Spike ev=sp.copyOf();
+//            
+//            ev.setAxon(this);
+//            
+//            ev.defineDelay(glob.delay);
+//            
+            net.addToInternalQueue(psp);
             
-            net.addToInternalQueue(ev);
+            postSpike(psp); // Potential for overrides
             
         }
 //            sendSpikeToLayer(sp,getWeights(preUnit),postLayer);
     }
     
-    
+    public void postSpike(PSP p)
+    {        
+    }
     
     
     
@@ -95,10 +102,10 @@ public class AxonBundle<GlobalParams extends AxonBundle.Globals>
 //    }
     
         
-    void spikeOut(Spike sp)
+    void spikeOut(PSPtype psp)
     {
 //        postLayer.fireTo(sp,w[sp.addr]);
-        postLayer.fireTo(sp,getWeights(sp.addr));
+        postLayer.fireTo(psp,getWeights(psp.sp.addr));
         
 //        System.out.println("pre: "+preLayer.ixLayer+"\tpost: "+postLayer.ixLayer);
         
@@ -109,7 +116,7 @@ public class AxonBundle<GlobalParams extends AxonBundle.Globals>
         
 //        for (int i=0; i < postLayer.nUnits(); i++)
 //        {   
-//            
+////            
 //            Spike ev=postLayer.fireTo(sp, i, w[i]);
 //        
 //            if (ev==null)
@@ -389,21 +396,21 @@ public class AxonBundle<GlobalParams extends AxonBundle.Globals>
     }
 
     
-    public static class AxonEvent extends PSP
-    {
-        final AxonBundle ax;
-        
-        public AxonEvent(Spike sp,AxonBundle axe)
-        {   super(sp);
-            ax=axe;
-        }
-
-        @Override
-        public int getHitTime() {
-            throw new UnsupportedOperationException("Not supported yet.");
-        }
-        
-    }
+//    public static class AxonEvent extends PSP
+//    {
+//        final AxonBundle ax;
+//        
+//        public AxonEvent(Spike sp,AxonBundle axe)
+//        {   super(sp);
+//            ax=axe;
+//        }
+//
+//        @Override
+//        public int getHitTime() {
+//            throw new UnsupportedOperationException("Not supported yet.");
+//        }
+//        
+//    }
     
     
 //    public static class Initializer

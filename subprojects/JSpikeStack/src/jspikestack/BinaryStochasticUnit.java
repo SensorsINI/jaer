@@ -10,7 +10,7 @@ import java.util.Random;
  *
  * @author oconnorp
  */
-public class BinaryStochasticUnit extends Unit<BinaryStochasticUnit.Globals,BinaryTransEvent>{
+public class BinaryStochasticUnit extends Unit<BinaryStochasticUnit.Globals>{
 
     boolean state=false;
     float vmem=0;
@@ -34,14 +34,14 @@ public class BinaryStochasticUnit extends Unit<BinaryStochasticUnit.Globals,Bina
     }
 
     @Override
-    public BinaryTransEvent fireTo(BinaryTransEvent sp, float current) {
-        
-        if (sp.trans && !state)
-            return new BinaryTransEvent(sp.hitTime,index,-1,true);
-        else if (!sp.trans && state)
-            return new BinaryTransEvent(sp.hitTime,index,-1,false);
-            
-        else return null;
+    public int fireTo(PSP sp, float current) {
+        throw new UnsupportedOperationException("Not Implemented");
+//        if (sp.sp.act==1 && !state)
+//            return new BinaryTransEvent(sp.hitTime,index,-1,true);
+//        else if (!sp.trans && state)
+//            return new BinaryTransEvent(sp.hitTime,index,-1,false);
+//            
+//        else return null;
         
         
     }
@@ -50,8 +50,19 @@ public class BinaryStochasticUnit extends Unit<BinaryStochasticUnit.Globals,Bina
     
 
     @Override
-    public BinaryTransEvent fireFrom(int time) {
-        return new BinaryTransEvent(time,index,-1,false);
+    public int fireFrom(int time) {
+        throw new UnsupportedOperationException("Not Implemented");
+//        return new BinaryTransEvent(time,index,-1,false);
+    }
+
+    @Override
+    public float getState(int time) {
+        return state?1:0;
+    }
+
+    @Override
+    public StateTracker getStateTracker() {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
     
     

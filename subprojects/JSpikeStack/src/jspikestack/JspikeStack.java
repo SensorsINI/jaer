@@ -47,6 +47,8 @@ public class JspikeStack {
      */
     public static void main(String[] args){
         
+        demoMenu();
+        
 //        simpleDemo();
         
 //         learningDemo();
@@ -55,11 +57,13 @@ public class JspikeStack {
         
 //        liquidDemo();
         
-        demoMenu();
-        
 //        convDemo();
         
 //        numberDemo();
+        
+//        spatioTemporalDemo();
+        
+//        rcNetDemo();
         
     }
     
@@ -67,7 +71,7 @@ public class JspikeStack {
     public static void readNet()
     {           
         NetController<STPAxon,STPAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
-        SpikeStack<STPAxon,Spike> net=nc.net;
+        SpikeStack<STPAxon> net=nc.net;
         LIFUnit.Globals un=nc.unitGlobals;
         STPAxon.Globals lg=nc.layerGlobals;
         
@@ -105,8 +109,8 @@ public class JspikeStack {
 //        un.thresh=1.5f;
         
         lg.stdpWin=30000;
-        lg.fastSTDP.plusStrength=-.0001f;
-        lg.fastSTDP.minusStrength=-.0001f;   
+        lg.fastSTDP.plusStrength=-.0005f;
+        lg.fastSTDP.minusStrength=-.0005f;   
         lg.fastSTDP.stdpTCminus=20000;
         lg.fastSTDP.stdpTCplus=20000;
         
@@ -118,20 +122,20 @@ public class JspikeStack {
         int timeMicros=1000000;
         int targetLayer=3;
         for (int i=0; i<10; i++)
-        {    nc.generateInputSpikes(rate,timeMicros,i,targetLayer);
+        {    nc.sim.generateInputSpikes(rate,timeMicros,i,3);
         }              
         
         nc.setRecordingState(true);
         nc.addAllControls();   
         
-        NetController.SimulationSettings sim=new NetController.SimulationSettings();        
-        sim.controlledTime=false;
-        sim.timeScaling=1;
-        sim.waitForInputs=false;
+//        NetController.Simulation sim=new NetController.Simulation();        
+        nc.sim.controlledTime=false;
+        nc.sim.timeScaling=1;
+        nc.sim.waitForInputs=false;
         
         
         nc.startDisplay();
-        nc.simulate(sim);
+        nc.sim.run();
         
 //        nc.saveRecoding();
         
@@ -147,11 +151,11 @@ public class JspikeStack {
 //        if (!aef.hasValidFile())
 //            return;      
 //        ArrayList<Spike> events=cochlea2spikes(aef.events);
-        ArrayList<Spike> events=AERFile.getCochleaEvents("VowelSounds.aedat");
+        ArrayList<PSPInput> events=AERFile.getCochleaEvents("VowelSounds.aedat");
                 
         // Construct Network
         NetController<STPAxon,STPAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
-        SpikeStack<STPAxon,Spike> net=nc.net;
+        SpikeStack<STPAxon> net=nc.net;
         LIFUnit.Globals ug=nc.unitGlobals;
         STPAxon.Globals lg=nc.layerGlobals;
                    
@@ -189,7 +193,8 @@ public class JspikeStack {
                 
         // Some More post-initialization settings        
 //        nc..net.ax((new boolean[] {false, true});
-        net.inputCurrents=false;
+//        net.inputCurrents=false;
+        net.lay(0).fireInputsTo=false;
         net.lay(0).inputCurrentStrength=0.5f;
         net.ax(0,1).setEnableSTDP(false);
                 
@@ -224,48 +229,131 @@ public class JspikeStack {
 //        
     }
     
+    public static void spatioTemporalDemo()
+    {
+        NetController<SpatioTemporalAxon,SpatioTemporalAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.SPATIOTEMPORAL_LIF);
+        SpikeStack<SpatioTemporalAxon> net=nc.net;
+        LIFUnit.Globals un=nc.unitGlobals;
+        SpatioTemporalAxon.Globals lg=nc.layerGlobals;
+        
+        SpikeStack.Initializer ini=new SpikeStack.Initializer();
+        ini.lay(0).dimx=ini.lay(0).dimy=32;
+        ini.lay(1).dimx=ini.lay(1).dimy=32;
+        ini.ax(0,1);
+        
+        net.buildFromInitializer(ini);
+        
+        un.tau=100000;
+        un.useGlobalThresh=true;
+        un.thresh=1f;
+               
+        // Define Spatial Kernel
+        KernelMaker2D.MexiHat skern=new KernelMaker2D.MexiHat();
+        skern.angle=45;
+        skern.mag1=1f;
+        skern.setMag2(0);
+        skern.setMajorWidth1(4);
+        skern.setMajorWidth2(8);
+        skern.setMinorWidth1(4);
+        skern.setMinorWidth2(8);
+        float[][] spatialKernel=KernelMaker2D.makeKernel(skern, 12, 12);
+//        KernelMaker2D.plot(spatialKernel);
+        
+        // Define Temporal Kernel
+        KernelMaker2D.Parabola tkern=new KernelMaker2D.Parabola();
+        tkern.setWidth(20);
+        tkern.setMag(2000000);
+        float[][] tempKern=KernelMaker2D.makeKernel(tkern, 12, 12);
+//        KernelMaker2D.plot(tempKern);
+        int[][] temporalKernel=KernelMaker2D.float2int(tempKern);
+        
+        net.ax(0,1).defineKernel(spatialKernel, temporalKernel);
+        
+        float inRate=20;
+        int timeMicros=1000000;
+        int unit=500;
+        int layer=0;
+        nc.sim.generateInputSpikes(inRate, timeMicros, unit, layer);
+        
+        net.lay(0).fireInputsTo=true;
+        nc.startDisplay();
+        
+        
+        
+//        NetController.Simulation sim=new NetController.Simulation();
+        nc.sim.timeScaling=.1f;        
+        nc.sim.controlledTime=true;
+        
+        nc.sim.run();
+        
+    }
+        
+    
+    public static void rcNetDemo()
+    {
+        // Instantiate
+        NetController<SparseAxon,SparseAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.SPARSE_LIF);
+        SpikeStack<SparseAxon> net=nc.net;
+        LIFUnit.Globals un=nc.unitGlobals;
+        SparseAxon.Globals lg=nc.layerGlobals;
+        
+        // Build
+        net.addLayer(0);
+        net.lay(0).initializeUnits(128, 128);
+        net.addLayer(new LayerRC(net,1));
+        net.lay(1).initializeUnits(128, 128);
+        net.addAxon(0,1).defineKernel(new float[][]{new float[]{1}}); // 1-to-1 weights
+                
+        // Set up RC-net
+        LayerRC lay=(LayerRC) net.lay(1);
+        lay.lambda=5;
+        
+                
+        // Run simulation
+        nc.startDisplay();
+        nc.sim.inputEvents=AERFile.getRetinaEvents("MovingDarkBox.aedat");
+//        nc.sim.inputEvents=AERFile.getRetinaEvents("C:\\Users\\Peter\\Desktop\\Dropbox\\Data\\Retina\\naturalscenefast.aedat");
+        nc.sim.run();
+        
+        
+        
+        
+    }
+    
     /** Load some AER data and test a convolutional kernel */
     public static void convDemo()
     {
         NetController<SparseAxon,SparseAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.SPARSE_LIF);
-        SpikeStack<SparseAxon,Spike> net=nc.net;
+        SpikeStack<SparseAxon> net=nc.net;
         LIFUnit.Globals un=nc.unitGlobals;
         SparseAxon.Globals lg=nc.layerGlobals;
         
         // Initialize
-        SpikeStack.Initializer ini=new SpikeStack.Initializer();        
-//        ini.lay(0).nUnits=128*128;
-//        ini.lay(1).nUnits=128*128;    
-        
+        SpikeStack.Initializer ini=new SpikeStack.Initializer();   
         ini.lay(0).dimx=ini.lay(0).dimy=128;
         ini.lay(1).dimx=ini.lay(1).dimy=64;
-        ini.lay(2).dimx=ini.lay(2).dimy=64;    
-        
+        ini.lay(2).dimx=ini.lay(2).dimy=64;   
         ini.ax(0,1); 
         ini.ax(0,2);
         net.buildFromInitializer(ini);  
         
-//        float[][] w=new float[5][];
-//        w[0]=new float[]{-6, -4, 1, 4, 1, -4, -6};
-//        w[1]=new float[]{ -8, -2, 2, 6, 2, -2, -8};
-//        w[2]=new float[]{-10, -2, 2, 8, 2, -2, -10};
-//        w[3]=new float[]{-8, -2, 2, 6, 2, -2, -8};
-//        w[4]=new float[]{-6, -4, 1, 4, 1, -4, -6};
-        
-        
         KernelMaker2D.MexiHat hat=new KernelMaker2D.MexiHat();
-        hat.majorWidth1=5;
-        hat.majorWidth2=5;
-        hat.minorWidth1=1.5f;
-        hat.minorWidth2=3;
+        hat.setMajorWidth1(5);
+        hat.setMajorWidth2(5);
+        hat.setMinorWidth1(1.5f);
+        hat.setMinorWidth2(3);
+        hat.angle=45;
+        
+//        net.ax(0,1).getControls().
+        
         
         float[][] w=KernelMaker2D.makeKernel(hat, 10, 10);        
-        KernelMaker2D.plot(w);
+//        KernelMaker2D.plot(w);
         net.ax(0,1).defineKernel(w);
                 
         float[][] wt=KernelMaker2D.transpose(w);
         net.ax(0,2).defineKernel(wt);
-        KernelMaker2D.plot(wt);
+//        KernelMaker2D.plot(wt);
                 
         // Define global parameters
         un.useGlobalThresh=true;
@@ -274,21 +362,21 @@ public class JspikeStack {
         un.tref=5000;  
         
         // Read Events
-        ArrayList<BinaryTransEvent> events=AERFile.getRetinaEvents("MovingDarkBox.aedat");
-        
+        ArrayList<PSPInput> events=AERFile.getRetinaEvents("MovingDarkBox.aedat");
         
         // Setup simulation
         nc.addAllControls();
         nc.setRecordingState(true);   
         nc.startDisplay();       
-        NetController.SimulationSettings sim=new NetController.SimulationSettings();        
-        sim.controlledTime=true;
-        sim.timeScaling=1;
-        sim.waitForInputs=false;
+//        NetController.Simulation sim=new NetController.Simulation();        
+        nc.sim.controlledTime=true;
+        nc.sim.timeScaling=1;
+        nc.sim.waitForInputs=false;
         
         // And GO
-        net.feedEvents(events);        
-        nc.simulate(sim);
+        nc.sim.inputEvents=events;
+//        net.feedEvents(events);        
+        nc.sim.run();
                 
     }
     
@@ -297,7 +385,7 @@ public class JspikeStack {
     {
         
         NetController<STPAxon,STPAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
-        SpikeStack<STPAxon,Spike> net=nc.net;
+        SpikeStack<STPAxon> net=nc.net;
         LIFUnit.Globals un=nc.unitGlobals;
         STPAxon.Globals lg=nc.layerGlobals;
         
@@ -338,31 +426,28 @@ public class JspikeStack {
         lg.randomJitter=10;
         
         
-        net.inputCurrents=true;
+//        net.inputCurrents=true;
+        net.lay(0).fireInputsTo=true;
         net.lay(0).inputCurrentStrength=.4f;
-        
-        // Get statistics
         
         
         // Read Events
-        ArrayList<BinaryTransEvent> events=AERFile.getRetinaEvents(null);
+        ArrayList<PSPInput> events=AERFile.getRetinaEvents(null);
         AERFile.filterPolarity(events, true);
-        AERFile.resampleSpikes(events, 128, 128, 28, 28);
+        events=AERFile.resampleSpikes(events, 128, 128, 28, 28);
         
         // Setup simulation
         nc.addAllControls();
         nc.setRecordingState(true);   
         nc.startDisplay();       
-        NetController.SimulationSettings sim=new NetController.SimulationSettings();        
-        sim.controlledTime=false;
-        sim.timeScaling=1;
-        sim.waitForInputs=false;
+//        NetController.Simulation sim=new NetController.Simulation();        
+        nc.sim.controlledTime=false;
+        nc.sim.timeScaling=1;
+        nc.sim.waitForInputs=false;
+        nc.sim.inputEvents=events;
         
-        // And GO
-        net.feedEvents(events);        
-        nc.simulate(sim);
-        
-        
+        // And GO        
+        nc.sim.run();
         
         
     }

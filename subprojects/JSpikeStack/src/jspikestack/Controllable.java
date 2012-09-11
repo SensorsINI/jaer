@@ -4,10 +4,10 @@
  */
 package jspikestack;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.beans.PropertyChangeSupport;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Set;
+import java.util.*;
 
 /**
  *
@@ -26,7 +26,9 @@ public abstract class Controllable {
 //    /** The keys are the names of property groups, and the values are lists of properties in the key's group.*/
 //    protected HashMap<String, ArrayList<String>> group2PropertyListMap = null;
 
+//    EventListener listener=new EventListener() {};
     
+    ArrayList<ActionListener> listeners=new ArrayList();
     
 //    public SpikeStack net;
     
@@ -38,6 +40,26 @@ public abstract class Controllable {
         
         
     }
+    
+    
+    public void addActionListener(ActionListener l)
+    {
+        listeners.add(l);
+        
+    }
+    
+    public void updateControl()
+    {
+        for (ActionListener ac:listeners)
+            ac.actionPerformed(new ActionEvent(this,0,"garbage"));
+    }
+    
+    
+    
+    public ArrayList<Controllable> getSubControllers()
+    {   return new ArrayList();
+    }
+    
     
     /** Fires PropertyChangeEvents when filter is enabled or disabled with key "filterEnabled"
      * @return change support

@@ -8,21 +8,21 @@ package jspikestack;
  *
  * @author oconnorp
  */
-public abstract class Unit<GlobalParams,SpikeType extends Spike> {
+public abstract class Unit<GlobalParams> {
     
     public int index;
     public String name;
     
-    public float thresh=-1; // Note: this should probably not be here, but it's conveneient for now due to NetReader
+    public float thresh=1; // Note: this should probably not be here, but it's conveneient for now due to NetReader
     
     /** Fire a current to the unit.
      * 
      * @param current
      * @return 
      */
-    public abstract SpikeType fireTo(SpikeType sp, float current);
+    public abstract int fireTo(PSP transmisson, float current);
 
-    public abstract SpikeType fireFrom(int time);
+    public abstract int fireFrom(int time);
     
 //    public abstract Factory getFactory();
     
@@ -47,11 +47,30 @@ public abstract class Unit<GlobalParams,SpikeType extends Spike> {
         
     }
     
+    public abstract float getState(int time);
     
+    public abstract StateTracker getStateTracker();
     
-    
+    public abstract static class StateTracker
+    {
+        int lastTime;
+        float lastState;
+        
+        /** Update the state when a spike is fired */
+        public abstract void updatestate(Spike sp);
+        
+        /** Get the state */
+        public abstract float getState(int time);
+        
+        public abstract String getLabel(float state);
+        
+        
+    }
     
     public abstract void reset();
     
+//    public abstract float stateUpdate(float prevState,int prevTime,Spike sp);
+//    
+//    public abstract float stateUpdate(float prevState,int prevTime,int toTime);
     
 }

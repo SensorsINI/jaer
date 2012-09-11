@@ -38,12 +38,12 @@ public class AERFile {
     
     
     
-    public static ArrayList<BinaryTransEvent> getRetinaEvents(String filename)
+    public static ArrayList<PSPInput> getRetinaEvents(String filename)
     {
         return retina2spikes(getEvents(filename));
     }
     
-    public static ArrayList<Spike> getCochleaEvents(String filename)
+    public static ArrayList<PSPInput> getCochleaEvents(String filename)
     {
         return cochlea2spikes(getEvents(filename));
     }
@@ -59,19 +59,26 @@ public class AERFile {
     }
     
     
-    public static void resampleSpikes(ArrayList<? extends Spike> spikes, int oldDimx, int oldDimy, int newDimx, int newDimy)
+    public static ArrayList<PSPInput> resampleSpikes(ArrayList<PSPInput> spikes, int oldDimx, int oldDimy, int newDimx, int newDimy)
     {
-        for(Spike s:spikes)
+         ArrayList<PSPInput> out=new ArrayList();
+        
+        for(PSPInput s:spikes)
         {
-            int x=s.addr/oldDimy;
-            int y=s.addr%oldDimy;
+            int x=s.sp.addr/oldDimy;
+            int y=s.sp.addr%oldDimy;
             
             int newx=(x*newDimx)/oldDimx;
             int newy=(y*newDimy)/oldDimy;
             
-            s.addr=newy+newDimy*newx;            
+            int newaddr=newy+newDimy*newx;;
+            
+            out.add(new PSPInput(s.sp.time,newaddr,s.targetLayer,s.sp.act));
+            
         }
            
+        return out;
+        
     }
     
     
@@ -236,23 +243,24 @@ public class AERFile {
     
     
     /** Convert AEViewer file events to JspikeStack Events */
-    public static ArrayList<Spike> cochlea2spikes(ArrayList<AERFile.Event> events)
+    public static ArrayList<PSPInput> cochlea2spikes(ArrayList<AERFile.Event> events)
     {   
-        ArrayList<Spike> evts =new ArrayList<Spike>();
+        ArrayList<PSPInput> evts =new ArrayList();
         
         for (int i=0; i<events.size(); i++)
         {   AERFile.Event ev=events.get(i);        
-            if (ev.addr>255) continue;        
-            Spike enew=new Spike((int)(ev.timestamp-events.get(0).timestamp), ev.addr/4, 0);            
+            if (ev.addr>255) continue;      
+            PSPInput enew=new PSPInput((int)(ev.timestamp-events.get(0).timestamp),ev.addr/4,0);
+            
             evts.add(enew);
         }
         return evts;
     }
     
     /** Convert AEViewer file events to JspikeStack Events */
-    public static ArrayList<BinaryTransEvent> retina2spikes(ArrayList<AERFile.Event> events)
+    public static ArrayList<PSPInput> retina2spikes(ArrayList<AERFile.Event> events)
     {   
-        ArrayList<BinaryTransEvent> evts =new ArrayList();
+        ArrayList<PSPInput> evts =new ArrayList();
         
         for (int i=0; i<events.size(); i++)
         {   AERFile.Event ev=events.get(i); 
@@ -262,20 +270,22 @@ public class AERFile {
             int y=127-addr/128;
             addr=y+x*128;
             
-            BinaryTransEvent enew=new BinaryTransEvent((int)(ev.timestamp-events.get(0).timestamp), addr, 0,ev.addr%2==1);            
+            PSPInput enew=new PSPInput((int)(ev.timestamp-events.get(0).timestamp), addr, 0,ev.addr%2==1?1:-1);            
             evts.add(enew);
         }
         return evts;
     }
     
-    public static void filterPolarity(ArrayList<BinaryTransEvent> arr,boolean polarity)
+    public static void filterPolarity(ArrayList<PSPInput> arr,boolean polarity)
     {
-        ArrayList<BinaryTransEvent> all=(ArrayList<BinaryTransEvent>) arr.clone();
+        ArrayList<PSPInput> all=(ArrayList<PSPInput>) arr.clone();
         
         arr.clear();
         
-        for(BinaryTransEvent ev:all)
-            if(ev.trans==polarity)
+        int pol=polarity?1:-1;
+        
+        for(PSPInput ev:all)
+            if(ev.sp.act==pol)
                 arr.add(ev);
         
     }

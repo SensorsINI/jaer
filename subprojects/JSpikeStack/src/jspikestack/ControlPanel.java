@@ -221,17 +221,43 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 //        controls.add(comp);
 //    }
     
+    
+    
+    void addController(Controllable filter)
+    {
+        addController(filter,this);
+        
+    }
+    
+    
+    
+    
+    
+    
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
-    void addController(Controllable filter) {
-        JPanel control = null;
+    void addController(final Controllable filter,final JPanel hostPanel) {
+//        JPanel control = null;
 //        NetController filter = getControllable();
+        
+        hostPanel.setLayout(new javax.swing.BoxLayout(hostPanel, javax.swing.BoxLayout.Y_AXIS));
+        
+        
+        
+        
+        
         setControllable(filter);
         try {
             info = Introspector.getBeanInfo(filter.getClass());
             // TODO check if class is public, otherwise we can't access methods usually
             props = info.getPropertyDescriptors();
             methods = filter.getClass().getMethods();
-            control = new JPanel();
+            
+            
+            JPanel controla=new JPanel();
+            
+//            if (controla==null)
+//                controla = 
+            
             int numDoButtons = 0;
             // first add buttons when the method name starts with "do". These methods are by convention associated with actions.
             // these methods, e.g. "void doDisableServo()" do an action.
@@ -241,7 +267,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
                         && m.getParameterTypes().length == 0
                         && m.getReturnType() == void.class) {
                     numDoButtons++;
-                    JButton button = new JButton(m.getName().substring(2));
+                    JButton button = new JButton(m.getName().substring(2).replace('_', ' '));
                     button.setMargin(butInsets);
                     button.setFont(button.getFont().deriveFont(9f));
                     final Controllable f = filter;
@@ -261,22 +287,22 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
                         }
                     });
                     addTip(f, button);
-                    control.add(button);
+                    controla.add(button);
                 }
             }
 
             //if at least one button then we show the actions panel
-            if (control.getComponentCount() > 0) {
+            if (controla.getComponentCount() > 0) {
                 TitledBorder tb = new TitledBorder("Actions");
 //                tb.getBorderInsets(this).set(1, 1, 1, 1);
 //                control.setBorder(tb);
 //                control.setMinimumSize(new Dimension(0, 0));
-                add(control);
-                controls.add(control);
+                hostPanel.add(controla);
+                controls.add(controla);
             }
 
             if (numDoButtons > 3) {
-                control.setLayout(new GridLayout(0, 3, 3, 3));
+                controla.setLayout(new GridLayout(0, 3, 3, 3));
             }
 
 
@@ -338,15 +364,15 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
             // these must be saved and then sorted in case there are property groups defined.
 
             String s=filter.getName();
-            JPanel groupPanel = new JPanel();
+            final JPanel groupPanel = new JPanel();
 //            groupPanel.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             groupPanel.setLayout(new BoxLayout(groupPanel,BoxLayout.Y_AXIS));
             groupPanel.setName(s);
             groupPanel.setBorder(new TitledBorder(s));
 //            groupPanel.setLayout(new GridLayout(0, 1));
             groupContainerMap.put(s, groupPanel);
-            add(groupPanel);
-            
+            hostPanel.add(groupPanel);
+            groupPanel.add(controla);
             controls.add(groupPanel); // visibility list
             
 
@@ -375,7 +401,11 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 ////                    System.out.println("bound: "+p.isBound());
 ////                    System.out.println("");
 //                }
+                JPanel control=null;
                 try {
+                    
+                    
+                    
                     boolean inherited = false;
 
                     // TODO handle indexed properties 
@@ -447,9 +477,44 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
                 } catch (Exception e) {
                     log.warning(e + " caught on property " + p.getName() + " from EventFilter " + filter);
                 }
-                groupPanel.add(control);
+                if (control!=null)
+                    groupPanel.add(control);
                 
             }
+            
+            
+            
+            final ArrayList<JPanel> subcontrols=new ArrayList();            
+            ActionListener subrebuilder=new ActionListener(){
+
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    
+                    for(JPanel s:subcontrols)
+                        groupPanel.remove(s);
+                    
+                    for (Controllable c:filter.getSubControllers())
+                    {
+                        JPanel jp=new JPanel();
+                        groupPanel.add(jp);
+                        addController(c,jp);
+                        subcontrols.add(jp);
+                    }
+                    
+                    
+                }
+
+
+            };
+            
+                        
+            filter.addActionListener(subrebuilder);
+            
+            subrebuilder.actionPerformed(null);
+            
+//            filter.updateControl();
+            
+            
             
 //            groupContainerMap = null;
 //             sortedControls=null;
@@ -460,6 +525,11 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
         
         
         add(Box.createHorizontalGlue());
+        
+        
+       
+        
+        
         setControlsVisible(true);
 //        System.out.println("added glue to "+this);
     }
@@ -1290,51 +1360,6 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
         
-        
-
-//        jPanel1.setAlignmentX(1.0F);
-//        jPanel1.setPreferredSize(new java.awt.Dimension(100, 23));
-//        jPanel1.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 2, 2));
-
-//        enabledCheckBox.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
-//        enabledCheckBox.setToolTipText("Enable or disable the filter");
-//        enabledCheckBox.setMargin(new java.awt.Insets(1, 1, 1, 1));
-////        enabledCheckBox.addActionListener(new java.awt.event.ActionListener() {
-////            public void actionPerformed(java.awt.event.ActionEvent evt) {
-////                enabledCheckBoxActionPerformed(evt);
-////            }
-////        });
-//        jPanel1.add(enabledCheckBox);
-
-//        resetButton.setFont(new java.awt.Font("Tahoma", 0, 9));
-//        resetButton.setText("Reset");
-//        resetButton.setToolTipText("Resets the filter");
-//        resetButton.setMargin(new java.awt.Insets(1, 5, 1, 5));
-////        resetButton.addActionListener(new java.awt.event.ActionListener() {
-////            public void actionPerformed(java.awt.event.ActionEvent evt) {
-////                resetButtonActionPerformed(evt);
-////            }
-////        });
-//        jPanel1.add(resetButton);
-
-//        showControlsToggleButton.setFont(new java.awt.Font("Tahoma", 0, 9));
-//        showControlsToggleButton.setText("Controls");
-//        showControlsToggleButton.setToolTipText("Show filter parameters, hides other filters. Click again to see all filters.");
-//        showControlsToggleButton.setMargin(new java.awt.Insets(1, 5, 1, 5));
-//
-////        org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${controlsVisible}"), showControlsToggleButton, org.jdesktop.beansbinding.BeanProperty.create("selected"));
-////        bindingGroup.addBinding(binding);
-//
-//        showControlsToggleButton.addActionListener(new java.awt.event.ActionListener() {
-//            public void actionPerformed(java.awt.event.ActionEvent evt) {
-//                showControlsToggleButtonActionPerformed(evt);
-//            }
-//        });
-//        jPanel1.add(showControlsToggleButton);
-
-//        add(jPanel1);
-
-//        bindingGroup.bind();
     }// </editor-fold>                        
     boolean controlsVisible = false;
 

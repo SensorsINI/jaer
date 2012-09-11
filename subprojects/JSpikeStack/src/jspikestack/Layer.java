@@ -15,8 +15,8 @@ public class Layer<AxonType extends AxonBundle> {
     
     public int ixLayer;
     
-    public short dimx;     // For display, purposes.
-    public short dimy;     // dimx,dimy must multiply to units.length
+    public int dimx;     // For display, purposes.
+    public int dimy;     // dimx,dimy must multiply to units.length
 
 //    public ArrayList<AxonType> inAxons=new ArrayList();
     public ArrayList<AxonType> outAxons=new ArrayList();
@@ -25,6 +25,7 @@ public class Layer<AxonType extends AxonBundle> {
     
     public String name;
     
+    public boolean fireInputsTo=false;
     public float inputCurrentStrength=1;
     
     SpikeStack net;
@@ -50,6 +51,15 @@ public class Layer<AxonType extends AxonBundle> {
         for (int i=0;i<nUnits;i++)
             units[i]=makeNewUnit(i);
     }
+    
+    /** Initialize the array of units */
+    public void initializeUnits(int dimensionX,int dimensionY)
+    {   dimx=dimensionX;
+        dimy=dimensionY;
+        initializeUnits(dimx*dimy);
+    }
+    
+    
     
     /** Return a new unit with the given index */
     public Unit makeNewUnit(int index)
@@ -80,7 +90,7 @@ public class Layer<AxonType extends AxonBundle> {
     /** Carry out the effects of the firing */
     public void propagateFrom(Spike sp)
     {
-        sp.layer=ixLayer;
+//        sp.layer=ixLayer;
         
         net.addToOutputQueue(sp);
         
@@ -116,69 +126,48 @@ public class Layer<AxonType extends AxonBundle> {
     {   return units.length;
     }
     
-    
-    /** Fires to an input unit, but weights is by the inputCurrentStrength for this layer */
-    public void fireInputTo(Spike sp)
-    {   Spike spOut=fireTo(sp,sp.addr,inputCurrentStrength);
         
-        if (spOut!=null)
-        {
-            propagateFrom(sp);
-//            net.addToInternalQueue(spOut);
-//            net.internalBuffer.add(spOut);
-        }
+    public Spike makeSpike(int time,int addr,int act)
+    {
+        return new Spike(time,addr,ixLayer,act);
     }
+    
     
     /** Force this unit to fire right now... */
     public void fireFrom(int unitIndex)
     {
-        Spike ev=units[unitIndex].fireFrom(net.time);
-//        ev.layer=ixLayer;
+        int status=units[unitIndex].fireFrom(net.time);
         
-//        for (AxonBundle ax:outAxons)
-//            ax.spikeIn(ev, unitIndex);
-                
-//        for (AxonBundle ax:inAxons)
-//            ax.sendBackwards(ev, unitIndex);
-        
-        
-//        ev.defineDelay(net.delay);
-//        net.addToInternalQueue(ev);
-//        net.outputQueue.add(ev);
+        Spike ev=makeSpike(net.time,unitIndex,status);
         
         propagateFrom(ev);
         
     }
     
-    public void fireTo(Spike sp,float[] inputCurrents)
+    public void fireTo(PSP sp,float[] inputCurrents)
     {
         
         for (int i=0; i<units.length; i++)
         {
-            Spike spout=fireTo(sp,i,inputCurrents[i]);
-            
-            if (spout!=null)
-            {
+            fireTo(sp,i,inputCurrents[i]);
                 
-                propagateFrom(spout);
-            }            
         }
     }
     
     
-    public void fireTo(Spike sp,int[] addresses, float[] inputCurrents)
+    public void fireTo(PSP sp,int[] addresses, float[] inputCurrents)
     {
         for (int i=0; i<addresses.length; i++)
         {
             if (addresses[i]==-1)
                 continue;
             
-            Spike spout=fireTo(sp,addresses[i],inputCurrents[i]);
+            fireTo(sp,addresses[i],inputCurrents[i]);
             
-            if (spout!=null)
-            {
-                propagateFrom(spout);
-            }            
+//            if (status!=0)
+//            {
+//                propagateFrom(makeSpike(net.time,addresses[i],status));
+//            }            
         }
     }
         
@@ -186,10 +175,16 @@ public class Layer<AxonType extends AxonBundle> {
     
     
     /** Fire current to a given unit in this layer... */
-    public Spike fireTo(Spike sp,int ix,float inputCurrent)
+    public int fireTo(PSP sp,int ix,float inputCurrent)
     {        
-        return units[ix].fireTo(sp,inputCurrent);
-                
+        int status= units[ix].fireTo(sp,inputCurrent);
+        
+        if (status!=0)
+        {
+            propagateFrom(makeSpike(net.time,ix,status));
+        }   
+        
+        return status;                
     }
     
     public int getUnitLocX(int index)

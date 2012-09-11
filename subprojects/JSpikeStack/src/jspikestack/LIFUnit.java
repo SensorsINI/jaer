@@ -4,20 +4,22 @@
  */
 package jspikestack;
 
+import java.text.DecimalFormat;
 import java.util.Random;
 
 /**
  *
  * @author oconnorp
  */
-public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals,Spike>
+public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals>
 {
     int ixUnit;
     float vmem=0;
     public Globals glob;
-    int tlast=-1;   // Last spike time
-    int clast=0;   // Last update time
-
+    int tlast=-1;   // Last output spike time
+    int clast=0;   // Last input spike time
+    float state;
+    
     
     public LIFUnit(Globals globs,int index)
     {   glob=globs;
@@ -26,13 +28,13 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals,Sp
 
     /* Send a current to this unit.  If it spikes it will add it to the buffer */
     @Override
-    public Spike fireTo(Spike sp,float current)
+    public int fireTo(PSP sp,float current)
     {   updateMem(sp.hitTime,current);
         if (doSpike())
         {   return fireFrom(sp.hitTime);
         }
         else 
-            return null;
+            return 0;
     }
 
     /** Updates the membrane voltage given an input current */
@@ -46,6 +48,7 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals,Sp
     /** Boolean.. determines whether to spike */
     public boolean doSpike(){
         return vmem>(glob.useGlobalThresh?glob.getThresh():thresh);                
+    
     }
     
     /** Get the neuron threshold (it can be either local or global */
@@ -75,6 +78,38 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals,Sp
         cop.name=name;
         
         return cop;
+    }
+
+    
+    @Override
+    public float getState(int time) {
+        return state*(float)Math.exp((tlast-time)/glob.getTau());
+    }
+
+    @Override
+    public StateTracker getStateTracker() {
+        return new StateTracker() {
+
+            float tau=glob.tau;
+            
+            final DecimalFormat myFormatter = new DecimalFormat("#");
+            
+            @Override
+            public void updatestate(Spike sp) {
+                lastState=getState(sp.time)+1;
+                lastTime=sp.time;
+            }
+
+            @Override
+            public float getState(int time) {
+                return lastState*(float)Math.exp((lastTime-time)/tau);
+            }
+
+            @Override
+            public String getLabel(float state) {
+                return myFormatter.format(state*1000000/tau)+"Hz";
+            }
+        };
     }
     
     
@@ -122,14 +157,21 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals,Sp
     
 
     @Override
-    public Spike fireFrom(int time) 
+    public int fireFrom(int time) 
     {
         if (glob.resetAfterFire)
                 resetmem();
         
+        state=getState(time)+1;
         tlast=time;
-        return new Spike(time,ixUnit);
+        
+        return 1;
     }
+    
+    
+    
+    
+    
                
     public static class Globals extends Controllable
     {   
@@ -137,8 +179,8 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals,Sp
         public float tref=5000;
         public float tau=100000;
         public boolean resetAfterFire=true;
-        public float thresh;        
-        public boolean useGlobalThresh;
+        public float thresh=1;        
+        public boolean useGlobalThresh=false;
         
         
         /** Get Global Threshold */
