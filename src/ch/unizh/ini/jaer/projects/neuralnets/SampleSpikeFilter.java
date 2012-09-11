@@ -28,8 +28,8 @@ public class SampleSpikeFilter extends SpikeFilter{
         VisualMapper<PolarityEvent> map=new VisualMapper<PolarityEvent>();
         map.inDimX=(short)chip.getSizeX();
         map.inDimY=(short)chip.getSizeY(); 
-        map.outDimX=net.lay(0).dimx;
-        map.outDimY=net.lay(0).dimy;
+        map.outDimX=(short)net.lay(0).dimx;
+        map.outDimY=(short)net.lay(0).dimy;
         return map;
     }
 
@@ -63,7 +63,7 @@ public class SampleSpikeFilter extends SpikeFilter{
         ag.stdp.stdpTCplus=20000;           // pre-post kernel width
         ag.stdp.stdpTCminus=10000;          // post-pre kernel width
                 
-        net.inputCurrents=true;             // Fire to, rather than from, the input units
+        net.lay(0).fireInputsTo=true;             // Fire to, rather than from, the input units
         net.lay(0).inputCurrentStrength=0.1f;       // Effect of each input event on input layer  
         ((STPAxon)net.ax(0,1)).setEnableSTDP(true); // Enable STDP learning on this axon
         

@@ -39,8 +39,8 @@ public class AudioVisualNet extends SpikeFilter {
         final VisualMapper map=new VisualMapper();
         map.inDimX=(short)chip.getSizeX();
         map.inDimY=(short)chip.getSizeY(); 
-        map.outDimX=net.lay(0).dimx;
-        map.outDimY=net.lay(0).dimy;
+        map.outDimX=(short)net.lay(0).dimx;
+        map.outDimY=(short)net.lay(0).dimy;
         
         if (map.outDimX==0)
             throw new RuntimeException("Chip Appears to have 0 dimension.  This will mess up the mapping of events.");
@@ -140,8 +140,9 @@ public class AudioVisualNet extends SpikeFilter {
         nc.layerGlobals.fastSTDP.stdpTCminus=20000;
         nc.layerGlobals.fastSTDP.stdpTCplus=20000;
         
-        net.inputCurrents=true;
+        net.lay(0).fireInputsTo=true;
         net.lay(0).inputCurrentStrength=.5f;
+        net.lay(2).fireInputsTo=true;
         net.lay(2).inputCurrentStrength=.1f;
         
         setVisualInputStrength(getVisualInputStrength());

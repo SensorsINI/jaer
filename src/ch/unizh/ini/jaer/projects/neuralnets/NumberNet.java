@@ -43,8 +43,8 @@ public class NumberNet extends SpikeFilter {
         };
         map.inDimX=(short)chip.getSizeX();
         map.inDimY=(short)chip.getSizeY(); 
-        map.outDimX=net.lay(0).dimx;
-        map.outDimY=net.lay(0).dimy;
+        map.outDimX=(short)net.lay(0).dimx;
+        map.outDimY=(short)net.lay(0).dimy;
         return map;
         
         
@@ -122,7 +122,7 @@ public class NumberNet extends SpikeFilter {
 //        
 //        net.plot.updateMicros=100000;
         
-        net.inputCurrents=true;
+        net.lay(0).fireInputsTo=true;
         net.lay(0).inputCurrentStrength=1.5f;
         
         net.addAllReverseAxons();

@@ -9,6 +9,7 @@ import ch.unizh.ini.jaer.projects.integrateandfire.Remapper;
 import java.io.File;
 import java.net.URL;
 import jspikestack.NetController;
+import jspikestack.PSPInput;
 import jspikestack.Spike;
 import jspikestack.SpikeStack;
 import net.sf.jaer.event.BasicEvent;
@@ -51,13 +52,13 @@ public class SpikeStackWrapper <NetType extends SpikeStack> {
     {   net.eatEvents(toTimestamp);
     }
     
-    public void addToQueue(Spike sp)
+    public void addToQueue(PSPInput sp)
     {   net.addToQueue(sp);
     }
     
     public void addToQueue(BasicEvent ev)
     {   
-        Spike sp=event2spike(ev);
+        PSPInput sp=event2spike(ev);
         
         if (sp!=null)
             net.addToQueue(sp);
@@ -95,7 +96,7 @@ public class SpikeStackWrapper <NetType extends SpikeStack> {
     }  
             
     /** Convert a basic event to spike */
-    public Spike event2spike(BasicEvent ev)
+    public PSPInput event2spike(BasicEvent ev)
     {
         int addr=R.ev2addr(ev);
         
@@ -104,7 +105,7 @@ public class SpikeStackWrapper <NetType extends SpikeStack> {
         else 
         {   int layer=R.ev2layer(ev);
             if (layer!=-1)
-                return new Spike(R.translateTime(ev.timestamp),addr,R.ev2layer(ev));
+                return new PSPInput(R.translateTime(ev.timestamp),addr,R.ev2layer(ev));
             else
                 return null;
         }

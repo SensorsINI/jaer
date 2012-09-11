@@ -150,8 +150,8 @@ public class SpikeStackArrayFilter extends EventFilter2D{
         VisualMapper R=new VisualMapper();
         R.inDimX=(short)chip.getSizeX();
         R.inDimY=(short)chip.getSizeY(); 
-        R.outDimX=net.lay(0).dimx;
-        R.outDimY=net.lay(0).dimy;
+        R.outDimX=(short)net.lay(0).dimx;
+        R.outDimY=(short)net.lay(0).dimy;
         return R;
     }
 

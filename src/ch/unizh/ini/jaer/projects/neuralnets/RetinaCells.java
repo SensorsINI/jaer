@@ -86,7 +86,8 @@ public class RetinaCells extends SpikeFilter {
         
         axonGlobs.delay=0;
         
-        net.inputCurrents=false;
+        net.lay(0).fireInputsTo=false;
+//        net.inputCurrents=false;
         
         
     }

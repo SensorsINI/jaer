@@ -28,7 +28,7 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     // <editor-fold  defaultstate="collapsed" desc=" Properties ">
     
     SpikeStackWrapper wrapNet;    
-    SpikeStack<AxonBundle,Spike> net;
+    SpikeStack<AxonBundle> net;
     AxonBundle.Globals axonGlobs;  // Layer Global Controls
     LIFUnit.Globals unitGlobs; // Unit Global Controls
         

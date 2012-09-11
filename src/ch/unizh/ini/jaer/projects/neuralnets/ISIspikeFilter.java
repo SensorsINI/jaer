@@ -64,7 +64,7 @@ public class ISIspikeFilter extends SpikeFilter {
         unitGlobs.thresh=5;
         unitGlobs.tau=50000;  
         
-        net.inputCurrents=true;
+        net.lay(0).fireInputsTo=true;
         net.lay(0).inputCurrentStrength=.1f;
     }
     

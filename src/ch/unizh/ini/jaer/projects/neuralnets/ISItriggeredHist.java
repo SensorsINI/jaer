@@ -212,7 +212,9 @@ public class ISItriggeredHist extends SpikeFilter {
         unitGlobs.thresh=5;
         unitGlobs.tau=200000;
         
-        net.inputCurrents=true;
+        net.lay(0).fireInputsTo=true;
+        
+//        net.inputCurrents=true;
     }
     
     
