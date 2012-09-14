@@ -4,8 +4,12 @@
  */
 package ch.unizh.ini.jaer.projects.neuralnets;
 
+import java.text.DecimalFormat;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import jspikestack.EngineeringFormat;
+import jspikestack.KernelMaker2D;
+import jspikestack.KernelMaker2D.FloatConnection;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -35,143 +39,85 @@ public class SlowResponse extends MultiSourceProcessor {
     int dimx;
     int dimy;
     
-    private boolean eventBased=false;
     
     ImageDisplay im;
     
+    public float[] state1;
+    public float[] state2;
+    public int[] lastUpdateTime;
     
-    private float thresh= getFloat("thresh", 0.1f);   
-    private float tcEPSC= getFloat("tcEPSC", 500000);
-    private float tcMem= getFloat("tcMem", 30000);;
+    private boolean doSmoothing=true;
     
+    
+    private float smoothingFactor=0.5f;
+    
+    private int kernelWidth=3;
+    
+    private float timeConst= getFloat("timeConst", 500000);
+    
+    
+    float[][] autoKernel;
+    int[][] autoTargets;
+        
     boolean isTimeInitialized=false;
-    
-    Neuron[] neurons;
-
-    public float getThresh() {
-        return thresh;
+            
+    public float getTimeConst() {
+        return timeConst;
     }
 
-    public void setThresh(float thresh) {
-        this.thresh = thresh;
-    }
-
-    public float getTcEPSC() {
-        return tcEPSC;
-    }
-
-    public void setTcEPSC(float tcEPSC) {
-        this.tcEPSC = tcEPSC;
+    public void setTimeConst(float tcEPSC) {
+        this.timeConst = tcEPSC;
         updateEpscScale();
     }
-
-    public float getTcMem() {
-        return tcMem;
-    }
-
-    public void setTcMem(float tcMem) {
-        this.tcMem = tcMem;
-    }
-    
+   
     
     float epscDecayRate;
     
     /** We'd like to make it so each epsc, everall, adds has an area of 1 under it. */
     public void updateEpscScale()
-    {   epscDecayRate=1/tcEPSC;        
+    {   epscDecayRate=1/timeConst;        
     }
 
     @Override
     public String[] getInputNames() {
         return new String[] {"retina"};
     }
-
-    public boolean isEventBased() {
-        return eventBased;
-    }
-
-    public void setEventBased(boolean eventBased) {
-        this.eventBased = eventBased;
-    }
     
-    
-    /** Simple unit with an ON threshold and an OFF threshold.  Inputs add to an
-     * EPSC, which is added to the membrane potential over time.  
-     */
-    class Neuron
+    public void updateState(int toTime)
     {
-        short locx;
-        short locy;
-        
-        int lastUpdateTime;
-        float epsc;
-                
-        float vmem;
-        
-        public Neuron(short xloc,short yloc)    
-        {   locx=xloc;
-            locy=yloc;            
-        }
-        
-        void fireTo(PolarityEvent p)
+        for (int i=0; i<state1.length; i++)
         {
-            update(p.timestamp);           
-            
-            epsc+=p.getPolarity()==PolarityEvent.Polarity.On?epscDecayRate:-epscDecayRate;
-            
-        }
+            updateState(toTime,i);
+        }       
         
-        /** Update the state of the membrane potential and the epsc */
-        public void update(int toTime)
+        if (isDoSmoothing())
         {
-            int ndt=lastUpdateTime-toTime;
-            float epscDecay= (float) Math.exp(ndt/getTcEPSC());
+            KernelMaker2D.weightMult(state1, autoKernel, autoTargets, state2);
             
-            // Add the area under the epsc function since the last update
-            // NOTE: This is not exact, because it doesn't factor additional decay due to added current in between.... Fix this!
-            vmem*=(float)Math.exp(ndt/getTcMem());
-            vmem+=(1-epscDecay)*epsc*tcEPSC; 
-            
-            // Update the EPSC
-            epsc*=epscDecay;            
-            
-            lastUpdateTime=toTime;
-            
-        }
-        
-        
-        public PolarityEvent testFire(int time)
-        {
-            update(time);
-            
-            if (vmem>getThresh())
-            {   vmem=0;
-                return makeEvent(time,PolarityEvent.Polarity.On);
-            }
-            else if (vmem<-getThresh())
-            {   vmem=0;
-                return makeEvent(time,PolarityEvent.Polarity.Off);
-            }
-            else
-                return null;
-            
-        }
-        
-        public PolarityEvent makeEvent(int time,PolarityEvent.Polarity pol)
-        {
-            PolarityEvent p=new PolarityEvent();
-            p.x=locx;
-            p.y=locy;
-            p.timestamp=time;
-            p.polarity=pol;
-            
-            return p;
+            float[] swap=state1;            
+            state1=state2;
+            state2=swap;
         }
         
         
         
     }
+    
+    public void updateState(int toTime,int ixUnit)
+    {
+        state1[ixUnit]*=Math.exp((lastUpdateTime[ixUnit]-toTime)/timeConst);
+        lastUpdateTime[ixUnit]=toTime;
+    }
+    
+    public void fireEventToUnit(PolarityEvent evin)
+    {
+        int addr=dim2addr(evin.x,evin.y);
+        updateState(evin.timestamp,addr);
         
+        state1[addr]+=evin.getPolarity()==PolarityEvent.Polarity.On?epscDecayRate:-epscDecayRate;
+        
+    }
+                
     public SlowResponse(AEChip chip)
     {   super(chip);
     
@@ -181,6 +127,7 @@ public class SlowResponse extends MultiSourceProcessor {
         setPropertyTooltip("tcMem", "Time-Constant of the neuron membrane potentials, in microseconds.");
         setPropertyTooltip("eventBased", "Generate events indicating slow-response activity.");
     
+        updateEpscScale();
     }
     
     @Override
@@ -198,10 +145,7 @@ public class SlowResponse extends MultiSourceProcessor {
         
         for (Object ev:in)
         {
-            PolarityEvent evin=(PolarityEvent)ev;
-            
-            neurons[dim2addr(evin.x,evin.y)].fireTo(evin);
-                            
+            fireEventToUnit((PolarityEvent)ev);
         }
         
         if (in.isEmpty()) 
@@ -213,34 +157,23 @@ public class SlowResponse extends MultiSourceProcessor {
                
         
         int time=in.getLastTimestamp();
-        for (Neuron n:neurons)
-        {
-            
-            n.update(time);
-            
-            if (isEventBased())
-            {
-                PolarityEvent evout=n.testFire(time);
-
-                if (evout!=null)
-                    outItr.writeToNextOutput(evout);      
-            }
-        }
-//        
+        
+        updateState(time);
+        
         updateDisplay();
         
-        if (isEventBased())
-            return out;
-        else
-            return in;
+        return in;
+        
     }
 
     @Override
     public void resetFilter() {
+        removeDisplays();
         
+        if (isTimeInitialized)
+            build();
         
-        
-        
+        isTimeInitialized=false;
     }
     
     public void doStartDisplay()
@@ -250,6 +183,7 @@ public class SlowResponse extends MultiSourceProcessor {
         initDisplay();
         
     }
+       
     
     public void build()
     {
@@ -257,19 +191,35 @@ public class SlowResponse extends MultiSourceProcessor {
         dimx=getChip().getSizeX();
         dimy=getChip().getSizeY();
         
-        neurons=new Neuron[dimx*dimy];        
+        int nUnits=dimx*dimy;
         
-        for (int i=0; i<neurons.length; i++)
-        {   neurons[i]=new Neuron((short)(i/dimy),(short)(i%dimy));
-        }
+        state1=new float[nUnits];
+        state2=new float[nUnits];
+        lastUpdateTime=new int[nUnits];
+               
+        buildKernel();
+    }
+    
+    public void buildKernel()
+    {
+        KernelMaker2D.Gaussian kern=new KernelMaker2D.Gaussian();
+        kern.majorWidth=.5f;
+        kern.minorWidth=.5f;
+                
+        float[][] ww=KernelMaker2D.makeKernel(kern, 3, 3);
         
-        updateEpscScale();
+        KernelMaker2D.normalizeKernel(ww);
         
+//        KernelMaker2D.plot(ww);
         
+        FloatConnection conn=KernelMaker2D.invert(ww, dimx, dimy, dimx, dimy);
         
-        
+        autoKernel=conn.weights;
+        autoTargets=conn.targets;
+                
         
     }
+    
     
     
     
@@ -297,6 +247,8 @@ public class SlowResponse extends MultiSourceProcessor {
     float displayMax;
     float displayAdaptationRate=0.1f;
     
+    
+    final EngineeringFormat myFormatter = new EngineeringFormat();
     public void updateDisplay()
     {
         if (im==null)
@@ -311,13 +263,15 @@ public class SlowResponse extends MultiSourceProcessor {
         
         float del=displayMax-displayMin;
         
-        for (int i=0; i<neurons.length; i++)
+        for (int i=0; i<state1.length; i++)
         {
             
-            float vmem=neurons[i].vmem;
+            float vmem=state1[i];
             float level=(vmem-displayMin)/del;
             
-            im.setPixmapGray(neurons[i].locx, neurons[i].locy, level);
+            
+            
+            im.setPixmapGray(i/dimy, i%dimy, level);
             
             
             minAct=minAct<vmem?minAct:vmem;
@@ -335,6 +289,8 @@ public class SlowResponse extends MultiSourceProcessor {
             displayMax=displayAdaptationRate*maxAct+(1-displayAdaptationRate)*displayMax;
         }
         
+        im.setTitleLabel("range: ["+myFormatter.format(minAct)+"  "+myFormatter.format(maxAct)+"]");
+        
         im.repaint();
     }
     
@@ -346,13 +302,39 @@ public class SlowResponse extends MultiSourceProcessor {
     
     void initNeuronsOnTimeStamp(int timestamp)
     {        
-        for (Neuron n:neurons)
-        {   n.lastUpdateTime=timestamp;
+        for (int i=0; i<lastUpdateTime.length; i++)
+        {   lastUpdateTime[i]=timestamp;
         }
     }
     
     public int dim2addr(short xloc, short yloc)
     {   return yloc+xloc*dimy;        
+    }
+
+    public boolean isDoSmoothing() {
+        return doSmoothing;
+    }
+
+    public void setDoSmoothing(boolean doSmoothing) {
+        this.doSmoothing = doSmoothing;
+    }
+
+    public float getSmoothingFactor() {
+        return smoothingFactor;
+    }
+
+    public void setSmoothingFactor(float smoothingFactor) {
+        this.smoothingFactor = smoothingFactor;
+        buildKernel();
+    }
+
+    public int getKernelWidth() {
+        return kernelWidth;
+    }
+
+    public void setKernelWidth(int kernelWidth) {
+        this.kernelWidth = kernelWidth;
+        buildKernel();
     }
     
     

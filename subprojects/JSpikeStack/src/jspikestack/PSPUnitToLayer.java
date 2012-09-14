@@ -11,16 +11,16 @@ package jspikestack;
 public class PSPUnitToLayer extends PSP {
 
     
-    final AxonBundle ax;
+    final Axon ax;
     
-    public PSPUnitToLayer(Spike spike,int delay, AxonBundle axi)
+    public PSPUnitToLayer(Spike spike,int delay, Axon axi)
     {   super(spike,delay);
         ax=axi;
     }
     
     
     @Override
-    public void affect(SpikeStack net) {
+    public void affect(Network net) {
         
         ax.spikeOut(this);
                 

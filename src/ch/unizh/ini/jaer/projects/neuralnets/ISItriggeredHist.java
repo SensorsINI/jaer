@@ -5,9 +5,9 @@
 package ch.unizh.ini.jaer.projects.neuralnets;
 
 import javax.swing.JToggleButton;
-import jspikestack.AxonBundle;
+import jspikestack.Axon;
 import jspikestack.NetController;
-import jspikestack.SpikeStack;
+import jspikestack.Network;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -16,7 +16,7 @@ import net.sf.jaer.event.EventPacket;
  *
  * @author Peter
  */
-public class ISItriggeredHist extends SpikeFilter {
+public class ISItriggeredHist extends SpikeFilter<Axon> {
 
     int nOutputs=100;
     
@@ -102,7 +102,7 @@ public class ISItriggeredHist extends SpikeFilter {
         isi.setMaxFreqHz(10000);
         isiMap=isi;
         
-        this.netType=NetController.Types.STATIC_LIF;
+        this.axonType=NetController.AxonTypes.STATIC;
                 
     }
     
@@ -185,16 +185,16 @@ public class ISItriggeredHist extends SpikeFilter {
     
     
     @Override
-    public NetMapper makeMapper(SpikeStack net) {
+    public NetMapper makeMapper(Network net) {
         
         
         return isiMap;
     }
 
     @Override
-    public void customizeNet(SpikeStack net) 
+    public void customizeNet(Network net) 
     {
-        SpikeStack.Initializer ini=new SpikeStack.Initializer();
+        Network.Initializer ini=new Network.Initializer();
         
         ini.lay(0).nUnits=nTimeBins*isiMap.nBins;
         

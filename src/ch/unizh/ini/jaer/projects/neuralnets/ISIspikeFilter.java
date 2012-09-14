@@ -6,7 +6,7 @@ package ch.unizh.ini.jaer.projects.neuralnets;
 
 
 import jspikestack.NetController;
-import jspikestack.SpikeStack;
+import jspikestack.Network;
 import net.sf.jaer.chip.AEChip;
 
 /**
@@ -30,7 +30,7 @@ public class ISIspikeFilter extends SpikeFilter {
         
         isiMap=isi;
         
-        this.netType=NetController.Types.STATIC_LIF;
+        this.axonType=NetController.AxonTypes.STATIC;
         
         
         
@@ -40,16 +40,16 @@ public class ISIspikeFilter extends SpikeFilter {
     }
     
     @Override
-    public NetMapper makeMapper(SpikeStack net) {
+    public NetMapper makeMapper(Network net) {
         
         
         return isiMap;
     }
 
     @Override
-    public void customizeNet(SpikeStack net) {
+    public void customizeNet(Network net) {
         
-        SpikeStack.Initializer ini=new SpikeStack.Initializer();
+        Network.Initializer ini=new Network.Initializer();
         
         ini.lay(0).nUnits=nOutputs;
         

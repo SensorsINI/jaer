@@ -45,10 +45,10 @@ public class StatCollector {
     {
         
         // Construct Network
-        NetController<STPAxon,STPAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
-        SpikeStack<STPAxon> net=nc.net;
-        LIFUnit.Globals ug=nc.unitGlobals;
-        STPAxon.Globals lg=nc.layerGlobals;
+        NetController<AxonSTP,AxonSTP.Globals,UnitLIF.Globals> nc=new NetController(NetController.AxonTypes.STP);
+        Network<AxonSTP> net=nc.net;
+        UnitLIF.Globals ug=nc.unitGlobals;
+        AxonSTP.Globals lg=nc.layerGlobals;
         
         
         float initRate=100;

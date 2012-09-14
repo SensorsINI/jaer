@@ -23,11 +23,11 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 public class SpikeRecorder<SpikeType extends Spike> {
     
     private boolean recordingState;
-    SpikeStack net;
+    Network net;
     
     Queue<Spike> spikes;
     
-    SpikeRecorder(SpikeStack network)
+    SpikeRecorder(Network network)
     {
         net=network;
     }

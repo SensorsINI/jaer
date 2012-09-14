@@ -13,7 +13,7 @@ import java.util.Queue;
  *
  * @author oconnorp
  */
-public class STDPAxon<GlobalParams extends STDPAxon.Globals> extends AxonBundle<GlobalParams,PSPUnitToLayer> {
+public class AxonSTDP<GlobalParams extends AxonSTDP.Globals> extends Axon<GlobalParams,PSPUnitToLayer> {
     
     
 //    
@@ -37,7 +37,7 @@ public class STDPAxon<GlobalParams extends STDPAxon.Globals> extends AxonBundle<
         
         private boolean enableSTDP=false;     // Enable STDP on the slow weights
 
-        public STDPAxon(Layer inLayer,Layer outLayer,GlobalParams glo)
+        public AxonSTDP(Layer inLayer,Layer outLayer,GlobalParams glo)
         {   super(inLayer,outLayer,glo);   
 //            glob=glo;
         }
@@ -217,7 +217,7 @@ public class STDPAxon<GlobalParams extends STDPAxon.Globals> extends AxonBundle<
    
 
         
-        public static class Factory<AxonType extends STDPAxon> implements AxonBundle.AbstractFactory<STDPAxon>
+        public static class Factory<AxonType extends AxonSTDP> implements Axon.AbstractFactory<AxonSTDP>
         {
             public Globals glob;
             
@@ -233,12 +233,12 @@ public class STDPAxon<GlobalParams extends STDPAxon.Globals> extends AxonBundle<
 
             @Override
             public AxonType make(Layer inLayer, Layer outLayer) {
-                return (AxonType) new STDPAxon(inLayer,outLayer,glob);
+                return (AxonType) new AxonSTDP(inLayer,outLayer,glob);
             }
         }
         
         
-        public static class Globals extends AxonBundle.Globals
+        public static class Globals extends Axon.Globals
         {
             public STDPrule stdp=new STDPrule();;
     
@@ -318,7 +318,7 @@ public class STDPAxon<GlobalParams extends STDPAxon.Globals> extends AxonBundle<
         {   return new Controller();
         }
         
-        class Controller extends AxonBundle.Controller
+        class Controller extends Axon.Controller
         {   /** enable STDP learning? */
             public boolean isEnableSTDP() {
                 return enableSTDP;
@@ -327,7 +327,7 @@ public class STDPAxon<GlobalParams extends STDPAxon.Globals> extends AxonBundle<
             /** enable STDP learning? */
             public void setEnableSTDP(boolean enableSTDP) {
                 
-                STDPAxon.this.setEnableSTDP(enableSTDP);
+                AxonSTDP.this.setEnableSTDP(enableSTDP);
             }
         }
         

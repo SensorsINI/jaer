@@ -23,18 +23,19 @@ import sun.nio.cs.ext.GB18030;
  * 
  * @author Peter
  */
-public abstract class SpikeFilter extends MultiSourceProcessor {
+public abstract class SpikeFilter<AxonType extends Axon> extends MultiSourceProcessor {
 
     // <editor-fold  defaultstate="collapsed" desc=" Properties ">
     
     SpikeStackWrapper wrapNet;    
-    SpikeStack<AxonBundle> net;
-    AxonBundle.Globals axonGlobs;  // Layer Global Controls
-    LIFUnit.Globals unitGlobs; // Unit Global Controls
+    Network<AxonType> net;
+    Axon.Globals axonGlobs;  // Layer Global Controls
+    UnitLIF.Globals unitGlobs; // Unit Global Controls
         
-    NetController<AxonBundle,STPAxon.Globals,LIFUnit.Globals> nc;
+    NetController<AxonType,AxonSTP.Globals,UnitLIF.Globals> nc;
     
-    NetController.Types netType=NetController.Types.STP_LIF;
+    NetController.AxonTypes axonType=NetController.AxonTypes.STP;
+    NetController.UnitTypes unitType=NetController.UnitTypes.LIF;
     
     boolean pause=false;
     
@@ -54,32 +55,18 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
         // Initialize Remapper
         if (wrapNet==null)
             return in;
-        else if (!wrapNet.R.isBaseTimeSet())
-            wrapNet.R.setBaseTime(in.getFirstTimestamp());
-        
-//        int skipped=0;
-        
-//        System.out.println("FilterThread: "+in.getFirstTimestamp()/1000);
+        else if (!wrapNet.isRunning())
+            wrapNet.start(in.getFirstTimestamp());
         
         if (lastEvTime==Integer.MAX_VALUE && !in.isEmpty())
         {   lastEvTime=in.getFirstTimestamp();
-//            lastEv=new BasicEvent();
-//            lastEv.copyFrom(in.getFirstEvent());
         }
-        
         
         // If it's a clusterset event
         for (int k=0; k<in.getSize(); k++)
-//        for (BasicEvent ev:in)
         {   
-            
-            
             if (pause)
                 return in;
-        
-        
-            
-            
             
             BasicEvent ev=in.getEvent(k);
             
@@ -95,11 +82,6 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
             
             lastEvTime=ev.timestamp;
         }
-        
-//        if (skipped>0)
-            
-        if (lastEvTime!=Integer.MAX_VALUE)
-            wrapNet.eatEvents(wrapNet.R.translateTime(lastEvTime));
                 
         return in;
     }
@@ -142,9 +124,9 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     // <editor-fold  defaultstate="collapsed" desc=" Neural Network Builders ">
     
     /** Grab a network from file. */
-    public SpikeStack getInitialNet() {
+    public Network getInitialNet() {
                 
-        nc=new NetController(netType);
+        nc=new NetController(axonType);
         net=nc.net;
         net.liveMode=true;
         
@@ -170,7 +152,7 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     }
     
     
-    public void setNetwork(SpikeStack net,NetMapper map)
+    public void setNetwork(Network net,NetMapper map)
     {
         wrapNet=new SpikeStackWrapper(nc,map);
     }
@@ -185,11 +167,17 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     // <editor-fold  defaultstate="collapsed" desc=" Abstract Methods ">
         
     /** Given the network, make a NetMapper object */
-    public abstract NetMapper makeMapper(SpikeStack net);
+    public abstract NetMapper makeMapper(Network net);
     
     /** Apply various parameters on the network. */
-    public abstract void customizeNet(SpikeStack net);
+    public abstract void customizeNet(Network<AxonType> net);
             
+    
+    @Override
+    public String[] getInputNames() {
+        return new String[]{"Input"};
+    }
+    
     // </editor-fold>
         
     // <editor-fold  defaultstate="collapsed" desc=" GUI Methods ">
@@ -239,7 +227,7 @@ public abstract class SpikeFilter extends MultiSourceProcessor {
     {
         resetFilter();
         
-        SpikeStack net=getInitialNet();
+        Network net=getInitialNet();
         customizeNet(net);
         wrapNet=new SpikeStackWrapper(nc,makeMapper(net));
         

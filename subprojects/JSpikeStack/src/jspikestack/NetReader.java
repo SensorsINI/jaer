@@ -17,7 +17,7 @@ import java.util.logging.Logger;
  *
  * @author oconnorp
  */
-public class NetReader<NetType extends SpikeStack> implements SpikeStack.NetworkReader {
+public class NetReader<NetType extends Network> implements Network.NetworkReader {
 
     File file;  // Keeps track of the last file used.
     NetType net;        
@@ -41,7 +41,7 @@ public class NetReader<NetType extends SpikeStack> implements SpikeStack.Network
     }
     
     @Override
-    public void readFromXML(SpikeStack net)
+    public void readFromXML(Network net)
     {   readFromXML(net,null);
     }
         
@@ -49,7 +49,7 @@ public class NetReader<NetType extends SpikeStack> implements SpikeStack.Network
      * TODO: modify this to deal with multiple output layers!
      *      
      */
-    public void readFromXML(SpikeStack net, File infile) {
+    public void readFromXML(Network net, File infile) {
 
         if (infile==null)
             infile=startDir;
@@ -139,7 +139,7 @@ public class NetReader<NetType extends SpikeStack> implements SpikeStack.Network
     }
             
     /** De-serialize from byte array */
-    public static <NetType extends SpikeStack> NetType deserialize(byte[] ser)
+    public static <NetType extends Network> NetType deserialize(byte[] ser)
     {
         
         try {

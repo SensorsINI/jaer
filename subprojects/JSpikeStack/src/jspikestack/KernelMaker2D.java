@@ -5,8 +5,12 @@
 package jspikestack;
 
 import java.awt.Dimension;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.text.DecimalFormat;
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JFrame;
 
 /**
@@ -20,44 +24,90 @@ public class KernelMaker2D {
     
     public enum KernelClass {GAUSSIAN,MEXIHAT,DIFFGAUSSIAN,PARABOLA,FLAT,RANDOM};
     
-    public interface Computable
-    {
-        float val(float i, float j);        
-    }
     
-    public static Controllable getKernelType(KernelClass arg)
+    public static KernelPair[] kernPairs=new KernelPair[]{
+        new KernelPair(KernelClass.GAUSSIAN,Gaussian.class),
+        new KernelPair(KernelClass.MEXIHAT,MexiHat.class),
+        new KernelPair(KernelClass.DIFFGAUSSIAN,DiffGaussian.class),    
+        new KernelPair(KernelClass.PARABOLA,Parabola.class),    
+        new KernelPair(KernelClass.FLAT,Flat.class),    
+        new KernelPair(KernelClass.RANDOM,RandomKern.class),    
+    };
+    
+    
+    public static class KernelPair
     {
-        switch (arg)
-        {
-            case GAUSSIAN:
-                return new Gaussian();
-            case MEXIHAT:
-                return new MexiHat();
-            case PARABOLA:
-                return new Parabola();
-            case DIFFGAUSSIAN:
-                return new DiffGaussian();
-            case FLAT:
-                return new Flat();
-            case RANDOM:
-                return new RandomKern();
-            default:
-                return null;
-                
+        KernelClass type;
+        Class<? extends Computable> kern;
+        
+        public KernelPair(KernelClass ktype,Class<? extends Computable> kernel)
+        {   type=ktype;
+            kern=kernel;
         }
+      
+        public Computable newInstance()
+        {
+            try {
+                return (Computable) kern.newInstance();
+            } catch (InstantiationException ex) {
+                Logger.getLogger(KernelMaker2D.class.getName()).log(Level.SEVERE, null, ex);
+                return null;
+            } catch (IllegalAccessException ex) {
+                Logger.getLogger(KernelMaker2D.class.getName()).log(Level.SEVERE, null, ex);
+                return null;
+            }
+        }
+        
+    }
+    
+    public static abstract class Computable extends Controllable implements Serializable
+    {
+        abstract float val(float i, float j);        
+        
+        public <T extends Computable> T copy()
+        {
+            throw new UnsupportedOperationException("Not supported yet!");
+//            try {
+//                ObjectOutputStream out=out = new ObjectOutputStream(this);
+//                return (T) this
+//            } catch (CloneNotSupportedException ex) {
+//                Logger.getLogger(KernelMaker2D.class.getName()).log(Level.SEVERE, null, ex);
+//                return null;
+//            }
+        }
+        
+    }
+    
+    public static Computable newKernel(KernelClass arg)
+    {        
+        for(KernelPair k:kernPairs)
+        {   if (k.type==arg)
+                return k.newInstance();
+        }
+        throw new RuntimeException("Kernel type: "+arg.toString()+" is not paired with any Kernel class");    
+        
+    }
+    
+    public static KernelClass getKernelClass(Class<? extends Computable> kernClass)
+    {
+        for(KernelPair k:kernPairs)
+        {   if (k.kern==kernClass)
+                return k.type;
+        }
+        
+        throw new RuntimeException("Kernel class: "+kernClass.getName()+" is not paired with any enum in KernelClass");    
     }
     
     
-    
-    public static class MexiHat  extends Controllable implements Computable
+    public static class MexiHat  extends Computable
     {
-        float mag1=2;
-        private float mag2=1;
-        private float majorWidth1=2;
-        private float minorWidth1=2;
-        private float majorWidth2=4;
-        private float minorWidth2=4;
-        float angle;
+        public float mag1=2;
+        public float mag2=1;
+        public float majorWidth1=2;
+        public float minorWidth1=2;
+        public float majorWidth2=4;
+        public float minorWidth2=4;
+        public float angle;
         
         
         @Override
@@ -115,7 +165,7 @@ public class KernelMaker2D {
     }
     
     /** Difference of two Gaussians.  The Gaussians are spaced apart by "minorWidth". */
-    public static class DiffGaussian extends Controllable implements Computable
+    public static class DiffGaussian extends Computable
     {
         public float majorWidth=4;
         public float minorWidth=2;
@@ -191,7 +241,7 @@ public class KernelMaker2D {
     }
     
     
-    public static class RandomKern extends Controllable implements Computable
+    public static class RandomKern extends Computable
     {
         public float mean;
         public float std;
@@ -233,10 +283,10 @@ public class KernelMaker2D {
     
     
     
-    public static class Parabola extends Controllable implements Computable
+    public static class Parabola extends Computable
     {
-        private float width;
-        private float mag=1; // Note that for now, mag is redundant, but may make it more intuitive to size the thing.
+        public float width;
+        public float mag=1; // Note that for now, mag is redundant, but may make it more intuitive to size the thing.
 
         @Override
         public float val(float i, float j) {
@@ -269,12 +319,12 @@ public class KernelMaker2D {
     
     
     
-    public static class Gaussian extends Controllable implements Computable
+    public static class Gaussian extends Computable
     {
-        private float mag=1;
-        private float majorWidth=4;
-        private float minorWidth=2;
-        private float angle=0;
+        public float mag=1;
+        public float majorWidth=4;
+        public float minorWidth=2;
+        public float angle=0;
         public float xoffset=0;
         public float yoffset=0;
         
@@ -381,9 +431,9 @@ public class KernelMaker2D {
     
     
     
-    public static class Flat extends Controllable implements Computable
+    public static class Flat extends Computable
     {
-        private float mag=1;
+        public float mag=1;
         
         public Flat(){};
         
@@ -408,36 +458,32 @@ public class KernelMaker2D {
         }
 
     }
-    
-    
-    
-    
-    
-    
-    
-    public static float[][] makeKernel(Types t,int sizex,int sizey)
-    {
         
-        Computable comp;
-        switch(t)
-        {
-            case Gaussian:
-                comp=new Gaussian();
-                break;
-            case MexiHat:
-                comp=new MexiHat();
-                break;
-            default:
-                throw new UnsupportedOperationException("Type "+t.toString()+" not supported yet.");
-        }
-        
-        return makeKernel(comp,sizex,sizey);
-        
-    }
+//    public static float[][] makeKernel(Types t,int sizex,int sizey)
+//    {
+//        
+//        Computable comp;
+//        switch(t)
+//        {
+//            case Gaussian:
+//                comp=new Gaussian();
+//                break;
+//            case MexiHat:
+//                comp=new MexiHat();
+//                break;
+//            default:
+//                throw new UnsupportedOperationException("Type "+t.toString()+" not supported yet.");
+//        }
+//        
+//        
+//        
+//        
+//        return makeKernel(comp,sizex,sizey);
+//        
+//    }
         
     public static float[][] makeKernel(Computable comp,int sizex,int sizey)
     {
-        
         float[][] kernel=new float[sizey][sizex] ;
         for (int i=0; i<sizey; i++)
             for (int j=0; j<sizex; j++)
@@ -467,6 +513,23 @@ public class KernelMaker2D {
                 w[i][j]=-kern[i][j];
         }
         return w;
+        
+    }
+    
+    /** Normalize kernel such that all elements sum to 1.  Warning, a balanced 
+     kernel will cause +/- inf values
+     */
+    public static void normalizeKernel(float[][] kern)
+    {
+        float sum=0;
+        for (int i=0; i<kern.length; i++)
+            for (int j=0; j<kern[i].length; j++)
+                sum+=kern[i][j];
+                
+        for (int i=0; i<kern.length; i++)
+            for (int j=0; j<kern[i].length; j++)
+                kern[i][j]/=sum;
+        
         
     }
     
@@ -749,14 +812,14 @@ public class KernelMaker2D {
      * @param targets a [outVector.length]x[inVector.length] matrix of input addresses for each output unit.
      * @param outVector the Vector of outputs to write into.
      */
-    static void weightMult(float[] inVector,float[][] weights,int[][] targets,float[] outVector)
+    public static void weightMult(float[] inVector,float[][] weights,int[][] targets,float[] outVector)
     {
         for (int i=0; i<outVector.length; i++)
         {
             float sum=0;
             
             for (int j=0; j<targets[i].length; j++)
-                sum+=inVector[targets[i][j]];
+                sum+=inVector[targets[i][j]]*weights[i][j];
             
             outVector[i]=sum;
         }

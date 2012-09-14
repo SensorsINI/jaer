@@ -31,7 +31,9 @@ import org.jfree.experimental.chart.plot.CombinedXYPlot;
 
 /**
  * Here's a collection of Demos that make use of the Spiking Network 
- * package.  To run, just uncomment the appropriate line in the main function.
+ * package.  Just run and click on a demo.  All demos are run from static
+ * methods in this class.  Take a look at these to see you can build and simulate
+ * a network.
  * 
  * HAVE FUN.
  * 
@@ -70,15 +72,18 @@ public class JspikeStack {
     /** Read in a network from XML, do stuff with it */
     public static void readNet()
     {           
-        NetController<STPAxon,STPAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
-        SpikeStack<STPAxon> net=nc.net;
-        LIFUnit.Globals un=nc.unitGlobals;
-        STPAxon.Globals lg=nc.layerGlobals;
+        NetController<AxonSTP,AxonSTP.Globals,UnitLIF.Globals> nc=new NetController(NetController.AxonTypes.STP);
+        Network<AxonSTP> net=nc.net;
+        UnitLIF.Globals un=nc.unitGlobals;
+        AxonSTP.Globals lg=nc.layerGlobals;
         
         nc.readXML();
        
         net.addAllReverseAxons();
         net.rax(0,1).enable=false;
+        
+        
+        net.check();
         
         un.tau=100000;
 //        net.delay=20000;
@@ -154,10 +159,10 @@ public class JspikeStack {
         ArrayList<PSPInput> events=AERFile.getCochleaEvents("VowelSounds.aedat");
                 
         // Construct Network
-        NetController<STPAxon,STPAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
-        SpikeStack<STPAxon> net=nc.net;
-        LIFUnit.Globals ug=nc.unitGlobals;
-        STPAxon.Globals lg=nc.layerGlobals;
+        NetController<AxonSTP,AxonSTP.Globals,UnitLIF.Globals> nc=new NetController(NetController.AxonTypes.STP);
+        Network<AxonSTP> net=nc.net;
+        UnitLIF.Globals ug=nc.unitGlobals;
+        AxonSTP.Globals lg=nc.layerGlobals;
                    
         // Set Layer Global Controls
         lg.stdp.plusStrength=0.0002f;
@@ -177,7 +182,7 @@ public class JspikeStack {
         ug.useGlobalThresh=true;
         
         // Assemble Network
-        SpikeStack.Initializer ini=new SpikeStack.Initializer();                
+        Network.Initializer ini=new Network.Initializer();                
         ini.lay(0).nUnits   = 64;
         ini.lay(0).name     = "Input";
         
@@ -231,12 +236,12 @@ public class JspikeStack {
     
     public static void spatioTemporalDemo()
     {
-        NetController<SpatioTemporalAxon,SpatioTemporalAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.SPATIOTEMPORAL_LIF);
-        SpikeStack<SpatioTemporalAxon> net=nc.net;
-        LIFUnit.Globals un=nc.unitGlobals;
-        SpatioTemporalAxon.Globals lg=nc.layerGlobals;
+        NetController<AxonSpatioTemporal,AxonSpatioTemporal.Globals,UnitLIF.Globals> nc=new NetController(NetController.AxonTypes.SPATIOTEMPORAL);
+        Network<AxonSpatioTemporal> net=nc.net;
+        UnitLIF.Globals un=nc.unitGlobals;
+        AxonSpatioTemporal.Globals lg=nc.layerGlobals;
         
-        SpikeStack.Initializer ini=new SpikeStack.Initializer();
+        Network.Initializer ini=new Network.Initializer();
         ini.lay(0).dimx=ini.lay(0).dimy=32;
         ini.lay(1).dimx=ini.lay(1).dimy=32;
         ini.ax(0,1);
@@ -292,10 +297,10 @@ public class JspikeStack {
     public static void rcNetDemo()
     {
         // Instantiate
-        NetController<SparseAxon,SparseAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.SPARSE_LIF);
-        SpikeStack<SparseAxon> net=nc.net;
-        LIFUnit.Globals un=nc.unitGlobals;
-        SparseAxon.Globals lg=nc.layerGlobals;
+        NetController<AxonSparse,AxonSparse.Globals,UnitLIF.Globals> nc=new NetController(NetController.AxonTypes.SPARSE);
+        Network<AxonSparse> net=nc.net;
+        UnitLIF.Globals un=nc.unitGlobals;
+        AxonSparse.Globals lg=nc.layerGlobals;
         
         // Build
         net.addLayer(0);
@@ -323,42 +328,74 @@ public class JspikeStack {
     /** Load some AER data and test a convolutional kernel */
     public static void convDemo()
     {
-        NetController<SparseAxon,SparseAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.SPARSE_LIF);
-        SpikeStack<SparseAxon> net=nc.net;
-        LIFUnit.Globals un=nc.unitGlobals;
-        SparseAxon.Globals lg=nc.layerGlobals;
+        NetController<AxonSparse,AxonSparse.Globals,UnitLIF.Globals> nc=new NetController(NetController.AxonTypes.SPARSE,NetController.UnitTypes.ONOFFLIF);
+        Network<AxonSparse> net=nc.net;
+        UnitLIF.Globals un=nc.unitGlobals;
+        AxonSparse.Globals lg=nc.layerGlobals;
         
         // Initialize
-        SpikeStack.Initializer ini=new SpikeStack.Initializer();   
-        ini.lay(0).dimx=ini.lay(0).dimy=128;
-        ini.lay(1).dimx=ini.lay(1).dimy=64;
-        ini.lay(2).dimx=ini.lay(2).dimy=64;   
-        ini.ax(0,1); 
-        ini.ax(0,2);
-        net.buildFromInitializer(ini);  
-        
-        KernelMaker2D.MexiHat hat=new KernelMaker2D.MexiHat();
-        hat.setMajorWidth1(5);
-        hat.setMajorWidth2(5);
-        hat.setMinorWidth1(1.5f);
-        hat.setMinorWidth2(3);
-        hat.angle=45;
-        
-//        net.ax(0,1).getControls().
+//        Network.Initializer ini=new Network.Initializer();   
+//        ini.lay(0).dimx=ini.lay(0).dimy=128;
+//        ini.lay(1).dimx=ini.lay(1).dimy=128;
+////        ini.lay(2).dimx=ini.lay(2).dimy=64;   
+//        ini.ax(0,1); 
+//        ini.ax(0,2);
+//        net.buildFromInitializer(ini);  
         
         
-        float[][] w=KernelMaker2D.makeKernel(hat, 10, 10);        
-//        KernelMaker2D.plot(w);
-        net.ax(0,1).defineKernel(w);
+        
+        net.addLayer(0);
+        net.lay(0).initializeUnits(128, 128);
+        net.addLayer(1);
+        net.lay(1).initializeUnits(64, 64);
+        net.addAxon(0,1);
+        net.addAxon(1,1);
                 
-        float[][] wt=KernelMaker2D.transpose(w);
-        net.ax(0,2).defineKernel(wt);
+        KernelMaker2D.MexiHat k01=new KernelMaker2D.MexiHat();
+        k01.angle=90;
+        k01.mag1=1;
+        k01.mag2=.5f;
+        k01.majorWidth1=4;
+        k01.minorWidth1=1;
+        k01.majorWidth2=4;
+        k01.minorWidth2=2;        
+        net.ax(0,1).setKernelControl(k01, 7, 7);
+        
+        KernelMaker2D.Gaussian k11=new KernelMaker2D.Gaussian();
+        k11.angle=90;
+        k11.mag=.3f;
+//        k11.mag1=.2f;
+//        k11.mag2=.1f;
+        k11.majorWidth=4;
+        k11.minorWidth=1;
+//        k11.majorWidth2=4;
+//        k11.minorWidth2=2;        
+        net.ax(1,1).setKernelControl(k11, 7, 7);
+        
+        
+//        KernelMaker2D.Gaussian k11=new KernelMaker2D.Gaussian();
+//        k11.mag=-.2f;
+//        k11.majorWidth=3;
+//        k11.minorWidth=3;   
+//        net.ax(1,1).setKernelControl(k01, 8, 8);
+        
+        
+        
+        
+        net.check(); // Check to see that the network is ready to run.
+        
+//        float[][] w=KernelMaker2D.makeKernel(hat, 10, 10);        
+//        KernelMaker2D.plot(w);
+//        net.ax(0,1).defineKernel(w);
+                
+//        float[][] wt=KernelMaker2D.transpose(w);
+//        net.ax(0,2).defineKernel(wt);
 //        KernelMaker2D.plot(wt);
                 
         // Define global parameters
         un.useGlobalThresh=true;
-        un.thresh=5;
-        un.tau=10000;
+        un.thresh=3;
+        un.tau=50000;
         un.tref=5000;  
         
         // Read Events
@@ -367,7 +404,10 @@ public class JspikeStack {
         // Setup simulation
         nc.addAllControls();
         nc.setRecordingState(true);   
+        nc.view.zeroCentred=true;
         nc.startDisplay();       
+//        nc.view.zeroCenterDisplays(true);
+        
 //        NetController.Simulation sim=new NetController.Simulation();        
         nc.sim.controlledTime=true;
         nc.sim.timeScaling=1;
@@ -384,10 +424,10 @@ public class JspikeStack {
     public static void numberDemo()
     {
         
-        NetController<STPAxon,STPAxon.Globals,LIFUnit.Globals> nc=new NetController(NetController.Types.STP_LIF);
-        SpikeStack<STPAxon> net=nc.net;
-        LIFUnit.Globals un=nc.unitGlobals;
-        STPAxon.Globals lg=nc.layerGlobals;
+        NetController<AxonSTP,AxonSTP.Globals,UnitLIF.Globals> nc=new NetController(NetController.AxonTypes.STP);
+        Network<AxonSTP> net=nc.net;
+        UnitLIF.Globals un=nc.unitGlobals;
+        AxonSTP.Globals lg=nc.layerGlobals;
         
         nc.readXML();
         net.rbmify(true);
@@ -486,13 +526,13 @@ public class JspikeStack {
     }
     
     /** Enumeration of the list of available demos */
-    public static enum Demos {GENERATE,LEARN,CONV};
+    public static enum Demos {GENERATE,LEARN,CONV,RCNET};
     
     /** Start a menu that allows the user to launch a number of demos for the 
      * JSpikeStack package.  To add a new demo to the menu:
      * 1) Add the appropriate element to the "Demos" enumerator (above);
-     * 2) Add the button in demoMenu
-     * 3) Connect the enumerator element to the appropriate function in DemoLauncher through the switch statement in DemoLauncher.
+     * 2) Add the button in demoMenu()
+     * 3) Connect the enumerator element to the appropriate function in DemoLauncher through the switch statement.
      */
     public static void demoMenu()
     {
@@ -507,6 +547,7 @@ public class JspikeStack {
         addDemoButton("Network Generation Demo","Read a network From XML and let it generate",Demos.GENERATE,pane);
         addDemoButton("Learning Demo","Read an AER file, initialize a random net, and run STDP learning",Demos.LEARN,pane);
         addDemoButton("Convolution Demo",  "Here we read data from the Silicon retina.  Two output layers respond to vertically and horizontally oriented features.",Demos.CONV,pane);
+        addDemoButton("RC Network",  "Takes retina inputs and fires them to a smoothing network.",Demos.RCNET,pane);
         
         
         frm.setPreferredSize(new Dimension(500,500));
@@ -534,6 +575,9 @@ public class JspikeStack {
                         break;
                     case CONV:
                         convDemo();
+                        break;
+                    case RCNET:
+                        rcNetDemo();
                         break;
                 }
             }

@@ -5,21 +5,27 @@
 package jspikestack;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.Random;
 
 /**
- *
+ * This Axon-connection allows for specifically targeted connections between 
+ * layers (as opposed to all-to-all connectivity).  This allows layers with 
+ * sparse interconnections to be simulated much more efficiently.   Each neuron
+ * in the pre-Layer has a list of target addresses in the post-layer.
+ * 
+ * In addition, there are several methods for creating 2-D "convolutional" 
+ * connections between layers.  This is done by specifying dimensions of a layer
+ * and then assigning a 2-D kernel, which is transformed into a weight-mapping.
+ * 
  * @author oconnorp
  */
-public class SparseAxon<GlobalParams extends SparseAxon.Globals,PSPType extends PSPUnitToLayer>  extends AxonBundle<GlobalParams,PSPType> 
+public class AxonSparse<GlobalParams extends AxonSparse.Globals,PSPType extends PSPUnitToLayer>  extends Axon<GlobalParams,PSPType> 
 {
     
     int[][] targets;  // Addresses of forward connections
     
 //    int[][] backIX; // Reverse addresses for backward connections
         
-    public SparseAxon(Layer inLayer, Layer outLayer,GlobalParams glo)
+    public AxonSparse(Layer inLayer, Layer outLayer,GlobalParams glo)
     {   super(inLayer,outLayer,glo);
     }
     
@@ -53,46 +59,70 @@ public class SparseAxon<GlobalParams extends SparseAxon.Globals,PSPType extends 
     }
         
 
-    public class Connection
-    {
-        Connection(float[][] w, int[][] targ)
-        {
-            weights=w;
-            targets=targ;
-        }
-
-        float[][] weights;
-        int[][] targets;           
+    @Override
+    void check() {
+        if (w==null || (w.length>0 && w[0]==null))
+            throw new RuntimeException(getName()+": Weights are not initialized!  See function \"initWeights\" or \"defineKernel\".");
     }
+    
+//    public class Connection
+//    {
+//        Connection(float[][] w, int[][] targ)
+//        {
+//            weights=w;
+//            targets=targ;
+//        }
+//
+//        float[][] weights;
+//        int[][] targets;           
+//    }
 
-
-
-    public class Controller extends AxonBundle.Controller
+    @Override
+    public Controllable makeController()
+    {   return new Controller();
+    }
+    
+    public void setKernelControl(KernelMaker2D.Computable kernel,int dimx,int dimy)
+    {
+        Controller cont=(Controller)getControls();
+                
+        KernelController k=(KernelController)cont.getKernelController();
+        k.type=KernelMaker2D.getKernelClass(kernel.getClass());
+        k.dimx=dimx;
+        k.dimy=dimy;
+        k.kernel=kernel;
+        
+//        cont.kcon=k;
+        cont.kcon.doApply_Kernel();
+    }
+            
+    public class Controller extends Axon.Controller
     {
         KernelController kcon;
 
+        public KernelController getKernelController()
+        {
+            if (kcon==null)
+                kcon=new KernelController();
+            
+            return kcon;
+        }
+        
+        
         @Override
         public ArrayList<Controllable> getSubControllers()
         {
             ArrayList<Controllable> arr=new ArrayList();
 
-            if (kcon!=null)
-            {   kcon=new KernelController(); 
-            }
+//            if (kcon!=null)
+//            {   kcon=new KernelController(); 
+//            }           
 
-            arr.add(kcon);
+            arr.add(getKernelController());
             return arr;
         }
-
-
     }
-
-    @Override
-    public Controllable getControls()
-    {
-        return new KernelController();
-    }
-
+    
     public class KernelController extends Controllable
     {
 
@@ -104,7 +134,7 @@ public class SparseAxon<GlobalParams extends SparseAxon.Globals,PSPType extends 
         @Override
         public String getName() {
             
-            SparseAxon ax=SparseAxon.this;
+            AxonSparse ax=AxonSparse.this;
             
             return "L"+ax.preLayer.ixLayer+"-L"+ax.postLayer.ixLayer+" Kernel";                
         }
@@ -138,7 +168,7 @@ public class SparseAxon<GlobalParams extends SparseAxon.Globals,PSPType extends 
             ArrayList<Controllable> arr=new ArrayList();
 
             if (kernel==null)
-                kernel=KernelMaker2D.getKernelType(getType());
+                kernel=KernelMaker2D.newKernel(getType());
                 
             arr.add(kernel);
 
@@ -168,7 +198,7 @@ public class SparseAxon<GlobalParams extends SparseAxon.Globals,PSPType extends 
 
         public void setType(KernelMaker2D.KernelClass type) {
             
-            kernel=KernelMaker2D.getKernelType(type);
+            kernel=KernelMaker2D.newKernel(type);
             updateControl();
             this.type = type;
         }
@@ -187,15 +217,15 @@ public class SparseAxon<GlobalParams extends SparseAxon.Globals,PSPType extends 
     }
         
         
-    public static class Factory extends AxonBundle.Factory
+    public static class Factory extends Axon.Factory
     {        
         public Factory()
         {   glob=new Globals();            
         }
         
         @Override
-        public AxonBundle make(Layer inLayer,Layer outLayer)
-        {   return new SparseAxon(inLayer,outLayer,glob); 
+        public Axon make(Layer inLayer,Layer outLayer)
+        {   return new AxonSparse(inLayer,outLayer,glob); 
         }
     }
     

@@ -7,6 +7,8 @@ package jspikestack;
 import java.awt.Component;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.ListIterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
@@ -20,9 +22,9 @@ import javax.swing.JScrollPane;
  * 
  * @author Peter
  */
-public class NetController<LayerType extends AxonBundle,LayerGlobalType extends Controllable,UnitGlobalType extends Controllable> {
+public class NetController<AxonType extends Axon,LayerGlobalType extends Controllable,UnitGlobalType extends Controllable> {
     
-    public SpikeStack<LayerType> net;
+    public Network<AxonType> net;
     public UnitGlobalType unitGlobals;
     public LayerGlobalType layerGlobals;
     
@@ -31,8 +33,8 @@ public class NetController<LayerType extends AxonBundle,LayerGlobalType extends 
     
     public SpikeRecorder recorder;
     
-    public static enum Types {STP_LIF,STATIC_LIF,BINTHRESHNET,SPARSE_LIF,SPATIOTEMPORAL_LIF};
-    
+    public static enum AxonTypes {STP,STATIC,BINTHRESHNET,SPARSE,SPATIOTEMPORAL};
+    public static enum UnitTypes {LIF,ONOFFLIF,BINTHRESH}
     
     public boolean enable=true;
     
@@ -41,53 +43,58 @@ public class NetController<LayerType extends AxonBundle,LayerGlobalType extends 
     
     
     public NetController()
-    {   this(Types.STP_LIF);        
+    {   this(AxonTypes.STP);        
     }
             
-    public NetController(Types t)
+    
+    public NetController(AxonTypes t) 
+    {
+        this(t,UnitTypes.LIF);
+    }
+    
+    public NetController(AxonTypes t,UnitTypes u)
     {
         
-        AxonBundle.AbstractFactory axonFactory;
+        Axon.AbstractFactory axonFactory;
         Unit.AbstractFactory unitFactory;
-        
-        
+                
         switch(t)
         {
-            case STATIC_LIF:                
-                axonFactory=new AxonBundle.Factory();
-                unitFactory=new LIFUnit.Factory();            
-                break;                
-            
-            case STP_LIF:                
-                axonFactory=new STPAxon.Factory();
-                unitFactory=new LIFUnit.Factory();   
+            case STATIC:                
+                axonFactory=new Axon.Factory();
+                break; 
+            case STP:                
+                axonFactory=new AxonSTP.Factory(); 
                 break;
-                
-            case SPARSE_LIF:                
-                axonFactory=new SparseAxon.Factory();
-                unitFactory=new LIFUnit.Factory();       
+            case SPARSE:                
+                axonFactory=new AxonSparse.Factory();  
                 break;
-                
-            case SPATIOTEMPORAL_LIF:
-                
-                axonFactory=new SpatioTemporalAxon.Factory();
-                unitFactory=new LIFUnit.Factory();   
-                
-                break;
-                
-            case BINTHRESHNET:
-                throw new UnsupportedOperationException("Not supported yet");   
-                
-                
+            case SPATIOTEMPORAL:                
+                axonFactory=new AxonSpatioTemporal.Factory();
+                break; 
             default:
-                axonFactory=new AxonBundle.Factory();
-                unitFactory=new LIFUnit.Factory();            
-                break;     
-                
+                axonFactory=new Axon.Factory();     
+                break;
         }
         
+        switch(u)
+        {
+            case LIF:                
+                unitFactory=new UnitLIF.Factory();            
+                break;                
+            case ONOFFLIF:                
+                unitFactory=new UnitOnOff.Factory();   
+                break;
+            case BINTHRESH:  
+                throw new UnsupportedOperationException("Not supported yet");                   
+//                unitFactory=new BinaryStochasticUnit.Factory();       
+//                break;                
+            default:
+                unitFactory=new UnitLIF.Factory();            
+                break;  
+        }
         
-        net=new SpikeStack(axonFactory,unitFactory);
+        net=new Network(axonFactory,unitFactory);
         view=new NetPlotter(net);
         
         layerGlobals = (LayerGlobalType) axonFactory.getGlobalControls();
@@ -157,10 +164,10 @@ public class NetController<LayerType extends AxonBundle,LayerGlobalType extends 
         ControlPanel cp=new ControlPanel();
         
         cp.addController(new Controls());
-        cp.addController(net.getControls());
+//        cp.addController(net.getControls());
         cp.addController(unitGlobals);
         cp.addController(layerGlobals);
-        for (AxonBundle l:net.getAxons())
+        for (Axon l:net.getAxons())
         {
             cp.addController(l.getControls());
         }
@@ -267,12 +274,20 @@ public class NetController<LayerType extends AxonBundle,LayerGlobalType extends 
                 //        else
                         finalTime=net.time+(int)(1000000*simTimeSeconds);
 
-                        if (inputEvents!=null)
-                        {   net.inputBuffer.clear();
-                            for (PSP ev:inputEvents)
-                                net.addToQueue(ev);
-                        }
+                        // Old strategy: Feed all events in advance
+//                        if (inputEvents!=null)
+//                        {   net.inputBuffer.clear();
+//                            for (PSP ev:inputEvents)
+//                                net.addToQueue(ev);
+//                        }
+                        
+                        // New strategy: Just tell network to eat what it wants, control pace of feeding.
+                        Thread netThread=net.startEventFeast();
 
+                        ListIterator<PSPInput> it=inputEvents.listIterator();
+                        
+                        int inputEventIndex=0;
+                        
 
                         if (controlledTime)
                         {
@@ -296,15 +311,22 @@ public class NetController<LayerType extends AxonBundle,LayerGlobalType extends 
                                 targetSystemTime+=plotIntervalMillis;
 
 
+                                
+                                
+                                // Old strategy: Feed Events in advance, control pace of eating
+//                                net.eatEvents(targetNetTime);
+//                                if (!net.hasEvents())
+//                                    break;
 
-                                net.eatEvents(targetNetTime);
-
-
-                //                System.out.println("targ: "+ targetNetTime+"\t net: "+net.time);
-
-                                if (!net.hasEvents())
+                                // New strategy: Eat all events as fast as possible, control pace of feeding
+                                if (inputEventIndex<inputEvents.size())
+                                    while(inputEventIndex<inputEvents.size() && inputEvents.get(inputEventIndex).hitTime<targetNetTime)
+                                        net.addToQueue(inputEvents.get(inputEventIndex++));
+                                else
+                                {   netThread.interrupt();
                                     break;
-
+                                }
+                                
                                 try {
                                     long sleepTime=Math.max(targetSystemTime-System.currentTimeMillis(),0);
                     //                System.out.println(sleepTime);
@@ -446,7 +468,7 @@ public class NetController<LayerType extends AxonBundle,LayerGlobalType extends 
                     @Override
                     public float compute() {
 
-                        STPAxon ax=(STPAxon) net.ax(1,2);
+                        AxonSTP ax=(AxonSTP) net.ax(1,2);
                         float w=0;
                         float k=0;
 

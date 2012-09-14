@@ -22,7 +22,7 @@ public abstract class PSP implements Comparable<PSP>
         
     }
     
-    public abstract void affect(SpikeStack net);
+    public abstract void affect(Network net);
     
     @Override
     public int compareTo(PSP other)

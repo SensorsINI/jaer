@@ -7,7 +7,7 @@ package ch.unizh.ini.jaer.projects.neuralnets;
 import ch.unizh.ini.jaer.projects.integrateandfire.ClusterEvent;
 import java.util.ArrayList;
 import jspikestack.NetController;
-import jspikestack.SpikeStack;
+import jspikestack.Network;
 import net.sf.jaer.event.BasicEvent;
 
 /**
@@ -17,18 +17,18 @@ import net.sf.jaer.event.BasicEvent;
  * 
  * @author oconnorp
  */
-public class NetworkList<NetType extends SpikeStack> 
+public class NetworkList
 {
-    NetType initialNet;     // The network off which other networks are based.
+    Network initialNet;     // The network off which other networks are based.
     NetController nc;
     
     NetMapper R;             // The remapper object
     
-    ArrayList<SpikeStackWrapper<NetType>> nets=new ArrayList<SpikeStackWrapper<NetType>>();     // The list of networks to feed events to
+    ArrayList<SpikeStackWrapper> nets=new ArrayList<SpikeStackWrapper>();     // The list of networks to feed events to
     
     
     /** Initialize the network array given an initial network */
-    public NetworkList(NetType initNet)
+    public NetworkList(Network initNet)
     {
         setNetwork(initNet);
         
@@ -42,14 +42,14 @@ public class NetworkList<NetType extends SpikeStack>
     
     
     /** Initialize the network array given an initial network */
-    public NetworkList(NetType initNet, NetMapper R)
+    public NetworkList(Network initNet, NetMapper R)
     {
         this(initNet);
         setRemapper(R);
     }
     
     /** Return the Network Wrapper at index netNumber */
-    public SpikeStackWrapper<NetType> net(int netNumber)
+    public SpikeStackWrapper net(int netNumber)
     {   return nets.get(netNumber);        
     }
     
@@ -58,7 +58,7 @@ public class NetworkList<NetType extends SpikeStack>
      * of the network.
      * @param network 
      */
-    public void setNetwork(NetType network)
+    public void setNetwork(Network network)
     {           
         
         int len=nets.size();
@@ -84,7 +84,7 @@ public class NetworkList<NetType extends SpikeStack>
     }
     
     /** Retrieve a network */
-    public SpikeStackWrapper<NetType> getNet(int ix)
+    public SpikeStackWrapper getNet(int ix)
     {   return nets.get(ix);
     }
     

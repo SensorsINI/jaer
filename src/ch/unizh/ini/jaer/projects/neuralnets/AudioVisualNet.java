@@ -18,7 +18,7 @@ import net.sf.jaer.event.PolarityEvent;
  * @author Peter
  */
 @Description("Implements an associative memory between audio and visual stimuli using a network of spiking neurons.")
-public class AudioVisualNet extends SpikeFilter {
+public class AudioVisualNet extends SpikeFilter<AxonSTP> {
 
     
     public AudioVisualNet(AEChip chip)
@@ -27,7 +27,7 @@ public class AudioVisualNet extends SpikeFilter {
     }
 
     @Override
-    public NetMapper makeMapper(SpikeStack net) {
+    public NetMapper makeMapper(Network net) {
         
         
         final ISIMapper isi=new ISIMapper(64,100);
@@ -77,7 +77,7 @@ public class AudioVisualNet extends SpikeFilter {
     }
 
     @Override
-    public void customizeNet(SpikeStack neet) {
+    public void customizeNet(Network neet) {
         
         
         this.buildFromXML("AssociativeNetworkE.xml");
@@ -98,7 +98,7 @@ public class AudioVisualNet extends SpikeFilter {
         
 //        net.unrollRBMs();
         
-        STPAxon.Globals lG=(STPAxon.Globals)axonGlobs;
+        AxonSTP.Globals lG=(AxonSTP.Globals)axonGlobs;
         
         unitGlobs.tau=100000;
         lG.delay=12000;
@@ -129,9 +129,9 @@ public class AudioVisualNet extends SpikeFilter {
 //        lG.fastSTDP.stdpTCplus=(10000);
 //        
         
-        ((STPAxon)net.ax(1,4)).setEnableFastSTDP(false);
-        ((STPAxon)net.ax(2,4)).setEnableFastSTDP(false);
-        ((STPAxon)net.ax(3,4)).setEnableFastSTDP(false);
+        ((AxonSTP)net.ax(1,4)).setEnableFastSTDP(false);
+        ((AxonSTP)net.ax(2,4)).setEnableFastSTDP(false);
+        ((AxonSTP)net.ax(3,4)).setEnableFastSTDP(false);
 //        un.thresh=1.5f;
         
         nc.layerGlobals.stdpWin=30000;
@@ -211,9 +211,9 @@ public class AudioVisualNet extends SpikeFilter {
         unitGlobs.thresh*=dreamMode?1/1.8f:1.8;
         
         
-        ((STPAxon)net.ax(1,4)).setEnableFastSTDP(dreamMode);
-        ((STPAxon)net.ax(2,4)).setEnableFastSTDP(dreamMode);
-        ((STPAxon)net.ax(3,4)).setEnableFastSTDP(dreamMode);
+        ((AxonSTP)net.ax(1,4)).setEnableFastSTDP(dreamMode);
+        ((AxonSTP)net.ax(2,4)).setEnableFastSTDP(dreamMode);
+        ((AxonSTP)net.ax(3,4)).setEnableFastSTDP(dreamMode);
         
                
 //        super.setDreamMode(dreamMode);

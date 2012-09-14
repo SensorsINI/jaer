@@ -33,7 +33,7 @@ import org.jfree.data.xy.XYSeriesCollection;
  */
 public class NetPlotter {
     
-    SpikeStack net;
+    Network net;
     
     JPanel frm;
     
@@ -52,12 +52,15 @@ public class NetPlotter {
     
 //    public boolean useneuronstates=true;
     
+    public boolean zeroCentred=false;
+    
+    
     JTextComponent jt;
 //    LayerStatePlotter[] layerStatePlots;
-    volatile ArrayList<LayerStatePlotter> layerStatePlots;
+    public volatile ArrayList<LayerStatePlotter> layerStatePlots;
     
-    
-    public NetPlotter(SpikeStack network)
+        
+    public NetPlotter(Network network)
     {   net=network;
         
     }
@@ -540,6 +543,9 @@ public class NetPlotter {
         
         Unit.StateTracker[] stateTrackers;
         
+//        public boolean zeroCenter=false; // Center the color-scale about 0
+        
+        
 //        int outBookmark;
         
         
@@ -620,7 +626,9 @@ public class NetPlotter {
                 for (int i=0; i<state.length; i++)
                 {   state[i]=stateTrackers[i].getState(toTime); 
                     if (Float.isNaN(state[i]))
-                        System.out.println("Trying to plot NaN state");
+                    {   System.out.println("Trying to plot NaN state");
+                        return;
+                    }
 
                     if (state[i]<smin) {smin=state[i]; imin=i;}
                     if (state[i]>smax) {smax=state[i]; imax=i;}
@@ -669,7 +677,14 @@ public class NetPlotter {
             
 //        System.out.println(net.time);
         
-            
+            if (zeroCentred)
+            {
+                float bigState=Math.max(Math.abs(smin),Math.abs(smax));
+                
+                smin=-bigState;
+                smax=bigState;
+                
+            }
             
             
             // Step 3: Set the color scale limits
@@ -686,6 +701,9 @@ public class NetPlotter {
                 minState=smin*adaptationRate+invad*minState;
                 maxState=smax*adaptationRate+invad*maxState;                
             }
+            
+            
+            
             
             
             final int iimax=imax;
@@ -724,7 +742,9 @@ public class NetPlotter {
             
             synchronized(this)
             {
-            
+                for(Unit.StateTracker s:stateTrackers)
+                    s.reset();
+                    
                 lastTime=0;
                 minState=Float.NaN;
                 maxState=Float.NaN;

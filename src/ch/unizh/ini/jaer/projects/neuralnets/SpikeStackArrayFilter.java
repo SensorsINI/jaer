@@ -11,9 +11,9 @@ import ch.unizh.ini.jaer.projects.integrateandfire.ClusterEvent;
 import ch.unizh.ini.jaer.projects.integrateandfire.ClusterSet;
 import java.awt.GridBagLayout;
 import java.io.File;
-import jspikestack.LIFUnit;
-import jspikestack.STPAxon;
-import jspikestack.SpikeStack;
+import jspikestack.UnitLIF;
+import jspikestack.AxonSTP;
+import jspikestack.Network;
 import jspikestack.Unit;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -29,9 +29,9 @@ public class SpikeStackArrayFilter extends EventFilter2D{
 
     NetworkList netArr;
     
-    SpikeStack net;
-    STPAxon.Globals lg;
-    LIFUnit.Globals ug;
+    Network net;
+    AxonSTP.Globals lg;
+    UnitLIF.Globals ug;
     
     File startDir=new File(getClass().getClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../subprojects/JSpikeStack/files/nets");
     
@@ -145,7 +145,7 @@ public class SpikeStackArrayFilter extends EventFilter2D{
 //        netArr=new NetworkList(net,getNetMapper(net));
     }
     
-    public NetMapper getNetMapper(SpikeStack net)
+    public NetMapper getNetMapper(Network net)
     {
         VisualMapper R=new VisualMapper();
         R.inDimX=(short)chip.getSizeX();

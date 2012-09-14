@@ -10,10 +10,10 @@ package jspikestack;
  */
 public abstract class StatDisplay {
     
-    SpikeStack net;
+    Network net;
     String name;
     
-    public StatDisplay(SpikeStack network,String statName)
+    public StatDisplay(Network network,String statName)
     {
         net=network;
         name=statName;

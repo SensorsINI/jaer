@@ -11,7 +11,7 @@ import java.net.URL;
 import jspikestack.NetController;
 import jspikestack.PSPInput;
 import jspikestack.Spike;
-import jspikestack.SpikeStack;
+import jspikestack.Network;
 import net.sf.jaer.event.BasicEvent;
 
 /**
@@ -22,13 +22,13 @@ import net.sf.jaer.event.BasicEvent;
  * 
  * @author oconnorp
  */
-public class SpikeStackWrapper <NetType extends SpikeStack> {
+public class SpikeStackWrapper {
     
     NetController nc;
-    SpikeStack net;
+    Network net;
     NetMapper R;
     static File readingDir=new File(ClassLoader.getSystemClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../subprojects/JSpikeStack/files/nets");
-    
+    Thread netThread;
         
     public SpikeStackWrapper(NetController netCon, NetMapper rem)
     {
@@ -38,15 +38,43 @@ public class SpikeStackWrapper <NetType extends SpikeStack> {
         R=rem;
     }
     
+    public boolean isRunning()
+    {
+        return (netThread!=null);
+        
+    }
+    
     
     public void reset()
     {   R.baseTimeSet=false; // Reinitialize baseline-time
         net.reset();
     }
     
+    
+    
     public void eatEvents()
     {   net.eatEvents();
     }
+    
+    public void start(int baselineEventTime)
+    {
+        R.setBaseTime(baselineEventTime);
+        
+        if (netThread!=null)
+            throw new RuntimeException("Can't start network... it's already running");
+            
+        netThread=net.startEventFeast();
+    }
+    
+    
+    
+    public void kill()
+    {
+        netThread.interrupt();
+        
+        netThread=null;
+    }
+    
     
     public void eatEvents(int toTimestamp)
     {   net.eatEvents(toTimestamp);
@@ -75,7 +103,7 @@ public class SpikeStackWrapper <NetType extends SpikeStack> {
     }    
     
     /** Build the input network from XML */
-    public static void buildFromXML(SpikeStack net)
+    public static void buildFromXML(Network net)
     {
 //        URL f=ClassLoader.getSystemClassLoader().getResource(".");
         
@@ -83,7 +111,7 @@ public class SpikeStackWrapper <NetType extends SpikeStack> {
     }    
     
     /** Build the input network from XML */
-    public static void buildFromXML(SpikeStack net, String relativeFileName)
+    public static void buildFromXML(Network net, String relativeFileName)
     {
 //        URL f=ClassLoader.getSystemClassLoader().getResource(".");
         

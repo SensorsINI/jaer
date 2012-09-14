@@ -7,9 +7,11 @@ package jspikestack;
 import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.util.*;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 
 /**
  * A stack of event-driven layers of event-driven units.
@@ -19,26 +21,28 @@ import java.util.logging.Logger;
  *  
  * @author oconnorp
  */
-public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
+public class Network<AxonType extends Axon> implements Serializable {
     
     // <editor-fold defaultstate="collapsed" desc=" Properties ">
     
 //    AxonBundle.AbstractFactory<AxonType> layerFactory;
-    AxonBundle.AbstractFactory axonFactory;    
+    Axon.AbstractFactory axonFactory;    
     Unit.AbstractFactory unitFactory;
     
     
     
     ArrayList<Layer> layers=new ArrayList();
     
-    ArrayList<AxonBundle> axons=new ArrayList();
+    ArrayList<Axon> axons=new ArrayList();
     
     
-    transient Queue<PSP> inputBuffer = new LinkedList();
+//    transient Queue<PSP> inputBuffer = new LinkedList();
+    transient LinkedBlockingQueue<PSP> inputBuffer = new LinkedBlockingQueue();
+    
 //    transient Queue<SpikeType> internalBuffer= new LinkedList();
 //    transient Queue<SpikeType> internalBuffer= new PriorityBlockingQueue();
     transient PriorityQueue<PSP> internalBuffer= new PriorityQueue();
-//            
+// 
     transient MultiReaderQueue<Spike> outputQueue=new MultiReaderQueue();
         
 //    public int delay;
@@ -56,6 +60,8 @@ public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
 //    public boolean inputCurrents=false;  // sfdafds
     
     
+    public int spikecount;
+    
     boolean enable=true;
     
 //    public float inputCurrentStrength=1; 
@@ -63,14 +69,14 @@ public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
      * input layer units.
      */
         
-    transient public NetReader<? extends SpikeStack> read;    // An object for I/O
+    transient public NetReader<? extends Network> read;    // An object for I/O
     //transient public NetPlotter plot;   // An object for displaying the state of the network
     
     // </editor-fold>
     
     // <editor-fold defaultstate="collapsed" desc=" Builder Functions ">
     
-    public SpikeStack (AxonBundle.AbstractFactory axonFac,Unit.AbstractFactory unitFac)
+    public Network (Axon.AbstractFactory axonFac,Unit.AbstractFactory unitFac)
     {   //plot=new NetPlotter(this);
         read=new NetReader(this);
         
@@ -89,14 +95,14 @@ public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
         return layers;
     }
     
-    public ArrayList<AxonBundle> getAxons()
+    public ArrayList<Axon> getAxons()
     {
         return axons;
     }
        
         
     /** Add a layer to the network at the specified index */
-    public void addLayer(int index,Layer lay)
+    public Layer addLayer(int index,Layer lay)
     {
         // If index is higher than list-size, fill with null elements
         for(int i=layers.size(); i<=index; i++)
@@ -104,33 +110,44 @@ public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
         
         layers.set(index,lay);
         
+        return layers.get(index);
     }
     
     /** Add a layer to the network at the specified index */
-    public void addLayer(Layer lay)
+    public Layer addLayer(Layer lay)
     {   addLayer(lay.ixLayer,lay);
+        return lay;
     }
     
     /** Add a new layer at the specified index.*/
-    public void addLayer(int index)
-    {   addLayer(index,new Layer(this, unitFactory, index));
+    public Layer addLayer(int index)
+    {   return addLayer(index,new Layer(this, unitFactory, index));
     }
     
     /** Add a new layer, define the number of units.*/
-    public void addLayer(int index,int nUnits)
-    {   addLayer(index);
-        lay(index).initializeUnits(nUnits);
+    public Layer addLayer(int index,int nUnits)
+    {   Layer layy= addLayer(index);
+        layy.initializeUnits(nUnits);
+        return layy;
     }
     
     /** Add a new layer, define the x,y dimensions (and therefore nUnits) */
-    public void addLayer(int index,int dimx,int dimy)
+    public Layer addLayer(int index,int dimx,int dimy)
     {   addLayer(index);        
         lay(index).initializeUnits(dimx,dimy);
+        return lay(index);
     }
         
     /** Add a new axon based on the indeces of the pre- and post- layers */
     public AxonType addAxon(int preLayer,int postLayer)
-    {   AxonBundle ax=axonFactory.make(lay(preLayer),lay(postLayer));
+    {   
+        if (layers.size()<=preLayer || layers.get(preLayer)==null)
+            throw new RuntimeException("Cannot add axon: Layer "+preLayer+" does not exist.");
+        
+        if (layers.size()<=postLayer || layers.get(postLayer)==null)
+            throw new RuntimeException("Cannot add axon: Layer "+postLayer+" does not exist.");
+        
+        Axon ax=axonFactory.make(lay(preLayer),lay(postLayer));
         axons.add(ax);
         return (AxonType) ax;
     }
@@ -139,29 +156,29 @@ public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
     public AxonType addAxon(Layer preSyn, Layer postSyn)
     {
         // Note, the axon constructor takes care of linking the layers to the axon.
-        AxonBundle ax=axonFactory.make(preSyn,postSyn);
+        Axon ax=axonFactory.make(preSyn,postSyn);
         axons.add(ax);
         return (AxonType)ax;
         
     }
     
-    public AxonBundle addReverseAxon(AxonBundle fwdAx)
+    public Axon addReverseAxon(Axon fwdAx)
     {
         if (fwdAx.hasReverseAxon() && axons.contains(fwdAx.reverse))
         {   System.out.println("Warning: Axon: '"+fwdAx.reverse.toString()+"' has already been added.  Doing nothing.");
             return fwdAx.getReverseAxon();
         }
         
-        AxonBundle ax=fwdAx.getReverseAxon();
+        Axon ax=fwdAx.getReverseAxon();
         axons.add(ax);
         return ax;
     }
     
     public void addAllReverseAxons()
     {
-        ArrayList<AxonBundle> oldAxons=(ArrayList<AxonBundle>)axons.clone();
+        ArrayList<Axon> oldAxons=(ArrayList<Axon>)axons.clone();
         
-        for (AxonBundle old:oldAxons)
+        for (Axon old:oldAxons)
             addReverseAxon(old);
         
         
@@ -208,7 +225,7 @@ public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
         {   copy.units[i]=source.getUnit(i).copy();
         }
         
-        AxonBundle revcon=source.ax(0).getReverseAxon();
+        Axon revcon=source.ax(0).getReverseAxon();
         
 //        AxonBundle revcon=source.ax(0).postLayer.axByLayer(source.ixLayer);
         
@@ -234,9 +251,9 @@ public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
     }
     
     /** Copy the structure of the network, but leave the state blank */
-    public SpikeStack copy()
+    public Network copy()
     {
-        SpikeStack net=this.read.copy();
+        Network net=this.read.copy();
         
         net.internalBuffer.clear();
         net.inputBuffer.clear();
@@ -273,7 +290,7 @@ public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
         // Second pass, wire together layers
         for (Initializer.AxonInitializer ax:ini.axons)
         {
-            AxonBundle axon=addAxon(lay(ax.inLayer),lay(ax.outLayer));
+            Axon axon=addAxon(lay(ax.inLayer),lay(ax.outLayer));
             
             // Assign random initial weights based on Gaussian distributions with specified parameters
             if (!Float.isNaN(ax.wMean))
@@ -378,20 +395,178 @@ public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
     }
         
     
+    /** Check if the network is ready to run.  This will throw an exception if 
+     * it is not.  The point of this method is to quickly detect things like 
+     * un-initialized units, etc.
+     */
+    public void check()
+    {
+        try
+        {
+            for (Layer l:layers)
+                l.check();
+
+            for (Axon a: axons)
+                a.check();
+        }
+        catch(RuntimeException me)
+        {
+            JOptionPane.showMessageDialog(null,
+            me.getMessage(),
+            me.toString(),
+            JOptionPane.ERROR_MESSAGE);
+            
+            throw me;
+        }
+        
+        
+        
+    }
+    
+    
     /** Eat up the events in the input queue */
     public void eatEvents()
     {   eatEvents(Integer.MAX_VALUE);        
     }
     
+    
+    
+    /** Does the network have any events to process> */
+    public boolean hasEvents()
+    {
+        return !(inputBuffer.isEmpty() && (liveMode || internalBuffer.isEmpty()));
+    }
+    
+    
+//    public Modes whenInputsRunOut=Modes.KEEPGOING;
+//    public enum Modes {WAIT,TERMINATE,KEEPGOING};
+//    /** Eat up the events in the input queue until some timeout */
+//    PSP nextInput;
+//    public void eatEvents(int timeout)
+//    {   
+//        try {
+//            
+//            // If in liveMode, go til inputBuffer is empty, otherwise go til both buffers are empty (or timeout).
+//            while (!(inputBuffer.isEmpty()&&(internalBuffer.isEmpty() || liveMode )) && enable)
+//            {   
+//                
+//                switch (whenInputsRunOut)
+//                {   case WAIT:
+//                        nextInput=inputBuffer.take();
+//                        break;
+//                    case TERMINATE:
+//                        
+//                        
+//                            
+//                }
+//                                
+//                
+//                // Determine whether to read from input or buffer
+//                boolean readInput=!inputBuffer.isEmpty() && (internalBuffer.isEmpty() || inputBuffer.peek().hitTime<internalBuffer.peek().hitTime);
+//                
+//                int newtime=readInput?inputBuffer.peek().hitTime:internalBuffer.peek().hitTime;
+//                
+//                // Update current time to time of this event
+//                if (newtime<time)
+//                {   System.out.println("Input Spike time Decrease detected!  ("+time+"-->"+newtime+")  Resetting network...");
+//                    reset();            
+//                    break;
+//                }
+//                
+//                if (newtime > timeout)
+//                    break;
+//                            
+//                time=newtime;
+//                            
+//                PSP psp=readInput?inputBuffer.poll():internalBuffer.poll();
+//                            
+//                psp.affect(this);
+//                
+//                spikecount++;
+//                
+//                // Post Spike-Feed Actions
+//                digest();
+//                
+//                
+//                nextEvent=inputBuffer.take();
+//                
+//                
+//            }
+//            
+//            enable=true;  // Re-enable network when done.
+//            
+//            
+//        } catch (InterruptedException ex) {
+//            Logger.getLogger(Network.class.getName()).log(Level.SEVERE, null, ex);
+//        }
+//    }
+    
+    PSP nextInput;
+    
+    /** This method feeds events into the network.  It waits for the input queue. */
+    public Thread startEventFeast()
+    {
+        Thread netThread=new Thread()
+        {
+            @Override
+            public void run()
+            {
+                        
+                try {
+
+                    if (nextInput==null)
+                        nextInput=inputBuffer.take();
+
+                    // If in liveMode, go til inputBuffer is empty, otherwise go til both buffers are empty (or timeout).
+                    while (true)
+                    {   
+                        if (!enable)
+                            break;                
+
+                        boolean readInput=internalBuffer.isEmpty() || (nextInput.hitTime<internalBuffer.peek().hitTime);
+
+                        PSP psp=readInput?nextInput:internalBuffer.poll();              
+
+                        // Update current time to time of this event
+                        if (psp.hitTime<time)
+                        {   System.out.println("Input Spike time Decrease detected!  ("+time+"-->"+psp.hitTime+")  Resetting network...");
+                            reset();            
+                            break;
+                        }
+
+                        // Process the spike
+                        time=psp.hitTime;
+                        psp.affect(Network.this);
+                        digest(); // Post Spike-Feed Actions
+                        spikecount++;
+
+                        // Get next input, waiting if necessary
+                        if (readInput)
+                            nextInput=inputBuffer.take();
+
+                    }
+                    enable=true;  // Re-enable network when done.
+
+                } catch (InterruptedException ex) {
+                    System.out.println("Network killed at timestamp "+time);
+                }      
+            }
+            
+            
+            
+        };
+        
+        netThread.start();
+        
+        return netThread;
+    }
+        
     /** Eat up the events in the input queue until some timeout */
     public void eatEvents(int timeout)
     {   
         // If in liveMode, go til inputBuffer is empty, otherwise go til both buffers are empty (or timeout).
         while (!(inputBuffer.isEmpty()&&(internalBuffer.isEmpty() || liveMode )) && enable)
-        {
-                        
-            
-            
+        {            
             // Determine whether to read from input or buffer
             boolean readInput=!inputBuffer.isEmpty() && (internalBuffer.isEmpty() || inputBuffer.peek().hitTime<internalBuffer.peek().hitTime);
             
@@ -410,59 +585,16 @@ public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
             time=newtime;
                         
             PSP psp=readInput?inputBuffer.poll():internalBuffer.poll();
-            
-            
-            
-//            time=ev.hitTime;
-            
-//            System.out.println(internalBuffer.size());
-            
-            
-            
-            
-//            System.out.println(internalBuffer.size());
-            
-//            try{
-            
+                        
             psp.affect(this);
             
+            spikecount++;
             
+            // Post Spike-Feed Actions
+            digest();
             
-            
-                // Feed Spike to network, add to ouput queue if they're either either forced spikes or internally generated spikes
-//                if (inputCurrents && readInput)     // 1: Input event drives current
-//                {    lay(psp.layer).fireInputTo(psp);
-//                
-//                }
-//                else if (readInput)                 // 2: Input Spike fires unit
-//                {   lay(psp.layer).fireFrom(psp.addr);
-////                    outputQueue.add(ev);
-//                }
-//                else                                // 3: Internally buffered event propagated
-//                {   
-//                    psp.
-//                    
-////                    lay(ev.layer).propagateFrom(ev, ev.addr);
-////                    outputQueue.add(ev);
-//                }
-                
-//                System.out.println(internalBuffer.size());
-                
-                // Post Spike-Feed Actions
-                digest();
-            
-//            }
-//            catch (java.lang.ArrayIndexOutOfBoundsException ex)
-//            {   
-////                System.out.println("You tried firing an event at address with address "+ev.addr+" to Layer "+ev.layer+", which has just "+lay(ev.layer).nUnits()+" units.");
-//                throw new java.lang.ArrayIndexOutOfBoundsException("You tried firing an event at address with address "+ev.addr+" to Layer "+ev.layer+", which has just "+lay(ev.layer).nUnits()+" units.");
-//            }
-            
-            
-//            if (time > timeout)
-//                break;
         }
-        
+                
         enable=true;  // Re-enable network when done.
     }
     
@@ -489,7 +621,7 @@ public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
         return (AxonType) lay(sourceLayer).axByLayer(destLayer);
     }
     
-    public AxonBundle rax(int sourceLayer,int destLayer)
+    public Axon rax(int sourceLayer,int destLayer)
     {
         return lay(sourceLayer).axByLayer(destLayer);
     }
@@ -507,11 +639,6 @@ public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
         
     }
     
-    /** Does the network have any events to process> */
-    public boolean hasEvents()
-    {
-        return !(inputBuffer.isEmpty() && internalBuffer.isEmpty());
-    }
     
     
     
@@ -568,9 +695,9 @@ public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
         try {
             return (NetType) this.getClass().newInstance();
         } catch (InstantiationException ex) {
-            Logger.getLogger(SpikeStack.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(Network.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IllegalAccessException ex) {
-            Logger.getLogger(SpikeStack.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(Network.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
     }
@@ -600,7 +727,7 @@ public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
     /** Interface fro reading the network */
     public static interface NetworkReader
     {
-        void readFromXML(SpikeStack net);
+        void readFromXML(Network net);
         
     }
     
@@ -698,18 +825,18 @@ public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
     
     // <editor-fold defaultstate="collapsed" desc=" Controls ">
     
-    public Controls getControls()
-    {
-        return new Controls();
-    }
+//    public Controls getControls()
+//    {
+//        return new Controls();
+//    }
     
     
-    public class Controls extends Controllable
-    {
-        @Override
-        public String getName() {
-            return "Network Controls";
-        }
+//    public class Controls extends Controllable
+//    {
+//        @Override
+//        public String getName() {
+//            return "Network Controls";
+//        }
         
         
         /** Spike Propagation Delay (milliseconds) */
@@ -727,7 +854,7 @@ public class SpikeStack<AxonType extends AxonBundle> implements Serializable {
 //            enabled=false;
 //        }
                 
-    }
+//    }
     
     // </editor-fold>
 }

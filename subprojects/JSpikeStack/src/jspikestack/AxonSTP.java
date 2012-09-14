@@ -15,7 +15,7 @@ import java.lang.reflect.Array;
  * 
  * @author oconnorp
  */
-public class STPAxon extends STDPAxon<STPAxon.Globals> {
+public class AxonSTP extends AxonSTDP<AxonSTP.Globals> {
 
     private boolean enableFastSTDP=false;
 
@@ -40,7 +40,7 @@ public class STPAxon extends STDPAxon<STPAxon.Globals> {
         this.setSTDPstate();
     }
         
-    public STPAxon(Layer inLayer, Layer outLayer,Globals glo)
+    public AxonSTP(Layer inLayer, Layer outLayer,Globals glo)
     {   super(inLayer,outLayer,glo);   
     
         
@@ -119,7 +119,7 @@ public class STPAxon extends STDPAxon<STPAxon.Globals> {
     }
     
 
-    public static class Factory<LayerType extends AxonBundle> implements AxonBundle.AbstractFactory<LayerType>
+    public static class Factory<LayerType extends Axon> implements Axon.AbstractFactory<LayerType>
     {
         public Globals glob;
 
@@ -130,7 +130,7 @@ public class STPAxon extends STDPAxon<STPAxon.Globals> {
         @Override
         public LayerType make(Layer inLayer, Layer outLayer)
         {
-            return (LayerType) new STPAxon(inLayer,outLayer,glob); // TODO: BAAAD.  I'm confused
+            return (LayerType) new AxonSTP(inLayer,outLayer,glob); // TODO: BAAAD.  I'm confused
         }
         
         @Override
@@ -140,12 +140,12 @@ public class STPAxon extends STDPAxon<STPAxon.Globals> {
         
     }
 
-    public static class Globals extends STDPAxon.Globals
+    public static class Globals extends AxonSTDP.Globals
     {
 
         public float fastWeightTC;
 
-        public STDPAxon.Globals.STDPrule fastSTDP=new STDPAxon.Globals.STDPrule();
+        public AxonSTDP.Globals.STDPrule fastSTDP=new AxonSTDP.Globals.STDPrule();
 
         /** Time Constant for fast-weights */
         public float getFastWeightTC() {
@@ -204,7 +204,7 @@ public class STPAxon extends STDPAxon<STPAxon.Globals> {
     {   return new Controller();
     }
 
-    class Controller extends STDPAxon.Controller
+    class Controller extends AxonSTDP.Controller
     {   /** enable STDP learning? */
         public boolean isEnableFastWeights() {
             return enableFastSTDP;
@@ -212,7 +212,7 @@ public class STPAxon extends STDPAxon<STPAxon.Globals> {
 
         /** enable STDP learning? */
         public void setEnableFastWeights(boolean enable) {
-            STPAxon.this.setEnableFastSTDP(enable);
+            AxonSTP.this.setEnableFastSTDP(enable);
         }       
         
         

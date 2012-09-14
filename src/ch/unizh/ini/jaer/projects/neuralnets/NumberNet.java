@@ -15,7 +15,7 @@ import net.sf.jaer.event.PolarityEvent;
  * @author Peter
  */
 @Description("Implements a spiking Restricted Boltzmann Machine for handwritten digit recognition.")
-public class NumberNet extends SpikeFilter {
+public class NumberNet extends SpikeFilter<AxonSTP> {
 
 //    SpikeStack<STPLayer,Spike> net;
 //    
@@ -27,7 +27,7 @@ public class NumberNet extends SpikeFilter {
     }
     
     @Override
-    public NetMapper makeMapper(SpikeStack net) {
+    public NetMapper makeMapper(Network net) {
         
         VisualMapper<PolarityEvent> map=new VisualMapper<PolarityEvent>(){
         
@@ -71,7 +71,7 @@ public class NumberNet extends SpikeFilter {
 //    }
 
     @Override
-    public void customizeNet(SpikeStack netw) {
+    public void customizeNet(Network netw) {
         
         this.buildFromXML();
 //        if (!net.isBuilt())
@@ -109,7 +109,7 @@ public class NumberNet extends SpikeFilter {
 //        
 //            
 //        
-        ((STPAxon)net.ax(1,2)).setEnableFastSTDP(false);
+        ((AxonSTP)net.ax(1,2)).setEnableFastSTDP(false);
         nc.layerGlobals.fastSTDP.plusStrength=-.001f;
         nc.layerGlobals.fastSTDP.minusStrength=-.001f;   
         nc.layerGlobals.fastSTDP.stdpTCminus=10;

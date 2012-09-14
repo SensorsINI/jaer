@@ -12,9 +12,9 @@ import java.util.Random;
  *
  * @author oconnorp
  */
-public class AxonBundle<GlobalParams extends AxonBundle.Globals,PSPtype extends PSP> 
+public class Axon<GlobalParams extends Axon.Globals,PSPtype extends PSP> 
 {
-    SpikeStack net;
+    Network net;
     
     float[][] w;
     
@@ -33,7 +33,7 @@ public class AxonBundle<GlobalParams extends AxonBundle.Globals,PSPtype extends 
     
     
     
-    public AxonBundle(Layer inLayer, Layer outLayer,GlobalParams glo)
+    public Axon(Layer inLayer, Layer outLayer,GlobalParams glo)
     {
         
         
@@ -203,8 +203,13 @@ public class AxonBundle<GlobalParams extends AxonBundle.Globals,PSPtype extends 
     {
     }
 
+    void check() {
+        if (w==null || (w.length>0 && w[0]==null))
+            throw new RuntimeException(getName()+": Weights are not initialized!  See function \"initWeights\".");
+    }
+
         
-    public static class Factory implements AbstractFactory<AxonBundle>
+    public static class Factory implements AbstractFactory<Axon>
     {
         public Globals glob;
         public Factory()
@@ -212,8 +217,8 @@ public class AxonBundle<GlobalParams extends AxonBundle.Globals,PSPtype extends 
         }
 
         @Override
-        public AxonBundle make(Layer inLayer,Layer outLayer)
-        {   return new AxonBundle(inLayer,outLayer,glob); // TODO: BAAAD.  I'm confused
+        public Axon make(Layer inLayer,Layer outLayer)
+        {   return new Axon(inLayer,outLayer,glob); // TODO: BAAAD.  I'm confused
         }
 
         @Override
@@ -267,7 +272,7 @@ public class AxonBundle<GlobalParams extends AxonBundle.Globals,PSPtype extends 
     }
     
     
-    public interface AbstractFactory<AxonType extends AxonBundle>
+    public interface AbstractFactory<AxonType extends Axon>
     {
         public abstract AxonType make(Layer inLayer,Layer outLayer);
                 
@@ -275,9 +280,19 @@ public class AxonBundle<GlobalParams extends AxonBundle.Globals,PSPtype extends 
         
     }
     
+    
+    Controllable controls;
     public Controllable getControls()
-    {   return new Controller();
+    {   if (controls==null)
+            controls=makeController();
+        return controls;
     }
+    
+    public Controllable makeController()
+    {
+        return new Controller();        
+    }
+    
     
     public class Controller extends Controllable
     {
@@ -294,7 +309,7 @@ public class AxonBundle<GlobalParams extends AxonBundle.Globals,PSPtype extends 
 
         /** Send Forwards? */
         public void setEnable(boolean fwdSend) {
-            AxonBundle.this.enable = fwdSend;
+            Axon.this.enable = fwdSend;
         }
 
 //        /** Send Backwards? */
@@ -335,11 +350,11 @@ public class AxonBundle<GlobalParams extends AxonBundle.Globals,PSPtype extends 
     * 
     * @author Peter
     */
-    public static class Reverse extends AxonBundle {
+    public static class Reverse extends Axon {
 
-        AxonBundle forwardAxon;
+        Axon forwardAxon;
 
-        public Reverse(AxonBundle fwdAx)
+        public Reverse(Axon fwdAx)
         {
             super(fwdAx.postLayer,fwdAx.preLayer,fwdAx.glob);
 
@@ -358,6 +373,13 @@ public class AxonBundle<GlobalParams extends AxonBundle.Globals,PSPtype extends 
         public void initWeights()
         {
         }
+        
+        /** Reverse axon does not use it's own weight matrix */
+        @Override
+        public void check()
+        {            
+        }
+        
 
         /** Get Reverse connection weights */
         @Override

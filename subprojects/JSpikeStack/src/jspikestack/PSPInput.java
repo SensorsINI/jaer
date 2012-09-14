@@ -25,14 +25,14 @@ public final class PSPInput extends PSP {
     }
 
     @Override
-    public void affect(SpikeStack net) {
+    public void affect(Network net) {
         
         Layer lay=net.lay(targetLayer);
         
         if (lay.fireInputsTo)
            lay.fireTo(this, targetUnit, lay.inputCurrentStrength);
         else
-            lay.fireFrom(targetUnit);
+            lay.fireFrom(targetUnit,sp.act);
             
     }
     

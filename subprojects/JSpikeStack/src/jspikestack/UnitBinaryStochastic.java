@@ -10,13 +10,13 @@ import java.util.Random;
  *
  * @author oconnorp
  */
-public class BinaryStochasticUnit extends Unit<BinaryStochasticUnit.Globals>{
+public class UnitBinaryStochastic extends Unit<UnitBinaryStochastic.Globals>{
 
     boolean state=false;
     float vmem=0;
     public Globals glob=new Globals();
     
-    private BinaryStochasticUnit(Globals glo,int unitIndex) {
+    private UnitBinaryStochastic(Globals glo,int unitIndex) {
         this.index=unitIndex;
         glob=glo;
     }
@@ -55,7 +55,7 @@ public class BinaryStochasticUnit extends Unit<BinaryStochasticUnit.Globals>{
 //        return new BinaryTransEvent(time,index,-1,false);
     }
 
-    @Override
+//    @Override
     public float getState(int time) {
         return state?1:0;
     }
@@ -78,7 +78,7 @@ public class BinaryStochasticUnit extends Unit<BinaryStochasticUnit.Globals>{
         
         @Override
         public Unit make(int unitIndex) {
-            return new BinaryStochasticUnit(glob,unitIndex);
+            return new UnitBinaryStochastic(glob,unitIndex);
         }
 
         @Override

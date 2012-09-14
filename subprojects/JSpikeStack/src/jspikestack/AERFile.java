@@ -262,6 +262,9 @@ public class AERFile {
     {   
         ArrayList<PSPInput> evts =new ArrayList();
         
+        
+//        int ons=0,offs=0;
+        
         for (int i=0; i<events.size(); i++)
         {   AERFile.Event ev=events.get(i); 
         
@@ -270,9 +273,18 @@ public class AERFile {
             int y=127-addr/128;
             addr=y+x*128;
             
-            PSPInput enew=new PSPInput((int)(ev.timestamp-events.get(0).timestamp), addr, 0,ev.addr%2==1?1:-1);            
+            PSPInput enew=new PSPInput((int)(ev.timestamp-events.get(0).timestamp), addr, 0,ev.addr%2==1?-1:1);            
+            
+//            if (ev.addr%2==1)
+//                ons++;
+//            else
+//                offs++;
+            
+//            System.out.print(""+(ev.addr%2==1?1:-1));
+            
             evts.add(enew);
         }
+        
         return evts;
     }
     

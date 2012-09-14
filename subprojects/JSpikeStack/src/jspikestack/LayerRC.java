@@ -31,7 +31,7 @@ public class LayerRC extends Layer
     
     boolean bufferstate=false;
     
-    public LayerRC(SpikeStack network,int ix)
+    public LayerRC(Network network,int ix)
     {   super(network,null,ix);
     
         
@@ -63,11 +63,11 @@ public class LayerRC extends Layer
     }
     
     
-    class SmoothingAxon extends SparseAxon
+    class SmoothingAxon extends AxonSparse
     {   
         public SmoothingAxon()
         {
-            super(LayerRC.this,LayerRC.this,new AxonBundle.Globals());
+            super(LayerRC.this,LayerRC.this,new Axon.Globals());
             
             
                         
@@ -224,7 +224,7 @@ public class LayerRC extends Layer
             return bufferstate?node2:node1;
         }
         
-        @Override
+//        @Override
         public float getState(int time) {
             return currentVmem()-getNodeState();
         }

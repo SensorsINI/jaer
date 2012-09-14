@@ -11,7 +11,7 @@ import java.util.ArrayList;
  *
  * @author oconnorp
  */
-public class Layer<AxonType extends AxonBundle> {
+public class Layer<AxonType extends Axon> {
     
     public int ixLayer;
     
@@ -28,12 +28,12 @@ public class Layer<AxonType extends AxonBundle> {
     public boolean fireInputsTo=false;
     public float inputCurrentStrength=1;
     
-    SpikeStack net;
+    Network net;
     
     Unit.AbstractFactory unitFactory; // Factory class for making units
     
     /** Instantiate Layer with index */
-    public Layer(SpikeStack network,Unit.AbstractFactory<?,Unit> ufac,int ix)
+    public Layer(Network network,Unit.AbstractFactory<?,Unit> ufac,int ix)
     {   net=network;
         ixLayer=ix;    
         unitFactory=ufac;
@@ -94,7 +94,7 @@ public class Layer<AxonType extends AxonBundle> {
         
         net.addToOutputQueue(sp);
         
-        for (AxonBundle ax:outAxons)
+        for (Axon ax:outAxons)
             ax.spikeIn(sp);
                 
 //        for (AxonBundle ax:inAxons)
@@ -105,7 +105,7 @@ public class Layer<AxonType extends AxonBundle> {
     
     public void updateActions()
     {
-        for (AxonBundle ax:outAxons)
+        for (Axon ax:outAxons)
             ax.updateActions();
     }
     
@@ -143,6 +143,17 @@ public class Layer<AxonType extends AxonBundle> {
         propagateFrom(ev);
         
     }
+    
+    /** Fire the unit, and specify a status */
+    public void fireFrom(int unitIndex,int status)
+    {   
+        units[unitIndex].fireFrom(net.time);
+        
+        Spike ev=makeSpike(net.time,unitIndex,status);
+        
+        propagateFrom(ev);      
+    }
+    
     
     public void fireTo(PSP sp,float[] inputCurrents)
     {
@@ -215,7 +226,7 @@ public class Layer<AxonType extends AxonBundle> {
         {   
             u.reset();                    
         }
-        for (AxonBundle ax:outAxons)
+        for (Axon ax:outAxons)
         {   ax.reset();
         }
         
@@ -282,7 +293,7 @@ public class Layer<AxonType extends AxonBundle> {
     public int nForwardAxons()
     {
         int count=0;
-        for (AxonBundle ax:outAxons)
+        for (Axon ax:outAxons)
         {   if (ax.isForwardAxon())
                 count++;
             
@@ -306,6 +317,15 @@ public class Layer<AxonType extends AxonBundle> {
     public Controller getControls()
     {
         return new Controller();
+    }
+
+    void check() {
+        if (units==null || (units.length>0 && units[0]==null))
+            throw new RuntimeException(getName()+": Units array is not initialized!  See function \"initializeUnits\".");
+        
+//        if (units.length>0 && units[0]==null)
+//            throw new RuntimeException("Units array is not initialized!  See function \"initializeUnits\".");
+        
     }
     
     

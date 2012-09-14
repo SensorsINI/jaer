@@ -6,8 +6,8 @@ package ch.unizh.ini.jaer.projects.neuralnets;
 
 import jspikestack.KernelMaker2D;
 import jspikestack.NetController;
-import jspikestack.SparseAxon;
-import jspikestack.SpikeStack;
+import jspikestack.AxonSparse;
+import jspikestack.Network;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.PolarityEvent;
@@ -28,11 +28,11 @@ public class RetinaCells extends SpikeFilter {
     public RetinaCells(AEChip chip)
     {   super(chip);
     
-        this.netType=NetController.Types.SPARSE_LIF;
+        this.axonType=NetController.AxonTypes.SPARSE;
     }
     
     @Override
-    public NetMapper makeMapper(SpikeStack net) {
+    public NetMapper makeMapper(Network net) {
         return new NetMapper<PolarityEvent>()
         {
             @Override
@@ -44,16 +44,15 @@ public class RetinaCells extends SpikeFilter {
             @Override
             public int ev2layer(PolarityEvent ev)
             {   return ev.polarity==PolarityEvent.Polarity.On?1:0;
-            }
-            
+            }            
            
         };
     }
 
     @Override
-    public void customizeNet(SpikeStack net) {
+    public void customizeNet(Network net) {
         
-        SpikeStack.Initializer ini=new SpikeStack.Initializer();
+        Network.Initializer ini=new Network.Initializer();
         
         ini.lay(0).dimx=ini.lay(0).dimy=128;    // ON layer
         ini.lay(1).dimx=ini.lay(1).dimy=128;    // OFF layer
@@ -107,14 +106,14 @@ public class RetinaCells extends SpikeFilter {
     public void updateOnKernel()
     {   if (net!=null)
         {   int ksize=(int)(getOnKernelWidth()*1.5);
-            ((SparseAxon)net.ax(1,2)).defineKernel(KernelMaker2D.makeKernel(new KernelMaker2D.Gaussian(getOnKernelMag(), getOnKernelWidth()), ksize,ksize));
+            ((AxonSparse)net.ax(1,2)).defineKernel(KernelMaker2D.makeKernel(new KernelMaker2D.Gaussian(getOnKernelMag(), getOnKernelWidth()), ksize,ksize));
         }
     }
     
     public void updateOffKernel()
     {   if (net!=null)
         {   int ksize=(int)(getOffKernelWidth()*1.5);
-            ((SparseAxon)net.ax(0,2)).defineKernel(KernelMaker2D.makeKernel(new KernelMaker2D.Gaussian(getOffKernelMag(), getOffKernelWidth()), ksize,ksize));
+            ((AxonSparse)net.ax(0,2)).defineKernel(KernelMaker2D.makeKernel(new KernelMaker2D.Gaussian(getOffKernelMag(), getOffKernelWidth()), ksize,ksize));
         }
     }
 

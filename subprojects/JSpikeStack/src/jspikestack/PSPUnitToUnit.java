@@ -14,7 +14,7 @@ public class PSPUnitToUnit extends PSPUnitToLayer{
     
 //    final AxonBundle ax;
     
-    public PSPUnitToUnit(Spike spike,AxonBundle axo,int targetNo,int delay)
+    public PSPUnitToUnit(Spike spike,Axon axo,int targetNo,int delay)
     {   super(spike,delay,axo);
 //        ax=axo;
         targetNumber=targetNo;

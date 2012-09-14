@@ -11,7 +11,7 @@ import java.util.Random;
  *
  * @author oconnorp
  */
-public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals>
+public class UnitLIF<GlobalType extends UnitLIF.Globals> extends Unit<GlobalType>
 {
     int ixUnit;
     float vmem=0;
@@ -21,7 +21,7 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals>
     float state;
     
     
-    public LIFUnit(Globals globs,int index)
+    public UnitLIF(Globals globs,int index)
     {   glob=globs;
         ixUnit=index;
     }
@@ -71,8 +71,8 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals>
 
     /** Copy this unit to create a new one.. keeping the same global params object! */
     @Override
-    public LIFUnit copy() {
-        LIFUnit cop=new LIFUnit(glob,ixUnit);
+    public UnitLIF copy() {
+        UnitLIF cop=new UnitLIF(glob,ixUnit);
         
         cop.thresh=thresh;
         cop.name=name;
@@ -81,10 +81,10 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals>
     }
 
     
-    @Override
-    public float getState(int time) {
-        return state*(float)Math.exp((tlast-time)/glob.getTau());
-    }
+//    @Override
+//    public float getState(int time) {
+//        return state*(float)Math.exp((tlast-time)/glob.getTau());
+//    }
 
     @Override
     public StateTracker getStateTracker() {
@@ -129,7 +129,7 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals>
 //        };
 //    }
     
-    public static class Factory implements Unit.AbstractFactory<Globals,LIFUnit>
+    public static class Factory implements Unit.AbstractFactory<Globals,UnitLIF>
     {
         Globals glob;
         
@@ -138,8 +138,8 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals>
         }
                 
         @Override
-        public LIFUnit make(int unitIndex) {
-            return new LIFUnit(glob,unitIndex);
+        public UnitLIF make(int unitIndex) {
+            return new UnitLIF(glob,unitIndex);
         }
 
         @Override
@@ -162,7 +162,7 @@ public class LIFUnit<NetType extends SpikeStack> extends Unit<LIFUnit.Globals>
         if (glob.resetAfterFire)
                 resetmem();
         
-        state=getState(time)+1;
+//        state=getState(time)+1;
         tlast=time;
         
         return 1;

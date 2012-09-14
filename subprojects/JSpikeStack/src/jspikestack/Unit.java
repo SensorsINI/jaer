@@ -23,6 +23,8 @@ public abstract class Unit<GlobalParams> {
     public abstract int fireTo(PSP transmisson, float current);
 
     public abstract int fireFrom(int time);
+               
+    
     
 //    public abstract Factory getFactory();
     
@@ -47,7 +49,7 @@ public abstract class Unit<GlobalParams> {
         
     }
     
-    public abstract float getState(int time);
+//    public abstract float getState(int time);
     
     public abstract StateTracker getStateTracker();
     
@@ -64,7 +66,11 @@ public abstract class Unit<GlobalParams> {
         
         public abstract String getLabel(float state);
         
-        
+        public void reset()
+        {
+            lastTime=0;
+            lastState=0;
+        }
     }
     
     public abstract void reset();

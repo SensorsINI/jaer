@@ -8,11 +8,11 @@ package jspikestack;
  *
  * @author Peter
  */
-public class SpatioTemporalAxon extends SparseAxon<SparseAxon.Globals,PSPUnitToUnit>
+public class AxonSpatioTemporal extends AxonSparse<AxonSparse.Globals,PSPUnitToUnit>
 {
     int[][] delays;
     
-    public SpatioTemporalAxon(Layer inLayer, Layer outLayer,SparseAxon.Globals glo)
+    public AxonSpatioTemporal(Layer inLayer, Layer outLayer,AxonSparse.Globals glo)
     {   super(inLayer,outLayer,glo);
     }
     
@@ -44,11 +44,11 @@ public class SpatioTemporalAxon extends SparseAxon<SparseAxon.Globals,PSPUnitToU
     
     
     
-    public static class Factory extends AxonBundle.Factory
+    public static class Factory extends Axon.Factory
     {        
         @Override
-        public AxonBundle make(Layer inLayer,Layer outLayer)
-        {   return new SpatioTemporalAxon(inLayer,outLayer,glob); // TODO: BAAAD.  I'm confused
+        public Axon make(Layer inLayer,Layer outLayer)
+        {   return new AxonSpatioTemporal(inLayer,outLayer,glob); // TODO: BAAAD.  I'm confused
         }
     }
     
