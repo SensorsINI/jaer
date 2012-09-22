@@ -219,7 +219,7 @@ public class JAERViewer {
                     }
                 } catch (java.lang.UnsatisfiedLinkError err) {
 
-                    log.info("Unsatisfied link error.  Chances are that you are not running the right project configuration.  Set the project configuration to the appropiate platform (win,linux32,linux64,etc...)");
+                    log.info("Unsatisfied link error.  Chances are that you are not running the right project configuration.  Set the project configuration to the appropiate platform (win,win64,linux32,linux64,etc...). The jAER project must be set to use a JVM that matches the project runtime configuration, e.g., if you are using a 32 bit JVM to run jAER (as selected in the project properties/Libraries/Java Platform), then you must choose the \"win\" configuration so that your DLLs come from host/java/jars/win32.");
 
                     err.printStackTrace();
                 }
