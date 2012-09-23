@@ -4,19 +4,22 @@
  */
 package ch.unizh.ini.jaer.projects.neuralnets;
 
-import javax.swing.JToggleButton;
 import jspikestack.Axon;
 import jspikestack.NetController;
 import jspikestack.Network;
+import jspikestack.UnitLIF;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
 
 /**
  *
  * @author Peter
  */
-public class ISItriggeredHist extends SpikeFilter<Axon> {
+@Description("This Filter attempts to build a 2D-Histogram of a sound by binning events according to their ISI and time since a trigger (sound surpassing a threshold)")
+public class ISItriggeredHist extends SpikeFilter<Axon,Axon.Globals,UnitLIF.Globals,PolarityEvent> {
 
     int nOutputs=100;
     
@@ -115,8 +118,8 @@ public class ISItriggeredHist extends SpikeFilter<Axon> {
          if (wrapNet==null)
              return in;
         // Initialize Remapper
-        if (!wrapNet.R.isBaseTimeSet())
-            wrapNet.R.setBaseTime(in.getFirstTimestamp());
+        if (!wrapNet.mapper.isBaseTimeSet())
+            wrapNet.mapper.setBaseTime(in.getFirstTimestamp());
         
 //        int skipped=0;
         

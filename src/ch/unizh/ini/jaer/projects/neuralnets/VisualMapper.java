@@ -5,12 +5,13 @@
 package ch.unizh.ini.jaer.projects.neuralnets;
 
 import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.PolarityEvent;
 
 /**
  *
  * @author Peter
  */
-public class VisualMapper<T extends BasicEvent> extends NetMapper<T>{
+public class VisualMapper<T extends PolarityEvent> extends NetMapper<T>{
 
     short inDimX;
     short inDimY;
@@ -37,5 +38,14 @@ public class VisualMapper<T extends BasicEvent> extends NetMapper<T>{
         
         return outDimY*(newX)+newY;
     }
+    
+    
+    @Override
+    public int ev2special(T ev)
+    {
+        return ev.polarity==PolarityEvent.Polarity.On?1:-1;
+    }
+    
+    
     
 }

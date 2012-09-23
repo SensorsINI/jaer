@@ -80,7 +80,7 @@ public class NetworkList
     final public void setRemapper(NetMapper rem)
     {   R=rem;
         for (SpikeStackWrapper n:nets)
-            n.R=R;        
+            n.mapper=R;        
     }
     
     /** Retrieve a network */

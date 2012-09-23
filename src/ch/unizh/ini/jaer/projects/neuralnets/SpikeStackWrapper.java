@@ -4,15 +4,10 @@
  */
 package ch.unizh.ini.jaer.projects.neuralnets;
 
-import ch.unizh.ini.jaer.projects.integrateandfire.ClusterEvent;
-import ch.unizh.ini.jaer.projects.integrateandfire.Remapper;
 import java.io.File;
-import java.net.URL;
-import jspikestack.NetController;
-import jspikestack.PSPInput;
-import jspikestack.Spike;
-import jspikestack.Network;
+import jspikestack.*;
 import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.PolarityEvent;
 
 /**
  * Wrapper Class for the SpikeStack package.  
@@ -26,7 +21,7 @@ public class SpikeStackWrapper {
     
     NetController nc;
     Network net;
-    NetMapper R;
+    NetMapper mapper;
     static File readingDir=new File(ClassLoader.getSystemClassLoader().getResource(".").getPath().replaceAll("%20", " ")+"../../subprojects/JSpikeStack/files/nets");
     Thread netThread;
         
@@ -35,7 +30,7 @@ public class SpikeStackWrapper {
         nc=netCon;
         net=netCon.net;
 //        net=network;
-        R=rem;
+        mapper=rem;
     }
     
     public boolean isRunning()
@@ -46,7 +41,7 @@ public class SpikeStackWrapper {
     
     
     public void reset()
-    {   R.baseTimeSet=false; // Reinitialize baseline-time
+    {   mapper.baseTimeSet=false; // Reinitialize baseline-time
         net.reset();
     }
     
@@ -58,7 +53,7 @@ public class SpikeStackWrapper {
     
     public void start(int baselineEventTime)
     {
-        R.setBaseTime(baselineEventTime);
+        mapper.setBaseTime(baselineEventTime);
         
         if (netThread!=null)
             throw new RuntimeException("Can't start network... it's already running");
@@ -80,7 +75,13 @@ public class SpikeStackWrapper {
     {   net.eatEvents(toTimestamp);
     }
     
-    public void addToQueue(PSPInput sp)
+    public void flushToTime(int eventTimeStamp)
+    {
+        PSP p=new PSPNull(mapper.translateTime(eventTimeStamp));
+        addToQueue(p);
+    }
+    
+    public void addToQueue(PSP sp)
     {   net.addToQueue(sp);
     }
     
@@ -126,19 +127,36 @@ public class SpikeStackWrapper {
     /** Convert a basic event to spike */
     public PSPInput event2spike(BasicEvent ev)
     {
-        int addr=R.ev2addr(ev);
-        
-        if (addr==-1)
-            return null;
-        else 
-        {   int layer=R.ev2layer(ev);
-            if (layer!=-1)
-                return new PSPInput(R.translateTime(ev.timestamp),addr,R.ev2layer(ev));
-            else
-                return null;
-        }
-            
+        return mapper.mapEvent(ev);
+//        int addr=R.ev2addr(ev);
+//        
+//        if (addr==-1)
+//            return null;
+//        else 
+//        {   int layer=R.ev2layer(ev);
+//            if (layer!=-1)
+//                return new PSPInput(R.translateTime(ev.timestamp),addr,R.ev2layer(ev));
+//            else
+//                return null;
+//        }
     }
+    
+    /** Convert a basic event to spike */
+//    public PSPInput event2spike(PolarityEvent ev)
+//    {
+//        return R.mapEvent(ev);
+////        int addr=R.ev2addr(ev);
+////        
+////        if (addr==-1)
+////            return null;
+////        else 
+////        {   int layer=R.ev2layer(ev);
+////            if (layer!=-1)
+////                return new PSPInput(R.translateTime(ev.timestamp),addr,R.ev2layer(ev),(ev.polarity==PolarityEvent.Polarity.On)?1:-1);
+////            else
+////                return null;
+////        }
+//    }
     
     /** Convert a cluster event to spike, using its cluster-relative position */
 //    public Spike event2spike(ClusterEvent ev)

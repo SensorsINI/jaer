@@ -10,13 +10,13 @@ import java.util.Random;
  *
  * @author oconnorp
  */
-public class UnitBinaryStochastic extends Unit<UnitBinaryStochastic.Globals>{
+public class UnitBinaryThresh extends Unit<UnitBinaryThresh.Globals>{
 
     boolean state=false;
     float vmem=0;
     public Globals glob=new Globals();
     
-    private UnitBinaryStochastic(Globals glo,int unitIndex) {
+    private UnitBinaryThresh(Globals glo,int unitIndex) {
         this.index=unitIndex;
         glob=glo;
     }
@@ -35,7 +35,19 @@ public class UnitBinaryStochastic extends Unit<UnitBinaryStochastic.Globals>{
 
     @Override
     public int fireTo(PSP sp, float current) {
-        throw new UnsupportedOperationException("Not Implemented");
+        
+        vmem+=current;
+        
+        if (vmem>thresh && !state)
+            return 1;
+        else if (vmem<thresh && state)
+            return -1;
+        else
+            return 0;
+            
+        
+        
+//        throw new UnsupportedOperationException("Not Implemented");
 //        if (sp.sp.act==1 && !state)
 //            return new BinaryTransEvent(sp.hitTime,index,-1,true);
 //        else if (!sp.trans && state)
@@ -62,11 +74,32 @@ public class UnitBinaryStochastic extends Unit<UnitBinaryStochastic.Globals>{
 
     @Override
     public StateTracker getStateTracker() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return new Unit.StateTracker() {
+
+            @Override
+            public void updatestate(Spike sp) {
+                this.lastState=sp.act==1?1:0;
+            }
+
+            @Override
+            public boolean isZeroCentered() {
+                return false;
+            }
+
+            @Override
+            public float getState(int time) {
+                return lastState;
+            }
+
+            @Override
+            public String getLabel(float min, float max) {
+                return "";
+            }
+        };
     }
     
     
-    public class Factory implements Unit.AbstractFactory
+    public static class Factory implements Unit.AbstractFactory
     {
         Globals glob=new Globals();
 
@@ -78,7 +111,7 @@ public class UnitBinaryStochastic extends Unit<UnitBinaryStochastic.Globals>{
         
         @Override
         public Unit make(int unitIndex) {
-            return new UnitBinaryStochastic(glob,unitIndex);
+            return new UnitBinaryThresh(glob,unitIndex);
         }
 
         @Override
@@ -93,13 +126,13 @@ public class UnitBinaryStochastic extends Unit<UnitBinaryStochastic.Globals>{
         
     }
     
-    public class Globals extends Controllable
+    public static class Globals extends Unit.Globals
     {
         Random rand=new Random();
         
         @Override
         public String getName() {
-            return "Stochastic Binary Globals";
+            return "Binary Threshold Globals";
         }
         
     }

@@ -4,6 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.neuralnets;
 
+import jspikestack.PSPInput;
 import net.sf.jaer.event.BasicEvent;
 
 /**
@@ -50,6 +51,27 @@ public abstract class NetMapper<EventType extends BasicEvent> {
 //    public int loc2addr(short xloc,short yloc,byte source,int timestamp)
 //    {   return loc2addr(xloc,yloc,source);        
 //    }
+    
+    public int ev2special(EventType ev)
+    {
+        return 1;        
+    }
+    
+    public PSPInput mapEvent(EventType ev)
+    {   
+        int addr=ev2addr(ev);
+        
+        if (addr==-1)
+            return null;
+        else 
+        {   int layer=ev2layer(ev);
+            if (layer!=-1)
+                return new PSPInput(translateTime(ev.timestamp),addr,ev2layer(ev),ev2special(ev));
+            else
+                return null;
+        }
+    }
+    
     
     abstract public int ev2addr(EventType ev);
             

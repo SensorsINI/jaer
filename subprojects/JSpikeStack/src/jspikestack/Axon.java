@@ -4,6 +4,7 @@
  */
 package jspikestack;
 
+import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Random;
@@ -12,7 +13,7 @@ import java.util.Random;
  *
  * @author oconnorp
  */
-public class Axon<GlobalParams extends Axon.Globals,PSPtype extends PSP> 
+public class Axon<GlobalParams extends Axon.Globals,PSPtype extends PSP> implements Serializable
 {
     Network net;
     
@@ -20,6 +21,7 @@ public class Axon<GlobalParams extends Axon.Globals,PSPtype extends PSP>
     
     public Reverse reverse;
     
+    public int delay=0;
     
     GlobalParams glob;
         
@@ -72,7 +74,7 @@ public class Axon<GlobalParams extends Axon.Globals,PSPtype extends PSP>
         {
 //            Spike ev=new Spike(net.time,preUnit,postLayer.ixLayer);
             
-            PSP psp=new PSPUnitToLayer(sp,glob.delay,this);
+            PSP psp=new PSPUnitToLayer(sp,glob.useGlobalDelay?glob.delay:delay,this);
             
 //            Spike ev=sp.copyOf();
 //            
@@ -189,7 +191,7 @@ public class Axon<GlobalParams extends Axon.Globals,PSPtype extends PSP>
 //    }
 
     
-    public static AbstractFactory getFactory()
+    public static AbstractFactory getFactory() 
     {
         return new Factory();
     }
@@ -232,6 +234,8 @@ public class Axon<GlobalParams extends Axon.Globals,PSPtype extends PSP>
     {   
         public boolean doRandomJitter=true;    
         
+        public boolean useGlobalDelay=true;
+        
         /** Random spike time jitter, us.  Useful for breaking ties */
         public int randomJitter=100; 
 
@@ -269,10 +273,18 @@ public class Axon<GlobalParams extends Axon.Globals,PSPtype extends PSP>
         public void setDelay(int delay) {
             this.delay = delay;
         }
+
+        public boolean isUseGlobalDelay() {
+            return useGlobalDelay;
+        }
+
+        public void setUseGlobalDelay(boolean useGlobalDelay) {
+            this.useGlobalDelay = useGlobalDelay;
+        }
     }
     
     
-    public interface AbstractFactory<AxonType extends Axon>
+    public interface AbstractFactory<AxonType extends Axon> extends Serializable
     {
         public abstract AxonType make(Layer inLayer,Layer outLayer);
                 
@@ -297,6 +309,9 @@ public class Axon<GlobalParams extends Axon.Globals,PSPtype extends PSP>
     public class Controller extends Controllable
     {
 
+        
+        
+        
         @Override
         public String getName() {
             return "Axon linking L"+preLayer.ixLayer+" to L"+postLayer.ixLayer;
@@ -312,6 +327,17 @@ public class Axon<GlobalParams extends Axon.Globals,PSPtype extends PSP>
             Axon.this.enable = fwdSend;
         }
 
+        
+        public int getDelay()
+        {
+            return delay;
+        }
+        
+        public void setDelay(int del)
+        {
+            delay=del;
+        }
+        
 //        /** Send Backwards? */
 //        public boolean isBackSend() {
 //            return backSend;

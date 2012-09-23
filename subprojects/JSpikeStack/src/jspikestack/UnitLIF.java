@@ -5,7 +5,6 @@
 package jspikestack;
 
 import java.text.DecimalFormat;
-import java.util.Random;
 
 /**
  *
@@ -102,12 +101,23 @@ public class UnitLIF<GlobalType extends UnitLIF.Globals> extends Unit<GlobalType
 
             @Override
             public float getState(int time) {
-                return lastState*(float)Math.exp((lastTime-time)/tau);
+                if (glob.showMembraneState)
+                    return vmem;
+                else
+                    return lastState*(float)Math.exp((lastTime-time)/tau);
             }
 
             @Override
-            public String getLabel(float state) {
-                return myFormatter.format(state*1000000/tau)+"Hz";
+            public String getLabel(float min,float max) {
+                if (glob.showMembraneState)
+                    return "Range: [ "+myFormatter.format(min)+" : "+myFormatter.format(max)+" ]";
+                else
+                    return "Max: "+myFormatter.format(max*1000000/tau)+"Hz";
+            }
+
+            @Override
+            public boolean isZeroCentered() {
+                return glob.showMembraneState;
             }
         };
     }
@@ -173,7 +183,7 @@ public class UnitLIF<GlobalType extends UnitLIF.Globals> extends Unit<GlobalType
     
     
                
-    public static class Globals extends Controllable
+    public static class Globals extends Unit.Globals
     {   
         // Properties
         public float tref=5000;
@@ -182,6 +192,7 @@ public class UnitLIF<GlobalType extends UnitLIF.Globals> extends Unit<GlobalType
         public float thresh=1;        
         public boolean useGlobalThresh=false;
         
+        public boolean showMembraneState=false;
         
         /** Get Global Threshold */
         public float getThresh() {
@@ -216,6 +227,14 @@ public class UnitLIF<GlobalType extends UnitLIF.Globals> extends Unit<GlobalType
          /** Set Refractory Period (microseconds) */
         public void setTref(float tref) {
             this.tref = tref;
+        }
+
+        public boolean isShowMembraneState() {
+            return showMembraneState;
+        }
+
+        public void setShowMembraneState(boolean showMembraneState) {
+            this.showMembraneState = showMembraneState;
         }
     }
 

@@ -4,15 +4,23 @@
  */
 package jspikestack;
 
+import java.io.Serializable;
+
 /**
  *
  * @author Peter
  */
-public abstract class PSP implements Comparable<PSP>
+public abstract class PSP implements Comparable<PSP>, Serializable
 {
     
     public final Spike sp;
     public final int hitTime;
+    
+    public PSP(int time)
+    {
+        hitTime=time;
+        sp=null;
+    }
     
     public PSP(Spike spike,int delay)
     {

@@ -29,10 +29,6 @@ import net.sf.jaer.graphics.DisplayWriter;
  */
 public abstract class MultiSourceProcessor extends EventFilter2D {
     
-    ArrayList<JPanel> customControls;
-    
-    ArrayList<Component> customDisplays=new ArrayList();
-    
     ArrayList<Queue<BasicEvent>> buffers=new ArrayList();   // Stores events to ensure monotonicity between calls.
     
     PriorityQueue<BasicEvent> pq;
@@ -81,61 +77,7 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
 //        this.getChip().getAeViewer().getJaerViewer().globalViewer.addDisplayWriter(disp);
 //    }
     
-    public void addDisplay(Component disp)
-    {
-        customDisplays.add(disp);
-        
-        if (this.getChip().getAeViewer().globalized) 
-            this.getChip().getAeViewer().getJaerViewer().globalViewer.addDisplayWriter(disp);
-        else
-            this.getChip().getAeViewer().getImagePanel().add(disp,BorderLayout.EAST);
-    }
     
-    public void removeDisplays()
-    {
-        if (this.getChip().getAeViewer()==null)
-            return;
-        
-        if (this.getChip().getAeViewer().globalized) 
-            for (Component c:customDisplays)
-                this.getChip().getAeViewer().getJaerViewer().globalViewer.removeDisplay(c);
-        else 
-            for (Component c:customDisplays)
-              this.getChip().getAeViewer().getImagePanel().remove(c);
-    }
-        
-    public void addControls(JPanel controls)
-    {
-//        this.getChip().getAeViewer().getJaerViewer().globalViewer.addControlsToFilter(controls, this);
-        
-        getControlPanel().addCustomControls(controls);
-        
-    }
-    
-    /** Remove all added controls */
-    public void removeControls()
-    {   FilterPanel p=getControlPanel();
-        if (p!=null)
-            p.removeCustomControls();
-    }
-    
-    /** Retrieves the control panel for this filter, allowing you to customize it */
-    private FilterPanel getControlPanel()
-    {
-        if((this.getChip().getAeViewer())==null)
-            return null;
-        
-        if (this.getChip().getAeViewer().globalized) //
-            return this.getChip().getAeViewer().getJaerViewer().globalViewer.procNet.getControlPanelFromFilter(this);
-        else // Backwards compatibility
-        {
-            if (this.getChip().getAeViewer().getFilterFrame()==null)
-                return null;
-            else
-                return this.getChip().getAeViewer().getFilterFrame().getFilterPanelForFilter(this);
-            
-        }
-    }
         
     
     /** Number of inputs that this filter takes */
@@ -206,6 +148,11 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
 //            //return out;
 //            return packets.get(0);
 //        }
+        
+        if (packets.size()==1)
+            return packets.get(0);
+        
+        
         
         int goToTime=Integer.MIN_VALUE;
         

@@ -10,8 +10,10 @@ import java.util.LinkedList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -25,6 +27,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * 
  * @author Peter
  */
+@Description("Tracks and classifies images of digits seen by the DVS using a network of binary-threshold neurons.")
 public class BinNetFilt extends EventFilter2D implements FrameAnnotater {
 
     // Settings
@@ -50,27 +53,39 @@ public class BinNetFilt extends EventFilter2D implements FrameAnnotater {
         
         // Filter Input Events
         if (enclosedFilterChain!=null)
-            in=enclosedFilterChain.filterPacket(in);
+            out=enclosedFilterChain.filterPacket(in);
+        
+        
+        
+        if (Net==null)
+            loadNetwork();
+        
         
         // Stop if network is not loaded
-        if (Net==null || !enableNetwork)
-        {   out=in;
+        int nEvents=out.getSize();
+        if (Net==null || !enableNetwork || nEvents==0)
+        {   //out=in;
             return out;
         }              
         
         // Break if no events
-        int nEvents=out.getSize();
-        if (nEvents==0) return out;
+//        int nEvents=out.getSize();
+//        if (nEvents==0) return out;
         
         
         // Grab first input/output events.
         // Check if timestamps have wrapped.  Since it happens so rarely, it's not worth
         // dealing with properly, so we'll just reset when it does.
+        
+//        if (out.getEventClass()==PolarityEvent.class)
+//            return out;
+        
         ClusterEvent evIn=(ClusterEvent)out.getEvent(0);
         if (evOut==null)
             evOut=(ClusterEvent)offBuffer.pollFirst();
         else if (evIn.timestamp<evOut.timestamp)
            resetFilter();
+        
         
         // Declare loop variables
         int loc;
@@ -197,6 +212,34 @@ public class BinNetFilt extends EventFilter2D implements FrameAnnotater {
     
     // ===== Controls =====
     
+    
+//    public void doStart(){
+//        loadNetwork();
+//    }
+    
+    public void doDefault_Settings()
+    {   
+        // ClusterSet Settings
+        setRequiredDefaults();
+        C.setSmoothMove(true);
+        C.setSmoothWeight(2);
+        C.setSmoothIntegral(0.01f);
+        C.setSmoothPosition(0.01f);
+        C.setSurroundInhibitionEnabled(true);
+        C.setClusterLifetimeWithoutSupportUs(500000);
+        C.setDesiredScale(40);
+        C.setShowPaths(false);
+        
+        this.setInputPersistence(200000);
+        
+        resetFilter();
+        
+    }
+    
+    public void doLoad_New_Network()
+    {   loadNetwork(false);
+    }
+    
     public void doView_Units(){
         
         if (plot!=null)
@@ -236,34 +279,9 @@ public class BinNetFilt extends EventFilter2D implements FrameAnnotater {
 //        plot.init();
     }
     
-    public void doStart(){
-        loadNetwork();
-    }
     
-    public void doDefault_Settings()
-    {   
-        // ClusterSet Settings
-        setRequiredDefaults();
-        C.setSmoothMove(true);
-        C.setSmoothWeight(2);
-        C.setSmoothIntegral(0.01f);
-        C.setSmoothPosition(0.01f);
-        C.setSurroundInhibitionEnabled(true);
-        C.setClusterLifetimeWithoutSupportUs(500000);
-        C.setDesiredScale(40);
-        C.setShowPaths(false);
-        
-        this.setInputPersistence(200000);
-        
-        resetFilter();
-        
-    }
-    
-    public void doLoad_Network()
-    {   loadNetwork(false);        
-    }
-    
-    public void doPrint_States()
+    /** Print the state of the network, for debugging purposes */
+    public void printStates()
     {   if (Net.N==null)
         {   System.out.println("Can't print network states: No network is loaded yet.  Load one!");
 
@@ -336,6 +354,7 @@ public class BinNetFilt extends EventFilter2D implements FrameAnnotater {
         this.filterEnabled=false;
         C.setMaxNumClusters(count);
         
+        
         netCount=count;
         try {
             loadNetwork(); 
@@ -376,6 +395,12 @@ public class BinNetFilt extends EventFilter2D implements FrameAnnotater {
         // Clustering Filter
         C=new ClusterSet(chip);
         C.setMaxNumClusters(netCount);
+        C.setFilterEventsEnabled(true);
+        C.setShowPaths(false);
+        C.setSmoothIntegral(.025f);
+        C.setSmoothWeight(2);
+        C.setSmoothMove(true);
+        C.setClusterLifetimeWithoutSupportUs(100000);
                 
         dickChainy.add(new PreProcess(chip));
         //dickChainy.add(N);

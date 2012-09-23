@@ -48,7 +48,7 @@ public class StatCollector {
         NetController<AxonSTP,AxonSTP.Globals,UnitLIF.Globals> nc=new NetController(NetController.AxonTypes.STP);
         Network<AxonSTP> net=nc.net;
         UnitLIF.Globals ug=nc.unitGlobals;
-        AxonSTP.Globals lg=nc.layerGlobals;
+        AxonSTP.Globals lg=nc.axonGlobals;
         
         
         float initRate=100;

@@ -248,8 +248,13 @@ public class LayerRC extends Layer
                 }
 
                 @Override
-                public String getLabel(float state) {
-                    return ""+state;
+                public String getLabel(float min,float max) {
+                    return "Range: ["+min+" "+max+"]";
+                }
+
+                @Override
+                public boolean isZeroCentered() {
+                    return true;
                 }
             };
         }

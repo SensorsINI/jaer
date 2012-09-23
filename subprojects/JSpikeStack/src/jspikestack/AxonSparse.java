@@ -27,6 +27,7 @@ public class AxonSparse<GlobalParams extends AxonSparse.Globals,PSPType extends 
         
     public AxonSparse(Layer inLayer, Layer outLayer,GlobalParams glo)
     {   super(inLayer,outLayer,glo);
+        
     }
     
     
@@ -121,6 +122,9 @@ public class AxonSparse<GlobalParams extends AxonSparse.Globals,PSPType extends 
             arr.add(getKernelController());
             return arr;
         }
+        
+        
+        
     }
     
     public class KernelController extends Controllable
@@ -214,6 +218,9 @@ public class AxonSparse<GlobalParams extends AxonSparse.Globals,PSPType extends 
     /** Initialize the weights.  By Default, the layer is a buffer. */
     public void initWeights()
     {        
+        targets=new int[preLayer.nUnits()][0];
+        w=new float[preLayer.nUnits()][0];
+        
     }
         
         

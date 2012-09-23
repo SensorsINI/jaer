@@ -4,11 +4,13 @@
  */
 package jspikestack;
 
+import java.io.Serializable;
+
 /**
  *
  * @author oconnorp
  */
-public abstract class Unit<GlobalParams> {
+public abstract class Unit<GlobalParams> implements Serializable {
     
     public int index;
     public String name;
@@ -31,7 +33,7 @@ public abstract class Unit<GlobalParams> {
     /** Make a copy of this unit */
     public abstract Unit copy();
     
-    public static interface AbstractFactory<GlobalParams,UnitType extends Unit>{
+    public static interface AbstractFactory<GlobalParams,UnitType extends Unit>  extends Serializable{
         
 //        public GlobalParams glob;
 //        
@@ -58,13 +60,18 @@ public abstract class Unit<GlobalParams> {
         int lastTime;
         float lastState;
         
+        
+        
         /** Update the state when a spike is fired */
         public abstract void updatestate(Spike sp);
+        
+        
+        public abstract boolean isZeroCentered();
         
         /** Get the state */
         public abstract float getState(int time);
         
-        public abstract String getLabel(float state);
+        public abstract String getLabel(float min,float max);
         
         public void reset()
         {
@@ -72,6 +79,17 @@ public abstract class Unit<GlobalParams> {
             lastState=0;
         }
     }
+    
+    public abstract static class Globals extends Controllable
+    {        
+        @Override
+        public String getName()
+        {   return "Unit Controls";
+        }
+        
+        
+    };
+    
     
     public abstract void reset();
     

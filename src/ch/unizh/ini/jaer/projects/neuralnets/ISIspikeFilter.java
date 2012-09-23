@@ -5,9 +5,9 @@
 package ch.unizh.ini.jaer.projects.neuralnets;
 
 
-import jspikestack.NetController;
-import jspikestack.Network;
+import jspikestack.*;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.PolarityEvent;
 
 /**
  *
@@ -60,9 +60,10 @@ public class ISIspikeFilter extends SpikeFilter {
         net.buildFromInitializer(ini);
         
                 
-        unitGlobs.useGlobalThresh=true;
-        unitGlobs.thresh=5;
-        unitGlobs.tau=50000;  
+        UnitLIF.Globals uG=(UnitLIF.Globals)unitGlobs;
+        uG.useGlobalThresh=true;
+        uG.thresh=5;
+        uG.tau=50000;  
         
         net.lay(0).fireInputsTo=true;
         net.lay(0).inputCurrentStrength=.1f;

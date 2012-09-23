@@ -29,7 +29,7 @@ public class Network<AxonType extends Axon> implements Serializable {
     Axon.AbstractFactory axonFactory;    
     Unit.AbstractFactory unitFactory;
     
-    
+    Thread netThread;
     
     ArrayList<Layer> layers=new ArrayList();
     
@@ -37,13 +37,13 @@ public class Network<AxonType extends Axon> implements Serializable {
     
     
 //    transient Queue<PSP> inputBuffer = new LinkedList();
-    transient LinkedBlockingQueue<PSP> inputBuffer = new LinkedBlockingQueue();
-    
 //    transient Queue<SpikeType> internalBuffer= new LinkedList();
 //    transient Queue<SpikeType> internalBuffer= new PriorityBlockingQueue();
-    transient PriorityQueue<PSP> internalBuffer= new PriorityQueue();
-// 
-    transient MultiReaderQueue<Spike> outputQueue=new MultiReaderQueue();
+    
+    // These are now set in "implementQueues"    
+    transient LinkedBlockingQueue<PSP> inputBuffer;// = new LinkedBlockingQueue();
+    transient PriorityQueue<PSP> internalBuffer;//= new PriorityQueue();
+    transient MultiReaderQueue<Spike> outputQueue;//=new MultiReaderQueue();
         
 //    public int delay;
     
@@ -62,7 +62,7 @@ public class Network<AxonType extends Axon> implements Serializable {
     
     public int spikecount;
     
-    boolean enable=true;
+    volatile boolean enable=true;
     
 //    public float inputCurrentStrength=1; 
     /* If inputCurrents==true, this is the strength with which input events drive
@@ -76,19 +76,29 @@ public class Network<AxonType extends Axon> implements Serializable {
     
     // <editor-fold defaultstate="collapsed" desc=" Builder Functions ">
     
+    
+    
+    
     public Network (Axon.AbstractFactory axonFac,Unit.AbstractFactory unitFac)
     {   //plot=new NetPlotter(this);
         read=new NetReader(this);
         
         axonFactory=axonFac;
         unitFactory=unitFac;
-        
-//        layerClass=layClass;  
-//        unitClass=unClass;
-        
-        
+                
+        implementQueues();
         
     };
+    
+    final void implementQueues()
+    {
+        inputBuffer = new LinkedBlockingQueue();
+        internalBuffer= new PriorityQueue();
+        outputQueue=new MultiReaderQueue();
+        
+    }
+    
+    
     
     public ArrayList<Layer> getLayers()
     {
@@ -130,6 +140,27 @@ public class Network<AxonType extends Axon> implements Serializable {
         layy.initializeUnits(nUnits);
         return layy;
     }
+    
+    /** Remove the specified layer from the network, along with all associated axons */
+    public void removeLayer(Layer layer)
+    {
+        for (Axon ax:axons)
+            if (ax.preLayer==layer || ax.postLayer==layer)
+                removeAxon(ax);       
+        
+        int ix=layers.indexOf(layer);
+        
+        if (ix!=-1)
+            layers.set(ix,null);        
+    }
+    
+    /** Remove the specified axon from the network */
+    public void removeAxon(Axon ax)
+    {
+        axons.remove(ax);
+    }
+    
+    
     
     /** Add a new layer, define the x,y dimensions (and therefore nUnits) */
     public Layer addLayer(int index,int dimx,int dimy)
@@ -506,7 +537,11 @@ public class Network<AxonType extends Axon> implements Serializable {
     /** This method feeds events into the network.  It waits for the input queue. */
     public Thread startEventFeast()
     {
-        Thread netThread=new Thread()
+        if (isRunning())
+            throw new RuntimeException("Can't start new network simulation: the old one has not been killed yet!");
+        
+        
+        netThread=new Thread()
         {
             @Override
             public void run()
@@ -520,8 +555,7 @@ public class Network<AxonType extends Axon> implements Serializable {
                     // If in liveMode, go til inputBuffer is empty, otherwise go til both buffers are empty (or timeout).
                     while (true)
                     {   
-                        if (!enable)
-                            break;                
+                                      
 
                         boolean readInput=internalBuffer.isEmpty() || (nextInput.hitTime<internalBuffer.peek().hitTime);
 
@@ -531,7 +565,7 @@ public class Network<AxonType extends Axon> implements Serializable {
                         if (psp.hitTime<time)
                         {   System.out.println("Input Spike time Decrease detected!  ("+time+"-->"+psp.hitTime+")  Resetting network...");
                             reset();            
-                            break;
+//                            break;
                         }
 
                         // Process the spike
@@ -540,6 +574,9 @@ public class Network<AxonType extends Axon> implements Serializable {
                         digest(); // Post Spike-Feed Actions
                         spikecount++;
 
+                        if (!enable)
+                            break;  
+                        
                         // Get next input, waiting if necessary
                         if (readInput)
                             nextInput=inputBuffer.take();
@@ -548,8 +585,15 @@ public class Network<AxonType extends Axon> implements Serializable {
                     enable=true;  // Re-enable network when done.
 
                 } catch (InterruptedException ex) {
-                    System.out.println("Network killed at timestamp "+time);
-                }      
+                    
+                }
+                finally
+                {   System.out.println("Network killed at timestamp "+time);
+                    synchronized(Network.this)
+                    {
+                        Network.this.notify();
+                    }
+                }
             }
             
             
@@ -558,8 +602,35 @@ public class Network<AxonType extends Axon> implements Serializable {
         
         netThread.start();
         
+        netThread.setName("JSpikeStack Network");
+        
         return netThread;
     }
+    
+    boolean isRunning()
+    {
+        return netThread!=null && netThread.isAlive();
+    }
+    
+    /** Kill the simulation thread, wait for it to stop */
+    public void kill()
+    {
+        if(!isRunning())
+            return;
+        
+        synchronized(this) // Wait for network thread to be killed
+        {   enable=false;
+            netThread.interrupt();
+            try {
+                this.wait();
+            } catch (InterruptedException ex) {
+                Logger.getLogger(Network.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        
+    }
+    
+    
         
     /** Eat up the events in the input queue until some timeout */
     public void eatEvents(int timeout)
@@ -573,9 +644,9 @@ public class Network<AxonType extends Axon> implements Serializable {
             int newtime=readInput?inputBuffer.peek().hitTime:internalBuffer.peek().hitTime;
             
             // Update current time to time of this event
-            if (newtime<time)
+            if (newtime-time<0)
             {   System.out.println("Input Spike time Decrease detected!  ("+time+"-->"+newtime+")  Resetting network...");
-                reset();            
+                reset(newtime);            
                 break;
             }
             
@@ -647,17 +718,24 @@ public class Network<AxonType extends Axon> implements Serializable {
 //    {   for (Layer l:layers)
 //            l.scaleThresholds(sc);
 //    }
-            
-    /** Reset Network */ 
-    public void reset()
-    {   
+       
+    public void reset(int zeroTime)
+    {
+        nextInput=null;
         inputBuffer.clear();
         internalBuffer.clear();
-        time=0;
+        time=zeroTime;
         //time=0;
         for (Layer l:layers)
             l.reset();
-//        plot.reset();
+//        plot.reset();        
+        
+    }
+    
+    /** Reset Network */ 
+    public void reset()
+    {   
+        reset(0);
         
     }
     

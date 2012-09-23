@@ -18,7 +18,7 @@ import net.sf.jaer.event.PolarityEvent;
  * @author Peter
  */
 @Description("Implements an associative memory between audio and visual stimuli using a network of spiking neurons.")
-public class AudioVisualNet extends SpikeFilter<AxonSTP> {
+public class AudioVisualNet extends SpikeFilter<AxonSTP,AxonSTP.Globals,UnitLIF.Globals,BasicEvent> {
 
     
     public AudioVisualNet(AEChip chip)
@@ -134,11 +134,12 @@ public class AudioVisualNet extends SpikeFilter<AxonSTP> {
         ((AxonSTP)net.ax(3,4)).setEnableFastSTDP(false);
 //        un.thresh=1.5f;
         
-        nc.layerGlobals.stdpWin=30000;
-        nc.layerGlobals.fastSTDP.plusStrength=-.0003f;
-        nc.layerGlobals.fastSTDP.minusStrength=-.0003f;   
-        nc.layerGlobals.fastSTDP.stdpTCminus=20000;
-        nc.layerGlobals.fastSTDP.stdpTCplus=20000;
+        
+        axonGlobs.stdpWin=30000;
+        axonGlobs.fastSTDP.plusStrength=-.0002f;
+        axonGlobs.fastSTDP.minusStrength=-.0002f;   
+        axonGlobs.fastSTDP.stdpTCminus=20000;
+        axonGlobs.fastSTDP.stdpTCplus=20000;
         
         net.lay(0).fireInputsTo=true;
         net.lay(0).inputCurrentStrength=.5f;

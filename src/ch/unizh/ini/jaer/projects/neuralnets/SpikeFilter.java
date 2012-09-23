@@ -11,6 +11,7 @@ import jspikestack.*;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.MultiSourceProcessor;
 import net.sf.jaer.graphics.DisplayWriter;
 import sun.nio.cs.ext.GB18030;
@@ -23,16 +24,16 @@ import sun.nio.cs.ext.GB18030;
  * 
  * @author Peter
  */
-public abstract class SpikeFilter<AxonType extends Axon> extends MultiSourceProcessor {
+public abstract class SpikeFilter<AxonType extends Axon,AxonGlobalType extends Axon.Globals,UnitGlobalType extends Unit.Globals,EventType extends BasicEvent> extends MultiSourceProcessor {
 
     // <editor-fold  defaultstate="collapsed" desc=" Properties ">
     
     SpikeStackWrapper wrapNet;    
     Network<AxonType> net;
-    Axon.Globals axonGlobs;  // Layer Global Controls
-    UnitLIF.Globals unitGlobs; // Unit Global Controls
+    AxonGlobalType axonGlobs;  // Layer Global Controls
+    UnitGlobalType unitGlobs; // Unit Global Controls
         
-    NetController<AxonType,AxonSTP.Globals,UnitLIF.Globals> nc;
+    NetController<AxonType,Axon.Globals,UnitLIF.Globals> nc;
     
     NetController.AxonTypes axonType=NetController.AxonTypes.STP;
     NetController.UnitTypes unitType=NetController.UnitTypes.LIF;
@@ -52,30 +53,41 @@ public abstract class SpikeFilter<AxonType extends Axon> extends MultiSourceProc
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         
+        EventPacket<EventType> inputs=(EventPacket<EventType>) in;
+        
+//        int on=0, off=0;
+        
         // Initialize Remapper
         if (wrapNet==null)
-            return in;
+            return inputs;
         else if (!wrapNet.isRunning())
-            wrapNet.start(in.getFirstTimestamp());
+            wrapNet.start(inputs.getFirstTimestamp());
         
-        if (lastEvTime==Integer.MAX_VALUE && !in.isEmpty())
-        {   lastEvTime=in.getFirstTimestamp();
+        if (lastEvTime==Integer.MAX_VALUE && !inputs.isEmpty())
+        {   lastEvTime=inputs.getFirstTimestamp();
         }
         
-        // If it's a clusterset event
-        for (int k=0; k<in.getSize(); k++)
+        // Iterate through events
+        for (int k=0; k<inputs.getSize(); k++)
         {   
             if (pause)
-                return in;
+                return inputs;
             
-            BasicEvent ev=in.getEvent(k);
             
-            if (lastEvTime!=Integer.MAX_VALUE && (lastEvTime>ev.timestamp))
+//            if (((PolarityEvent)inputs.getEvent(k)).polarity==PolarityEvent.Polarity.On)
+//                on++;
+//            else
+//                off++;
+            
+            BasicEvent ev=inputs.getEvent(k);
+            
+            if (lastEvTime!=Integer.MAX_VALUE && (ev.timestamp-lastEvTime<0))
             {   
-                System.out.println("Non-Monotinic Timestamps detected ("+lastEvTime+"-->"+ev.timestamp+").  Resetting");                
-                lastEvTime=Integer.MAX_VALUE;        
-                wrapNet.reset();                
-                return in;
+                System.out.println("Non-Monotinic Timestamps detected ("+lastEvTime+"-->"+ev.timestamp+").  Discarding Event");        
+                continue;
+//                lastEvTime=Integer.MAX_VALUE;        
+//                wrapNet.reset();                
+//                return inputs;
             }
             
             wrapNet.addToQueue(ev);
@@ -83,7 +95,12 @@ public abstract class SpikeFilter<AxonType extends Axon> extends MultiSourceProc
             lastEvTime=ev.timestamp;
         }
                 
-        return in;
+//        System.out.println("On: "+on+"\tOff: "+off);
+        
+//        if (inputs.getSize()>0)
+//            wrapNet.flushToTime(lastEventTime);
+        
+        return inputs;
     }
     
     /** Create a spikeFilter with the given chip and number of input event sources */
@@ -124,16 +141,29 @@ public abstract class SpikeFilter<AxonType extends Axon> extends MultiSourceProc
     // <editor-fold  defaultstate="collapsed" desc=" Neural Network Builders ">
     
     /** Grab a network from file. */
-    public Network getInitialNet() {
+    public Network makeInitialNet() {
                 
-        nc=new NetController(axonType);
+        nc=new NetController(axonType,unitType);
         net=nc.net;
         net.liveMode=true;
         
-        axonGlobs=nc.layerGlobals;
-        unitGlobs=nc.unitGlobals;
+        
+        axonGlobs=(AxonGlobalType)nc.axonGlobals;
+        unitGlobs=(UnitGlobalType)nc.unitGlobals;
         
         return net;
+    }
+    
+    public void setNet(NetController n)
+    {
+        nc=n;
+        net=nc.net;
+        axonGlobs=(AxonGlobalType)nc.axonGlobals;
+        unitGlobs=(UnitGlobalType)nc.unitGlobals;
+        
+        
+        wrapNet=new SpikeStackWrapper(nc,makeMapper(net));
+        
     }
     
     
@@ -227,7 +257,7 @@ public abstract class SpikeFilter<AxonType extends Axon> extends MultiSourceProc
     {
         resetFilter();
         
-        Network net=getInitialNet();
+        Network net=makeInitialNet();
         customizeNet(net);
         wrapNet=new SpikeStackWrapper(nc,makeMapper(net));
         

@@ -1605,7 +1605,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     {   
         if (controlPanel==null)
         {   controlPanel=new JPanel(); 
-//            controlPanel.setLayout(new BoxLayout(controlPanel,BoxLayout.Y_AXIS));
+            controlPanel.setLayout(new BoxLayout(controlPanel,BoxLayout.Y_AXIS));
             this.add(controlPanel);
         }
         

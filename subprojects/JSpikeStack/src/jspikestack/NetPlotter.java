@@ -50,9 +50,12 @@ public class NetPlotter {
     
     public ArrayList<StatDisplay> stats=new ArrayList();
     
+    Thread viewLoop;
+    
+    
 //    public boolean useneuronstates=true;
     
-    public boolean zeroCentred=false;
+//    public boolean zeroCentred=false;
     
     
     JTextComponent jt;
@@ -119,12 +122,15 @@ public class NetPlotter {
 
     public JFrame createStateFigure()
     {
-        JFrame fr=new JFrame();
+        final JFrame fr=new JFrame();
         
 //        fr.getContentPane().setBackground(Color.GRAY);
 //        fr.setLayout(new GridBagLayout());
         
-        JPanel hostPanel=createStatePlot();
+        final JPanel hostPanel=createStatePlot();
+        
+        
+        
         
         
         
@@ -132,6 +138,23 @@ public class NetPlotter {
         
         
         
+//        fr.getContentPane().addComponentListener(new ComponentListener(){
+//
+//            @Override
+//            public void componentResized(ComponentEvent e) {
+//                fr.getContentPane().repaint();
+//            }
+//
+//            @Override
+//            public void componentMoved(ComponentEvent e) {}
+//
+//            @Override
+//            public void componentShown(ComponentEvent e) {}
+//
+//            @Override
+//            public void componentHidden(ComponentEvent e) {}
+//        
+//        });
         
         
 //        fr.setPreferredSize(new Dimension(1000,1200));
@@ -152,6 +175,13 @@ public class NetPlotter {
     {
         final JPanel hostPanel=new JPanel();
                 
+        hostPanel.setPreferredSize(Toolkit.getDefaultToolkit().getScreenSize());
+        
+        
+        
+        
+        
+        
         if (!SwingUtilities.isEventDispatchThread())
         {  
             try {
@@ -174,18 +204,22 @@ public class NetPlotter {
    
     
     /** Create a figure for plotting the state of the network for the network */
-    public void createStatePlot(JPanel hostPanel)
+    public void createStatePlot(final JPanel hostPanel)
     {
         
 //        JPanel hostPanel=new JPanel();
         hostPanel.setLayout(new BorderLayout());
+        
+        
+        
         
 //        hostPanel.setPreferredSize(new Dimension(1000,800));
         
         JPanel statePanel=new JPanel();
         statePanel.setBackground(Color.BLACK);
         
-        statePanel.setLayout(new GridBagLayout());
+//        statePanel.setLayout(new GridBagLayout());
+        statePanel.setLayout(new FlowLayout());
         
         final int nLayers=net.nLayers();
         
@@ -222,7 +256,7 @@ public class NetPlotter {
             disp.setImageSize(sizeX,sizeY);
             
 //            disp.setSize(200,200);
-            disp.setPreferredSize(new Dimension(250,250));
+            disp.setPreferredSize(new Dimension(200,200));
             disp.setBorderSpacePixels(18);
             
             
@@ -230,8 +264,9 @@ public class NetPlotter {
 //
 //                @Override
 //                public void componentResized(ComponentEvent e) {
-//                    int dim=e.getComponent().getWidth()/nLayers;
-//                    disp.setPreferredSize(new Dimension(dim,dim));
+////                    int dim=e.getComponent().getWidth()/nLayers;
+////                    disp.setPreferredSize(new Dimension(dim,dim));
+//                    
 //                }
 //
 //                @Override
@@ -265,7 +300,8 @@ public class NetPlotter {
             c.gridheight=2;
             
             pan.add(disp,BorderLayout.CENTER);  
-            statePanel.add(pan,c);
+//            statePanel.add(pan,c);
+            statePanel.add(pan);
             
 //            disp.setVisible(true);
 //            pan.setVisible(true);
@@ -387,6 +423,8 @@ public class NetPlotter {
         frm=createStatePlot();
         pan.add(frm);
         
+        if (viewLoop!=null && viewLoop.isAlive())
+            throw new RuntimeException("You're trying to start the View Loop, but it's already running");
         
                 
         class ViewLoop extends Thread{
@@ -445,54 +483,110 @@ public class NetPlotter {
 //                    else
 //                    {   // In normal operation, this block should be on.
                     
-                    
-                    SwingUtilities.invokeLater(new Runnable()
-                        { public void run(){
+                    synchronized(NetPlotter.this)
+                    {
 
+//                        SwingUtilities.invokeLater(new Runnable()
+//                        {   @Override
+//                            public void run(){
+                                if (realTime)
+                                    state();                    
+                                else
+                                    state(lastNetTime+(int)(updateMicros*timeScale));
 
-                            if (realTime)
-                                state();                    
-                            else
-                                state(lastNetTime+(int)(updateMicros*timeScale));
-                            
-                            
-                            for (StatDisplay st:stats)
-                                st.display();
-                            
-                    }});
-//                    }
-                    
-                    
-//                    System.out.println("PlotThread: "+lastNetTime/1000);
-                    
-                    try {
-                        Thread.sleep(updateMicros/1000);
-                    } catch (InterruptedException ex) {
-                            Logger.getLogger(NetPlotter.class.getName()).log(Level.SEVERE, null, ex);
+                                for (StatDisplay st:stats)
+                                    st.display();
+
+//                        }});
+    //                    System.out.println("PlotThread: "+lastNetTime/1000);
+
                     }
+
+                        try {
+                            Thread.sleep(updateMicros/1000);
+                        } catch (InterruptedException ex) {
+                            break;
+    //                            Logger.getLogger(NetPlotter.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+
                     
-                    
+                    }
+                
+                
+                synchronized(NetPlotter.this)
+                {
+
+                    NetPlotter.this.notify();
+
+
                 }
             }
             
         }
         
-        ViewLoop th=new ViewLoop();
+//        ViewLoop th=new ViewLoop();
+//        
+//        th.start();
         
-        th.start();
+        viewLoop=new ViewLoop();
+        viewLoop.start();
         
         
+    }
+    
+        
+    public void kill()
+    {
+        if (viewLoop!=null && viewLoop.isAlive())
+        {
+            synchronized(this)
+            {
+                viewLoop.interrupt();
+                try {
+                    this.wait();
+                } catch (InterruptedException ex) {
+                    Logger.getLogger(NetPlotter.class.getName()).log(Level.SEVERE, null, ex);
+                }
+
+                System.out.println("Display Terminated");
+
+            }
+        }
+    }
+    
+    public void rebuild(Network netw)
+    {   
+        kill();
+        
+        layerStatePlots=null;
+        frm.removeAll();
+        
+        net=netw;
+        followState(frm);
+        
+        
+    }
+    
+    
+    public void rebuild()
+    {
+        kill();
+        followState(frm);
         
     }
     
     
     public void reset()
     {
+//        kill();
+        synchronized(this)
+        {
         lastNetTime=0;
         if (layerStatePlots!=null)
             for (LayerStatePlotter lsp: layerStatePlots)
             {   lsp.reset();            
             }
+        }
     }
     
     /** Update the state plot to the current time */
@@ -677,7 +771,7 @@ public class NetPlotter {
             
 //        System.out.println(net.time);
         
-            if (zeroCentred)
+            if (stateTrackers[0].isZeroCentered())
             {
                 float bigState=Math.max(Math.abs(smin),Math.abs(smax));
                 
@@ -707,6 +801,7 @@ public class NetPlotter {
             
             
             final int iimax=imax;
+            final float ssmin=smin;
             final float ssmax=smax;
             
             SwingUtilities.invokeLater(new Runnable(){
@@ -724,7 +819,7 @@ public class NetPlotter {
 
                         lastTime=toTime;
 
-                        disp.setTitleLabel(layer.getName()+"  Max: "+stateTrackers[iimax].getLabel(ssmax));
+                        disp.setTitleLabel(layer.getName()+" "+stateTrackers[iimax].getLabel(ssmin,ssmax));
             //            disp.drawCenteredString(1, 1, "A");
 
             

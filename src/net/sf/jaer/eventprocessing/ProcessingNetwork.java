@@ -68,7 +68,8 @@ public class ProcessingNetwork {
         if (n!=null)
             return n.controlPanel;
         else
-        {   throw new RuntimeException("Specified Filter not found!  Could not add controls");
+        {   return null;
+            //throw new RuntimeException("Specified Filter not found!  Could not add controls");
         }
     }
     

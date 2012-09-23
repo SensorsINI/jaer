@@ -5,23 +5,68 @@
 package jspikestack;
 
 import java.text.DecimalFormat;
+import jspikestack.UnitLIF.Globals;
 
 /**
- * This leaky integrate and fire unit sends both on and off events to downstream 
- * units.
+ * This type of unit contains two LIF units in parallel.  One response to "ON"
+ * events, the other to "OFF" events.
  * @author oconnorp
  */
-public class UnitOnOff extends UnitLIF<UnitLIF.Globals>
+public class UnitOnOff extends Unit<UnitLIF.Globals>
 {
+    UnitLIF.Globals glob;
+    UnitLIF onUnit;
+    UnitLIF offUnit;
+
     
-    public UnitOnOff(UnitLIF.Globals globs,int index)
-    {   super(globs,index);
-        // glob=globs;
-       // ixUnit=index;
+    public UnitOnOff(UnitLIF.Globals glo,UnitLIF on,UnitLIF off)
+    {
+        glob=glo;
+        onUnit=on;
+        offUnit=off;
+    }
+    
+    @Override
+    /** Fire a current to the on/off neurons.  Off neurons will be excited by 
+     * negative currents, on neurons by positive currents.
+     */
+    public int fireTo(PSP transmisson, float current) {
+        
+        int status;
+        
+        if (transmisson.sp.act==1) // Route on events to on units
+            status=onUnit.fireTo(transmisson, current);
+        else
+            status=-offUnit.fireTo(transmisson,current);
+        
+        
+//        if(offStatus!=0)
+//            System.out.print("Stgf");
+            
+        return status;
+//        return (current>0?onStatus:offStatus); // If Retu
     }
 
     @Override
-    public Unit.StateTracker getStateTracker() {
+    public int fireFrom(int time) {
+        
+        if (glob.resetAfterFire)
+        {   onUnit.resetmem();
+            offUnit.resetmem();
+        }
+        onUnit.tlast=time;
+        offUnit.tlast=time;
+        
+        return 1;        
+    }
+
+    @Override
+    public Unit copy() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public StateTracker getStateTracker() {
         return new Unit.StateTracker() {
 
             float tau=glob.tau;
@@ -40,24 +85,36 @@ public class UnitOnOff extends UnitLIF<UnitLIF.Globals>
             }
 
             @Override
-            public String getLabel(float state) {
+            public String getLabel(float min,float state) {
                 return myFormatter.format(state*1000000/tau)+"Hz";
+            }
+
+            @Override
+            public boolean isZeroCentered() {
+                return true;
             }
         };
     }
+
+    @Override
+    public void reset() {
+        onUnit.reset();
+        offUnit.reset();
+    }
     
-        
     public static class Factory implements Unit.AbstractFactory<UnitLIF.Globals,UnitOnOff>
     {
         UnitLIF.Globals glob;
         
         public Factory()
-        {   glob=newGlobalObject();    
+        {   glob=new UnitLIF.Globals();   
         }
-                
+
         @Override
         public UnitOnOff make(int unitIndex) {
-            return new UnitOnOff(glob,unitIndex);
+            UnitLIF onUnit=new UnitLIF(glob,unitIndex);
+            UnitLIF offUnit=new UnitLIF(glob,unitIndex);            
+            return new UnitOnOff(glob,onUnit,offUnit);
         }
 
         @Override
@@ -69,41 +126,7 @@ public class UnitOnOff extends UnitLIF<UnitLIF.Globals>
         public Controllable getGlobalControls() {
             return glob;
         }
-
+                
     }
-    
-    
-   /** Send a current to this unit.  If it spikes it will add it to the buffer */
-    @Override
-    public int fireTo(PSP sp,float current)
-    {   updateMem(sp.hitTime,sp.sp.act==1?current:-current);
-        if (doSpike())
-        {   return fireFrom(sp.hitTime);
-        }
-        else 
-            return 0;
-    }
-
-    /** Boolean.. determines whether to spike */
-    @Override
-    public boolean doSpike(){
-        return Math.abs(vmem)>(glob.useGlobalThresh?glob.getThresh():thresh); 
-    }
-    
-
-    @Override
-    public int fireFrom(int time) 
-    {
-        boolean dir=vmem>0;
-        
-        if (glob.resetAfterFire)
-                resetmem();
-        
-//        state=getState(time)+1;
-        tlast=time;
-        
-        return dir?1:-1;
-    }
-        
 
 }

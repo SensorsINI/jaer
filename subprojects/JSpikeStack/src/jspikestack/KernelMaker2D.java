@@ -5,8 +5,7 @@
 package jspikestack;
 
 import java.awt.Dimension;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.text.DecimalFormat;
 import java.util.Random;
 import java.util.logging.Level;
@@ -22,7 +21,9 @@ public class KernelMaker2D {
     
     public enum Types{Gaussian,MexiHat,Hori,Vert};    
     
-    public enum KernelClass {GAUSSIAN,MEXIHAT,DIFFGAUSSIAN,PARABOLA,FLAT,RANDOM};
+    public enum KernelClass {GAUSSIAN,MEXIHAT,DIFFGAUSSIAN,EXPONENTIAL,PARABOLA,FLAT,RANDOM};
+    
+    public enum Scaling {FitToRange,FitAboutZero}
     
     
     public static KernelPair[] kernPairs=new KernelPair[]{
@@ -32,6 +33,7 @@ public class KernelMaker2D {
         new KernelPair(KernelClass.PARABOLA,Parabola.class),    
         new KernelPair(KernelClass.FLAT,Flat.class),    
         new KernelPair(KernelClass.RANDOM,RandomKern.class),    
+        new KernelPair(KernelClass.EXPONENTIAL,Exponential.class),  
     };
     
     
@@ -66,14 +68,37 @@ public class KernelMaker2D {
         
         public <T extends Computable> T copy()
         {
-            throw new UnsupportedOperationException("Not supported yet!");
-//            try {
-//                ObjectOutputStream out=out = new ObjectOutputStream(this);
-//                return (T) this
-//            } catch (CloneNotSupportedException ex) {
-//                Logger.getLogger(KernelMaker2D.class.getName()).log(Level.SEVERE, null, ex);
-//                return null;
-//            }
+            ObjectOutputStream out = null;
+            ObjectInputStream in = null;
+            T copy = null;
+            try {
+                // write the object
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                out = new ObjectOutputStream(baos);
+                out.writeObject(this);
+                out.flush();
+
+                // read in the copy
+                byte data[] = baos.toByteArray();
+                ByteArrayInputStream bais = new ByteArrayInputStream(data);
+                in = new ObjectInputStream(bais);
+                copy = (T) in.readObject();
+                
+                out.close();
+                in.close();
+                
+                
+            }catch (IOException ex){
+                ex.printStackTrace();
+            
+            }catch (ClassNotFoundException ex){
+                ex.printStackTrace();
+            
+            } finally {
+                
+            }
+            return copy;
+            
         }
         
     }
@@ -101,19 +126,22 @@ public class KernelMaker2D {
     
     public static class MexiHat  extends Computable
     {
-        public float mag1=2;
-        public float mag2=1;
-        public float majorWidth1=2;
-        public float minorWidth1=2;
-        public float majorWidth2=4;
-        public float minorWidth2=4;
+        public float mag=2;
+        public float ratio=2;
+        public float majorWidth=2;              // How long is the surround gaussian?
+        public float squeezeFactorCenter=1;     // How squeezed is center?
+        public float ratioCenterSurround=2;     // How big is surround compared to center?
+        public float squeezeFactorSurround=1;   // How squeezed is surround
         public float angle;
         
         
         @Override
         public float val(float i, float j) {
-            Gaussian g1=new Gaussian(mag1, getMajorWidth1(), getMinorWidth1(),angle);
-            Gaussian g2=new Gaussian(getMag2(), getMajorWidth2(), getMinorWidth2(),angle);     
+            
+            
+            
+            Gaussian g1=new Gaussian(mag, majorWidth/ratioCenterSurround, squeezeFactorCenter, angle);
+            Gaussian g2=new Gaussian(mag/ratio, majorWidth, squeezeFactorSurround, angle);     
             return g1.val(i,j)-g2.val(i,j);
                     
         }
@@ -123,52 +151,71 @@ public class KernelMaker2D {
             return "Mexican Hat Kernel";
         }
 
-        public float getMag2() {
-            return mag2;
+        public float getMag() {
+            return mag;
         }
 
-        public void setMag2(float mag2) {
-            this.mag2 = mag2;
+        public void setMag(float mag) {
+            this.mag = mag;
         }
 
-        public float getMajorWidth1() {
-            return majorWidth1;
+        public float getRatio() {
+            return ratio;
         }
 
-        public void setMajorWidth1(float majorWidth1) {
-            this.majorWidth1 = majorWidth1;
+        public void setRatio(float ratio) {
+            this.ratio = ratio;
         }
 
-        public float getMinorWidth1() {
-            return minorWidth1;
+        public float getMajorWidth() {
+            return majorWidth;
         }
 
-        public void setMinorWidth1(float minorWidth1) {
-            this.minorWidth1 = minorWidth1;
+        public void setMajorWidth(float majorWidth) {
+            this.majorWidth = majorWidth;
         }
 
-        public float getMajorWidth2() {
-            return majorWidth2;
+        public float getSqueezeFactorCenter() {
+            return squeezeFactorCenter;
         }
 
-        public void setMajorWidth2(float majorWidth2) {
-            this.majorWidth2 = majorWidth2;
+        public void setSqueezeFactorCenter(float squeezeFactorCenter) {
+            this.squeezeFactorCenter = squeezeFactorCenter;
         }
 
-        public float getMinorWidth2() {
-            return minorWidth2;
+        public float getRatioCenterSurround() {
+            return ratioCenterSurround;
         }
 
-        public void setMinorWidth2(float minorWidth2) {
-            this.minorWidth2 = minorWidth2;
+        public void setRatioCenterSurround(float ratioCenterSurround) {
+            this.ratioCenterSurround = ratioCenterSurround;
         }
+
+        public float getSqueezeFactorSurround() {
+            return squeezeFactorSurround;
+        }
+
+        public void setSqueezeFactorSurround(float squeezeFactorSurround) {
+            this.squeezeFactorSurround = squeezeFactorSurround;
+        }
+
+        public float getAngle() {
+            return angle;
+        }
+
+        public void setAngle(float angle) {
+            this.angle = angle;
+        }
+
+
+
     }
     
     /** Difference of two Gaussians.  The Gaussians are spaced apart by "minorWidth". */
     public static class DiffGaussian extends Computable
     {
         public float majorWidth=4;
-        public float minorWidth=2;
+        public float squeezeFactor=2;
         public float spaceFactor=1; // How widely spaced are the points
         public float angle=0;
         public float mag=1;
@@ -183,13 +230,15 @@ public class KernelMaker2D {
             
             float ang=(float)(angle*Math.PI/180);
             
+            float minorWidth=majorWidth/squeezeFactor;
+            
             float xoff=(float)-Math.sin(ang)*minorWidth*spaceFactor/2;
             float yoff=(float)Math.cos(ang)*minorWidth*spaceFactor/2;
             
             
             
-            Gaussian g1=new Gaussian(mag, majorWidth, minorWidth,angle,xoff,yoff);  // Positive gaussian
-            Gaussian g2=new Gaussian(mag, majorWidth, minorWidth,angle,-xoff,-yoff);  // Negative gaussian
+            Gaussian g1=new Gaussian(mag, majorWidth, squeezeFactor,angle,xoff,yoff);  // Positive gaussian
+            Gaussian g2=new Gaussian(mag, majorWidth, squeezeFactor,angle,-xoff,-yoff);  // Negative gaussian
             return g1.val(i,j)-g2.val(i,j);
             
 //            return 1;
@@ -197,7 +246,7 @@ public class KernelMaker2D {
         }
 
         // Getters/setters
-        
+
         public float getMajorWidth() {
             return majorWidth;
         }
@@ -206,12 +255,12 @@ public class KernelMaker2D {
             this.majorWidth = majorWidth;
         }
 
-        public float getMinorWidth() {
-            return minorWidth;
+        public float getSqueezeFactor() {
+            return squeezeFactor;
         }
 
-        public void setMinorWidth(float minorWidth) {
-            this.minorWidth = minorWidth;
+        public void setSqueezeFactor(float squeezeFactor) {
+            this.squeezeFactor = squeezeFactor;
         }
 
         public float getSpaceFactor() {
@@ -273,11 +322,7 @@ public class KernelMaker2D {
         public void setStd(float std) {
             this.std = std;
         }
-        
-        
-        
-        
-        
+                
     }
     
     
@@ -322,8 +367,8 @@ public class KernelMaker2D {
     public static class Gaussian extends Computable
     {
         public float mag=1;
-        public float majorWidth=4;
-        public float minorWidth=2;
+        public float majorWidth=2;
+        public float squeezeFactor=1;
         public float angle=0;
         public float xoffset=0;
         public float yoffset=0;
@@ -340,15 +385,15 @@ public class KernelMaker2D {
         {   this(magnitude,majWidth,minWidth,0);
         }
         
-        public Gaussian(float magnitude,float majWidth,float minWidth,float ang){
+        public Gaussian(float magnitude,float majWidth,float squeeze,float ang){
             mag=magnitude;
             majorWidth=majWidth;
-            minorWidth=minWidth;
+            squeezeFactor=squeeze;
             angle=ang;
         }
         
-        public Gaussian(float magnitude,float majWidth,float minWidth,float ang,float xoff,float yoff){
-            this(magnitude,majWidth,minWidth,ang);
+        public Gaussian(float magnitude,float majWidth,float squeeze,float ang,float xoff,float yoff){
+            this(magnitude,majWidth,squeeze,ang);
             xoffset=xoff;
             yoffset=yoff;
         }
@@ -364,14 +409,19 @@ public class KernelMaker2D {
             double sin2a=Math.sin(2*ang);
             double sina=Math.sin(ang);
                         
-            double a=cosa*cosa/(2*majorWidth*majorWidth)+sina*sina/(2*minorWidth*minorWidth);
-            double b=+sin2a/(4*majorWidth*majorWidth)-sin2a/(4*minorWidth*minorWidth);
-            double c=sina*sina/(2*majorWidth*majorWidth)+cosa*cosa/(2*minorWidth*minorWidth);
+            
+            float majWidth=majorWidth/2;
+            float minorWidth=majWidth/squeezeFactor;
+            
+            
+            double a=cosa*cosa/(2*majWidth*majWidth)+sina*sina/(2*minorWidth*minorWidth);
+            double b=+sin2a/(4*majWidth*majWidth)-sin2a/(4*minorWidth*minorWidth);
+            double c=sina*sina/(2*majWidth*majWidth)+cosa*cosa/(2*minorWidth*minorWidth);
             
             x-=xoffset;
             y-=yoffset;
             
-            return getMag()*((float)Math.exp(-(a*x*x+b*x*y+c*y*y)));
+            return getMag()*((float)Math.exp(-(a*x*x+2*b*x*y+c*y*y)));
         }
 
         @Override
@@ -395,12 +445,12 @@ public class KernelMaker2D {
             this.majorWidth = majorWidth;
         }
 
-        public float getMinorWidth() {
-            return minorWidth;
+        public float getSqueezeFactor() {
+            return squeezeFactor;
         }
 
-        public void setMinorWidth(float minorWidth) {
-            this.minorWidth = minorWidth;
+        public void setSqueezeFactor(float squeezeFactor) {
+            this.squeezeFactor = squeezeFactor;
         }
 
         public float getAngle() {
@@ -426,8 +476,29 @@ public class KernelMaker2D {
         public void setYoffset(float yoffset) {
             this.yoffset = yoffset;
         }
+
     }
     
+    public static class Exponential extends Gaussian
+    {
+        @Override
+        public float val(float x, float y) {
+            
+            float gauss=super.val(x,y);
+            
+            boolean pos=mag>0;
+            
+            gauss=(float)Math.sqrt(pos?gauss:-gauss);
+            
+            gauss*=Math.sqrt(Math.abs(mag));
+            
+            gauss=pos?gauss:-gauss;
+            
+            return  gauss;
+            
+        }
+        
+    }
     
     
     
@@ -458,6 +529,23 @@ public class KernelMaker2D {
         }
 
     }
+    
+    /** See "Resistive Grid Image Filtering: Input/Output Analysis via the CNN framework */
+//    public static class RCgrid extends Computable
+//    {
+//        public float lambda;
+//        public float cap;
+//
+//        @Override
+//        float val(float i, float j) {
+//            throw new UnsupportedOperationException("Not supported yet.");
+//        }
+//
+//        @Override
+//        public String getName() {
+//            return "RC Grid";
+//        }        
+//    }
         
 //    public static float[][] makeKernel(Types t,int sizex,int sizey)
 //    {
@@ -494,6 +582,14 @@ public class KernelMaker2D {
         
         return kernel;
     }
+    
+    /** If a kernel has zeros along the edge, remove them (to save time) */
+    public static float removeZeroEdges()
+    {
+        throw new UnsupportedOperationException("Not supported yet");
+        
+    }
+    
     
     static float[][] transpose(float[][] w)
     {
@@ -533,6 +629,27 @@ public class KernelMaker2D {
         
     }
     
+    /** Center the kernel so that all it's element values add to zero.
+     */
+    public static void centerKernel(float[][] kern)
+    {
+        int k=0;
+        float mean=0;
+        for (int i=0; i<kern.length; i++)
+            for (int j=0; j<kern[i].length; j++)
+            {    mean+=kern[i][j];
+                k++;
+            }
+        
+        mean/=k;
+                
+        for (int i=0; i<kern.length; i++)
+            for (int j=0; j<kern[i].length; j++)
+                kern[i][j]-=mean;
+        
+        
+    }
+    
     public static float[][] copy(float[][] kern)
     {
         float[][] w=new float[kern.length][];
@@ -556,6 +673,11 @@ public class KernelMaker2D {
     
     public static void plot(float[][] w)
     {
+        plot(w,Scaling.FitAboutZero);
+    }
+    
+    public static void plot(float[][] w,Scaling scaling)
+    {
         ImageDisplay disp=ImageDisplay.createOpenGLCanvas();
         
         float max=Float.NEGATIVE_INFINITY;
@@ -567,6 +689,18 @@ public class KernelMaker2D {
             }
         
         max=Math.max(max,min+Float.MIN_VALUE);
+        
+        
+        max=Math.abs(max);
+        min=Math.abs(min);
+        float absmax=Math.max(min,max);
+        
+        if (scaling==Scaling.FitAboutZero)
+        {
+            
+            max=absmax;
+            min=-absmax;
+        }
         
         
         final DecimalFormat myFormatter = new DecimalFormat("0.###");
@@ -581,7 +715,14 @@ public class KernelMaker2D {
         
         for (int i=0; i<w.length; i++)
             for (int j=0; j<w[i].length; j++)
-                disp.setPixmapGray(j,i,(w[i][j]-min)/(max-min));    
+            {   float val=w[i][j];
+                if (val>0)
+                    disp.setPixmapRGB(j, i, val/absmax, 0, 0);
+                else
+                    disp.setPixmapRGB(j, i, 0, 0, -val/absmax);
+                
+            }
+//                disp.setPixmapGray(j,i,(w[i][j]-min)/(max-min));    
         
             
         JFrame frm=new JFrame();

@@ -4,15 +4,13 @@
  */
 package jspikestack;
 
-import java.awt.Component;
-import java.io.File;
+import java.io.*;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.ListIterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
-import javax.swing.JScrollPane;
 
 /**
  *
@@ -22,25 +20,25 @@ import javax.swing.JScrollPane;
  * 
  * @author Peter
  */
-public class NetController<AxonType extends Axon,LayerGlobalType extends Controllable,UnitGlobalType extends Controllable> {
+public class NetController<AxonType extends Axon,LayerGlobalType extends Controllable,UnitGlobalType extends Controllable> implements Serializable {
     
     public Network<AxonType> net;
     public UnitGlobalType unitGlobals;
-    public LayerGlobalType layerGlobals;
+    public LayerGlobalType axonGlobals;
     
     
-    public NetPlotter view;
+    transient public NetPlotter view;
     
-    public SpikeRecorder recorder;
+    transient public SpikeRecorder recorder;
     
-    public static enum AxonTypes {STP,STATIC,BINTHRESHNET,SPARSE,SPATIOTEMPORAL};
+    public static enum AxonTypes {STP,STATIC,SPARSE,SPATIOTEMPORAL};
     public static enum UnitTypes {LIF,ONOFFLIF,BINTHRESH}
     
     public boolean enable=true;
     
-    public Simulation sim=new Simulation();
+    public transient Simulation sim=new Simulation();
     
-    
+    public transient Controls controls;
     
     public NetController()
     {   this(AxonTypes.STP);        
@@ -85,10 +83,9 @@ public class NetController<AxonType extends Axon,LayerGlobalType extends Control
             case ONOFFLIF:                
                 unitFactory=new UnitOnOff.Factory();   
                 break;
-            case BINTHRESH:  
-                throw new UnsupportedOperationException("Not supported yet");                   
-//                unitFactory=new BinaryStochasticUnit.Factory();       
-//                break;                
+            case BINTHRESH:        
+                unitFactory=new UnitBinaryThresh.Factory();       
+                break;                
             default:
                 unitFactory=new UnitLIF.Factory();            
                 break;  
@@ -97,7 +94,7 @@ public class NetController<AxonType extends Axon,LayerGlobalType extends Control
         net=new Network(axonFactory,unitFactory);
         view=new NetPlotter(net);
         
-        layerGlobals = (LayerGlobalType) axonFactory.getGlobalControls();
+        axonGlobals = (LayerGlobalType) axonFactory.getGlobalControls();
         unitGlobals = (UnitGlobalType) unitFactory.getGlobalControls();  
         
         recorder=new SpikeRecorder(net);
@@ -123,7 +120,7 @@ public class NetController<AxonType extends Axon,LayerGlobalType extends Control
     
     public void setRecordingState(boolean state)
     {   
-                
+        
         recorder.setRecodingState(state);
     }
     
@@ -161,26 +158,27 @@ public class NetController<AxonType extends Axon,LayerGlobalType extends Control
     
     public ControlPanel makeControlPanel()
     {
-        ControlPanel cp=new ControlPanel();
-        
-        cp.addController(new Controls());
-//        cp.addController(net.getControls());
-        cp.addController(unitGlobals);
-        cp.addController(layerGlobals);
-        for (Axon l:net.getAxons())
-        {
-            cp.addController(l.getControls());
-        }
-        for (Layer l:net.getLayers())
-        {
-            cp.addController(l.getControls());
-        }
+        ControlPanel cp=new ControlPanel(getControls());
+//        cp.addController();
         return cp;
-    }
+        
+//        cp.addController(new SimulationControls());
+////        cp.addController(net.getControls());
+//        cp.addController(unitGlobals);
+//        cp.addController(layerGlobals);
+//        for (Axon l:net.getAxons())
+//        {
+//            cp.addController(l.getControls());
+//        }
+//        for (Layer l:net.getLayers())
+//        {
+//            cp.addController(l.getControls());
+//        }
+//        return cp;
+    }   
     
     
-    
-    public class Simulation{
+    public class Simulation implements Serializable{
         
         public boolean waitForInputs=false;     // True if network stops when input events run out
         public boolean controlledTime=true;      // True if simulation should run slower than max speed of CPU
@@ -287,13 +285,13 @@ public class NetController<AxonType extends Axon,LayerGlobalType extends Control
                         ListIterator<PSPInput> it=inputEvents.listIterator();
                         
                         int inputEventIndex=0;
-                        
+                        int plotIntervalMillis=30;
 
                         if (controlledTime)
                         {
                             view.realTime=true;
 
-                            int plotIntervalMillis=30;
+                            
                             int plotIntervalMicros=plotIntervalMillis*1000;
 
 
@@ -323,7 +321,7 @@ public class NetController<AxonType extends Axon,LayerGlobalType extends Control
                                     while(inputEventIndex<inputEvents.size() && inputEvents.get(inputEventIndex).hitTime<targetNetTime)
                                         net.addToQueue(inputEvents.get(inputEventIndex++));
                                 else
-                                {   netThread.interrupt();
+                                {   net.kill();
                                     break;
                                 }
                                 
@@ -339,10 +337,26 @@ public class NetController<AxonType extends Axon,LayerGlobalType extends Control
                         }
                         else
                         {
+                            for (PSPInput ev:inputEvents)
+                                net.addToQueue(ev);
+                            
                             view.realTime=false;
                             view.updateMicros=30000;
                             view.timeScale=timeScaling;     
                             net.liveMode=false;
+                            
+                            while(net.hasEvents())
+                            {
+                                try {
+                    //                System.out.println(sleepTime);
+                                    Thread.sleep(plotIntervalMillis);
+                                } catch (InterruptedException ex) {
+                                    Logger.getLogger(NetController.class.getName()).log(Level.SEVERE, null, ex);
+                                }                               
+                                
+                            }
+                            
+                            
                             net.eatEvents(finalTime);
                         }
                         
@@ -386,13 +400,18 @@ public class NetController<AxonType extends Axon,LayerGlobalType extends Control
                     enable=false;
 
                     try {
-                        this.wait();
+                        this.wait(); // Wait for simulation to notify us that it's ended
                     } catch (InterruptedException ex) {
                         Logger.getLogger(NetController.class.getName()).log(Level.SEVERE, null, ex);
                     }
 
 
                 }
+                
+                net.kill();
+                net.reset();
+                view.reset();
+                
             }
             
             
@@ -423,7 +442,179 @@ public class NetController<AxonType extends Axon,LayerGlobalType extends Control
     }
     
     
+    
+    public Controls getControls()
+    {
+        if (controls==null)
+            controls=new Controls();
+        return controls;
+    }
+    
+    
     public class Controls extends Controllable
+    {
+        
+        public void doSave()
+        {
+            saveState();
+        }
+        
+        public void doLoad()
+        {
+            loadState();
+        }
+
+        public boolean buildersEnabled=false;
+        
+        @Override
+        public String getName() {
+            return "Network Controls";
+        }
+        
+        @Override
+        public ArrayList<Controllable> getSubControllers()
+        {
+            ArrayList<Controllable> cp=new ArrayList();
+            cp.add(new SimulationControls());
+            
+            if (buildersEnabled)
+                cp.add(new BuilderControls());
+            
+    //        cp.addController(net.getControls());
+            cp.add(unitGlobals);
+            cp.add(axonGlobals);
+            for (Axon l:net.getAxons())
+                cp.add(l.getControls());
+            
+            for (Layer l:net.getLayers())
+                cp.add(l.getControls());
+            
+            return cp;
+        }        
+        
+    }
+    
+    public void updateControls()
+    {
+        controls.updateControl();
+    }
+    
+    public void updateControlsAndDisplay()
+    {
+        updateControls();
+        view.rebuild();
+    }
+    
+    
+    public class BuilderControls extends Controllable
+    {
+        Controllable layerBuilder;
+        Controllable axonBuilder;
+
+        @Override
+        public String getName() {
+            return "Building Controls";
+        }
+        
+        @Override
+        public ArrayList<Controllable> getSubControllers()
+        {
+            if (layerBuilder==null)
+                layerBuilder= new LayerAdder();
+            if (axonBuilder==null)
+                axonBuilder= new AxonAdder();
+            
+            ArrayList<Controllable> arr=new ArrayList();
+            
+            arr.add(layerBuilder);
+            arr.add(axonBuilder);
+            
+            return arr;
+        }   
+        
+        
+        public class LayerAdder extends Controllable
+        {
+            public int dimx;
+            public int dimy;
+
+            @Override
+            public String getName() {
+                return "Layer Builder";
+            }
+            
+            public void doAdd_Layer()
+            {
+                
+                if(getDimx()==0 || getDimy()==0)
+                {   showErrorMsg("Cannot add a layer where dimx or dimy are zero.");
+                    return;
+                }
+                    
+                net.addLayer(net.nLayers(), getDimx(), getDimy());
+                updateControlsAndDisplay();
+            }
+
+            public int getDimx() {
+                return dimx;
+            }
+
+            public void setDimx(int dimx) {
+                this.dimx = dimx;
+            }
+
+            public int getDimy() {
+                return dimy;
+            }
+
+            public void setDimy(int dimy) {
+                this.dimy = dimy;
+            }
+
+        }        
+        
+        public class AxonAdder extends Controllable
+        {
+            public int preLayer;
+            public int postLayer;
+
+            @Override
+            public String getName() {
+                return "Axon Builder";
+            }
+            
+            public void doAdd_Axon()
+            {
+                try
+                {   net.addAxon(getPreLayer(), getPostLayer());
+                }
+                catch(RuntimeException e)
+                {   showErrorMsg(e.getMessage());                    
+                }
+                updateControls();
+            }
+
+            public int getPreLayer() {
+                return preLayer;
+            }
+
+            public void setPreLayer(int preLayer) {
+                this.preLayer = preLayer;
+            }
+
+            public int getPostLayer() {
+                return postLayer;
+            }
+
+            public void setPostLayer(int postLayer) {
+                this.postLayer = postLayer;
+            }
+
+
+        }   
+    }
+    
+    public class SimulationControls extends Controllable
     {
 
         @Override
@@ -433,9 +624,7 @@ public class NetController<AxonType extends Axon,LayerGlobalType extends Control
 
         /** Stop the simulation */
         public void doSTOP()
-        {   net.enable=false;
-            enable=false;
-            
+        {   sim.kill();
         }
         
         public void doRerun()
@@ -450,9 +639,20 @@ public class NetController<AxonType extends Axon,LayerGlobalType extends Control
         }
         
         
+        public float getTimeScaling() {
+            return sim.timeScaling;
+        }
+
+        public void setTimeScaling(float timescaling) {
+            sim.timeScaling = timescaling;
+        }
+        
         
                 
     }
+    
+    
+    
     
     
     public enum Stats {FastWeights}
@@ -493,7 +693,110 @@ public class NetController<AxonType extends Axon,LayerGlobalType extends Control
     }
     
     
+    public void saveState()
+    {
+        
+        FileOutputStream fis=null;
+        ObjectOutputStream oos=null;
+        try {
+            JFileChooser fileChooser = new JFileChooser(System.getProperty("user.dir"));
+            int returnVal = fileChooser.showSaveDialog(null);
+                        
+            File file=fileChooser.getSelectedFile();
+            if (file==null)
+                return;
+            fis = new FileOutputStream(file);
+            
+            oos=new ObjectOutputStream(fis);
+            
+            oos.writeObject(this);
+            
+        } catch (IOException ex) {
+            Logger.getLogger(NetController.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                fis.close();
+            } catch (IOException ex) {
+                Logger.getLogger(NetController.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        
+              
+        
+    }
     
+    
+    
+    public void loadState()
+    {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setCurrentDirectory( new File( "./") );
+        if ( chooser.showSaveDialog( null ) != JFileChooser.APPROVE_OPTION )
+            return;
+        
+        File file=chooser.getSelectedFile();
+        
+        if (file==null)
+            return;
+        
+        
+        loadState(file);
+    
+    
+    }
+    
+    
+    public void loadState(File file)
+    {
+        this.sim.kill();
+        
+        try {
+            FileInputStream fileIn = new FileInputStream(file);
+            ObjectInputStream in = new ObjectInputStream(fileIn);
+            NetController nc = (NetController) in.readObject();
+            
+            copyStateFrom(nc);
+            
+            
+            fullReset();
+                        
+            
+            
+        } catch (IOException ex) {
+            Logger.getLogger(NetController.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (ClassNotFoundException ex) {
+            Logger.getLogger(NetController.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+    
+    
+    }
+    
+    
+    public void copyStateFrom(NetController nc)
+    {
+        
+        
+        this.net=nc.net;
+        nc.net.implementQueues();
+//        this.sim=nc.sim;
+        this.axonGlobals=(LayerGlobalType)nc.axonGlobals;
+        this.unitGlobals=(UnitGlobalType)nc.unitGlobals;
+        
+        this.controls=null;
+        
+        
+    }
+    
+    
+    public void fullReset()
+    {
+        this.view.rebuild(net);
+        this.addAllControls();
+        this.updateControlsAndDisplay();
+        
+        
+    }
     
     
     

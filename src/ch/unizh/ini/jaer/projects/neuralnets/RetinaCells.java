@@ -8,6 +8,7 @@ import jspikestack.KernelMaker2D;
 import jspikestack.NetController;
 import jspikestack.AxonSparse;
 import jspikestack.Network;
+import jspikestack.UnitLIF;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.PolarityEvent;
@@ -23,7 +24,7 @@ import net.sf.jaer.event.PolarityEvent;
  * 
  * @author Peter
  */
-public class RetinaCells extends SpikeFilter {
+public class RetinaCells extends SpikeFilter<AxonSparse,AxonSparse.Globals,UnitLIF.Globals,PolarityEvent> {
 
     public RetinaCells(AEChip chip)
     {   super(chip);
@@ -50,42 +51,59 @@ public class RetinaCells extends SpikeFilter {
     }
 
     @Override
-    public void customizeNet(Network net) {
+    public void customizeNet(Network<AxonSparse> net) {
         
-        Network.Initializer ini=new Network.Initializer();
+//        Network.Initializer ini=new Network.Initializer();
+//        ini.lay(0).dimx=ini.lay(0).dimy=128;    // ON layer
+//        ini.lay(1).dimx=ini.lay(1).dimy=128;    // OFF layer
+//        ini.lay(2).dimx=ini.lay(2).dimy=16;     // PV-5 layer
+//        ini.ax(0,2);
+//        ini.ax(1,2);
+//        net.buildFromInitializer(ini);
         
-        ini.lay(0).dimx=ini.lay(0).dimy=128;    // ON layer
-        ini.lay(1).dimx=ini.lay(1).dimy=128;    // OFF layer
-        ini.lay(2).dimx=ini.lay(2).dimy=16;     // PV-5 layer
-        ini.ax(0,2);
-        ini.ax(1,2);
-        
-        
-        
-        
-        net.buildFromInitializer(ini);
-        
-
-        net.lay(0).name="OFF cells";
-        net.lay(1).name="ON cells";
-        net.lay(2).name="PV5 cells";
-        
-//        float[][] on2pv5=KernelMaker2D.makeKernel(new KernelMaker2D.Gaussian(-.2f,40), 60, 60);
+        // See this method if you're interested in how this network is built.
+        nc=jspikestack.JspikeStack.grabRetinaNetwork();
         
         
-//        KernelMaker2D.plot(off2pv5);
+        this.setNet(nc);
         
-        updateOnKernel();
-        updateOffKernel();
-        
-        unitGlobs.tau=36000;
-        unitGlobs.tref=7000;
-        unitGlobs.useGlobalThresh=true;
-        unitGlobs.thresh=1.5f;
-        
-        axonGlobs.delay=0;
-        
-        net.lay(0).fireInputsTo=false;
+//        net.addLayer(0).initializeUnits(128, 128);
+//        net.addLayer(1).initializeUnits(128, 128);
+//        net.addLayer(2).initializeUnits(10,10);
+//        net.addLayer(3).initializeUnits(64, 64);
+//        net.addAxon(0,2);
+//        net.addAxon(1,2);
+//        
+//        
+//        net.lay(0).name="OFF cells";
+//        net.lay(1).name="ON cells";
+//        net.lay(2).name="PV5 cells";
+//        net.lay(3).name="OFF brisk";
+//        
+////        updateOnKernel();
+////        updateOffKernel();
+//        
+//        
+//        KernelMaker2D.Gaussian k02=new KernelMaker2D.Gaussian();
+//        k02.mag=.15f;
+//        k02.majorWidth=40;
+//        net.ax(0,2).setKernelControl(k02, 50, 50);
+//        
+//        KernelMaker2D.Gaussian k12=new KernelMaker2D.Gaussian();
+//        k12.mag=-.3f;
+//        k12.majorWidth=70;
+//        net.ax(1,2).setKernelControl(k12, 90, 90);
+//        
+//        
+//        unitGlobs.tau=36000;
+//        unitGlobs.tref=7000;
+//        unitGlobs.useGlobalThresh=true;
+//        unitGlobs.thresh=1.5f;
+//        
+//        axonGlobs.delay=0;
+//        
+//        net.lay(0).fireInputsTo=false;
+//        net.lay(1).fireInputsTo=false;
 //        net.inputCurrents=false;
         
         
@@ -98,60 +116,7 @@ public class RetinaCells extends SpikeFilter {
     }
     
     
-    public float offKernelMag=.15f;
-    public float offKernelWidth=40;    
-    public float onKernelMag=-.2f;
-    public float onKernelWidth=64;
-    
-    public void updateOnKernel()
-    {   if (net!=null)
-        {   int ksize=(int)(getOnKernelWidth()*1.5);
-            ((AxonSparse)net.ax(1,2)).defineKernel(KernelMaker2D.makeKernel(new KernelMaker2D.Gaussian(getOnKernelMag(), getOnKernelWidth()), ksize,ksize));
-        }
-    }
-    
-    public void updateOffKernel()
-    {   if (net!=null)
-        {   int ksize=(int)(getOffKernelWidth()*1.5);
-            ((AxonSparse)net.ax(0,2)).defineKernel(KernelMaker2D.makeKernel(new KernelMaker2D.Gaussian(getOffKernelMag(), getOffKernelWidth()), ksize,ksize));
-        }
-    }
-
-    public float getOffKernelMag() {
-        return offKernelMag;
-    }
-
-    public void setOffKernelMag(float offKernelMag) {
-        this.offKernelMag = offKernelMag;
-        updateOffKernel();
-    }
-
-    public float getOffKernelWidth() {
-        return offKernelWidth;
-    }
-
-    public void setOffKernelWidth(float offKernelWidth) {
-        this.offKernelWidth = offKernelWidth;
-        updateOffKernel();
-    }
-
-    public float getOnKernelMag() {
-        return onKernelMag;
-    }
-
-    public void setOnKernelMag(float onKernelMag) {
-        this.onKernelMag = onKernelMag;
-        updateOnKernel();
-    }
-
-    public float getOnKernelWidth() {
-        return onKernelWidth;
-    }
-
-    public void setOnKernelWidth(float onKernelWidth) {
-        this.onKernelWidth = onKernelWidth;
-        updateOnKernel();
-    }
+//    public float offKernelMag=.15f/
 
     
 }

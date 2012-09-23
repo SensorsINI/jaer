@@ -7,13 +7,15 @@ package jspikestack;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeSupport;
+import java.io.Serializable;
 import java.util.*;
+import javax.swing.JOptionPane;
 
 /**
  *
  * @author Peter, but most code stolen from Tobi's EventFilter
  */
-public abstract class Controllable {
+public abstract class Controllable implements Serializable {
     
     
     protected PropertyChangeSupport support = new PropertyChangeSupport(this);
@@ -28,7 +30,7 @@ public abstract class Controllable {
 
 //    EventListener listener=new EventListener() {};
     
-    ArrayList<ActionListener> listeners=new ArrayList();
+    transient ArrayList<ActionListener> listeners=new ArrayList();
     
 //    public SpikeStack net;
     
@@ -42,15 +44,28 @@ public abstract class Controllable {
     }
     
     
+    
+    
     public void addActionListener(ActionListener l)
     {
-        listeners.add(l);
         
+        getListeners().add(l);
+        
+    }
+    
+    public ArrayList<ActionListener> getListeners()
+    {
+        if (listeners==null)
+            listeners=new ArrayList();
+        
+        return listeners;
     }
     
     public void updateControl()
     {
-        for (ActionListener ac:listeners)
+        
+        
+        for (ActionListener ac:getListeners())
             ac.actionPerformed(new ActionEvent(this,0,"garbage"));
     }
     
@@ -68,6 +83,10 @@ public abstract class Controllable {
         return support;
     }
     
+    public void showErrorMsg(String text)
+    {
+        JOptionPane.showMessageDialog(null, text, "Error",JOptionPane.ERROR_MESSAGE);        
+    }
     
     public abstract String getName();
     

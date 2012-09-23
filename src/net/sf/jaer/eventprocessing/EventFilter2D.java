@@ -9,6 +9,10 @@
  */
 package net.sf.jaer.eventprocessing;
 
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.util.ArrayList;
+import javax.swing.JPanel;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
@@ -194,4 +198,71 @@ abstract public class EventFilter2D extends EventFilter {
             return "UpdateMessage source="+source+" packet="+packet+" timestamp="+timestamp;
         }
     }
+    
+    // <editor-fold defaultstate="collapsed" desc=" Peter's Bells & Whistles " >
+    
+    ArrayList<JPanel> customControls; // List of added controls
+    
+    ArrayList<Component> customDisplays=new ArrayList(); // List of added displays
+    
+    /** Add your own display to the display area */
+    public void addDisplay(Component disp)
+    {
+        customDisplays.add(disp);
+        
+        if (this.getChip().getAeViewer().globalized) 
+            this.getChip().getAeViewer().getJaerViewer().globalViewer.addDisplayWriter(disp);
+        else
+            this.getChip().getAeViewer().getImagePanel().add(disp,BorderLayout.EAST);
+    }
+    
+    /** Remove all displays that you added */
+    public void removeDisplays()
+    {
+        if (this.getChip().getAeViewer()==null)
+            return;
+        
+        if (this.getChip().getAeViewer().globalized) 
+            for (Component c:customDisplays)
+                this.getChip().getAeViewer().getJaerViewer().globalViewer.removeDisplay(c);
+        else 
+            for (Component c:customDisplays)
+              this.getChip().getAeViewer().getImagePanel().remove(c);
+    }
+        
+    /** Add a panel to the filter controls */
+    public void addControls(JPanel controls)
+    {
+//        this.getChip().getAeViewer().getJaerViewer().globalViewer.addControlsToFilter(controls, this);
+        
+        getControlPanel().addCustomControls(controls);
+        
+    }
+    
+    /** Remove all added controls */
+    public void removeControls()
+    {   FilterPanel p=getControlPanel();
+        if (p!=null)
+            p.removeCustomControls();
+    }
+    
+    /** Retrieves the control panel for this filter, allowing you to customize it */
+    private FilterPanel getControlPanel()
+    {
+        if((this.getChip().getAeViewer())==null)
+            return null;
+        
+        if (this.getChip().getAeViewer().globalized) //
+            return this.getChip().getAeViewer().getJaerViewer().globalViewer.procNet.getControlPanelFromFilter(this);
+        else // Backwards compatibility
+        {
+            if (this.getChip().getAeViewer().getFilterFrame()==null)
+                return null;
+            else
+                return this.getChip().getAeViewer().getFilterFrame().getFilterPanelForFilter(this);
+            
+        }
+    }
+    
+    // </editor-fold>
 }

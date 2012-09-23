@@ -146,14 +146,16 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
     
     
     /** Creates new form FilterPanel */
-    public ControlPanel() {
-        titledBorder = new TitledBorder("Network Controls");
-        titledBorder.getBorderInsets(this).set(1, 1, 1, 1);
-//        titledBorder.setBorder(BorderFactory.createLineBorder(Color.blue));
-//        normalBorder = BorderFactory.createLineBorder(Color.blue);
-        redLineBorder = BorderFactory.createLineBorder(Color.blue);
-        setBorder(titledBorder);
+    public ControlPanel(Controllable topLevel) {
+//        titledBorder = new TitledBorder("Network Controls");
+//        titledBorder.getBorderInsets(this).set(1, 1, 1, 1);
+////        titledBorder.setBorder(BorderFactory.createLineBorder(Color.blue));
+////        normalBorder = BorderFactory.createLineBorder(Color.blue);
+//        redLineBorder = BorderFactory.createLineBorder(Color.blue);
+//        setBorder(titledBorder);
         initComponents();
+        
+        addController(topLevel,this);
     }
 
 //    public GeneralController() {
@@ -222,35 +224,40 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 //    }
     
     
-    
-    void addController(Controllable filter)
-    {
-        addController(filter,this);
-        
-    }
-    
-    
-    
-    
+    /** Adds a top-level control */
+//    void addController(Controllable filter)
+//    {
+//        addController(filter,this);
+//        
+//    }
     
     
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
-    void addController(final Controllable filter,final JPanel hostPanel) {
+    void addController(final Controllable controllable,final JPanel hostPanel) {
 //        JPanel control = null;
 //        NetController filter = getControllable();
         
         hostPanel.setLayout(new javax.swing.BoxLayout(hostPanel, javax.swing.BoxLayout.Y_AXIS));
         
+        boolean topLevel=hostPanel==this;
         
         
+        if (topLevel) // Top-Level control
+        {   titledBorder = new TitledBorder(controllable.getName());
+            titledBorder.getBorderInsets(this).set(1, 1, 1, 1);
+    //        titledBorder.setBorder(BorderFactory.createLineBorder(Color.blue));
+    //        normalBorder = BorderFactory.createLineBorder(Color.blue);
+            redLineBorder = BorderFactory.createLineBorder(Color.blue);
+            setBorder(titledBorder);
         
+        }
         
-        setControllable(filter);
+        setControllable(controllable);
         try {
-            info = Introspector.getBeanInfo(filter.getClass());
+            info = Introspector.getBeanInfo(controllable.getClass());
             // TODO check if class is public, otherwise we can't access methods usually
             props = info.getPropertyDescriptors();
-            methods = filter.getClass().getMethods();
+            methods = controllable.getClass().getMethods();
             
             
             JPanel controla=new JPanel();
@@ -270,7 +277,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
                     JButton button = new JButton(m.getName().substring(2).replace('_', ' '));
                     button.setMargin(butInsets);
                     button.setFont(button.getFont().deriveFont(9f));
-                    final Controllable f = filter;
+                    final Controllable f = controllable;
                     final Method meth = m;
                     button.addActionListener(new ActionListener() {
 
@@ -363,17 +370,24 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
             // next add all other properties that we can handle
             // these must be saved and then sorted in case there are property groups defined.
 
-            String s=filter.getName();
-            final JPanel groupPanel = new JPanel();
-//            groupPanel.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-            groupPanel.setLayout(new BoxLayout(groupPanel,BoxLayout.Y_AXIS));
-            groupPanel.setName(s);
-            groupPanel.setBorder(new TitledBorder(s));
-//            groupPanel.setLayout(new GridLayout(0, 1));
-            groupContainerMap.put(s, groupPanel);
-            hostPanel.add(groupPanel);
-            groupPanel.add(controla);
-            controls.add(groupPanel); // visibility list
+            final JPanel groupPanel;
+            if (topLevel)
+            {   groupPanel=this;                
+            }  
+            else
+            {
+                String s=controllable.getName();
+                groupPanel = new JPanel();
+    //            groupPanel.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+                groupPanel.setLayout(new BoxLayout(groupPanel,BoxLayout.Y_AXIS));
+                groupPanel.setName(s);
+                groupPanel.setBorder(new TitledBorder(s));
+    //            groupPanel.setLayout(new GridLayout(0, 1));
+                groupContainerMap.put(s, groupPanel);
+                hostPanel.add(groupPanel);
+                groupPanel.add(controla);
+                controls.add(groupPanel); // visibility list
+            }
             
 
 //            if (getControllable().hasPropertyGroups()) {
@@ -423,7 +437,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
                     if (c == Integer.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
 
                         SliderParams params;
-                        if ((params = isSliderType(p, filter)) != null) {
+                        if ((params = isSliderType(p, controllable)) != null) {
                             control = new IntSliderControl(getControllable(), p.getName(), p.getWriteMethod(), p.getReadMethod(), params);
                         } else {
                             control = new IntControl(getControllable(), p.getName(), p.getWriteMethod(), p.getReadMethod());
@@ -431,7 +445,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 //                        myadd(control, name, inherited);
                     } else if (c == Float.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
                         SliderParams params;
-                        if ((params = isSliderType(p, filter)) != null) {
+                        if ((params = isSliderType(p, controllable)) != null) {
                             control = new FloatSliderControl(getControllable(), p.getName(), p.getWriteMethod(), p.getReadMethod(), params);
                         } else {
                             control = new FloatControl(getControllable(), p.getName(), p.getWriteMethod(), p.getReadMethod());
@@ -475,7 +489,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
                     }
 
                 } catch (Exception e) {
-                    log.warning(e + " caught on property " + p.getName() + " from EventFilter " + filter);
+                    log.warning(e + " caught on property " + p.getName() + " from EventFilter " + controllable);
                 }
                 if (control!=null)
                     groupPanel.add(control);
@@ -493,7 +507,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
                     for(JPanel s:subcontrols)
                         groupPanel.remove(s);
                     
-                    for (Controllable c:filter.getSubControllers())
+                    for (Controllable c:controllable.getSubControllers())
                     {
                         JPanel jp=new JPanel();
                         groupPanel.add(jp);
@@ -508,7 +522,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
             };
             
                         
-            filter.addActionListener(subrebuilder);
+            controllable.addActionListener(subrebuilder);
             
             subrebuilder.actionPerformed(null);
             
@@ -519,7 +533,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 //            groupContainerMap = null;
 //             sortedControls=null;
         } catch (Exception e) {
-            log.warning("on adding controls for EventFilter " + filter + " caught " + e);
+            log.warning("on adding controls for EventFilter " + controllable + " caught " + e);
             e.printStackTrace();
         }
         

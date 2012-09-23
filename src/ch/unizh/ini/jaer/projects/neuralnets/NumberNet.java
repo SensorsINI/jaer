@@ -15,7 +15,7 @@ import net.sf.jaer.event.PolarityEvent;
  * @author Peter
  */
 @Description("Implements a spiking Restricted Boltzmann Machine for handwritten digit recognition.")
-public class NumberNet extends SpikeFilter<AxonSTP> {
+public class NumberNet extends SpikeFilter<AxonSTP,AxonSTP.Globals,UnitLIF.Globals,PolarityEvent> {
 
 //    SpikeStack<STPLayer,Spike> net;
 //    
@@ -73,7 +73,7 @@ public class NumberNet extends SpikeFilter<AxonSTP> {
     @Override
     public void customizeNet(Network netw) {
         
-        this.buildFromXML();
+        this.buildFromXML("RBM 784-500-500-10 MNIST trained.xml");
 //        if (!net.isBuilt())
 //            return;
         
@@ -110,10 +110,10 @@ public class NumberNet extends SpikeFilter<AxonSTP> {
 //            
 //        
         ((AxonSTP)net.ax(1,2)).setEnableFastSTDP(false);
-        nc.layerGlobals.fastSTDP.plusStrength=-.001f;
-        nc.layerGlobals.fastSTDP.minusStrength=-.001f;   
-        nc.layerGlobals.fastSTDP.stdpTCminus=10;
-        nc.layerGlobals.fastSTDP.stdpTCplus=10;
+        axonGlobs.fastSTDP.plusStrength=-.001f;
+        axonGlobs.fastSTDP.minusStrength=-.001f;   
+        axonGlobs.fastSTDP.stdpTCminus=10;
+        axonGlobs.fastSTDP.stdpTCplus=10;
 //        
 //        net.plot.timeScale=1f;
 //        

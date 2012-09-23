@@ -11,11 +11,9 @@ import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
-import jspikestack.AxonSparse;
 import jspikestack.EngineeringFormat;
 import jspikestack.KernelMaker2D;
 import jspikestack.KernelMaker2D.FloatConnection;
-import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -40,13 +38,11 @@ import net.sf.jaer.graphics.ImageDisplay;
  * 
  * @author Peter
  */
-@Description("Reconstructs an Estimation of the Background Light level based on the streams of input events.")
-public class SlowResponse extends EventFilter2D {
+public class RCgridFilter extends MultiSourceProcessor {
     
     int dimx;
     int dimy;
     
-    private float contrast=1;
     
     ImageDisplay im;
     
@@ -54,28 +50,20 @@ public class SlowResponse extends EventFilter2D {
     public float[] state2;
     public int[] lastUpdateTime;
     
-    private boolean applyLateralKernel=true;
-    private boolean applyForwardKernel=false;
+    private boolean doSmoothing=true;
     
-    public LoneKernelController forwardKernelControl;
-    public LoneKernelController lateralKernelControl;
     
-//    private float smoothingFactor=0.5f;
+    private float smoothingFactor=0.5f;
     
-    private boolean built=false;
-    
-//    private int kernelWidth=3;
+    private int kernelWidth=3;
     
     private float timeConst= getFloat("timeConst", 500000);
-    
-    AxonSparse.KernelController kernelControl;
     
     
     DataOutputStream dos;
     public boolean recordToFile;
         
-    float[][] fwdKernel;
-    int[][] fwdTargets;
+    
     float[][] autoKernel;
     int[][] autoTargets;
         
@@ -97,6 +85,11 @@ public class SlowResponse extends EventFilter2D {
     public void updateEpscScale()
     {   epscDecayRate=1/timeConst;        
     }
+
+    @Override
+    public String[] getInputNames() {
+        return new String[] {"retina"};
+    }
     
     public void updateState(int toTime)
     {
@@ -105,7 +98,7 @@ public class SlowResponse extends EventFilter2D {
             updateState(toTime,i);
         }       
         
-        if (isApplyLateralKernel())
+        if (isDoSmoothing())
         {
             KernelMaker2D.weightMult(state1, autoKernel, autoTargets, state2);
             
@@ -126,29 +119,14 @@ public class SlowResponse extends EventFilter2D {
     
     public void fireEventToUnit(PolarityEvent evin)
     {
-        // Old system: Fire directly to unit
-        if(applyForwardKernel)
-        {
-            int ix=evin.y+dimy*evin.x;        
-            for (int i=0; i<fwdTargets[ix].length;i++)
-            {   updateState(evin.timestamp,fwdTargets[ix][i]);
-                state1[ix]+=evin.getPolarity()==PolarityEvent.Polarity.On?fwdKernel[ix][i]:-fwdKernel[ix][i];
-            }
-        }
-        else
-        {
-            int addr=dim2addr(evin.x,evin.y);
-            updateState(evin.timestamp,addr);
-//            state1[addr]+=evin.getPolarity()==PolarityEvent.Polarity.On?epscDecayRate:-epscDecayRate;
-            state1[addr]+=evin.getPolarity()==PolarityEvent.Polarity.On?1:-1;
-        }
-        // New System: Fire through kernel.
+        int addr=dim2addr(evin.x,evin.y);
+        updateState(evin.timestamp,addr);
         
-        
+        state1[addr]+=evin.getPolarity()==PolarityEvent.Polarity.On?epscDecayRate:-epscDecayRate;
         
     }
                 
-    public SlowResponse(AEChip chip)
+    public RCgridFilter(AEChip chip)
     {   super(chip);
     
     
@@ -163,47 +141,41 @@ public class SlowResponse extends EventFilter2D {
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         
-        
-        
-       
-        // Check if Built
-        if (!isBuilt())
-            return in;
-        else if (!isTimeInitialized) // Check if initialized
+        if (!isTimeInitialized)
         {   if (in.isEmpty())
-                return in;     
+                return out;     
+        
+            build();
             initNeuronsOnTimeStamp(in.getFirstTimestamp());    
             isTimeInitialized=true;    
+                        
         }
         
-        
-        
-        // Fire Events
         for (Object ev:in)
-        {   fireEventToUnit((PolarityEvent)ev);
+        {
+            fireEventToUnit((PolarityEvent)ev);
         }
         
-//        if (in.isEmpty()) 
-//            return out;
+        if (in.isEmpty()) 
+            return out;
         
-           
-        // Update the state and display
+        
+        
+//        OutputEventIterator outItr=out.outputIterator();
+               
+        
         int time=in.getLastTimestamp();
+        
         updateState(time);
+        
         updateDisplay();
         
-        // If requested, write to file.
         if (recordToFile)
             this.writeCurrentFrame();
         
         
         return in;
         
-    }
-    
-    public boolean isBuilt()
-    {
-        return built;
     }
 
     @Override
@@ -218,7 +190,7 @@ public class SlowResponse extends EventFilter2D {
     
     public void doStartDisplay()
     {
-        build();
+        
         
         initDisplay();
         
@@ -238,96 +210,35 @@ public class SlowResponse extends EventFilter2D {
         lastUpdateTime=new int[nUnits];
                
         buildKernel();
-        
-        built=true;
-        
     }
     
     public void buildKernel()
     {
-        // Lateral Kernel
-        KernelMaker2D.Gaussian kern=new KernelMaker2D.Gaussian();
-        kern.majorWidth=1f;
-        if (lateralKernelControl==null)
-            lateralKernelControl=new LateralKernelController();
-        lateralKernelControl.setKernelControl(kern, 3, 3);
-        lateralKernelControl.doApply_Kernel();
-        this.addControls(lateralKernelControl.getControl());
+//        KernelMaker2D.Gaussian kern=new KernelMaker2D.Gaussian();
+//        kern.majorWidth=.5f;
+//        kern.minorWidth=.5f;
+//        float[][] ww=KernelMaker2D.makeKernel(kern, 3, 3);
+//        KernelMaker2D.normalizeKernel(ww);
         
-        // Forward Kernel
-        KernelMaker2D.MexiHat kernf=new KernelMaker2D.MexiHat();
-        kernf.mag=1;
-        kernf.ratio=3;
-        kernf.majorWidth=3;
-        if (forwardKernelControl==null)
-            forwardKernelControl=new ForwardKernelController();
-        forwardKernelControl.setKernelControl(kernf, 5, 5);
-        forwardKernelControl.doApply_Kernel();
-        this.addControls(forwardKernelControl.getControl());
-                       
         
-    }
-
-    public float getContrast() {
-        return contrast;
-    }
-
-    public void setContrast(float contrast) {
-        this.contrast = contrast;
-    }
-
-    public boolean isApplyForwardKernel() {
-        return applyForwardKernel;
-    }
-
-    public void setApplyForwardKernel(boolean applyForwardKernel) {
-        this.applyForwardKernel = applyForwardKernel;
-    }
-    
-    
-    
-    public class ForwardKernelController extends LoneKernelController
-    {
-
-        @Override
-        public void doApply_Kernel() {
-            float[][] ww=get2DKernel();
-//                KernelMaker2D.normalizeKernel(ww);
+        KernelMaker2D.Parabola kern=new KernelMaker2D.Parabola();
+        kern.mag=1;
+        kern.width=2;
+        float[][] ww=KernelMaker2D.makeKernel(kern, 3, 3);
+        KernelMaker2D.normalizeKernel(ww);
+        
+        
+        
+//        KernelMaker2D.plot(ww);
+        
+        FloatConnection conn=KernelMaker2D.invert(ww, dimx, dimy, dimx, dimy);
+        
+        autoKernel=conn.weights;
+        autoTargets=conn.targets;
                 
-                FloatConnection conn=KernelMaker2D.invert(ww, chip.getSizeX(), chip.getSizeY(), SlowResponse.this.dimx, SlowResponse.this.dimy);
-                                
-                fwdKernel=conn.weights;
-                fwdTargets=conn.targets;
-        }
-        
-        @Override
-        public String getName()
-        {   return "Forward Kernel";            
-        }
         
     }
     
-    
-    
-    public class LateralKernelController extends LoneKernelController
-    {
-
-        @Override
-        public void doApply_Kernel() {
-            float[][] ww=get2DKernel();
-                KernelMaker2D.normalizeKernel(ww);
-                
-                FloatConnection conn=KernelMaker2D.invert(ww, SlowResponse.this.dimx, SlowResponse.this.dimy, SlowResponse.this.dimx, SlowResponse.this.dimy);
-                                
-                autoKernel=conn.weights;
-                autoTargets=conn.targets;
-        }
-        
-        @Override
-        public String getName()
-        {   return "Lateral Kernel";            
-        }
-    }
     
     
     
@@ -370,14 +281,13 @@ public class SlowResponse extends EventFilter2D {
         float minAct=Float.MAX_VALUE;
         float maxAct=Float.MIN_VALUE;
         
-        float del=(displayMax-displayMin)/contrast;
-        float bottom=displayMin/contrast;
+        float del=displayMax-displayMin;
         
         for (int i=0; i<state1.length; i++)
         {
             
             float vmem=state1[i];
-            float level=(vmem-bottom)/del;
+            float level=(vmem-displayMin)/del;
             
             
             
@@ -499,31 +409,31 @@ public class SlowResponse extends EventFilter2D {
         
     
     
-    public boolean isApplyLateralKernel() {
-        return applyLateralKernel;
+    public boolean isDoSmoothing() {
+        return doSmoothing;
     }
 
-    public void setApplyLateralKernel(boolean doSmoothing) {
-        this.applyLateralKernel = doSmoothing;
+    public void setDoSmoothing(boolean doSmoothing) {
+        this.doSmoothing = doSmoothing;
     }
 
-//    public float getSmoothingFactor() {
-//        return smoothingFactor;
-//    }
-//
-//    public void setSmoothingFactor(float smoothingFactor) {
-//        this.smoothingFactor = smoothingFactor;
-//        buildKernel();
-//    }
+    public float getSmoothingFactor() {
+        return smoothingFactor;
+    }
 
-//    public int getKernelWidth() {
-//        return kernelWidth;
-//    }
-//
-//    public void setKernelWidth(int kernelWidth) {
-//        this.kernelWidth = kernelWidth;
-//        buildKernel();
-//    }
+    public void setSmoothingFactor(float smoothingFactor) {
+        this.smoothingFactor = smoothingFactor;
+        buildKernel();
+    }
+
+    public int getKernelWidth() {
+        return kernelWidth;
+    }
+
+    public void setKernelWidth(int kernelWidth) {
+        this.kernelWidth = kernelWidth;
+        buildKernel();
+    }
 
     public boolean isRecordToFile() {
         return recordToFile;

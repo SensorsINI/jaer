@@ -5746,7 +5746,14 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
 //            JMenu jm=new JMenu("Interface");
 //            buildInterfaceMenu(jm);
             
+            jt.add(viewMenu);
+            
+            jt.add(deviceMenu);
             jt.add(interfaceMenu);
+            jt.add(controlMenu);
+            jt.add(monSeqMenu);
+            
+            
             return jt;
         }
         

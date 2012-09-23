@@ -36,7 +36,11 @@ public class AERFile {
     
     protected MappedByteBuffer byteBuffer = null;
     
-    
+    public static ArrayList<PSPInput> getRetinaEvents()
+    {
+        
+        return getRetinaEvents(null);
+    }
     
     public static ArrayList<PSPInput> getRetinaEvents(String filename)
     {
@@ -79,6 +83,18 @@ public class AERFile {
            
         return out;
         
+    }
+    
+    public static void modifySpikes(ArrayList<PSPInput> spikes,ChangeRule ch)
+    {
+        for (int i=0; i<spikes.size(); i++)
+            spikes.set(i,ch.change(spikes.get(i)));
+        
+    }
+    
+    public interface ChangeRule
+    {
+        public PSPInput change(PSPInput in);
     }
     
     
