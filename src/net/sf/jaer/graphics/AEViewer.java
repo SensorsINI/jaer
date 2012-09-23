@@ -5832,6 +5832,11 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
      */
     public static Class hardwareInterface2chipClassName(HardwareInterface hw)
     {
+        if(hw==null) {
+            JOptionPane.showConfirmDialog(null, "null hardware, cannot find appropriate chip class", "null hardware", JOptionPane.WARNING_MESSAGE);
+            Logger.getAnonymousLogger().warning("null hardware, can't find chip class");
+            return null;
+        }
         
         if (hw.toString().contains("DVS128"))
             return ch.unizh.ini.jaer.chip.retina.DVS128.class;
