@@ -70,7 +70,7 @@ public class JspikeStack {
         
 //        retinaDemo();
         
-        binNet();
+//        binNet();
         
     }
     
