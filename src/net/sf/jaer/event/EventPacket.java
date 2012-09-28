@@ -61,17 +61,17 @@ from input iteration. These methods are used in FilterChain to limit processing 
 public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface<E>,*/ Cloneable, Iterable<E> {
     static Logger log=Logger.getLogger(EventPacket.class.getName());
     /** The time limiting Timer - this is command to JVM and will be shared by all filters on all viewers. */
-    private static TimeLimiter timeLimitTimer=new TimeLimiter();
+    public static TimeLimiter timeLimitTimer=new TimeLimiter();
     /** Default capacity in events for new EventPackets */
     public final int DEFAULT_INITIAL_CAPACITY=4096;
     private int capacity;
     /** the number of events eventList actually contains (0 to size-1) */
-    private int size=0;
+    public int size=0;
     private Class eventClass=null;
     /** Constructs new events for this packet. */
     protected Constructor eventConstructor=null;
     private E eventPrototype;
-    private transient E[] elementData;
+    public transient E[] elementData;
     private AEPacketRaw rawPacket=null;
     
     /** The modification system timestamp of the EventPacket in ns, from System.nanoTime(). Some hardware interfaces set this field 
@@ -245,12 +245,12 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return elementData[k];
 //        return eventList.get(k);
     }
-    private InItr inputIterator=null;
+    public InItr inputIterator=null;
 
     /** Returns after initializing the iterator over input events.
     @return an iterator that can iterate over the events.
      */
-    final public Iterator<E> inputIterator() {
+    public Iterator<E> inputIterator() {
         if(inputIterator==null) {
             inputIterator=new InItr();
         } else {
@@ -331,7 +331,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
             }
         }
     }
-    final private class InItr implements Iterator<E> {
+    public class InItr implements Iterator<E> {
         int cursor;
         boolean usingTimeout=timeLimitTimer.isEnabled();
 
@@ -339,7 +339,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
             reset();
         }
 
-        final public boolean hasNext() {
+        public boolean hasNext() {
             if(usingTimeout) {
                 return cursor<size&&!timeLimitTimer.isTimedOut();
             } else {
@@ -347,7 +347,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
             }
         }
 
-        final public E next() {
+        public E next() {
             return elementData[cursor++];
         }
 
@@ -597,7 +597,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     }
 
     /** Initializes and returns the iterator */
-    final public Iterator<E> iterator() {
+    public Iterator<E> iterator() {
         return inputIterator();
     }
 

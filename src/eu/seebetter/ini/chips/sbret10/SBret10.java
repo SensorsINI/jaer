@@ -10,6 +10,7 @@ import ch.unizh.ini.jaer.chip.retina.*;
 import com.sun.opengl.util.j2d.TextRenderer;
 import eu.seebetter.ini.chips.*;
 import eu.seebetter.ini.chips.config.*;
+import eu.seebetter.ini.chips.sbret10.ApsDvsEvent.SampleType;
 import eu.seebetter.ini.chips.sbret10.SBret10.SBret10Config.*;
 import eu.seebetter.ini.chips.seebetter20.SeeBetter20;
 import java.awt.event.ActionEvent;
@@ -57,11 +58,13 @@ import net.sf.jaer.biasgen.Pot.Type;
 import net.sf.jaer.biasgen.coarsefine.AddressedIPotCF;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceControlsCF;
+import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.RetinaRenderer;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.util.ParameterControlPanel;
 import net.sf.jaer.util.filter.LowpassFilter2d;
+import net.sf.jaer.util.jama.Matrix;
 
 /**
  * Describes  retina and its event extractor and bias generator.
@@ -123,7 +126,7 @@ public class SBret10 extends AETemporalConstastRetina {
     /** For ADC data, the data is defined by the ADC channel and whether it is the first ADC value from the scanner. */
     public static final int ADC_TYPE_MASK = 0x1000, ADC_DATA_MASK = 0x3ff, ADC_START_BIT = 0x1000, ADC_READCYCLE_MASK = 0x0C00; 
     public static final int MAX_ADC = (int) ((1 << 10) - 1);
-    private FrameEventPacket frameEventPacket = new FrameEventPacket(PolarityADCSampleEvent.class);
+    private ApsDvsEventPacket apsDvsEventPacket = new ApsDvsEventPacket(ApsDvsEvent.class);
     private SBret10DisplayMethod sbretDisplayMethod = null;
     private boolean displayIntensity;
     private int exposureB;
@@ -140,7 +143,7 @@ public class SBret10 extends AETemporalConstastRetina {
     /** Creates a new instance of cDVSTest20.  */
     public SBret10() {
         setName("SBret10");
-        setEventClass(PolarityADCSampleEvent.class);
+        setEventClass(ApsDvsEvent.class);
         setSizeX(EntirePixelArray.width*EntirePixelArray.pitch);
         setSizeY(EntirePixelArray.height*EntirePixelArray.pitch);
         setNumCellTypes(3); // two are polarity and last is intensity
@@ -259,7 +262,7 @@ public class SBret10 extends AETemporalConstastRetina {
         @Override
         synchronized public EventPacket extractPacket(AEPacketRaw in) {
             if (out == null) {
-                out = new FrameEventPacket(chip.getEventClass());
+                out = new ApsDvsEventPacket(chip.getEventClass());
             } else {
                 out.clear();
             }
@@ -281,31 +284,31 @@ public class SBret10 extends AETemporalConstastRetina {
 
                 if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_EVENT) {
                     if(!ignore){
-                        PolarityADCSampleEvent e = (PolarityADCSampleEvent) outItr.nextOutput();
+                        ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
                         e.adcSample = -1; // TODO hack to mark as not an ADC sample
                         e.startOfFrame = false;
                         e.address = data;
                         e.timestamp = (timestamps[i]);
-                        e.polarity = (data & 1) == 1 ? PolarityADCSampleEvent.Polarity.On : PolarityADCSampleEvent.Polarity.Off;
+                        e.polarity = (data & 1) == 1 ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
                         e.x = (short) (chip.getSizeX()-1-((data & XMASK) >>> XSHIFT));
                         e.y = (short) ((data & YMASK) >>> YSHIFT); 
                         //System.out.println(data);
                     } 
                 } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
 
-                    PolarityADCSampleEvent e = (PolarityADCSampleEvent) outItr.nextOutput();
+                    ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
                     e.adcSample = data & ADC_DATA_MASK;
                     int sampleType = (data & ADC_READCYCLE_MASK)>>Integer.numberOfTrailingZeros(ADC_READCYCLE_MASK);
                     switch(sampleType){
                         case 0:
-                            e.readoutType = PolarityADCSampleEvent.Type.A;
+                            e.readoutType = ApsDvsEvent.SampleType.A;
                             break;
                         case 1:
-                            e.readoutType = PolarityADCSampleEvent.Type.B;
+                            e.readoutType = ApsDvsEvent.SampleType.B;
                             //log.info("got B event");
                             break;
                         case 2:
-                            e.readoutType = PolarityADCSampleEvent.Type.C;
+                            e.readoutType = ApsDvsEvent.SampleType.C;
                             //log.info("got C event");
                             break;
                         case 3:
@@ -349,7 +352,10 @@ public class SBret10 extends AETemporalConstastRetina {
                     if(((config.useC.isSet() && e.isC()) || (!config.useC.isSet() && e.isB()))  && e.x == (short)(chip.getSizeX()-1) && e.y == (short)(chip.getSizeY()-1)){
                         lastADCevent();
                     }
-                    //System.out.println("New ADC event: type "+sampleType+", x "+e.x+", y "+e.y);
+                    //if(e.x<0 || e.y<0)System.out.println("New ADC event: type "+sampleType+", x "+e.x+", y "+e.y);
+                    if(e.x>0 && e.y>0 && displayIntensity && !getAeViewer().isPaused()){
+                        frameData.putApsEvent(e);
+                    }
                 }
 
             }
@@ -1513,35 +1519,7 @@ public class SBret10 extends AETemporalConstastRetina {
     }
 
     public IntensityFrameData getFrameData() {
-        return frameEventPacket.getFrameData();
-    }
-
-    /** Extends EventPacket to add the log intensity frame data */
-    public class FrameEventPacket extends EventPacket {
-
-        public FrameEventPacket(Class eventClass) {
-            super(eventClass);
-        }
-
-        /**
-         * @return the frameData
-         */
-        public IntensityFrameData getFrameData() {
-            return frameData;
-        }
-
-        @Override
-        public boolean isEmpty() {
-            if (!frameData.isNewData() && super.isEmpty()) {
-                return true;
-            }
-            return false;
-        }
-
-        @Override
-        public String toString() {
-            return "FrameEventPacket{" + "frameData=" + frameData + " " + super.toString() + '}';
-        }
+        return frameData;
     }
 
     /**
@@ -1616,8 +1594,8 @@ public class SBret10 extends AETemporalConstastRetina {
                 return;
             }
             this.packet = packet;
-            if (packet.getEventClass() != PolarityADCSampleEvent.class) {
-                log.warning("wrong input event class, got " + packet.getEventClass() + " but we need to have " + PolarityADCSampleEvent.class);
+            if (packet.getEventClass() != ApsDvsEvent.class) {
+                log.warning("wrong input event class, got " + packet.getEventClass() + " but we need to have " + ApsDvsEvent.class);
                 return;
             }
             float[] pm = getPixmapArray();
@@ -1626,25 +1604,17 @@ public class SBret10 extends AETemporalConstastRetina {
             if (!accumulateEnabled) {
                 resetFrame(.5f);
             }
-            //String eventData = "NULL";
-            boolean putADCData=displayIntensity && !getAeViewer().isPaused(); // don't keep reputting the ADC data into buffer when paused and rendering packet over and over again
+            
             String event = "";
             try {
                 step = 1f / (colorScale);
                 for (Object obj : packet) {
-                    PolarityADCSampleEvent e = (PolarityADCSampleEvent) obj;
+                    ApsDvsEvent e = (ApsDvsEvent) obj;
                     //eventData = "address:"+Integer.toBinaryString(e.address)+"( x: "+Integer.toString(e.x)+", y: "+Integer.toString(e.y)+"), data "+Integer.toBinaryString(e.adcSample)+" ("+Integer.toString(e.adcSample)+")";
                     //System.out.println("Event: "+eventData);
-                    if (putADCData && e.isAdcSample()) { // hack to detect ADC sample events
-                        // ADC 'event'
-                        frameData.putEvent(e);
-                        //log.info("put "+e.toString());
-                    } else if (!e.isAdcSample()) {   
+                    if (!e.isAdcSample()) {   
                         // real AER event                        
                         int type = e.getType();
-                        if(frameData.useDVSExtrapolation){
-                            frameData.updateDVScalib(e.x, e.y, type==0);
-                        }
                         if(displayLogIntensityChangeEvents){
                             if (xsel >= 0 && ysel >= 0) { // find correct mouse pixel interpretation to make sounds for large pixels
                                 int xs = xsel, ys = ysel;
@@ -1662,15 +1632,18 @@ public class SBret10 extends AETemporalConstastRetina {
                                     break;
                             }
                         }
+                        if(frameData.useDVSExtrapolation){
+                            frameData.putDvsEvent(e);
+                        }
                     }
                 }
                 if (displayIntensity) {
-                    int minADC = Integer.MAX_VALUE;
-                    int maxADC = Integer.MIN_VALUE;
+                    double minADC = Integer.MAX_VALUE;
+                    double maxADC = Integer.MIN_VALUE;
                     for (int y = 0; y < EntirePixelArray.height; y++) {
                         for (int x = 0; x < EntirePixelArray.width; x++) {
                             //event = "ADC x "+x+", y "+y;
-                            int count = frameData.get(x, y);
+                            double count = frameData.get(x, y);
                             if (agcEnabled) {
                                 if (count < minADC) {
                                     minADC = count;
@@ -1678,13 +1651,13 @@ public class SBret10 extends AETemporalConstastRetina {
                                     maxADC = count;
                                 }
                             }
-                            float v = adc01normalized(count);
+                            float v = (float)adc01normalized(count);
                             float[] vv = {v, v, v};
                             changePixel(x, y, pm, vv, 1);
                         }
                     }
                     if (agcEnabled && (minADC > 0 && maxADC > 0)) { // don't adapt to first frame which is all zeros
-                        Float filter2d = agcFilter.filter2d(minADC, maxADC, frameData.getTimestamp());
+                        Float filter2d = agcFilter.filter2d((float)minADC, (float)maxADC, frameData.getTimestamp());
 //                        System.out.println("agc minmax=" + filter2d + " minADC=" + minADC + " maxADC=" + maxADC);
                         getSupport().firePropertyChange(AGC_VALUES, null, filter2d); // inform listeners (GUI) of new AGC min/max filterd log intensity values
                     }
@@ -1735,8 +1708,8 @@ public class SBret10 extends AETemporalConstastRetina {
             return cDVSChip.isDisplayIntensity();
         }
 
-        private float adc01normalized(int count) {
-            float v;
+        private double adc01normalized(double count) {
+            double v;
             if (!agcEnabled) {
                 v = (float) (apsIntensityGain*count+apsIntensityOffset) / (float) MAX_ADC;
             } else {
@@ -1864,7 +1837,7 @@ public class SBret10 extends AETemporalConstastRetina {
      * 
      * @author Tobi
      */
-    public static enum Read{A, B, C, DIFF_B, DIFF_C, HDR, LOG_HDR};
+    public static enum Read{A, B, C, DIFF_B, DIFF_C, HDR};
     
     public class IntensityFrameData {
 
@@ -1872,52 +1845,42 @@ public class SBret10 extends AETemporalConstastRetina {
         public final int WIDTH = EntirePixelArray.width, HEIGHT = EntirePixelArray.height; // width is BDVS pixels not scanner registers
         private final int NUMSAMPLES = WIDTH * HEIGHT;
         private int timestamp = 0; // timestamp of starting sample
-        private float[] data = new float[NUMSAMPLES];
-        private float[] bDiffData = new float[NUMSAMPLES];
-        private float[] cDiffData = new float[NUMSAMPLES];
-        private float[] hdrData = new float[NUMSAMPLES];
-        private float[] oldData = new float[NUMSAMPLES];
-        private float[] displayData = new float[NUMSAMPLES];
-        private float[] onCalib = new float[NUMSAMPLES];
-        private float[] offCalib = new float[NUMSAMPLES];
-        private float onGain = 0f;
-        private float offGain = 0f;
-        private int[] onCount = new int[NUMSAMPLES];
-        private int[] offCount = new int[NUMSAMPLES];
-        private int[] aData, bData, cData;
-        private float minC, maxC, maxB;
+        private float[] aBuffer,bBuffer,cBuffer;
+        private float[] displayBuffer, displayFrame,thisFrame, lastFrame;
         /** Readers should access the current reading buffer. */
-        private int writeCounterA = 0;
-        private int writeCounterB = 0;
         private boolean useDVSExtrapolation = getPrefs().getBoolean("useDVSExtrapolation", false);
         private boolean invertADCvalues = getPrefs().getBoolean("invertADCvalues", true); // true by default for log output which goes down with increasing intensity
         private Read displayRead = Read.DIFF_B;
+        private boolean[] polBuffer;
+        private int onCnt, polP;
+        private double ratio,scale;
+        private boolean fullBuffer;
         
         public IntensityFrameData() {
-            minC = Integer.MAX_VALUE;
-            maxB = 0;
-            maxC = 0;
-            aData = new int[NUMSAMPLES];
-            bData = new int[NUMSAMPLES];
-            cData = new int[NUMSAMPLES];
-            Arrays.fill(aData, 0);
-            Arrays.fill(bData, 0);
-            Arrays.fill(cData, 0);
-            Arrays.fill(hdrData, 0);
-            Arrays.fill(bDiffData, 0);
-            Arrays.fill(cDiffData, 0);
-            Arrays.fill(onCalib, 0);
-            Arrays.fill(offCalib, 0);
-            Arrays.fill(onCount, 0);
-            Arrays.fill(offCount, 0);
-            Arrays.fill(data, 0);
-            Arrays.fill(displayData, 0);
-            Arrays.fill(oldData, 0);
+            resetFrames();
         }
         
-        private int index(int x, int y){
-            final int idx = y + HEIGHT * x; 
-            return idx;
+        private void resetFrames(){
+            aBuffer = new float[WIDTH*HEIGHT];
+            bBuffer = new float[WIDTH*HEIGHT];
+            cBuffer = new float[WIDTH*HEIGHT];
+            displayFrame = new float[WIDTH*HEIGHT];
+            displayBuffer = new float[WIDTH*HEIGHT];
+            thisFrame = new float[WIDTH*HEIGHT];
+            lastFrame = new float[WIDTH*HEIGHT];
+            Arrays.fill(aBuffer, 0.0f);
+            Arrays.fill(bBuffer, 0.0f);
+            Arrays.fill(cBuffer, 0.0f);
+            Arrays.fill(displayFrame, 0.0f);
+            Arrays.fill(displayBuffer, 0.0f);
+            Arrays.fill(thisFrame, 0.0f);
+            Arrays.fill(lastFrame, 0.0f);
+            polBuffer = new boolean[100000];
+            polP = 0;
+            onCnt = 0;
+            ratio = 0.0f;
+            scale = 0.0f;
+            fullBuffer = false;
         }
 
         /** Gets the sample at a given pixel address (not scanner address) 
@@ -1926,167 +1889,107 @@ public class SBret10 extends AETemporalConstastRetina {
          * @param y pixel y from top of array on chip
          * @return  value from ADC
          */
-        private int outputData;
         
-        public int get(int x, int y) {
-            final int idx = index(x,y); // values are written by row for each column (row parallel readout in this chip, with columns addressed one by one)
+        public float get(int x, int y) {
+            return displayFrame[getIndex(x,y)];
+        }
+
+        private void putApsEvent(ApsDvsEvent e){
+            if(!e.isAdcSample()) return;
+            if(e.startOfFrame) {
+                setTimestamp(e.timestamp);
+            }
+            putNextSampleValue(e.adcSample, e.readoutType, e.x, e.y);
+        }
+        
+        private int getIndex(int x, int y){
+            return y*WIDTH+x;
+        }
+        
+        public void putDvsEvent(ApsDvsEvent e){
+            if(fullBuffer){
+                if(polBuffer[polP] && e.polarity == Polarity.Off){
+                    onCnt--;
+                    polBuffer[polP]=false;
+                }else if(!polBuffer[polP] && e.polarity == Polarity.On){
+                    onCnt++;
+                    polBuffer[polP]=true;
+                }
+            }else{
+                if(e.polarity == Polarity.On){
+                    onCnt++;
+                    polBuffer[polP]=true;
+                }else{
+                    polBuffer[polP]=false;
+                }
+            }
+            polP++;
+            if(polP>=polBuffer.length){
+                polP=0;
+                fullBuffer=true;
+            }
+        }
+        
+        private void putNextSampleValue(int val, SampleType type, int x, int y) {
+            int idx = getIndex(x,y);
+            switch(type){
+                case C: 
+                    cBuffer[idx] = val;
+                    break;
+                case B: 
+                    bBuffer[idx] = val;
+                    break;
+                case A:
+                default:
+                    aBuffer[idx] = val;
+                    break;
+            }
+            
+            boolean pushDisplay=false;
+            if(x==WIDTH-1 && y==HEIGHT-1)pushDisplay=true;
             switch (displayRead) {
                 case A:
-                    outputData = aData[idx];
+                    displayBuffer[idx] = aBuffer[idx];
+                    if(!(pushDisplay && type==SampleType.A))pushDisplay=false;
                     break;
                 case B:
-                    outputData = bData[idx];
+                    displayBuffer[idx] = bBuffer[idx];
+                    if(!(pushDisplay && type==SampleType.B))pushDisplay=false;
                     break;
                 case C:
-                    outputData = cData[idx];
+                    displayBuffer[idx] = cBuffer[idx];
+                    if(!(pushDisplay && type==SampleType.C))pushDisplay=false;
                     break;
                 case DIFF_B:
                 default:
-                    if(useDVSExtrapolation){
-                        outputData = (int)displayData[idx];
-                    }else{
-                        outputData = (int)bDiffData[idx];
-                    }
+                    displayBuffer[idx] = aBuffer[idx]-bBuffer[idx];
+                    if(!(pushDisplay && type==SampleType.B))pushDisplay=false;
                     break;
                 case DIFF_C:
-                    if(useDVSExtrapolation){
-                        outputData = (int)displayData[idx];
-                    }else{
-                        outputData = (int)cDiffData[idx];
-                    }
+                    displayBuffer[idx] = aBuffer[idx]-cBuffer[idx];
+                    if(!(pushDisplay && type==SampleType.C))pushDisplay=false;
                     break;
                 case HDR:
-                case LOG_HDR:
-                    if(useDVSExtrapolation){
-                        outputData = (int)displayData[idx];
-                    }else{
-                        outputData = (int)hdrData[idx];
-                    }
+                    displayBuffer[idx] = exposureB*Math.max((aBuffer[idx]-bBuffer[idx])/exposureB, (aBuffer[idx]-cBuffer[idx])/exposureC);
+                    if(!(pushDisplay && type==SampleType.C))pushDisplay=false;
                     break;
             }
             if (invertADCvalues) {
-                return MAX_ADC - outputData;
-            } else {
-                return outputData;
+                displayFrame[idx] = MAX_ADC-displayFrame[idx];
             }
-        }
-
-        private void putEvent(PolarityADCSampleEvent e) {
-            if(!e.isAdcSample()) return;
-            if(e.startOfFrame) {
-                resetWriteCounter();
-                setTimestamp(e.timestamp);
+            if(useDVSExtrapolation){
+                displayFrame[idx] = (float)Math.log(displayFrame[idx]);
             }
-            putNextSampleValue(e.adcSample, e.readoutType, index(e.x, e.y));
+            if(pushDisplay)pushDisplayFrame();
         }
         
-        private void putNextSampleValue(int val, PolarityADCSampleEvent.Type type, int index) {
-            float value = 0;
-            float valueB = 0;
-            switch(type){
-                case C: 
-                    if (index >= cData.length) {
-                    //log.info("buffer overflowed - missing start frame bit? index "+index);
-                        return;
-                    }
-                    if (index == NUMSAMPLES-1) {
-                        updateDVSintensities();
-                    }
-                    cData[index] = val;
-                    cDiffData[index] = aData[index]-cData[index];
-                    if(config.useC.isSet()){
-                        if(displayRead==Read.LOG_HDR){
-                            value = (float)Math.log(cDiffData[index]/exposureC);
-                            valueB = (float)Math.log(bDiffData[index]/exposureB);
-                        }else{
-                            value = cDiffData[index]/exposureC;
-                            valueB = bDiffData[index]/exposureB;
-                        }
-                        if(value<minC){
-                            minC = value;
-                        }
-                        if(value>maxC){
-                            maxC = value;
-                        }
-                        if(valueB > value){
-                            value = valueB;
-                        }
-//                       value = value + bDiffData[index]/(2*exposureB);
-                        hdrData[index]=MAX_ADC/(maxB-minC)*(value-minC);
-//                        if(maxC-(1000/exposureB) > value){
-//                            hdrData[index]=MAX_ADC/(maxB-minC)*(value-minC);
-//                        }else{
-//                            value = bDiffData[index]/exposureB;
-//                            hdrData[index]=MAX_ADC/(maxB-minC)*(value-minC);
-//                        }
-                    }
-                    break;
-                case B: 
-                    if (index >= bData.length) {
-        //            log.info("buffer overflowed - missing start frame bit?");
-                        return;
-                    }
-//                    if (index == NUMSAMPLES-1) {
-//                        updateDVSintensities();
-//                    }
-                    bData[index] = val;
-                    bDiffData[index] = aData[index]-bData[index];
-                    if(!config.useC.isSet()){
-                        data[index] = bDiffData[index];
-                    }
-                    if(config.useC.isSet()){
-                        if(displayRead==Read.LOG_HDR){
-                            value = (float)Math.log(bDiffData[index]/exposureB);
-                        }else{
-                            value = bDiffData[index]/exposureB;
-                        }
-                        if(value>maxB){
-                            maxB = value;
-                        }
-                    }
-                    break;
-                case A:
-                default:
-                    if (index >= aData.length) {
-        //            log.info("buffer overflowed - missing start frame bit?");
-                        return;
-                    }
-                    aData[index] = val;
-                    break;
+        private void pushDisplayFrame(){
+            if(useDVSExtrapolation){
+                lastFrame = thisFrame;
+                thisFrame = displayBuffer;
+                ratio = (float)onCnt/(float)(polBuffer.length-onCnt);
             }
-        }
-        
-        private void updateDVSintensities(){
-            float difference = 1;
-            for(int i = 0; i < NUMSAMPLES; i++){
-                difference = data[i]-oldData[i];
-                if(difference != 0){
-                    if(onCount[i] > 0 && oldData[i] > 0){
-                        onGain = (float)(99*onGain+((difference-Math.log(oldData[i])*offGain*offCount[i])/onCount[i]))/100;
-                    } else if(offCount[i] > 0 && oldData[i] > 0){
-                        offGain = (float)(99*offGain+((difference+Math.log(oldData[i])*onGain*onCount[i])/offCount[i]))/100;
-                    }
-                }
-            }
-            System.arraycopy(data, 0, displayData, 0, NUMSAMPLES);
-            System.arraycopy(data, 0, oldData, 0, NUMSAMPLES);
-            Arrays.fill(onCount, 0);
-            Arrays.fill(offCount, 0);
-        }
-        
-        public void updateDVScalib(int x, int y, boolean isOn){
-            final int idx = index(x,y);
-            if(isOn){
-                onCount[idx]++;
-                //System.out.println("On event - data: "+displayData[idx]+" + calib: "+onGain+" => "+onGain*Math.log(displayData[idx]));
-                displayData[idx] = (float)(displayData[idx]+onGain*Math.log(displayData[idx]));
-                //System.out.println("displayData: "+displayData[idx]);
-            } else {
-                offCount[idx]++;
-                //System.out.println("Off event - data: "+displayData[idx]+" + calib: "+offGain+" => "+onGain*Math.log(displayData[idx]));
-                displayData[idx] = (float)(displayData[idx]+offGain*Math.log(displayData[idx]));
-                //System.out.println("displayData: "+displayData[idx]);
-            }
+            displayFrame = displayBuffer;
         }
 
         /**
@@ -2118,23 +2021,6 @@ public class SBret10 extends AETemporalConstastRetina {
             this.useDVSExtrapolation = useDVSExtrapolation;
             getPrefs().putBoolean("useDVSExtrapolation", useDVSExtrapolation);
         }
-
-        private int getMean(int[] dataIn) {
-            int mean = 0;
-            for (int i = 0; i < dataIn.length; i++) {
-                mean += dataIn[i];
-            }
-            mean = mean / dataIn.length;
-            return mean;
-        }
-
-        private void subtractMean(int[] dataIn, int[] dataOut) {
-            int mean = getMean(dataIn);
-
-            for (int i = 0; i < dataOut.length; i++) {
-                dataOut[i] = dataIn[i] - mean;
-            }
-        }
         
         public void setDisplayRead(Read displayRead){
             this.displayRead = displayRead;
@@ -2165,52 +2051,7 @@ public class SBret10 extends AETemporalConstastRetina {
 
         @Override
         public String toString() {
-            return "IntensityFrameData{" + "WIDTH=" + WIDTH + ", HEIGHT=" + HEIGHT + ", NUMSAMPLES=" + NUMSAMPLES + ", timestamp=" + timestamp + ", writeCounter=" + writeCounterA + '}';
-        }
-
-        public void resetWriteCounter() {
-            minC = Integer.MAX_VALUE;
-            maxC = 0;
-            maxB = 0;
-            writeCounterA = 0;
-            writeCounterB = 0;
-        }
-        final String CALIB1_KEY = "IntensityFrameData.calibData1", CALIB2_KEY = "IntensityFrameData.calibData2";
-
-        private void putArray(int[] array, String key) {
-            if (array == null || key == null) {
-                log.warning("null array or key");
-                return;
-            }
-            try {
-                // Serialize to a byte array
-                ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                ObjectOutput out = new ObjectOutputStream(bos);
-                out.writeObject(array);
-                out.close();
-
-                // Get the bytes of the serialized object
-                byte[] buf = bos.toByteArray();
-                getPrefs().putByteArray(key, buf);
-            } catch (Exception e) {
-                log.warning(e.toString());
-            }
-
-        }
-
-        private int[] getArray(String key) {
-            int[] ret = null;
-            try {
-                byte[] bytes = getPrefs().getByteArray(key, null);
-                if (bytes != null) {
-                    ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
-                    ret = (int[]) in.readObject();
-                    in.close();
-                }
-            } catch (Exception e) {
-                log.warning(e.toString());
-            }
-            return ret;
+            return "IntensityFrameData{" + "WIDTH=" + WIDTH + ", HEIGHT=" + HEIGHT + ", NUMSAMPLES=" + NUMSAMPLES + ", timestamp=" + timestamp + '}';
         }
 
     }

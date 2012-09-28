@@ -317,7 +317,7 @@ public class SBret10DisplayControlPanel extends javax.swing.JPanel implements Pr
             }
         });
 
-        readComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "A", "B", "C", "Diff_B", "Diff_C", "HDR", "LOG-HDR" }));
+        readComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "A", "B", "C", "Diff_B", "Diff_C", "HDR" }));
         readComboBox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 readComboBoxActionPerformed(evt);

@@ -8,9 +8,9 @@ import net.sf.jaer.event.PolarityEvent;
  * so that it can be logged to files and played back here. It adds the ADC sample value.
  * This event has the usual timestamp in us.
  */
-public class PolarityADCSampleEvent extends PolarityEvent {
+public class ApsDvsEvent extends PolarityEvent {
 
-    public enum Type {A,B,C};
+    public enum SampleType {A,B,C};
     
     /** The ADC sample value. Has value -1 by convention for non-sample events. */
     protected int adcSample = 0;
@@ -19,9 +19,9 @@ public class PolarityADCSampleEvent extends PolarityEvent {
     protected boolean startOfFrame=false;
     
     /** This bit determines whether it is the first read (A) or the second read (B) of a pixel */
-    protected Type readoutType = Type.A;
+    protected SampleType readoutType = SampleType.A;
 
-    public PolarityADCSampleEvent() {
+    public ApsDvsEvent() {
     }
 
     /**
@@ -60,7 +60,7 @@ public class PolarityADCSampleEvent extends PolarityEvent {
 
     @Override
     public void copyFrom(BasicEvent src) {
-        PolarityADCSampleEvent e = (PolarityADCSampleEvent) src;
+        ApsDvsEvent e = (ApsDvsEvent) src;
         super.copyFrom(src);
         adcSample = e.getAdcSample();
         setStartOfFrame(e.isStartOfFrame());
@@ -75,14 +75,14 @@ public class PolarityADCSampleEvent extends PolarityEvent {
     }
     
     public boolean isA(){
-        return readoutType == Type.A;
+        return readoutType == SampleType.A;
     }
     
     public boolean isB(){
-        return readoutType == Type.B;
+        return readoutType == SampleType.B;
     }
     
     public boolean isC(){
-        return readoutType == Type.C;
+        return readoutType == SampleType.C;
     }
 }
