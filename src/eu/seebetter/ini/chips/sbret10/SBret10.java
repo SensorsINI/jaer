@@ -10,7 +10,7 @@ import ch.unizh.ini.jaer.chip.retina.*;
 import com.sun.opengl.util.j2d.TextRenderer;
 import eu.seebetter.ini.chips.*;
 import eu.seebetter.ini.chips.config.*;
-import eu.seebetter.ini.chips.sbret10.ApsDvsEvent.SampleType;
+import eu.seebetter.ini.chips.sbret10.ApsDvsEvent.ReadoutType;
 import eu.seebetter.ini.chips.sbret10.SBret10.SBret10Config.*;
 import eu.seebetter.ini.chips.seebetter20.SeeBetter20;
 import java.awt.event.ActionEvent;
@@ -138,7 +138,6 @@ public class SBret10 extends AETemporalConstastRetina {
     SBret10DisplayControlPanel displayControlPanel = null;
     private IntensityFrameData frameData = new IntensityFrameData();
     private SBret10Config config;
-    private EventPacket apsPacket;
 
     /** Creates a new instance of cDVSTest20.  */
     public SBret10() {
@@ -262,11 +261,9 @@ public class SBret10 extends AETemporalConstastRetina {
         @Override
         synchronized public EventPacket extractPacket(AEPacketRaw in) {
             if (out == null) {
-                out = new EventPacket(chip.getEventClass());
-                apsPacket = new EventPacket(chip.getEventClass());
+                out = new ApsDvsEventPacket(chip.getEventClass());
             } else {
                 out.clear();
-                apsPacket.clear();
             }
             if (in == null) {
                 return out;
@@ -276,7 +273,6 @@ public class SBret10 extends AETemporalConstastRetina {
             int[] datas = in.getAddresses();
             int[] timestamps = in.getTimestamps();
             OutputEventIterator outItr = out.outputIterator();
-            OutputEventIterator apsItr = apsPacket.outputIterator();
 
             // at this point the raw data from the USB IN packet has already been digested to extract timestamps, including timestamp wrap events and timestamp resets.
             // The datas array holds the data, which consists of a mixture of AEs and ADC values.
@@ -301,19 +297,19 @@ public class SBret10 extends AETemporalConstastRetina {
                     } 
                 } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
                     //APS event
-                    ApsDvsEvent e = (ApsDvsEvent) apsItr.nextOutput();
+                    ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
                     e.adcSample = data & ADC_DATA_MASK;
                     int sampleType = (data & ADC_READCYCLE_MASK)>>Integer.numberOfTrailingZeros(ADC_READCYCLE_MASK);
                     switch(sampleType){
                         case 0:
-                            e.readoutType = ApsDvsEvent.SampleType.A;
+                            e.readoutType = ApsDvsEvent.ReadoutType.A;
                             break;
                         case 1:
-                            e.readoutType = ApsDvsEvent.SampleType.B;
+                            e.readoutType = ApsDvsEvent.ReadoutType.B;
                             //log.info("got B event");
                             break;
                         case 2:
-                            e.readoutType = ApsDvsEvent.SampleType.C;
+                            e.readoutType = ApsDvsEvent.ReadoutType.C;
                             //log.info("got C event");
                             break;
                         case 3:
@@ -322,7 +318,7 @@ public class SBret10 extends AETemporalConstastRetina {
                         default:
                             log.warning("Event with unknown cycle was sent out!");
                     }
-                    e.setSpecial(true);
+                    e.special = false;
                     e.timestamp = (timestamps[i]);
                     e.address = data;
                     e.startOfFrame = (data & ADC_START_BIT) == ADC_START_BIT;
@@ -1591,7 +1587,9 @@ public class SBret10 extends AETemporalConstastRetina {
         }
   
         @Override
-        public synchronized void render(EventPacket packet) {
+        public synchronized void render(EventPacket pkt) {
+            
+            ApsDvsEventPacket packet = (ApsDvsEventPacket) pkt;
             
             checkPixmapAllocation();
             resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
@@ -1599,7 +1597,6 @@ public class SBret10 extends AETemporalConstastRetina {
             if (packet == null) {
                 return;
             }
-            packet.add(apsPacket);
             //packet.sortByTimeStamp();
             this.packet = packet;
             if (packet.getEventClass() != ApsDvsEvent.class) {
@@ -1616,9 +1613,10 @@ public class SBret10 extends AETemporalConstastRetina {
             String event = "";
             try {
                 step = 1f / (colorScale);
-                for(Object ev:packet){
+                Iterator allItr = packet.fullIterator();
+                while(allItr.hasNext()){
                     //The iterator only iterates over the DVS events
-                    ApsDvsEvent e = (ApsDvsEvent) ev;                        
+                    ApsDvsEvent e = (ApsDvsEvent) allItr.next();                        
                     int type = e.getType();
                     if(!e.isAdcSample()){
                         if(displayLogIntensityChangeEvents){
@@ -1948,7 +1946,7 @@ public class SBret10 extends AETemporalConstastRetina {
             putNextSampleValue(e.adcSample, e.readoutType, e.x, e.y, e.timestamp);
         }
         
-        private void putNextSampleValue(int val, SampleType type, int x, int y, int ts) {
+        private void putNextSampleValue(int val, ReadoutType type, int x, int y, int ts) {
             int idx = getIndex(x,y);
             switch(type){
                 case C: 
@@ -1968,28 +1966,28 @@ public class SBret10 extends AETemporalConstastRetina {
             switch (displayRead) {
                 case A:
                     displayFrame[idx] = aBuffer[idx];
-                    if(!(pushDisplay && type==SampleType.A))pushDisplay=false;
+                    if(!(pushDisplay && type==ReadoutType.A))pushDisplay=false;
                     break;
                 case B:
                     displayFrame[idx] = bBuffer[idx];
-                    if(!(pushDisplay && type==SampleType.B))pushDisplay=false;
+                    if(!(pushDisplay && type==ReadoutType.B))pushDisplay=false;
                     break;
                 case C:
                     displayFrame[idx] = cBuffer[idx];
-                    if(!(pushDisplay && type==SampleType.C))pushDisplay=false;
+                    if(!(pushDisplay && type==ReadoutType.C))pushDisplay=false;
                     break;
                 case DIFF_B:
                 default:
                     displayFrame[idx] = aBuffer[idx]-bBuffer[idx];
-                    if(!(pushDisplay && type==SampleType.B))pushDisplay=false;
+                    if(!(pushDisplay && type==ReadoutType.B))pushDisplay=false;
                     break;
                 case DIFF_C:
                     displayFrame[idx] = aBuffer[idx]-cBuffer[idx];
-                    if(!(pushDisplay && type==SampleType.C))pushDisplay=false;
+                    if(!(pushDisplay && type==ReadoutType.C))pushDisplay=false;
                     break;
                 case HDR:
                     displayFrame[idx] = exposureB*Math.max((aBuffer[idx]-bBuffer[idx])/exposureB, (aBuffer[idx]-cBuffer[idx])/exposureC);
-                    if(!(pushDisplay && type==SampleType.C))pushDisplay=false;
+                    if(!(pushDisplay && type==ReadoutType.C))pushDisplay=false;
                     break;
             }
             if (invertADCvalues) {

@@ -16,10 +16,7 @@
   <Layout>
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
-          <Group type="102" alignment="1" attributes="0">
-              <Component id="displayControlPanel" pref="698" max="32767" attributes="0"/>
-              <EmptySpace max="-2" attributes="0"/>
-          </Group>
+          <Component id="displayControlPanel" min="-2" pref="648" max="-2" attributes="0"/>
       </Group>
     </DimensionLayout>
     <DimensionLayout dim="1">
@@ -48,7 +45,7 @@
                   <Component id="jPanel2" min="-2" max="-2" attributes="3"/>
                   <EmptySpace max="32767" attributes="0"/>
                   <Component id="jPanel1" min="-2" max="-2" attributes="0"/>
-                  <EmptySpace min="-2" pref="19" max="-2" attributes="0"/>
+                  <EmptySpace min="-2" pref="78" max="-2" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -75,33 +72,28 @@
           <Layout>
             <DimensionLayout dim="0">
               <Group type="103" groupAlignment="0" attributes="0">
+                  <Group type="102" alignment="0" attributes="0">
+                      <Component id="displayIntensity" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="invertADCvalues" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="readComboBox" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace min="-2" pref="31" max="-2" attributes="0"/>
+                      <Component id="snapshotButton" min="-2" max="-2" attributes="0"/>
+                  </Group>
                   <Group type="102" attributes="0">
+                      <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Group type="102" alignment="0" attributes="0">
-                              <Component id="displayIntensity" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace max="-2" attributes="0"/>
-                              <Component id="invertADCvalues" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace max="-2" attributes="0"/>
-                              <Component id="readComboBox" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace min="-2" pref="31" max="-2" attributes="0"/>
-                              <Component id="snapshotButton" min="-2" max="-2" attributes="0"/>
+                          <Group type="103" alignment="0" groupAlignment="1" max="-2" attributes="0">
+                              <Component id="agcPanel" alignment="0" min="0" max="32767" attributes="1"/>
+                              <Component id="jPanel4" alignment="0" max="32767" attributes="1"/>
                           </Group>
-                          <Group type="102" attributes="0">
+                          <Group type="102" alignment="0" attributes="0">
+                              <Component id="apsIntenStatPanel" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
-                              <Group type="103" groupAlignment="0" attributes="0">
-                                  <Group type="103" alignment="0" groupAlignment="1" max="-2" attributes="0">
-                                      <Component id="agcPanel" alignment="0" min="0" max="32767" attributes="1"/>
-                                      <Component id="jPanel4" alignment="0" max="32767" attributes="1"/>
-                                  </Group>
-                                  <Group type="102" alignment="0" attributes="0">
-                                      <Component id="apsIntenStatPanel" min="-2" max="-2" attributes="0"/>
-                                      <EmptySpace max="-2" attributes="0"/>
-                                      <Component id="apsIntenCalibPanel" min="-2" max="-2" attributes="0"/>
-                                  </Group>
-                              </Group>
+                              <Component id="apsIntenCalibPanel" min="-2" max="-2" attributes="0"/>
                           </Group>
                       </Group>
-                      <EmptySpace pref="59" max="32767" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>

@@ -60,13 +60,14 @@ abstract public class EventFilter2D extends EventFilter {
     @see #out
      */
     protected void checkOutputPacketEventType(EventPacket in) {
-        if (out != null && out.getEventClass() == in.getEventClass()) {
+        in.setNextPacket(out);
+        if (out != null && out.getEventClass() == in.getEventClass() && out.getClass() == in.getClass()) {
             out.systemModificationTimeNs=in.systemModificationTimeNs;
             return;
         }
-        out = new EventPacket(in.getEventClass());
+        out = in.getNextPacket();
     }
-
+    
     /** Checks <code>out</code>  packet to make sure it has the same type of events as the given class. 
      * This method is used for filters that must pass output
     that has a particular output type.
@@ -80,7 +81,7 @@ abstract public class EventFilter2D extends EventFilter {
 //           log.info("oldClass="+oldClass+" outClass="+outClass+"; allocated new "+out);
         }
     }
-
+    
     /** Subclasses implement this method to define custom processing.
     @param in the input packet
     @return the output packet

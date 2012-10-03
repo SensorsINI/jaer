@@ -73,6 +73,8 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     private E eventPrototype;
     public transient E[] elementData;
     private AEPacketRaw rawPacket=null;
+    /** The outputPacket that gets filled with events from this packet (used for bypassing a filter e.g. in the case of APS events) */
+    public EventPacket nextPacket=null;
     
     /** The modification system timestamp of the EventPacket in ns, from System.nanoTime(). Some hardware interfaces set this field 
      * when the packet is started to be filled with events from hardware.
@@ -111,6 +113,17 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
             throw new Error("making EventPacket that holds "+eventClass+" but these are not assignable from BasicEvent");
         }
         setEventClass(eventClass);
+    }
+    
+    //get a new EventPacket to fill for next filter stage (needs to be overwritten by extending classes)
+    public EventPacket getNextPacket(){
+        setNextPacket(new EventPacket(this.eventClass));
+        return nextPacket;
+    }
+    
+    //set the packet to which events are copied in a filter to allow bypassing the filter
+    public void setNextPacket(EventPacket next){
+        nextPacket = next;
     }
 
     /** Fills this with DEFAULT_INITIAL_CAPACITY of the event class */
@@ -272,7 +285,18 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         }
         return outputIterator;
     }
-
+    
+    /** Returns the actual iterator that iterates over the output events.
+     *
+     * @return the actual iterator
+     */
+    public OutputEventIterator<E> getOutputIterator() {
+        if(outputIterator==null) {
+            outputIterator=new OutItr();
+        } 
+        return outputIterator;
+    }
+    
     /**
      * Returns the raw data packet that this originally came from. These are the raw ints that represent the data from the device.
      * This AEPacketRaw may or may not be set by the <code>EventExtractor2D</code>.

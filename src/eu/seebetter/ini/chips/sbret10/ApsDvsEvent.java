@@ -10,7 +10,7 @@ import net.sf.jaer.event.PolarityEvent;
  */
 public class ApsDvsEvent extends PolarityEvent {
 
-    public enum SampleType {A,B,C};
+    public enum ReadoutType {A,B,C};
     
     /** The ADC sample value. Has value -1 by convention for non-sample events. */
     protected int adcSample = 0;
@@ -19,7 +19,7 @@ public class ApsDvsEvent extends PolarityEvent {
     protected boolean startOfFrame=false;
     
     /** This bit determines whether it is the first read (A) or the second read (B) of a pixel */
-    protected SampleType readoutType = SampleType.A;
+    protected ReadoutType readoutType = ReadoutType.A;
 
     public ApsDvsEvent() {
     }
@@ -39,6 +39,23 @@ public class ApsDvsEvent extends PolarityEvent {
      */
     public void setAdcSample(int adcSample) {
         this.adcSample = adcSample;
+    }
+    
+    /**
+     * The readout type (A,B,C)
+     * @return the readoutType
+     */
+    public ReadoutType getReadoutType() {
+        return readoutType;
+    }
+
+    /**
+     * Sets the readout type (A,B,C)
+     * 
+     * @param readoutType the readoutType to set
+     */
+    public void setReadoutType(ReadoutType readoutType) {
+        this.readoutType = readoutType;
     }
 
     /**
@@ -63,6 +80,7 @@ public class ApsDvsEvent extends PolarityEvent {
         ApsDvsEvent e = (ApsDvsEvent) src;
         super.copyFrom(src);
         adcSample = e.getAdcSample();
+        readoutType = e.getReadoutType();
         setStartOfFrame(e.isStartOfFrame());
     }
 
@@ -75,14 +93,14 @@ public class ApsDvsEvent extends PolarityEvent {
     }
     
     public boolean isA(){
-        return readoutType == SampleType.A;
+        return readoutType == ReadoutType.A;
     }
     
     public boolean isB(){
-        return readoutType == SampleType.B;
+        return readoutType == ReadoutType.B;
     }
     
     public boolean isC(){
-        return readoutType == SampleType.C;
+        return readoutType == ReadoutType.C;
     }
 }

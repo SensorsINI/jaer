@@ -7,6 +7,7 @@ package eu.seebetter.ini.chips.sbret10;
 import java.util.Iterator;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
 
 /**
  *
@@ -24,6 +25,12 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket{
         setEventClass(eventClass);
     }
     
+    @Override
+    public EventPacket getNextPacket(){
+        setNextPacket(new ApsDvsEventPacket(getEventClass()));
+        return nextPacket;
+    }
+    
     /** Returns after initializing the iterator over input events.
     @return an iterator that can iterate over the events.
      */
@@ -35,6 +42,19 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket{
             inputIterator.reset();
         }
         return inputIterator;
+    }
+    
+    private EventPacket.InItr fullIterator=null;
+    /** Returns after initializing the iterator over input events.
+    @return an iterator that can iterate over the events.
+     */
+    public Iterator<E> fullIterator() {
+        if(fullIterator==null) {
+            fullIterator=new InItr();
+        } else {
+            fullIterator.reset();
+        }
+        return fullIterator;
     }
     
     /** Initializes and returns the iterator */
@@ -61,11 +81,13 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket{
 
         public E next() {
             E output = (E) elementData[cursor++];
-            //skip all APS events
-            E nextOut = (E) elementData[cursor];
-            while(nextOut.isAdcSample() && cursor<size){
+            //bypass APS events
+            E nextIn = (E) elementData[cursor];
+            while(nextIn.isAdcSample() && cursor<size){
+                E nextOut = (E) nextPacket.getOutputIterator().nextOutput();
+                nextOut.copyFrom(nextIn);
                 cursor++;
-                nextOut = (E) elementData[cursor];
+                nextIn = (E) elementData[cursor];
             }
             return output;
         }
