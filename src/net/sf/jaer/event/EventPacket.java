@@ -432,6 +432,22 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         fillWithDefaultEvents(size, ncapacity);
         capacity=ncapacity;
     }
+    
+    /** Adds the events from another packet to the events of this packet
+     * 
+     * @param packet EventPacket to be added
+     */
+    public void add(EventPacket packet) {
+        if(packet.getEventClass() != getEventClass()){
+            log.warning("Trying to merge packets that contain different events types");
+        }
+        E[] newData = (E[]) packet.getElementData();
+        Object oldData[]=elementData;
+        allocate(size+packet.size);
+        System.arraycopy(oldData, 0, elementData, 0, size);
+        System.arraycopy(newData, 0, elementData, size, packet.size);
+        size=size+packet.size;
+    }
 
 //    public static void main(String[] args){
 //        EventPacket p=new EventPacket();

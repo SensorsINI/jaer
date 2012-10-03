@@ -126,7 +126,6 @@ public class SBret10 extends AETemporalConstastRetina {
     /** For ADC data, the data is defined by the ADC channel and whether it is the first ADC value from the scanner. */
     public static final int ADC_TYPE_MASK = 0x1000, ADC_DATA_MASK = 0x3ff, ADC_START_BIT = 0x1000, ADC_READCYCLE_MASK = 0x0C00; 
     public static final int MAX_ADC = (int) ((1 << 10) - 1);
-    private ApsDvsEventPacket apsDvsEventPacket = new ApsDvsEventPacket(ApsDvsEvent.class);
     private SBret10DisplayMethod sbretDisplayMethod = null;
     private boolean displayIntensity;
     private int exposureB;
@@ -139,6 +138,7 @@ public class SBret10 extends AETemporalConstastRetina {
     SBret10DisplayControlPanel displayControlPanel = null;
     private IntensityFrameData frameData = new IntensityFrameData();
     private SBret10Config config;
+    private EventPacket apsPacket;
 
     /** Creates a new instance of cDVSTest20.  */
     public SBret10() {
@@ -262,9 +262,11 @@ public class SBret10 extends AETemporalConstastRetina {
         @Override
         synchronized public EventPacket extractPacket(AEPacketRaw in) {
             if (out == null) {
-                out = new ApsDvsEventPacket(chip.getEventClass());
+                out = new EventPacket(chip.getEventClass());
+                apsPacket = new EventPacket(chip.getEventClass());
             } else {
                 out.clear();
+                apsPacket.clear();
             }
             if (in == null) {
                 return out;
@@ -274,6 +276,7 @@ public class SBret10 extends AETemporalConstastRetina {
             int[] datas = in.getAddresses();
             int[] timestamps = in.getTimestamps();
             OutputEventIterator outItr = out.outputIterator();
+            OutputEventIterator apsItr = apsPacket.outputIterator();
 
             // at this point the raw data from the USB IN packet has already been digested to extract timestamps, including timestamp wrap events and timestamp resets.
             // The datas array holds the data, which consists of a mixture of AEs and ADC values.
@@ -283,10 +286,12 @@ public class SBret10 extends AETemporalConstastRetina {
                 int data = datas[i];
 
                 if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_EVENT) {
+                    //DVS event
                     if(!ignore){
                         ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
                         e.adcSample = -1; // TODO hack to mark as not an ADC sample
                         e.startOfFrame = false;
+                        e.special = false;
                         e.address = data;
                         e.timestamp = (timestamps[i]);
                         e.polarity = (data & 1) == 1 ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
@@ -295,8 +300,8 @@ public class SBret10 extends AETemporalConstastRetina {
                         //System.out.println(data);
                     } 
                 } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
-
-                    ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
+                    //APS event
+                    ApsDvsEvent e = (ApsDvsEvent) apsItr.nextOutput();
                     e.adcSample = data & ADC_DATA_MASK;
                     int sampleType = (data & ADC_READCYCLE_MASK)>>Integer.numberOfTrailingZeros(ADC_READCYCLE_MASK);
                     switch(sampleType){
@@ -317,6 +322,7 @@ public class SBret10 extends AETemporalConstastRetina {
                         default:
                             log.warning("Event with unknown cycle was sent out!");
                     }
+                    e.setSpecial(true);
                     e.timestamp = (timestamps[i]);
                     e.address = data;
                     e.startOfFrame = (data & ADC_START_BIT) == ADC_START_BIT;
@@ -353,9 +359,9 @@ public class SBret10 extends AETemporalConstastRetina {
                         lastADCevent();
                     }
                     //if(e.x<0 || e.y<0)System.out.println("New ADC event: type "+sampleType+", x "+e.x+", y "+e.y);
-                    if(e.x>0 && e.y>0 && displayIntensity && !getAeViewer().isPaused()){
-                        frameData.putApsEvent(e);
-                    }
+//                    if(e.x>=0 && e.y>=0 && displayIntensity && !getAeViewer().isPaused()){
+//                        frameData.putApsEvent(e);
+//                    }
                 }
 
             }
@@ -1586,13 +1592,15 @@ public class SBret10 extends AETemporalConstastRetina {
   
         @Override
         public synchronized void render(EventPacket packet) {
-
+            
             checkPixmapAllocation();
             resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
 
             if (packet == null) {
                 return;
             }
+            packet.add(apsPacket);
+            //packet.sortByTimeStamp();
             this.packet = packet;
             if (packet.getEventClass() != ApsDvsEvent.class) {
                 log.warning("wrong input event class, got " + packet.getEventClass() + " but we need to have " + ApsDvsEvent.class);
@@ -1608,13 +1616,11 @@ public class SBret10 extends AETemporalConstastRetina {
             String event = "";
             try {
                 step = 1f / (colorScale);
-                for (Object obj : packet) {
-                    ApsDvsEvent e = (ApsDvsEvent) obj;
-                    //eventData = "address:"+Integer.toBinaryString(e.address)+"( x: "+Integer.toString(e.x)+", y: "+Integer.toString(e.y)+"), data "+Integer.toBinaryString(e.adcSample)+" ("+Integer.toString(e.adcSample)+")";
-                    //System.out.println("Event: "+eventData);
-                    if (!e.isAdcSample()) {   
-                        // real AER event                        
-                        int type = e.getType();
+                for(Object ev:packet){
+                    //The iterator only iterates over the DVS events
+                    ApsDvsEvent e = (ApsDvsEvent) ev;                        
+                    int type = e.getType();
+                    if(!e.isAdcSample()){
                         if(displayLogIntensityChangeEvents){
                             if (xsel >= 0 && ysel >= 0) { // find correct mouse pixel interpretation to make sounds for large pixels
                                 int xs = xsel, ys = ysel;
@@ -1635,6 +1641,8 @@ public class SBret10 extends AETemporalConstastRetina {
                         if(frameData.useDVSExtrapolation){
                             frameData.putDvsEvent(e);
                         }
+                    }else if(e.isAdcSample() && e.x>=0 && e.y>=0 && displayIntensity && !getAeViewer().isPaused()){
+                        frameData.putApsEvent(e);
                     }
                 }
                 if (displayIntensity) {
@@ -1846,41 +1854,51 @@ public class SBret10 extends AETemporalConstastRetina {
         private final int NUMSAMPLES = WIDTH * HEIGHT;
         private int timestamp = 0; // timestamp of starting sample
         private float[] aBuffer,bBuffer,cBuffer;
-        private float[] displayBuffer, displayFrame,thisFrame, lastFrame;
+        private float[] displayBuffer, displayFrame,lastFrame;
+        private float[] onMismatch, offMismatch;
+        private int[] onCnt,offCnt,timestamps;
         /** Readers should access the current reading buffer. */
         private boolean useDVSExtrapolation = getPrefs().getBoolean("useDVSExtrapolation", false);
+        private boolean useMismatchCorrection = getPrefs().getBoolean("useMismatchCorrection", true);
         private boolean invertADCvalues = getPrefs().getBoolean("invertADCvalues", true); // true by default for log output which goes down with increasing intensity
+        
+        public static final String STEP_CHANGE = "Step Values Changed";
+        
         private Read displayRead = Read.DIFF_B;
-        private boolean[] polBuffer;
-        private int onCnt, polP;
-        private double ratio,scale;
-        private boolean fullBuffer;
+        public float onStep, offStep;
+        private final float updateFactor = 1f/100000f;
         
         public IntensityFrameData() {
             resetFrames();
         }
         
-        private void resetFrames(){
+        public void resetFrames(){
             aBuffer = new float[WIDTH*HEIGHT];
             bBuffer = new float[WIDTH*HEIGHT];
             cBuffer = new float[WIDTH*HEIGHT];
             displayFrame = new float[WIDTH*HEIGHT];
             displayBuffer = new float[WIDTH*HEIGHT];
-            thisFrame = new float[WIDTH*HEIGHT];
             lastFrame = new float[WIDTH*HEIGHT];
+            onMismatch = new float[WIDTH*HEIGHT];
+            offMismatch = new float[WIDTH*HEIGHT];
+            onCnt = new int[WIDTH*HEIGHT];
+            offCnt = new int[WIDTH*HEIGHT];
+            timestamps = new int[WIDTH*HEIGHT];
+            //scale = new float[WIDTH*HEIGHT];
             Arrays.fill(aBuffer, 0.0f);
             Arrays.fill(bBuffer, 0.0f);
             Arrays.fill(cBuffer, 0.0f);
             Arrays.fill(displayFrame, 0.0f);
             Arrays.fill(displayBuffer, 0.0f);
-            Arrays.fill(thisFrame, 0.0f);
             Arrays.fill(lastFrame, 0.0f);
-            polBuffer = new boolean[100000];
-            polP = 0;
-            onCnt = 0;
-            ratio = 0.0f;
-            scale = 0.0f;
-            fullBuffer = false;
+            Arrays.fill(onMismatch, 1.0f);
+            Arrays.fill(offMismatch, 1.0f);
+            Arrays.fill(onCnt, 0);
+            Arrays.fill(offCnt, 0);
+            Arrays.fill(offCnt, 0);
+            //Arrays.fill(scale, 0.01f);
+            onStep = 0.2f;
+            offStep = -0.2f;
         }
 
         /** Gets the sample at a given pixel address (not scanner address) 
@@ -1893,44 +1911,44 @@ public class SBret10 extends AETemporalConstastRetina {
         public float get(int x, int y) {
             return displayFrame[getIndex(x,y)];
         }
-
-        private void putApsEvent(ApsDvsEvent e){
-            if(!e.isAdcSample()) return;
-            if(e.startOfFrame) {
-                setTimestamp(e.timestamp);
-            }
-            putNextSampleValue(e.adcSample, e.readoutType, e.x, e.y);
-        }
         
+                
         private int getIndex(int x, int y){
             return y*WIDTH+x;
         }
         
         public void putDvsEvent(ApsDvsEvent e){
-            if(fullBuffer){
-                if(polBuffer[polP] && e.polarity == Polarity.Off){
-                    onCnt--;
-                    polBuffer[polP]=false;
-                }else if(!polBuffer[polP] && e.polarity == Polarity.On){
-                    onCnt++;
-                    polBuffer[polP]=true;
-                }
-            }else{
-                if(e.polarity == Polarity.On){
-                    onCnt++;
-                    polBuffer[polP]=true;
+            //update displayFrame
+            int idx = getIndex(e.x,e.y);
+            if(e.timestamp<timestamps[idx])return;
+            if(e.polarity == Polarity.On){
+                if(useMismatchCorrection){
+                    displayFrame[idx] += onMismatch[idx]*onStep;
                 }else{
-                    polBuffer[polP]=false;
+                    displayFrame[idx] += onStep;
                 }
+                onCnt[idx]++;
+            }else{
+                if(useMismatchCorrection){
+                    displayFrame[idx] += offMismatch[idx]*offStep;
+                }else{
+                    displayFrame[idx] += offStep;
+                }
+                offCnt[idx]++;
             }
-            polP++;
-            if(polP>=polBuffer.length){
-                polP=0;
-                fullBuffer=true;
+            if(lastFrame[idx]!=displayBuffer[idx]){
+                updateScale(idx);
             }
+            lastFrame[idx]=displayBuffer[idx];
         }
         
-        private void putNextSampleValue(int val, SampleType type, int x, int y) {
+        private void putApsEvent(ApsDvsEvent e){
+            if(!e.isAdcSample()) return;
+            if(e.isStartOfFrame())timestamp=e.timestamp;
+            putNextSampleValue(e.adcSample, e.readoutType, e.x, e.y, e.timestamp);
+        }
+        
+        private void putNextSampleValue(int val, SampleType type, int x, int y, int ts) {
             int idx = getIndex(x,y);
             switch(type){
                 case C: 
@@ -1949,28 +1967,28 @@ public class SBret10 extends AETemporalConstastRetina {
             if(x==WIDTH-1 && y==HEIGHT-1)pushDisplay=true;
             switch (displayRead) {
                 case A:
-                    displayBuffer[idx] = aBuffer[idx];
+                    displayFrame[idx] = aBuffer[idx];
                     if(!(pushDisplay && type==SampleType.A))pushDisplay=false;
                     break;
                 case B:
-                    displayBuffer[idx] = bBuffer[idx];
+                    displayFrame[idx] = bBuffer[idx];
                     if(!(pushDisplay && type==SampleType.B))pushDisplay=false;
                     break;
                 case C:
-                    displayBuffer[idx] = cBuffer[idx];
+                    displayFrame[idx] = cBuffer[idx];
                     if(!(pushDisplay && type==SampleType.C))pushDisplay=false;
                     break;
                 case DIFF_B:
                 default:
-                    displayBuffer[idx] = aBuffer[idx]-bBuffer[idx];
+                    displayFrame[idx] = aBuffer[idx]-bBuffer[idx];
                     if(!(pushDisplay && type==SampleType.B))pushDisplay=false;
                     break;
                 case DIFF_C:
-                    displayBuffer[idx] = aBuffer[idx]-cBuffer[idx];
+                    displayFrame[idx] = aBuffer[idx]-cBuffer[idx];
                     if(!(pushDisplay && type==SampleType.C))pushDisplay=false;
                     break;
                 case HDR:
-                    displayBuffer[idx] = exposureB*Math.max((aBuffer[idx]-bBuffer[idx])/exposureB, (aBuffer[idx]-cBuffer[idx])/exposureC);
+                    displayFrame[idx] = exposureB*Math.max((aBuffer[idx]-bBuffer[idx])/exposureB, (aBuffer[idx]-cBuffer[idx])/exposureC);
                     if(!(pushDisplay && type==SampleType.C))pushDisplay=false;
                     break;
             }
@@ -1980,33 +1998,80 @@ public class SBret10 extends AETemporalConstastRetina {
             if(useDVSExtrapolation){
                 displayFrame[idx] = (float)Math.log(displayFrame[idx]);
             }
+            displayBuffer[idx]=displayFrame[idx];
+            timestamps[idx]=ts;
             if(pushDisplay)pushDisplayFrame();
+            //updateScale(idx);
         }
         
         private void pushDisplayFrame(){
             if(useDVSExtrapolation){
-                lastFrame = thisFrame;
-                thisFrame = displayBuffer;
-                ratio = (float)onCnt/(float)(polBuffer.length-onCnt);
+                //adaptScale();
+                System.out.println("ON Step: "+onStep+", OFF Step: "+offStep);
             }
-            displayFrame = displayBuffer;
+            
+        }
+        
+        private void updateScale(int idx){
+            float dI = displayBuffer[idx]-lastFrame[idx];
+            if(dI<MAX_ADC && dI>-MAX_ADC){
+                if(offCnt[idx] == 0 && onCnt[idx] > 0 && dI > 0){
+                    for(int i=0;i<onCnt[idx];i++){
+                        float thisStep = (float)dI/(float)onCnt[idx];
+                        onStep = (1.0f-updateFactor)*onStep+updateFactor*thisStep;
+                        if(thisStep>onMismatch[idx]*onStep){
+                            onMismatch[idx]-=updateFactor;
+                        }else{
+                            onMismatch[idx]+=updateFactor;
+                        }
+                    }
+                    //System.out.println("New ON step: "+onStep+", dI:"+dI);
+                }else if(onCnt[idx] == 0 && offCnt[idx] > 0 && dI < 0){
+                    for(int i=0;i<offCnt[idx];i++){
+                        float thisStep = (float)dI/(float)offCnt[idx];
+                        offStep = (1.0f-updateFactor)*offStep+updateFactor*thisStep;
+                        if(thisStep>offMismatch[idx]*onStep){
+                            offMismatch[idx]+=updateFactor;
+                        }else{
+                            offMismatch[idx]-=updateFactor;
+                        }
+                    }
+                    //System.out.println("New OFF step: "+offStep+", dI:"+dI);
+                }
+            }
+            onCnt[idx]=0;
+            offCnt[idx]=0;
+        }
+        
+        private void adaptScale(){
+            for(int i=0;i<WIDTH*HEIGHT;i++){
+                float trueDiff = displayBuffer[i]-lastFrame[i];
+                float updatedDiff = displayFrame[i]-lastFrame[i];
+                if(updatedDiff!=0.0f && trueDiff!=0.0f && updatedDiff != trueDiff){
+                    if(trueDiff>0 && trueDiff<MAX_ADC){
+                        onStep = (1.0f-updateFactor)*onStep+updateFactor*onStep*(trueDiff/updatedDiff);
+                    }else if (trueDiff<0 && trueDiff>-MAX_ADC){
+                        offStep = (1.0f-updateFactor)*offStep+updateFactor*offStep*(trueDiff/updatedDiff);
+                    }
+                }
+            }
         }
 
         /**
-         * @return the timestamp
+         * @return the useDVSExtrapolation
          */
-        public int getTimestamp() {
-            return timestamp;
+        public boolean isUseMismatchCorrection() {
+            return useMismatchCorrection;
         }
 
         /**
-         * Sets the buffer timestamp. 
-         * @param timestamp the timestamp to set
+         * @param useMismatchCorrection the useMismatchCorrection to set
          */
-        public void setTimestamp(int timestamp) {
-            this.timestamp = timestamp;
+        public void setUseMismatchCorrection(boolean useMismatchCorrection) {
+            this.useMismatchCorrection = useMismatchCorrection;
+            getPrefs().putBoolean("useMismatchCorrection", useMismatchCorrection);
         }
-
+        
         /**
          * @return the useDVSExtrapolation
          */
@@ -2044,14 +2109,14 @@ public class SBret10 extends AETemporalConstastRetina {
             this.invertADCvalues = invertADCvalues;
             getPrefs().putBoolean("invertADCvalues", invertADCvalues);
         }
-
-        public boolean isNewData() {
-            return true; // dataWrittenSinceLastSwap; // TODO not working yet
+        
+        public int getTimestamp(){
+            return timestamp;
         }
 
         @Override
         public String toString() {
-            return "IntensityFrameData{" + "WIDTH=" + WIDTH + ", HEIGHT=" + HEIGHT + ", NUMSAMPLES=" + NUMSAMPLES + ", timestamp=" + timestamp + '}';
+            return "IntensityFrameData{" + "WIDTH=" + WIDTH + ", HEIGHT=" + HEIGHT + ", NUMSAMPLES=" + NUMSAMPLES  + '}';
         }
 
     }
