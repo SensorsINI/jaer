@@ -22,7 +22,7 @@ import net.sf.jaer.util.RemoteControlCommand;
  */
 public class AddressedIPotCF extends AddressedIPot {
 
-    /** Estimation of the master bias */
+    /** Estimation of the master bias with 100kOhm external resistor (designed value); 389nA */
     public double fixMasterBias = 0.000000389;
     
    /** Operating current level, defines whether to use shifted-source current mirrors for small currents. */
@@ -366,7 +366,7 @@ public class AddressedIPotCF extends AddressedIPot {
         sh=Integer.numberOfTrailingZeros(bitFineMask);
         ret|=fineBitValue<<sh;
         sh=Integer.numberOfTrailingZeros(bitCoarseMask);
-        ret|=computeBinaryInverse(coarseBitValue, numCoarseBits)<<sh;
+        ret|=computeBinaryInverse(coarseBitValue, numCoarseBits)<<sh; // The coarse bits are reversed (this was a mistake) so we need to mirror them here before we sent them.
         
         //System.out.println(toString() + " byte repres " + Integer.toHexString(ret));
         
@@ -384,6 +384,11 @@ public class AddressedIPotCF extends AddressedIPot {
         return out;
     }
     
+    /** The coarse bits are reversed (this was a mistake) so we need to mirror them here before we sent them.
+     * @param value the bits in
+     * @param lenth the number of bits
+     * @return the bits mirrored
+     */
     protected int computeBinaryInverse(int value, int length){
         int out=0;
         for(int i=0; i<length; i++){
