@@ -138,6 +138,7 @@ public class SBret10 extends AETemporalConstastRetina {
     SBret10DisplayControlPanel displayControlPanel = null;
     private IntensityFrameData frameData = new IntensityFrameData();
     private SBret10Config config;
+    JFrame controlFrame = null;
 
     /** Creates a new instance of cDVSTest20.  */
     public SBret10() {
@@ -179,15 +180,15 @@ public class SBret10 extends AETemporalConstastRetina {
 
     private void registerControlPanel() {
         try {
-            AEViewer viewer = getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
+//            AEViewer viewer = getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
             //JPanel imagePanel = viewer.getImagePanel();
-			JFrame controlFrame = new JFrame("SBret10 display controls");
+            controlFrame = new JFrame("SBret10 display controls");
             JPanel imagePanel = new JPanel();
-			imagePanel.add((displayControlPanel = new eu.seebetter.ini.chips.sbret10.SBret10DisplayControlPanel(this)), BorderLayout.SOUTH);
+            imagePanel.add((displayControlPanel = new eu.seebetter.ini.chips.sbret10.SBret10DisplayControlPanel(this)), BorderLayout.SOUTH);
             imagePanel.revalidate();
-			controlFrame.getContentPane().add(imagePanel);
-			controlFrame.pack();
-			controlFrame.setVisible(true);
+            controlFrame.getContentPane().add(imagePanel);
+            controlFrame.pack();
+            controlFrame.setVisible(true);
         } catch (Exception e) {
             log.warning("could not register control panel: " + e);
         }
@@ -195,10 +196,12 @@ public class SBret10 extends AETemporalConstastRetina {
 
     private void unregisterControlPanel() {
         try {
-            AEViewer viewer = getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
-            JPanel imagePanel = viewer.getImagePanel();
-            imagePanel.remove(displayControlPanel);
-            imagePanel.revalidate();
+            displayControlPanel=null;
+            if(controlFrame!=null) controlFrame.dispose();
+//            AEViewer viewer = getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
+//            JPanel imagePanel = viewer.getImagePanel();
+//            imagePanel.remove(displayControlPanel);
+//            imagePanel.revalidate();
         } catch (Exception e) {
             log.warning("could not unregister control panel: " + e);
         }

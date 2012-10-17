@@ -62,7 +62,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     protected float mixingFactor = getFloat("mixingFactor", 0.05f);
 //    protected float velocityMixingFactor=getFloat("velocityMixingFactor",0.0005f); // mixing factor for velocityPPT computation
 //    private float velocityTauMs=getFloat("velocityTauMs",10);
-    private int velocityPoints = getInt("velocityPoints", 10);
+//    private int velocityPoints = getInt("velocityPoints", 10);
     private boolean useEllipticalClusters = getBoolean("useEllipticalClusters", false);
     private float surround = getFloat("surround", 2f);
     private boolean dynamicSizeEnabled = getBoolean("dynamicSizeEnabled", false);
@@ -497,7 +497,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 ////                    System.out.println("pruning unzupported "+c);
 //                }
 //            }
-            if (c.getLifetime()>=clusterLifetimeWithoutSupportUs && c.getMassNow(t) < thresholdEventsForVisibleCluster) {
+            int lifetime=c.getLifetime();
+            if ((lifetime==0 || lifetime>=clusterLifetimeWithoutSupportUs) && c.getMassNow(t) < thresholdEventsForVisibleCluster) {
                 massTooSmall = true;
             }
             boolean hitEdge = c.hasHitEdge();
@@ -541,6 +542,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         mergeClusters();
         updateClusterLocations(t);
         updateClusterPaths(t);
+        for(Cluster c:clusters){
+            c.checkAndSetClusterVisibilityFlag(t);
+        }
     }
 
     /**
@@ -904,6 +908,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         protected LinkedList<ClusterPathPoint> path = new LinkedList<ClusterPathPoint>();
 //         protected LinkedList<ClusterPathPoint> path = new ArrayList<ClusterPathPoint>(getPathLength());
         int hitEdgeTime = 0;
+        private boolean visibilityFlag=false; // this flag updated in updateClusterList
 
         /** Computes and returns {@link #mass} at time t, using the last time an event hit this cluster
          * and
@@ -980,6 +985,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             avgEventRate = stronger.avgEventRate;
             avgISI = stronger.avgISI;
             hasObtainedSupport = stronger.hasObtainedSupport;
+            visibilityFlag=stronger.visibilityFlag;
             setAspectRatio(stronger.getAspectRatio());
 
 //            Color c1=one.getColor(), c2=two.getColor();
@@ -1346,8 +1352,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             final float PATH_POINT_SIZE = 4f;
             final float VEL_LINE_WIDTH = 4f;
             GL gl = drawable.getGL();
-            float x = getLocation().x;
-            float y = getLocation().y;
+            float x = location.x;
+            float y = location.y;
 
 
             float sy = radiusY; // sx sy are (half) size of rectangle
@@ -1356,7 +1362,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             // set color and line width of cluster annotation
             setColorAutomatically();
             getColor().getRGBComponents(rgb);
-            if (isVisible()) {
+            
+            if (visibilityFlag) {
                 gl.glColor3fv(rgb, 0);
                 gl.glLineWidth(BOX_LINE_WIDTH);
             } else {
@@ -1366,12 +1373,12 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
             // draw cluster rectangle
             if (useEllipticalClusters) {
-                drawEllipse(gl, x, y, sx, sy, getAngle());
+                drawEllipse(gl, x, y, sx, sy, angle);
             } else {
-                drawBox(gl, x, y, sx, sy, getAngle());
+                drawBox(gl, x, y, sx, sy, angle);
             }
 
-            if (isShowPaths()) {
+            if (showPaths) {
                 gl.glPointSize(PATH_POINT_SIZE);
                 gl.glBegin(GL.GL_POINTS);
                 {
@@ -1389,14 +1396,18 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 gl.glBegin(GL.GL_LINES);
                 {
                     gl.glVertex2f(x, y);
-                    gl.glVertex2f(x + getVelocityPPT().x * VELOCITY_VECTOR_SCALING * velocityVectorScaling, y + getVelocityPPT().y * VELOCITY_VECTOR_SCALING * velocityVectorScaling);
+                    gl.glVertex2f(x + velocityPPT.x * VELOCITY_VECTOR_SCALING * velocityVectorScaling, 
+                            y + velocityPPT.y * VELOCITY_VECTOR_SCALING * velocityVectorScaling);
                 }
                 gl.glEnd();
             }
             // text annoations on clusters, setup
             final int font = GLUT.BITMAP_HELVETICA_18;
-            gl.glColor3f(1, 1, 1);
+            if(showClusterMass||showClusterEps||showClusterNumber){
+                gl.glColor3f(1, 1, 1);
             gl.glRasterPos3f(location.x, location.y, 0);
+            }
+            
 
             // draw radius text
 //                            chip.getCanvas().getGlut().glutBitmapString(font, String.format("%.1f", getRadiusCorrectedForPerspective()));
@@ -1818,17 +1829,16 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             this.location = l;
         }
 
-        /** Flags whether cluster has gotten enough support. This flag is sticky and will be true from when the cluster
-        has gotten sufficient support and has enough velocityPPT (when using velocityPPT).
-        When the cluster is first marked visible, it's birthLocation is set to the current location.
-        @return true if cluster has ever obtained enough support.
+        /** Sets the flag of cluster visibility (check is separated from check for efficiency because this operation
+         * is costly.)
+         * 
+         * birthLocation and hasObtainedSupport flags are set by this check.
+         * 
+         * @see #isVisible() 
+         * @param t the current timestamp
          */
-        @Override
-        final public boolean isVisible() {
-//            if (hasObtainedSupport) {
-//                return true;
-//            }
-            boolean ret = true;
+        public void checkAndSetClusterVisibilityFlag(int t){
+              boolean ret = true;
             if (numEvents < thresholdEventsForVisibleCluster) {
                 ret = false;
             }
@@ -1841,7 +1851,17 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 birthLocation.y = location.y;  // reset location of birth to presumably less noisy current location.
             }
             hasObtainedSupport = ret;
-            return ret;
+            visibilityFlag=ret;
+          
+        }
+        /** Returns the flag that marks cluster visibility. This flag is set by <code>checkAndSetClusterVisibilityFlag</code>.
+         * This flag flags whether cluster has gotten enough support. 
+            @return true if cluster has obtained enough support.
+            * @see #checkAndSetClusterVisibilityFlag
+         */
+        @Override
+        final public boolean isVisible() {
+            return visibilityFlag;
         }
 
         /** Flags whether this cluster was ever 'visible', i.e., had ever obtained sufficient support to be marked visible.
@@ -2576,7 +2596,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         putFloat("mixingFactor", mixingFactor);
     }
 
-    /** Implemeting getMin and getMax methods constucts a slider control for the mixing factor in the FilterPanel.
+    /** Implementing getMin and getMax methods constructs a slider control for the mixing factor in the FilterPanel.
      *
      * @return 0
      */
@@ -2716,38 +2736,38 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         final float r2d = (float) (180 / Math.PI);
         final int N = 10;
         gl.glPushMatrix();
-        gl.glTranslatef(x, y, 0);
-        double cosAngle = Math.cos(angle), sinAngle = Math.sin(angle);
-        gl.glBegin(GL.GL_LINE_LOOP);
-        {
-            for (int i = 0; i < N; i++) {
-                double a = (float) i / N * 2 * Math.PI;
-                double ca = Math.cos(a);
-                double sa = Math.sin(a);
-
-                float vx = (float) (sx * ca * cosAngle - sy * sa * sinAngle);
-                float vy = (float) (sx * ca * sinAngle + sy * sa * cosAngle);
-                gl.glVertex2f(vx, vy);
-            }
-        }
-        gl.glEnd();
-        if (dynamicAngleEnabled) {
-            gl.glRotatef(angle * r2d, 0, 0, 1);
-            gl.glBegin(GL.GL_LINES);
+            gl.glTranslatef(x, y, 0);
+            double cosAngle = Math.cos(angle), sinAngle = Math.sin(angle);
+            gl.glBegin(GL.GL_LINE_LOOP);
             {
-                gl.glVertex2f(0, 0);
-                gl.glVertex2f(sx, 0);
+                for (int i = 0; i < N; i++) {
+                    double a = (float) i / N * 2 * Math.PI;
+                    double ca = Math.cos(a);
+                    double sa = Math.sin(a);
+
+                    float vx = (float) (sx * ca * cosAngle - sy * sa * sinAngle);
+                    float vy = (float) (sx * ca * sinAngle + sy * sa * cosAngle);
+                    gl.glVertex2f(vx, vy);
+                }
             }
             gl.glEnd();
+            if (dynamicAngleEnabled) {
+                gl.glRotatef(angle * r2d, 0, 0, 1);
+                gl.glBegin(GL.GL_LINES);
+                {
+                    gl.glVertex2f(0, 0);
+                    gl.glVertex2f(sx, 0);
+                }
+                gl.glEnd();
+            }
+            gl.glPopMatrix();
         }
-        gl.glPopMatrix();
-    }
 
     protected void drawBox(GL gl, float x, float y, float sx, float sy, float angle) {
         final float r2d = (float) (180 / Math.PI);
         gl.glPushMatrix();
         gl.glTranslatef(x, y, 0);
-        gl.glRotatef(angle * r2d, 0, 0, 1);
+        if(angle!=0) gl.glRotatef(angle * r2d, 0, 0, 1);
         gl.glBegin(GL.GL_LINE_LOOP);
         {
             gl.glVertex2f(-sx, -sy);
@@ -2781,8 +2801,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             return;
         }
         float[] rgb = new float[4];
-        gl.glPushMatrix();
         try {
+            gl.glPushMatrix();
             {
                 for (Cluster c : clusters) {
                     if (showAllClusters || c.isVisible()) {
@@ -2792,9 +2812,10 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             }
         } catch (java.util.ConcurrentModificationException e) {
             // this is in case cluster list is modified by real time filter during rendering of clusters
-            log.warning(e.getMessage());
-        }
-        gl.glPopMatrix();
+             log.warning(e.getMessage());
+         } finally {
+             gl.glPopMatrix();
+         }
     }
 
     public boolean isGrowMergedSizeEnabled() {
@@ -2977,9 +2998,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         this.pathLength = pathLength;
         putInt("pathLength", pathLength);
         getSupport().firePropertyChange("pathLength", old, pathLength);
-        if (velocityPoints > pathLength) {
-            setVelocityPoints(pathLength);
-        }
+//        if (velocityPoints > pathLength) {
+//            setVelocityPoints(pathLength);
+//        }
     }
 
     public boolean isDynamicAngleEnabled() {
@@ -3017,30 +3038,30 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     
     
 
-    /** @see #setVelocityPoints(int)
-     *
-     * @return number of points used to estimate velocityPPT.
-     */
-    public int getVelocityPoints() {
-        return velocityPoints;
-    }
-
-    /** Sets the number of path points to use to estimate cluster velocityPPT.
-     *
-     * @param velocityPoints the number of points to use to estimate velocityPPT.
-     * Bounded above to number of path points that are stored.
-     * @see #setPathLength(int)
-     * @see #setPathsEnabled(boolean)
-     */
-    public void setVelocityPoints(int velocityPoints) {
-        if (velocityPoints >= pathLength) {
-            velocityPoints = pathLength;
-        }
-        int old = this.velocityPoints;
-        this.velocityPoints = velocityPoints;
-        putInt("velocityPoints", velocityPoints);
-        getSupport().firePropertyChange("velocityPoints", old, this.velocityPoints);
-    }
+//    /** @see #setVelocityPoints(int)
+//     *
+//     * @return number of points used to estimate velocityPPT.
+//     */
+//    public int getVelocityPoints() {
+//        return velocityPoints;
+//    }
+//
+//    /** Sets the number of path points to use to estimate cluster velocityPPT.
+//     *
+//     * @param velocityPoints the number of points to use to estimate velocityPPT.
+//     * Bounded above to number of path points that are stored.
+//     * @see #setPathLength(int)
+//     * @see #setPathsEnabled(boolean)
+//     */
+//    public void setVelocityPoints(int velocityPoints) {
+//        if (velocityPoints >= pathLength) {
+//            velocityPoints = pathLength;
+//        }
+//        int old = this.velocityPoints;
+//        this.velocityPoints = velocityPoints;
+//        putInt("velocityPoints", velocityPoints);
+//        getSupport().firePropertyChange("velocityPoints", old, this.velocityPoints);
+//    }
 
     /**
      * @return the velAngDiffDegToNotMerge
