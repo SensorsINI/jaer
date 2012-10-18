@@ -5,13 +5,16 @@
 package ch.unizh.ini.jaer.projects.sensoryfusion.slaem;
 
 import java.awt.Point;
+import java.awt.geom.Line2D;
     import net.sf.jaer.chip.*;
     import net.sf.jaer.event.*;
     import net.sf.jaer.eventprocessing.EventFilter2D;
     import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
+    import java.util.concurrent.CopyOnWriteArrayList;
     import javax.media.opengl.*;
     import net.sf.jaer.*;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
     import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
@@ -21,24 +24,25 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *
  * @author christian
  */
-@Description("Extracts edges as linear point interpolations")
+@Description("Extracts protoclusters / line segments / snakelets from events with spatio-temporal proximity")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnotater{
     
     EdgeConstructor constructor;
+    private FilterChain filterChain;
     
     int[][] frameBuffer; //0=type, 1=x, 2=y, 3=timestamp, 4=protoClusterID, 5=clusterID
     int[] protoClusterSizes;
-    CopyOnWriteArrayList<Integer>[] clusterPixels; 
-    float[][] clusterColors;
-    LineFragment[] lineFragments;
+    CopyOnWriteArrayList<Integer>[] elementPixels; 
+    float[][] colors;
+    Snakelet[] snakelets;
     int[][] accumArray;
     int bufferPointer;
     int protoPointer;
-    int clusterPointer;
+    int elementPointer;
     int maxEventCount;
-    int nrClusters;
-    int minDist;
+    int nrElements;
+    int maxDist;
 	
     /**
      * Determines whether events that cannot be assigned to an edge should be filtered out
@@ -49,14 +53,14 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
     /**
      * Determines whether edgePixels should be drawn
      */
-    private boolean drawEdgePixels=getPrefs().getBoolean("EdgeExtractor.drawEdgePixels",true);
-    {setPropertyTooltip("drawEdgePixels","Should the edgePixels be drawn");}
+    private boolean drawAssocPixels=getPrefs().getBoolean("EdgeExtractor.drawAssocPixels",true);
+    {setPropertyTooltip("drawAssocPixels","Should the associated pixels be drawn");}
     
     /**
      * Determines whether edgePixels should be drawn
      */
-    private boolean drawClusters=getPrefs().getBoolean("EdgeExtractor.drawClusters",true);
-    {setPropertyTooltip("drawClusters","Should the clusters be drawn");}
+    private boolean drawElements=getPrefs().getBoolean("EdgeExtractor.drawElements",true);
+    {setPropertyTooltip("drawElements","Should the protoclusters/line segments/snakelets be drawn");}
     
     /**
      * Determines whether events that cannot be assigned to an edge should be filtered out
@@ -67,28 +71,34 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
     /**
      * 
      */
-    private int maxClusters=getPrefs().getInt("EdgeExtractor.maxClusters",5);
-    {setPropertyTooltip("maxClusters","Maximal number of clusters");}
+    private int maxElements=getPrefs().getInt("EdgeExtractor.maxElements",5);
+    {setPropertyTooltip("maxElements","Maximal number of protoclusters/line segments/snakelets");}
     
     /**
      * 
      */
-    private int minClusterSize=getPrefs().getInt("EdgeExtractor.minClusterSize",5);
-    {setPropertyTooltip("minClusterSize","Minimal size for a ");}
+    private int maxProximity=getPrefs().getInt("EdgeExtractor.maxProximity",5);
+    {setPropertyTooltip("maxProximity","Maximal distance for two elements to form an element");}
     
 	/**
      * Selection of the edge detection method
      */
-    public enum EdgePixelMethod {
-        ProtoClusters, LineSegments, LineFragments
+    public enum ElementMethod {
+        ProtoClusters, LineSegments, SnakeletsA, SnakeletsB
     };
-    public EdgePixelMethod edgePixelMethod = EdgePixelMethod.valueOf(getPrefs().get("ITDFilter.edgePixelMethod", "ProtoClusters"));
-	{setPropertyTooltip("edgePixelMethod","Method to do the edge detection");}
+    public ElementMethod elementMethod = ElementMethod.valueOf(getPrefs().get("EdgeExtractor.elementMethod", "ProtoClusters"));
+	{setPropertyTooltip("elementMethod","Method to do create a protocluster/line segment/snakelet");}
     
     public EdgeFragments(AEChip chip){
         super(chip);
         chip.addObserver(this);
         initFilter();
+        
+        filterChain = new FilterChain(chip);
+        filterChain.add(new BackgroundActivityFilter(chip));
+        
+        setEnclosedFilterChain(filterChain);
+        filterChain.reset();
     }
 	
     @Override
@@ -103,29 +113,31 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
         for(int i = 0; i<frameBufferSize;i++)Arrays.fill(frameBuffer[i], -1);
         protoClusterSizes = new int[frameBufferSize];
         Arrays.fill(protoClusterSizes, 0); 
-        clusterPixels = new CopyOnWriteArrayList[maxClusters];
-        for(int i = 0; i<maxClusters;i++)clusterPixels[i] = new CopyOnWriteArrayList<Integer>();
-        clusterColors = new float[maxClusters][3];
-        for(int i = 0; i<maxClusters;i++)for(int j = 0; j<3;j++)clusterColors[i][j] = (float)Math.random();
-        lineFragments = new LineFragment[maxClusters];
-        for(int i = 0; i<maxClusters;i++)lineFragments[i] = new LineFragment(i,-1,-1);
+        elementPixels = new CopyOnWriteArrayList[maxElements];
+        for(int i = 0; i<maxElements;i++)elementPixels[i] = new CopyOnWriteArrayList<Integer>();
+        colors = new float[maxElements][3];
+        for(int i = 0; i<maxElements;i++)for(int j = 0; j<3;j++)colors[i][j] = (float)Math.random();
+        snakelets = new Snakelet[maxElements];
+        for(int i = 0; i<maxElements;i++)snakelets[i] = new Snakelet(i,-1,-1,0);
         accumArray = new int[chip.getSizeX()][chip.getSizeY()];
         for(int i = 0; i<chip.getSizeX();i++)Arrays.fill(accumArray[i], 0);
         //System.out.println("X "+accumArray.length+" Y "+accumArray[0].length);
         bufferPointer = 0;
         protoPointer = 0;
-        clusterPointer = 0;
+        elementPointer = 0;
         maxEventCount = 0;
-        nrClusters = 0;
-        minDist = (int)Math.pow(minClusterSize, 2);
+        nrElements = 0;
+        maxDist = (int)Math.pow(maxProximity, 2);
     }
     
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
         if(!filterEnabled) return in;
-        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
+        if(enclosedFilterChain!=null){
+            in=enclosedFilterChain.filterPacket(in);
+        }
         checkOutputPacketEventType(in);    
-        switch(edgePixelMethod){
+        switch(elementMethod){
                 case ProtoClusters:
                 default:
                     return updateProtoClusters(in);
@@ -133,8 +145,11 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                 case LineSegments:
                     return updateLineSegments(in);
                     
-                case LineFragments:
-                    return updateLineFragments(in);
+                case SnakeletsA:
+                    return updateSnakeletsA(in);
+                    
+                case SnakeletsB:
+                    return updateSnakeletsB(in);
             }
              
     }
@@ -145,9 +160,8 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
         if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
         checkOutputPacketEventType(in);
         OutputEventIterator outItr = out.outputIterator();
-        for(int k=0; k<in.getSize(); k++){
-            BasicEvent ev = in.getEvent(k);
-            TypedEvent newEv = (TypedEvent)ev;
+        for(Object evt:in){
+            PolarityEvent newEv = (PolarityEvent)evt;
         
             boolean pass=false;
             //Remove old event from Buffer
@@ -160,11 +174,11 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                     //System.out.println("Removed "+bufferPointer+" from Proto "+frameBuffer[bufferPointer][4]+", size "+protoClusterSizes[frameBuffer[bufferPointer][4]]);
                 }
                 if(frameBuffer[bufferPointer][5]>=0){
-                    for(int i=0; i<maxClusters; i++){
-                        clusterPixels[i].remove(new Integer(bufferPointer));
+                    for(int i=0; i<maxElements; i++){
+                        elementPixels[i].remove(new Integer(bufferPointer));
                     }
                     //System.out.println("Cluster "+frameBuffer[bufferPointer][5]+" - Event "+bufferPointer+" removed - now: "+clusterPixels[frameBuffer[bufferPointer][5]]);
-                    if(clusterPixels[frameBuffer[bufferPointer][5]].size()<minClusterSize) removeCluster(frameBuffer[bufferPointer][5]);
+                    if(elementPixels[frameBuffer[bufferPointer][5]].size()<maxProximity) removeCluster(frameBuffer[bufferPointer][5]);
                     frameBuffer[bufferPointer][5] = -1;
                 }
             } 
@@ -191,11 +205,11 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                         //System.out.println("Allocated to old cluster "+frameBuffer[subPointer][5]);
                         if(frameBuffer[bufferPointer][5]<0){
                             frameBuffer[bufferPointer][5]=frameBuffer[subPointer][5];
-                            clusterPixels[frameBuffer[bufferPointer][5]].add(bufferPointer);
+                            elementPixels[frameBuffer[bufferPointer][5]].add(bufferPointer);
                             pass = true;
-                            if(nrClusters == 1) hasNeighbor = true;
+                            if(nrElements == 1) hasNeighbor = true;
                         }else if(frameBuffer[bufferPointer][5]!=frameBuffer[subPointer][5]){
-                            if(clusterPixels[frameBuffer[bufferPointer][5]].size()>clusterPixels[frameBuffer[subPointer][5]].size()){
+                            if(elementPixels[frameBuffer[bufferPointer][5]].size()>elementPixels[frameBuffer[subPointer][5]].size()){
                                 mergeClusters(frameBuffer[bufferPointer][5], frameBuffer[subPointer][5]);
                             }else{
                                 mergeClusters(frameBuffer[subPointer][5], frameBuffer[bufferPointer][5]);
@@ -206,13 +220,13 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                         frameBuffer[bufferPointer][4]=frameBuffer[subPointer][4];
                         protoClusterSizes[frameBuffer[bufferPointer][4]]++;
                         //System.out.println("Added to Proto "+frameBuffer[bufferPointer][4]+", size "+protoClusterSizes[frameBuffer[bufferPointer][4]]);
-                        if(protoClusterSizes[frameBuffer[bufferPointer][4]]>minClusterSize){
+                        if(protoClusterSizes[frameBuffer[bufferPointer][4]]>maxProximity){
                             boolean clusterAllocated = false;
                             int prPointer = frameBuffer[bufferPointer][4];
-                            if(nrClusters<maxClusters){
+                            if(nrElements<maxElements){
                                 int clPointer = 0;
-                                while(!clusterAllocated && clPointer<maxClusters){
-                                    if(clusterPixels[clPointer].isEmpty()){
+                                while(!clusterAllocated && clPointer<maxElements){
+                                    if(elementPixels[clPointer].isEmpty()){
                                         for(int j=0; j<frameBufferSize; j++){
                                             if(frameBuffer[j][4] == prPointer){
                                                 frameBuffer[j][5] = clPointer;
@@ -221,10 +235,10 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                                                     protoClusterSizes[frameBuffer[j][4]] = 0;
                                                 }
                                                 frameBuffer[j][4] = -1;
-                                                clusterPixels[clPointer].add(j);
+                                                elementPixels[clPointer].add(j);
                                             }
                                         }
-                                        nrClusters++;
+                                        nrElements++;
                                         clusterAllocated = true;
                                     }else{
                                         //System.out.println("Cluster "+clPointer+" full: "+clusterPixels[clPointer]);
@@ -232,7 +246,7 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                                     clPointer++;
                                 }
                             } 
-                            if(nrClusters>=maxClusters || !clusterAllocated){
+                            if(nrElements>=maxElements || !clusterAllocated){
                                 //reset protoCluster
                                 for(int j=0; j<frameBufferSize; j++){
                                     if(frameBuffer[j][4] == prPointer){
@@ -281,9 +295,8 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
         if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
         checkOutputPacketEventType(in);
         OutputEventIterator outItr = out.outputIterator();
-        for(int k=0; k<in.getSize(); k++){
-            BasicEvent ev = in.getEvent(k);
-            PolarityEvent newEv = (PolarityEvent)ev;
+        for(Object evt:in){
+            PolarityEvent newEv = (PolarityEvent)evt;
         
             boolean pass=false;
             //Remove old event from Buffer
@@ -296,8 +309,8 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                     //System.out.println("Removed "+bufferPointer+" from Proto "+frameBuffer[bufferPointer][4]+", size "+protoClusterSizes[frameBuffer[bufferPointer][4]]);
                 }
                 if(frameBuffer[bufferPointer][5]>=0){
-                    clusterPixels[frameBuffer[bufferPointer][5]].remove(new Integer(bufferPointer));
-                    if(clusterPixels[frameBuffer[bufferPointer][5]].size()<2)
+                    elementPixels[frameBuffer[bufferPointer][5]].remove(new Integer(bufferPointer));
+                    if(elementPixels[frameBuffer[bufferPointer][5]].size()<2)
                         removeCluster(frameBuffer[bufferPointer][5]);
                 }
             } 
@@ -306,8 +319,8 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
             frameBuffer[bufferPointer][1] = newEv.x;
             frameBuffer[bufferPointer][2] = newEv.y;
             frameBuffer[bufferPointer][3] = newEv.timestamp;
-            frameBuffer[bufferPointer][4] = -1;
-            frameBuffer[bufferPointer][5] = -1;
+            frameBuffer[bufferPointer][4] = -1;//protocluster
+            frameBuffer[bufferPointer][5] = -1;//edgefragment
             accumArray[frameBuffer[bufferPointer][1]][frameBuffer[bufferPointer][2]]++;
             if(accumArray[frameBuffer[bufferPointer][1]][frameBuffer[bufferPointer][2]]>maxEventCount){
                 maxEventCount = accumArray[frameBuffer[bufferPointer][1]][frameBuffer[bufferPointer][2]];
@@ -319,19 +332,19 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
             while(!hasNeighbor && subPointer != bufferPointer){
                 //System.out.println("bufferPointer: "+bufferPointer+" -- Pointer: "+subPointer);
                 int dist = getDistance(bufferPointer, subPointer);
-                if((dist<=minDist)){
+                if((dist<=maxDist)){
                     if(!(frameBuffer[subPointer][1] == frameBuffer[bufferPointer][1] && frameBuffer[subPointer][2] == frameBuffer[bufferPointer][2]) ){
                         if(frameBuffer[subPointer][5]<0){
                             boolean clusterAllocated = false;
-                            if(nrClusters<maxClusters){
+                            if(nrElements<maxElements){
                                 int clPointer = 0;
-                                while(!clusterAllocated && clPointer<maxClusters){
-                                    if(clusterPixels[clPointer].isEmpty()){
+                                while(!clusterAllocated && clPointer<maxElements){
+                                    if(elementPixels[clPointer].isEmpty()){
                                         frameBuffer[bufferPointer][5] = clPointer;
                                         frameBuffer[subPointer][5] = clPointer;
-                                        clusterPixels[clPointer].add(bufferPointer);
-                                        clusterPixels[clPointer].add(subPointer);
-                                        nrClusters++;
+                                        elementPixels[clPointer].add(bufferPointer);
+                                        elementPixels[clPointer].add(subPointer);
+                                        nrElements++;
                                         clusterAllocated = true;
                                     }
                                     clPointer++;
@@ -339,21 +352,21 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                             } 
                         }else{
                             int clusterIdx = frameBuffer[subPointer][5];
-                            int idx = clusterPixels[clusterIdx].indexOf(new Integer(subPointer));
+                            int idx = elementPixels[clusterIdx].indexOf(new Integer(subPointer));
                             //System.out.println("clusterIdx: "+clusterIdx+", cluster: "+clusterPixels[clusterIdx]+", subPointer: "+subPointer+", idx: "+idx);
                             int distNext = Integer.MAX_VALUE;
-                            if(idx <= clusterPixels[clusterIdx].size()-2){
-                                int nextPointer = clusterPixels[clusterIdx].get(idx+1);
+                            if(idx <= elementPixels[clusterIdx].size()-2){
+                                int nextPointer = elementPixels[clusterIdx].get(idx+1);
                                 distNext = getDistance(bufferPointer, nextPointer);
                             }
                             if(dist > distNext){
-                                if(idx<clusterPixels[clusterIdx].size()){
-                                    clusterPixels[clusterIdx].add(idx+1, new Integer(bufferPointer));
+                                if(idx<elementPixels[clusterIdx].size()){
+                                    elementPixels[clusterIdx].add(idx+1, new Integer(bufferPointer));
                                 }else{
-                                    clusterPixels[clusterIdx].add(new Integer(bufferPointer));
+                                    elementPixels[clusterIdx].add(new Integer(bufferPointer));
                                 }
                             } else {
-                                clusterPixels[clusterIdx].add(idx, new Integer(bufferPointer));
+                                elementPixels[clusterIdx].add(idx, new Integer(bufferPointer));
                             }
                             frameBuffer[bufferPointer][5] = clusterIdx;
                         }
@@ -379,23 +392,22 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
         }
     }
     
-    public EventPacket updateLineFragments(EventPacket in){
+    public EventPacket updateSnakeletsA(EventPacket in){
         if(!filterEnabled) return in;
         if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
         checkOutputPacketEventType(in);
         OutputEventIterator outItr = out.outputIterator();
-        for(int k=0; k<in.getSize(); k++){
-            BasicEvent ev = in.getEvent(k);
-            PolarityEvent newEv = (PolarityEvent)ev;
+        for(Object evt:in){
+            PolarityEvent newEv = (PolarityEvent)evt;
             
             boolean pass=false;
             //Remove old event from Buffer
             //System.out.println("Next entry - pointer: "+bufferPointer+", polarity: "+frameBuffer[bufferPointer][0]);
             if(frameBuffer[bufferPointer][0] >= 0){
-                for(int i = 0; i<maxClusters; i++){
-                    if(lineFragments[i].cointains(bufferPointer)){
-                        lineFragments[i].deactivate();
-                        nrClusters--;
+                for(int i = 0; i<maxElements; i++){
+                    if(snakelets[i].contains(bufferPointer)){
+                        snakelets[i].remove();
+                        nrElements--;
                     }
                 }
             } 
@@ -406,7 +418,7 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
             frameBuffer[bufferPointer][3] = newEv.timestamp;
             frameBuffer[bufferPointer][4] = -1;
             frameBuffer[bufferPointer][5] = -1;          
-            //System.out.println("Pointer "+bufferPointer+" -- Event x: "+frameBuffer[bufferPointer][1]+", y: "+frameBuffer[bufferPointer][2]+" added, new accum: "+accumArray[frameBuffer[bufferPointer][1]][frameBuffer[bufferPointer][2]]);
+            //System.out.println("Pointer "+bufferPointer+" -- Event x: "+frameBuffer[bufferPointer][1]+", y: "+frameBuffer[bufferPointer][2]);
             boolean hasNeighbor = false;
             int subPointer = bufferPointer-1;
             if(subPointer<0)subPointer=frameBufferSize-1;
@@ -415,21 +427,19 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                 //System.out.println("frameBuffer "+subPointer+" ts "+frameBuffer[subPointer][3]);
                 if(frameBuffer[subPointer][3]>0){
                     int dist = getDistance(bufferPointer, subPointer);
-                    if((dist<=minDist)){
+                    if((dist<=maxDist)){
+                        //System.out.println("Close point found: "+subPointer+" -- x: "+frameBuffer[subPointer][1]+", y: "+frameBuffer[subPointer][2]);
                         if(!(frameBuffer[subPointer][1] == frameBuffer[bufferPointer][1] && frameBuffer[subPointer][2] == frameBuffer[bufferPointer][2]) && 
                             frameBuffer[subPointer][0] == frameBuffer[bufferPointer][0]){
                             boolean fragmentAllocated = false;
-                            if(nrClusters<maxClusters){
+                            if(nrElements<maxElements){
                                 int clPointer = 0;
-                                while(!fragmentAllocated && clPointer<maxClusters){
-                                    if(!lineFragments[clPointer].on){
-                                        lineFragments[clPointer].activate(clPointer, bufferPointer, subPointer);
-                                        //System.out.println("New fragment: "+clPointer+", p1: "+bufferPointer+" p1i: "+lineFragments[clPointer].p1+", p2:"+subPointer+", p2i: "+lineFragments[clPointer].p2+", dist: "+getDistance(lineFragments[clPointer].p1,lineFragments[clPointer].p2));
-                                        nrClusters++;
+                                while(!fragmentAllocated && clPointer<maxElements){
+                                    if(!snakelets[clPointer].on){
+                                        snakelets[clPointer].set(clPointer, bufferPointer, subPointer, newEv.timestamp);
+                                        nrElements++;
                                         fragmentAllocated = true;
                                         pass = true;
-                                    }else{
-                                        //System.out.println("FULL fragment: "+clPointer+", p1: "+lineFragments[clPointer].p1+", p2:"+lineFragments[clPointer].p2+", dist: "+getDistance(lineFragments[clPointer].p1,lineFragments[clPointer].p2));
                                     }
                                     clPointer++;
                                 }
@@ -456,23 +466,95 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
         }
     }
     
-    public class LineFragment{
+    
+    public EventPacket updateSnakeletsB(EventPacket in){
+        if(!filterEnabled) return in;
+        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
+        checkOutputPacketEventType(in);
+        OutputEventIterator outItr = out.outputIterator();
+        for(Object evt:in){
+            PolarityEvent newEv = (PolarityEvent)evt;
+            
+            boolean pass=false;
+            //Remove old event from Buffer
+            //System.out.println("Next entry - pointer: "+bufferPointer+", polarity: "+frameBuffer[bufferPointer][0]);
+            if(frameBuffer[bufferPointer][0] >= 0){
+                for(int i = 0; i<maxElements; i++){
+                    if(snakelets[i].contains(bufferPointer)){
+                        snakelets[i].remove();
+                        nrElements--;
+                    }
+                }
+            } 
+            //Add new event to buffer
+            frameBuffer[bufferPointer][0] = newEv.getType();
+            frameBuffer[bufferPointer][1] = newEv.x;
+            frameBuffer[bufferPointer][2] = newEv.y;
+            frameBuffer[bufferPointer][3] = newEv.timestamp;
+            frameBuffer[bufferPointer][4] = -1;
+            frameBuffer[bufferPointer][5] = -1;          
+            //System.out.println("Pointer "+bufferPointer+" -- Event x: "+frameBuffer[bufferPointer][1]+", y: "+frameBuffer[bufferPointer][2]);
+            boolean hasNeighbor = false;
+            int subPointer = bufferPointer-1;
+            if(subPointer<0)subPointer=frameBufferSize-1;
+            while(!hasNeighbor && subPointer != bufferPointer){
+                //System.out.println("bufferPointer: "+bufferPointer+" -- Pointer: "+subPointer);
+                //System.out.println("frameBuffer "+subPointer+" ts "+frameBuffer[subPointer][3]);
+                if(frameBuffer[subPointer][3]>0 && frameBuffer[subPointer][5] < 0){
+                    int dist = getDistance(bufferPointer, subPointer);
+                    if((dist<=maxDist)){
+                        //System.out.println("Close point found: "+subPointer+" -- x: "+frameBuffer[subPointer][1]+", y: "+frameBuffer[subPointer][2]);
+                        if(!(frameBuffer[subPointer][1] == frameBuffer[bufferPointer][1] && frameBuffer[subPointer][2] == frameBuffer[bufferPointer][2]) && 
+                            frameBuffer[subPointer][0] == frameBuffer[bufferPointer][0]){
+                            if(nrElements>=maxElements){
+                                nrElements++;
+                            }else if(snakelets[elementPointer].on){
+                                snakelets[elementPointer].remove();
+                            }
+                            snakelets[elementPointer].set(elementPointer, bufferPointer, subPointer, newEv.timestamp);
+                            pass = true;
+                            elementPointer++;
+                            if(elementPointer==maxElements)elementPointer=0;
+                            hasNeighbor = true;
+                        }
+
+                    }
+                }
+                subPointer--;
+                if(subPointer<0)subPointer=frameBufferSize-1;
+            }
+            bufferPointer++;
+            if(bufferPointer == frameBufferSize) bufferPointer = 0;
+            if(pass){
+                BasicEvent o=(BasicEvent)outItr.nextOutput();
+                o.copyFrom(newEv);
+            }
+        }
+        if(filteringEnabled){ 
+            return out;
+        }else{
+            return in;
+        }
+    }
+    
+    public class Snakelet{
         
-        Point p1, p2;
-        int idx, type, i1, i2;
+        Line2D.Float line;
+        int idx, type, i1, i2, timestamp;
+        float phi; 
         boolean on;
         
-        public LineFragment(int index, int point1, int point2){
+        public Snakelet(int index, int point1, int point2, int ts){
             idx = index;
             i1 = point1;
             i2 = point2;
-            p1 = new Point();
-            p2 = new Point();
+            line = new Line2D.Float();
             on = false;
-            type = -1;         
+            type = -1;
+            timestamp = ts;
         }
         
-        public boolean cointains(int point){
+        public boolean contains(int point){
             if(point == i1 || point == i2){
                 return true;
             }else{
@@ -480,64 +562,63 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
             }
         }
         
-        public void activate(int index, int point1, int point2){
+        public void set(int index, int point1, int point2, int ts){
             if(idx != index)System.out.println("ERROR index "+index+" idx "+idx);
             frameBuffer[point1][5] = index;
             frameBuffer[point2][5] = index;
             i1 = point1;
             i2 = point2;
-            p1.x = frameBuffer[i1][1];
-            p2.x = frameBuffer[i2][1];
-            p1.y = frameBuffer[i1][2];
-            p2.y = frameBuffer[i2][2];
+            line.setLine(frameBuffer[i1][1],frameBuffer[i1][2],frameBuffer[i2][1],frameBuffer[i2][2]);
+            phi = (float)Math.atan2((line.x1-line.x2),(line.y1-line.y2));
+            timestamp = ts;
             if(frameBuffer[i1][0] == frameBuffer[i2][0]){
             type = frameBuffer[i1][0];
             } else {
                 type = -1;
             }
-            activateAccumArray();
+            if(elementMethod == ElementMethod.SnakeletsA) activateAccumArray();
             if(constructor != null){
-                constructor.addFragment(this);
+                constructor.addSnakelet(this);
             }
             on = true;
         }
         
-        public void activateAccumArray(){
-            int dX = p2.x-p1.x;
-            int dY = p2.y-p1.y;
-            if(Math.abs(dX)>Math.abs(dY)){
-                for(int iX=0; Math.abs(iX)<=Math.abs(dX); iX+=1*Math.signum(dX)){
-                    accumArray[p1.x+iX][p1.y+(int)iX*(dY/dX)]++;
-                }
-            }else{
-                for(int iY=0; Math.abs(iY)<=Math.abs(dY); iY+=1*Math.signum(dY)){
-                    accumArray[p1.x+(int)iY*(dX/dY)][p1.y+iY]++;
-                }
-            }
-        }
-        
-        public void deactivateAccumArray(){
-            int dX = p2.x-p1.x;
-            int dY = p2.y-p1.y;
-            if(Math.abs(dX)>Math.abs(dY)){
-                for(int iX=0; Math.abs(iX)<=Math.abs(dX); iX+=1*Math.signum(dX)){
-                    accumArray[p1.x+iX][p1.y+(int)iX*(dY/dX)]--;
-                }
-            }else{
-                for(int iY=0; Math.abs(iY)<=Math.abs(dY); iY+=1*Math.signum(dY)){
-                    accumArray[p1.x+(int)iY*(dX/dY)][p1.y+iY]--;
-                }
-            }
-        }
-        
-        public void deactivate(){
+        public void remove(){
             //System.out.println("Frag "+idx+", Distance: "+getDistance(p1, p2)+", Max: "+minDist);
-            deactivateAccumArray();
+            if(elementMethod == ElementMethod.SnakeletsA) deactivateAccumArray();
             frameBuffer[i1][5] = -1;
             frameBuffer[i2][5] = -1;
             i1 = -1;
             i2 = -1;
             on = false;
+        }
+        
+        public void activateAccumArray(){
+            double dX = (double)line.x2-line.x1;
+            double dY = (double)line.y2-line.y1;
+            if(Math.abs(dX)>Math.abs(dY)){
+                for(int iX=0; Math.abs(iX)<=Math.abs(dX); iX+=1*Math.signum(dX)){
+                    accumArray[(int)line.x1+iX][(int)line.y1+(int)Math.round(iX*(dY/dX))]++;
+                }
+            }else{
+                for(int iY=0; Math.abs(iY)<=Math.abs(dY); iY+=1*Math.signum(dY)){
+                    accumArray[(int)line.x1+(int)Math.round(iY*(dX/dY))][(int)line.y1+iY]++;
+                }
+            }
+        }
+        
+        public void deactivateAccumArray(){
+            double dX = (double)line.x2-line.x1;
+            double dY = (double)line.y2-line.y1;
+            if(Math.abs(dX)>Math.abs(dY)){
+                for(int iX=0; Math.abs(iX)<=Math.abs(dX); iX+=1*Math.signum(dX)){
+                    accumArray[(int)line.x1+iX][(int)line.y1+(int)Math.round(iX*(dY/dX))]--;
+                }
+            }else{
+                for(int iY=0; Math.abs(iY)<=Math.abs(dY); iY+=1*Math.signum(dY)){
+                    accumArray[(int)line.x1+(int)Math.round(iY*(dX/dY))][(int)line.y1+iY]--;
+                }
+            }
         }
         
         public void draw(GLAutoDrawable drawable){
@@ -551,8 +632,8 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
             //gl.glColor3f(clusterColors[idx][0],clusterColors[idx][1],clusterColors[idx][2]);
             gl.glBegin(GL.GL_LINES);
             //System.out.println("Frag "+idx+", Distance: "+getDistance(p1, p2)+", Max: "+minDist);
-            gl.glVertex2i(p1.x,p1.y);
-            gl.glVertex2i(p2.x,p2.y);
+            gl.glVertex2f(line.x1,line.y1);
+            gl.glVertex2f(line.x2,line.y2);
             gl.glEnd();
         }
     }
@@ -570,9 +651,9 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                 frameBuffer[j][5] = cluster1;
             }
         }
-        clusterPixels[cluster1].addAll(clusterPixels[cluster2]);
-        clusterPixels[cluster2].clear();
-        nrClusters--;
+        elementPixels[cluster1].addAll(elementPixels[cluster2]);
+        elementPixels[cluster2].clear();
+        nrElements--;
     }
     
     public void removeCluster(int clusterId){
@@ -582,18 +663,18 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                 frameBuffer[j][5] = -1;
             }
         }
-        clusterPixels[clusterId].clear();
-        nrClusters--;
+        elementPixels[clusterId].clear();
+        nrElements--;
     }
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
-        if(drawEdgePixels){
+        if(drawAssocPixels){
             GL gl=drawable.getGL();
             gl.glPointSize(4);
             int i = 0;
-            if(edgePixelMethod == EdgePixelMethod.LineFragments){
+            if(elementMethod == ElementMethod.SnakeletsA || elementMethod == ElementMethod.SnakeletsB){
                 for(int x=0; x<chip.getSizeX(); x++){
                     for(int y=0; y<chip.getSizeY(); y++){
                         if(accumArray[x][y]>0){
@@ -620,8 +701,8 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                 }
             }
         }
-        if(drawClusters){
-            switch(edgePixelMethod){
+        if(drawElements){
+            switch(elementMethod){
                 case ProtoClusters:
                 default:
                     drawClusters(drawable);
@@ -629,7 +710,8 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                 case LineSegments:
                     drawLineSegments(drawable);
                     break;
-                case LineFragments:
+                case SnakeletsA:
+                case SnakeletsB:
                     drawLineFragments(drawable);
                     break;
             }
@@ -638,10 +720,10 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
     
     public void drawClusters(GLAutoDrawable drawable){
         GL gl=drawable.getGL();
-        for(int i = 0; i<maxClusters;i++){
-            if(!clusterPixels[i].isEmpty()){
+        for(int i = 0; i<maxElements;i++){
+            if(!elementPixels[i].isEmpty()){
                 //System.out.println("CLUSTER: "+i);
-                Iterator it = clusterPixels[i].iterator();
+                Iterator it = elementPixels[i].iterator();
                 gl.glPointSize(4);
                 while(it.hasNext()){
                     int idx = (Integer)it.next();
@@ -649,7 +731,7 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                     //System.out.println("Color: "+clusterColors[i][0]+", "+clusterColors[i][1]+", "+clusterColors[i][2]);
                     //System.out.println("Coord: "+frameBuffer[idx][1]+", "+frameBuffer[idx][2]);
                     gl.glBegin(GL.GL_POINTS);
-                    gl.glColor3f(clusterColors[i][0],clusterColors[i][1],clusterColors[i][2]);
+                    gl.glColor3f(colors[i][0],colors[i][1],colors[i][2]);
                     gl.glVertex2i(frameBuffer[idx][1],frameBuffer[idx][2]);
                     gl.glEnd();
                 }                   
@@ -660,11 +742,11 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
     public void drawLineSegments(GLAutoDrawable drawable){
         GL gl=drawable.getGL();
         gl.glLineWidth(2.0f);
-        for(int i = 0; i<maxClusters;i++){
-            if(!clusterPixels[i].isEmpty()){
+        for(int i = 0; i<maxElements;i++){
+            if(!elementPixels[i].isEmpty()){
                 // System.out.println("CLUSTER: "+i);
-                Iterator it = clusterPixels[i].iterator();
-                gl.glColor3f(clusterColors[i][0],clusterColors[i][1],clusterColors[i][2]);
+                Iterator it = elementPixels[i].iterator();
+                gl.glColor3f(colors[i][0],colors[i][1],colors[i][2]);
                 gl.glBegin(GL.GL_LINES);
                 while(it.hasNext()){
                     int idx = (Integer)it.next();                   
@@ -672,7 +754,7 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                 }
                 gl.glEnd();
                 gl.glPointSize(4);
-                it = clusterPixels[i].iterator();
+                it = elementPixels[i].iterator();
                 while(it.hasNext()){
                     int idx = (Integer)it.next(); 
                     gl.glBegin(GL.GL_POINTS);
@@ -686,9 +768,9 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
     
     public void drawLineFragments(GLAutoDrawable drawable){
         
-        for(int i = 0; i<maxClusters;i++){
-            if(lineFragments[i].on){
-                lineFragments[i].draw(drawable);
+        for(int i = 0; i<maxElements;i++){
+            if(snakelets[i].on){
+                snakelets[i].draw(drawable);
             }
         }
         
@@ -720,35 +802,35 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
     }
     
     /**
-     * @return the maxClusters
+     * @return the maxElements
      */
-    public int getMaxClusters() {
-        return maxClusters;
+    public int getMaxElements() {
+        return maxElements;
     }
 
     /**
-     * @param maxClusters the maxClusters to set
+     * @param maxElements the maxElements to set
      */
-    public void setMaxClusters(int maxClusters) {
-        this.maxClusters = maxClusters;
-        prefs().putInt("EdgeExtractor.maxClusters", maxClusters);
+    public void setMaxElements(int maxElements) {
+        this.maxElements = maxElements;
+        prefs().putInt("EdgeExtractor.maxElements", maxElements);
         resetFilter();
     }
     
     /**
-     * @return the minClusterSize
+     * @return the maxProximity
      */
-    public int getMinClusterSize() {
-        return minClusterSize;
+    public int getMaxProximity() {
+        return maxProximity;
     }
 
     /**
-     * @param minClusterSize the minClusterSize to set
+     * @param maxProximity the maxProximity to set
      */
-    public void setMinClusterSize(int minClusterSize) {
-        this.minClusterSize = minClusterSize;
-        this.minDist = (int)Math.pow(minClusterSize, 2);
-        prefs().putInt("EdgeExtractor.minClusterSize", minClusterSize);
+    public void setMaxProximity(int maxProximity) {
+        this.maxProximity = maxProximity;
+        this.maxDist = (int)Math.pow(maxProximity, 2);
+        prefs().putInt("EdgeExtractor.minClusterSize", maxProximity);
         resetFilter();
     }
     
@@ -767,41 +849,41 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
     }
     
         /**
-     * @return the drawEdgePixels
+     * @return the drawAssocPixels
      */
-    public boolean isDrawEdgePixels() {
-        return drawEdgePixels;
+    public boolean isDrawAssocPixels() {
+        return drawAssocPixels;
     }
 
     /**
-     * @param drawEdgePixels the drawEdgePixels to set
+     * @param drawAssocPixels the drawAssocPixels to set
      */
-    public void setDrawEdgePixels(boolean drawEdgePixels) {
-        this.drawEdgePixels = drawEdgePixels;
+    public void setDrawAssocPixels(boolean drawAssocPixels) {
+        this.drawAssocPixels = drawAssocPixels;
     }
     
         /**
-     * @return the drawEdges
+     * @return the drawElements
      */
-    public boolean isDrawEdges() {
-        return drawClusters;
+    public boolean isDrawElements() {
+        return drawElements;
     }
 
     /**
-     * @param drawEdges the drawEdges to set
+     * @param drawElements the drawElements to set
      */
-    public void setDrawEdges(boolean drawEdges) {
-        this.drawClusters = drawEdges;
+    public void setDrawElements(boolean drawElements) {
+        this.drawElements = drawElements;
     }
 	
-	public EdgePixelMethod getEdgePixelMethod() {
-        return edgePixelMethod;
+    public ElementMethod getElementMethod() {
+        return elementMethod;
     }
 
-    synchronized public void setEdgePixelMethod(EdgePixelMethod edgePixelMethod) {
-        getSupport().firePropertyChange("edgePixelMethod", this.edgePixelMethod, edgePixelMethod);
-        getPrefs().put("EdgeExtractor.edgePixelMethod", edgePixelMethod.toString());
-        this.edgePixelMethod = edgePixelMethod;
+    synchronized public void setElementMethod(ElementMethod elementMethod) {
+        getSupport().firePropertyChange("elementMethod", this.elementMethod, elementMethod);
+        getPrefs().put("EdgeExtractor.edgePixelMethod", elementMethod.toString());
+        this.elementMethod = elementMethod;
         resetFilter();
     }
 }
