@@ -64,7 +64,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater,Mou
     volatile boolean selecting = false;
     volatile float binTime = Float.NaN;
     final private static float[] SELECT_COLOR = { .8f,0,0,.5f };
-    final private static float[] GLOBAL_HIST_COLOR = { 0,0,.8f,.5f }, INDIV_HIST_COLOR = { 0,.2f,.6f,.5f };
+    final private static float[] GLOBAL_HIST_COLOR = { 0,0,.8f,.5f }, INDIV_HIST_COLOR = { 0,.2f,.6f,.5f }, HIST_OVERFLOW_COLOR={ .6f,.4f,.2f,.6f };
     private Point currentMousePoint = null;
     private int[] currentAddress = null;
     EngineeringFormat engFmt=new EngineeringFormat();
@@ -85,8 +85,8 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater,Mou
         setPropertyTooltip(h,"isiMaxUs","max ISI in us");
         setPropertyTooltip(h,"isiAutoScalingEnabled","autoscale bounds for ISI histogram");
         setPropertyTooltip(h,"isiNumBins","number of bins in the ISI");
-        setPropertyTooltip(h,"showAverageISIHistogram","shows the average of the individual ISI histograms");
-        setPropertyTooltip(h,"showIndividualISIHistograms","show the ISI histograms of all the cells in the selection");
+        setPropertyTooltip(h,"showAverageISIHistogram","shows the average of the individual ISI histograms. Histograms for each pixel are separate for each event type (e.g. ON/OFF)");
+        setPropertyTooltip(h,"showIndividualISIHistograms","show the ISI histograms of all the cells in the selection. Each event type (e.g. ON/OFF) will generate its own histogram");
 
         setPropertyTooltip(e,"rateEnabled","measure event rate");
         setPropertyTooltip(e,"rateTauMs","lowpass filter time constant in ms for measuring event rate");
@@ -496,8 +496,10 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater,Mou
                 int bin = getIsiBin(isi);
                 if ( bin < 0 ){
                     lessCount++;
+                    if(lessCount>maxCount) maxCount=lessCount;
                 } else if ( bin >= isiNumBins ){
                     moreCount++;
+                    if(moreCount>maxCount)maxCount=moreCount;
                 } else{
                     int v = ++bins[bin];
                     if ( v > maxCount ){
@@ -510,40 +512,69 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater,Mou
             // must set line width and color first
             void draw (GL gl){
 
+                float dx = (float) (chip.getSizeX() - 2) / (isiNumBins + 2);
+                float sy = (float) (chip.getSizeY() - 2) / maxCount;
+
                 gl.glBegin(GL.GL_LINES);
-                gl.glVertex2f(1,1);
-                gl.glVertex2f(chip.getSizeX() - 1,0);
+                gl.glVertex2f(1, 1);
+                gl.glVertex2f(chip.getSizeX() - 1, 0);
                 gl.glEnd();
 
-                if ( maxCount > 0 ){
+                if (lessCount > 0) {
+                    gl.glPushAttrib(GL.GL_COLOR | GL.GL_LINE_WIDTH);
+                    gl.glColor4fv(HIST_OVERFLOW_COLOR, 0);
                     gl.glBegin(GL.GL_LINE_LOOP);
-                    float dx = (float)( chip.getSizeX() - 2 ) / isiNumBins;
-                    float sy = (float)( chip.getSizeY() - 2 ) / maxCount;
-                    for ( int i = 0 ; i < bins.length ; i++ ){
+ 
+                    float y = 1 + sy * lessCount;
+                    float x1 = -dx, x2 = x1 + dx;
+                    gl.glVertex2f(x1, 1);
+                    gl.glVertex2f(x1, y);
+                    gl.glVertex2f(x2, y);
+                    gl.glVertex2f(x2, 1);
+                    gl.glEnd();
+                    gl.glPopAttrib();
+                }
+                if (moreCount > 0) {
+                    gl.glPushAttrib(GL.GL_COLOR | GL.GL_LINE_WIDTH);
+                    gl.glColor4fv(HIST_OVERFLOW_COLOR, 0);
+                    gl.glBegin(GL.GL_LINE_LOOP);
+
+                    float y = 1 + sy * moreCount;
+                    float x1 = 1 + dx * (isiNumBins+2), x2 = x1 + dx;
+                    gl.glVertex2f(x1, 1);
+                    gl.glVertex2f(x1, y);
+                    gl.glVertex2f(x2, y);
+                    gl.glVertex2f(x2, 1);
+                    gl.glEnd();
+                    gl.glPopAttrib();
+                }
+                if (maxCount > 0) {
+                    gl.glBegin(GL.GL_LINE_LOOP);
+                    for (int i = 0; i < bins.length; i++) {
                         float y = 1 + sy * bins[i];
                         float x1 = 1 + dx * i, x2 = x1 + dx;
-                        gl.glVertex2f(x1,1);
-                        gl.glVertex2f(x1,y);
-                        gl.glVertex2f(x2,y);
-                        gl.glVertex2f(x2,1);
+                        gl.glVertex2f(x1, 1);
+                        gl.glVertex2f(x1, y);
+                        gl.glVertex2f(x2, y);
+                        gl.glVertex2f(x2, 1);
                     }
                     gl.glEnd();
                 }
             }
 
-            void draw (GL gl,float lineWidth,float[] color){
+            void draw(GL gl, float lineWidth, float[] color) {
                 gl.glPushAttrib(GL.GL_COLOR | GL.GL_LINE_WIDTH);
                 gl.glLineWidth(lineWidth);
-                gl.glColor4fv(color,0);
+                gl.glColor4fv(color, 0);
                 draw(gl);
                 gl.glPopAttrib();
             }
 
-            private void reset (){
-                if ( bins == null || bins.length != isiNumBins ){
-                    bins = new int[ isiNumBins ];
-                } else{
-                    Arrays.fill(globalHist.bins,0);
+            private void reset() {
+                if (bins == null || bins.length != isiNumBins) {
+                    bins = new int[isiNumBins];
+                } else {
+                    Arrays.fill(globalHist.bins, 0);
                 }
                 lessCount = 0;
                 moreCount = 0;
@@ -553,30 +584,30 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater,Mou
         }
 
         @Override
-        public String toString (){
-            return String.format("%10d events, %15s eps",count,engFmt.format(filteredRate));
+        public String toString() {
+            return String.format("%10d events, %15s eps", count, engFmt.format(filteredRate));
         }
 
-        private void measureAverageEPS (int lastT,int n){
-            if ( !rateEnabled ){
+        private void measureAverageEPS(int lastT, int n) {
+            if (!rateEnabled) {
                 return;
             }
             final float maxRate = 10e6f;
-            if ( !initialized ){
+            if (!initialized) {
                 globalHist.prevLastT = lastT;
                 initialized = true;
             }
             int dt = lastT - globalHist.prevLastT;
             globalHist.prevLastT = lastT;
-            if ( dt < 0 ){
+            if (dt < 0) {
                 initialized = false;
             }
-            if ( dt == 0 ){
+            if (dt == 0) {
                 instantaneousRate = maxRate; // if the time interval is zero, use the max rate
-            } else{
-                instantaneousRate = 1e6f * (float)n / ( dt * AEConstants.TICK_DEFAULT_US );
+            } else {
+                instantaneousRate = 1e6f * (float) n / (dt * AEConstants.TICK_DEFAULT_US);
             }
-            filteredRate = rateFilter.filter(instantaneousRate / nPixels,lastT);
+            filteredRate = rateFilter.filter(instantaneousRate / nPixels, lastT);
         }
 
         synchronized private void drawStats (GLAutoDrawable drawable){
