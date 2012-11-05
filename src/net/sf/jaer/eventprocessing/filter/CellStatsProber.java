@@ -429,6 +429,10 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater,Mou
                         if ( v > globalHist.maxCount ){
                             globalHist.maxCount = v;
                         }
+                        globalHist.lessCount+=h.lessCount;
+                        globalHist.moreCount+=h.moreCount;
+                        if(globalHist.lessCount>globalHist.maxCount) globalHist.maxCount=globalHist.lessCount;
+                        if(globalHist.moreCount>globalHist.maxCount) globalHist.maxCount=globalHist.moreCount;
                     }
                 }
             }
