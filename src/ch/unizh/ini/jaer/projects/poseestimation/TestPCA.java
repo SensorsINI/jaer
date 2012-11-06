@@ -32,9 +32,9 @@ import net.sf.jaer.graphics.FrameAnnotater;
 public class TestPCA extends EventFilter2D implements Observer, FrameAnnotater {
 
     // Controls
-    protected int dt = getPrefs().getInt("TestPCA.dt", 30000);
+    protected int dtMin = getPrefs().getInt("TestPCA.dtMin", 30000);
     {
-        setPropertyTooltip("dt", "Minimum time window before calculations in us");
+        setPropertyTooltip("dtMin", "Minimum time window before calculations in us");
     }
 
     protected int eventCountThreshold = getPrefs().getInt("TestPCA.eventCountThreshold", 1000);
@@ -74,6 +74,7 @@ public class TestPCA extends EventFilter2D implements Observer, FrameAnnotater {
     // Timing
     int t0 = 0;         // initial time, used as reference for time comparison
     int ts = 0;         // timestamp
+    int dt = ts - t0;   // Time Difference between final time and initial time
     
     // Drawing Points - Mean and STD drawn in Eigenvector direction
     Point2D.Float ptMean = new Point2D.Float();     
@@ -170,9 +171,12 @@ public class TestPCA extends EventFilter2D implements Observer, FrameAnnotater {
      */
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-        if(in==null) return null;
-        if(!filterEnabled) return in;
-        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
+        if(in==null) 
+            return null;
+        if(!filterEnabled) 
+            return in;
+        if(enclosedFilter!=null) 
+            in=enclosedFilter.filterPacket(in);
         checkOutputPacketEventType(in);
 
         // Event Iterator
@@ -186,7 +190,7 @@ public class TestPCA extends EventFilter2D implements Observer, FrameAnnotater {
                 continue;
             }
             
-            if (ts - t0 > dt && numEvents >= eventCountThreshold) {
+            if (ts - t0 > dtMin && numEvents >= eventCountThreshold) {
                 // If enough time has passed and enough data has been collected
                 // Calculate Mean and STD 
                 calculate();
@@ -199,6 +203,7 @@ public class TestPCA extends EventFilter2D implements Observer, FrameAnnotater {
                 ptMean.setLocation(xMean, yMean);
 
                 // Reset calculation values to current data - make sure not to lose this event
+                dt = ts - t0;
                 t0 = ts;
                 xSum = x;
                 xxSum = x*x;
@@ -263,8 +268,8 @@ public class TestPCA extends EventFilter2D implements Observer, FrameAnnotater {
      * Getter for integration time window
      * @return Minimum time window before Mean and STD calculation in us
      */
-    public int getDt() {
-        return this.dt;
+    public int getDtMin() {
+        return this.dtMin;
     }
 
     /**
@@ -272,17 +277,17 @@ public class TestPCA extends EventFilter2D implements Observer, FrameAnnotater {
      * @see #getDt
      * @param dt Minimum time window before Mean and STD calculation in us
      */
-    public void setDt(final int dt) {
-        getPrefs().putInt("TestPCA.dt", dt);
-        getSupport().firePropertyChange("dt", this.dt, dt);
-        this.dt = dt;
+    public void setDtMin(final int dtMin) {
+        getPrefs().putInt("TestPCA.dt", dtMin);
+        getSupport().firePropertyChange("dtMin", this.dtMin, dtMin);
+        this.dtMin = dtMin;
     }
 
-    public int getMinDt() {
+    public int getMinDtMin() {
         return 1;
     }
 
-    public int getMaxDt() {
+    public int getMaxDtMin() {
         return 100000;
     }
 
