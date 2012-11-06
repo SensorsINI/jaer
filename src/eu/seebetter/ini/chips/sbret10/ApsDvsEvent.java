@@ -10,7 +10,7 @@ import net.sf.jaer.event.PolarityEvent;
  */
 public class ApsDvsEvent extends PolarityEvent {
 
-    public enum ReadoutType {A,B,C};
+    public enum ReadoutType {A,B,C,EOF};
     
     /** The ADC sample value. Has value -1 by convention for non-sample events. */
     protected int adcSample = 0;
@@ -102,5 +102,9 @@ public class ApsDvsEvent extends PolarityEvent {
     
     public boolean isC(){
         return readoutType == ReadoutType.C;
+    }
+    
+    public boolean isEOF(){
+        return readoutType == ReadoutType.EOF;
     }
 }

@@ -29,7 +29,6 @@ import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnotater{
     
     EdgeConstructor constructor;
-    private FilterChain filterChain;
     
     int[][] frameBuffer; //0=type, 1=x, 2=y, 3=timestamp, 4=protoClusterID, 5=clusterID
     int[] protoClusterSizes;
@@ -93,12 +92,6 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
         super(chip);
         chip.addObserver(this);
         initFilter();
-        
-        filterChain = new FilterChain(chip);
-        filterChain.add(new BackgroundActivityFilter(chip));
-        
-        setEnclosedFilterChain(filterChain);
-        filterChain.reset();
     }
 	
     @Override
@@ -675,14 +668,18 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
             gl.glPointSize(4);
             int i = 0;
             if(elementMethod == ElementMethod.SnakeletsA || elementMethod == ElementMethod.SnakeletsB){
+                int oldEventCount = maxEventCount;
+                maxEventCount = 0;
                 for(int x=0; x<chip.getSizeX(); x++){
                     for(int y=0; y<chip.getSizeY(); y++){
                         if(accumArray[x][y]>0){
-                            if(accumArray[x][y]>1){
-                                gl.glColor3f(0,1,0);
-                            } else {
-                                gl.glColor3f(0,0.4f,0);
-                            }
+                            if(maxEventCount<accumArray[x][y])maxEventCount=accumArray[x][y];
+//                            if(accumArray[x][y]>1){
+//                                gl.glColor3f(0,1,0);
+//                            } else {
+//                                gl.glColor3f(0,0.4f,0);
+//                            }
+                            gl.glColor3f(0.45f-0.6f*((float)accumArray[x][y])/((float)oldEventCount),0.45f+0.6f*((float)accumArray[x][y])/((float)oldEventCount),0.45f-0.6f*((float)accumArray[x][y])/((float)oldEventCount)); 
                             gl.glBegin(GL.GL_POINTS); 
                             gl.glVertex2i(x,y);
                             gl.glEnd();
@@ -694,7 +691,7 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                     int x = frameBuffer[i][1];
                     int y = frameBuffer[i][2];
                     gl.glBegin(GL.GL_POINTS);
-                    gl.glColor3f(0,1,(float)1.0-(accumArray[x][y])/(maxEventCount)); 
+                    gl.glColor3f(0.45f-0.6f*((float)accumArray[x][y])/((float)maxEventCount),0.45f+0.6f*((float)accumArray[x][y])/((float)maxEventCount),0.45f-0.6f*((float)accumArray[x][y])/((float)maxEventCount)); 
                     gl.glVertex2i(x,y);
                     gl.glEnd();
                     i++;

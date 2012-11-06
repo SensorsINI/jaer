@@ -8,6 +8,7 @@ import ch.unizh.ini.jaer.projects.sensoryfusion.slaem.EdgeFragments.Snakelet;
 import java.awt.Point;
 import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
+import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import javax.media.opengl.GL;
@@ -30,9 +31,10 @@ import net.sf.jaer.graphics.FrameAnnotater;
 public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnnotater{
 
     private FilterChain filterChain;
+    private BackgroundActivityFilter baFilter;
     public EdgeFragments snakelets;
     public CopyOnWriteArrayList<Edge> edges;
-    public EdgeStack protoEdges;
+    public UpdatedStack<EdgeSegment> protoSegments;
 
     public int closestEdgeID1,closestEdgeID2;
     public int closestSegID1,closestSegID2;
@@ -56,7 +58,11 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
         snakelets.resetFilter();
         snakelets.setConstructor(this);
         
+        baFilter = new BackgroundActivityFilter(chip);
+        
         filterChain = new FilterChain(chip);
+
+        filterChain.add(baFilter);
         filterChain.add(snakelets);
         
         setEnclosedFilterChain(filterChain);
@@ -69,13 +75,13 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
     @Override
     public void resetFilter() {
         edges = new CopyOnWriteArrayList<Edge>();
-        protoEdges = new EdgeStack(protoBufferSize);
+        protoSegments = new UpdatedStack(EdgeSegment.class, protoBufferSize);
         filterChain.reset();
     }
 
     @Override
     public void initFilter() {
-        snakelets.elementMethod = EdgeFragments.ElementMethod.SnakeletsB;
+        snakelets.elementMethod = EdgeFragments.ElementMethod.SnakeletsA;
         resetFilter();
     }
     
@@ -87,238 +93,47 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
         if ( in == null ){
             return null;
         }
-        
+        //checkEdges();
         return nextOut;
     }
     
     public void addSnakelet(Snakelet snakelet){
         for(Object edg : edges){
             Edge edge = (Edge)edg;
-            if(edge.contains(snakelet)){
+            if(edge.contains(snakelet,oriTolerance,distTolerance)){
                 return;
             }
         }
-        if(protoEdges.addSnakelet(snakelet)){
-            Edge mature = protoEdges.getMatureEdge();
-            if(mature != null){
-                edges.add(mature);
+        EdgeSegment segment = new EdgeSegment(snakelet,null);
+        if(protoSegments.addElement(segment,oriTolerance,distTolerance)){
+            EdgeSegment last = protoSegments.getLastElement();
+            if(last.mature){
+                if(!checkOverlaps(last)){
+                    edges.add(new Edge(segment));
+                }
             }
-        }else{
-            protoEdges.add(new Edge(snakelet));
         }
+//        }else{
+//            protoSegments.add(new EdgeSegment(snakelet),null);
+//        }
     }
     
-    public class Edge{        
-        public CopyOnWriteArrayList<Segment> segments;
-        public int timestamp;
-        public boolean mature;
-        public float[] color;
-        
-        public Edge(Snakelet snakelet){
-            segments = new CopyOnWriteArrayList<Segment>();
-            segments.add(new Segment(snakelet, this));
-            color = new float[3];
-            color[0] = (float)Math.random();
-            color[1] = (float)Math.random();
-            color[2] = (float)Math.random();
-        }
-        
-        public boolean contains(Snakelet snakelet){
-            for(Object sgm : segments){
-                Segment segment = (Segment) sgm;
-                if(segment.contains(snakelet))return true;
-            }
-            return false;
-        }
-        
-        public void draw(GLAutoDrawable drawable){
-            for(Object sgm : segments){
-                Segment segment = (Segment) sgm;
-                segment.draw(drawable);
+    private boolean checkOverlaps(EdgeSegment newEdgeSegment){
+        boolean edgeFound = false;
+        for(Object edg : edges){
+            Edge edge = (Edge) edg;
+            if(edge.overlaps(newEdgeSegment,oriTolerance,distTolerance)){
+                edgeFound=true;
+                break;
             }
         }
-        
-        public boolean isMature(){
-            return mature;
-        }
-        
-        public void setMature(boolean mature){
-            this.mature = mature;
-        }
-        
-        public final class Segment{
-            
-            public float phi;
-            Line2D.Float line;
-            
-            public Edge edge;
-            public int evidence;
-            public boolean mature;
-            
-            public Segment(Snakelet snakelet, Edge edge){
-                this.phi = snakelet.phi;
-                this.line = new Line2D.Float();
-                this.line.setLine(snakelet.line.getP1(), snakelet.line.getP2());
-                this.edge = edge;
-                edge.timestamp=snakelet.timestamp;
-                evidence = 1;
-                this.mature = false;
-            } 
-            
-            public boolean contains(Snakelet snakelet){
-                float dPhi, dS1, dS2;
-                boolean close1 = false;
-                dPhi = getAngleDiff(phi, snakelet.phi);
-                dS1 = (float)line.ptSegDist(snakelet.line.getP1());
-                dS2 = (float)line.ptSegDist(snakelet.line.getP2());
-                if(dS1 < dS2){
-                    close1 = true;
-                }
-                if(dPhi<oriTolerance && (dS1<distTolerance || dS2<distTolerance)){
-                    if(close1){
-                        float dL = (float)line.ptLineDist(snakelet.line.getP1());
-                        int dir = line.relativeCCW(snakelet.line.getP1());
-                        translateSegment(dL, dir);
-                    }else{
-                        float dL = (float)line.ptLineDist(snakelet.line.getP2());
-                        int dir = line.relativeCCW(snakelet.line.getP2());
-                        translateSegment(dL, dir);
-                    }
-                    stretchSegment(snakelet, close1);
-                    phi = calculatePhi();
-                    udateMaturiy();
-                    edge.timestamp = snakelet.timestamp;
-                    return true;
-                }else{
-                    return false;
-                }
-            }
-            
-            void translateSegment(float distance, int direction){
-                //segment gets only translated perpendicular to its orientation
-                float theta = (float)(phi-direction*Math.PI/2.0);
-                float dX = (float)(Math.sin(theta)*distance);
-                float dY = (float)(Math.cos(theta)*distance);
-                line.x1 = line.x1+dX;
-                line.y1 = line.y1+dY;
-                line.x2 = line.x2+dX;
-                line.y2 = line.y2+dY;
-            }
-            
-            void stretchSegment(Snakelet snakelet, boolean close1){
-                if(close1){
-//                    line.x2=(line.x2+snakelet.line.x2)/2.0f;
-//                    line.y2=(line.y2+snakelet.line.y2)/2.0f;
-                    line.x2=snakelet.line.x2;
-                    line.y2=snakelet.line.y2;
-                } else {
-//                    line.x1=(line.x1+snakelet.line.x1)/2.0f;
-//                    line.y1=(line.y1+snakelet.line.y1)/2.0f;
-                    line.x1=snakelet.line.x1;
-                    line.y1=snakelet.line.y1;
-                }
-            }
-            
-            void udateMaturiy(){
-                evidence++;
-                if(evidence>4){
-                    this.mature = true;
-                    this.edge.setMature(true);
-                }
-            }
-            
-            float calculatePhi(){
-                return (float)Math.atan2((line.x1-line.x2),(line.y1-line.y2));
-            }
-            
-            float getAngleDiff(float angle1, float angle2){
-                float diff = (float)Math.abs(angle1-angle2);
-                if(diff > Math.PI){
-                    diff = (float)(2*Math.PI)-diff;
-                }
-                return diff;
-            }
-            
-            public void draw(GLAutoDrawable drawable){
-                GL gl=drawable.getGL();
-                gl.glLineWidth(4.0f);
-                if(mature){
-                    gl.glColor3f(color[0],color[1],color[2]); 
-                }else{
-                    gl.glColor3f(1.0f,0.5f,0.5f); 
-                } 
-                gl.glBegin(GL.GL_LINES);
-                gl.glVertex2d(line.x1,line.y1);
-                gl.glVertex2d(line.x2,line.y2);
-                gl.glEnd();
-            }
-        }
+        return edgeFound;
     }
     
-    public class EdgeStack{
-        public int size;
-        public Edge[] stack;
-        public int[] stackPointer;
-        public int pPointer, sPointer;
-        
-        public EdgeStack(int size){
-            this.size = size;
-            reset();
-        }
-        
-        public void reset(){
-            stack = new Edge[size];
-            stackPointer = new int[size];
-            Arrays.fill(stackPointer, -1);
-            pPointer = 0;
-            sPointer = 0;
-            stackPointer[pPointer] = sPointer;
-        }
-        
-        public void add(Edge edge){
-            stackPointer[pPointer] = sPointer;
-            stack[stackPointer[pPointer]]=edge;
-            sPointer = increase(sPointer);
-            pPointer = increase(pPointer);
-        }
-        
-        public boolean addSnakelet(Snakelet snakelet){
-            boolean inserted = false;
-            int i = decrease(pPointer);
-            while(i!=pPointer){
-                if(stackPointer[i]>=0){
-                    if(stack[stackPointer[i]].contains(snakelet)){
-                        inserted = true;
-                        stackPointer[pPointer]=stackPointer[i];
-                        stackPointer[i]=-1;
-                        pPointer = increase(pPointer);
-                        break;
-                    }
-                }
-                i = decrease(i);
-            }
-            return inserted;
-        }
-        
-        public Edge getMatureEdge(){
-            int lastP = decrease(pPointer);
-            if(stack[stackPointer[lastP]].isMature()){
-                return stack[stackPointer[lastP]];
-            }else{
-                return null;
-            }
-        }
-        
-        public int increase(int i){
-            i++;
-            if(i>=size)i=0;
-            return i;
-        }
-        
-        public int decrease(int i){
-            i--;
-            if(i<0)i=size-1;
-            return i;
+    private void checkEdges(){
+        for(Object edg : edges){
+            Edge edge = (Edge) edg;
+            //edge.checkAge();
         }
     }
     
@@ -329,9 +144,12 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        for(Object edg : edges){
-            Edge edge = (Edge)edg;
-            edge.draw(drawable);
+        if(drawAlloc){
+            for(Object edg : edges){
+                Edge edge = (Edge)edg;
+                edge.draw(drawable);
+            }
+            protoSegments.draw(drawable);
         }
     }
     
@@ -348,7 +166,6 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
     public void setDrawAlloc(boolean drawAlloc) {
         this.drawAlloc = drawAlloc;
         prefs().putBoolean("EdgeConstructor.drawAlloc", drawAlloc);
-        resetFilter();
     }
     
     /**

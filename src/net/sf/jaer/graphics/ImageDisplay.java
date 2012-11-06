@@ -434,6 +434,29 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     public float[] getPixmapArray() {
         return pixmap.array();
     }
+    
+    /** Sets the whole pixmap array - a float[] of the kind R1,G1,B1,R2,G2,...
+     *
+     * @param valueArray
+     */
+    public void setPixmapArray(float[] array) {
+        checkPixmapAllocation();
+        System.arraycopy(array, 0, pixmap.array(), 0, array.length);
+        pixmap.rewind();
+        pixmap.limit(array.length);
+    }
+    
+    /** Sets the whole pixmap array in gray values - a float[] of the kind grey1, grey2,...
+     *
+     * @param valueArray
+     */
+    public void setPixmapGreyArray(float[] array) {
+        checkPixmapAllocation();
+        final int n = 3 * array.length;
+        System.arraycopy(grayBuffer.array(), 0, array, 0, n);
+        pixmap.rewind();
+        pixmap.limit(n);;
+    }
 
     /** Position the pixmap buffer at pixel x,y.
      *

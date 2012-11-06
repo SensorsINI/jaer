@@ -82,7 +82,7 @@ import net.sf.jaer.util.jama.Matrix;
  * @author tobi
  */
 @Description("SBret version 1.0")
-public class SBret10 extends AETemporalConstastRetina {
+public class SBret10 extends APSDVSchip {
 
     /** Describes size of array of pixels on the chip, in the pixels address space */
     public static class PixelArray extends Rectangle {
@@ -239,7 +239,6 @@ public class SBret10 extends AETemporalConstastRetina {
             resetCounters();
         }
 
-        
         private void resetCounters(){
             int numReadoutTypes = 3;
             if(countX == null || countY == null){
@@ -333,10 +332,6 @@ public class SBret10 extends AETemporalConstastRetina {
                         //System.out.println("SOF - pixcount: "+pixCnt);
                         resetCounters();
                         pixCnt=0;
-                        if(snapshot){
-                            snapshot = false;
-                            config.adc.setAdcEnabled(false);
-                        }
                         frameTime = e.timestamp - firstFrameTs;
                         firstFrameTs = e.timestamp;
                     }
@@ -356,6 +351,17 @@ public class SBret10 extends AETemporalConstastRetina {
                     pixCnt++;
                     if(((config.useC.isSet() && e.isC()) || (!config.useC.isSet() && e.isB()))  && e.x == (short)(chip.getSizeX()-1) && e.y == (short)(chip.getSizeY()-1)){
                         lastADCevent();
+                        //insert and end of frame event
+                        ApsDvsEvent a = (ApsDvsEvent) outItr.nextOutput();
+                        a.adcSample = 0;
+                        a.timestamp = (timestamps[i]);
+                        a.x = -1;
+                        a.y = -1;
+                        a.readoutType = ApsDvsEvent.ReadoutType.EOF;
+                        if(snapshot){
+                            snapshot = false;
+                            config.adc.setAdcEnabled(false);
+                        }
                     }
                     //if(e.x<0 || e.y<0)System.out.println("New ADC event: type "+sampleType+", x "+e.x+", y "+e.y);
 //                    if(e.x>=0 && e.y>=0 && displayIntensity && !getAeViewer().isPaused()){
@@ -2120,6 +2126,11 @@ public class SBret10 extends AETemporalConstastRetina {
             return "IntensityFrameData{" + "WIDTH=" + WIDTH + ", HEIGHT=" + HEIGHT + ", NUMSAMPLES=" + NUMSAMPLES  + '}';
         }
 
+    }
+    
+    @Override
+    public int getMaxADC (){
+        return MAX_ADC;
     }
     
 }
