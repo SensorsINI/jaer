@@ -5132,7 +5132,7 @@ private void updateFirmwareMenuItemActionPerformed(java.awt.event.ActionEvent ev
         HasUpdatableFirmware d = (HasUpdatableFirmware) aemon;
 
         int DID = d.getVersion();
-        int ret = JOptionPane.showConfirmDialog(this, "Current FX2 firmware device ID (firmware version number)=" + DID + ": Are you sure you want to update the firmware?", "Really update?", JOptionPane.YES_NO_OPTION);
+        int ret = JOptionPane.showConfirmDialog(this, "<html>Current FX2 firmware device ID (firmware version number)=" + DID + ": Are you sure you want to update the firmware?\nSee the menu item \"Help\\DVS128 Firmware Change Log\" if you are using a DVS128.", "Really update?", JOptionPane.YES_NO_OPTION);
         if (!(ret == JOptionPane.YES_OPTION)) {
             return;
         }
