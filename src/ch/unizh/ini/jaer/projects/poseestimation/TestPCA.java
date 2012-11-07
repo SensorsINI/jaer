@@ -84,6 +84,7 @@ public class TestPCA extends EventFilter2D implements Observer, FrameAnnotater {
     
     // Event Handlers
     short x, y;
+    boolean calculationDone = false;
     
     // Constructor
     public TestPCA(AEChip chip) {
@@ -180,7 +181,6 @@ public class TestPCA extends EventFilter2D implements Observer, FrameAnnotater {
         checkOutputPacketEventType(in);
 
         // Event Iterator
-        OutputEventIterator outItr = out.outputIterator();
         for (Object e : in) {
             BasicEvent i = (BasicEvent) e;
             ts = i.timestamp;
@@ -211,7 +211,9 @@ public class TestPCA extends EventFilter2D implements Observer, FrameAnnotater {
                 yySum = y*y;
                 xySum = x*y;
                 numEvents = 1;
-
+                
+                calculationDone = true;
+                
             } else {
                 // Else keep on collecting data
                 xSum += x;
@@ -220,12 +222,11 @@ public class TestPCA extends EventFilter2D implements Observer, FrameAnnotater {
                 yySum += y*y;
                 xySum += x*y;
                 numEvents++;
+                
+                calculationDone = false;
             }            
-            // Create a new output instance - and pass input to it
-            BasicEvent o = (BasicEvent) outItr.nextOutput();
-            o.copyFrom(i);
         }
-        return out;
+        return in;
     }
 
     /**
