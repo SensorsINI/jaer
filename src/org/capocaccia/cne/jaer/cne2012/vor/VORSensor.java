@@ -19,6 +19,7 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
 import javax.media.opengl.glu.GLUquadric;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -35,6 +36,7 @@ import net.sf.jaer.util.filter.HighpassFilter;
  *
  * @author tobi
  */
+@Description("The Phidgets Spatial 9-DOF rate gyro, accelormeter, compass")
 public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer {
 
     SpatialPhidget spatial = null;
@@ -302,7 +304,6 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
     public double getAcceleration(int index) throws PhidgetException {
         return spatial.getAcceleration(index);
     }
-
     public final void addSpatialDataListener(SpatialDataListener l) {
         spatial.addSpatialDataListener(l);
     }
