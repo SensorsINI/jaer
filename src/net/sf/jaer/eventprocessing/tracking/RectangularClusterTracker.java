@@ -1380,14 +1380,17 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
             if (showPaths) {
                 gl.glPointSize(PATH_POINT_SIZE);
-                gl.glBegin(GL.GL_POINTS);
+                try{
+                    gl.glBegin(GL.GL_POINTS);
                 {
                     java.util.List<ClusterPathPoint> points = getPath();
                     for (Point2D.Float p : points) {
                         gl.glVertex2f(p.x, p.y);
                     }
                 }
-                gl.glEnd();
+                }finally{
+                    gl.glEnd();
+                }
             }
 
             // now draw velocityPPT vector
@@ -2555,7 +2558,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
      * @param in
      * @return packet of RectangularClusterTrackerEvent.
      */
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (in.getSize() == 0) {
             return in; // added so that packets don't use a zero length packet to set last timestamps, etc, which can purge clusters for no reason
         }//        EventPacket out; // TODO check use of out packet here, doesn't quite make sense
@@ -2787,7 +2790,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         gl.glPopMatrix();
     }
 
-     public void annotate(GLAutoDrawable drawable) {
+     synchronized public void annotate(GLAutoDrawable drawable) {
         if (!isFilterEnabled()) {
             return;
         }
@@ -2812,7 +2815,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             }
         } catch (java.util.ConcurrentModificationException e) {
             // this is in case cluster list is modified by real time filter during rendering of clusters
-             log.warning(e.getMessage());
+             log.warning("concurrent modification of cluster list while drawing "+clusters.size()+" clusters");
          } finally {
              gl.glPopMatrix();
          }
