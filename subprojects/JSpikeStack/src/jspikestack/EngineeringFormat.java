@@ -46,6 +46,7 @@ public class EngineeringFormat {
     private char suffix(int k){
         if(k==0) return ' ';
         if(k<0) return suffixes[k];
+        if(k>=suffixes.length) return suffixes[suffixes.length-1];
         return suffixes[k];
     }
     
