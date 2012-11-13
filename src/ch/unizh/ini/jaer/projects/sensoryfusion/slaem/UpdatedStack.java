@@ -9,7 +9,12 @@ import java.util.Arrays;
 import javax.media.opengl.GLAutoDrawable;
 
 /**
- *
+ * Special stack that has always the most recent entry on top. If an element is
+ * added following routine gets applied: First an iteration over all elements 
+ * happens to check whether the element is already contained in another stack
+ * element. If not, the element gets added on top of the stack an the oldest 
+ * gets dropped.
+ * 
  * @author Christian
  */
 public class UpdatedStack<O extends UpdatedStackElement> {
@@ -34,6 +39,10 @@ public class UpdatedStack<O extends UpdatedStackElement> {
         stackPointer[pPointer] = sPointer;
     }
 
+    /*
+     * Method to add an element on top of the stack without checking
+     */
+    
     public void add(O element){
         stackPointer[pPointer] = sPointer;
         stack[stackPointer[pPointer]]=element;
@@ -41,12 +50,13 @@ public class UpdatedStack<O extends UpdatedStackElement> {
         pPointer = increase(pPointer);
     }
 
-    public boolean addElement(Object obj, float oriTol, float distTol){
+    public boolean containsElement(Object obj, float oriTol, float distTol){
         boolean inserted = false;
         UpdatedStackElement element;
-        if(obj.getClass()==UpdatedStackElement.class){
+        if(obj instanceof UpdatedStackElement){
             element = (UpdatedStackElement) obj;
         }else{
+            System.out.println("wrong object type for updatedStack - needs to implement UpdatedStackElement");
             return inserted;
         }
         int i = decrease(pPointer);
@@ -72,7 +82,7 @@ public class UpdatedStack<O extends UpdatedStackElement> {
 
     public void draw(GLAutoDrawable drawable){
         for(int i = 0; i<size; i++){
-            if(stackPointer[i]>=0){
+            if(stackPointer[i]>=0 && stack[stackPointer[i]] != null){
                 stack[stackPointer[i]].draw(drawable);
             }
         }

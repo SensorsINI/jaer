@@ -1199,6 +1199,7 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
             a.annotate(drawable);
         }catch(RuntimeException e){
             log.warning("caught "+e+" when annotating with "+a);
+            e.printStackTrace();
         }
         if (f.getEnclosedFilter() != null && f.getEnclosedFilter() instanceof FrameAnnotater) {
             EventFilter f2 = f.getEnclosedFilter();

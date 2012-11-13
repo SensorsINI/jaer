@@ -5,6 +5,7 @@
 package ch.unizh.ini.jaer.projects.sensoryfusion.slaem;
 
 import ch.unizh.ini.jaer.projects.sensoryfusion.slaem.EdgeFragments.Snakelet;
+import ch.unizh.ini.jaer.projects.util.RingBuffer;
 import java.awt.Point;
 import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
@@ -34,10 +35,9 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
     private BackgroundActivityFilter baFilter;
     public EdgeFragments snakelets;
     public CopyOnWriteArrayList<Edge> edges;
-    public UpdatedStack<EdgeSegment> protoSegments;
-
-    public int closestEdgeID1,closestEdgeID2;
-    public int closestSegID1,closestSegID2;
+    public RingBuffer<EdgeSegment> protoSegments;
+    
+    public int matureEdges;
     
     private boolean drawAlloc=getPrefs().getBoolean("EdgeConstructor.drawAlloc",true);
     {setPropertyTooltip("drawAlloc","Should the allocation pixels be drawn");}
@@ -70,12 +70,14 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
         
         chip.addObserver(this);
         initFilter();
+        
+        matureEdges = 0;
     }
     
     @Override
     public void resetFilter() {
         edges = new CopyOnWriteArrayList<Edge>();
-        protoSegments = new UpdatedStack(EdgeSegment.class, protoBufferSize);
+        protoSegments = new RingBuffer(EdgeSegment.class, protoBufferSize);
         filterChain.reset();
     }
 
@@ -93,47 +95,43 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
         if ( in == null ){
             return null;
         }
-        //checkEdges();
+        checkEdges();
         return nextOut;
     }
     
     public void addSnakelet(Snakelet snakelet){
+        EdgeSegment segment = new EdgeSegment(snakelet,null);
         for(Object edg : edges){
             Edge edge = (Edge)edg;
-            if(edge.contains(snakelet,oriTolerance,distTolerance)){
+            if(edge.checkOverlap(segment,oriTolerance,distTolerance)){
                 return;
             }
         }
-        EdgeSegment segment = new EdgeSegment(snakelet,null);
-        if(protoSegments.addElement(segment,oriTolerance,distTolerance)){
-            EdgeSegment last = protoSegments.getLastElement();
-            if(last.mature){
-                if(!checkOverlaps(last)){
-                    edges.add(new Edge(segment));
+        for(Object sgm:protoSegments){
+            EdgeSegment protoSgmt = (EdgeSegment) sgm;
+            if(protoSgmt.touches(segment, distTolerance) && protoSgmt.aligns(segment, oriTolerance)){
+                protoSgmt.merge(segment);
+                if(protoSgmt.evidence>5){
+                    edges.add(new Edge(protoSgmt));
+                    if(edges.size()+matureEdges > protoBufferSize) edges.remove(0);
+                    protoSegments.remove();
                 }
+                return;
             }
         }
-//        }else{
-//            protoSegments.add(new EdgeSegment(snakelet),null);
-//        }
-    }
-    
-    private boolean checkOverlaps(EdgeSegment newEdgeSegment){
-        boolean edgeFound = false;
-        for(Object edg : edges){
-            Edge edge = (Edge) edg;
-            if(edge.overlaps(newEdgeSegment,oriTolerance,distTolerance)){
-                edgeFound=true;
-                break;
-            }
-        }
-        return edgeFound;
+        protoSegments.add(segment);
     }
     
     private void checkEdges(){
         for(Object edg : edges){
             Edge edge = (Edge) edg;
-            //edge.checkAge();
+            if(!edge.checkAge()){
+                edges.remove(edge);
+            }
+//            int idx = edges.indexOf(edg);
+//            for(int i = idx; i<edges.size()-1; i++){
+//                edge.merge(edges.get(i));
+//            }
         }
     }
     
@@ -147,9 +145,12 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
         if(drawAlloc){
             for(Object edg : edges){
                 Edge edge = (Edge)edg;
-                edge.draw(drawable);
+                if(edge != null)edge.draw(drawable);
             }
-            protoSegments.draw(drawable);
+            for(Object sgmt : protoSegments){
+                EdgeSegment segment = (EdgeSegment) sgmt;
+                segment.draw(drawable);
+            }
         }
     }
     
@@ -215,165 +216,5 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
         prefs().putInt("EdgeConstructor.protoBufferSize", protoBufferSize);
         resetFilter();
     }
-    
-        
-//   ::::::::::::::OLD CODE::::::::::  
-//   elegant way to measure closest segment
-//    
-//    public void addFragment(LineFragment fragment){
-//        DistSearchQuery distances = new DistSearchQuery();
-//        boolean first = true;
-//        Iterator edgeItr = edges.iterator();
-//        while(edgeItr.hasNext()){
-//            Edge oldEdge = (Edge)edgeItr.next();
-//            DistSearchQuery edgeDist = oldEdge.getMinDistances(fragment);
-//                if(first || distances.p1dist < edgeDist.p1dist){
-//                    distances.p1dist = edgeDist.p1dist;
-//                    distances.point1 = edgeDist.point1;
-//                    distances.p1edge = edgeDist.p1edge;
-//                    distances.p1segment = edgeDist.p1segment;
-//                }
-//                if(first || distances.p2dist < edgeDist.p2dist){
-//                    distances.p2dist = edgeDist.p2dist;
-//                    distances.point2 = edgeDist.point2;
-//                    distances.p2edge = edgeDist.p2edge;
-//                    distances.p2segment = edgeDist.p2segment;
-//                    first = false;
-//                }
-//        }
-//        if(distances.p1dist<distToleranceSqr){
-//            if(distances.p2dist<distToleranceSqr){
-//                //both points allocated
-//                
-//            }else{
-//                //only p1 allocated
-//            }
-//        }else if(distances.p2dist<distToleranceSqr){
-//            //only p2 allocated
-//        }else{
-//            //none allcoated 
-//            int protoP = protoEdgePointer-1;
-//            boolean protoFound = false;
-//            while(!protoFound && protoP != protoEdgePointer){
-//                if(protoEdges[protoP] != null){
-//                    DistSearchQuery protoDist = protoEdges[protoP].getMinDistances(fragment);
-//                    if(protoDist.p1dist<distToleranceSqr){
-//                        edges.add(protoEdges[protoP]);
-//                    }
-//                }
-//            }
-//        }
-//    }
-//    
-//    public class Edge{
-//        
-//        CopyOnWriteArrayList<Segment> segments;
-//        
-//        public Edge(LineFragment fragment){
-//            segments = new CopyOnWriteArrayList<Segment>();
-//            segments.add(new Segment(this,fragment));
-//        }
-//        
-//        public DistSearchQuery getMinDistances(LineFragment fragment){
-//            DistSearchQuery output = new DistSearchQuery();
-//            boolean first = true;
-//            Iterator segItr = segments.iterator();
-//            while(segItr.hasNext()){
-//                Segment segment = (Segment) segItr.next();
-//                DistSearchQuery segmentDist = segment.getDistanceSqr(fragment);
-//                if(first || output.p1dist < segmentDist.p1dist){
-//                    output.p1dist = segmentDist.p1dist;
-//                    output.point1 = segmentDist.point1;
-//                    output.p1edge = segmentDist.p1edge;
-//                    output.p1segment = segmentDist.p1segment;
-//                }
-//                if(first || output.p2dist < segmentDist.p2dist){
-//                    output.p2dist = segmentDist.p2dist;
-//                    output.point2 = segmentDist.point2;
-//                    output.p2edge = segmentDist.p2edge;
-//                    output.p2segment = segmentDist.p2segment;
-//                    first = false;
-//                }
-//            }
-//            return output;
-//        }
-//        
-//        public class Segment{
-//            Edge edge;
-//            Point p1, p2;
-//            public double slope;
-//            public double isect;
-//            public double alpha;
-//            public double lengthSqr;
-//            
-//            public Segment(Edge edg, LineFragment fragment){
-//                edge = edg;
-//                p1 = fragment.p1;
-//                p2 = fragment.p2;
-//                int dX = p2.x-p1.x;
-//                int dY = p2.y-p1.y;
-////                slope = (dY)/(dX+0.0001);
-////                isect = p1.y-p1.x*slope;
-////                alpha = Math.tanh(slope);
-//                lengthSqr = dX*dX+dY*dY;
-//            }
-//            
-//            public DistSearchQuery getDistanceSqr(LineFragment fragment){
-//                DistSearchQuery output = new DistSearchQuery();
-//                //fragment point 1
-//                output.p1edge = this.edge;
-//                output.p1segment = this;
-//                int dx1 = p1.x-fragment.p1.x, dy1 = p1.y-fragment.p1.y, dx2 = p2.x-fragment.p1.x, dy2 = p2.y-fragment.p1.y;
-//                double det = (-dx1*dx2)+(-dy1*dy2);
-//                if(det<0){
-//                    output.point1 = 1;
-//                    output.p1dist = dx1*dx1+dy1*dy1;
-//                }
-//                if(det>lengthSqr){
-//                    output.point1 = 2;
-//                    output.p1dist = dx2*dx2+dy2*dy2;
-//                }
-//                det = dx2*dy1-dy2*dx1;
-//                output.p1dist = (det*det)/lengthSqr;
-//                if(dx1*dx1+dy1*dy1 <= dx2*dx2+dy2*dy2){
-//                    output.point1 = 1;
-//                } else {
-//                    output.point1 = 2;
-//                }
-//                //fragment point 2
-//                output.p2edge = this.edge;
-//                output.p2segment = this;
-//                dx1 = p1.x-fragment.p2.x; 
-//                dy1 = p1.y-fragment.p2.y;
-//                dx2 = p2.x-fragment.p2.x;
-//                dy2 = p2.y-fragment.p2.y;
-//                det = (-dx1*dx2)+(-dy1*dy2);
-//                if(det<0){
-//                    output.point2 = 1;
-//                    output.p2dist = dx1*dx1+dy1*dy1;
-//                }
-//                if(det>lengthSqr){
-//                    output.point2 = 2;
-//                    output.p2dist = dx2*dx2+dy2*dy2;
-//                }
-//                det = dx2*dy1-dy2*dx1;
-//                output.p2dist = (det*det)/lengthSqr;
-//                if(dx1*dx1+dy1*dy1 <= dx2*dx2+dy2*dy2){
-//                    output.point2 = 1;
-//                } else {
-//                    output.point2 = 2;
-//                }
-//                return output;
-//            }
-//        }
-//        
-//    }
-//    
-//    public static class DistSearchQuery{
-//        double p1dist, p2dist;
-//        Edge p1edge, p2edge;
-//        Edge.Segment p1segment, p2segment;
-//        int point1, point2;
-//    }
     
 }
