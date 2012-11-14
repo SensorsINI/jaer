@@ -22,7 +22,7 @@ import sun.nio.cs.ext.GB18030;
  * abstract methods and add a constructor with (AEChip chip, int nInputs) as 
  * arguments
  * 
- * @author Peter
+ * @author Peter O'Connor
  */
 public abstract class SpikeFilter<AxonType extends Axon,AxonGlobalType extends Axon.Globals,UnitGlobalType extends Unit.Globals,EventType extends BasicEvent> extends MultiSourceProcessor {
 
