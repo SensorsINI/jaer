@@ -362,6 +362,62 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
      * Describes IPots on R10Y retina chip. These are configured by a shift register.
      * This biasgen has one master bias control of 4 bits and each bias has 3 bits of individual control.
      *
+     * The table below is the default bias values for R10.
+
+Besides these values, we need to send 10 bits dummy (0000000000) before sending the bias values.
+
+Thus, 45 bits, in total, should be sent to the shift register of R10.
+
+The order of bits to the shift register (for the default values) is like this:
+
+   00000000 1 0111 100 100 100 ...
+
+* <pre>
+Pin mapping of the new PCB for R10 is like this:
+
+   FX2                 R10 (see Fig. 3-2(b) of ParameterSerializer_v00.docx)
+
+CLOCK_B     ---->    PAD_BIAS_ENABLE
+
+BITIN_B     ---->    PAD_BIAS_DATA
+
+BITOUT_B    ---->    PAD_BIAS_OUT
+
+LATCH_B     ---->    open (not connected)
+
+POWERDOWN   ---->    PDA_PD
+* 
+* </pre>
+* 
+* Biases are as follows:
+* <pre>
+* (Total 35) 	Default 	Default (Variation/step) 	MAX/MIM 	Real BIAS (@default)
+				(Variation/step) 
+PDB_PD_MONITORING 	1			
+IREF_TUNE<3:0> 	111	7.5kΩ (+0.15kΩ/step)	8.7kΩ /6.45kΩ 	Control all bias currents. 
+		(2%/step) 	(+16%/ -14%) 	
+SEL_BIASX<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step) 
+			(+100%/ -75%) 	
+SEL_BIASREQPD<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step) 
+			(+100%/ -75%) 	
+SEL_BIASREQ<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step) 
+			(+100%/ -75%) 	
+SEL_BIASREFR<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step) 
+			(+100%/ -75%) 	
+SEL_BIASPR<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step) 
+			(+100%/ -75%) 	
+SEL_BIASF<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step) 
+			(+100%/ -75%) 	
+SEL_BIASDIFFOFF<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	10nA (-2.5nA/step) 
+			(+100%/ -75%) 	
+SEL_BIASDIFFON<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	10nA (-2.5nA/step) 
+			(+100%/ -75%) 	
+SEL_BIASDIFF<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	10nA (-2.5nA/step) 
+			(+100%/ -75%) 	
+SEL_BIASCAS<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step)
+			(+100%/ -75%) 	
+</pre>
+* 
      * @author tobi
      */
     public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements ChipControlPanel, DVSTweaks {
