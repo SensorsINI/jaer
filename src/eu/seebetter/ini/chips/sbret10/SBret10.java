@@ -1129,13 +1129,13 @@ public class SBret10 extends APSDVSchip {
             
             //Config Bits
             OnchipConfigBit resetCalib = new OnchipConfigBit(SBret10.this, "resetCalib", 0, "turn the calibration neuron off", true),
-                    typePCalib = new OnchipConfigBit(SBret10.this, "typePCalib", 1, "make the calibration neuron P type", false),
-                    resetTestpixel = new OnchipConfigBit(SBret10.this, "resetTestpixel", 2, "keept the testpixel in reset", true),
-                    hotPixelSuppression = new OnchipConfigBit(SBret10.this, "hotPixelSuppression", 3, "keept turn the hot pixel suppression on", false),
+                    typeNCalib = new OnchipConfigBit(SBret10.this, "typeNCalib", 1, "make the calibration neuron N type", false),
+                    resetTestpixel = new OnchipConfigBit(SBret10.this, "resetTestpixel", 2, "keeps the testpixel in reset", true),
+                    hotPixelSuppression = new OnchipConfigBit(SBret10.this, "hotPixelSuppression", 3, "turns on the hot pixel suppression", false),
                     nArow = new OnchipConfigBit(SBret10.this, "nArow", 4, "use nArow in the AER state machine", false),
                     useAout = new OnchipConfigBit(SBret10.this, "useAout", 5, "turn the pads for the analog MUX outputs on", true)
                     ;
-            OnchipConfigBit[] configBits = {resetCalib, typePCalib, resetTestpixel, hotPixelSuppression, nArow, useAout};
+            OnchipConfigBit[] configBits = {resetCalib, typeNCalib, resetTestpixel, hotPixelSuppression, nArow, useAout};
             int TOTAL_CONFIG_BITS = 24;
             
             //Muxes
