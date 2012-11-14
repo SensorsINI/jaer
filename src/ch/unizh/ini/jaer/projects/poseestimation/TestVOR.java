@@ -9,13 +9,11 @@
 package ch.unizh.ini.jaer.projects.poseestimation;
 
 import com.phidgets.PhidgetException;
-import com.phidgets.SpatialEventData;
 import com.phidgets.SpatialPhidget;
 import com.phidgets.event.*;
 import com.sun.opengl.util.GLUT;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.Level;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
@@ -27,7 +25,6 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
-import org.capocaccia.cne.jaer.cne2012.vor.PhidgetsSpatialEvent;
 
 /**
  *
@@ -211,6 +208,7 @@ public class TestVOR extends EventFilter2D implements Observer, FrameAnnotater {
         }
         return out;
     }
+    
 
     /**
      * Getter for integration time window

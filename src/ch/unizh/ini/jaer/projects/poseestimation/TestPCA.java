@@ -8,7 +8,6 @@
 
 package ch.unizh.ini.jaer.projects.poseestimation;
 
-import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import java.util.Observable;
 import java.util.Observer;
@@ -19,7 +18,6 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
