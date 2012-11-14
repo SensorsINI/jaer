@@ -19,15 +19,26 @@ public class EdgeSegment extends Line2D.Float {
     public Edge edge;
     public int evidence;
     public int timestamp;
+    public Corner c1,c2;
     
     private Point2D closePoint;
 
     public EdgeSegment(EdgeFragments.Snakelet snakelet, Edge edg){
         this.phi = snakelet.phi;
+        this.c1 = new Corner(snakelet.line.getP1(), snakelet, edg.constructor);
+        this.c2 = new Corner(snakelet.line.getP2(), snakelet, edg.constructor);
         this.setLine(snakelet.line.getP1(), snakelet.line.getP2());
         evidence = 1;
         timestamp = snakelet.timestamp;
-    } 
+    }
+    
+    public EdgeSegment(Corner c1, Corner c2){
+        this.c1 = c1;
+        this.c2 = c2;
+        this.setLine(c1, c2);
+        evidence = 1;
+        calculatePhi();
+    }
     
     public boolean touches(EdgeSegment segment, float distTolerance){
         float dS1, dS2;
@@ -99,13 +110,8 @@ public class EdgeSegment extends Line2D.Float {
             float s = (float)evidence/5.0f;
             gl.glColor3f(s*1.0f,s*0.5f,s*0.5f); 
         }else{
-            if(edge.segments.size()>1){
-                gl.glLineWidth(4.0f);
-                gl.glColor3f(edge.color[0],edge.color[1],edge.color[2]); 
-            }else{
-                gl.glLineWidth(3.0f);
-                gl.glColor3f(0.5f+0.5f*edge.color[0],0.5f+0.5f*edge.color[1],0.5f+0.5f*edge.color[2]);
-            }
+            gl.glLineWidth(3.0f);
+            gl.glColor3f(0.5f+0.5f*edge.color[0],0.5f+0.5f*edge.color[1],0.5f+0.5f*edge.color[2]);
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2d(x1,y1);
             gl.glVertex2d(x2,y2);
@@ -114,4 +120,13 @@ public class EdgeSegment extends Line2D.Float {
         
     }
     
+    @Override
+    public Corner getP1(){
+        return c1;
+    }
+    
+    @Override
+    public Corner getP2(){
+        return c2;
+    }
 }

@@ -36,8 +36,7 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
     public EdgeFragments snakelets;
     public CopyOnWriteArrayList<Edge> edges;
     public RingBuffer<EdgeSegment> protoSegments;
-    
-    public int matureEdges;
+    public CopyOnWriteArrayList<Corner> corners; 
     
     private boolean drawAlloc=getPrefs().getBoolean("EdgeConstructor.drawAlloc",true);
     {setPropertyTooltip("drawAlloc","Should the allocation pixels be drawn");}
@@ -50,6 +49,12 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
     
     private int protoBufferSize=getPrefs().getInt("EdgeConstructor.protoBufferSize",10);
     {setPropertyTooltip("protoBufferSize","Tolerance for two Fractions to merge");}
+    
+    /**
+     * 
+     */
+    private int threshold=getPrefs().getInt("EdgeConstructor.threshold",5);
+    {setPropertyTooltip("threshold","threshold a ");}
     
     public EdgeConstructor(AEChip chip){
         super(chip);
@@ -70,13 +75,12 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
         
         chip.addObserver(this);
         initFilter();
-        
-        matureEdges = 0;
     }
     
     @Override
     public void resetFilter() {
         edges = new CopyOnWriteArrayList<Edge>();
+        corners = new CopyOnWriteArrayList<Corner>();
         protoSegments = new RingBuffer(EdgeSegment.class, protoBufferSize);
         filterChain.reset();
     }
@@ -100,32 +104,37 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
     }
     
     public void addSnakelet(Snakelet snakelet){
-        EdgeSegment segment = new EdgeSegment(snakelet,null);
-        for(Object edg : edges){
-            Edge edge = (Edge)edg;
-            if(edge.checkOverlap(segment,oriTolerance,distTolerance)){
-                return;
-            }
+        boolean newCorner=true;
+        for(Corner corner:corners){
+            if(corner.toAdd(snakelet))newCorner = false;
+            
         }
-        for(Object sgm:protoSegments){
-            EdgeSegment protoSgmt = (EdgeSegment) sgm;
-            if(protoSgmt.touches(segment, distTolerance) && protoSgmt.aligns(segment, oriTolerance)){
-                protoSgmt.merge(segment);
-                if(protoSgmt.evidence>5){
-                    edges.add(new Edge(protoSgmt));
-                    if(edges.size()+matureEdges > protoBufferSize) edges.remove(0);
-                    protoSegments.remove();
+        if(newCorner){
+            corners.add(new Corner(snakelet.line.getP1(), snakelet, this));
+            corners.add(new Corner(snakelet.line.getP2(), snakelet, this));
+        }
+    }
+    
+    public void removeSnakelet(Snakelet snakelet){
+        for(Corner corner:corners){
+            if(corner.toRemove(snakelet)){
+                if(corner.hasEdge()){
+                    Edge edge = corner.edge;
+                    if(edge.removeCorner(corner))edges.remove(edge);
                 }
-                return;
+                corners.remove(corner);
             }
         }
-        protoSegments.add(segment);
+    }
+    
+    public void newEdge(Corner c1, Corner c2){
+        edges.add(new Edge(c1, c2, this));
     }
     
     private void checkEdges(){
         for(Object edg : edges){
             Edge edge = (Edge) edg;
-            if(!edge.checkAge()){
+            if(!edge.checkValidity()){
                 edges.remove(edge);
             }
 //            int idx = edges.indexOf(edg);
@@ -151,6 +160,8 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
                 EdgeSegment segment = (EdgeSegment) sgmt;
                 segment.draw(drawable);
             }
+            for(Corner corner : corners)
+                corner.draw(drawable);
         }
     }
     
@@ -214,6 +225,22 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
     public void setProtoBufferSize(int protoBufferSize) {
         this.protoBufferSize = protoBufferSize;
         prefs().putInt("EdgeConstructor.protoBufferSize", protoBufferSize);
+        resetFilter();
+    }
+    
+    /**
+     * @return the threshold
+     */
+    public int getThreshold() {
+        return threshold;
+    }
+
+    /**
+     * @param threshold the threshold to set
+     */
+    public void setThreshold(int threshold) {
+        this.threshold = threshold;
+        prefs().putInt("EdgeConstructor.threshold", threshold);
         resetFilter();
     }
     

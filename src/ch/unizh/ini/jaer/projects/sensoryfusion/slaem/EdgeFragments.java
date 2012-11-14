@@ -583,6 +583,9 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
             frameBuffer[i2][5] = -1;
             i1 = -1;
             i2 = -1;
+            if(constructor != null){
+                constructor.removeSnakelet(this);
+            }
             on = false;
         }
         
@@ -843,6 +846,7 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
      */
     public void setFilteringEnabled(boolean filteringEnabled) {
         this.filteringEnabled = filteringEnabled;
+        prefs().putBoolean("EdgeExtractor.filteringEnabled", filteringEnabled);
     }
     
         /**
@@ -857,6 +861,7 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
      */
     public void setDrawAssocPixels(boolean drawAssocPixels) {
         this.drawAssocPixels = drawAssocPixels;
+        prefs().putBoolean("EdgeExtractor.drawAssocPixels", drawAssocPixels);
     }
     
         /**
@@ -871,6 +876,7 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
      */
     public void setDrawElements(boolean drawElements) {
         this.drawElements = drawElements;
+        prefs().putBoolean("EdgeExtractor.drawElements", drawElements);
     }
 	
     public ElementMethod getElementMethod() {
