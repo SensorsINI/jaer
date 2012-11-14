@@ -31,7 +31,7 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 
 /**
  * Describes R10Y retina and its event extractor and bias generator.
- * 
+ *
  * @author tobi/junseok
  */
 @Description("R10Y prototoype Dynamic Vision Sensor")
@@ -42,13 +42,16 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
     private JMenuItem setArrayResetMenuItem = null;
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     public static final String CMD_TWEAK_THESHOLD = "threshold", CMD_TWEAK_ONOFF_BALANCE = "balance", CMD_TWEAK_BANDWIDTH = "bandwidth", CMD_TWEAK_MAX_FIRING_RATE = "maxfiringrate";
-    private Biasgen biasgen;
-    JComponent helpMenuItem1 = null, helpMenuItem2 = null, helpMenuItem3=null;
+    private R10YBiasgen biasgen;
+    JComponent helpMenuItem1 = null, helpMenuItem2 = null, helpMenuItem3 = null;
     public static final String HELP_URL_RETINA = "http://siliconretina.ini.uzh.ch";
     public static final String USER_GUIDE_URL_RETINA = "http://siliconretina.ini.uzh.ch/wiki/doku.php?id=userguide";
     public static final String FIRMWARE_CHANGELOG = "http://jaer.svn.sourceforge.net/viewvc/jaer/trunk/deviceFirmwarePCBLayout/CypressFX2/firmware_FX2LP_DVS128/CHANGELOG.txt?revision=HEAD&view=markup";
 
-    /** Creates a new instance of DVS128. No biasgen is constructed for this constructor, because there is no hardware interface defined. */
+    /**
+     * Creates a new instance of DVS128. No biasgen is constructed for this
+     * constructor, because there is no hardware interface defined.
+     */
     public R10Y() {
         setName("R10Y");
         setDefaultPreferencesFile("../../biasgenSettings/r10y/R10Y-Default.xml");
@@ -58,7 +61,7 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
         setPixelHeightUm(40);
         setPixelWidthUm(40);
         setEventExtractor(new Extractor(this));
-        setBiasgen((biasgen = new R10Y.Biasgen(this)));
+        setBiasgen((biasgen = new R10Y.R10YBiasgen(this)));
         addObserver(this);
 
         if (!biasgen.isInitialized()) {
@@ -66,15 +69,21 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
         }//        if(c!=null)c.setBorderSpacePixels(5);// make border smaller than default
     }
 
-    /** Creates a new instance of DVS128
-     * @param hardwareInterface an existing hardware interface. This constructor is preferred. It makes a new Biasgen object to talk to the on-chip biasgen.
+    /**
+     * Creates a new instance of DVS128
+     *
+     * @param hardwareInterface an existing hardware interface. This constructor
+     * is preferred. It makes a new R10YBiasgen object to talk to the on-chip
+     * biasgen.
      */
     public R10Y(HardwareInterface hardwareInterface) {
         this();
         setHardwareInterface(hardwareInterface);
     }
 
-    /** Updates AEViewer specialized menu items according to capabilities of HardwareInterface.
+    /**
+     * Updates AEViewer specialized menu items according to capabilities of
+     * HardwareInterface.
      *
      * @param o the observable, i.e. this Chip.
      * @param arg the argument (e.g. the HardwareInterface).
@@ -87,7 +96,6 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
             arrayResetMenuItem = new JMenuItem("Momentarily reset pixel array");
             arrayResetMenuItem.setToolTipText("Applies a momentary reset to the pixel array");
             arrayResetMenuItem.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent evt) {
                     HardwareInterface hw = getHardwareInterface();
                     if (hw == null || !(hw instanceof HasResettablePixelArray)) {
@@ -104,7 +112,6 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
             setArrayResetMenuItem = new JCheckBoxMenuItem("Hold array in reset");
             setArrayResetMenuItem.setToolTipText("Sets the entire pixel array in reset");
             setArrayResetMenuItem.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent evt) {
                     HardwareInterface hw = getHardwareInterface();
                     if (hw == null || !(hw instanceof HasResettablePixelArray)) {
@@ -165,11 +172,12 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
         helpMenuItem3 = getAeViewer().addHelpURLItem(FIRMWARE_CHANGELOG, "DVS128 Firmware Change Log", "Displays the head version of the DVS128 firmware change log");
     }
 
-
-
-    /** the event extractor for DVS128. DVS128 has two polarities 0 and 1. Here the polarity is flipped by the extractor so that the raw polarity 0 becomes 1
-    in the extracted event. The ON events have raw polarity 0.
-    1 is an ON event after event extraction, which flips the type. Raw polarity 1 is OFF event, which becomes 0 after extraction.
+    /**
+     * the event extractor for DVS128. DVS128 has two polarities 0 and 1. Here
+     * the polarity is flipped by the extractor so that the raw polarity 0
+     * becomes 1 in the extracted event. The ON events have raw polarity 0. 1 is
+     * an ON event after event extraction, which flips the type. Raw polarity 1
+     * is OFF event, which becomes 0 after extraction.
      */
     public class Extractor extends RetinaExtractor {
 
@@ -188,10 +196,15 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
             setFliptype(true);
         }
 
-        /** extracts the meaning of the raw events.
-         *@param in the raw events, can be null
-         *@return out the processed events. these are partially processed in-place. empty packet is returned if null is supplied as in. This event packet is reused
-         * and should only be used by a single thread of execution or for a single input stream, or mysterious results may occur!
+        /**
+         * extracts the meaning of the raw events.
+         *
+         * @param in the raw events, can be null
+         * @return out the processed events. these are partially processed
+         * in-place. empty packet is returned if null is supplied as in. This
+         * event packet is reused and should only be used by a single thread of
+         * execution or for a single input stream, or mysterious results may
+         * occur!
          */
         @Override
         synchronized public EventPacket extractPacket(AEPacketRaw in) {
@@ -206,18 +219,25 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
         private int printedSyncBitWarningCount = 3;
 
         /**
-         * Extracts the meaning of the raw events. This form is used to supply an output packet. This method is used for real time
-         * event filtering using a buffer of output events local to data acquisition. An AEPacketRaw may contain multiple events,
-         * not all of them have to sent out as EventPackets. An AEPacketRaw is a set(!) of addresses and corresponding timing moments.
+         * Extracts the meaning of the raw events. This form is used to supply
+         * an output packet. This method is used for real time event filtering
+         * using a buffer of output events local to data acquisition. An
+         * AEPacketRaw may contain multiple events, not all of them have to sent
+         * out as EventPackets. An AEPacketRaw is a set(!) of addresses and
+         * corresponding timing moments.
          *
-         * A first filter (independent from the other ones) is implemented by subSamplingEnabled and getSubsampleThresholdEventCount.
-         * The latter may limit the amount of samples in one package to say 50,000. If there are 160,000 events and there is a sub sample
-         * threshold of 50,000, a "skip parameter" set to 3. Every so now and then the routine skips with 4, so we end up with 50,000.
-         * It's an approximation, the amount of events may be less than 50,000. The events are extracted uniform from the input.
+         * A first filter (independent from the other ones) is implemented by
+         * subSamplingEnabled and getSubsampleThresholdEventCount. The latter
+         * may limit the amount of samples in one package to say 50,000. If
+         * there are 160,000 events and there is a sub sample threshold of
+         * 50,000, a "skip parameter" set to 3. Every so now and then the
+         * routine skips with 4, so we end up with 50,000. It's an
+         * approximation, the amount of events may be less than 50,000. The
+         * events are extracted uniform from the input.
          *
-         * @param in 		the raw events, can be null
-         * @param out 		the processed events. these are partially processed in-place. empty packet is returned if null is
-         * 					supplied as input.
+         * @param in the raw events, can be null
+         * @param out the processed events. these are partially processed
+         * in-place. empty packet is returned if null is supplied as input.
          */
         @Override
         synchronized public void extractPacket(AEPacketRaw in, EventPacket out) {
@@ -244,7 +264,7 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
                 e.address = addr;
                 e.timestamp = (timestamps[i]);
 
-                if ((addr&(CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK|BasicEvent.SPECIAL_EVENT_BIT_MASK))!=0) { // msb is set
+                if ((addr & (CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK | BasicEvent.SPECIAL_EVENT_BIT_MASK)) != 0) { // msb is set
                     e.setSpecial(true);
                     e.x = -1;
                     e.y = -1;
@@ -269,9 +289,12 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
         }
     }
 
-    /** overrides the Chip setHardware interface to construct a biasgen if one doesn't exist already.
-     * Sets the hardware interface and the bias generators hardware interface
-     *@param hardwareInterface the interface
+    /**
+     * overrides the Chip setHardware interface to construct a biasgen if one
+     * doesn't exist already. Sets the hardware interface and the bias
+     * generators hardware interface
+     *
+     * @param hardwareInterface the interface
      */
     @Override
     public void setHardwareInterface(final HardwareInterface hardwareInterface) {
@@ -279,7 +302,7 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
         this.hardwareInterface = hardwareInterface;
         try {
             if (getBiasgen() == null) {
-                setBiasgen(new R10Y.Biasgen(this));
+                setBiasgen(new R10Y.R10YBiasgen(this));
             } else {
                 getBiasgen().setHardwareInterface((BiasgenHardwareInterface) hardwareInterface);
             }
@@ -297,7 +320,9 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
 //    public void update(Observable o, Object arg) {
 //        log.info("DVS128: received update from Observable="+o+", arg="+arg);
 //    }
-    /** Called when the AEViewer is set for this AEChip. Here we add the menu to the AEViewer.
+    /**
+     * Called when the AEViewer is set for this AEChip. Here we add the menu to
+     * the AEViewer.
      *
      * @param v the viewer
      */
@@ -315,83 +340,77 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
     }
 
     /**
-     * Describes IPots on R10Y retina chip. These are configured by a shift register.
-     * This biasgen has one master bias control of 4 bits and each bias has 3 bits of individual control.
+     * Describes IPots on R10Y retina chip. These are configured by a shift
+     * register. This biasgen has one master bias control of 4 bits and each
+     * bias has 3 bits of individual control.
      *
      * The table below is the default bias values for R10.
-
-Besides these values, we need to send 10 bits dummy (0000000000) before sending the bias values.
-
-Thus, 45 bits, in total, should be sent to the shift register of R10.
-
-The order of bits to the shift register (for the default values) is like this:
-
-   00000000 1 0111 100 100 100 ...
-
-* <pre>
-Pin mapping of the new PCB for R10 is like this:
-
-   FX2                 R10 (see Fig. 3-2(b) of ParameterSerializer_v00.docx)
-
-CLOCK_B     ---->    PAD_BIAS_ENABLE
-
-BITIN_B     ---->    PAD_BIAS_DATA
-
-BITOUT_B    ---->    PAD_BIAS_OUT
-
-LATCH_B     ---->    open (not connected)
-
-POWERDOWN   ---->    PDA_PD
-* 
-* </pre>
-* 
+     *
+     * Besides these values, we need to send 10 bits dummy (0000000000) before
+     * sending the bias values.
+     *
+     * Thus, 45 bits, in total, should be sent to the shift register of R10.
+     *
+     * The order of bits to the shift register (for the default values) is like
+     * this:
+     *
+     * 00000000 1 0111 100 100 100 ...
+     *
+     * <pre>
+     * Pin mapping of the new PCB for R10 is like this:
+     *
+     * FX2                 R10 (see Fig. 3-2(b) of ParameterSerializer_v00.docx)
+     *
+     * CLOCK_B     ---->    PAD_BIAS_ENABLE
+     *
+     * BITIN_B     ---->    PAD_BIAS_DATA
+     *
+     * BITOUT_B    ---->    PAD_BIAS_OUT
+     *
+     * LATCH_B     ---->    open (not connected)
+     *
+     * POWERDOWN   ---->    PDA_PD
+     *
+     * </pre>
+     *     
 * Biases are as follows:
-* <pre>
-* (Total 35) 	Default 	Default (Variation/step) 	MAX/MIM 	Real BIAS (@default)
-				(Variation/step) 
-PDB_PD_MONITORING 	1			
-IREF_TUNE<3:0> 	111	7.5kΩ (+0.15kΩ/step)	8.7kΩ /6.45kΩ 	Control all bias currents. 
-		(2%/step) 	(+16%/ -14%) 	
-SEL_BIASX<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step) 
-			(+100%/ -75%) 	
-SEL_BIASREQPD<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step) 
-			(+100%/ -75%) 	
-SEL_BIASREQ<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step) 
-			(+100%/ -75%) 	
-SEL_BIASREFR<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step) 
-			(+100%/ -75%) 	
-SEL_BIASPR<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step) 
-			(+100%/ -75%) 	
-SEL_BIASF<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step) 
-			(+100%/ -75%) 	
-SEL_BIASDIFFOFF<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	10nA (-2.5nA/step) 
-			(+100%/ -75%) 	
-SEL_BIASDIFFON<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	10nA (-2.5nA/step) 
-			(+100%/ -75%) 	
-SEL_BIASDIFF<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	10nA (-2.5nA/step) 
-			(+100%/ -75%) 	
-SEL_BIASCAS<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step)
-			(+100%/ -75%) 	
-</pre>
-* 
+     * <pre>
+     * (Total 35) 	Default 	Default (Variation/step) 	MAX/MIM 	Real BIAS (
+     *
+     * IREF_TUNE<3:0> 	0111
+     * SEL_BIASX<2:0> 	100
+     * SEL_BIASREQPD<2:0> 	100
+     * SEL_BIASREQ<2:0> 	100
+     * SEL_BIASREFR<2:0> 	100
+     * SEL_BIASPR<2:0> 	100
+     * SEL_BIASF<2:0> 	100
+     * SEL_BIASDIFFOFF<2:0> 	100
+     * SEL_BIASDIFFON<2:0> 	100
+     * SEL_BIASDIFF<2:0> 	100
+     * SEL_BIASCAS<2:0> 	100
+     * </pre>
+     *
      * @author tobi
      */
-    public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements ChipControlPanel {
+    public class R10YBiasgen extends net.sf.jaer.biasgen.Biasgen implements ChipControlPanel {
 
         private R10YBias diffOn, diffOff, refr, pr, sf, diff, cas;
         private R10YBias iRefTuneBias;
-//        private Masterbias masterBias; //  there is default one in Biasgen super class
+//        private Masterbias masterBias; //  there is default one in R10YBiasgen super class
 
-        /** Creates a new instance of Biasgen for DVS128 with a given hardware interface
-         *@param chip the chip this biasgen belongs to
+        /**
+         * Creates a new instance of R10YBiasgen for DVS128 with a given
+         * hardware interface
+         *
+         * @param chip the chip this biasgen belongs to
          */
-        public Biasgen(Chip chip) {
+        public R10YBiasgen(Chip chip) {
             super(chip);
             setName("R10Y");
 //            masterBias=new Masterbias(this);
-            iRefTuneBias=new R10YBias(this, "IRef Tune", 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "IREF_TUNE: scales all biases by this current value");
+            iRefTuneBias = new R10YBias(this, "IRef Tune", 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "IREF_TUNE: scales all biases by this current value");
             iRefTuneBias.setNumBits(4);
-            
+
 
 //  /** Creates a new instance of IPot
 //     *@param biasgen
@@ -403,31 +422,27 @@ SEL_BIASCAS<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step)
 //     *@param displayPosition position in GUI from top (logical order)
 //     *@param tooltipString a String to display to user of GUI telling them what the pots does
 //     */
-////    public IPot(Biasgen biasgen, String name, int shiftRegisterNumber, final Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
+////    public IPot(R10YBiasgen biasgen, String name, int shiftRegisterNumber, final Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
 
             // create potArray according to our needs
             setPotArray(new IPotArray(this));
 
             getPotArray().addPot(iRefTuneBias);
-            
-            getPotArray().addPot(new R10YBias(this, "reqPu(BiasX)", 1, IPot.Type.NORMAL, IPot.Sex.N, 4, 0, "pullup bias on arbiters"));
-            getPotArray().addPot(new R10YBias(this, "reqPd", 9, IPot.Type.NORMAL, IPot.Sex.N, 0, 1, "AER request pulldown"));
-            getPotArray().addPot(new R10YBias(this, "req", 6, IPot.Type.NORMAL, IPot.Sex.N, 0, 2, "OFF request inverter bias"));
-            getPotArray().addPot(refr = new R10YBias(this, "refr", 5, IPot.Type.NORMAL, IPot.Sex.P, 0, 3, "Refractory period"));
-            getPotArray().addPot(pr = new R10YBias(this, "Pr", 0, IPot.Type.NORMAL, IPot.Sex.P, 0, 4, "Photoreceptor"));
-            getPotArray().addPot(sf = new R10YBias(this, "sf", 1, IPot.Type.NORMAL, IPot.Sex.P, 0, 5, "Src follower buffer between photoreceptor and differentiator"));
-            getPotArray().addPot(diffOff = new R10YBias(this, "diffOff", 7, IPot.Type.NORMAL, IPot.Sex.N, 0, 6, "OFF threshold, lower to raise threshold"));
-            getPotArray().addPot(diffOn = new R10YBias(this, "diffOn", 3, IPot.Type.NORMAL, IPot.Sex.N, 0, 7, "ON threshold - higher to raise threshold"));
-            getPotArray().addPot(diff = new R10YBias(this, "diff", 2, IPot.Type.NORMAL, IPot.Sex.N, 0, 8, "Differentiator"));
-            getPotArray().addPot(cas = new R10YBias(this, "diffCas", 2, IPot.Type.CASCODE, IPot.Sex.N, 0, 9, "Differentiator cascode: optimizes gain in pixel differencing amplifier"));
-//            getPotArray().addPot(new R10YBias(this, "injGnd", 10, IPot.Type.CASCODE, IPot.Sex.P, 0, 10, "Differentiator switch level, higher to turn on more"));
-//            getPotArray().addPot(new R10YBias(this, "puX", 8, IPot.Type.NORMAL, IPot.Sex.P, 0, 11, "2nd dimension AER static pullup"));
-//            getPotArray().addPot(new R10YBias(this, "puY", 4, IPot.Type.NORMAL, IPot.Sex.P, 0, 12, "1st dimension AER static pullup"));
+
+            getPotArray().addPot(new R10YBias(this, "AER Request Pullup", 9, IPot.Type.NORMAL, IPot.Sex.N, 4, 0, "pullup bias on arbiters"));
+            getPotArray().addPot(new R10YBias(this, "AER Request Pulldown", 8, IPot.Type.NORMAL, IPot.Sex.N, 0, 1, "AER request pulldown"));
+            getPotArray().addPot(new R10YBias(this, "Pixel OFF inverter", 7, IPot.Type.NORMAL, IPot.Sex.N, 0, 2, "OFF request inverter bias"));
+            getPotArray().addPot(refr = new R10YBias(this, "Refractory period", 6, IPot.Type.NORMAL, IPot.Sex.P, 0, 3, "Refractory period"));
+            getPotArray().addPot(pr = new R10YBias(this, "Photoreceptor", 5, IPot.Type.NORMAL, IPot.Sex.P, 0, 4, "Photoreceptor"));
+            getPotArray().addPot(sf = new R10YBias(this, "Source Foll", 4, IPot.Type.NORMAL, IPot.Sex.P, 0, 5, "Src follower buffer between photoreceptor and differentiator"));
+            getPotArray().addPot(diffOff = new R10YBias(this, "OFF threshold", 3, IPot.Type.NORMAL, IPot.Sex.N, 0, 6, "OFF threshold, lower to raise threshold"));
+            getPotArray().addPot(diffOn = new R10YBias(this, "ON threshold", 2, IPot.Type.NORMAL, IPot.Sex.N, 0, 7, "ON threshold - higher to raise threshold"));
+            getPotArray().addPot(diff = new R10YBias(this, "Differentiator", 1, IPot.Type.NORMAL, IPot.Sex.N, 0, 8, "Differentiator"));
+            getPotArray().addPot(cas = new R10YBias(this, "Differentiator Cascode", 0, IPot.Type.CASCODE, IPot.Sex.N, 0, 9, "Differentiator cascode: optimizes gain in pixel differencing amplifier"));
 
             loadPreferences();
 
         }
-
 //        /** sends the ipot values over the hardware interface if there is not a batch edit occuring.
 //         *@param biasgen the bias generator object.
 //         * This parameter is necessary because the same method is used in the hardware interface,
@@ -436,9 +451,9 @@ SEL_BIASCAS<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step)
 //         *@see #startBatchEdit
 //         *@see #endBatchEdit
 //         **/
-//        public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
+//        public void sendConfiguration(R10YBiasgen biasgen) throws HardwareInterfaceException {
 //            if (hardwareInterface == null) {
-////            log.warning("Biasgen.sendIPotValues(): no hardware interface");
+////            log.warning("R10YBiasgen.sendIPotValues(): no hardware interface");
 //                return;
 //            }
 //            if (!isBatchEditOccurring() && hardwareInterface != null) {
@@ -446,38 +461,70 @@ SEL_BIASCAS<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step)
 ////            hardwareInterface.se(this);
 //            }
 //        }
-
         JComponent expertTab;
 
-        /** Formats the data sent to the microcontroller to load bias and other configuration. */
+        /**
+         * Formats the data sent to the microcontroller to load bias and other
+         * configuration.
+         */
         @Override
         public byte[] formatConfigurationBytes(net.sf.jaer.biasgen.Biasgen biasgen) {
-            StringBuilder sb=new StringBuilder();
+            StringBuilder sb = new StringBuilder();
             sb.append("0000000000"); // 10 leading dummy bits
-            IPotArray ipa=(IPotArray) getPotArray();
-            Iterator<IPot> i=ipa.getShiftRegisterIterator();
-            while(i.hasNext()){
-                IPot pot=i.next();
-                String fmt=String.format("%%%ds",pot.getNumBits()); // e.g. %3s for regular bias, %4s for IRefTune
-                String bits=String.format(fmt, Integer.toBinaryString(pot.getBitValue())).replace(" ", "0"); // e.g. "001" for bit value 1 
-                sb.append(bits);
+            IPotArray ipa = (IPotArray) getPotArray();
+            if (ipa == null) {
+                log.warning("null pot array");
+                return null;
             }
-            byte[] allBytes=bitString2Bytes(sb.toString());
+            sb.append(getMasterbias().isPowerDownEnabled() ? " 1" : " 0");
+            Iterator<IPot> i = ipa.getShiftRegisterIterator();
+            while (i.hasNext()) {
+                IPot pot = i.next();
+                // for each pot, get the number of bits and then write the bits of the bias a binary string
+                String fmt = String.format("%%%ds", pot.getNumBits()); // e.g. %3s for regular bias, %4s for IRefTune
+                String bits = String.format(fmt, Integer.toBinaryString(pot.getBitValue())).replace(" ", "0"); // e.g. "001" for bit value 1 
+                sb.append(" ").append(bits);
+            }
+            // turn all the bits into bytes padded with zero bits at msb of first bias if needed.
+            byte[] allBytes;
+            allBytes = bitString2Bytes(sb.toString());
+            StringBuilder infostring = new StringBuilder("configuration bit string is\n" + sb.toString() + "\nbytes returned are \n");
+            for (byte b : allBytes) {
+                infostring.append(String.format(" 0x%X", b));
+            }
+            log.info(infostring.toString());
             return allBytes; // configBytes may be padded with extra bits to make up a byte, board needs to know this to chop off these bits
         }
 
+        @Override
         public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
-            super.sendConfiguration(biasgen);
+            byte[] b = formatConfigurationBytes(this); // for debugging
+            if (hardwareInterface == null) {
+                log.warning("no hardware interface");
+                return;
+            }
+            if (!isBatchEditOccurring() && hardwareInterface != null && hardwareInterface.isOpen()) {
+                hardwareInterface.sendConfiguration(biasgen);
+            }
         }
-       
-        
-        
 
+        @Override
+        public void update(Observable observable, Object object) {
+            try {
+                if (!isBatchEditOccurring()) {
+                    sendConfiguration(this);
+                }
+            } catch (HardwareInterfaceException e) {
+                log.warning("error sending pot values: " + e);
+            }
+
+        }
     } // biasgen
 
     /**
-     * Fires PropertyChangeEvents when biases are tweaked according to {@link ch.unizh.ini.jaer.chip.retina.DVSTweaks}.
-     * 
+     * Fires PropertyChangeEvents when biases are tweaked according to
+     * {@link ch.unizh.ini.jaer.chip.retina.DVSTweaks}.
+     *
      * @return the support
      */
     public PropertyChangeSupport getSupport() {

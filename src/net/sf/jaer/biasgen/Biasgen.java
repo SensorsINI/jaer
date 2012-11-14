@@ -607,7 +607,8 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      * 
      * @param bitString the string of bits, e.g. '10010'. The bits are ordered from left to right in 
      * the order they will be sent after the padding
-     * that is prepended.
+     * that is prepended. White apace is ignored in the string.
+     * 
      * @returns byte array of binary representation of bits, e.g. 
      * 00010010 for the input '10010'. 
      * Leftmost 3 bits are padding that 
@@ -617,6 +618,8 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      * 
      */
     protected byte[] bitString2Bytes(String bitString) {
+        bitString=new String(bitString);
+        bitString=bitString.replaceAll("\\s", "");
         int nbits = bitString.length();
         // compute needed number of bytes
         int nbytes = (nbits % 8 == 0) ? (nbits / 8) : (nbits / 8 + 1); // 4->1, 8->1, 9->2

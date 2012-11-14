@@ -21,16 +21,16 @@ import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
 
 /**
- * The hardware interface for the DVS128 (second Tmpdiff128 board, with CPLD) retina boards.
+ * The hardware interface for the R10Y chip.
  *
- * @author tobi/rapha
+ * @author tobi delbruck
  */
 public class R10YHardwareInterface extends CypressFX2Biasgen implements
         HasUpdatableFirmware, HasResettablePixelArray, HasSyncEventOutput, HasLEDControl {
 
-    public final static String FIRMWARE_FILENAME_DVS128_XSVF = "/net/sf/jaer/hardwareinterface/usb/cypressfx2/dvs128CPLD.xsvf";
-    private static Preferences prefs = Preferences.userNodeForPackage(CypressFX2DVS128HardwareInterface.class);
-    private boolean syncEventEnabled = prefs.getBoolean("CypressFX2DVS128HardwareInterface.syncEventEnabled", true); // default is true so that device is the timestamp master by default, necessary after firmware rev 11
+    public final static String FIRMWARE_FILENAME_DVS128_XSVF = "/net/sf/jaer/hardwareinterface/usb/cypressfx2/dvs128CPLD.xsvf"; // TODO change to R10Y firmware
+    private static Preferences prefs = Preferences.userNodeForPackage(R10YHardwareInterface.class);
+    private boolean syncEventEnabled = prefs.getBoolean("R10YHardwareInterface.syncEventEnabled", true); // default is true so that device is the timestamp master by default, necessary after firmware rev 11
     // if not, a device will not advance timestamps
     /** Vendor request for setting LED */
     public final byte VENDOR_REQUEST_LED = (byte) 0xCD;
@@ -82,7 +82,7 @@ public class R10YHardwareInterface extends CypressFX2Biasgen implements
         try {
             this.sendVendorRequest(this.VENDOR_REQUEST_SET_SYNC_ENABLED, yes ? (byte) 1 : (byte) 0, (byte) 0);
             syncEventEnabled = yes;
-            prefs.putBoolean("CypressFX2DVS128HardwareInterface.syncEventEnabled", yes);
+            prefs.putBoolean("R10YHardwareInterface.syncEventEnabled", yes);
         } catch (HardwareInterfaceException e) {
             log.warning(e.toString());
         }
@@ -130,7 +130,7 @@ public class R10YHardwareInterface extends CypressFX2Biasgen implements
             this.sendVendorRequest(this.VENDOR_REQUEST_LED, cmd, (byte) 0);
             ledState = state;
         } catch (HardwareInterfaceException e) {
-            log.warning(e.toString()+": LED control request ignored. Probably your DVS128 firmware version is too old; LED control was added at revision 12. See \\deviceFirmwarePCBLayout\\CypressFX2\\firmware_FX2LP_DVS128\\CHANGELOG.txt");
+            log.warning(e.toString()+": LED control request ignored. Probably your firmware version is too old; LED control was added to the DVS128 at revision 12. See \\deviceFirmwarePCBLayout\\CypressFX2\\firmware_FX2LP_DVS128\\CHANGELOG.txt");
         }
 
     }
