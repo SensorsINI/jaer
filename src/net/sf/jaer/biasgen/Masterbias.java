@@ -24,8 +24,8 @@ import java.util.prefs.*;
  * @author tobi
  */
 public class Masterbias extends Observable implements BiasgenPreferences {
-    private Preferences prefs;
-    Biasgen biasgen;
+    protected Preferences prefs;
+    protected Biasgen biasgen;
     /** Observable event */
     public static final String  EVENT_POWERDOWN="powerDownEnabled", 
             EVENT_INTERNAL_RESISTOR="internalResistor", 
