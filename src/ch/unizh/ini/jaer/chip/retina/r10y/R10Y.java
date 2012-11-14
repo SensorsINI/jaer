@@ -422,7 +422,7 @@ SEL_BIASCAS<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step)
      */
     public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements ChipControlPanel, DVSTweaks {
 
-        private R10YBias diffOn, diffOff, refr, pr, sf, diff;
+        private R10YBias diffOn, diffOff, refr, pr, sf, diff, cas;
         private R10YBias iRefTuneBias;
 
         /** Creates a new instance of Biasgen for DVS128 with a given hardware interface
@@ -432,7 +432,7 @@ SEL_BIASCAS<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step)
             super(chip);
             setName("R10Y");
 
-            iRefTuneBias=new R10YBias(this, "IRef Master", 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "IREF_TUNE: scales all biases by this current value");
+            iRefTuneBias=new R10YBias(this, "IRef Tune", 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "IREF_TUNE: scales all biases by this current value");
             iRefTuneBias.setNumBits(4);
             
 
@@ -454,17 +454,18 @@ SEL_BIASCAS<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step)
             getPotArray().addPot(iRefTuneBias);
             
             getPotArray().addPot(new R10YBias(this, "X", 1, IPot.Type.NORMAL, IPot.Sex.N, 4, 0, "Bias X: function ???????"));
-            getPotArray().addPot(new R10YBias(this, "injGnd", 10, IPot.Type.CASCODE, IPot.Sex.P, 0, 7, "Differentiator switch level, higher to turn on more"));
-            getPotArray().addPot(new R10YBias(this, "reqPd", 9, IPot.Type.NORMAL, IPot.Sex.N, 0, 12, "AER request pulldown"));
-            getPotArray().addPot(new R10YBias(this, "puX", 8, IPot.Type.NORMAL, IPot.Sex.P, 0, 11, "2nd dimension AER static pullup"));
+            getPotArray().addPot(new R10YBias(this, "reqPd", 9, IPot.Type.NORMAL, IPot.Sex.N, 0, 1, "AER request pulldown"));
+            getPotArray().addPot(new R10YBias(this, "req", 6, IPot.Type.NORMAL, IPot.Sex.N, 0, 2, "OFF request inverter bias"));
+            getPotArray().addPot(refr = new R10YBias(this, "refr", 5, IPot.Type.NORMAL, IPot.Sex.P, 0, 3, "Refractory period"));
+            getPotArray().addPot(pr = new R10YBias(this, "Pr", 0, IPot.Type.NORMAL, IPot.Sex.P, 0, 4, "Photoreceptor"));
+            getPotArray().addPot(sf = new R10YBias(this, "sf", 1, IPot.Type.NORMAL, IPot.Sex.P, 0, 5, "Src follower buffer between photoreceptor and differentiator"));
             getPotArray().addPot(diffOff = new R10YBias(this, "diffOff", 7, IPot.Type.NORMAL, IPot.Sex.N, 0, 6, "OFF threshold, lower to raise threshold"));
-            getPotArray().addPot(new R10YBias(this, "req", 6, IPot.Type.NORMAL, IPot.Sex.N, 0, 8, "OFF request inverter bias"));
-            getPotArray().addPot(refr = new R10YBias(this, "refr", 5, IPot.Type.NORMAL, IPot.Sex.P, 0, 9, "Refractory period"));
-            getPotArray().addPot(new R10YBias(this, "puY", 4, IPot.Type.NORMAL, IPot.Sex.P, 0, 10, "1st dimension AER static pullup"));
-            getPotArray().addPot(diffOn = new R10YBias(this, "diffOn", 3, IPot.Type.NORMAL, IPot.Sex.N, 0, 5, "ON threshold - higher to raise threshold"));
-            getPotArray().addPot(diff = new R10YBias(this, "diff", 2, IPot.Type.NORMAL, IPot.Sex.N, 0, 4, "Differentiator"));
-            getPotArray().addPot(sf = new R10YBias(this, "foll", 1, IPot.Type.NORMAL, IPot.Sex.P, 0, 3, "Src follower buffer between photoreceptor and differentiator"));
-            getPotArray().addPot(pr = new R10YBias(this, "Pr", 0, IPot.Type.NORMAL, IPot.Sex.P, 0, 1, "Photoreceptor"));
+            getPotArray().addPot(diffOn = new R10YBias(this, "diffOn", 3, IPot.Type.NORMAL, IPot.Sex.N, 0, 7, "ON threshold - higher to raise threshold"));
+            getPotArray().addPot(diff = new R10YBias(this, "diff", 2, IPot.Type.NORMAL, IPot.Sex.N, 0, 8, "Differentiator"));
+            getPotArray().addPot(cas = new R10YBias(this, "cas", 2, IPot.Type.CASCODE, IPot.Sex.N, 0, 9, "Bias cas: function ???"));
+//            getPotArray().addPot(new R10YBias(this, "injGnd", 10, IPot.Type.CASCODE, IPot.Sex.P, 0, 10, "Differentiator switch level, higher to turn on more"));
+//            getPotArray().addPot(new R10YBias(this, "puX", 8, IPot.Type.NORMAL, IPot.Sex.P, 0, 11, "2nd dimension AER static pullup"));
+//            getPotArray().addPot(new R10YBias(this, "puY", 4, IPot.Type.NORMAL, IPot.Sex.P, 0, 12, "1st dimension AER static pullup"));
 
             loadPreferences();
 
