@@ -38,9 +38,9 @@ import net.sf.jaer.graphics.ImageDisplay;
  * stimulate a neuron long after the edge passes.
  * 
  * 
- * @author Peter
+ * @author Peter O'Connor
  */
-@Description("Reconstructs an Estimation of the Background Light level based on the streams of input events.")
+@Description("Reconstructs an Estimation of the Background Light level based on the streams of input events as a lowpass filter.")
 public class SlowResponse extends EventFilter2D {
     
     int dimx;
