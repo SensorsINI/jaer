@@ -10,7 +10,6 @@
 package ch.unizh.ini.jaer.chip.retina.r10y;
 
 import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
-import ch.unizh.ini.jaer.chip.retina.DVSFunctionalControlPanel;
 import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
 import ch.unizh.ini.jaer.chip.retina.r10y.R10Y.*;
 import java.beans.PropertyChangeSupport;
@@ -21,18 +20,14 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.graphics.*;
 import net.sf.jaer.hardwareinterface.*;
-import java.awt.BorderLayout;
 import java.awt.event.*;
 import java.io.*;
-import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Observer;
 import javax.swing.*;
-import javax.swing.JPanel;
 import net.sf.jaer.Description;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
-import net.sf.jaer.util.RemoteControlCommand;
-import net.sf.jaer.util.RemoteControlled;
 
 /**
  * Describes R10Y retina and its event extractor and bias generator.
@@ -40,7 +35,7 @@ import net.sf.jaer.util.RemoteControlled;
  * @author tobi/junseok
  */
 @Description("R10Y prototoype Dynamic Vision Sensor")
-public class R10Y extends AETemporalConstastRetina implements Serializable, Observer, RemoteControlled {
+public class R10Y extends AETemporalConstastRetina implements Serializable, Observer {
 
     private JMenu chipMenu = null;
     private JMenuItem arrayResetMenuItem = null;
@@ -55,7 +50,7 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
 
     /** Creates a new instance of DVS128. No biasgen is constructed for this constructor, because there is no hardware interface defined. */
     public R10Y() {
-        setName("DVS128");
+        setName("R10Y");
         setDefaultPreferencesFile("../../biasgenSettings/r10y/R10Y-Default.xml");
         setSizeX(128);
         setSizeY(128);
@@ -64,13 +59,6 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
         setPixelWidthUm(40);
         setEventExtractor(new Extractor(this));
         setBiasgen((biasgen = new R10Y.Biasgen(this)));
-        if (getRemoteControl() != null) {
-            getRemoteControl().addCommandListener(this, CMD_TWEAK_BANDWIDTH, CMD_TWEAK_BANDWIDTH + " val - tweaks bandwidth. val in range -1.0 to 1.0.");
-            getRemoteControl().addCommandListener(this, CMD_TWEAK_ONOFF_BALANCE, CMD_TWEAK_ONOFF_BALANCE + " val - tweaks on/off balance; increase for more ON events. val in range -1.0 to 1.0.");
-            getRemoteControl().addCommandListener(this, CMD_TWEAK_MAX_FIRING_RATE, CMD_TWEAK_MAX_FIRING_RATE + " val - tweaks max firing rate; increase to reduce refractory period. val in range -1.0 to 1.0.");
-            getRemoteControl().addCommandListener(this, CMD_TWEAK_THESHOLD, CMD_TWEAK_THESHOLD + " val - tweaks threshold; increase to raise threshold. val in range -1.0 to 1.0.");
-        }
-        //        ChipCanvas c = getCanvas();
         addObserver(this);
 
         if (!biasgen.isInitialized()) {
@@ -177,39 +165,7 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
         helpMenuItem3 = getAeViewer().addHelpURLItem(FIRMWARE_CHANGELOG, "DVS128 Firmware Change Log", "Displays the head version of the DVS128 firmware change log");
     }
 
-    @Override
-    public String processRemoteControlCommand(RemoteControlCommand command, String input) {
-        log.info("processing RemoteControlCommand " + command + " with input=" + input);
-        if (command == null) {
-            return null;
-        }
-        String[] tokens = input.split(" ");
-        if (tokens.length < 2) {
-            return input + ": unknown command - did you forget the argument?";
-        }
-        if (tokens[1] == null || tokens[1].length() == 0) {
-            return input + ": argument too short - need a number";
-        }
-        float v = 0;
-        try {
-            v = Float.parseFloat(tokens[1]);
-        } catch (NumberFormatException e) {
-            return input + ": bad argument? Caught " + e.toString();
-        }
-        String c = command.getCmdName();
-        if (c.equals(CMD_TWEAK_BANDWIDTH)) {
-            biasgen.setBandwidthTweak(v);
-        } else if (c.equals(CMD_TWEAK_ONOFF_BALANCE)) {
-            biasgen.setOnOffBalanceTweak(v);
-        } else if (c.equals(CMD_TWEAK_MAX_FIRING_RATE)) {
-            biasgen.setMaxFiringRateTweak(v);
-        } else if (c.equals(CMD_TWEAK_THESHOLD)) {
-            biasgen.setThresholdTweak(v);
-        } else {
-            return input + ": unknown command";
-        }
-        return "successfully processed command " + input;
-    }
+
 
     /** the event extractor for DVS128. DVS128 has two polarities 0 and 1. Here the polarity is flipped by the extractor so that the raw polarity 0 becomes 1
     in the extracted event. The ON events have raw polarity 0.
@@ -420,10 +376,11 @@ SEL_BIASCAS<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step)
 * 
      * @author tobi
      */
-    public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements ChipControlPanel, DVSTweaks {
+    public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements ChipControlPanel {
 
         private R10YBias diffOn, diffOff, refr, pr, sf, diff, cas;
         private R10YBias iRefTuneBias;
+//        private Masterbias masterBias; //  there is default one in Biasgen super class
 
         /** Creates a new instance of Biasgen for DVS128 with a given hardware interface
          *@param chip the chip this biasgen belongs to
@@ -431,7 +388,7 @@ SEL_BIASCAS<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step)
         public Biasgen(Chip chip) {
             super(chip);
             setName("R10Y");
-
+//            masterBias=new Masterbias(this);
             iRefTuneBias=new R10YBias(this, "IRef Tune", 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "IREF_TUNE: scales all biases by this current value");
             iRefTuneBias.setNumBits(4);
             
@@ -453,7 +410,7 @@ SEL_BIASCAS<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step)
 
             getPotArray().addPot(iRefTuneBias);
             
-            getPotArray().addPot(new R10YBias(this, "X", 1, IPot.Type.NORMAL, IPot.Sex.N, 4, 0, "Bias X: function ???????"));
+            getPotArray().addPot(new R10YBias(this, "reqPu(BiasX)", 1, IPot.Type.NORMAL, IPot.Sex.N, 4, 0, "pullup bias on arbiters"));
             getPotArray().addPot(new R10YBias(this, "reqPd", 9, IPot.Type.NORMAL, IPot.Sex.N, 0, 1, "AER request pulldown"));
             getPotArray().addPot(new R10YBias(this, "req", 6, IPot.Type.NORMAL, IPot.Sex.N, 0, 2, "OFF request inverter bias"));
             getPotArray().addPot(refr = new R10YBias(this, "refr", 5, IPot.Type.NORMAL, IPot.Sex.P, 0, 3, "Refractory period"));
@@ -462,7 +419,7 @@ SEL_BIASCAS<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step)
             getPotArray().addPot(diffOff = new R10YBias(this, "diffOff", 7, IPot.Type.NORMAL, IPot.Sex.N, 0, 6, "OFF threshold, lower to raise threshold"));
             getPotArray().addPot(diffOn = new R10YBias(this, "diffOn", 3, IPot.Type.NORMAL, IPot.Sex.N, 0, 7, "ON threshold - higher to raise threshold"));
             getPotArray().addPot(diff = new R10YBias(this, "diff", 2, IPot.Type.NORMAL, IPot.Sex.N, 0, 8, "Differentiator"));
-            getPotArray().addPot(cas = new R10YBias(this, "cas", 2, IPot.Type.CASCODE, IPot.Sex.N, 0, 9, "Bias cas: function ???"));
+            getPotArray().addPot(cas = new R10YBias(this, "diffCas", 2, IPot.Type.CASCODE, IPot.Sex.N, 0, 9, "Differentiator cascode: optimizes gain in pixel differencing amplifier"));
 //            getPotArray().addPot(new R10YBias(this, "injGnd", 10, IPot.Type.CASCODE, IPot.Sex.P, 0, 10, "Differentiator switch level, higher to turn on more"));
 //            getPotArray().addPot(new R10YBias(this, "puX", 8, IPot.Type.NORMAL, IPot.Sex.P, 0, 11, "2nd dimension AER static pullup"));
 //            getPotArray().addPot(new R10YBias(this, "puY", 4, IPot.Type.NORMAL, IPot.Sex.P, 0, 12, "1st dimension AER static pullup"));
@@ -489,181 +446,34 @@ SEL_BIASCAS<2:0> 	100	80uA (-20uA/step) 	160uA /20uA	5nA (-1.25nA/step)
 ////            hardwareInterface.se(this);
 //            }
 //        }
-        /** the change in current from an increase* or decrease* call */
-        public final float RATIO = 1.05f;
-        /** the minimum on/diff or diff/off current allowed by decreaseThreshold */
-        public final float MIN_THRESHOLD_RATIO = 4f;
-        public final float MAX_DIFF_ON_CURRENT = 12e-6f;
-        public final float MIN_DIFF_OFF_CURRENT = 1e-10f;
 
-        synchronized public void increaseThreshold() {
-            if (diffOn.getCurrent() * RATIO > MAX_DIFF_ON_CURRENT) {
-                return;
-            }
-            if (diffOff.getCurrent() / RATIO < MIN_DIFF_OFF_CURRENT) {
-                return;
-            }
-            diffOn.changeByRatio(RATIO);
-            diffOff.changeByRatio(1 / RATIO);
-        }
+        JComponent expertTab;
 
-        synchronized public void decreaseThreshold() {
-            float diffI = diff.getCurrent();
-            if (diffOn.getCurrent() / MIN_THRESHOLD_RATIO < diffI) {
-                return;
-            }
-            if (diffOff.getCurrent() > diffI / MIN_THRESHOLD_RATIO) {
-                return;
-            }
-            diffOff.changeByRatio(RATIO);
-            diffOn.changeByRatio(1 / RATIO);
-        }
-
-        synchronized public void increaseRefractoryPeriod() {
-            refr.changeByRatio(1 / RATIO);
-        }
-
-        synchronized public void decreaseRefractoryPeriod() {
-            refr.changeByRatio(RATIO);
-        }
-
-        synchronized public void increaseBandwidth() {
-            pr.changeByRatio(RATIO);
-            sf.changeByRatio(RATIO);
-        }
-
-        synchronized public void decreaseBandwidth() {
-            pr.changeByRatio(1 / RATIO);
-            sf.changeByRatio(1 / RATIO);
-        }
-
-        synchronized public void moreONType() {
-            diffOn.changeByRatio(1 / RATIO);
-            diffOff.changeByRatio(RATIO);
-        }
-
-        synchronized public void moreOFFType() {
-            diffOn.changeByRatio(RATIO);
-            diffOff.changeByRatio(1 / RATIO);
-        }
-        JComponent expertTab, basicTab;
-
-        /** @return a new panel for controlling this bias generator functionally
-         */
+        /** Formats the data sent to the microcontroller to load bias and other configuration. */
         @Override
-        public JPanel buildControlPanel() {
-            JPanel panel = new JPanel();
-            panel.setLayout(new BorderLayout());
-            final JTabbedPane pane = new JTabbedPane();
-
-            pane.addTab("Basic controls", basicTab = new DVSFunctionalControlPanel(R10Y.this));
-            pane.addTab("Expert controls", expertTab = super.buildControlPanel());
-            panel.add(pane, BorderLayout.CENTER);
-            pane.setSelectedIndex(getPrefs().getInt("DVS128.selectedBiasgenControlTab", 0));
-            pane.addMouseListener(new java.awt.event.MouseAdapter() {
-
-                public void mouseClicked(java.awt.event.MouseEvent evt) {
-                    getPrefs().putInt("DVS128.selectedBiasgenControlTab", pane.getSelectedIndex());
-                }
-            });
-
-            return panel;
-        }
-        private float bandwidth = 1, maxFiringRate = 1, threshold = 1, onOffBalance = 1;
-
-        /** Tweaks bandwidth around nominal value.
-         * 
-         * @param val -1 to 1 range
-         */
-        public void setBandwidthTweak(float val) {
-            if (val > 1) {
-                val = 1;
-            } else if (val < -1) {
-                val = -1;
+        public byte[] formatConfigurationBytes(net.sf.jaer.biasgen.Biasgen biasgen) {
+            StringBuilder sb=new StringBuilder();
+            sb.append("0000000000"); // 10 leading dummy bits
+            IPotArray ipa=(IPotArray) getPotArray();
+            Iterator<IPot> i=ipa.getShiftRegisterIterator();
+            while(i.hasNext()){
+                IPot pot=i.next();
+                String fmt=String.format("%%%ds",pot.getNumBits()); // e.g. %3s for regular bias, %4s for IRefTune
+                String bits=String.format(fmt, Integer.toBinaryString(pot.getBitValue())).replace(" ", "0"); // e.g. "001" for bit value 1 
+                sb.append(bits);
             }
-            float old = bandwidth;
-            bandwidth = val;
-            final float MAX = 300;
-            pr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
-            sf.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
-            getSupport().firePropertyChange(DVSTweaks.BANDWIDTH, old, val);
+            byte[] allBytes=bitString2Bytes(sb.toString());
+            return allBytes; // configBytes may be padded with extra bits to make up a byte, board needs to know this to chop off these bits
         }
 
-        /**
-         * Tweaks max firing rate (refractory period), larger is shorter refractory period.
-         * 
-         * @param val  -1 to 1 range
-         */
-        public void setMaxFiringRateTweak(float val) {
-            if (val > 1) {
-                val = 1;
-            } else if (val < -1) {
-                val = -1;
-            }
-            float old = maxFiringRate;
-            maxFiringRate = val;
-            final float MAX = 300;
-            refr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
-            getSupport().firePropertyChange(DVSTweaks.MAX_FIRING_RATE, old, val);
+        public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
+            super.sendConfiguration(biasgen);
         }
+       
+        
+        
 
-        /**
-         *  Tweaks threshold, larger is higher threshold.
-         * @param val  -1 to 1 range
-         */
-        public void setThresholdTweak(float val) {
-            if (val > 1) {
-                val = 1;
-            } else if (val < -1) {
-                val = -1;
-            }
-            float old = threshold;
-            final float MAX = 100;
-            threshold = val;
-            diffOn.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
-            diffOff.changeByRatioFromPreferred(1 / PotTweakerUtilities.getRatioTweak(val, MAX));
-            getSupport().firePropertyChange(DVSTweaks.THRESHOLD, old, val);
-
-        }
-
-        /**
-         * Tweaks balance of on/off events. Increase for more ON events.
-         * 
-         * @param val -1 to 1 range. 
-         */
-        public void setOnOffBalanceTweak(float val) {
-            if (val > 1) {
-                val = 1;
-            } else if (val < -1) {
-                val = -1;
-            }
-            float old = onOffBalance;
-            onOffBalance = val;
-            final float MAX = 100;
-            diff.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
-            getSupport().firePropertyChange(DVSTweaks.ON_OFF_BALANCE, old, val);
-        }
-
-        @Override
-        public float getBandwidthTweak() {
-            return bandwidth;
-        }
-
-        @Override
-        public float getThresholdTweak() {
-            return threshold;
-        }
-
-        @Override
-        public float getMaxFiringRateTweak() {
-            return maxFiringRate;
-        }
-
-        @Override
-        public float getOnOffBalanceTweak() {
-            return onOffBalance;
-        }
-    } // DVS128Biasgen
+    } // biasgen
 
     /**
      * Fires PropertyChangeEvents when biases are tweaked according to {@link ch.unizh.ini.jaer.chip.retina.DVSTweaks}.

@@ -447,7 +447,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
 
     /** Formats and returns a byte array of configuration information (e.g. biases, scanner or diagnostic bits) that
      * can be sent over the hardware interface using {@link #sendConfiguration}. This method delegates the task of formatting these
-     * bytes to the Biasgen object rather than the more generic HardwareInterface. 
+     * bytes to the Biasgen hardware interface if it is not null rather than the more generic HardwareInterface. 
      * <p>
      * A Biasgen can override this method to 
      * customize the bytes that are sent. The default implementation asks the BiasgenHardwareInterface for the bytes.
@@ -599,6 +599,47 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
             log.info(e.toString());
         }
 
+    }
+    
+    
+    /** Converts from string of bits ('0', '1') to a byte array that is padded with leading zero bits so that when
+     * bytes are sent and shifted one by one from the  the final bit that is sent is the rightmost character of the string of bits.
+     * 
+     * @param bitString the string of bits, e.g. '10010'. The bits are ordered from left to right in 
+     * the order they will be sent after the padding
+     * that is prepended.
+     * @returns byte array of binary representation of bits, e.g. 
+     * 00010010 for the input '10010'. 
+     * Leftmost 3 bits are padding that 
+     * should be sent first. I.e., the firmware should send the 
+     * bytes one by one starting with element 0, and for each byte it should 
+     * send the bits starting with the msb (bit 7).
+     * 
+     */
+    protected byte[] bitString2Bytes(String bitString) {
+        int nbits = bitString.length();
+        // compute needed number of bytes
+        int nbytes = (nbits % 8 == 0) ? (nbits / 8) : (nbits / 8 + 1); // 4->1, 8->1, 9->2
+        // for simplicity of following, left pad with 0's right away to get integral byte string
+        int npad = nbytes * 8 - nbits;
+        String pad = new String(new char[npad]).replace("\u0000", "0"); // http://stackoverflow.com/questions/1235179/simple-way-to-repeat-a-string-in-java
+        bitString = pad + bitString;
+        byte[] byteArray = new byte[nbytes];
+        int bit = 0;
+        for (int bite = 0; bite < nbytes; bite++) {
+            // for each byte
+            for (int i = 0; i < 8; i++) {
+                // iterate over each bit of this byte
+                byteArray[bite] = (byte) ((255 & byteArray[bite]) << 1); // first left shift previous value, with 0xff to avoid sign extension
+                if (bitString.charAt(bit) == '1') {
+                    // if there is a 1 at this position of string (starting from left side)
+                    // this conditional and loop structure ensures we count in bytes and that we left shift for each bit position in the byte, padding on the right with 0's
+                    byteArray[bite] |= 1; // put a 1 at the lsb of the byte
+                }
+                bit++; // go to next bit of string to the right
+            }
+        }
+        return byteArray;
     }
 
     /** Marks a class (for example, some object in a subclass of Biasgen) as having a preference that can be loaded and stored. Classes do *not* store preferences unless

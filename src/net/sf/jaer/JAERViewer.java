@@ -52,9 +52,9 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
  */
 public class JAERViewer {
     
-    // Set default arg to true for multi-start mode */
+    
     public JAERViewer()
-    {   this(false);
+    {   this(false); // set arg to true to enable experiment global view mode of JAERViewer (Peter O'Connor mode)
     }
         
     /** Root preferences object for jAER

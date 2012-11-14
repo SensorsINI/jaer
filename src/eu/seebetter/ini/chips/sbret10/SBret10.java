@@ -669,30 +669,6 @@ public class SBret10 extends APSDVSchip {
             notifyObservers();
         }
 
-        private byte[] bitString2Bytes(String bitString) {
-            int nbits = bitString.length();
-            // compute needed number of bytes
-            int nbytes = (nbits % 8 == 0) ? (nbits / 8) : (nbits / 8 + 1); // 4->1, 8->1, 9->2
-            // for simplicity of following, left pad with 0's right away to get integral byte string
-            int npad = nbytes * 8 - nbits;
-            String pad = new String(new char[npad]).replace("\0", "0"); // http://stackoverflow.com/questions/1235179/simple-way-to-repeat-a-string-in-java
-            bitString = pad + bitString;
-            byte[] byteArray = new byte[nbytes];
-            int bit = 0;
-            for (int bite = 0; bite < nbytes; bite++) { // for each byte
-                for (int i = 0; i < 8; i++) { // iterate over each bit of this byte
-                    byteArray[bite] = (byte) ((0xff & byteArray[bite]) << 1); // first left shift previous value, with 0xff to avoid sign extension
-                    if (bitString.charAt(bit) == '1') { // if there is a 1 at this position of string (starting from left side) 
-                        // this conditional and loop structure ensures we count in bytes and that we left shift for each bit position in the byte, padding on the right with 0's
-                        byteArray[bite] |= 1; // put a 1 at the lsb of the byte
-                    }
-                    bit++; // go to next bit of string to the right
-
-                }
-            }
-            return byteArray;
-        }
-
         /** Command sent to firmware by vendor request */
         public class ConfigCmd {
 
