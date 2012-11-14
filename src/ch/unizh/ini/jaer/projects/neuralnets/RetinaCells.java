@@ -22,7 +22,7 @@ import net.sf.jaer.event.PolarityEvent;
  * ganglion cells respond specifically to dark approaching objects.  See more at
  * http://www.nature.com/neuro/journal/v12/n10/extref/nn.2389-S1.pdf")
  * 
- * @author Peter
+ * @author Peter O'Connor
  */
 public class RetinaCells extends SpikeFilter<AxonSparse,AxonSparse.Globals,UnitLIF.Globals,PolarityEvent> {
 
