@@ -139,6 +139,7 @@ disp.repaint();
  */
 public class ImageDisplay extends GLCanvas implements GLEventListener {
 
+   
     protected Preferences prefs = Preferences.userNodeForPackage(ImageDisplay.class);
     protected Logger log = Logger.getLogger("ImageDisplay");
     private int fontSize = 20;
@@ -438,12 +439,31 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     /** Sets the whole pixmap array - a float[] of the kind R1,G1,B1,R2,G2,...
      *
      * @param valueArray
-     */
-    public void setPixmapArray(float[] array) {
+     */    
+    
+    public void setPixmapArray(float[] array){
         checkPixmapAllocation();
         System.arraycopy(array, 0, pixmap.array(), 0, array.length);
         pixmap.rewind();
         pixmap.limit(array.length);
+    }
+    
+    /** Updates pixmap values with the values in array only in the region that comes within the blurring kernel, centred at x, y.
+     * 
+     * @param x
+     * @param y
+     * @param kernelextent is the half the width of the kernel
+     * @param chipsize
+     * @param array 
+     */
+    public void setEventPixmapNbd(int x, int y, int kernelextent, int chipsize, float[] array) {
+        checkPixmapAllocation();
+        
+        for(int i = -kernelextent; i < kernelextent+1; i++){            
+            System.arraycopy(array, (3*((x-kernelextent)+((y+i) * chipsize))), pixmap.array(), (3*((x-kernelextent)+((y+i) * chipsize))), (3*(2*kernelextent + 1)));            
+        }
+        
+        pixmap.rewind();
     }
     
     /** Sets the whole pixmap array in gray values - a float[] of the kind grey1, grey2,...
