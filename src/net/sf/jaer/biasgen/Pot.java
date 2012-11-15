@@ -291,7 +291,7 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
      */
     public int getPreferedBitValue() {
         String key = prefsKey();
-        int v = prefs.getInt(key, 0);
+        int v = prefs.getInt(key, bitValue);
         return v;
     }
 

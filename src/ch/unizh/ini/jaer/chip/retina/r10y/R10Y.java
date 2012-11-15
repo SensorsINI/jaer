@@ -477,17 +477,17 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
             return allBytes; // configBytes may be padded with extra bits to make up a byte, board needs to know this to chop off these bits
         }
 
-        @Override
-        public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
-            byte[] b = formatConfigurationBytes(this); // for debugging
-            if (hardwareInterface == null) {
-                log.warning("no hardware interface");
-                return;
-            }
-            if (!isBatchEditOccurring() && hardwareInterface != null && hardwareInterface.isOpen()) {
-                hardwareInterface.sendConfiguration(biasgen);
-            }
-        }
+//        @Override
+//        public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
+//            byte[] b = formatConfigurationBytes(this); // for debugging
+//            if (hardwareInterface == null) {
+//                log.warning("no hardware interface");
+//                return;
+//            }
+//            if (!isBatchEditOccurring() && hardwareInterface != null && hardwareInterface.isOpen()) {
+//                hardwareInterface.;
+//            }
+//        }
 
         @Override
         public void update(Observable observable, Object object) {

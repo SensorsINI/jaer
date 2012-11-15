@@ -56,6 +56,7 @@ public class IPotSliderTextControl extends JPanel implements Observer, StateEdit
 //            slider.setMinorTickSpacing(slider.getMaximum()/100);
             slider.setMinimum(0);
             slider.setToolTipText(pot.getTooltipString());
+//            slider.setValue(sliderValueFromBitValue(slider));
             pot.loadPreferences(); // to get around slider value change
             pot.addObserver(this);  // when pot changes, so does this gui control view
         }
@@ -78,7 +79,7 @@ public class IPotSliderTextControl extends JPanel implements Observer, StateEdit
     }
     private static EngineeringFormat engFormat = new EngineeringFormat();
 
-    /** updates the gui slider and text
+    /** updates the GUI slider and text
     fields to match actual pot values. Neither of these trigger events.
      */
     protected void updateAppearance() {

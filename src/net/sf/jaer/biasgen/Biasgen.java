@@ -38,6 +38,9 @@ import net.sf.jaer.util.WarningDialogWithDontShowPreference;
  */
 public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInterface {
 
+   /** max number of bytes used for each bias. For 24-bit biasgen, only 3 bytes are used and the newest configurable bias generator uses only 2 bytes, but we oversize considerably for the future. */
+    public static final int MAX_BYTES_PER_BIAS=8;
+ 
     transient protected PotArray potArray = null; // this is now PotArray instead of IPotArray, to make this class more generic
     transient private Masterbias masterbias = null;
     private String name = null;
@@ -446,20 +449,43 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
     }
 
     /** Formats and returns a byte array of configuration information (e.g. biases, scanner or diagnostic bits) that
-     * can be sent over the hardware interface using {@link #sendConfiguration}. This method delegates the task of formatting these
-     * bytes to the Biasgen hardware interface if it is not null rather than the more generic HardwareInterface. 
+     * can be sent over the hardware interface using {@link #sendConfiguration}. This method by default
+     * just returns an array of bytes from the PotArray if it exists. 
      * <p>
-     * A Biasgen can override this method to 
-     * customize the bytes that are sent. The default implementation asks the BiasgenHardwareInterface for the bytes.
+     * A Biasgen can (and should) override this method to 
+     * customize the bytes that are sent if the bias generator or PCB/chip configuration requires any customization. 
      * @param biasgen source of the configuration
      * @return array of bytes to be sent.
      */
     @Override
     public byte[] formatConfigurationBytes(Biasgen biasgen) {
-        if (hardwareInterface == null) {
-            return null;
+         // we need to cast from PotArray to IPotArray, because we need the shift register stuff
+        PotArray potArray = (PotArray) biasgen.getPotArray();
+
+        // we make an array of bytes to hold the values sent, then we fill the array, copy it to a
+        // new array of the proper size, and pass it to the routine that actually sends a vendor request
+        // with a data buffer that is the bytes
+
+        if (potArray instanceof IPotArray) {
+            IPotArray ipots = (IPotArray) potArray;
+            byte[] bytes = new byte[potArray.getNumPots() * MAX_BYTES_PER_BIAS];
+            int byteIndex = 0;
+
+
+            Iterator i = ipots.getShiftRegisterIterator();
+            while (i.hasNext()) {
+                // for each bias starting with the first one (the one closest to the ** FAR END ** of the shift register
+                // we get the binary representation in byte[] form and from MSB ro LSB stuff these values into the byte array
+                IPot iPot = (IPot) i.next();
+                byte[] thisBiasBytes = iPot.getBinaryRepresentation();
+                System.arraycopy(thisBiasBytes, 0, bytes, byteIndex, thisBiasBytes.length);
+                byteIndex += thisBiasBytes.length;
+            }
+            byte[] toSend = new byte[byteIndex];
+            System.arraycopy(bytes, 0, toSend, 0, byteIndex);
+            return toSend;
         }
-        return hardwareInterface.formatConfigurationBytes(this);
+        return null;
     }
 
     public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
