@@ -9,23 +9,21 @@ import net.sf.jaer.biasgen.IPot;
 import net.sf.jaer.chip.Chip;
 
 /**
- * Bias on R10Y chip. Each bias has only 3 bits of control. They share a 4 bit master current which they individually scale by 3 bits.
+ * The master tuning current source that all biases share.
  * 
  * @author tobi
  */
-public class R10YBias extends IPot{
+public class R10YIRefTuneBias extends R10YBias{
 
-    private R10YIRefTuneBias tuneBias;
-    
     /** Creates a new instance of IPot passing only the biasgen it belongs to. All other parameters take default values.
      *<p>
      *This IPot also adds itself as an observer for the Masterbias object.
      @param biasgen the biasgen this ipot is part of
      */
-    protected R10YBias(Biasgen biasgen) {
+    protected R10YIRefTuneBias(Biasgen biasgen) {
         super(biasgen);
         setNumBytes(1);
-        setNumBits(3);
+        setNumBits(4);
     }
     
     /** Creates a new instance of IPot
@@ -44,9 +42,8 @@ public class R10YBias extends IPot{
      *@param displayPosition position in GUI from top (logical order).
      *@param tooltipString a String to display to user of GUI telling them what the pots does.
      */
-    public R10YBias(R10YIRefTuneBias tuneBias, Biasgen biasgen, String name, int shiftRegisterNumber, final Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
+    public R10YIRefTuneBias(Biasgen biasgen, String name, int shiftRegisterNumber, final Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
         this(biasgen);
-        this.tuneBias=tuneBias;
         setName(name);
         this.setType(type);
         this.setSex(sex);
@@ -62,16 +59,14 @@ public class R10YBias extends IPot{
 
     @Override
     public float setCurrent(float current) {
-        // TODO set bits according to desired current 
+        // TODO set bits here based on current
         return super.setCurrent(current);
     }
 
     @Override
     public float getCurrent() {
-        // TODO use tunebias to compute actual current here
-        float itune=tuneBias.getCurrent();
-        float current=itune*(1+(bitValue&1)+2*((bitValue&2)>>1)+8*((bitValue&4)>>2));
-        return current;
+        // TODO compute actual current here based on bit value
+        return super.getCurrent();
     }
 
   

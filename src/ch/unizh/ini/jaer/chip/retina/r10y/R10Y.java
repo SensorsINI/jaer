@@ -395,7 +395,7 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
     public class R10YBiasgen extends net.sf.jaer.biasgen.Biasgen implements ChipControlPanel {
 
         private R10YBias diffOn, diffOff, refr, pr, sf, diff, cas;
-        private R10YBias iRefTuneBias;
+        private R10YIRefTuneBias iRefTuneBias;
 //        private Masterbias masterBias; //  there is default one in R10YBiasgen super class
 
         /**
@@ -408,8 +408,7 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
             super(chip);
             setName("R10Y");
 //            masterBias=new Masterbias(this);
-            iRefTuneBias = new R10YBias(this, "IRef Tune", 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, "IREF_TUNE: scales all biases by this current value");
-            iRefTuneBias.setNumBits(4);
+            iRefTuneBias = new R10YIRefTuneBias(this, "IRef Tune", 10, Pot.Type.NORMAL, Pot.Sex.N, 7, 0, "IREF_TUNE: scales all biases by this current value");
 
 
 //  /** Creates a new instance of IPot
@@ -429,16 +428,16 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
 
             getPotArray().addPot(iRefTuneBias);
 
-            getPotArray().addPot(new R10YBias(this, "AER Request Pullup", 9, IPot.Type.NORMAL, IPot.Sex.N, 4, 0, "pullup bias on arbiters"));
-            getPotArray().addPot(new R10YBias(this, "AER Request Pulldown", 8, IPot.Type.NORMAL, IPot.Sex.N, 0, 1, "AER request pulldown"));
-            getPotArray().addPot(new R10YBias(this, "Pixel OFF inverter", 7, IPot.Type.NORMAL, IPot.Sex.N, 0, 2, "OFF request inverter bias"));
-            getPotArray().addPot(refr = new R10YBias(this, "Refractory period", 6, IPot.Type.NORMAL, IPot.Sex.P, 0, 3, "Refractory period"));
-            getPotArray().addPot(pr = new R10YBias(this, "Photoreceptor", 5, IPot.Type.NORMAL, IPot.Sex.P, 0, 4, "Photoreceptor"));
-            getPotArray().addPot(sf = new R10YBias(this, "Source Foll", 4, IPot.Type.NORMAL, IPot.Sex.P, 0, 5, "Src follower buffer between photoreceptor and differentiator"));
-            getPotArray().addPot(diffOff = new R10YBias(this, "OFF threshold", 3, IPot.Type.NORMAL, IPot.Sex.N, 0, 6, "OFF threshold, lower to raise threshold"));
-            getPotArray().addPot(diffOn = new R10YBias(this, "ON threshold", 2, IPot.Type.NORMAL, IPot.Sex.N, 0, 7, "ON threshold - higher to raise threshold"));
-            getPotArray().addPot(diff = new R10YBias(this, "Differentiator", 1, IPot.Type.NORMAL, IPot.Sex.N, 0, 8, "Differentiator"));
-            getPotArray().addPot(cas = new R10YBias(this, "Differentiator Cascode", 0, IPot.Type.CASCODE, IPot.Sex.N, 0, 9, "Differentiator cascode: optimizes gain in pixel differencing amplifier"));
+            getPotArray().addPot(new R10YBias(iRefTuneBias,this, "AER Request Pullup", 9, IPot.Type.NORMAL, IPot.Sex.P, 4, 0, "pullup bias on arbiters"));
+            getPotArray().addPot(new R10YBias(iRefTuneBias,this, "AER Request Pulldown", 8, IPot.Type.NORMAL, IPot.Sex.N, 4, 1, "AER request pulldown"));
+            getPotArray().addPot(new R10YBias(iRefTuneBias,this, "Pixel OFF inverter", 7, IPot.Type.NORMAL, IPot.Sex.N, 4, 2, "OFF request inverter bias"));
+            getPotArray().addPot(refr = new R10YBias(iRefTuneBias,this, "Refractory period", 6, IPot.Type.NORMAL, IPot.Sex.P, 4, 3, "Refractory period"));
+            getPotArray().addPot(pr = new R10YBias(iRefTuneBias,this, "Photoreceptor", 5, IPot.Type.NORMAL, IPot.Sex.P, 4, 4, "Photoreceptor"));
+            getPotArray().addPot(sf = new R10YBias(iRefTuneBias,this, "Source Foll", 4, IPot.Type.NORMAL, IPot.Sex.P, 4, 5, "Src follower buffer between photoreceptor and differentiator"));
+            getPotArray().addPot(diffOff = new R10YBias(iRefTuneBias,this, "OFF threshold", 3, IPot.Type.NORMAL, IPot.Sex.N, 4, 6, "OFF threshold, lower to raise threshold"));
+            getPotArray().addPot(diffOn = new R10YBias(iRefTuneBias,this, "ON threshold", 2, IPot.Type.NORMAL, IPot.Sex.N, 4, 7, "ON threshold - higher to raise threshold"));
+            getPotArray().addPot(diff = new R10YBias(iRefTuneBias,this, "Differentiator", 1, IPot.Type.NORMAL, IPot.Sex.N, 4, 8, "Differentiator"));
+            getPotArray().addPot(cas = new R10YBias(iRefTuneBias,this, "Differentiator Cascode", 0, IPot.Type.CASCODE, IPot.Sex.N, 4, 9, "Differentiator cascode: optimizes gain in pixel differencing amplifier"));
 
             loadPreferences();
 
