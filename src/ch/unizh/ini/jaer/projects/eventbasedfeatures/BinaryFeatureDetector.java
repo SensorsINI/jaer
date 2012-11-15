@@ -160,7 +160,7 @@ public class BinaryFeatureDetector extends EventFilter2D implements FrameAnnotat
             default:{
                 
                 kernel = new GaussianBlurKernel(chip, this); 
-                binaryMethod = new FAST(chip, this);
+                //binaryMethod = new FAST(chip, this);
                 break;
             }                                                     
         }
