@@ -467,8 +467,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @param jAERViewer the containing top level JAERViewer
      */
     public AEViewer(JAERViewer jAERViewer) {
-
-        this(jAERViewer, null);
+       this(jAERViewer, null);
     }
 
     /**
@@ -477,7 +476,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @param jaerViewer the manager of all viewers
      * @param chipClassName the AEChip to use
      */
-    public AEViewer(JAERViewer jaerViewer, String chipClassName) {
+    public AEViewer(JAERViewer jaerViewer, String chipClassName){
         loggingHandler = new AEViewerLoggingHandler(this); // handles log messages globally
         loggingHandler.getSupport().addPropertyChangeListener(this); // logs to Console handler in AEViewer
         Logger.getLogger("").addHandler(loggingHandler);
@@ -498,10 +497,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 setAeChipClassName(DEFAULT_CHIP_CLASS);
                 aeChipClass = aeChipClass = FastClassFinder.forName(getAeChipClassName());
             }
-        } catch (Exception e) {
-            log.warning(getAeChipClassName() + " class not found or not a valid AEChip, exiting after setting preferred chip class to default " + DEFAULT_CHIP_CLASS);
+        } catch (ClassNotFoundException e) {
+            log.warning(getAeChipClassName() + " class not found or not a valid AEChip, setting preferred chip class to default " + DEFAULT_CHIP_CLASS+" and using that class");
             prefs.put("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
-            System.exit(1);
+            try {
+                prefs.flush();
+            } catch (BackingStoreException ex) {
+                log.warning("couldnt' flush the preferences to save preferred chip class: "+ex.toString());
+            }
+            try {
+                aeChipClass=FastClassFinder.forName(DEFAULT_CHIP_CLASS);
+            } catch (ClassNotFoundException ex) {
+                log.warning("could not even find the default chip class "+DEFAULT_CHIP_CLASS+", exiting");
+                System.exit(1);
+            }
         }
         setLocale(Locale.US); // to avoid problems with other language support in JOGL
 //        try {

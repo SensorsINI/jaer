@@ -181,11 +181,8 @@ public class JAERViewer {
     
     class RunningThread implements Runnable{
         
-        
         @Override
             public void run() {
-                
-                
                 if (multistartmode)
                 {   setViewMode(true);
                     return;
@@ -205,19 +202,21 @@ public class JAERViewer {
                 }
 
                 try {
-                    if (classNames == null) {
-                        AEViewer v = new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
+                if (classNames == null) {
+                    AEViewer v = new AEViewer(JAERViewer.this); // this call already adds the viwer to our list of viewers
 //                player=new SyncPlayer(v); // associate with the initial viewer
 //                v.pack();
+                    v.setVisible(true);
+                    //                splashThread.interrupt();
+                } else {
+                    for (String s : classNames) {
+                        // check to make sure cla
+                        AEViewer v;
+                        v = new AEViewer(JAERViewer.this, s);
                         v.setVisible(true);
-                        //                splashThread.interrupt();
-                    } else {
-                        for (String s : classNames) {
-                            AEViewer v = new AEViewer(JAERViewer.this, s);
-                            v.setVisible(true);
-                        }
                     }
-                } catch (java.lang.UnsatisfiedLinkError err) {
+                }
+            } catch (java.lang.UnsatisfiedLinkError err) {
 
                     log.info("Unsatisfied link error.  Chances are that you are not running the right project configuration.  Set the project configuration to the appropiate platform (win,win64,linux32,linux64,etc...). The jAER project must be set to use a JVM that matches the project runtime configuration, e.g., if you are using a 32 bit JVM to run jAER (as selected in the project properties/Libraries/Java Platform), then you must choose the \"win\" configuration so that java.libray.path is set so that your DLLs come from host/java/jars/win32.");
 
