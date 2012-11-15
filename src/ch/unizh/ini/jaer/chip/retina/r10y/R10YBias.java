@@ -62,6 +62,7 @@ public class R10YBias extends IPot{
 
     @Override
     public float setCurrent(float current) {
+        float itune=tuneBias.getCurrent();
         // TODO set bits according to desired current 
         return super.setCurrent(current);
     }
@@ -70,7 +71,7 @@ public class R10YBias extends IPot{
     public float getCurrent() {
         // TODO use tunebias to compute actual current here
         float itune=tuneBias.getCurrent();
-        float current=itune*(1+(bitValue&1)+2*((bitValue&2)>>1)+8*((bitValue&4)>>2));
+        float current=itune*(2+2*(bitValue&1)+4*((bitValue&2)>>1)+8*((bitValue&4)>>2));
         return current;
     }
 

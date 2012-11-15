@@ -412,6 +412,7 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
 
 
 //  /** Creates a new instance of IPot
+//            @param tuneBias
 //     *@param biasgen
 //     *@param name
 //     *@param shiftRegisterNumber the position in the shift register, 0 based, starting on end from which bits are loaded
@@ -428,39 +429,20 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
 
             getPotArray().addPot(iRefTuneBias);
 
-            getPotArray().addPot(new R10YBias(iRefTuneBias,this, "AER Request Pullup", 9, IPot.Type.NORMAL, IPot.Sex.P, 4, 0, "pullup bias on arbiters"));
-            getPotArray().addPot(new R10YBias(iRefTuneBias,this, "AER Request Pulldown", 8, IPot.Type.NORMAL, IPot.Sex.N, 4, 1, "AER request pulldown"));
+            getPotArray().addPot(new R10YBias(iRefTuneBias,this, "AER Pullup", 9, IPot.Type.NORMAL, IPot.Sex.P, 4, 0, "pullup bias on arbiters"));
+            getPotArray().addPot(new R10YBias(iRefTuneBias,this, "AER Pulldown", 8, IPot.Type.NORMAL, IPot.Sex.N, 4, 1, "AER request pulldown"));
             getPotArray().addPot(new R10YBias(iRefTuneBias,this, "Pixel OFF inverter", 7, IPot.Type.NORMAL, IPot.Sex.N, 4, 2, "OFF request inverter bias"));
-            getPotArray().addPot(refr = new R10YBias(iRefTuneBias,this, "Refractory period", 6, IPot.Type.NORMAL, IPot.Sex.P, 4, 3, "Refractory period"));
+            getPotArray().addPot(refr = new R10YBias(iRefTuneBias,this, "Refrac. Per.", 6, IPot.Type.NORMAL, IPot.Sex.P, 4, 3, "Refractory period"));
             getPotArray().addPot(pr = new R10YBias(iRefTuneBias,this, "Photoreceptor", 5, IPot.Type.NORMAL, IPot.Sex.P, 4, 4, "Photoreceptor"));
-            getPotArray().addPot(sf = new R10YBias(iRefTuneBias,this, "Source Foll", 4, IPot.Type.NORMAL, IPot.Sex.P, 4, 5, "Src follower buffer between photoreceptor and differentiator"));
-            getPotArray().addPot(diffOff = new R10YBias(iRefTuneBias,this, "OFF threshold", 3, IPot.Type.NORMAL, IPot.Sex.N, 4, 6, "OFF threshold, lower to raise threshold"));
-            getPotArray().addPot(diffOn = new R10YBias(iRefTuneBias,this, "ON threshold", 2, IPot.Type.NORMAL, IPot.Sex.N, 4, 7, "ON threshold - higher to raise threshold"));
-            getPotArray().addPot(diff = new R10YBias(iRefTuneBias,this, "Differentiator", 1, IPot.Type.NORMAL, IPot.Sex.N, 4, 8, "Differentiator"));
-            getPotArray().addPot(cas = new R10YBias(iRefTuneBias,this, "Differentiator Cascode", 0, IPot.Type.CASCODE, IPot.Sex.N, 4, 9, "Differentiator cascode: optimizes gain in pixel differencing amplifier"));
+            getPotArray().addPot(sf = new R10YBias(iRefTuneBias,this, "Src Foll", 4, IPot.Type.NORMAL, IPot.Sex.P, 4, 5, "Src follower buffer between photoreceptor and differentiator"));
+            getPotArray().addPot(diffOff = new R10YBias(iRefTuneBias,this, "OFF thresh", 3, IPot.Type.NORMAL, IPot.Sex.N, 4, 6, "OFF threshold, lower to raise threshold"));
+            getPotArray().addPot(diffOn = new R10YBias(iRefTuneBias,this, "ON thresh", 2, IPot.Type.NORMAL, IPot.Sex.N, 4, 7, "ON threshold - higher to raise threshold"));
+            getPotArray().addPot(diff = new R10YBias(iRefTuneBias,this, "Diff", 1, IPot.Type.NORMAL, IPot.Sex.N, 4, 8, "Differentiator"));
+            getPotArray().addPot(cas = new R10YBias(iRefTuneBias,this, "DiffCas", 0, IPot.Type.CASCODE, IPot.Sex.N, 4, 9, "Differentiator cascode: optimizes gain in pixel differencing amplifier"));
 
             loadPreferences();
 
         }
-//        /** sends the ipot values over the hardware interface if there is not a batch edit occuring.
-//         *@param biasgen the bias generator object.
-//         * This parameter is necessary because the same method is used in the hardware interface,
-//         * which doesn't know about the particular bias generator instance.
-//         *@throws HardwareInterfaceException if there is a hardware error. If there is no interface, prints a message and just returns.
-//         *@see #startBatchEdit
-//         *@see #endBatchEdit
-//         **/
-//        public void sendConfiguration(R10YBiasgen biasgen) throws HardwareInterfaceException {
-//            if (hardwareInterface == null) {
-////            log.warning("R10YBiasgen.sendIPotValues(): no hardware interface");
-//                return;
-//            }
-//            if (!isBatchEditOccurring() && hardwareInterface != null) {
-////            log.info("calling hardwareInterface.sendConfiguration");
-////            hardwareInterface.se(this);
-//            }
-//        }
-        JComponent expertTab;
 
         /**
          * Formats the data sent to the microcontroller to load bias and other

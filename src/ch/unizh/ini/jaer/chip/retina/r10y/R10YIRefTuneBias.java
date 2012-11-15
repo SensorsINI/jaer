@@ -10,11 +10,17 @@ import net.sf.jaer.chip.Chip;
 
 /**
  * The master tuning current source that all biases share.
+ * It is a resistive ladder where the bit value is decoded to short out the ladder at a certain point.
+ * There are 4 unit resistors to start the line so the total resistance is 4+bitValue.
+ * The current generated is then the bandgap voltage divided by the resistance.
  * 
  * @author tobi
  */
 public class R10YIRefTuneBias extends R10YBias{
 
+    public static final float VBANDGAP=2f; // TODO correct value
+    public static final float RUNIT=7.5e3f; // TODO correct
+    
     /** Creates a new instance of IPot passing only the biasgen it belongs to. All other parameters take default values.
      *<p>
      *This IPot also adds itself as an observer for the Masterbias object.
@@ -60,15 +66,26 @@ public class R10YIRefTuneBias extends R10YBias{
     @Override
     public float setCurrent(float current) {
         // TODO set bits here based on current
-        return super.setCurrent(current);
+        return Math.round(current);
     }
 
     @Override
     public float getCurrent() {
         // TODO compute actual current here based on bit value
-        return super.getCurrent();
+        return bitValue;
     }
 
+    @Override
+    public float getMaxCurrent() {
+        return 15; // TODO just max unit resistors now
+    }
+
+    @Override
+    public float getMinCurrent() {
+        return 0;  // TODO
+    }
+
+    
   
     
 
