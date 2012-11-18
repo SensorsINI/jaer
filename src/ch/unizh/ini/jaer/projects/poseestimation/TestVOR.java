@@ -46,8 +46,8 @@ public class TestVOR extends EventFilter2D implements Observer, FrameAnnotater {
     private int samplingDataRateVOR = 400; // Can't just be any number .. Not sure why
     
     // Sensor Outputs
-    private int ts; // Timestamp
-    private double[] acceleration, gyro, compass = new double[3];
+    public int ts; // Timestamp
+    public double[] acceleration, gyro, compass = new double[3];
 
     // Drawing Points
     
@@ -66,7 +66,7 @@ public class TestVOR extends EventFilter2D implements Observer, FrameAnnotater {
         try {
             spatial = new SpatialPhidget();
         } catch (PhidgetException e) {
-            log.log(Level.WARNING, "{0}: gyro will not be available", e.toString());
+            log.log(Level.WARNING, "{0}: sensor will not be available", e.toString());
         }
 
         // Creates listener for when device is plugged in 
