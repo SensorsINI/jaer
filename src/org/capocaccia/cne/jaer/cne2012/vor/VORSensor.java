@@ -25,8 +25,8 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.eventprocessing.label.DirectionSelectiveFilter;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.util.filter.HighpassFilter;
 
 /**
@@ -60,7 +60,7 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
     private float highpassTauMsTranslation = getFloat("highpassTauMsTranslation", 1000);
     private float highpassTauMsRotation = getFloat("highpassTauMsRotation", 1000);
     float radPerPixel = 1;
-    private ArrayBlockingQueue<PhidgetsSpatialEvent> spatialDataQueue = new ArrayBlockingQueue<PhidgetsSpatialEvent>(9 * 4);
+    private ArrayBlockingQueue<PhidgetsSpatialEvent> spatialDataQueue = new ArrayBlockingQueue<PhidgetsSpatialEvent>(9 * 4); // each phidgets sample could be 9 (3 gyro + 3 accel + 3 compass) and we want room for 4 samples
     private volatile boolean resetCalled=false;
     
     public VORSensor(AEChip chip) {
