@@ -28,16 +28,20 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
-import org.capocaccia.cne.jaer.cne2012.vor.PhidgetsSpatialEvent;
 
 @Description("Base Class to get and use VOR Sensor data")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
    
     // Controls
-    protected int samplingRateMs = getPrefs().getInt("VOR.samplingRateMs", 400);
+    protected int samplingRateMs = getPrefs().getInt("VOR.samplingRateMs", 128);
     {
-        setPropertyTooltip("samplingRateMs", "Set Sampling Rate for VOR Sensor. Must be either 4 or a multiple of 8 under 1000");
+        setPropertyTooltip("samplingRateMs", "Set Sampling Rate (in ms) for VOR Sensor. Must be either 4 or a multiple of 8 under 1000");
+    }
+
+    protected int tauMs = getPrefs().getInt("VOR.tauMs", 100);
+    {
+        setPropertyTooltip("tauMs", "Set time constant (in ms) for complimentary filter");
     }
 
     // VOR Handlers
@@ -45,17 +49,32 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
     SpatialDataEvent spatialData = null;
     
     // VOR Outputs
-    private int t0; // Reference Timestamp - last collected timestamp
-    private int ts; // Timestamp
-    private double[] acceleration, gyro, compass = new double[3];
+    private int t0;                 // Reference Timestamp - last collected timestamp
+    private boolean t0Init = false; // defines whether t0 has been initialized, so it doesn't get reset with every input packet
+    private int ts;                 // Timestamp
+    private double dt;                 // Timestamp
+    double[] acceleration, gyro, compass = new double[3]; // Sensor Values 
+    private boolean biasInit = false; // defines whether t0 has been initialized, so it doesn't get reset with every input packet
+    double[] biasAcceleration, biasGyro, biasCompass = new double[3]; // Zero/Bias Sensor Values 
     
-    // Data Structure containing sensor outputs saved as PhidgetsSpatialEvent type
-    // Size is 9 * 4 because of 3 sensors with 3 axes each and an additional variable for time stamp for each sensor reading
-    private ArrayBlockingQueue<PhidgetsSpatialEvent> spatialDataQueue = new ArrayBlockingQueue<PhidgetsSpatialEvent>(9 * 4);
-
+    // Complimentary Filter Variables
+    double alpha;
+    // Outputs
+    double angle = 0;        // In Degrees
+    double angleRoll = 0;    // In Degrees        
+    double anglePitch = 0;   // In Degrees
+    double angleYaw = 0;     // In Degrees
+    
     // Drawing Points
-    Point2D.Float ptVar = new Point2D.Float(); 
-
+    Point2D.Float ptVar = new Point2D.Float();
+    float originX;
+    float originY;
+    float radiusX;
+    float radiusY; 
+    float cubeX = 10;
+    float cubeY = 10; 
+    float cubeZ = 10; 
+    
     /**
      * Constructor
      * @param chip Called with AEChip properties
@@ -119,33 +138,24 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
         // Creates listener for incoming data 
         spatial.addSpatialDataListener(new SpatialDataListener() {
 
-            // Write incoming data to variables and subsequently to data structure spatialDataQueue
+            // Write incoming data to variables and subsequently collect data into structure spatialDataQueue
             @Override
             public void data(SpatialDataEvent sde) {
                 if (sde.getData().length == 0) {
                     log.warning("Empty data");
                     return;
                 }
-                acceleration = sde.getData()[0].getAcceleration();
-                gyro = sde.getData()[0].getAngularRate();
-                compass = sde.getData()[0].getMagneticField();
-                ts = sde.getData()[0].getTimeSeconds() * 1000000 + sde.getData()[0].getTimeMicroSeconds();
-
-                if (isFilterEnabled() && spatialDataQueue.remainingCapacity() >= 6) {
-                    try {
-                        spatialDataQueue.add(new PhidgetsSpatialEvent(ts, (float) acceleration[0], PhidgetsSpatialEvent.SpatialDataType.AccelUp));
-                        spatialDataQueue.add(new PhidgetsSpatialEvent(ts, (float) acceleration[1], PhidgetsSpatialEvent.SpatialDataType.AccelRight));
-                        spatialDataQueue.add(new PhidgetsSpatialEvent(ts, (float) acceleration[2], PhidgetsSpatialEvent.SpatialDataType.AccelTowards));
-                        spatialDataQueue.add(new PhidgetsSpatialEvent(ts, (float) gyro[0], PhidgetsSpatialEvent.SpatialDataType.YawRight));
-                        spatialDataQueue.add(new PhidgetsSpatialEvent(ts, (float) gyro[1], PhidgetsSpatialEvent.SpatialDataType.RollClockwise));
-                        spatialDataQueue.add(new PhidgetsSpatialEvent(ts, (float) gyro[2], PhidgetsSpatialEvent.SpatialDataType.PitchUp));
-//                        spatialDataQueue.add(new PhidgetsSpatialEvent(ts, (float) compass[0], PhidgetsSpatialEvent.SpatialDataType.CompassX));
-//                        spatialDataQueue.add(new PhidgetsSpatialEvent(ts, (float) compass[1], PhidgetsSpatialEvent.SpatialDataType.CompassY));
-//                        spatialDataQueue.add(new PhidgetsSpatialEvent(ts, (float) compass[2], PhidgetsSpatialEvent.SpatialDataType.CompassZ));
-                    } catch (IllegalStateException e) {
-                        log.log(Level.WARNING, "{0} Queue full, could not write PhidgetsSpatialEvent with ts=" + ts, e.toString());
-                    }
+                if (biasInit == false) {
+                    biasAcceleration = sde.getData()[0].getAcceleration();
+                    biasGyro = sde.getData()[0].getAngularRate();
+                    biasCompass = sde.getData()[0].getMagneticField();
+                    biasInit = true;
+                } else {            
+                    acceleration = sde.getData()[0].getAcceleration();
+                    gyro = sde.getData()[0].getAngularRate();
+                    compass = sde.getData()[0].getMagneticField();
                 }
+                ts = sde.getData()[0].getTimeSeconds() * 1000000 + sde.getData()[0].getTimeMicroSeconds();
             }
         });
 
@@ -155,6 +165,8 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
         } catch (PhidgetException ex) {
             log.warning(ex.toString());
         }
+
+
     }
     
     /**
@@ -162,7 +174,11 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
      */    
     @Override
     public void initFilter() {
-    
+        originX = (float)(chip.getSizeX() - 1) / 2;
+        originY = (float)(chip.getSizeY() - 1) / 2;
+        radiusX = (float)(chip.getSizeX()) / 2;
+        radiusY = (float)(chip.getSizeY()) / 2;
+
     }
 
     /**
@@ -170,7 +186,7 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
      */    
     @Override
     public void resetFilter() {
-    
+
     }
     
     /**
@@ -181,6 +197,20 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
     @Override
     public void update(Observable o, Object arg) {
         initFilter();
+    }
+    
+    /**
+     * Clean up for after filter is finalized
+     */    
+    @Override
+    public synchronized void cleanup() {
+        super.cleanup();
+        try {
+            spatial.close();
+        } catch (PhidgetException ex) {
+            log.warning(ex.toString());
+        }
+        spatial = null;
     }
 
     /**
@@ -201,20 +231,23 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
             in=enclosedFilter.filterPacket(in);
 
         // Checks that output package has correct data type
-        checkOutputPacketEventType(PhidgetsSpatialEvent.class);
+        checkOutputPacketEventType(in);
         
-        // Create empty spatial event array and fill with incoming sensor data with their timestamp everytime an input camera event is registered
-        // Output Iterator
-        OutputEventIterator outItr = out.outputIterator();
-        PhidgetsSpatialEvent spatialEvent = null;
+        // Update transformation values only after sensor sampling rate has passed
+        // Use event timestamps to find out when this time has passed
+        // Remember to use same time units
+        // For fist run, initialize t0 to reference time 
+        if (t0Init == false) {
+            t0 = in.getFirstTimestamp();
+            t0Init = true;
+        }
         // Event Iterator
         for (BasicEvent o : in) {
-            for (spatialEvent = spatialDataQueue.poll(); spatialEvent != null; spatialEvent = spatialDataQueue.poll()) {
-                PhidgetsSpatialEvent oe = (PhidgetsSpatialEvent) outItr.nextOutput();
-                oe.copyFrom(spatialEvent);
+            if (1000*(o.getTimestamp() - t0) >= getSamplingRateMs()) {
+                dt = (o.getTimestamp() - t0)*1e-6;
+                updateTransformation();
+                t0 = o.getTimestamp();
             }
-            // Call listeners when enough time has passed for update
-            maybeCallUpdateObservers(in, o.timestamp); 
         }
         return in;
     }
@@ -256,19 +289,85 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
         gl.glRasterPos3f(108, 73, 0);
         chip.getCanvas().getGlut().glutBitmapString(font, String.format("c_z=%+.2f", compass[2]));
 
+        // Draw Box
+        // Fix Transformation Matrix 
+        gl.glPushMatrix();
+        gl.glTranslatef(originX, originY, 0);
+        gl.glRotatef((float)(angle * 180 / Math.PI), 0, 0, 1);
+        gl.glLineWidth(2f);
+        gl.glColor3f(1, 0, 0);
+        gl.glBegin(GL.GL_LINE_LOOP);
+        // Draw rectangle around transform
+        gl.glVertex2f(-radiusX, -radiusY);
+        gl.glVertex2f(radiusX, -radiusY);
+        gl.glVertex2f(radiusX, radiusY);
+        gl.glVertex2f(-radiusX, radiusY);
+        gl.glEnd();
+        gl.glPopMatrix();
+
+        // Draw Cube
+        // Fix Transformation Matrix 
+        gl.glPushMatrix();
+        gl.glTranslatef(originX, originY, 0);
+        gl.glRotatef((float)(angle * 180 / Math.PI), 0, 0, 1);
+        gl.glLineWidth(2f);
+        gl.glColor3f(1, 0, 0);
+        // Draw cube around transform
+        // Front Face
+        gl.glBegin(GL.GL_LINE_LOOP);
+        gl.glVertex3f(-cubeX, -cubeY, 0);
+        gl.glVertex3f(cubeX, -cubeY, 0);
+        gl.glVertex3f(cubeX, cubeY, 0);
+        gl.glVertex3f(-cubeX, cubeY, 0);
+        gl.glEnd();
+        // Back face
+        gl.glBegin(GL.GL_LINE_LOOP);
+        gl.glVertex3f(-cubeX, -cubeY, -cubeZ);
+        gl.glVertex3f(cubeX, -cubeY, -cubeZ);
+        gl.glVertex3f(cubeX, cubeY, -cubeZ);
+        gl.glVertex3f(-cubeX, cubeY, -cubeZ);
+        gl.glEnd();
+
+        gl.glPopMatrix();
+    
+        
+    
     }
 
-    /** 
-     * Setter for reseting current gyro measurements as 'zero'
-     * Hold for 2 seconds
+    /**
+     * Computes transform using current gyro outputs based on timestamp supplied
+     * and returns a TransformAtTime object. Should be called by update in
+     * enclosing processor.
+     *
+     * @param timestamp the timestamp in us.
+     * @return the transform object representing the camera rotation
      */
-    public void setZeroGyro() throws PhidgetException {
-        try {
-            spatial.zeroGyro();
-        } catch (PhidgetException ex) {
-            log.warning(ex.toString());
-        }
-    }
+    synchronized public void updateTransformation() {
+        
+        double angleFromAccel = Math.acos(acceleration[1]-biasAcceleration[1]);        
+        double angleFromGyro = -(gyro[2]-biasGyro[2]) * Math.PI / 180.0 * dt;
+        double tau = (double)tauMs/1000.0;
+        alpha = tau / (tau + dt);
+        //angle += angleFromGyro; 
+        angle = alpha * (angle + angleFromGyro) + (1 - alpha) * angleFromAccel; 
+        
+    }    
+
+//    /** 
+//     * Setter for reseting current gyro measurements as 'zero'
+//     * Hold for 2 seconds
+//     */
+//    synchronized public void setBias()  {
+//        biasAcceleration[0] = acceleration[0];
+//        biasAcceleration[1] = acceleration[1];
+//        biasAcceleration[2] = acceleration[2];
+//        biasGyro[0] = gyro[0];
+//        biasGyro[1] = gyro[1];
+//        biasGyro[2] = gyro[2];
+//        biasCompass[0] = compass[0];
+//        biasCompass[1] = compass[1];
+//        biasCompass[2] = compass[2];
+//    }
     
     /**
      * Getter for samplingRateMs
@@ -302,7 +401,30 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
         return 1000;
     }
 
+    /**
+     * Getter for tauMs
+     * @return tauMs 
+     */
+    public int getTauMs() {
+        return this.tauMs;
+    }
+
+    /**
+     * Setter for integration time window
+     * @see #getTauMs
+     * @param tauMs time constant in ms for complimentary filter
+     */
+    public void setTauMs(final int tauMs) {
+        getPrefs().putInt("VOR.tauMs", tauMs);
+        getSupport().firePropertyChange("tauMs", this.tauMs, tauMs);
+        this.tauMs = tauMs;
+    }
+
+    public int getMinTauMs() {
+        return 10;
+    }
+
+    public int getMaxTauMs() {
+        return 2000;
+    }
 }
-
-
-
