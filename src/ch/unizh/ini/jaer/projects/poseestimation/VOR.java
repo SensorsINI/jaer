@@ -34,12 +34,12 @@ import net.sf.jaer.graphics.FrameAnnotater;
 public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
    
     // Controls
-    protected int samplingRateMs = getPrefs().getInt("VOR.samplingRateMs", 128);
+    protected int samplingRateMs = getInt("samplingRateMs", 128);
     {
         setPropertyTooltip("samplingRateMs", "Set Sampling Rate (in ms) for VOR Sensor. Must be either 4 or a multiple of 8 under 1000");
     }
 
-    protected int tauMs = getPrefs().getInt("VOR.tauMs", 100);
+    protected int tauMs = getInt("tauMs", 100);
     {
         setPropertyTooltip("tauMs", "Set time constant (in ms) for complimentary filter");
     }
@@ -186,7 +186,17 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
      */    
     @Override
     public void resetFilter() {
-
+        if (biasInit == true) {
+        biasAcceleration[0] = acceleration[0];
+        biasAcceleration[1] = acceleration[1];
+        biasAcceleration[2] = acceleration[2];
+        biasGyro[0] = gyro[0];
+        biasGyro[1] = gyro[1];
+        biasGyro[2] = gyro[2];
+        biasCompass[0] = compass[0];
+        biasCompass[1] = compass[1];
+        biasCompass[2] = compass[2];
+        }
     }
     
     /**
@@ -231,7 +241,7 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
             in=enclosedFilter.filterPacket(in);
 
         // Checks that output package has correct data type
-        checkOutputPacketEventType(in);
+//        checkOutputPacketEventType(in); // out not used yet
         
         // Update transformation values only after sensor sampling rate has passed
         // Use event timestamps to find out when this time has passed
@@ -243,10 +253,10 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
         }
         // Event Iterator
         for (BasicEvent o : in) {
-            if (1000*(o.getTimestamp() - t0) >= getSamplingRateMs()) {
-                dt = (o.getTimestamp() - t0)*1e-6;
+            if (1000*(o.timestamp - t0) >= samplingRateMs) {
+                dt = (o.timestamp - t0)*1e-6;
                 updateTransformation();
-                t0 = o.getTimestamp();
+                t0 = o.timestamp;
             }
         }
         return in;
@@ -269,25 +279,26 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
         gl.glColor3f(1, 1, 1);
         gl.glRasterPos3f(108, 123, 0);
         // Accelerometer x, y, z info
-        chip.getCanvas().getGlut().glutBitmapString(font, String.format("a_x=%+.2f", acceleration[0]));
+        GLUT glut=chip.getCanvas().getGlut();
+        glut.glutBitmapString(font, String.format("a_x=%+.2f", acceleration[0]));
         gl.glRasterPos3f(108, 118, 0);
-        chip.getCanvas().getGlut().glutBitmapString(font, String.format("a_y=%+.2f", acceleration[1]));
+        glut.glutBitmapString(font, String.format("a_y=%+.2f", acceleration[1]));
         gl.glRasterPos3f(108, 113, 0);
-        chip.getCanvas().getGlut().glutBitmapString(font, String.format("a_z=%+.2f", acceleration[2]));
+        glut.glutBitmapString(font, String.format("a_z=%+.2f", acceleration[2]));
         // Gyroscope 
         gl.glRasterPos3f(108, 103, 0);
-        chip.getCanvas().getGlut().glutBitmapString(font, String.format("g_x=%+.2f", gyro[0]));
+        glut.glutBitmapString(font, String.format("g_x=%+.2f", gyro[0]));
         gl.glRasterPos3f(108, 98, 0);
-        chip.getCanvas().getGlut().glutBitmapString(font, String.format("g_y=%+.2f", gyro[1]));
+        glut.glutBitmapString(font, String.format("g_y=%+.2f", gyro[1]));
         gl.glRasterPos3f(108, 93, 0);
-        chip.getCanvas().getGlut().glutBitmapString(font, String.format("g_z=%+.2f", gyro[2]));
+        glut.glutBitmapString(font, String.format("g_z=%+.2f", gyro[2]));
         // Magnet
         gl.glRasterPos3f(108, 83, 0);
-        chip.getCanvas().getGlut().glutBitmapString(font, String.format("c_x=%+.2f", compass[0]));
+        glut.glutBitmapString(font, String.format("c_x=%+.2f", compass[0]));
         gl.glRasterPos3f(108, 78, 0);
-        chip.getCanvas().getGlut().glutBitmapString(font, String.format("c_y=%+.2f", compass[1]));
+        glut.glutBitmapString(font, String.format("c_y=%+.2f", compass[1]));
         gl.glRasterPos3f(108, 73, 0);
-        chip.getCanvas().getGlut().glutBitmapString(font, String.format("c_z=%+.2f", compass[2]));
+        glut.glutBitmapString(font, String.format("c_z=%+.2f", compass[2]));
 
         // Draw Box
         // Fix Transformation Matrix 
@@ -309,7 +320,7 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
         // Fix Transformation Matrix 
         gl.glPushMatrix();
         gl.glTranslatef(originX, originY, 0);
-        gl.glRotatef((float)(angle * 180 / Math.PI), 0, 0, 1);
+       gl.glRotatef((float)(angle * 180 / Math.PI), 0, 0, 1);
         gl.glLineWidth(2f);
         gl.glColor3f(1, 0, 0);
         // Draw cube around transform
@@ -349,8 +360,11 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
         double tau = (double)tauMs/1000.0;
         alpha = tau / (tau + dt);
         //angle += angleFromGyro; 
-        angle = alpha * (angle + angleFromGyro) + (1 - alpha) * angleFromAccel; 
-        
+           if (Double.isNaN(angle)) {
+            angle = angleFromAccel;
+        } else {
+            angle = alpha * (angle + angleFromGyro) + (1 - alpha) * angleFromAccel;
+        }
     }    
 
 //    /** 
@@ -382,15 +396,16 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
      * @see #getSamplingRateMs
      * @param samplingRateMs Sampling Rate in ms
      */
-    public void setSamplingRateMs(final int samplingRateMs) {
+    public void setSamplingRateMs(int samplingRateMs) {
+        int old=this.samplingRateMs;
         int correctSamplingRateMs = 4;
         if (samplingRateMs > 6 ) {
             correctSamplingRateMs = samplingRateMs / 8 * 8;
         }
             
-        getPrefs().putInt("VOR.samplingRateMs", correctSamplingRateMs);
-        getSupport().firePropertyChange("samplingRateMs", this.samplingRateMs, correctSamplingRateMs);
+       putInt("samplingRateMs", correctSamplingRateMs);
         this.samplingRateMs = correctSamplingRateMs;
+        getSupport().firePropertyChange("samplingRateMs", old, correctSamplingRateMs);
     }
 
     public int getMinSamplingRateMs() {
@@ -415,7 +430,7 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
      * @param tauMs time constant in ms for complimentary filter
      */
     public void setTauMs(final int tauMs) {
-        getPrefs().putInt("VOR.tauMs", tauMs);
+        putInt("tauMs", tauMs);
         getSupport().firePropertyChange("tauMs", this.tauMs, tauMs);
         this.tauMs = tauMs;
     }
