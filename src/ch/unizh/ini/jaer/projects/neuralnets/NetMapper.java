@@ -14,7 +14,10 @@ import net.sf.jaer.event.BasicEvent;
  * 
  * @author Peter
  */
-public abstract class NetMapper<EventType extends BasicEvent> {
+public abstract class NetMapper {
+// comment, Dennis G., Nov. 05 2012: removed the use of generics. NetMapper is not a container and the use of the generic type seems awkward 
+// (and causes a problem in AudioVisualNet). 
+//public abstract class NetMapper<EventType extends BasicEvent> {
     
     int baseTime;
     boolean baseTimeSet=false;
@@ -40,7 +43,8 @@ public abstract class NetMapper<EventType extends BasicEvent> {
     }
     
     /** Map the source byte onto the layer index */
-    public int ev2layer(EventType ev)
+    public int ev2layer(BasicEvent ev)
+//    public int ev2layer(EventType ev)
     {   return ev.source;   
     }
     
@@ -52,12 +56,14 @@ public abstract class NetMapper<EventType extends BasicEvent> {
 //    {   return loc2addr(xloc,yloc,source);        
 //    }
     
-    public int ev2special(EventType ev)
+    public int ev2special(BasicEvent ev)
+//  public int ev2special(EventType ev)
     {
         return 1;        
     }
     
-    public PSPInput mapEvent(EventType ev)
+    public PSPInput mapEvent(BasicEvent ev)
+//    public PSPInput mapEvent(EventType ev)
     {   
         int addr=ev2addr(ev);
         
@@ -73,7 +79,8 @@ public abstract class NetMapper<EventType extends BasicEvent> {
     }
     
     
-    abstract public int ev2addr(EventType ev);
+    abstract public int ev2addr(BasicEvent ev);
+//    abstract public int ev2addr(EventType ev);
             
     
     

@@ -74,7 +74,8 @@ public class GlobalViewer extends javax.swing.JFrame {
             packetStreams.clear();
             
             
-            waitFlag=new CyclicBarrier(viewers.size(),new ViewLoop());
+            if (viewers.size() > 0) 
+            	waitFlag=new CyclicBarrier(viewers.size(),new ViewLoop());
             
             // Add all the viewers
             for (int i=0; i<viewers.size(); i++) 

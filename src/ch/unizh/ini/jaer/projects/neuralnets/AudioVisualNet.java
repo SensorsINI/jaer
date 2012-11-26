@@ -45,7 +45,8 @@ public class AudioVisualNet extends SpikeFilter<AxonSTP,AxonSTP.Globals,UnitLIF.
         if (map.outDimX==0)
             throw new RuntimeException("Chip Appears to have 0 dimension.  This will mess up the mapping of events.");
         
-        return new NetMapper<BasicEvent>(){
+        return new NetMapper(){
+//        return new NetMapper<BasicEvent>(){
 
             @Override
             public int ev2addr(BasicEvent ev) {

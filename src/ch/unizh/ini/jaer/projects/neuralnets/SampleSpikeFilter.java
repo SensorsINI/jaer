@@ -32,7 +32,8 @@ public class SampleSpikeFilter extends SpikeFilter<AxonSTP,AxonSTP.Globals,UnitL
     /** Return an object that maps the retina input to the input layer of the network*/
     @Override
     public NetMapper makeMapper(Network net) {
-        VisualMapper<PolarityEvent> map=new VisualMapper<PolarityEvent>();
+        VisualMapper map=new VisualMapper();
+//        VisualMapper<PolarityEvent> map=new VisualMapper<PolarityEvent>();
         map.inDimX=(short)chip.getSizeX();
         map.inDimY=(short)chip.getSizeY(); 
         map.outDimX=(short)net.lay(0).dimx;

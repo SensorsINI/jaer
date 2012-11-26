@@ -29,11 +29,13 @@ public class NumberNet extends SpikeFilter<AxonSTP,AxonSTP.Globals,UnitLIF.Globa
     @Override
     public NetMapper makeMapper(Network net) {
         
-        VisualMapper<PolarityEvent> map=new VisualMapper<PolarityEvent>(){
+//      VisualMapper<PolarityEvent> map=new VisualMapper<PolarityEvent>(){
+        VisualMapper map=new VisualMapper(){
         
             @Override
-            public int ev2addr(PolarityEvent ev) {
-                if (ev.polarity==PolarityEvent.Polarity.On)
+//            public int ev2addr(PolarityEvent ev) {
+            public int ev2addr(BasicEvent ev) {
+                if (ev instanceof PolarityEvent && ((PolarityEvent)ev).polarity==PolarityEvent.Polarity.On)
                     return -1;
                 else
                     return super.ev2addr(ev);

@@ -34,17 +34,21 @@ public class RetinaCells extends SpikeFilter<AxonSparse,AxonSparse.Globals,UnitL
     
     @Override
     public NetMapper makeMapper(Network net) {
-        return new NetMapper<PolarityEvent>()
+//        return new NetMapper<PolarityEvent>()
+        return new NetMapper()
         {
             @Override
-            public int ev2addr(PolarityEvent ev) {
+            public int ev2addr(BasicEvent ev) {
                 return 127-ev.y+128*ev.x;
             }
                         
             /** Map the source byte onto the layer index */
             @Override
-            public int ev2layer(PolarityEvent ev)
-            {   return ev.polarity==PolarityEvent.Polarity.On?1:0;
+            public int ev2layer(BasicEvent ev) {
+            	if (ev instanceof PolarityEvent)
+            	   return ((PolarityEvent)ev).polarity==PolarityEvent.Polarity.On?1:0;
+            	else 
+            		return super.ev2layer(ev);
             }            
            
         };

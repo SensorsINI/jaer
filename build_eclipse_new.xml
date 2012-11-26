@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- WARNING: Eclipse auto-generated file.
+              Any modifications will be overwritten.
+              To include a user specific buildfile here, simply create one in the same
+              directory with the processing instruction <?eclipse.ant.import?>
+              as the first entry and export the buildfile again. -->
+<project basedir="." default="build" name="jAER ant build">
+    <property environment="env"/>
+    <property name="src.link" value="src"/>
+    <property name="jspikestack.link" value="subprojects/JSpikeStack/src"/>
+    <property name="jaer.location" value="../jaer"/>
+    <property name="debuglevel" value="source,lines,vars"/>
+    <property name="target" value="1.6"/>
+    <property name="source" value="1.6"/>
+    <path id="bin.libraryclasspath"/>
+    <path id="${JRE_LIB}.libraryclasspath"/>
+    <path id="jars/jsr80_linux-1.0.1.jar.libraryclasspath"/>
+    <path id="jars/jsr80_ri-1.0.1.jar.libraryclasspath"/>
+    <path id="jars/jsr80-1.0.1.jar.libraryclasspath"/>
+    <path id="jars/swing-layout-0.9.jar.libraryclasspath"/>
+    <path id="java.classpath">
+        <pathelement location="bin"/>
+        <path refid="bin.libraryclasspath"/>
+        <path refid="${JRE_LIB}.libraryclasspath"/>
+        <pathelement location="dist/jAER.jar"/>
+        <pathelement location="jars/comm.jar"/>
+        <pathelement location="jars/gluegen-rt.jar"/>
+        <pathelement location="jars/jogl.jar"/>
+        <path refid="jars/jsr80_linux-1.0.1.jar.libraryclasspath"/>
+        <path refid="jars/jsr80_ri-1.0.1.jar.libraryclasspath"/>
+        <path refid="jars/jsr80-1.0.1.jar.libraryclasspath"/>
+        <pathelement location="jars/spread.jar"/>
+        <path refid="jars/swing-layout-0.9.jar.libraryclasspath"/>
+        <pathelement location="jars/UsbIoJava.jar"/>
+        <pathelement location="jars/AbsoluteLayout.jar"/>
+        <pathelement location="jars/beansbinding-1.2.1.jar"/>
+        <pathelement location="jars/BrowserLauncher2-all-1_3.jar"/>
+        <pathelement location="jars/commons-net-2.2.jar"/>
+        <pathelement location="jars/flanagan.jar"/>
+        <pathelement location="jars/jinput-test.jar"/>
+        <pathelement location="jars/jlfgr-1_0.jar"/>
+        <pathelement location="jars/mail.jar"/>
+        <pathelement location="jars/phidget21.jar"/>
+        <pathelement location="jars/prefs-0.8.jar"/>
+        <pathelement location="jars/RXTXcomm.jar"/>
+        <pathelement location="jars/svgSalamander-tiny.jar"/>
+        <pathelement location="jars/swing-layout-1.0.4.jar"/>
+        <pathelement location="subprojects/JSpikeStack/jars/jcommon-1.0.17.jar"/>
+        <pathelement location="subprojects/JSpikeStack/jars/jfreechart-1.0.14.jar"/>
+        <pathelement location="subprojects/JSpikeStack/jars/jfreechart-1.0.14-experimental.jar"/>
+    </path>
+    <path id="spikestack.classpath">
+        <pathelement location="bin"/>
+        <path refid="bin.libraryclasspath"/>
+        <path refid="${JRE_LIB}.libraryclasspath"/>
+        <pathelement location="dist/jAER.jar"/>
+        <pathelement location="jars/comm.jar"/>
+        <pathelement location="jars/gluegen-rt.jar"/>
+        <pathelement location="jars/jogl.jar"/>
+        <path refid="jars/jsr80_linux-1.0.1.jar.libraryclasspath"/>
+        <path refid="jars/jsr80_ri-1.0.1.jar.libraryclasspath"/>
+        <path refid="jars/jsr80-1.0.1.jar.libraryclasspath"/>
+        <pathelement location="jars/spread.jar"/>
+        <path refid="jars/swing-layout-0.9.jar.libraryclasspath"/>
+        <pathelement location="jars/UsbIoJava.jar"/>
+        <pathelement location="jars/AbsoluteLayout.jar"/>
+        <pathelement location="jars/beansbinding-1.2.1.jar"/>
+        <pathelement location="jars/BrowserLauncher2-all-1_3.jar"/>
+        <pathelement location="jars/commons-net-2.2.jar"/>
+        <pathelement location="jars/flanagan.jar"/>
+        <pathelement location="jars/jinput-test.jar"/>
+        <pathelement location="jars/jlfgr-1_0.jar"/>
+        <pathelement location="jars/mail.jar"/>
+        <pathelement location="jars/phidget21.jar"/>
+        <pathelement location="jars/prefs-0.8.jar"/>
+        <pathelement location="jars/RXTXcomm.jar"/>
+        <pathelement location="jars/svgSalamander-tiny.jar"/>
+        <pathelement location="jars/swing-layout-1.0.4.jar"/>
+        <pathelement location="subprojects/JSpikeStack/jars/jcommon-1.0.17.jar"/>
+        <pathelement location="subprojects/JSpikeStack/jars/jfreechart-1.0.14.jar"/>
+        <pathelement location="subprojects/JSpikeStack/jars/jfreechart-1.0.14-experimental.jar"/>
+    </path>
+    <target name="init">
+        <mkdir dir="bin"/>
+        <copy includeemptydirs="false" todir="bin">
+            <fileset dir="${jspikestack.link}">
+                <exclude name="**/*.launch"/>
+                <exclude name="**/*.java"/>
+            </fileset>
+            <fileset dir="${src.link}">
+                <exclude name="**/*.launch"/>
+                <exclude name="**/*.java"/>
+            </fileset>
+        </copy>
+        <copy includeemptydirs="false" todir="bin">
+            <fileset dir="${jspikestack.link}">
+                <exclude name="**/*.launch"/>
+                <exclude name="**/*.java"/>
+            </fileset>
+        </copy>
+    </target>
+    <target name="clean">
+        <delete dir="bin"/>
+    </target>
+    <target depends="clean" name="cleanall"/>
+    <target depends="build-subprojects,build-project" name="build"/>
+    <target name="build-subprojects"/>
+    <target depends="init" name="build-project">
+        <echo message="${ant.project.name}: ${ant.file}"/>
+        <javac debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
+      <!--      <src path="${jspikestack.link}:${src.link}"/> 
+            <classpath refid="java.classpath"/>-->
+            <src path="${jspikestack.link}"/>  
+        	<src path="${src.link}"/>  
+            <classpath>  
+                <path refid="spikestack.classpath"/>  
+  	            <path refid="java.classpath"/>  
+            </classpath>          
+        </javac>
+    </target>
+    <target description="Build all projects which reference this project. Useful to propagate changes." name="build-refprojects"/>
+    <target description="copy Eclipse compiler jars to ant lib directory" name="init-eclipse-compiler">
+        <copy todir="${ant.library.dir}">
+            <fileset dir="${ECLIPSE_HOME}/plugins" includes="org.eclipse.jdt.core_*.jar"/>
+        </copy>
+        <unzip dest="${ant.library.dir}">
+            <patternset includes="jdtCompilerAdapter.jar"/>
+            <fileset dir="${ECLIPSE_HOME}/plugins" includes="org.eclipse.jdt.core_*.jar"/>
+        </unzip>
+    </target>
+    <target description="compile project with Eclipse compiler" name="build-eclipse-compiler">
+        <property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter"/>
+        <antcall target="build"/>
+    </target>
+    <target name="JAERViewer">
+        <java classname="net.sf.jaer.JAERViewer" failonerror="true" fork="yes">
+            <classpath refid="java.classpath"/>
+        </java>
+    </target>
+</project>

@@ -11,7 +11,9 @@ import net.sf.jaer.event.PolarityEvent;
  *
  * @author Peter
  */
-public class VisualMapper<T extends PolarityEvent> extends NetMapper<T>{
+public class VisualMapper extends NetMapper {
+//	public class VisualMapper<T extends PolarityEvent> extends NetMapper<T>{
+// comment, Dennis G., Nov. 05 2012: removed the use of generics. See NetMapper.java 
 
     short inDimX;
     short inDimY;
@@ -32,7 +34,7 @@ public class VisualMapper<T extends PolarityEvent> extends NetMapper<T>{
 //    }
 
     @Override
-    public int ev2addr(T ev) {
+    public int ev2addr(BasicEvent ev) {
         short newX=(short)(ev.x*outDimX/inDimX);
         short newY=(short)(outDimY-1-(ev.y*outDimY/inDimY));
         
@@ -40,10 +42,13 @@ public class VisualMapper<T extends PolarityEvent> extends NetMapper<T>{
     }
     
     
+ // comment, Dennis G., Nov. 05 2012: To avoid type-unsafe constructs as before, let's simply cast the incoming BasicEvent to a PolarityEvent. 
     @Override
-    public int ev2special(T ev)
+    public int ev2special(BasicEvent ev)
     {
-        return ev.polarity==PolarityEvent.Polarity.On?1:-1;
+    	if (ev instanceof PolarityEvent) 
+    		return ((PolarityEvent)ev).polarity==PolarityEvent.Polarity.On?1:-1;
+    	else return super.ev2special(ev);
     }
     
     
