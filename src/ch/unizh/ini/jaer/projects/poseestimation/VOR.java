@@ -13,10 +13,8 @@ import com.phidgets.PhidgetException;
 import com.phidgets.SpatialPhidget;
 import com.phidgets.event.*;
 import com.sun.opengl.util.GLUT;
-import java.awt.geom.Point2D;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.Level;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
@@ -25,7 +23,6 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
@@ -46,34 +43,42 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
 
     // VOR Handlers
     SpatialPhidget spatial = null;
-    SpatialDataEvent spatialData = null;
     
     // VOR Outputs
-    private int t0;                 // Reference Timestamp - last collected timestamp
-    private boolean t0Init = false; // defines whether t0 has been initialized, so it doesn't get reset with every input packet
-    private int ts;                 // Timestamp
-    private double dt;                 // Timestamp
-    double[] acceleration, gyro, compass = new double[3]; // Sensor Values 
-    private boolean biasInit = false; // defines whether t0 has been initialized, so it doesn't get reset with every input packet
-    double[] biasAcceleration, biasGyro, biasCompass = new double[3]; // Zero/Bias Sensor Values 
+    private int ts;                     // Sensor Timestamp
+    double[] acceleration, 
+            gyro, 
+            compass = new double[3];    // Sensor Values 
+    private boolean biasInit = false;   // defines whether sensor bias / offset has been initialized
+    double[] biasAcceleration, 
+            biasGyro, 
+            biasCompass = new double[3];// Zero/Bias/Offset Sensor Values 
     
     // Complimentary Filter Variables
-    double alpha;
+    private int t0;                 // Reference Event Timestamp - used as initial point for calculating when new sensor data is available
+    private boolean t0Init = false; // defines whether t0 has been initialized, so it doesn't get reset with every new input packet
+    private double dt;              // Time difference (in seconds) indicating difference between t0 and last event before needing to update transformation
+                                    // Should be close to samplingRateMs
+    double alpha;                   // Mixing factor related to tau defining how gyro and accelerometer data are fused
+                                    
     // Outputs
-    double angle = 0;        // In Degrees
-    double angleRoll = 0;    // In Degrees        
-    double anglePitch = 0;   // In Degrees
-    double angleYaw = 0;     // In Degrees
+    // In degrees
+    double angleRoll = 0;   
+    double anglePitch = 0;  
+    double angleYaw = 0;    
+    // Units?
+    double distanceX = 0;   
+    double distanceY = 0;  
+    double distanceZ = 0;    
     
     // Drawing Points
-    Point2D.Float ptVar = new Point2D.Float();
-    float originX;
+    float originX;  // Center point for drawing cube 
     float originY;
-    float radiusX;
+    float radiusX;  // Radius of cube
     float radiusY; 
-    float cubeX = 10;
-    float cubeY = 10; 
-    float cubeZ = 10; 
+    float radiusZ; 
+    float rectX;    // Rectangle Radius 
+    float rectY; 
     
     /**
      * Constructor
@@ -176,8 +181,11 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
     public void initFilter() {
         originX = (float)(chip.getSizeX() - 1) / 2;
         originY = (float)(chip.getSizeY() - 1) / 2;
-        radiusX = (float)(chip.getSizeX()) / 2;
-        radiusY = (float)(chip.getSizeY()) / 2;
+        rectX = (float)(chip.getSizeX()) / 2;
+        rectY = (float)(chip.getSizeY()) / 2;
+        radiusX = (float)(chip.getSizeX()) / 5;
+        radiusY = (float)(chip.getSizeY()) / 5;
+        radiusZ = (float)(chip.getSizeY()) / 5;
 
     }
 
@@ -186,16 +194,9 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
      */    
     @Override
     public void resetFilter() {
+        // Reset Zero/Offset/Bias values for sensor data only if they have already been set
         if (biasInit == true) {
-        biasAcceleration[0] = acceleration[0];
-        biasAcceleration[1] = acceleration[1];
-        biasAcceleration[2] = acceleration[2];
-        biasGyro[0] = gyro[0];
-        biasGyro[1] = gyro[1];
-        biasGyro[2] = gyro[2];
-        biasCompass[0] = compass[0];
-        biasCompass[1] = compass[1];
-        biasCompass[2] = compass[2];
+            setBias();
         }
     }
     
@@ -240,25 +241,26 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
         if(enclosedFilter!=null) 
             in=enclosedFilter.filterPacket(in);
 
-        // Checks that output package has correct data type
-//        checkOutputPacketEventType(in); // out not used yet
-        
         // Update transformation values only after sensor sampling rate has passed
         // Use event timestamps to find out when this time has passed
-        // Remember to use same time units
-        // For fist run, initialize t0 to reference time 
+        // For fist run, initialize t0 to reference time - so that if doesn't get reset with every input package
         if (t0Init == false) {
             t0 = in.getFirstTimestamp();
             t0Init = true;
         }
         // Event Iterator
+        // When enough time has passed to get new sensor reading, 
+        // Update transformation and reset t0
+        // Remember to use same time units
         for (BasicEvent o : in) {
-            if (1000*(o.timestamp - t0) >= samplingRateMs) {
-                dt = (o.timestamp - t0)*1e-6;
-                updateTransformation();
+            if ((o.timestamp - t0)*1e3 >= samplingRateMs) {
+                dt = (o.timestamp - t0)*1e-6; // dt is in seconds
+                updateAngle();
+//                updateDistance();
                 t0 = o.timestamp;
             }
         }
+        
         return in;
     }
 
@@ -273,13 +275,12 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
         GL gl = drawable.getGL();
         if (gl == null) 
             return;
-
         
         final int font = GLUT.BITMAP_HELVETICA_18;
+        GLUT glut = chip.getCanvas().getGlut();
         gl.glColor3f(1, 1, 1);
         gl.glRasterPos3f(108, 123, 0);
         // Accelerometer x, y, z info
-        GLUT glut=chip.getCanvas().getGlut();
         glut.glutBitmapString(font, String.format("a_x=%+.2f", acceleration[0]));
         gl.glRasterPos3f(108, 118, 0);
         glut.glutBitmapString(font, String.format("a_y=%+.2f", acceleration[1]));
@@ -304,44 +305,71 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
         // Fix Transformation Matrix 
         gl.glPushMatrix();
         gl.glTranslatef(originX, originY, 0);
-        gl.glRotatef((float)(angle * 180 / Math.PI), 0, 0, 1);
+        gl.glRotatef((float)(angleRoll * 180 / Math.PI), 0, 0, 1);
         gl.glLineWidth(2f);
         gl.glColor3f(1, 0, 0);
         gl.glBegin(GL.GL_LINE_LOOP);
         // Draw rectangle around transform
-        gl.glVertex2f(-radiusX, -radiusY);
-        gl.glVertex2f(radiusX, -radiusY);
-        gl.glVertex2f(radiusX, radiusY);
-        gl.glVertex2f(-radiusX, radiusY);
+        gl.glVertex2f(-rectX, -rectY);
+        gl.glVertex2f(rectX, -rectY);
+        gl.glVertex2f(rectX, rectY);
+        gl.glVertex2f(-rectX, rectY);
         gl.glEnd();
         gl.glPopMatrix();
 
         // Draw Cube
         // Fix Transformation Matrix 
         gl.glPushMatrix();
-        gl.glTranslatef(originX, originY, 0);
-       gl.glRotatef((float)(angle * 180 / Math.PI), 0, 0, 1);
+        gl.glTranslated(originX, originY, 0);
+//        gl.glTranslated((float) originX + (float) distanceX, (float) originY + (float) distanceY, (float) 0 + (float) distanceZ);
+        gl.glRotatef((float)(angleRoll * 180 / Math.PI), 0, 0, 1);
+        gl.glRotatef((float)(angleYaw * 180 / Math.PI), 1, 0, 0);
+        gl.glRotatef((float)(anglePitch * 180 / Math.PI), 0, 1, 0);
         gl.glLineWidth(2f);
-        gl.glColor3f(1, 0, 0);
         // Draw cube around transform
-        // Front Face
+        // Side Face
+        gl.glColor3f(.5f, .5f, 1);
         gl.glBegin(GL.GL_LINE_LOOP);
-        gl.glVertex3f(-cubeX, -cubeY, 0);
-        gl.glVertex3f(cubeX, -cubeY, 0);
-        gl.glVertex3f(cubeX, cubeY, 0);
-        gl.glVertex3f(-cubeX, cubeY, 0);
+        gl.glVertex3f(-radiusX, -radiusY, radiusZ);
+        gl.glVertex3f(radiusX, -radiusY, radiusZ);
+        gl.glVertex3f(radiusX, radiusY, radiusZ);
+        gl.glVertex3f(-radiusX, radiusY, radiusZ);
+        gl.glEnd();
+        // Side face
+        gl.glColor3f(.5f, .5f, 1);
+        gl.glBegin(GL.GL_LINE_LOOP);
+        gl.glVertex3f(-radiusX, -radiusY, -radiusZ);
+        gl.glVertex3f(radiusX, -radiusY, -radiusZ);
+        gl.glVertex3f(radiusX, radiusY, -radiusZ);
+        gl.glVertex3f(-radiusX, radiusY, -radiusZ);
         gl.glEnd();
         // Back face
+        gl.glColor3f(.5f, .5f, 1);
         gl.glBegin(GL.GL_LINE_LOOP);
-        gl.glVertex3f(-cubeX, -cubeY, -cubeZ);
-        gl.glVertex3f(cubeX, -cubeY, -cubeZ);
-        gl.glVertex3f(cubeX, cubeY, -cubeZ);
-        gl.glVertex3f(-cubeX, cubeY, -cubeZ);
+        gl.glVertex3f(radiusX, -radiusY, -radiusZ);
+        gl.glVertex3f(radiusX, -radiusY, radiusZ);
+        gl.glVertex3f(radiusX, radiusY, radiusZ);
+        gl.glVertex3f(radiusX, radiusY, -radiusZ);
         gl.glEnd();
-
+        // Front face
+        gl.glLineWidth(3f);
+        gl.glColor3f(0, 0, 1);
+        gl.glBegin(GL.GL_LINE_LOOP);
+        gl.glVertex3f(-radiusX, -radiusY, -radiusZ);
+        gl.glVertex3f(-radiusX, -radiusY, radiusZ);
+        gl.glVertex3f(-radiusX, radiusY, radiusZ);
+        gl.glVertex3f(-radiusX, radiusY, -radiusZ);
+        gl.glEnd();
         gl.glPopMatrix();
     
-        
+//        gl.glPushMatrix();
+//        gl.glPointSize(5f);
+//        gl.glColor3f(.25f,.75f,0.75f);
+//        gl.glBegin(GL.GL_POINTS);
+//        gl.glVertex3f((float) originX + (float) distanceX, (float) originY + (float) distanceY, (float) 0 + (float) distanceZ);
+//        gl.glEnd();
+//        gl.glPopMatrix();
+
     
     }
 
@@ -353,35 +381,77 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
      * @param timestamp the timestamp in us.
      * @return the transform object representing the camera rotation
      */
-    synchronized public void updateTransformation() {
+    synchronized public void updateAngle() {
         
-        double angleFromAccel = Math.acos(acceleration[1]-biasAcceleration[1]);        
-        double angleFromGyro = -(gyro[2]-biasGyro[2]) * Math.PI / 180.0 * dt;
+        double rollFromAccel = Math.acos(acceleration[1]-biasAcceleration[1]);        
+        double rollFromGyro = -(gyro[2]-biasGyro[2]) * Math.PI / 180.0 * dt;
+        double pitchFromAccel = Math.acos(acceleration[2]-biasAcceleration[2]);        
+        double pitchFromGyro = -(gyro[1]-biasGyro[1]) * Math.PI / 180.0 * dt;
+        double yawFromGyro = -(gyro[0]-biasGyro[0]) * Math.PI / 180.0 * dt;
+        
         double tau = (double)tauMs/1000.0;
         alpha = tau / (tau + dt);
-        //angle += angleFromGyro; 
-           if (Double.isNaN(angle)) {
-            angle = angleFromAccel;
+
+        if (Double.isNaN(angleRoll)) {
+            angleRoll = rollFromAccel;
         } else {
-            angle = alpha * (angle + angleFromGyro) + (1 - alpha) * angleFromAccel;
+            angleRoll = alpha * (angleRoll + rollFromGyro) + (1 - alpha) * rollFromAccel;
         }
+
+        if (Double.isNaN(anglePitch)) {
+            anglePitch = rollFromAccel;
+        } else {
+            anglePitch = alpha * (anglePitch + pitchFromGyro) + (1 - alpha) * pitchFromAccel;
+        }
+
+        angleYaw += yawFromGyro;
+        
     }    
 
-//    /** 
-//     * Setter for reseting current gyro measurements as 'zero'
-//     * Hold for 2 seconds
-//     */
-//    synchronized public void setBias()  {
-//        biasAcceleration[0] = acceleration[0];
-//        biasAcceleration[1] = acceleration[1];
-//        biasAcceleration[2] = acceleration[2];
-//        biasGyro[0] = gyro[0];
-//        biasGyro[1] = gyro[1];
-//        biasGyro[2] = gyro[2];
-//        biasCompass[0] = compass[0];
-//        biasCompass[1] = compass[1];
-//        biasCompass[2] = compass[2];
-//    }
+    /**
+     * Computes transform using current gyro outputs based on timestamp supplied
+     * and returns a TransformAtTime object. Should be called by update in
+     * enclosing processor.
+     *
+     * @param timestamp the timestamp in us.
+     * @return the transform object representing the camera rotation
+     */
+    synchronized public void updateDistance() {
+        
+        double xFromAccel = 0.5 * (acceleration[1]-biasAcceleration[1]) * dt * dt;        
+//        double xFromGyro = -(gyro[1]-biasGyro[1]) * Math.PI / 180.0 * dt;
+        double yFromAccel = 0.5 * (acceleration[2]-biasAcceleration[2]) * dt * dt;        
+//        double yFromGyro = -(gyro[2]-biasGyro[2]) * Math.PI / 180.0 * dt;
+        double zFromAccel = 0.5 * (acceleration[0]-biasAcceleration[0]) * dt * dt;        
+//        double zFromGyro = -(gyro[0]-biasGyro[0]) * Math.PI / 180.0 * dt;
+        
+        double tau = (double)tauMs/1000.0;
+        alpha = tau / (tau + dt);
+
+        distanceX += xFromAccel;
+        distanceY += yFromAccel;
+        distanceZ += zFromAccel;
+    }    
+
+    /** 
+     * Setter for reseting current gyro measurements as 'zero'
+     * Hold for 2 seconds
+     */
+    synchronized public void setBias()  {
+        biasAcceleration[0] = acceleration[0];
+        biasAcceleration[1] = acceleration[1];
+        biasAcceleration[2] = acceleration[2];
+        biasGyro[0] = gyro[0];
+        biasGyro[1] = gyro[1];
+        biasGyro[2] = gyro[2];
+        biasCompass[0] = compass[0];
+        biasCompass[1] = compass[1];
+        biasCompass[2] = compass[2];
+        angleYaw = 0;
+        distanceX = 0;
+        distanceY = 0;
+        distanceZ = 0;
+    }
     
     /**
      * Getter for samplingRateMs
