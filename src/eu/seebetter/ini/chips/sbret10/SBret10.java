@@ -267,6 +267,7 @@ public class SBret10 extends APSDVSchip {
             } else {
                 out.clear();
             }
+            out.setRawPacket(in);
             if (in == null) {
                 return out;
             }

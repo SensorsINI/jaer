@@ -1687,7 +1687,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                     // new style packet with reused event objects
                     // if(aeRaw.getNumEvents()>0){ // we should always extract even if the packet is empty to be sure we get a valid packet!
-
+                    
                     packet = extractPacket(aeRaw);
 
                     //  synchronized(packet.class()){}
