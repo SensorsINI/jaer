@@ -1,3 +1,5 @@
+package com.phidgets.jaer;
+
 
 import com.phidgets.Phidget;
 import com.phidgets.PhidgetException;

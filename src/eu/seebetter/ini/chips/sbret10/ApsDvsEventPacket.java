@@ -13,7 +13,7 @@ import net.sf.jaer.event.OutputEventIterator;
  *
  * @author Christian
  */
-public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket{
+public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
     
     /** Constructs a new EventPacket filled with the given event class.
     @see net.sf.jaer.event.BasicEvent
@@ -41,7 +41,7 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket{
         } else {
             inputIterator.reset();
         }
-        return inputIterator;
+        return (Iterator<E>)inputIterator;
     }
     
     private EventPacket.InItr fullIterator=null;

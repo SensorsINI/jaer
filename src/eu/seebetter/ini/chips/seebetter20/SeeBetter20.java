@@ -1966,7 +1966,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
                     @Override
                     public void actionPerformed(ActionEvent e) {
                         mux.select(channel);
-                        log.info("Selected " + mux);
+                        SeeBetterConfig.log.info("Selected " + mux);
                     }
 
                     @Override

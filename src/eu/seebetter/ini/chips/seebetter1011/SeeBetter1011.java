@@ -1739,7 +1739,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
                     @Override
                     public void actionPerformed(ActionEvent e) {
                         mux.select(channel);
-                        log.info("Selected " + mux);
+                        SeeBetterConfig.log.info("Selected " + mux);
                     }
 
                     @Override
