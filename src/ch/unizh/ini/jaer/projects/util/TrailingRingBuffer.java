@@ -11,14 +11,14 @@ import java.util.Iterator;
  *
  * @author Christian
  */
-public class RingBuffer<O> implements Iterable, Iterator{
+public class TrailingRingBuffer<O> implements Iterable, Iterator{
     
     private Class elementClass=null;
     public O[] buffer;
     public int size;
     public int lead,trail,itIdx;
     
-    public RingBuffer(Class elementClass, int size){
+    public TrailingRingBuffer(Class elementClass, int size){
         this.size = size;
         this.elementClass = elementClass;
         reset();

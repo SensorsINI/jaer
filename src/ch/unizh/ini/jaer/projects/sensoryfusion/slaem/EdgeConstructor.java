@@ -5,7 +5,7 @@
 package ch.unizh.ini.jaer.projects.sensoryfusion.slaem;
 
 import ch.unizh.ini.jaer.projects.sensoryfusion.slaem.EdgeFragments.Snakelet;
-import ch.unizh.ini.jaer.projects.util.RingBuffer;
+import ch.unizh.ini.jaer.projects.util.TrailingRingBuffer;
 import java.awt.Point;
 import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
@@ -35,7 +35,7 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
     private BackgroundActivityFilter baFilter;
     public EdgeFragments snakelets;
     public CopyOnWriteArrayList<Edge> edges;
-    public RingBuffer<EdgeSegment> protoSegments;
+    public TrailingRingBuffer<EdgeSegment> protoSegments;
     public CopyOnWriteArrayList<Corner> corners; 
     
     private boolean drawAlloc=getPrefs().getBoolean("EdgeConstructor.drawAlloc",true);
@@ -81,7 +81,7 @@ public class EdgeConstructor extends EventFilter2D implements Observer, FrameAnn
     public void resetFilter() {
         edges = new CopyOnWriteArrayList<Edge>();
         corners = new CopyOnWriteArrayList<Corner>();
-        protoSegments = new RingBuffer(EdgeSegment.class, protoBufferSize);
+        protoSegments = new TrailingRingBuffer(EdgeSegment.class, protoBufferSize);
         filterChain.reset();
     }
 
