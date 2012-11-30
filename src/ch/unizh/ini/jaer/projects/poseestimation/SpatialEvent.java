@@ -6,94 +6,149 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.PolarityEvent;
 
 /**
- * Special events that allow including the Phidgets Spatial sensor events in a
- * data stream.
+ * Special event stream mixing DVS and Phidget Sensor data
  *
- * @author tobi
  * @author haza
  */
 public class SpatialEvent extends PolarityEvent {
     
     // Spatial datatype to define different inputs from sensor
-    // Accel is measured in units of g (9.81 m/s/s)
-    // Gyro is measured in degrees / second - Roll, Pan, Tilt respectively
-    // Compass is measured in Gauss units
-    public enum Spatial {AccelX, AccelY, AccelZ, GyroX, GyroY, GyroZ, CompassX, CompassY, CompassZ, Unknown};
+    // Accel is measured in units of g (9.81 m/s/s) from -1.0 to 1.0
+    // Gyro is measured in degrees / second - Roll, Pan, Tilt respectively from -400 to 400 
+    // Compass is measured in Gauss units from -4.1 to 4.1
+    public enum Spatial {AccelX, AccelY, AccelZ, GyroX, GyroY, GyroZ, CompassX, CompassY, CompassZ};
 
-    public Spatial spatialDataType;
-    public float spatialDataValue=0;
+    // From User Manual - could also be gotten from Phidget method itself
+    private static double accelDataMin = -1f;
+    private static double gyroDataMin = -400f;
+    private static double compassDataMin = -4.1f;
     
-    private static final int PRECISION_DIGITS=3;
+    private Spatial spatialDataType;
+    private double spatialDataValue;
+    
+    // Fields used for rounding spatialDataValues
+    // Be VERY careful when trying to change this - explained in setData
+    private static final int PRECISION_DIGITS=2; 
     private static final MathContext rounding=new MathContext(PRECISION_DIGITS);
 
     /** 
      * Constructor 
      */
     public SpatialEvent() {
-        spatialDataType=Spatial.Unknown;
+
     }
 
     /** 
      * Constructor 
      * 
-     * @param timestamp in us, using AttachEvent as reference
+     * @param timestamp in ns, from event NOT from sensor
      * @param spatialDataValue sensor reading
      * @param type Spatial Type - Accelerometer, Gyroscope, or Compass and respective axis
      */
     public SpatialEvent(int timestamp, float value, Spatial type) {
-        this.timestamp=timestamp;
-        this.spatialDataValue = value;
-        this.spatialDataType = type;
-        BigDecimal bd=new BigDecimal(value);
-        BigDecimal roundedScaled=bd.round(rounding).movePointRight(PRECISION_DIGITS);
-        int intval=roundedScaled.intValue();
-        this.address=(type.ordinal()<<16|(intval&0xffff));
+        setData(timestamp, value, type);
     }
      
     /** 
      * Setter for the data fields and the raw address spatialDataValue from explicit values
      * 
-     * @param timestamp in us
+     * @param timestamp in ns from coinciding event, NOT from sensor
      * @param spatialDataValue sensor reading
      * @param type Spatial Type 
      */
-    public void setData(int timestamp, float value, Spatial type) {
+    public final void setData(int timestamp, double value, Spatial type) {
         this.timestamp=timestamp;
-        this.spatialDataValue = value;
-        this.spatialDataType = type;
-        BigDecimal bd=new BigDecimal(value);
+        spatialDataType = type;
+        spatialDataValue = value;
+
+        // Convert value from sensor into an unsigned integer to write into address 
+        
+        // Add minimum data value for sensor reading
+        // Do this so we don't have to deal with negative numbers or two's complement
+        // (To reconstruct just subtract again this value)
+        switch (type) {
+            case AccelX: case AccelY: case AccelZ:
+                value += accelDataMin;
+                break;
+            case GyroX: case GyroY: case GyroZ:
+                value += gyroDataMin;
+                break;
+            case CompassX: case CompassY: case CompassZ:
+                value += compassDataMin;
+                break;
+            default:
+                break;
+        }
+        
+        // Convert spatial value into an integer to write into address 
+        // by rounding to PRECISION_DIGITS decimal places and then shifting that number of decimal places
+        BigDecimal bd = new BigDecimal(value);
         BigDecimal roundedScaled=bd.round(rounding).movePointRight(PRECISION_DIGITS);
-        int intval=roundedScaled.intValue();
-        this.address=(type.ordinal()<<16|(intval&0xffff));
+        // 32 bit Address recorded as follows
+        // STTT TTTT TTTT TTTV VVVV VVVV VVVV VVVV
+        // S indicates Special Bit - Flag indicating it's a Spatial Sensor Event (1) and not a DVS Event (0)
+        // T indicates Spatial Type 
+        // V indicates Spatial Value 
+        // Needs to record values from MIN_SENSOR << PRECISION_DIGITS to MAX_SENSOR << PRECISION_DIGITS 
+        // Uses 17 bits since needs to record values from -400<<2 to 400<<2 = 80001 different possible values
+        int intValue = roundedScaled.intValue();
+        address=(type.ordinal()<<17|(intValue&0x1ffff));
         setSpecial(true);
     }
     
     /** 
-     * Sets the Phidgets spatial event fields from the raw address spatialDataValue.
+     * Sets the spatial event main fields from the raw address
+     * Refer to setData to see how data in address field is stored
      */
     public void reconstructDataFromRawAddress(){
-        int typeOrd=(address>>>16)&3;
-        Spatial[] types=Spatial.values();
-        this.spatialDataType=types[typeOrd];
-        int intVal=(address&0xFFFF);
+        // Recover spatialDataType
+        // Get ordinal of Spatial type enum recorded in address (bits 18 to 31 - counting from 1 to 32)
+        int typeOrd=address << 1 >>> 1 >>> 17; // Lose special bit, shift back, then shift away data stored in first 17 bits
+        spatialDataType=Spatial.values()[typeOrd];
+        // Recover spatialDataValue stored in first 17 bits
+        int intVal=(address&0x1ffff);
         BigDecimal bd=new BigDecimal(intVal);
-        this.spatialDataValue=bd.movePointLeft(PRECISION_DIGITS).floatValue();
-    }
-
-    /** 
-     * Copies event fields from another one.
-     * @param src if the type is PhidgetsSpatialEvent then fields are copied.
-     */
-    @Override
-    public void copyFrom(BasicEvent src) {
-        super.copyFrom(src);
-        if(src instanceof SpatialEvent){
-            SpatialEvent from=(SpatialEvent)src;
-            this.spatialDataValue=from.spatialDataValue;
-            this.spatialDataType=from.spatialDataType;
+        spatialDataValue=bd.movePointLeft(PRECISION_DIGITS).floatValue();
+        switch (spatialDataType) {
+            case AccelX: case AccelY: case AccelZ: 
+                spatialDataValue -= accelDataMin;
+                break;
+            case GyroX: case GyroY: case GyroZ:
+                spatialDataValue -= gyroDataMin;
+                break;
+            case CompassX: case CompassY: case CompassZ:
+                spatialDataValue -= compassDataMin;
+                break;
+            default:
+                break;
         }
     }
 
+    /** 
+     * Copies event into class
+     * @param src SpatialEvent
+     */
+    @Override
+    public void copyFrom(BasicEvent src) {
+
+//        SpatialEvent e=(SpatialEvent)src;
+//        super.copyFrom(e);
+//        spatialDataValue=e.spatialDataValue;
+//        spatialDataType=e.spatialDataType;
+
+        super.copyFrom(src);
+        if(src instanceof SpatialEvent) {
+            SpatialEvent from=(SpatialEvent)src;
+            spatialDataValue=from.spatialDataValue;
+            spatialDataType=from.spatialDataType;
+        }
+    
+    
+    }
+
+    /** 
+     * This is a special event so it will return true
+     */
     @Override
     public boolean isSpecial() {
         return true;

@@ -1,6 +1,6 @@
 /**
- * TestTemplate.java
- * Template for all classes
+ * VOR.java
+ * Uses VOR Sensor for ...
  * 
  * Created on November 14, 2012, 2:24 PM
  *
@@ -13,6 +13,7 @@ import com.phidgets.PhidgetException;
 import com.phidgets.SpatialPhidget;
 import com.phidgets.event.*;
 import com.sun.opengl.util.GLUT;
+import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Level;
@@ -23,10 +24,11 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
-@Description("Base Class to get and use VOR Sensor data")
+@Description("Base Class using VOR Sensor data")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
    
@@ -41,22 +43,26 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
         setPropertyTooltip("tauMs", "Set time constant (in ms) for complimentary filter");
     }
 
-    // VOR Handlers
+    // VOR Object
     SpatialPhidget spatial = null;
     
     // VOR Outputs
-    private int ts;                     // Sensor Timestamp
-    double[] acceleration, 
+    private double[] acceleration, 
             gyro, 
-            compass = new double[3];    // Sensor Values 
-    private boolean biasInit = false;   // defines whether sensor bias / offset has been initialized
+            compass = new double[3];        // Sensor values 
+    private double[] prevAcceleration, 
+            prevGyro, 
+            prevCompass = new double[3];    // Previous sensor values 
+    private boolean biasInit = false;       // Defines whether sensor bias / offset has been initialized
     double[] biasAcceleration, 
             biasGyro, 
-            biasCompass = new double[3];// Zero/Bias/Offset Sensor Values 
+            biasCompass = new double[3];    // Zero/Bias/Offset sensor values 
+    private SpatialEvent spatialEvent = 
+            new SpatialEvent();             // Holds actual SpatialEvent to be written to out
     
     // Complimentary Filter Variables
     private int t0;                 // Reference Event Timestamp - used as initial point for calculating when new sensor data is available
-    private boolean t0Init = false; // defines whether t0 has been initialized, so it doesn't get reset with every new input packet
+    private boolean t0Init = false; // Defines whether t0 has been initialized, so it doesn't get reset with every new input packet
     private double dt;              // Time difference (in seconds) indicating difference between t0 and last event before needing to update transformation
                                     // Should be close to samplingRateMs
     double alpha;                   // Mixing factor related to tau defining how gyro and accelerometer data are fused
@@ -79,6 +85,7 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
     float radiusZ; 
     float rectX;    // Rectangle Radius 
     float rectY; 
+    
     
     /**
      * Constructor
@@ -150,17 +157,34 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
                     log.warning("Empty data");
                     return;
                 }
+                // Set initial sensor reading as bias, also initialize previos and current measurement variables
                 if (biasInit == false) {
                     biasAcceleration = sde.getData()[0].getAcceleration();
                     biasGyro = sde.getData()[0].getAngularRate();
                     biasCompass = sde.getData()[0].getMagneticField();
                     biasInit = true;
-                } else {            
-                    acceleration = sde.getData()[0].getAcceleration();
-                    gyro = sde.getData()[0].getAngularRate();
-                    compass = sde.getData()[0].getMagneticField();
+                
+                    prevAcceleration = biasAcceleration.clone();
+                    prevGyro = biasGyro.clone();
+                    prevCompass = biasCompass.clone();
+                    
+                    acceleration = biasAcceleration.clone();
+                    gyro = biasGyro.clone();
+                    compass = biasCompass.clone();
+                } else {        
+                    // Update sensor variable values only if they have changed 
+                    if ( ( Arrays.equals(prevAcceleration, acceleration) == false) ||
+                            ( Arrays.equals(prevGyro, gyro) == false ) ||
+                            ( Arrays.equals(prevCompass, compass) == false ) ) {
+                        prevAcceleration = acceleration.clone();
+                        prevGyro = gyro.clone();
+                        prevCompass = compass.clone();
+                        acceleration = sde.getData()[0].getAcceleration();
+                        gyro = sde.getData()[0].getAngularRate();
+                        compass = sde.getData()[0].getMagneticField();
+                    }
                 }
-                ts = sde.getData()[0].getTimeSeconds() * 1000000 + sde.getData()[0].getTimeMicroSeconds();
+                //ts = sde.getData()[0].getTimeSeconds() * 1000000 + sde.getData()[0].getTimeMicroSeconds();
             }
         });
 
@@ -179,6 +203,7 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
      */    
     @Override
     public void initFilter() {
+        // Defines reference point for drawings in annotation
         originX = (float)(chip.getSizeX() - 1) / 2;
         originY = (float)(chip.getSizeY() - 1) / 2;
         rectX = (float)(chip.getSizeX()) / 2;
@@ -186,7 +211,6 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
         radiusX = (float)(chip.getSizeX()) / 5;
         radiusY = (float)(chip.getSizeY()) / 5;
         radiusZ = (float)(chip.getSizeY()) / 5;
-
     }
 
     /**
@@ -201,9 +225,9 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
     }
     
     /**
-     * Called on changes in the chip
-     * @param o 
-     * @param arg 
+     * Called when objects being observed change and send a message
+     * @param o Object that has changed
+     * @param arg Message object has sent about change
      */    
     @Override
     public void update(Observable o, Object arg) {
@@ -225,8 +249,16 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
     }
 
     /**
-     * Receives Packets of information and passes it onto processing
-     * @param in Input events can be null or empty.
+     * Receives Packets of information and passes it onto processing and returns output packet
+     * Output packet consists of both Polarity Events and Spatial Events
+     * Spatial Events are much less frequent than Polarity Events so only output them if their value has changed
+     * Also processes and does necessary transform on the data
+     * NOTE :   Data packet is collected, and only then is it transmitted to this method. 
+     *          Sensor data is collected while data packet is being processed 
+     *          so there is an offset between time of sensor data collection and time of event 
+     *          which would be roughly equivalent to time difference between occurrence of first event and when that data package is received.
+     *          However, sensor data packet gets updated much slower than event data so this effect is negligible and ignored
+     * @param in Input events, can be null or empty.
      * @return The filtered events to be rendered
      */
     @Override
@@ -240,7 +272,11 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
         // If necessary, pre filter input packet 
         if(enclosedFilter!=null) 
             in=enclosedFilter.filterPacket(in);
-
+        // Set output package out contents from class (inherited from EventFilter2D) to be SpatialEvents or its subclasses (PolarityEvent)
+        checkOutputPacketEventType(SpatialEvent.class);
+        // Pre allocated Output Event Iterator used to set final out package
+        OutputEventIterator outItr = out.outputIterator();
+        
         // Update transformation values only after sensor sampling rate has passed
         // Use event timestamps to find out when this time has passed
         // For fist run, initialize t0 to reference time - so that if doesn't get reset with every input package
@@ -248,11 +284,43 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
             t0 = in.getFirstTimestamp();
             t0Init = true;
         }
-        // Event Iterator
-        // When enough time has passed to get new sensor reading, 
-        // Update transformation and reset t0
-        // Remember to use same time units
+        
+        // Event Iterator - Write events and sensor data to out, as well as do necessary processing
         for (BasicEvent o : in) {
+            // Write out individual DVS events to out
+            outItr.nextOutput().copyFrom(o);
+            // If there is a new (different) SpatialEvent to write out, then write it to out
+            if ( ( Arrays.equals(prevAcceleration, acceleration) == false ) || 
+                    ( Arrays.equals(prevGyro, gyro) == false ) ||
+                    ( Arrays.equals(prevCompass, compass) == false ) ) {
+                // Reuse spatialEvent - update spatialEvent contents
+                // Then write to out - Cast to SpatialEvent first so correct copyFrom method is called
+                // Accelerometer
+                spatialEvent.setData(o.timestamp, acceleration[0], SpatialEvent.Spatial.AccelX);
+                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+                spatialEvent.setData(o.timestamp, acceleration[1], SpatialEvent.Spatial.AccelY);
+                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+                spatialEvent.setData(o.timestamp, acceleration[2], SpatialEvent.Spatial.AccelZ);
+                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+                // Gyro
+                spatialEvent.setData(o.timestamp, gyro[0], SpatialEvent.Spatial.GyroX);
+                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+                spatialEvent.setData(o.timestamp, gyro[1], SpatialEvent.Spatial.GyroY);
+                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+                spatialEvent.setData(o.timestamp, gyro[2], SpatialEvent.Spatial.GyroZ);
+                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+                // Compass
+                spatialEvent.setData(o.timestamp, compass[0], SpatialEvent.Spatial.CompassX);
+                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+                spatialEvent.setData(o.timestamp, compass[1], SpatialEvent.Spatial.CompassY);
+                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+                spatialEvent.setData(o.timestamp, compass[2], SpatialEvent.Spatial.CompassZ);
+                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+            }
+            
+            // When enough time has passed to get new sensor reading, 
+            // Update transformation and reset t0
+            // Remember to use same time units
             if ((o.timestamp - t0)*1e3 >= samplingRateMs) {
                 dt = (o.timestamp - t0)*1e-6; // dt is in seconds
                 updateAngle();
@@ -261,7 +329,7 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
             }
         }
         
-        return in;
+        return out;
     }
 
     /** 
