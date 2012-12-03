@@ -172,17 +172,9 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
                     gyro = biasGyro.clone();
                     compass = biasCompass.clone();
                 } else {        
-                    // Update sensor variable values only if they have changed 
-                    if ( ( Arrays.equals(prevAcceleration, acceleration) == false) ||
-                            ( Arrays.equals(prevGyro, gyro) == false ) ||
-                            ( Arrays.equals(prevCompass, compass) == false ) ) {
-                        prevAcceleration = acceleration.clone();
-                        prevGyro = gyro.clone();
-                        prevCompass = compass.clone();
-                        acceleration = sde.getData()[0].getAcceleration();
-                        gyro = sde.getData()[0].getAngularRate();
-                        compass = sde.getData()[0].getMagneticField();
-                    }
+                    acceleration = sde.getData()[0].getAcceleration();
+                    gyro = sde.getData()[0].getAngularRate();
+                    compass = sde.getData()[0].getMagneticField();
                 }
                 //ts = sde.getData()[0].getTimeSeconds() * 1000000 + sde.getData()[0].getTimeMicroSeconds();
             }
@@ -272,9 +264,9 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
         // If necessary, pre filter input packet 
         if(enclosedFilter!=null) 
             in=enclosedFilter.filterPacket(in);
-        // Set output package out contents from class (inherited from EventFilter2D) to be SpatialEvents or its subclasses (PolarityEvent)
+        // Set output package out contents from class (inherited from EventFilter2D) to be SpatialEvents (or its subclasses (PolarityEvent))
         checkOutputPacketEventType(SpatialEvent.class);
-        // Pre allocated Output Event Iterator used to set final out package
+        // Pre allocated Output Event Iterator used to set final out package (of SpatialEvent class)
         OutputEventIterator outItr = out.outputIterator();
         
         // Update transformation values only after sensor sampling rate has passed
@@ -285,37 +277,41 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
             t0Init = true;
         }
         
-        // Event Iterator - Write events and sensor data to out, as well as do necessary processing
+        // Event Iterator - Write events and sensor data to out, also do necessary processing
         for (BasicEvent o : in) {
-            // Write out individual DVS events to out
+            // Write out individual DVS events to out - calls SpatialEvent method copyFrom() which redirects to copyFrom of PolarityEvent
             outItr.nextOutput().copyFrom(o);
             // If there is a new (different) SpatialEvent to write out, then write it to out
             if ( ( Arrays.equals(prevAcceleration, acceleration) == false ) || 
                     ( Arrays.equals(prevGyro, gyro) == false ) ||
                     ( Arrays.equals(prevCompass, compass) == false ) ) {
+                // Update previous measurements
+                prevAcceleration = acceleration.clone();
+                prevGyro = gyro.clone();
+                prevCompass = compass.clone();
                 // Reuse spatialEvent - update spatialEvent contents
-                // Then write to out - Cast to SpatialEvent first so correct copyFrom method is called
+                // Then write to out 
                 // Accelerometer
                 spatialEvent.setData(o.timestamp, acceleration[0], SpatialEvent.Spatial.AccelX);
-                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+                outItr.nextOutput().copyFrom(spatialEvent);
                 spatialEvent.setData(o.timestamp, acceleration[1], SpatialEvent.Spatial.AccelY);
-                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+                outItr.nextOutput().copyFrom(spatialEvent);
                 spatialEvent.setData(o.timestamp, acceleration[2], SpatialEvent.Spatial.AccelZ);
-                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+                outItr.nextOutput().copyFrom(spatialEvent);
                 // Gyro
                 spatialEvent.setData(o.timestamp, gyro[0], SpatialEvent.Spatial.GyroX);
-                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+                outItr.nextOutput().copyFrom(spatialEvent);
                 spatialEvent.setData(o.timestamp, gyro[1], SpatialEvent.Spatial.GyroY);
-                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+                outItr.nextOutput().copyFrom(spatialEvent);
                 spatialEvent.setData(o.timestamp, gyro[2], SpatialEvent.Spatial.GyroZ);
-                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+                outItr.nextOutput().copyFrom(spatialEvent);
                 // Compass
                 spatialEvent.setData(o.timestamp, compass[0], SpatialEvent.Spatial.CompassX);
-                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+                outItr.nextOutput().copyFrom(spatialEvent);
                 spatialEvent.setData(o.timestamp, compass[1], SpatialEvent.Spatial.CompassY);
-                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+                outItr.nextOutput().copyFrom(spatialEvent);
                 spatialEvent.setData(o.timestamp, compass[2], SpatialEvent.Spatial.CompassZ);
-                ((SpatialEvent) outItr.nextOutput()).copyFrom(spatialEvent);
+                outItr.nextOutput().copyFrom(spatialEvent);
             }
             
             // When enough time has passed to get new sensor reading, 

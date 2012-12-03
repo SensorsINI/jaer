@@ -63,18 +63,18 @@ public class SpatialEvent extends PolarityEvent {
 
         // Convert value from sensor into an unsigned integer to write into address 
         
-        // Add minimum data value for sensor reading
+        // Subtract minimum data value to offset sensor reading
         // Do this so we don't have to deal with negative numbers or two's complement
         // (To reconstruct just subtract again this value)
         switch (type) {
             case AccelX: case AccelY: case AccelZ:
-                value += accelDataMin;
+                value -= accelDataMin;
                 break;
             case GyroX: case GyroY: case GyroZ:
-                value += gyroDataMin;
+                value -= gyroDataMin;
                 break;
             case CompassX: case CompassY: case CompassZ:
-                value += compassDataMin;
+                value -= compassDataMin;
                 break;
             default:
                 break;
@@ -103,7 +103,7 @@ public class SpatialEvent extends PolarityEvent {
     public void reconstructDataFromRawAddress(){
         // Recover spatialDataType
         // Get ordinal of Spatial type enum recorded in address (bits 18 to 31 - counting from 1 to 32)
-        int typeOrd=address << 1 >>> 1 >>> 17; // Lose special bit, shift back, then shift away data stored in first 17 bits
+        int typeOrd=address << 1 >>> 1 >>> 17; // Lose special bit, shift back, then shift away data stored in first 16 bits
         spatialDataType=Spatial.values()[typeOrd];
         // Recover spatialDataValue stored in first 17 bits
         int intVal=(address&0x1ffff);
@@ -111,13 +111,13 @@ public class SpatialEvent extends PolarityEvent {
         spatialDataValue=bd.movePointLeft(PRECISION_DIGITS).floatValue();
         switch (spatialDataType) {
             case AccelX: case AccelY: case AccelZ: 
-                spatialDataValue -= accelDataMin;
+                spatialDataValue += accelDataMin;
                 break;
             case GyroX: case GyroY: case GyroZ:
-                spatialDataValue -= gyroDataMin;
+                spatialDataValue += gyroDataMin;
                 break;
             case CompassX: case CompassY: case CompassZ:
-                spatialDataValue -= compassDataMin;
+                spatialDataValue += compassDataMin;
                 break;
             default:
                 break;
@@ -125,25 +125,21 @@ public class SpatialEvent extends PolarityEvent {
     }
 
     /** 
-     * Copies event into class
-     * @param src SpatialEvent
+     * Copies event data into class using copyFrom from super
+     * Has to deal with both SpatialEvent and PolarityEvent
+     * PolarityEvent case is already handled in Super
+     * For SpatialEvent just copy additional fields into class from src
+     * 
+     * @param src SpatialEvent or PolarityEvent
      */
     @Override
     public void copyFrom(BasicEvent src) {
-
-//        SpatialEvent e=(SpatialEvent)src;
-//        super.copyFrom(e);
-//        spatialDataValue=e.spatialDataValue;
-//        spatialDataType=e.spatialDataType;
-
         super.copyFrom(src);
         if(src instanceof SpatialEvent) {
-            SpatialEvent from=(SpatialEvent)src;
-            spatialDataValue=from.spatialDataValue;
-            spatialDataType=from.spatialDataType;
+            SpatialEvent e = (SpatialEvent) src;
+            spatialDataValue = e.spatialDataValue;
+            spatialDataType = e.spatialDataType;
         }
-    
-    
     }
 
     /** 
