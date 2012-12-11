@@ -475,7 +475,8 @@ public class JspikeStack {
     /** Load some AER data and test a convolutional kernel */
     public static void convDemo()
     {
-        NetController<AxonSparse,AxonSparse.Globals,UnitLIF.Globals> nc=new NetController(NetController.AxonTypes.SPARSE,NetController.UnitTypes.ONOFFLIF);
+        NetController<AxonSparse,AxonSparse.Globals,UnitLIF.Globals> nc=
+        		new NetController(NetController.AxonTypes.SPARSE,NetController.UnitTypes.ONOFFLIF);
         Network<AxonSparse> net=nc.net;
         UnitLIF.Globals un=nc.unitGlobals;
         AxonSparse.Globals lg=nc.axonGlobals;

@@ -13,7 +13,7 @@ import net.sf.jaer.event.EventPacket;
  * @author Haza
  */
 
-public class SpatialEventPacket<E extends SpatialEvent> extends EventPacket{
+public class SpatialEventPacket<E extends SpatialEvent> extends EventPacket<E> {
     
     /** Constructs a new EventPacket filled with the given event class.
     @see net.sf.jaer.event.BasicEvent
