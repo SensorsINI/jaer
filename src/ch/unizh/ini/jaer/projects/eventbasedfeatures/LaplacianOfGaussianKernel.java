@@ -68,7 +68,7 @@ public class LaplacianOfGaussianKernel extends ConvolutionKernelMethod {
                     
                     detectormap[ind] += ((dv)*(LoGMatrix[xval][yval]));
                     if(Math.abs(detectormap[ind]) > localmax) {
-                        localmax = detectormap[ind];
+                        localmax = Math.abs(detectormap[ind]);
                         xcoord = x+i;
                         ycoord = y+j;
                         localindex = ind;
@@ -108,7 +108,7 @@ public class LaplacianOfGaussianKernel extends ConvolutionKernelMethod {
                     yval = Math.abs(4-j);                    
                     detectormap[ind] += ((dv)*(LoGMatrix[xval][yval]));                                                                        
                     if(Math.abs(detectormap[ind]) > localfeature) {
-                        localfeature = detectormap[ind];
+                        localfeature = Math.abs(detectormap[ind]);
                         xcoord = x+i;
                         ycoord = y+j;
                         localindex = ind;
