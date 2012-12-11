@@ -31,7 +31,7 @@ public class GaussianBlurKernel extends ConvolutionKernelMethod {
     public int sizex = chip.getSizeX();        
     public int sizey = chip.getSizeY(); 
     
-    public int[][] GaussianMatrix = {   //discretized Gaussian kernel values with sigma = 1.4
+    public float[][] GaussianMatrix = {   //discretized Gaussian kernel values with sigma = 1.4
         {1, 4, 7, 4, 1},
         {4, 16, 26, 16, 4},
         {7, 26, 41, 26, 7},
@@ -68,7 +68,7 @@ public class GaussianBlurKernel extends ConvolutionKernelMethod {
                     checkMax(Math.abs(detectormap[ind]), ind);
                     checkMin(Math.abs(detectormap[ind]), ind);
 
-                    float value = (float)((detectormap[ind] - min)/(max - min)); 
+                    float value = (float)((Math.abs(detectormap[ind]) - min)/(max - min)); 
 
                     grayvalue[3*getIndex(x+i, y+j)] = value; 
                     grayvalue[(3*getIndex(x+i, y+j)) + 1] = value; 

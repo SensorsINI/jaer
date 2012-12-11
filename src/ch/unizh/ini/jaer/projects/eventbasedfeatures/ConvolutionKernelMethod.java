@@ -124,7 +124,8 @@ public class ConvolutionKernelMethod extends FeatureMethod {
         sizex = chip.getSizeX();
         sizey = chip.getSizeY();
         
-        detectormap = new float[maplength];   
+        detectormap = new float[maplength]; 
+        
         isKey = new boolean[maplength];
         grayvalue = new float[3*sizex*sizey] ;  
         

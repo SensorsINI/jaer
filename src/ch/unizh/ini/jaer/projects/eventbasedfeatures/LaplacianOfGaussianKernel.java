@@ -28,7 +28,7 @@ public class LaplacianOfGaussianKernel extends ConvolutionKernelMethod {
     public int sizex = chip.getSizeX();        
     public int sizey = chip.getSizeY(); 
     
-    public int[][] LoGMatrix = {
+    public float[][] LoGMatrix = {
         {0, 1, 1, 2, 2, 2, 1, 1, 0},
         {1, 2, 4, 5, 5, 5, 4, 2, 1},
         {1, 4, 5, 3, 0, 3, 5, 4, 1},
@@ -74,7 +74,7 @@ public class LaplacianOfGaussianKernel extends ConvolutionKernelMethod {
                         localindex = ind;
                     }
                     checkMax(Math.abs(localmax), ind);
-                    float value = (float)((detectormap[ind] - min)/(max - min));                        
+                    float value = (float)((Math.abs(detectormap[ind]) - min)/(max - min));                        
                     grayvalue[ 3*getIndex(x+i, y+j)] = value; 
                     grayvalue[(3*getIndex(x+i, y+j)) + 1] = value; 
                     grayvalue[(3*getIndex(x+i, y+j)) + 2] = value;           
@@ -105,8 +105,7 @@ public class LaplacianOfGaussianKernel extends ConvolutionKernelMethod {
                         keypoints.remove(keyp);
                     }
                     
-                    yval = Math.abs(4-j);
-                    
+                    yval = Math.abs(4-j);                    
                     detectormap[ind] += ((dv)*(LoGMatrix[xval][yval]));                                                                        
                     if(Math.abs(detectormap[ind]) > localfeature) {
                         localfeature = detectormap[ind];
@@ -114,10 +113,9 @@ public class LaplacianOfGaussianKernel extends ConvolutionKernelMethod {
                         ycoord = y+j;
                         localindex = ind;
                     }                
-
                     checkMax(Math.abs(localfeature), ind);
 //                        checkMin(Math.abs(detectormap[x+i][y+j]), x+i, y+j);
-                    float value = (float)((detectormap[ind] - min)/(max - min));                        
+                    float value = (float)((Math.abs(detectormap[ind]) - min)/(max - min));                        
                     grayvalue[ 3*getIndex(x+i, y+j)] = value; 
                     grayvalue[(3*getIndex(x+i, y+j)) + 1] = value; 
                     grayvalue[(3*getIndex(x+i, y+j)) + 2] = value;                                                                        
