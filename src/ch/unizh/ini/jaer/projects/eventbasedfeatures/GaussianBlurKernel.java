@@ -65,12 +65,12 @@ public class GaussianBlurKernel extends ConvolutionKernelMethod {
                     int ind = getIndex(x+i, y+j);
                     detectormap[ind] += ((dv)*(GaussianMatrix[xval][yval]));
 
-                    checkMax(Math.abs(detectormap[ind]), ind);
-                    checkMin(Math.abs(detectormap[ind]), ind);
+                    checkMax(detectormap[ind], ind);
+                    checkMin(detectormap[ind], ind);
 
-                    float value = (float)((Math.abs(detectormap[ind]) - min)/(max - min)); 
+                    float value = (float)((detectormap[ind] - min)/(max - min)); 
 
-                    grayvalue[3*getIndex(x+i, y+j)] = value; 
+                    grayvalue[ 3*getIndex(x+i, y+j)] = value; 
                     grayvalue[(3*getIndex(x+i, y+j)) + 1] = value; 
                     grayvalue[(3*getIndex(x+i, y+j)) + 2] = value;
                 }
