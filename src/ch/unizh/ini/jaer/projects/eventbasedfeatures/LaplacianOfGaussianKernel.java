@@ -10,6 +10,7 @@ import java.awt.Point;
 import java.util.ArrayList;
 import javax.swing.JFrame;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -21,10 +22,8 @@ import net.sf.jaer.graphics.ImageDisplay;
  * http://homepages.inf.ed.ac.uk/rbf/HIPR2/gsmooth.htm
  * @author Varad
  */
-public class LaplacianOfGaussianKernel extends KernelMethod {
+public class LaplacianOfGaussianKernel extends ConvolutionKernelMethod {
     
-//    KernelImplementor kernelimplement;
-//    ConvolutionFeatureDetector featuredetect;
     
     public int sizex = chip.getSizeX();        
     public int sizey = chip.getSizeY(); 
@@ -46,46 +45,91 @@ public class LaplacianOfGaussianKernel extends KernelMethod {
         super(chip, kernelimplement);                    
     }
     
-    public LaplacianOfGaussianKernel (AEChip chip, ConvolutionFeatureDetector featuredetect) {
+    public LaplacianOfGaussianKernel (AEChip chip, ConvolutionFeatureScheme featurescheme) {
         
-        super(chip, featuredetect);                    
+        super(chip, featurescheme);                    
     }
     
     @Override
-    synchronized public void updateMap(int x, int y, float dv, double threshold){
-               
-            int xval = 0;
-            int yval = 0;
-                        
-            if( (x>3 && x<(sizex-4) ) && (y>3 && y<(sizey-4) )){
-
-                for(int i = -4; i<5; i++){
-                    xval = Math.abs(4-i);
-
-                    for(int j = -4; j<5; j++){
-
-                        yval = Math.abs(4-j);
-                        detectormap[x+i][y+j] += ((dv)*(LoGMatrix[xval][yval]));
-
-                        checkMax(detectormap[x+i][y+j]);
-                        checkMin(detectormap[x+i][y+j]);
-                        
-                        float value = (float)((detectormap[x+i][y+j] - min)/(max - min));                        
-                        
-                        grayvalue[ 3 * ((x+i) + ((y+j) * sizex))] = value; 
-                        grayvalue[(3 * ((x+i) + ((y+j) * sizex))) + 1] = value; 
-                        grayvalue[(3 * ((x+i) + ((y+j) * sizex))) + 2] = value;
-                                                
-                        if( detectormap[x+i][y+j] >= (threshold*max) && detectormap[x+i][y+j] <= max){
-                                                            
-                            Point candidate = new Point(x+i, y+j);
-                            keypoints.add(candidate);
-                        }                            
+    public void updateMap(int x, int y, float dv){
+        int xval = 0;
+        int yval = 0;
+        int xcoord = 0;
+        int ycoord = 0;
+        int localindex = 0;
+        float localmax = 0;
+        
+        if( (x>3 && x<(sizex-4) ) && (y>3 && y<(sizey-4) )){
+            for(int i = -4; i<5; i++){                
+                xval = Math.abs(4-i);                
+                for(int j = -4; j<5; j++){
+                    int ind = getIndex(x+i, y+j);
+                    yval = Math.abs(4-j);
+                    
+                    detectormap[ind] += ((dv)*(LoGMatrix[xval][yval]));
+                    if(Math.abs(detectormap[ind]) > localmax) {
+                        localmax = detectormap[ind];
+                        xcoord = x+i;
+                        ycoord = y+j;
+                        localindex = ind;
                     }
-                }                                                                      
-//                display.setEventPixmapNbd(x, y, 4, sizex, grayvalue);
+                    checkMax(Math.abs(localmax), ind);
+                    float value = (float)((detectormap[ind] - min)/(max - min));                        
+                    grayvalue[ 3*getIndex(x+i, y+j)] = value; 
+                    grayvalue[(3*getIndex(x+i, y+j)) + 1] = value; 
+                    grayvalue[(3*getIndex(x+i, y+j)) + 2] = value;           
+                }
+            }
         }
-            
-//        display.repaint();                               
-    }            
+    }
+    
+    @Override
+    synchronized public void getFeatures(int x, int y, float dv, double threshold, PolarityEvent e){               
+        int xval = 0;
+        int yval = 0;
+        int xcoord = 0;
+        int ycoord = 0;
+        int localindex = 0;
+        float localfeature = 0;
+
+        if( (x>3 && x<(sizex-4) ) && (y>3 && y<(sizey-4) )){
+            for(int i = -4; i<5; i++){
+                
+                xval = Math.abs(4-i);
+                
+                for(int j = -4; j<5; j++){
+                    int ind = getIndex(x+i, y+j);
+                    if(isKey[ind]){
+                        isKey[ind] = false;
+                        KeyPoint keyp = new KeyPoint(x+i, y+j);
+                        keypoints.remove(keyp);
+                    }
+                    
+                    yval = Math.abs(4-j);
+                    
+                    detectormap[ind] += ((dv)*(LoGMatrix[xval][yval]));                                                                        
+                    if(Math.abs(detectormap[ind]) > localfeature) {
+                        localfeature = detectormap[ind];
+                        xcoord = x+i;
+                        ycoord = y+j;
+                        localindex = ind;
+                    }                
+
+                    checkMax(Math.abs(localfeature), ind);
+//                        checkMin(Math.abs(detectormap[x+i][y+j]), x+i, y+j);
+                    float value = (float)((detectormap[ind] - min)/(max - min));                        
+                    grayvalue[ 3*getIndex(x+i, y+j)] = value; 
+                    grayvalue[(3*getIndex(x+i, y+j)) + 1] = value; 
+                    grayvalue[(3*getIndex(x+i, y+j)) + 2] = value;                                                                        
+                }
+            }                                                                      
+        }
+
+        if(localfeature >= (threshold*max) && localfeature <= max){
+
+            KeyPoint p = new KeyPoint(xcoord, ycoord);
+            isKey[localindex] = true;
+            keypoints.add(p);    
+        } 
+    }   
 }

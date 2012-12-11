@@ -14,7 +14,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.graphics.ImageDisplay;
-import ch.unizh.ini.jaer.projects.eventbasedfeatures.KernelMethod;
+import ch.unizh.ini.jaer.projects.eventbasedfeatures.ConvolutionKernelMethod;
 import ch.unizh.ini.jaer.projects.eventbasedfeatures.GaussianBlurKernel;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -47,7 +47,7 @@ public class KernelImplementor extends EventFilter2D {
     ImageDisplay display;
     JFrame featureFrame;
     
-    public KernelMethod kernel; 
+    public ConvolutionKernelMethod kernel; 
     
     public enum Kernel {
         Gaussian, LaplacianOfGaussian    //list of available blurring kernels
@@ -80,7 +80,6 @@ public class KernelImplementor extends EventFilter2D {
         setEnclosedFilterChain(filterchain);    //creates a filter chain instance and passes this object to the kernel
                                                 //method for all processing
         pixelbuffer.setEnclosed(true, this);
-        
     }            
     
     
@@ -117,11 +116,8 @@ public class KernelImplementor extends EventFilter2D {
         sizex = chip.getSizeX();
         sizey = chip.getSizeY();
         
-        if(isimplementKernelMapEnabled() && isFilterEnabled()){
-               
+        if(isimplementKernelMapEnabled() && isFilterEnabled()){               
             getEnclosedFilterChain().filterPacket(in);
-//            kernel.checkMaps();
-//            kernel.updateMap(in);
         }
         return in;        
     }
@@ -143,8 +139,7 @@ public class KernelImplementor extends EventFilter2D {
     public void resetFilter() { 
         
         if(!isFilterEnabled()) 
-            return; 
-                
+            return;                 
         kernel.resetFilter();
         filterchain.reset();
         initFilter();
@@ -154,20 +149,17 @@ public class KernelImplementor extends EventFilter2D {
     @Override
     public void initFilter() {       
         
-        
         switch(method){     //selection of blurring kernel
             case Gaussian:
             default:{       
-                kernel = new GaussianBlurKernel(chip, this);               
+                kernel = new GaussianBlurKernel(chip, this);      
                 break;
             }
                              
             case LaplacianOfGaussian:{
-                
                 kernel = new LaplacianOfGaussianKernel(chip, this);                                
                 break;
-            }
-                                       
+            }                          
         }  
     }            
 }

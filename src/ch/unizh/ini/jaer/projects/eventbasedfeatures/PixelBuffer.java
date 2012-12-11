@@ -34,43 +34,37 @@ public class PixelBuffer extends EventFilter2D {
     
     public int RingBufferSize = getPrefs().getInt("PixelBuffer.RingBufferSize", 1);
     public boolean renderBufferMap = getPrefs().getBoolean("PixelBuffer.renderBufferMap", false);
-//    private int dt = getPrefs().getInt("PixelTimestampBuffer.dt", 500);
-//    public boolean TimeCriterionEnabled = getPrefs().getBoolean("PixelTimestampBuffer.isTimeCriterionEnabled", false);
-    
+
     public boolean hasKernelImplementor = false;
-    public boolean hasConvolutionFeatureDetector = false;
+    public boolean hasConvolutionFeatureScheme = false;
     public boolean hasBinaryFeatureDetector = false;
     
     KernelImplementor kernelimplement;
-    ConvolutionFeatureDetector featuredetect;
-    BinaryFeatureDetector bindetect;
+    ConvolutionFeatureScheme featurescheme;
+//    BinaryFeatureDetector bindetect;
     
     public float max ;
     public float min ;
+    public float base;
         
     public int sizex;
     public int sizey;
+    public int maplength;
     
-    public float[][] colorv;    
-    public float[][] map;    
-    public RingBuffer[][] rbarr;
+    public float[] colorv;    
+    public int[] map;    
+    public RingBuffer[] rbarr;
     
     ImageDisplay disp;
-    JFrame frame;
-    
-    public ArrayList<Point> keypoints;
-
+    JFrame frame;    
     
     public PixelBuffer (AEChip chip){
         
         super(chip);
         this.chip = chip;
 
-        final String sz = "Size";                
-        
-        setPropertyTooltip(sz, "RingBufferSize", "sets size of ring buffer");        
-//        setPropertyTooltip(tim, "dt", "Events with less than this delta time in us to neighbors pass through");
-        
+        final String sz = "Size";                        
+        setPropertyTooltip(sz, "RingBufferSize", "sets size of ring buffer");               
 
         sizex = chip.getSizeX();
         sizey = chip.getSizeY();                      
@@ -90,8 +84,7 @@ public class PixelBuffer extends EventFilter2D {
         return renderBufferMap;
     }
     
-    synchronized public void setRenderBufferMapEnabled( boolean renderBufferMap ) {
-        
+    synchronized public void setRenderBufferMapEnabled( boolean renderBufferMap ) {        
         this.renderBufferMap = renderBufferMap;        
         getPrefs().putBoolean("PixelBuffer.renderBufferMap", renderBufferMap);
         getSupport().firePropertyChange("renderBufferMap", this.renderBufferMap, renderBufferMap);
@@ -109,57 +102,54 @@ public class PixelBuffer extends EventFilter2D {
         resetFilter();
     }
     
-    synchronized public void setKernelImplementor(KernelImplementor kernelimplement){
-        
+    synchronized public void setKernelImplementor(KernelImplementor kernelimplement){        
         this.hasKernelImplementor = true;
         this.kernelimplement = kernelimplement;
     }
     
-    synchronized public void setConvolutionFeatureDetector(ConvolutionFeatureDetector featuredetect){
-        
-        this.hasConvolutionFeatureDetector = true;
-        this.featuredetect = featuredetect;
+    synchronized public void setConvolutionFeatureScheme(ConvolutionFeatureScheme featurescheme){        
+        this.hasConvolutionFeatureScheme = true;
+        this.featurescheme = featurescheme;
     }
     
-    synchronized public void setBinaryFeatureDetector(BinaryFeatureDetector bindetect){
-        
-        this.hasBinaryFeatureDetector = true;
-        this.bindetect = bindetect;
-    }
+//    synchronized public void setBinaryFeatureDetector(BinaryFeatureDetector bindetect){
+//        
+//        this.hasBinaryFeatureDetector = true;
+//        this.bindetect = bindetect;
+//    }
     
     synchronized private void checkMaps (){
-        if ( rbarr == null || rbarr.length != chip.getSizeX() || rbarr[0].length != chip.getSizeY() )
+        if ( rbarr == null || rbarr.length != (chip.getSizeX()*chip.getSizeY())  )
             resetRingBuffers();        
     }
     
-    synchronized private void resetRingBuffers(){
+    synchronized private void resetRingBuffers(){        
+        max = 1;
+        min = 0;
+        maplength = sizex*sizey;
+        base = ((max+min)/2);
         
         int size = 128;
         disp.setImageSize(size, size); // set dimensions of image      
+        disp.resetFrame(base);
         frame.setVisible(true); // make the frame visible
         
-        max = 1;
-        min = 0;
-        map = new float[sizex][sizey];        
-        rbarr = new RingBuffer[sizex][sizey];
-        colorv = new float[sizex][sizey];
+        map = new int[maplength];        
+        rbarr = new RingBuffer[maplength];
+        colorv = new float[maplength];
         
-        for (int a = 0; a < sizex; a++){
-            for (int b = 0; b < sizey; b++){
-                    rbarr[a][b] = new RingBuffer( getRingBufferSize() );
-            }                    
-        }        
+        for (int a = 0; a < maplength; a++){
+            rbarr[a] = new RingBuffer( getRingBufferSize() );
+        }               
     }
 
     
     
-    public class RingBuffer{
-            
+    public class RingBuffer{            
         public final int length; // buffer length
         public int[] buffer; // an array of fixed length
         public int leadPointer, trailPointer ;
-        public boolean fullflag;
-        
+        public boolean fullflag;        
         
         public RingBuffer(int cap){                        
             length = cap;
@@ -172,7 +162,6 @@ public class PixelBuffer extends EventFilter2D {
             this.fullflag = false;            
         }
         
-        
         public int incrIndex(int i){
             
             i++;
@@ -182,22 +171,17 @@ public class PixelBuffer extends EventFilter2D {
         
         public void insert( PolarityEvent e){
             buffer[leadPointer] = e.getType();
-            leadPointer = incrIndex(leadPointer);
-                   
+            leadPointer = incrIndex(leadPointer);       
             if(leadPointer == 0) this.fullflag = true;      
         }
         
         public int getOldest(){
-           
             return buffer[leadPointer];   
         }
-
-        
     }    
     
     @Override
-    synchronized public EventPacket filterPacket(EventPacket in) {                
-        
+    synchronized public EventPacket filterPacket(EventPacket in) {                        
         sizex = chip.getSizeX();
         sizey = chip.getSizeY();
         
@@ -206,166 +190,154 @@ public class PixelBuffer extends EventFilter2D {
         }        
         if ( enclosedFilter != null ){
             in = enclosedFilter.filterPacket(in);
-        }
-                
+        }                
         checkMaps();
                 
         if(hasKernelImplementor) kernelimplement.kernel.checkMaps();
-        if(hasConvolutionFeatureDetector) featuredetect.kernel.checkMaps();
-        if(hasBinaryFeatureDetector){
-            bindetect.kernel.checkMaps();
-            bindetect.binaryMethod.checkMaps();
-            keypoints = new ArrayList<Point>();
-        }
+        if(hasConvolutionFeatureScheme) featurescheme.detector.checkMaps();
+//        if(hasBinaryFeatureDetector){
+//            bindetect.kernel.checkMaps();
+//            bindetect.binaryMethod.checkMaps();
+//        }
         
-                
-        
-        
-        for ( Object ein:in ){
-    
+        for ( Object ein:in ){    
             PolarityEvent e = (PolarityEvent)ein;
             int type = e.getType();
             int x = e.getX();
             int y = e.getY();
-                        
+            int index = getIndex(x, y);
             
-            if( !rbarr[x][y].fullflag){   //partially or unfilled buffer
-                
+            if( !rbarr[index].fullflag){   //partially or unfilled buffer                
                     if( type == 1){ //ON event
-                        map[x][y] += 1;    
+                        map[index] += 1;    
 
                         if(hasKernelImplementor && kernelimplement.kernel!= null)
-                            kernelimplement.kernel.updateMap(x, y, 1, kernelimplement.RelativeThreshold);
+                            kernelimplement.kernel.updateMap(x, y, 1);
                         
-                        if(hasConvolutionFeatureDetector && featuredetect.kernel!= null)
-                            featuredetect.kernel.updateMap(x, y, 1, featuredetect.RelativeThreshold);
+                        if(hasConvolutionFeatureScheme && featurescheme.kernel!= null)
+                            featurescheme.detector.getFeatures(x, y, 1, featurescheme.RelativeThreshold, e);     
                         
-                        if(hasBinaryFeatureDetector && bindetect.kernel!=null)
-                            bindetect.kernel.updateMap(x, y, 1, 0);
-                        
+//                        if(hasBinaryFeatureDetector && bindetect.kernel!=null){
+//                            bindetect.kernel.updateMap(x, y, 1);
+//                            bindetect.binaryMethod.getFeatures(x, y);
+//                                    
+//                        }
                     }                
                     else{           //OFF event
-                        map[x][y] -= 1;                    
+                        map[index] -= 1;                    
                         if(hasKernelImplementor && kernelimplement.kernel!= null)
-                            kernelimplement.kernel.updateMap(x, y, -1, kernelimplement.RelativeThreshold);
+                            kernelimplement.kernel.updateMap(x, y, -1);
                         
-                        if(hasConvolutionFeatureDetector && featuredetect.kernel!= null)
-                            featuredetect.kernel.updateMap(x, y, -1, featuredetect.RelativeThreshold);
+                        if(hasConvolutionFeatureScheme && featurescheme.kernel!= null)
+                            featurescheme.detector.getFeatures(x, y, -1, featurescheme.RelativeThreshold, e);
                         
-                        if(hasBinaryFeatureDetector && bindetect.kernel!=null)
-                            bindetect.kernel.updateMap(x, y, -1, 0);
-                        
+//                        if(hasBinaryFeatureDetector && bindetect.kernel!=null){
+//                            bindetect.kernel.updateMap(x, y, -1);
+//                            bindetect.binaryMethod.getFeatures(x, y);
+//                                    
+//                        }
                     }
-                    checkMax(e);
-                    checkMin(e);
+                    checkMax(index);
+                    checkMin(index);
             }
             
-            
             else{                                //filled to the capacity at least once
-                if ( type == rbarr[x][y].getOldest() ){   //if incoming event is same                                                                                        
+                if ( type == rbarr[index].getOldest() ){   //if incoming event is same                                                                                        
                                 ;                         //as one being pushed out                        ;
                 }   
                 else{
                     if( type == 1 ){    //ON event
-                        map[x][y] += 2;
+                        map[index] += 2;
                         if(hasKernelImplementor && kernelimplement.kernel!= null)
-                            kernelimplement.kernel.updateMap(x, y, 2, kernelimplement.RelativeThreshold);
+                            kernelimplement.kernel.updateMap(x, y, 2);
                         
-                        if(hasConvolutionFeatureDetector && featuredetect.kernel!= null){
-                            featuredetect.kernel.updateMap(x, y, 2, featuredetect.RelativeThreshold);
-
+                        if(hasConvolutionFeatureScheme && featurescheme.kernel!= null){
+                            featurescheme.detector.getFeatures(x, y, 2, featurescheme.RelativeThreshold, e);
                         }
                         
-                        if(hasBinaryFeatureDetector && bindetect.kernel!=null){
-                            bindetect.kernel.updateMap(x, y, 2, 0);
-
-                        }
-                        
+//                        if(hasBinaryFeatureDetector && bindetect.kernel!=null){
+//                            bindetect.kernel.updateMap(x, y, 2);                        
+//                            bindetect.binaryMethod.getFeatures(x, y);
+//                        }
                     }
                     else{               //OFF event
-                        map[x][y] -= 2;
+                        map[index] -= 2;
                         if(hasKernelImplementor && kernelimplement.kernel!= null)
-                            kernelimplement.kernel.updateMap(x, y, -2, kernelimplement.RelativeThreshold);
+                            kernelimplement.kernel.updateMap(x, y, -2);
                         
-                        if(hasConvolutionFeatureDetector && featuredetect.kernel!= null)
-                            featuredetect.kernel.updateMap(x, y, -2, featuredetect.RelativeThreshold);
+                        if(hasConvolutionFeatureScheme && featurescheme.kernel!= null)
+                            featurescheme.detector.getFeatures(x, y, -2, featurescheme.RelativeThreshold, e);
                         
-                        if(hasBinaryFeatureDetector && bindetect.kernel!=null)
-                            bindetect.kernel.updateMap(x, y, -2, 0);
+//                        if(hasBinaryFeatureDetector && bindetect.kernel!=null){
+//                            bindetect.kernel.updateMap(x, y, -2);
+//                            bindetect.binaryMethod.getFeatures(x, y);
+//                        }
                     }
-                    checkMax(e);
-                    checkMin(e);
+                    checkMax(index);
+                    checkMin(index);
                 }
             }
                 
 
             if(isRenderBufferMapEnabled()){
-                colorv[x][y] = (float)((map[x][y] - min)/(max - min));
+                colorv[index] = (float)((map[index] - min)/(max - min));
                 disp.checkPixmapAllocation(); // make sure we have a pixmaps (not resally necessary since setting size will allocate pixmap            
-                disp.setPixmapRGB(x, y, colorv[x][y], colorv[x][y], colorv[x][y]);            
+                disp.setPixmapRGB(x, y, colorv[index], colorv[index], colorv[index]);            
             }
-            rbarr[x][y].insert(e);
+            rbarr[index].insert(e);
             
         }
         
         if(hasKernelImplementor){
-            disp.repaint();  
             kernelimplement.kernel.display.setPixmapArray(kernelimplement.kernel.grayvalue);
             kernelimplement.kernel.display.repaint();
-            kernelimplement.kernel.updateFeatures(kernelimplement.kernel.keypoints, kernelimplement.RelativeThreshold);
+//            kernelimplement.kernel.updateFeatures(kernelimplement.kernel.keypoints, kernelimplement.RelativeThreshold);
         }
         
-        if(hasConvolutionFeatureDetector){
-            disp.repaint();  
-            featuredetect.kernel.display.setPixmapArray(featuredetect.kernel.grayvalue);
-            featuredetect.kernel.display.repaint();
-            featuredetect.kernel.updateFeatures(featuredetect.kernel.keypoints, featuredetect.RelativeThreshold);
+        if(hasConvolutionFeatureScheme){
+            featurescheme.detector.display.setPixmapArray(featurescheme.detector.grayvalue);
+            featurescheme.detector.display.repaint();
+//            featurescheme.kernel.updateFeatures(featurescheme.kernel.keypoints, featurescheme.RelativeThreshold);
         }
         
-        if(hasBinaryFeatureDetector){
-            disp.repaint();  
-            bindetect.kernel.display.setPixmapArray(bindetect.kernel.grayvalue);
-            bindetect.kernel.display.repaint();
-            bindetect.binaryMethod.getFeatures(bindetect.kernel.detectormap); 
-
-        }
-        
+//        if(hasBinaryFeatureDetector){
+//            bindetect.kernel.display.setPixmapArray(bindetect.kernel.grayvalue);
+//            bindetect.kernel.display.repaint();
+////            bindetect.binaryMethod.updateFeatures(bindetect.binaryMethod.keypoints);
+//
+//        }
+        disp.repaint();
         return in;        
     }
     
-    public void checkMax(PolarityEvent e){
-        
-        int x = e.getX();
-        int y = e.getY(); 
-        if ( map[x][y] > max ){
-            max = map[x][y];
-            
+    public void checkMax(int index){
+        if ( map[index] > max ){
+            max = map[index];
         }
     }
     
-    public void checkMin(PolarityEvent e){
-        
-        int x = e.getX();
-        int y = e.getY();
-        if ( map[x][y] < min ){
-            min = map[x][y];
+    public void checkMin(int index){
+        if ( map[index] < min ){
+            min = map[index];
         }
     }
     
-   
+    public int getIndex(int x, int y){
+        int index = (x + (y*sizex));
+        return index;
+    }
+    
     @Override
     public void resetFilter() {
         
         if(!isFilterEnabled()) 
             return;       
-        disp.clearImage();              
         resetRingBuffers();                
     }
 
     @Override
     public void initFilter() {
         resetFilter();
-        
     }    
 }
 
@@ -448,3 +420,360 @@ public class PixelBuffer extends EventFilter2D {
 //        return buf.get(i);
 //    }
 //    }
+
+
+
+
+
+///*
+// * To change this template, choose Tools | Templates
+// * and open the template in the editor.
+// */
+//package ch.unizh.ini.jaer.projects.eventbasedfeatures;
+//
+//import java.awt.BorderLayout;
+//import java.awt.Dimension;
+//import javax.swing.JFrame;
+//import net.sf.jaer.chip.AEChip;
+//import net.sf.jaer.event.EventPacket;
+//import net.sf.jaer.event.PolarityEvent;
+//import net.sf.jaer.eventprocessing.EventFilter2D;
+//import net.sf.jaer.graphics.ImageDisplay;
+//
+///**
+// *
+// * @author Varad
+// */
+//public class PixelTimeBuffer extends EventFilter2D{
+//
+//    public int RingBufferSize = getPrefs().getInt("PixelTimeBuffer.RingBufferSize", 1);
+//    public int dt = getPrefs().getInt("PixelTimeBuffer.dt", 500);
+//    
+//    public int sizex;
+//    public int sizey;
+//    
+//    public float max ;
+//    public float min ;
+//           
+//    public float[][] map;    
+//    public RingBuffer[][] rbarr;
+//    
+//    public float[][] colorv;
+//    
+//    ImageDisplay disp;
+//    JFrame frame;
+//    
+//    public PixelTimeBuffer (AEChip chip){
+//        
+//        super(chip);
+//        this.chip = chip;
+//        
+//        final String sz = "Size", tim = "Timing";
+//        
+//        setPropertyTooltip(sz, "RingBufferSize", "sets size of ring buffer");
+//        setPropertyTooltip(tim, "dt", "Events with less than this delta time in us to neighbors pass through");
+//        
+//        sizex = chip.getSizeX();
+//        sizey = chip.getSizeY();
+//
+//        disp = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
+//        frame = new JFrame("ImageFrame");  // make a JFrame to hold it
+//        frame.setPreferredSize(new Dimension(sizex, sizey));  // set the window size
+//        frame.getContentPane().add(disp, BorderLayout.CENTER); // add the GLCanvas to the center of the window
+//        frame.pack(); // otherwise it wont fill up the display
+//    }
+//    
+//    synchronized public int getRingBufferSize (){
+//        return RingBufferSize;
+//    }
+//    
+//    synchronized public void setRingBufferSize( int RingBufferSize){
+//        this.RingBufferSize = RingBufferSize;
+//        getPrefs().putInt("PixelTimeBuffer.RingBufferSize", RingBufferSize);
+//        getSupport().firePropertyChange("RingBufferSize", this.RingBufferSize, RingBufferSize);        
+//        resetFilter();
+//    }
+//    
+//    public int getDt() {
+//        return this.dt;
+//    }
+//    
+//    public void setDt(final int dt) {
+//        this.dt = dt;
+//        getPrefs().putInt("PixelTimeBuffer.dt", dt);
+//        getSupport().firePropertyChange("dt", this.dt, dt);        
+//        resetFilter();
+//    }
+//    
+//    synchronized public void checkMaps (){
+//        if ( rbarr == null || rbarr.length != chip.getSizeX() || rbarr[0].length != chip.getSizeY() )
+//            resetRingBuffers();        
+//    }
+//    
+//    public void resetRingBuffers(){
+//        
+//        int size = 128;
+//        disp.setImageSize(size, size); // set dimensions of image              
+//        frame.setVisible(true); // make the frame visible
+//        
+//        max = 1;
+//        min = 0;
+//        map = new float[sizex][sizey];        
+//        rbarr = new RingBuffer[sizex][sizey];
+//        colorv = new float[sizex][sizey];
+//        
+//        for (int a = 0; a < sizex; a++){
+//            for (int b = 0; b < sizey; b++){
+//                    rbarr[a][b] = new RingBuffer( getRingBufferSize() );
+//            }                    
+//        }        
+//    }
+//    
+//    public class RingBuffer{
+//        
+//        public int length ;
+//        public PolarityEvent[] buffer; // an array of fixed length
+//        public int leadPointer, trailPointer ;        
+//        public boolean arrayEmpty;
+//        public int typeOldest;
+//        
+//        public RingBuffer(int cap){                        
+//            length = cap;
+//            resetBuffer();               
+//        }
+//        
+//        public void resetBuffer(){
+//            buffer = new PolarityEvent[length];            
+//            this.leadPointer = 0;
+//            this.trailPointer = 0;
+//            this.arrayEmpty = true;
+//            this.typeOldest = 0;
+//        }
+//        
+//        public int incrIndex(int i){             
+//            
+//            i++;
+//            return(wrapIndex(i));
+//        }
+//        
+//        public int wrapIndex(int j){             
+//            
+//            if(j>=length)j=0;
+//            return j;
+//        }
+//            
+//        public void insert( PolarityEvent e){
+//                     
+//            buffer[leadPointer] = e;
+//            leadPointer = incrIndex(leadPointer);    
+//            
+//            if(this.arrayEmpty == true)
+//                this.arrayEmpty = false;            
+//            
+//            
+//                
+//        }
+//        
+//        public PolarityEvent getOldest(){
+//            
+//            return buffer[this.trailPointer];        
+//        }
+//        
+//        public void updateBuffer(PolarityEvent e){ 
+//            
+//            int x = e.getX();
+//            int y = e.getY();
+//                                 
+////            if(buffer[this.trailPointer] != null){
+//                while( ((e.getTimestamp() - rbarr[x][y].getOldest().getTimestamp()) > dt) && (rbarr[x][y].leadPointer != rbarr[x][y].trailPointer)){                                
+//
+//                    if( (rbarr[x][y].buffer[rbarr[x][y].trailPointer]).getType() == 1){
+//                        map[x][y] -= 1;                    
+//                    }
+//                    else{
+//                        map[x][y] += 1;                    
+//                    }
+//                    checkMax(e);
+//                    checkMin(e);  
+//
+//                    removeEvent();
+//                }            
+//            
+//        }
+//        
+//        public void removeEvent(){
+//            
+//            buffer[this.trailPointer] = null;
+//            this.trailPointer = incrIndex(this.trailPointer);    
+//            
+//            if(this.leadPointer == this.trailPointer)
+//                this.arrayEmpty = true;
+//        }
+//        
+//        
+//    }
+//    @Override
+//    public EventPacket<?> filterPacket(EventPacket<?> in) {
+//        
+//        sizex = chip.getSizeX();
+//        sizey = chip.getSizeY();
+//        
+//        if ( in == null ){
+//            return null;
+//        }      
+//        
+//        if ( enclosedFilter != null ){
+//            in = enclosedFilter.filterPacket(in);
+//        }
+//        
+//        checkMaps();
+//        
+//        for ( Object ein:in ){
+//    
+//            PolarityEvent e = (PolarityEvent)ein;
+//            int type = e.getType();
+//            int x = e.getX();
+//            int y = e.getY();
+//            
+//            if(rbarr[x][y].arrayEmpty == true){
+//                               
+//                if( type == 1 ){    //ON event
+//                    map[x][y] += 1;                
+//                }         
+//                else{
+//                    map[x][y] -= 1;                
+//                }
+//                checkMax(e);
+//                checkMin(e);
+//
+//            }
+//            
+//            else{
+//                
+////                if(rbarr[x][y].leadPointer == 0){
+//
+//                if((rbarr[x][y].leadPointer == rbarr[x][y].trailPointer) && rbarr[x][y].arrayEmpty == false){
+//                    
+////                    System.out.print(2+"\n");
+//                    
+//                    rbarr[x][y].typeOldest = rbarr[x][y].getOldest().getType();
+//                    rbarr[x][y].trailPointer = rbarr[x][y].incrIndex(rbarr[x][y].trailPointer);    
+////                    rbarr[x][y].removeEvent();
+//
+//                    rbarr[x][y].updateBuffer(e);
+//
+//                    if(rbarr[x][y].arrayEmpty == true){
+//
+//                        if( type == 1 ){    //ON event
+//                            map[x][y] += 1;                
+//                        }         
+//                        else{
+//                            map[x][y] -= 1;                
+//                        }
+//                        checkMax(e);
+//                        checkMin(e);
+//                    }
+//
+//                    else{
+//
+//                        if(rbarr[x][y].trailPointer == rbarr[x][y].wrapIndex(rbarr[x][y].leadPointer + 1)){
+//                            
+////                            System.out.print(2+"\n");
+//
+//                            if ( type == rbarr[x][y].typeOldest ) {  //if incoming event is same
+//                                ;
+////                                   System.out.print(3+"\n");
+//                            }   
+//                            else{
+//                                if( type == 1 ){    //ON event
+//                                    map[x][y] += 2;  
+//
+//                                }
+//                                else{               //OFF event
+//                                    map[x][y] -= 2;                            
+//                                }
+//                                checkMax(e);
+//                                checkMin(e);
+//                            }       
+//
+////                            rbarr[x][y].removeEvent();
+//
+//                        }
+//
+//                        else{
+//                            if( type == 1 ){    //ON event
+//                                map[x][y] += 1;                
+//                            }         
+//                            else{
+//                                map[x][y] -= 1;                
+//                            }
+//
+//                            checkMax(e);
+//                            checkMin(e);
+//                        }
+//                    }
+//
+//                }               
+//                
+//                else{
+//                    if( type == 1 ){    //ON event
+//                        map[x][y] += 1;                
+//                    }         
+//                    else{
+//                        map[x][y] -= 1;                
+//                    }
+//                    checkMax(e);
+//                    checkMin(e);
+//                }
+//            }
+//            
+//            colorv[x][y] = (float)((map[x][y] - min)/(max - min));
+//            disp.checkPixmapAllocation(); // make sure we have a pixmaps (not really necessary since setting size will allocate pixmap
+//            disp.setPixmapRGB(x, y, colorv[x][y], colorv[x][y], colorv[x][y]);
+//            rbarr[x][y].insert(e);
+//        }
+//        
+//        disp.repaint();
+//        return in;
+//    }
+//
+//    
+//    
+//    synchronized public void checkMax(PolarityEvent e){
+//        
+//        int x = e.getX();
+//        int y = e.getY(); 
+//        if ( map[x][y] > max ){
+//            max = map[x][y];
+//            
+//        }
+//    }
+//    
+//    synchronized public void checkMin(PolarityEvent e){
+//        
+//        int x = e.getX();
+//        int y = e.getY();
+//        if ( map[x][y] < min ){
+//            min = map[x][y];
+//            
+//        }
+//    }
+//    
+//    
+//    @Override
+//    public void resetFilter() {
+//        
+//        if(!isFilterEnabled()) 
+//            return;       
+//        
+//        disp.clearImage();              
+//        resetRingBuffers();
+//    }
+//
+//    @Override
+//    public void initFilter() {
+//        resetFilter();
+//    }
+//    
+//    
+//}
