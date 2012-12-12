@@ -74,7 +74,7 @@ public class LaplacianOfGaussianKernel extends ConvolutionKernelMethod {
                         localindex = ind;
                     }
                     checkMax(Math.abs(localmax), ind);
-                    float value = (float)((Math.abs(detectormap[ind]) - min)/(max - min));                        
+                    float value = (float)((detectormap[ind] - min)/(max - min));                        
                     grayvalue[ 3*getIndex(x+i, y+j)] = value; 
                     grayvalue[(3*getIndex(x+i, y+j)) + 1] = value; 
                     grayvalue[(3*getIndex(x+i, y+j)) + 2] = value;           
@@ -114,8 +114,9 @@ public class LaplacianOfGaussianKernel extends ConvolutionKernelMethod {
                         localindex = ind;
                     }                
                     checkMax(Math.abs(localfeature), ind);
-//                        checkMin(Math.abs(detectormap[x+i][y+j]), x+i, y+j);
-                    float value = (float)((Math.abs(detectormap[ind]) - min)/(max - min));                        
+                    checkMin(detectormap[ind], ind);
+                    
+                    float value = (float)((detectormap[ind] - min)/(max - min));                        
                     grayvalue[ 3*getIndex(x+i, y+j)] = value; 
                     grayvalue[(3*getIndex(x+i, y+j)) + 1] = value; 
                     grayvalue[(3*getIndex(x+i, y+j)) + 2] = value;                                                                        
