@@ -1,6 +1,6 @@
 /**
  * TestPose.java
- * Test class for basic pose estimation using Optical Gyro and VOR Sensor data
+ * Test class for basic pose estimation using Optical Gyro and VORTextDisplay Sensor data
  * 
  * Created on November 14, 2012, 2:24 PM
  *
@@ -37,15 +37,15 @@ public class TestPose extends EventFilter2D implements Observer, FrameAnnotater 
     }
 
     // 
-    private VOR vorSensor = null; // used when tracking features
+    private VORTextDisplay vorSensor = null; // used when tracking features
     private EventPacket ffPacket = null;
     private FilterChain filterChain = null;
 
-    // VOR Handlers
+    // VORTextDisplay Handlers
     SpatialPhidget spatial = null;
     SpatialDataEvent spatialData = null;
     
-    // VOR Outputs
+    // VORTextDisplay Outputs
     private int ts; // Timestamp
     private double[] acceleration, gyro, compass = new double[3];
 
@@ -69,7 +69,7 @@ public class TestPose extends EventFilter2D implements Observer, FrameAnnotater 
     
         filterChain = new FilterChain(chip);
 
-        vorSensor = new VOR(chip);
+        vorSensor = new VORTextDisplay(chip);
         vorSensor.setAnnotationEnabled(true); 
         vorSensor.addObserver(this);
         filterChain.add(vorSensor);

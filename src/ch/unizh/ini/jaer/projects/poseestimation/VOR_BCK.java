@@ -30,7 +30,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 
 @Description("Base Class using VOR Sensor data")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
+public class VOR_BCK extends EventFilter2D implements FrameAnnotater, Observer {
    
     // Controls
     protected int samplingRateMs = getInt("samplingRateMs", 128);
@@ -91,7 +91,7 @@ public class VOR extends EventFilter2D implements FrameAnnotater, Observer {
      * Constructor
      * @param chip Called with AEChip properties
      */
-    public VOR(AEChip chip) {
+    public VOR_BCK(AEChip chip) {
         super(chip);
         chip.addObserver(this);
         initFilter();

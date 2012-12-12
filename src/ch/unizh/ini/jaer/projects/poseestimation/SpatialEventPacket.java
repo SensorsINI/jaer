@@ -15,24 +15,33 @@ import net.sf.jaer.event.EventPacket;
 
 public class SpatialEventPacket<E extends SpatialEvent> extends EventPacket<E> {
     
-    /** Constructs a new EventPacket filled with the given event class.
-    @see net.sf.jaer.event.BasicEvent
+    private EventPacket.InItr fullIterator=null;
+
+    /** 
+     * Constructor
+     * Makes sure that only takes in SpatialEvents or subclasses
      */
     public SpatialEventPacket(Class<? extends SpatialEvent> eventClass) {
-        if(!BasicEvent.class.isAssignableFrom(eventClass)) { //Check if evenClass is a subclass of BasicEvent
-            throw new Error("making EventPacket that holds "+eventClass+" but these are not assignable from BasicEvent");
+        if(!BasicEvent.class.isAssignableFrom(eventClass)) { 
+            throw new Error("Making EventPacket that holds "+eventClass+", but these are not assignable from BasicEvent");
         }
         setEventClass(eventClass);
     }
     
+    /** 
+     * Makes sure next event packet is of correct class 
+     * Creates and returns it
+     * When does this get called?
+     */
     @Override
     public EventPacket getNextPacket(){
         setNextPacket(new SpatialEventPacket(getEventClass()));
         return nextPacket;
     }
     
-    /** Returns after initializing the iterator over input events.
-    @return an iterator that can iterate over the events.
+    /** 
+     * Iterator for only DVS events (not spatial events)
+     * @return An iterator that can iterate over only DVS Events
      */
     @Override
     public Iterator<E> inputIterator() {
@@ -44,9 +53,10 @@ public class SpatialEventPacket<E extends SpatialEvent> extends EventPacket<E> {
         return inputIterator;
     }
     
-    private EventPacket.InItr fullIterator=null;
-    /** Returns after initializing the iterator over input events.
-    @return an iterator that can iterate over the events.
+
+    /** 
+     * Iterator for all event inputs (DVS and Sensor)
+     * @return an iterator that can iterate over the events
      */
     public Iterator<E> fullIterator() {
         if(fullIterator==null) {
@@ -57,20 +67,29 @@ public class SpatialEventPacket<E extends SpatialEvent> extends EventPacket<E> {
         return fullIterator;
     }
     
-    /** Initializes and returns the iterator */
+    /** 
+     * Initializes and returns the iterator 
+     */
     @Override
     public Iterator<E> iterator() {
         return inputIterator();
     }
     
+    /** 
+     * Class for DVS Input Iterator that ignores Sensor data
+     */
     public class InDvsItr extends InItr{
+
         int cursor;
         boolean usingTimeout=timeLimitTimer.isEnabled();
 
         public InDvsItr() {
+            // Super call resets this
             reset();
         }
 
+        // Don't think I need to overwrite this
+        @Override
         public boolean hasNext() {
             if(usingTimeout) {
                 return cursor<size&&!timeLimitTimer.isTimedOut();
@@ -79,24 +98,41 @@ public class SpatialEventPacket<E extends SpatialEvent> extends EventPacket<E> {
             }
         }
 
+        /** 
+         * Retrieve next element
+         * Cursor always points to index of next element, so this function retrieves element to which cursor points to 
+         * and then increments cursor to next non special event
+         */
+        @Override
         public E next() {
             E output = (E) elementData[cursor++];
-            //bypass Spatial events
-            E nextIn = (E) elementData[cursor];
-            while(!nextIn.special && cursor<size){
-                E nextOut = (E) nextPacket.getOutputIterator().nextOutput();
-                nextOut.copyFrom(nextIn);
-                cursor++;
-                nextIn = (E) elementData[cursor];
+            // Move cursor to next non special (spatial) element or end 
+            // While we are not at the end, keep checking until we reach the first non special (spatial) event
+            // Use found flag to indicate when non special event is found
+            boolean found = false;
+            while (cursor < size && found == false) {
+                E nextIn = (E) elementData[cursor];
+                if (nextIn.special) {
+                    cursor++;
+                    // Why do we need this??
+                    //E nextOut = (E) nextPacket.getOutputIterator().nextOutput();
+                    //nextOut.copyFrom(nextIn);
+                } else {
+                    found = true;
+                }
             }
             return output;
         }
 
+        // Don't need to override this
+        @Override
         public void reset() {
             cursor=0;
             usingTimeout=timeLimitTimer.isEnabled(); // timelimiter only used if timeLimitTimer is enabled but flag to check it it only set on packet reset
         }
 
+        // Don't need to override this
+        @Override
         public void remove() {
             for(int ctr=cursor; ctr<size; ctr++) {
                 elementData[cursor-1]=elementData[cursor];
@@ -107,6 +143,8 @@ public class SpatialEventPacket<E extends SpatialEvent> extends EventPacket<E> {
         //throw new UnsupportedOperationException();
         }
 
+        // Don't need to override this
+        @Override
         public String toString() {
             return "InputEventIterator cursor="+cursor+" for packet with size="+size;
         }
