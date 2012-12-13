@@ -19,6 +19,10 @@ import ch.unizh.ini.jaer.projects.eventbasedfeatures.GaussianBlurKernel;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Point;
+import java.io.DataOutputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import javax.media.opengl.GL;
@@ -49,6 +53,7 @@ public class ConvolutionFeatureScheme extends EventFilter2D implements FrameAnno
     
     ImageDisplay display;
     JFrame featureFrame;
+    String strFilePath;
     
     public ConvolutionKernelMethod detector; 
     public DescriptorScheme descriptor;
@@ -88,6 +93,8 @@ public class ConvolutionFeatureScheme extends EventFilter2D implements FrameAnno
         setEnclosedFilterChain(filterchain);    //creates a filter chain instance and passes this object to the kernel
                                                 //method for all processing
         pixelbuffer.setEnclosed(true, this);
+        
+        strFilePath = "C:/Users/Varad/Downloads/descriptors.txt";
     }            
     
     synchronized public boolean isimplementFeatureDetectionEnabled(){
@@ -164,104 +171,103 @@ public class ConvolutionFeatureScheme extends EventFilter2D implements FrameAnno
 
     
     synchronized public void assignDescriptors(ArrayList<KeyPoint> keypoints, EventPacket in){
-        
-        for(KeyPoint p : keypoints){     //each keypoint needs to be constructed from scratch (10 operations)
-                                            // or just needs to be updated (4 operations per event)
-            if(!p.hasDescriptor){
-                switch(descheme){                    
-                    case CROSS:{
-                        p.desc = new CROSS(chip, this);
-                        p.hasDescriptor = true;                        
-                        p.descriptorString = new boolean[10];
-//                        if(!p.isOnMap){
-                        p.desc.constructKeyPointDescriptor(p);
-//                            p.isOnMap = true;
-//                        }                                            
-                        break;
-                    }   
-                    case CROSSTwo:{
-                        p.desc = new CROSSTwo(chip, this);
-                        p.hasDescriptor = true;                        
-                        p.descriptorString = new boolean[36];
-//                        if(!p.isOnMap){
-                        p.desc.constructKeyPointDescriptor(p);
-//                            p.isOnMap = true;
-//                        }                                            
-                        break;
-                    } 
-                    case SQUARE:{
-                        p.desc = new SQUARE(chip, this);
-                        p.hasDescriptor = true;                        
-                        p.descriptorString = new boolean[10];
-//                        if(!p.isOnMap){
-                        p.desc.constructKeyPointDescriptor(p);
-//                            p.isOnMap = true;
-                        break;
-                    }
-                    case SQUARETwo:{
-                        p.desc = new SQUARETwo(chip, this);
-                        p.hasDescriptor = true;                        
-                        p.descriptorString = new boolean[300];
-//                        if(!p.isOnMap){
-                        p.desc.constructKeyPointDescriptor(p);
-                    }
-                    case SQUARECorner:{
-                        p.desc = new SQUARECorner(chip, this);
-                        p.hasDescriptor = true;
-                        p.descriptorString = new boolean[10];
-//                        if(!p.isOnMap){
-                        p.desc.constructKeyPointDescriptor(p);
-//                            p.isOnMap = true;
-//                        }                        
-                        break;
-                    }
-                    case SQUARECornerTwo:{
-                        p.desc = new SQUARECornerTwo(chip, this);
-                        p.hasDescriptor = true;
-                        p.descriptorString = new boolean[36];
-//                        if(!p.isOnMap){
-                        p.desc.constructKeyPointDescriptor(p);
-//                            p.isOnMap = true;
-//                        }                        
-                        break;
-                    }
-                    case OCTAGON:{
-                        p.desc = new OCTAGON(chip, this);
-                        p.hasDescriptor = true;
-                        p.descriptorString = new boolean[78];
-//                        if(!p.isOnMap){
-                        p.desc.constructKeyPointDescriptor(p);
-//                            p.isOnMap = true;
-//                        }                        
-                        break;
-                    }
-                }     
-                
+        try
+        {
+            //create FileOutputStream object
+            FileOutputStream fos = new FileOutputStream(strFilePath);
+            PrintStream  ps = new PrintStream (fos);
+            
+            for(KeyPoint p : keypoints){     //each keypoint needs to be constructed from scratch (10 operations)
+                                                // or just needs to be updated (4 operations per event)
+                if(!p.hasDescriptor){
+                    switch(descheme){                    
+                        case CROSS:{
+                            p.desc = new CROSS(chip, this);
+                            p.hasDescriptor = true;                        
+                            p.descriptorString = new boolean[10];
+    //                        if(!p.isOnMap){
+                            p.desc.constructKeyPointDescriptor(p);
+    //                            p.isOnMap = true;
+    //                        }            
+                            ps.print(p.x+"\t");
+                            ps.print(p.y+"\t");
+                            for(int i = 0; i < 10; i++){
+                                ps.print(p.descriptorString[i]+"\t");
+                            }
+                            ps.print("\n");
+                            break;
+                        }   
+                        case CROSSTwo:{
+                            p.desc = new CROSSTwo(chip, this);
+                            p.hasDescriptor = true;                        
+                            p.descriptorString = new boolean[36];
+    //                        if(!p.isOnMap){
+                            p.desc.constructKeyPointDescriptor(p);
+    //                            p.isOnMap = true;
+    //                        }                                            
+                            break;
+                        } 
+                        case SQUARE:{
+                            p.desc = new SQUARE(chip, this);
+                            p.hasDescriptor = true;                        
+                            p.descriptorString = new boolean[10];
+    //                        if(!p.isOnMap){
+                            p.desc.constructKeyPointDescriptor(p);
+    //                            p.isOnMap = true;
+                            break;
+                        }
+                        case SQUARETwo:{
+                            p.desc = new SQUARETwo(chip, this);
+                            p.hasDescriptor = true;                        
+                            p.descriptorString = new boolean[300];
+    //                        if(!p.isOnMap){
+                            p.desc.constructKeyPointDescriptor(p);
+                        }
+                        case SQUARECorner:{
+                            p.desc = new SQUARECorner(chip, this);
+                            p.hasDescriptor = true;
+                            p.descriptorString = new boolean[10];
+    //                        if(!p.isOnMap){
+                            p.desc.constructKeyPointDescriptor(p);
+    //                            p.isOnMap = true;
+    //                        }                        
+                            break;
+                        }
+                        case SQUARECornerTwo:{
+                            p.desc = new SQUARECornerTwo(chip, this);
+                            p.hasDescriptor = true;
+                            p.descriptorString = new boolean[36];
+    //                        if(!p.isOnMap){
+                            p.desc.constructKeyPointDescriptor(p);
+    //                            p.isOnMap = true;
+    //                        }                        
+                            break;
+                        }
+                        case OCTAGON:{
+                            p.desc = new OCTAGON(chip, this);
+                            p.hasDescriptor = true;
+                            p.descriptorString = new boolean[78];
+    //                        if(!p.isOnMap){
+                            p.desc.constructKeyPointDescriptor(p);
+    //                            p.isOnMap = true;
+    //                        }                        
+                            break;
+                        }
+                    }     
+
+                }
+//                else{
+//                    p.desc.updateDescriptorMap(p, in);
+//                }        
             }
-//            else{
-//                
-//                updateDescriptors();         
+            ps.close();
+            fos.close();
+        }
+        catch(IOException E){
+            System.out.println("IOException : " + E);
         }
     }
     
-//    synchronized public void updateDescriptor(EventPacket in, KeyPoint p){        
-//        for ( Object ein:in ){    
-//            PolarityEvent e = (PolarityEvent)ein;
-//            Point event = new Point(e.getX(), e.getY());
-////            for(KeyPoint p : keypointlist){
-//            if((Arrays.asList(p.descPixels)).contains(event)){
-//                int index = (Arrays.asList(p.descPixels)).indexOf(event);
-////                p.desc.updateDescriptorMap(p, index);
-//            } 
-////            } 
-//        }
-//    }
-    
-        
-    public int getIndex(int x, int y){
-        int index = (x + (y*sizex));
-        return index;
-    }
     
     @Override
     public void annotate(GLAutoDrawable drawable) {  

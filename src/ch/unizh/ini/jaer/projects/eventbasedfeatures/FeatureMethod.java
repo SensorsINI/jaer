@@ -12,8 +12,7 @@ import java.awt.*;
  */
 public class FeatureMethod {        
 
-    public class KeyPoint extends Point{     //since KeyPoint needs to be accessed by both the detector and descriptor
-        
+    public class KeyPoint extends Point{     //since KeyPoint needs to be accessed by both the detector and descriptor        
         public int x, y;
 //        public boolean isOnMap;              
         public boolean hasDescriptor;

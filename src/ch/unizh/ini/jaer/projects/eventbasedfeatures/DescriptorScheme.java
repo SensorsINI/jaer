@@ -29,6 +29,7 @@ public abstract class DescriptorScheme extends FeatureMethod{
     public int size;
     public int[][] index;
     public int[] descPixels;
+    public int[] descMap;
     
     public DescriptorScheme(AEChip chip, ConvolutionFeatureScheme featurescheme){
         
@@ -52,7 +53,7 @@ public abstract class DescriptorScheme extends FeatureMethod{
     public void createLookUpTable(){        
     }
     
-    public void updateDescriptorMap(KeyPoint kp, int index){
+    public void updateDescriptorMap(KeyPoint kp, EventPacket in){
         
     }
 }

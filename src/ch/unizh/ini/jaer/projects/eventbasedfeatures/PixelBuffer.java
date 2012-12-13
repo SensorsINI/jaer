@@ -41,7 +41,7 @@ public class PixelBuffer extends EventFilter2D {
     
     KernelImplementor kernelimplement;
     ConvolutionFeatureScheme featurescheme;
-//    BinaryFeatureDetector bindetect;
+    BinaryFeatureDetector bindetect;
     
     public float max ;
     public float min ;
@@ -112,11 +112,11 @@ public class PixelBuffer extends EventFilter2D {
         this.featurescheme = featurescheme;
     }
     
-//    synchronized public void setBinaryFeatureDetector(BinaryFeatureDetector bindetect){
-//        
-//        this.hasBinaryFeatureDetector = true;
-//        this.bindetect = bindetect;
-//    }
+    synchronized public void setBinaryFeatureDetector(BinaryFeatureDetector bindetect){
+        
+        this.hasBinaryFeatureDetector = true;
+        this.bindetect = bindetect;
+    }
     
     synchronized private void checkMaps (){
         if ( rbarr == null || rbarr.length != (chip.getSizeX()*chip.getSizeY())  )
@@ -195,10 +195,10 @@ public class PixelBuffer extends EventFilter2D {
                 
         if(hasKernelImplementor) kernelimplement.kernel.checkMaps();
         if(hasConvolutionFeatureScheme) featurescheme.detector.checkMaps();
-//        if(hasBinaryFeatureDetector){
-//            bindetect.kernel.checkMaps();
-//            bindetect.binaryMethod.checkMaps();
-//        }
+        if(hasBinaryFeatureDetector){
+            bindetect.kernel.checkMaps();
+            bindetect.binaryMethod.checkMaps();
+        }
         
         for ( Object ein:in ){    
             PolarityEvent e = (PolarityEvent)ein;
@@ -217,11 +217,11 @@ public class PixelBuffer extends EventFilter2D {
                         if(hasConvolutionFeatureScheme && featurescheme.kernel!= null)
                             featurescheme.detector.getFeatures(x, y, 1, featurescheme.RelativeThreshold, e);     
                         
-//                        if(hasBinaryFeatureDetector && bindetect.kernel!=null){
-//                            bindetect.kernel.updateMap(x, y, 1);
-//                            bindetect.binaryMethod.getFeatures(x, y);
-//                                    
-//                        }
+                        if(hasBinaryFeatureDetector && bindetect.kernel!=null){
+                            bindetect.kernel.updateMap(x, y, 1);
+                            bindetect.binaryMethod.getFeatures(x, y);
+                                    
+                        }
                     }                
                     else{           //OFF event
                         map[index] -= 1;                    
@@ -231,11 +231,11 @@ public class PixelBuffer extends EventFilter2D {
                         if(hasConvolutionFeatureScheme && featurescheme.kernel!= null)
                             featurescheme.detector.getFeatures(x, y, -1, featurescheme.RelativeThreshold, e);
                         
-//                        if(hasBinaryFeatureDetector && bindetect.kernel!=null){
-//                            bindetect.kernel.updateMap(x, y, -1);
-//                            bindetect.binaryMethod.getFeatures(x, y);
-//                                    
-//                        }
+                        if(hasBinaryFeatureDetector && bindetect.kernel!=null){
+                            bindetect.kernel.updateMap(x, y, -1);
+                            bindetect.binaryMethod.getFeatures(x, y);
+                                    
+                        }
                     }
                     checkMax(index);
                     checkMin(index);
@@ -255,10 +255,10 @@ public class PixelBuffer extends EventFilter2D {
                             featurescheme.detector.getFeatures(x, y, 2, featurescheme.RelativeThreshold, e);
                         }
                         
-//                        if(hasBinaryFeatureDetector && bindetect.kernel!=null){
-//                            bindetect.kernel.updateMap(x, y, 2);                        
-//                            bindetect.binaryMethod.getFeatures(x, y);
-//                        }
+                        if(hasBinaryFeatureDetector && bindetect.kernel!=null){
+                            bindetect.kernel.updateMap(x, y, 2);                        
+                            bindetect.binaryMethod.getFeatures(x, y);
+                        }
                     }
                     else{               //OFF event
                         map[index] -= 2;
@@ -268,10 +268,10 @@ public class PixelBuffer extends EventFilter2D {
                         if(hasConvolutionFeatureScheme && featurescheme.kernel!= null)
                             featurescheme.detector.getFeatures(x, y, -2, featurescheme.RelativeThreshold, e);
                         
-//                        if(hasBinaryFeatureDetector && bindetect.kernel!=null){
-//                            bindetect.kernel.updateMap(x, y, -2);
-//                            bindetect.binaryMethod.getFeatures(x, y);
-//                        }
+                        if(hasBinaryFeatureDetector && bindetect.kernel!=null){
+                            bindetect.kernel.updateMap(x, y, -2);
+                            bindetect.binaryMethod.getFeatures(x, y);
+                        }
                     }
                     checkMax(index);
                     checkMin(index);

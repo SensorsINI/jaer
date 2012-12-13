@@ -26,7 +26,7 @@ import java.util.Collections;
 public class GaussianBlurKernel extends ConvolutionKernelMethod {
 
     KernelImplementor kernelimplement;
-//    BinaryFeatureDetector bindetect;
+    BinaryFeatureDetector bindetect;
         
     public int sizex = chip.getSizeX();        
     public int sizey = chip.getSizeY(); 
@@ -42,11 +42,11 @@ public class GaussianBlurKernel extends ConvolutionKernelMethod {
     public GaussianBlurKernel (AEChip chip, KernelImplementor kernelimplement) {    
         super(chip, kernelimplement);      
     } 
-//    
-//    public GaussianBlurKernel (AEChip chip, BinaryFeatureDetector bindetect) {    
-//        
-//        super(chip, bindetect);                
-//    } 
+    
+    public GaussianBlurKernel (AEChip chip, BinaryFeatureDetector bindetect) {    
+        
+        super(chip, bindetect);                
+    } 
     
     @Override
     public void updateMap(int x, int y, float dv){      //Method for Gaussian blurring 

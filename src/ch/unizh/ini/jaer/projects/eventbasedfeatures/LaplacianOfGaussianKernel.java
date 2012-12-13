@@ -103,6 +103,7 @@ public class LaplacianOfGaussianKernel extends ConvolutionKernelMethod {
                         isKey[ind] = false;
                         KeyPoint keyp = new KeyPoint(x+i, y+j);
                         keypoints.remove(keyp);
+//                        keyp.isOnMap = false;
                     }
                     
                     yval = Math.abs(4-j);                    
@@ -129,6 +130,7 @@ public class LaplacianOfGaussianKernel extends ConvolutionKernelMethod {
             KeyPoint p = new KeyPoint(xcoord, ycoord);
             isKey[localindex] = true;
             keypoints.add(p);    
+//            p.isOnMap = true;
         } 
     }   
 }

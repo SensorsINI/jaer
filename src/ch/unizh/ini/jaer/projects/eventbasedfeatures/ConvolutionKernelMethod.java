@@ -34,7 +34,7 @@ public class ConvolutionKernelMethod extends FeatureMethod {
     PixelBuffer pixelbuffer;    
     KernelImplementor kernelimplement;
     ConvolutionFeatureScheme featurescheme;
-//    BinaryFeatureDetector bindetect;
+    BinaryFeatureDetector bindetect;
         
     public double RelativeThreshold;
     public float lasttimestamp;
@@ -51,7 +51,9 @@ public class ConvolutionKernelMethod extends FeatureMethod {
         
     public float[] detectormap;
     public boolean[] isKey;
+    public boolean[] isOnMap;
     public float[] grayvalue ;
+    public ArrayList[] mapIndices;
     public ArrayList<KeyPoint> keypoints;         
     
     ImageDisplay display;
@@ -85,20 +87,20 @@ public class ConvolutionKernelMethod extends FeatureMethod {
         sizey = chip.getSizeY();
     }
     
-//    public ConvolutionKernelMethod(AEChip chip, BinaryFeatureDetector bindetect){
-//        
-//        this.chip = chip; 
-//        
-//        this.bindetect = bindetect;
-//        this.pixelbuffer = bindetect.pixelbuffer;
-//        this.filterchain = bindetect.filterchain;
-//        this.display = bindetect.display;
-//        this.featureFrame = bindetect.featureFrame;
-//        
-//        sizex = chip.getSizeX();
-//        sizey = chip.getSizeY();
-// 
-//    }    
+    public ConvolutionKernelMethod(AEChip chip, BinaryFeatureDetector bindetect){
+        
+        this.chip = chip; 
+        
+        this.bindetect = bindetect;
+        this.pixelbuffer = bindetect.pixelbuffer;
+        this.filterchain = bindetect.filterchain;
+        this.display = bindetect.display;
+        this.featureFrame = bindetect.featureFrame;
+        
+        sizex = chip.getSizeX();
+        sizey = chip.getSizeY();
+ 
+    }    
     
     synchronized public void checkMaps(){
         
@@ -127,6 +129,7 @@ public class ConvolutionKernelMethod extends FeatureMethod {
         detectormap = new float[maplength]; 
         
         isKey = new boolean[maplength];
+        isOnMap = new boolean[maplength];
         grayvalue = new float[3*sizex*sizey] ;  
         
         for( int i = 0; i < grayvalue.length; i++ ){
