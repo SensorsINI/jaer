@@ -124,8 +124,8 @@ public class ExpressionBasedSpatialInputKernel implements InputKernel {
 			this.height = height;
 			onConvolutionValues = new float[width][height];
 			offConvolutionValues = new float[width][height];
-			this.centerX = -width/2;
-			this.centerY = -height/2;
+			this.centerX = width/2;
+			this.centerY = height/2;
 		}
 	}
 	
@@ -148,8 +148,8 @@ public class ExpressionBasedSpatialInputKernel implements InputKernel {
 	@Override
 	public void apply(int tx, int ty, int time, Polarity polarity,
 			FiringModelMap map, SpikeHandler spikeHandler) {
-		tx += centerX;
-		ty += centerY;
+		tx -= centerX;
+		ty -= centerY;
 		short minx = (short)Math.max(0, -tx), maxx = (short)Math.min(width, map.getSizeX()-tx);
 		short miny = (short)Math.max(0, -ty), maxy = (short)Math.min(height, map.getSizeY()-ty);
 		tx += minx; ty += miny;

@@ -75,8 +75,13 @@ public class ExpressionKernelEditor extends JFrame {
 		kernelFrame.setContentPane(kernelFramePanel);
         kernelFramePanel.setBackground(Color.BLACK);
         kernelFramePanel.setLayout(new FlowLayout());
-		kernelFramePanel.add(onConvolutionDisplay);
-		kernelFramePanel.add(offConvolutionDisplay);
+        JPanel onPanel = new JPanel();
+        onPanel.add(onConvolutionDisplay);
+        JPanel offPanel = new JPanel();
+        offPanel.add(offConvolutionDisplay);
+		kernelFramePanel.add(onPanel);
+		kernelFramePanel.add(offPanel);
+		kernelFrame.pack();
 		kernelFrame.setSize(450, 250);
 		kernelFrame.setVisible(true);
 		

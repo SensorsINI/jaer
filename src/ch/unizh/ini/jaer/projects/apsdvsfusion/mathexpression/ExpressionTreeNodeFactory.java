@@ -33,6 +33,30 @@ public class ExpressionTreeNodeFactory {
 		ExpressionTreeNodeFactory.addOperation(new SimpleBinaryOperationCreator("=",100) {
 			@Override public double compute(double left, double right) { 	if (left == right) return 1.0; else return 0.0;	}	});
 
+		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("sqrt",200, 1) {
+			@Override protected double compute(double[] arguments) { return Math.sqrt(arguments[0]);	}	});
+		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("deg",200, 1) {
+			@Override protected double compute(double[] arguments) { return Math.toDegrees(arguments[0]);	}	});
+		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("round",200, 1) {
+			@Override protected double compute(double[] arguments) { return Math.round(arguments[0]);	}	});
+		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("ceil",200, 1) {
+			@Override protected double compute(double[] arguments) { return Math.ceil(arguments[0]);	}	});
+		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("floor",200, 1) {
+			@Override protected double compute(double[] arguments) { return Math.floor(arguments[0]);	}	});
+		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("random",200, 0) {
+			@Override protected double compute(double[] arguments) { return Math.random();	}	});
+		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("rad",200, 1) {
+			@Override protected double compute(double[] arguments) { return Math.toRadians(arguments[0]);	}	});
+		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("abs",200, 1) {
+			@Override protected double compute(double[] arguments) { return Math.abs(arguments[0]);	}	});
+		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("lg",200, 1) {
+			@Override protected double compute(double[] arguments) { return Math.log10(arguments[0]);	}	});
+		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("ln",200, 1) {
+			@Override protected double compute(double[] arguments) { return Math.log(arguments[0]);	}	});
+		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("max",200, 2) {
+			@Override protected double compute(double[] arguments) { return Math.max(arguments[0], arguments[1]);	}	});
+		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("min",200, 2) {
+			@Override protected double compute(double[] arguments) { return Math.min(arguments[0], arguments[1]);	}	});
 		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("pow",200, 2) {
 			@Override protected double compute(double[] arguments) { return Math.pow(arguments[0], arguments[1]);	}	});
 		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("min",200, 2) {
@@ -43,7 +67,12 @@ public class ExpressionTreeNodeFactory {
 			@Override protected double compute(double[] arguments) { return Math.exp(arguments[0]);	}	});
 		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("cos",200, 1) {
 			@Override protected double compute(double[] arguments) { return Math.cos(arguments[0]);	}	});
+		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("cosh",200, 1) {
+			@Override protected double compute(double[] arguments) { return Math.cosh(arguments[0]);	}	});
+		
 		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("sin",200, 1) {
+			@Override protected double compute(double[] arguments) { return Math.sin(arguments[0]);	}	});
+		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("sinh",200, 1) {
 			@Override protected double compute(double[] arguments) { return Math.sin(arguments[0]);	}	});
 		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("acos",200, 1) {
 			@Override protected double compute(double[] arguments) { return Math.acos(arguments[0]);	}	});
@@ -51,6 +80,16 @@ public class ExpressionTreeNodeFactory {
 			@Override protected double compute(double[] arguments) { return Math.asin(arguments[0]);	}	});
 		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("tan",200, 1) {
 			@Override protected double compute(double[] arguments) { return Math.tan(arguments[0]);	}	});
+		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("tanh",200, 1) {
+			@Override protected double compute(double[] arguments) { return Math.tanh(arguments[0]);	}	});
+		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("normal",200, 3) {
+			@Override 
+			protected double compute(double[] arguments) {
+				return 1 / (arguments[2] * Math.sqrt(2 * Math.PI))
+						* Math.exp(-0.5
+								* ((arguments[0] - arguments[1]) / arguments[2])
+								* ((arguments[0] - arguments[1]) / arguments[2]));
+			}	});
 
 		
 		ExpressionTreeNodeFactory.addConstant("PI", Math.PI);

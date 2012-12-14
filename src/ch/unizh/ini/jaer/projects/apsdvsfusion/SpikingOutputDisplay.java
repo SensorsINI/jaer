@@ -59,7 +59,7 @@ public class SpikingOutputDisplay {
             display = ImageDisplay.createOpenGLCanvas();
             display.setSizeX(sizeX);
             display.setSizeY(sizeY);
-            display.setPreferredSize(new Dimension(400,400));
+            display.setPreferredSize(new Dimension(250,250));
             display.setBorderSpacePixels(18);
             this.display.setFontSize(14);
         }
