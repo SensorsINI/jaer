@@ -3,12 +3,41 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JSpinner;
+import javax.swing.JTextField;
+import javax.swing.SpinnerModel;
+import javax.swing.SpinnerNumberModel;
+import javax.swing.Spring;
+import javax.swing.SpringLayout;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+
+import jspikestack.ImageDisplay;
+import jspikestack.KernelMaker2D.Scaling;
+
+import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression.IllegalExpressionException;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.event.PolarityEvent.Polarity;
+import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.graphics.AEViewer;
 
 /**
  * Filter class that uses a defined kernel function to compute not spatially filtered output spikes.
@@ -16,50 +45,156 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * @author Dennis Goehlsdorf
  *
  */
-public class SpatioTemporalFusion extends EventFilter2D {
+public class SpatioTemporalFusion extends EventFilter2D implements ActionListener {
 
-	InputKernel inputKernel;
-	FiringModelMap firingModelMap;
+//	InputKernel inputKernel;
+//	FiringModelMap firingModelMap;
+//	
+//	String expression = getPrefs().get("Expression", "1");
+
+	ArrayList<KernelProcessor> kernelProcessors = new ArrayList<KernelProcessor>();
+	SpikingOutputDisplay spikingOutputDisplay = new SpikingOutputDisplay();
+	boolean kernelEditorActive = false;
+	ExpressionKernelEditor kernelEditor = new ExpressionKernelEditor(this);
+	
+	boolean filterEvents = false;
+	SpikeHandler filterSpikeHandler = new SpikeHandler() {
+		public void spikeAt(int x, int y, int time, Polarity polarity) {
+			PolarityEvent pe = (PolarityEvent)out.getOutputIterator().nextOutput();
+			pe.setX((short)x);
+			pe.setY((short)y);
+			pe.setSpecial(false);
+			pe.setPolarity(polarity);
+			pe.setTimestamp(time);
+		}
+
+	};
 	
 	/**
 	 * @param chip
 	 */
 	public SpatioTemporalFusion(AEChip chip) {
 		super(chip);
+//		firingModelMap = new ArrayFiringModelMap(chip, IntegrateAndFire.getCreator());
+//		inputKernel = new ExpressionBasedSpatialInputKernel(5, 5);
+//		kernelProcessors 
+		//AEViewer viewer = new AEViewer(null, "ch.unizh.ini.jaer.projects.apsdvsfusion.FusedInputSimulatedChip");
+		//this.simchip = new FusedInputSimulatedChip();
+
+		//viewer.setChip(simchip);
+		
+		//viewer.setVisible(true);
 	}
 
+	public boolean isFilterEvents() {
+		return filterEvents;
+	}
+
+	public void setFilterEvents(boolean filterEvents) {
+		if (filterEvents != this.filterEvents) {
+			this.filterEvents = filterEvents;
+			for (KernelProcessor kp : kernelProcessors) {
+				if (kp instanceof SimpleKernelProcessor) {
+					if (filterEvents)
+						((SimpleKernelProcessor)kp).addSpikeHandler(filterSpikeHandler);
+					else 
+						((SimpleKernelProcessor)kp).removeSpikeHandler(filterSpikeHandler);
+				}
+			}
+		}
+	}
+	
+	
 	/* (non-Javadoc)
 	 * @see net.sf.jaer.eventprocessing.EventFilter2D#filterPacket(net.sf.jaer.event.EventPacket)
 	 */
 	@Override
 	public EventPacket<?> filterPacket(EventPacket<?> in) {
-        checkOutputPacketEventType(in);
-//        OutputEventIterator oi=out.outputIterator();
+        if (!filterEnabled) {
+            return in;
+        }
+        if (enclosedFilter != null) {
+            in = enclosedFilter.filterPacket(in);
+        }
+		checkOutputPacketEventType(in);
+        OutputEventIterator<?> oi=out.outputIterator();
+//        firingModelMap.changeSize(chip.getSizeX(), chip.getSizeY());
  //       PolarityEvent e;
+        out.setEventClass(PolarityEvent.class);
 		for (BasicEvent be : in) {
 			if (be instanceof PolarityEvent) {
-				inputKernel.apply(be.x, be.y, be.timestamp, ((PolarityEvent)be).polarity, firingModelMap, out);
+				for (KernelProcessor kp : kernelProcessors) {
+					kp.spikeAt(be.x,be.y,be.timestamp, ((PolarityEvent)be).getPolarity());
+				}
+//				inputKernel.apply(be.x, be.y, be.timestamp, ((PolarityEvent)be).polarity, firingModelMap, spikeHandler);
 			}
 		}
-		return out;
+		if (filterEvents)
+			return out;
+		else 
+			return in;
 	}
 
+	
+	
+	public void doShow_KernelEditor() {
+		kernelEditorActive ^= true;
+		kernelEditor.setVisible(kernelEditorActive);
+		if (kernelEditorActive)
+			spikingOutputDisplay.runDisplays();
+		else
+			spikingOutputDisplay.kill();
+	}
+	
+	
 	/* (non-Javadoc)
 	 * @see net.sf.jaer.eventprocessing.EventFilter#initFilter()
 	 */
 	@Override
 	public void initFilter() {
-		// TODO Auto-generated method stub
-
+//		setExpression("0");
 	}
 
-	/* (non-Javadoc)
+//	public void setExpression(String expression) {
+//		ExpressionBasedSpatialInputKernel ebsIK = (ExpressionBasedSpatialInputKernel)inputKernel;
+//		ebsIK.setExpressionString(expression);
+//		try {
+//			ebsIK.evaluateExpression();
+//			this.expression = expression;
+//		} catch (IllegalExpressionException e) {
+//			log.info("The expression "+expression+" could not be evaluated: "+e.getMessage()+", using "+this.expression+" instead!");
+//			
+////			getPrefs().node("Expression").
+//			// TODO Auto-generated catch block
+////			e.printStackTrace();
+//		}
+//		
+//	}
+//	public String getExpression() {
+//		return expression;
+//	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see net.sf.jaer.eventprocessing.EventFilter#resetFilter()
 	 */
 	@Override
 	public void resetFilter() {
-		// TODO Auto-generated method stub
-
+		// setExpression(expression);
+		spikingOutputDisplay.reset();
 	}
 
+	@Override
+	public void actionPerformed(ActionEvent e) {
+		SingleOutputViewer soViewer = spikingOutputDisplay.createOutputViewer(
+				128, 128);
+		ExpressionBasedSpatialInputKernel kernel = kernelEditor
+				.createInputKernel();
+		SimpleKernelProcessor kernelProcessor = new SimpleKernelProcessor(128,
+				128, kernel);
+		kernelProcessor.addSpikeHandler(soViewer);
+		kernelProcessors.add(kernelProcessor);
+
+	}
 }

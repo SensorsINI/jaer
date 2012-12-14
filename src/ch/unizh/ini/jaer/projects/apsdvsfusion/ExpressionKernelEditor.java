@@ -1,0 +1,257 @@
+/**
+ * 
+ */
+package ch.unizh.ini.jaer.projects.apsdvsfusion;
+
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.text.DecimalFormat;
+
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JSpinner;
+import javax.swing.JTextField;
+import javax.swing.SpinnerModel;
+import javax.swing.SpinnerNumberModel;
+import javax.swing.Spring;
+import javax.swing.SpringLayout;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+
+import net.sf.jaer.graphics.ImageDisplay;
+
+import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
+
+/**
+ * @author Dennis
+ *
+ */
+public class ExpressionKernelEditor extends JFrame {
+	private static final long serialVersionUID = 2193393541444893533L;
+	JTextField onExpressionField = new JTextField();
+	JTextField offExpressionField = new JTextField();
+	ImageDisplay onConvolutionDisplay = ImageDisplay.createOpenGLCanvas();
+	ImageDisplay offConvolutionDisplay = ImageDisplay.createOpenGLCanvas();
+	//	int width = 5, height = 5;
+
+	ExpressionBasedSpatialInputKernel myExpressionKernel = new ExpressionBasedSpatialInputKernel(5, 5);
+
+	
+	
+	public ExpressionKernelEditor(ActionListener actionListener) {
+		super("Kernel Editor");
+        onConvolutionDisplay.setBorderSpacePixels(18);
+        offConvolutionDisplay.setBorderSpacePixels(18);
+
+//		onConvolutionDisplay.setSize(300,300);
+		onConvolutionDisplay.setPreferredSize(new Dimension(200,200));
+		offConvolutionDisplay.setPreferredSize(new Dimension(200,200));
+//        onConvolutionDisplay.setTitleLabel("Range: [ "+myFormatter.format(min)+"   "+myFormatter.format(max)+" ] ");
+
+		JPanel myPanel = new JPanel(new SpringLayout());
+		this.setContentPane(myPanel);
+		JLabel jLabelOn = new JLabel("Expression for ON-Events:");
+		myPanel.add(jLabelOn);
+		myPanel.add(onExpressionField);
+		onExpressionField.setText("0.01");
+		jLabelOn.setLabelFor(onExpressionField);
+		JLabel jLabelOff = new JLabel("Expression for OFF-Events:");
+		myPanel.add(jLabelOff);
+		myPanel.add(offExpressionField);
+		offExpressionField.setText("0.01");
+		jLabelOff.setLabelFor(offExpressionField);
+		final JSpinner widthSpinner = addLabeledSpinner(myPanel, "Width", new SpinnerNumberModel(5, 1, 101, 2));
+		final JSpinner heightSpinner = addLabeledSpinner(myPanel, "Height", new SpinnerNumberModel(5, 1, 101, 2));
+
+		JFrame kernelFrame = new JFrame("Kernel values (left: ON, right: OFF)");
+		JPanel kernelFramePanel = new JPanel();
+		kernelFrame.setContentPane(kernelFramePanel);
+        kernelFramePanel.setBackground(Color.BLACK);
+        kernelFramePanel.setLayout(new FlowLayout());
+		kernelFramePanel.add(onConvolutionDisplay);
+		kernelFramePanel.add(offConvolutionDisplay);
+		kernelFrame.setSize(450, 250);
+		kernelFrame.setVisible(true);
+		
+		JButton addKernelButton = new JButton("Add kernel");
+		myPanel.add(addKernelButton);
+		myPanel.add(new JLabel(""));
+		
+		
+		addKernelButton.addActionListener(actionListener);
+
+		widthSpinner.addChangeListener(new ChangeListener() {
+			public void stateChanged(ChangeEvent arg0) {
+				myExpressionKernel.setWidth((Integer)widthSpinner.getModel().getValue());
+				plot(myExpressionKernel.getOnConvolutionValues(), onConvolutionDisplay);
+				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
+			}
+		});
+		heightSpinner.addChangeListener(new ChangeListener() {
+			public void stateChanged(ChangeEvent arg0) {
+				myExpressionKernel.setHeight((Integer)heightSpinner.getModel().getValue());
+				plot(myExpressionKernel.getOnConvolutionValues(), onConvolutionDisplay);
+				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
+			}
+		});
+		onExpressionField.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				myExpressionKernel.setOnExpressionString(onExpressionField.getText());
+				plot(myExpressionKernel.getOnConvolutionValues(), onConvolutionDisplay);
+			}
+		});
+		offExpressionField.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				myExpressionKernel.setOffExpressionString(offExpressionField.getText());
+				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
+			}
+		});
+		
+		
+		makeCompactGrid(myPanel,5, 2, //rows, cols
+				10, 10,        //initX, initY
+                6, 10);       //xPad, yPad			
+	}
+	
+	public ExpressionBasedSpatialInputKernel createInputKernel() {
+		ExpressionBasedSpatialInputKernel kernel = new ExpressionBasedSpatialInputKernel(
+				myExpressionKernel.getWidth(), myExpressionKernel.getHeight());
+		kernel.setOffExpressionString(myExpressionKernel.getOffExpressionString());
+		kernel.setOnExpressionString(myExpressionKernel.getOnExpressionString());
+		return kernel;
+	}
+	
+    public void plot(float[][] convolutionValues, ImageDisplay display) {
+        float max=Float.NEGATIVE_INFINITY;
+        float min=Float.POSITIVE_INFINITY;
+        for (int i=0; i<convolutionValues.length; i++)
+            for (int j=0; j<convolutionValues[i].length; j++)
+            {   max=Math.max(max,convolutionValues[i][j]);
+                min=Math.min(min,convolutionValues[i][j]);
+            }
+        
+        max=Math.max(max,min+Float.MIN_VALUE);
+        
+        max=Math.abs(max);
+        min=Math.abs(min);
+        float absmax=Math.max(min,max);
+        
+        max=absmax;
+        min=-absmax;
+
+        display.setImageSize(convolutionValues.length,convolutionValues[0].length);
+                
+//        disp.setPreferredSize(new Dimension(300,300));
+        
+		for (int x = 0; x < convolutionValues.length; x++)
+			for (int y = 0; y < convolutionValues[x].length; y++) {
+				float val = convolutionValues[x][y];
+				if (val > 0)
+					display.setPixmapRGB(y, x, val / absmax, 0, 0);
+				else
+					display.setPixmapRGB(y, x, 0, 0, -val / absmax);
+			}
+        display.repaint();
+    }
+
+	protected JSpinner addLabeledSpinner(Container c,
+			String label,
+			SpinnerModel model) {
+		JLabel l = new JLabel(label);
+		c.add(l);
+
+		JSpinner spinner = new JSpinner(model);
+		l.setLabelFor(spinner);
+		c.add(spinner);
+
+		return spinner;
+	}
+	/* Used by makeCompactGrid. */
+    private SpringLayout.Constraints getConstraintsForCell(
+                                                int row, int col,
+                                                Container parent,
+                                                int cols) {
+        SpringLayout layout = (SpringLayout) parent.getLayout();
+        Component c = parent.getComponent(row * cols + col);
+        return layout.getConstraints(c);
+    }
+
+    /**
+     * Aligns the first <code>rows</code> * <code>cols</code>
+     * components of <code>parent</code> in
+     * a grid. Each component in a column is as wide as the maximum
+     * preferred width of the components in that column;
+     * height is similarly determined for each row.
+     * The parent is made just big enough to fit them all.
+     *
+     * @param rows number of rows
+     * @param cols number of columns
+     * @param initialX x location to start the grid at
+     * @param initialY y location to start the grid at
+     * @param xPad x padding between cells
+     * @param yPad y padding between cells
+     */
+    private void makeCompactGrid(Container parent,
+                                       int rows, int cols,
+                                       int initialX, int initialY,
+                                       int xPad, int yPad) {
+        SpringLayout layout;
+        try {
+            layout = (SpringLayout)parent.getLayout();
+        } catch (ClassCastException exc) {
+            System.err.println("The first argument to makeCompactGrid must use SpringLayout.");
+            return;
+        }
+
+        //Align all cells in each column and make them the same width.
+        Spring x = Spring.constant(initialX);
+        for (int c = 0; c < cols; c++) {
+            Spring width = Spring.constant(0);
+            for (int r = 0; r < rows; r++) {
+                width = Spring.max(width,
+                                   getConstraintsForCell(r, c, parent, cols).
+                                       getWidth());
+            }
+            for (int r = 0; r < rows; r++) {
+                SpringLayout.Constraints constraints =
+                        getConstraintsForCell(r, c, parent, cols);
+                constraints.setX(x);
+                constraints.setWidth(width);
+            }
+            x = Spring.sum(x, Spring.sum(width, Spring.constant(xPad)));
+        }
+
+        //Align all cells in each row and make them the same height.
+        Spring y = Spring.constant(initialY);
+        for (int r = 0; r < rows; r++) {
+            Spring height = Spring.constant(0);
+            for (int c = 0; c < cols; c++) {
+                height = Spring.max(height,
+                                    getConstraintsForCell(r, c, parent, cols).
+                                        getHeight());
+            }
+            for (int c = 0; c < cols; c++) {
+                SpringLayout.Constraints constraints =
+                        getConstraintsForCell(r, c, parent, cols);
+                constraints.setY(y);
+                constraints.setHeight(height);
+            }
+            y = Spring.sum(y, Spring.sum(height, Spring.constant(yPad)));
+        }
+
+        //Set the parent's size.
+        SpringLayout.Constraints pCons = layout.getConstraints(parent);
+        pCons.setConstraint(SpringLayout.SOUTH, y);
+        pCons.setConstraint(SpringLayout.EAST, x);
+    }		
+
+}

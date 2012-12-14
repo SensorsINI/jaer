@@ -9,5 +9,8 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
  */
 public interface FiringModelMap {
 	public FiringModel get(int x, int y);
+	public int getSizeX();
+	public int getSizeY();
+	public void changeSize(int sizeX, int sizeY);
 	public void reset();
 }

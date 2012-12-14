@@ -24,7 +24,7 @@ public class ArrayFiringModelMap implements FiringModelMap {
 		this(chip.getSizeX(), chip.getSizeY(), fmc);
 	}
 	
-	protected void changeSize(int sizeX, int sizeY) {
+	public void changeSize(int sizeX, int sizeY) {
 		if (sizeX != this.sizeX || sizeY != this.sizeY) {
 			this.sizeX = sizeX;
 			this.sizeY = sizeY;
@@ -54,6 +54,17 @@ public class ArrayFiringModelMap implements FiringModelMap {
 				map[x][y].reset();
 			}
 		}
+	}
+
+	@Override
+	public int getSizeX() {
+		return sizeX;
+	}
+
+	@Override
+	public int getSizeY() {
+		// TODO Auto-generated method stub
+		return sizeY;
 	}
 
 }

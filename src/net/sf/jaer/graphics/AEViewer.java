@@ -1048,12 +1048,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
 //            System.out.println("AEViewer.constructChip(): constructing chip with constructor "+constructor);
             setChip(constructor.newInstance((java.lang.Object[]) null));
-            getChip().setAeViewer(this);  // set this now so that chip has AEViewer for building BiasgenFrame etc properly
-            extractor = chip.getEventExtractor();
-            renderer = chip.getRenderer();
-
-            extractor.setSubsamplingEnabled(subsampleEnabledCheckBoxMenuItem.isSelected());
-            extractor.setSubsampleThresholdEventCount(getRenderer().getSubsampleThresholdEventCount()); // awkward connection between components here - ideally chip should contrain info about subsample limit
 
         } catch (Exception e) {
             log.warning("AEViewer.constructChip exception " + e.getMessage());
@@ -5524,7 +5518,17 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
     }
 
     public void setChip(AEChip chip) {
-        this.chip = chip;
+        if (chip != this.chip) {
+	    	this.chip = chip;
+	        
+	        getChip().setAeViewer(this);  // set this now so that chip has AEViewer for building BiasgenFrame etc properly
+	        extractor = chip.getEventExtractor();
+	        renderer = chip.getRenderer();
+	
+	        extractor.setSubsamplingEnabled(subsampleEnabledCheckBoxMenuItem.isSelected());
+	        extractor.setSubsampleThresholdEventCount(getRenderer().getSubsampleThresholdEventCount()); // awkward connection between components here - ideally chip should contrain info about subsample limit
+        }
+        
     }
 
     public boolean isRenderBlankFramesEnabled() {
