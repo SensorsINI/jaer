@@ -41,7 +41,7 @@ public class ExpressionKernelEditor extends JFrame {
 	ImageDisplay offConvolutionDisplay = ImageDisplay.createOpenGLCanvas();
 	//	int width = 5, height = 5;
 
-	ExpressionBasedSpatialInputKernel myExpressionKernel = new ExpressionBasedSpatialInputKernel(5, 5);
+	ExpressionBasedSpatialInputKernel myExpressionKernel = new ExpressionBasedSpatialInputKernel(7, 7);
 
 	
 	
@@ -67,8 +67,8 @@ public class ExpressionKernelEditor extends JFrame {
 		myPanel.add(offExpressionField);
 		offExpressionField.setText("0.01");
 		jLabelOff.setLabelFor(offExpressionField);
-		final JSpinner widthSpinner = addLabeledSpinner(myPanel, "Width", new SpinnerNumberModel(5, 1, 101, 2));
-		final JSpinner heightSpinner = addLabeledSpinner(myPanel, "Height", new SpinnerNumberModel(5, 1, 101, 2));
+		final JSpinner widthSpinner = addLabeledSpinner(myPanel, "Width", new SpinnerNumberModel(7, 1, 101, 2));
+		final JSpinner heightSpinner = addLabeledSpinner(myPanel, "Height", new SpinnerNumberModel(7, 1, 101, 2));
 
 		JFrame kernelFrame = new JFrame("Kernel values (left: ON, right: OFF)");
 		JPanel kernelFramePanel = new JPanel();
@@ -161,9 +161,9 @@ public class ExpressionKernelEditor extends JFrame {
 			for (int y = 0; y < convolutionValues[x].length; y++) {
 				float val = convolutionValues[x][y];
 				if (val > 0)
-					display.setPixmapRGB(y, x, val / absmax, 0, 0);
+					display.setPixmapRGB(x, y, val / absmax, 0, 0);
 				else
-					display.setPixmapRGB(y, x, 0, 0, -val / absmax);
+					display.setPixmapRGB(x, y, 0, 0, -val / absmax);
 			}
         display.repaint();
     }

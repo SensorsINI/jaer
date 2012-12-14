@@ -75,7 +75,7 @@ public class ExpressionBasedSpatialInputKernel implements InputKernel {
 	
 	protected synchronized float[][] evaluateExpression(String expressionString, float[][] oldConvolutionValues, String oldString) throws IllegalExpressionException {
 		ExpressionTreeNode et = ExpressionTreeBuilder.parseString(expressionString);
-		float[][] newValues = oldConvolutionValues.clone();
+		float[][] newValues = new float[oldConvolutionValues.length][oldConvolutionValues[0].length];
 		try {
 			HashMap<String, Double> map = new HashMap<String, Double>();
 			for (int x = 0; x < width; x++) {
