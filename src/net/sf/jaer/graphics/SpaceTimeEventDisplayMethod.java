@@ -17,6 +17,8 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.util.EngineeringFormat;
 import com.sun.opengl.util.GLUT;
+import eu.seebetter.ini.chips.sbret10.ApsDvsEventPacket;
+import java.util.Iterator;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
@@ -122,8 +124,15 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
             float z;
             float zfac = chip.getMaxSize();
 //            int count=0;
-            for (Object obj : packet) {
-                BasicEvent ev = (BasicEvent) obj;
+            Iterator evItr = packet.iterator();
+            if(packet instanceof ApsDvsEventPacket){
+                ApsDvsEventPacket apsPacket = (ApsDvsEventPacket) packet;
+                evItr = apsPacket.fullIterator();
+            }
+            
+                
+            while (evItr.hasNext()) {
+                BasicEvent ev = (BasicEvent) evItr.next();
 //                if(count++%1000==0)log.info("1000 events");
 //        for (int i = 0; i<n; i++){
 //            EventXYType ev = ae.getEvent2D(i);

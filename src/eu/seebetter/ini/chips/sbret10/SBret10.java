@@ -113,8 +113,8 @@ public class SBret10 extends APSDVSchip {
     public static final int POLMASK = 1,
             XSHIFT = Integer.bitCount(POLMASK),
             XMASK = 255 << XSHIFT, // 8 bits
-            YSHIFT = 16, // so that y addresses don't overlap ADC bits and cause fake ADC events Integer.bitCount(POLMASK | XMASK),
-            YMASK = 255 << YSHIFT; // 6 bits
+            YSHIFT = 16, 
+            YMASK = 255 << YSHIFT; // 8 bits
 
     /*
      * data type fields
@@ -124,7 +124,7 @@ public class SBret10 extends APSDVSchip {
     /** Address-type refers to data if is it an "address". This data is either an AE address or ADC reading.*/
     public static final int ADDRESS_TYPE_MASK = 0x2000, EVENT_ADDRESS_MASK = POLMASK | XMASK | YMASK, ADDRESS_TYPE_EVENT = 0x0000, ADDRESS_TYPE_ADC = 0x2000;
     /** For ADC data, the data is defined by the ADC channel and whether it is the first ADC value from the scanner. */
-    public static final int ADC_TYPE_MASK = 0x1000, ADC_DATA_MASK = 0x3ff, ADC_START_BIT = 0x1000, ADC_READCYCLE_MASK = 0x0C00; 
+    public static final int ADC_DATA_MASK = 0x3ff, ADC_START_BIT = 0x1000, ADC_READCYCLE_MASK = 0x0C00; 
     public static final int MAX_ADC = (int) ((1 << 10) - 1);
     private SBret10DisplayMethod sbretDisplayMethod = null;
     private boolean displayIntensity;
@@ -262,6 +262,7 @@ public class SBret10 extends APSDVSchip {
          */
         @Override
         synchronized public EventPacket extractPacket(AEPacketRaw in) {
+            if(!(chip instanceof APSDVSchip))return null;
             if (out == null) {
                 out = new ApsDvsEventPacket(chip.getEventClass());
             } else {
@@ -511,7 +512,7 @@ public class SBret10 extends APSDVSchip {
             setPotArray(new AddressedIPotArray(this));
 
             try {
-                addAIPot("DiffBn,n,normal,differencing amp"); // at input end of shift register
+                addAIPot("DiffBn,n,normal,differencing amp"); 
                 addAIPot("OnBn,n,normal,DVS brighter threshold");
                 addAIPot("OffBn,n,normal,DVS darker threshold");
                 addAIPot("ApsCasEpc,p,cascode,cascode between APS und DVS"); 
@@ -1574,6 +1575,8 @@ public class SBret10 extends APSDVSchip {
   
         @Override
         public synchronized void render(EventPacket pkt) {
+            
+            if (!(pkt instanceof ApsDvsEventPacket)) return;
             
             ApsDvsEventPacket packet = (ApsDvsEventPacket) pkt;
             
