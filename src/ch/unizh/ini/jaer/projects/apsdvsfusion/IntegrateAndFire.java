@@ -29,11 +29,14 @@ public class IntegrateAndFire implements FiringModel {
 	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModel#receiveSpike(double)
 	 */
 	@Override
-	public boolean receiveSpike(double value) {
+	public boolean receiveSpike(double value, int timeInMs) {
 		sum+= value;
 		if (sum > threshold) {
 			sum = 0.0f;
 			return true;
+		}
+		else if (sum < 0.0f) {
+			sum = 0.0f;
 		}
 		return false;
 	}

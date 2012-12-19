@@ -150,8 +150,8 @@ public class ExpressionBasedSpatialInputKernel implements InputKernel {
 			FiringModelMap map, SpikeHandler spikeHandler) {
 		tx -= centerX;
 		ty -= centerY;
-		short minx = (short)Math.max(0, -tx), maxx = (short)Math.min(width, map.getSizeX()-tx);
-		short miny = (short)Math.max(0, -ty), maxy = (short)Math.min(height, map.getSizeY()-ty);
+		short minx = (short)Math.max(-map.getOffsetX(), -tx), maxx = (short)Math.min(width, map.getSizeX()-map.getOffsetX()-tx);
+		short miny = (short)Math.max(-map.getOffsetY(), -ty), maxy = (short)Math.min(height, map.getSizeY()-map.getOffsetY()-ty);
 		tx += minx; ty += miny;
 		float[][] convolutionValues;
 		if (polarity == Polarity.On) 
@@ -160,7 +160,7 @@ public class ExpressionBasedSpatialInputKernel implements InputKernel {
 			convolutionValues = offConvolutionValues;
 		for (short x = minx; x < maxx; x++, tx++) {
 			for (short y = miny, ity = (short)ty; y < maxy; y++, ity++) {
-				if (map.get(tx,ity).receiveSpike(convolutionValues[x][y])) {
+				if (map.get(tx,ity).receiveSpike(convolutionValues[x][y], time)) {
 					spikeHandler.spikeAt(tx,ity,time, Polarity.On);
 				}
 			}

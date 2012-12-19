@@ -27,7 +27,7 @@ public class ExpressionTreeNodeFactory {
 		ExpressionTreeNodeFactory.addOperation(new SimpleBinaryOperationCreator("*",100) {
 			@Override public double compute(double left, double right) { 	return left * right;	}	});
 		ExpressionTreeNodeFactory.addOperation(new SimpleBinaryOperationCreator("/",100) {
-			@Override public double compute(double left, double right) { 	return left = right;	}	});
+			@Override public double compute(double left, double right) { 	return left / right;	}	});
 		ExpressionTreeNodeFactory.addOperation(new SimpleBinaryOperationCreator("^",100) {
 			@Override public double compute(double left, double right) { 	return Math.pow(left, right);	}	});
 		ExpressionTreeNodeFactory.addOperation(new SimpleBinaryOperationCreator("=",100) {

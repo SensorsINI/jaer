@@ -42,9 +42,27 @@ public class ExpressionKernelEditor extends JFrame {
 	//	int width = 5, height = 5;
 
 	ExpressionBasedSpatialInputKernel myExpressionKernel = new ExpressionBasedSpatialInputKernel(7, 7);
+	JFrame kernelFrame;
+	
+	int outWidth = 128;
+	int outHeight = 128;
+	
+	public int getOutWidth() {
+		return outWidth;
+	}
 
-	
-	
+	public void setOutWidth(int outWidth) {
+		this.outWidth = outWidth;
+	}
+
+	public int getOutHeight() {
+		return outHeight;
+	}
+
+	public void setOutHeight(int outHeight) {
+		this.outHeight = outHeight;
+	}
+
 	public ExpressionKernelEditor(ActionListener actionListener) {
 		super("Kernel Editor");
         onConvolutionDisplay.setBorderSpacePixels(18);
@@ -70,7 +88,11 @@ public class ExpressionKernelEditor extends JFrame {
 		final JSpinner widthSpinner = addLabeledSpinner(myPanel, "Width", new SpinnerNumberModel(7, 1, 101, 2));
 		final JSpinner heightSpinner = addLabeledSpinner(myPanel, "Height", new SpinnerNumberModel(7, 1, 101, 2));
 
-		JFrame kernelFrame = new JFrame("Kernel values (left: ON, right: OFF)");
+		final JSpinner outWidthSpinner = addLabeledSpinner(myPanel, "Output field width", new SpinnerNumberModel(128, 1, 200, 1));
+		final JSpinner outHeightSpinner = addLabeledSpinner(myPanel, "Output field height", new SpinnerNumberModel(128, 1, 200, 1));
+		
+		
+		kernelFrame = new JFrame("Kernel values (left: ON, right: OFF)");
 		JPanel kernelFramePanel = new JPanel();
 		kernelFrame.setContentPane(kernelFramePanel);
         kernelFramePanel.setBackground(Color.BLACK);
@@ -99,6 +121,8 @@ public class ExpressionKernelEditor extends JFrame {
 				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
 			}
 		});
+		
+		
 		heightSpinner.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent arg0) {
 				myExpressionKernel.setHeight((Integer)heightSpinner.getModel().getValue());
@@ -106,6 +130,20 @@ public class ExpressionKernelEditor extends JFrame {
 				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
 			}
 		});
+		
+		
+		outWidthSpinner.addChangeListener(new ChangeListener() {
+			public void stateChanged(ChangeEvent arg0) {
+				setOutWidth((Integer)outHeightSpinner.getModel().getValue());
+			}
+		});
+		
+		outHeightSpinner.addChangeListener(new ChangeListener() {
+			public void stateChanged(ChangeEvent arg0) {
+				setOutHeight((Integer)outHeightSpinner.getModel().getValue());
+			}
+		});
+
 		onExpressionField.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
@@ -122,7 +160,7 @@ public class ExpressionKernelEditor extends JFrame {
 		});
 		
 		
-		makeCompactGrid(myPanel,5, 2, //rows, cols
+		makeCompactGrid(myPanel,7, 2, //rows, cols
 				10, 10,        //initX, initY
                 6, 10);       //xPad, yPad			
 	}
@@ -133,6 +171,11 @@ public class ExpressionKernelEditor extends JFrame {
 		kernel.setOffExpressionString(myExpressionKernel.getOffExpressionString());
 		kernel.setOnExpressionString(myExpressionKernel.getOnExpressionString());
 		return kernel;
+	}
+	
+	public void setVisible(boolean visible) {
+		super.setVisible(visible);
+		kernelFrame.setVisible(visible);
 	}
 	
     public void plot(float[][] convolutionValues, ImageDisplay display) {

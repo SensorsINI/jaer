@@ -53,9 +53,9 @@ public class SpatioTemporalFusion extends EventFilter2D implements ActionListene
 //	String expression = getPrefs().get("Expression", "1");
 
 	ArrayList<KernelProcessor> kernelProcessors = new ArrayList<KernelProcessor>();
-	SpikingOutputDisplay spikingOutputDisplay = new SpikingOutputDisplay();
+	SpikingOutputDisplay spikingOutputDisplay = null;// = new SpikingOutputDisplay();
 	boolean kernelEditorActive = false;
-	ExpressionKernelEditor kernelEditor = new ExpressionKernelEditor(this);
+	ExpressionKernelEditor kernelEditor = null;// = new ExpressionKernelEditor(this);
 	
 	boolean filterEvents = false;
 	SpikeHandler filterSpikeHandler = new SpikeHandler() {
@@ -75,6 +75,7 @@ public class SpatioTemporalFusion extends EventFilter2D implements ActionListene
 	 */
 	public SpatioTemporalFusion(AEChip chip) {
 		super(chip);
+		this.setFilterEnabled(false);
 //		firingModelMap = new ArrayFiringModelMap(chip, IntegrateAndFire.getCreator());
 //		inputKernel = new ExpressionBasedSpatialInputKernel(5, 5);
 //		kernelProcessors 
@@ -86,6 +87,25 @@ public class SpatioTemporalFusion extends EventFilter2D implements ActionListene
 		//viewer.setVisible(true);
 	}
 
+    @Override
+    synchronized public void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes);
+        if (yes) {
+        	if (kernelEditor == null)
+        		kernelEditor = new ExpressionKernelEditor(this);
+        	kernelEditor.setVisible(true);
+        	if (spikingOutputDisplay == null) 
+        		 spikingOutputDisplay = new SpikingOutputDisplay();
+        	spikingOutputDisplay.setVisible(true);
+        } else {
+        	if (kernelEditor != null)
+        		kernelEditor.setVisible(false);
+        	if (spikingOutputDisplay != null)
+        		spikingOutputDisplay.setVisible(false);
+            out = null; // garbage collect
+        }
+    }
+	
 	public boolean isFilterEvents() {
 		return filterEvents;
 	}
@@ -123,8 +143,10 @@ public class SpatioTemporalFusion extends EventFilter2D implements ActionListene
         out.setEventClass(PolarityEvent.class);
 		for (BasicEvent be : in) {
 			if (be instanceof PolarityEvent) {
-				for (KernelProcessor kp : kernelProcessors) {
-					kp.spikeAt(be.x,be.y,be.timestamp, ((PolarityEvent)be).getPolarity());
+				synchronized (kernelProcessors) {
+					for (KernelProcessor kp : kernelProcessors) {
+						kp.spikeAt(be.x,be.y,be.timestamp, ((PolarityEvent)be).getPolarity());
+					}
 				}
 //				inputKernel.apply(be.x, be.y, be.timestamp, ((PolarityEvent)be).polarity, firingModelMap, spikeHandler);
 			}
@@ -139,11 +161,14 @@ public class SpatioTemporalFusion extends EventFilter2D implements ActionListene
 	
 	public void doShow_KernelEditor() {
 		kernelEditorActive ^= true;
-		kernelEditor.setVisible(kernelEditorActive);
-		if (kernelEditorActive)
-			spikingOutputDisplay.runDisplays();
-		else
-			spikingOutputDisplay.kill();
+		if (kernelEditor != null)
+			kernelEditor.setVisible(kernelEditorActive);
+		if (spikingOutputDisplay != null)
+			spikingOutputDisplay.setVisible(kernelEditorActive);
+//		if (kernelEditorActive)
+//			spikingOutputDisplay.runDisplays();
+//		else
+//			spikingOutputDisplay.setVisible(false);
 	}
 	
 	
@@ -182,19 +207,30 @@ public class SpatioTemporalFusion extends EventFilter2D implements ActionListene
 	@Override
 	public void resetFilter() {
 		// setExpression(expression);
-		spikingOutputDisplay.reset();
+		if (spikingOutputDisplay != null)
+			spikingOutputDisplay.reset();
+		synchronized (kernelProcessors) {
+			if (kernelProcessors != null)
+				kernelProcessors.clear();
+		}
 	}
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
+//		SingleOutputViewer soViewer = spikingOutputDisplay.createOutputViewer(
+//				128, 128);
 		SingleOutputViewer soViewer = spikingOutputDisplay.createOutputViewer(
-				128, 128);
+				kernelEditor.getOutWidth(), kernelEditor.getOutWidth());
 		ExpressionBasedSpatialInputKernel kernel = kernelEditor
 				.createInputKernel();
-		SimpleKernelProcessor kernelProcessor = new SimpleKernelProcessor(128,
-				128, kernel);
+		SimpleKernelProcessor kernelProcessor = new SimpleKernelProcessor(
+				kernelEditor.getOutWidth(), kernelEditor.getOutHeight(), 
+				// center kernel:
+				(kernelEditor.getOutWidth() - 128) / 2 ,(kernelEditor.getOutHeight() - 128) / 2,kernel);
 		kernelProcessor.addSpikeHandler(soViewer);
-		kernelProcessors.add(kernelProcessor);
+		synchronized (kernelProcessors) {
+			kernelProcessors.add(kernelProcessor);
+		}
 
 	}
 }

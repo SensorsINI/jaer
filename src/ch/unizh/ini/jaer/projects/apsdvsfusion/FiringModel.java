@@ -8,6 +8,6 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
  *
  */
 public interface FiringModel {
-	public boolean receiveSpike(double value);
+	public boolean receiveSpike(double value, int timeInUs);
 	public void reset();
 }

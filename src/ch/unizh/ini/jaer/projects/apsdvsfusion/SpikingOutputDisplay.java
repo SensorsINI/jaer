@@ -25,6 +25,8 @@ import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.text.JTextComponent;
 
+import com.kitfox.svg.app.MainFrame;
+
 import jspikestack.ControlPanel;
 import jspikestack.ImageDisplay;
 
@@ -45,6 +47,7 @@ public class SpikingOutputDisplay {
     Thread viewLoop;
     public int updateMicros=30000;           // Update interval, in milliseconds
     private volatile boolean enable=true;
+    private JFrame displayFrame = null;
     
     public class SingleOutputViewer implements SpikeHandler {   
     	int sizeX = 0, sizeY = 0;
@@ -138,34 +141,68 @@ public class SpikingOutputDisplay {
 	 */
 	public SpikingOutputDisplay() {
 	}
-    
-    public JPanel setupGUI()
-    {
-        final JPanel hostPanel=new JPanel();
-        hostPanel.setPreferredSize(Toolkit.getDefaultToolkit().getScreenSize());
-        hostPanel.setLayout(new BorderLayout());
- 
-        if (!SwingUtilities.isEventDispatchThread())
-        {  
-            try {
-                SwingUtilities.invokeAndWait(new Runnable(){
-                    @Override
-                    public void run() {
-                        addFrameElements(hostPanel);
-                    }
-                });
-            } catch (InterruptedException ex) {
-                Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, null, ex);
-            } catch (InvocationTargetException ex) {
-                Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        else
-            addFrameElements(hostPanel);
-        return hostPanel;
-    }
-   
      
+    
+    
+    public SingleOutputViewer createOutputViewer(int sizeX, int sizeY) {
+    	SingleOutputViewer soViewer = new SingleOutputViewer(sizeX, sizeY);
+    	synchronized (viewers) {
+        	this.viewers.add(soViewer);
+		}
+        JPanel displayPanel=new JPanel();
+        
+        displayPanel.setBackground(Color.darkGray);
+        displayPanel.setLayout(new BorderLayout());
+        
+        
+//        GridBagConstraints c = new GridBagConstraints();
+//        c.fill=GridBagConstraints.HORIZONTAL;
+//        c.gridx=viewers.size() % 5;
+//        c.gridy=viewers.size() / 5;
+//        c.gridheight=2;
+       
+        displayPanel.add(soViewer.getDisplay(),BorderLayout.CENTER);  
+        statePanel.add(displayPanel);
+        statePanel.validate();
+    	return soViewer;
+    }
+    
+    public void addControls(ControlPanel cp)
+    {  
+        controlPanel=cp;
+    }
+    
+    public void setVisible(boolean visible) {
+    	if (visible) {
+    		if (displayFrame == null)
+    			createFrame();
+    		else 
+    			displayFrame.setVisible(true);
+    		if (viewLoop == null || !viewLoop.isAlive())
+    			runViewLoop();
+    	}
+    	else {
+    		if (displayFrame != null)
+    			displayFrame.setVisible(false);
+    		if (viewLoop != null && viewLoop.isAlive())
+    			kill();
+    	}
+    }
+    
+    protected void createFrame()   {   
+        SwingUtilities.invokeLater(new Runnable()
+        {
+            @Override
+            public void run() {
+            	synchronized (SpikingOutputDisplay.this) {
+            		displayFrame=new JFrame();
+            	}
+            	fillFrame();
+            }
+            
+        });
+    }
+
     /** Create a figure for plotting the state of the network for the network */
     protected void addFrameElements(final JPanel hostPanel)
     {
@@ -201,124 +238,101 @@ public class SpikingOutputDisplay {
     }
     
     
-    public SingleOutputViewer createOutputViewer(int sizeX, int sizeY) {
-    	SingleOutputViewer soViewer = new SingleOutputViewer(sizeX, sizeY);
-    	this.viewers.add(soViewer);
-        JPanel displayPanel=new JPanel();
+    private void fillFrame() {
+//        JPanel mainPanel=new JPanel();
         
-        displayPanel.setBackground(Color.darkGray);
-        displayPanel.setLayout(new BorderLayout());
-        
-        
-//        GridBagConstraints c = new GridBagConstraints();
-//        c.fill=GridBagConstraints.HORIZONTAL;
-//        c.gridx=viewers.size() % 5;
-//        c.gridy=viewers.size() / 5;
-//        c.gridheight=2;
-       
-        displayPanel.add(soViewer.getDisplay(),BorderLayout.CENTER);  
-        statePanel.add(displayPanel);
-        statePanel.validate();
-    	return soViewer;
-    }
-    
-    public void addControls(ControlPanel cp)
-    {  
-        controlPanel=cp;
-    }
-    
-    public void runDisplays()
-    {   
-        SwingUtilities.invokeLater(new Runnable()
-        {
-            @Override
-            public void run() {
-                JFrame frame=new JFrame();
-                
-                JPanel mainPanel=new JPanel();
-                               
-                
-                runDisplays(mainPanel);   
-
-                frame.getContentPane().setBackground(Color.GRAY);
-                frame.setLayout(new GridBagLayout());
-                frame.setContentPane(mainPanel);
-                
-                
-
-                frame.pack();
-                frame.setVisible(true);   
+        myPanel = new JPanel();
+        myPanel.setPreferredSize(Toolkit.getDefaultToolkit().getScreenSize());
+        myPanel.setLayout(new BorderLayout());
+ 
+        if (!SwingUtilities.isEventDispatchThread())
+        {  
+            try {
+                SwingUtilities.invokeAndWait(new Runnable(){
+                    @Override
+                    public void run() {
+                        addFrameElements(myPanel);
+                    }
+                });
+            } catch (InterruptedException ex) {
+                Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, null, ex);
+            } catch (InvocationTargetException ex) {
+                Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, null, ex);
             }
-            
-        });
+        }
+        else
+            addFrameElements(myPanel);
+        
+//        mainPanel.add(myPanel);
+//        myPanel.add(myPanel);
         
         
+        myPanel.addComponentListener(new ComponentListener() {
+//        mainPanel.addComponentListener(new ComponentListener() {
+            /* TODO: Ponder about whether this is the best solution */
+			@Override
+			public void componentShown(ComponentEvent arg0) {		}
+			
+			@Override
+			public void componentResized(ComponentEvent arg0) {		}
+			
+			@Override
+			public void componentMoved(ComponentEvent arg0) {		}
+			
+			@Override
+            public void componentHidden(ComponentEvent e) {
+                enable=false; 
+            }
+		});
+//        runViewLoop();
+
+        displayFrame.getContentPane().setBackground(Color.GRAY);
+        displayFrame.setLayout(new GridBagLayout());
+        displayFrame.setContentPane(myPanel);
+//        displayFrame.setContentPane(mainPanel);
+        
+        displayFrame.pack();
+        displayFrame.setVisible(true);   
     }
     
     
-    /** Create a plot of the network state and launch a thread that updates this plot.*/
-    private void runDisplays(final Container mainPanel)
-    {
-        myPanel=setupGUI();
-        mainPanel.add(myPanel);
-        
+//    /** Create a plot of the network state and launch a thread that updates this plot.*/
+//    private void runDisplays(final Container mainPanel)
+//    {
+//    }
+    
+    private void runViewLoop() {
         if (viewLoop!=null && viewLoop.isAlive())
             throw new RuntimeException("You're trying to start the View Loop, but it's already running");
-        
-                
-        class ViewLoop extends Thread{
-            
-            public ViewLoop() {
-                super();
-                setName("SpikingOutputDisplay");
-            }
-            
-            /* TODO: Ponder about whether this is the best solution */
+    	viewLoop = new Thread("SpikingOutputDisplay") {
             @Override
             public void run()
             {
-                 mainPanel.addComponentListener(new ComponentListener(){
-                    @Override
-                    public void componentResized(ComponentEvent e) {
-//                        throw new UnsupportedOperationException("Not supported yet.");
-                    }
-
-                    @Override
-                    public void componentMoved(ComponentEvent e) {
-//                        throw new UnsupportedOperationException("Not supported yet.");
-                    }
-
-                    @Override
-                    public void componentShown(ComponentEvent e) {
-//                        throw new UnsupportedOperationException("Not supported yet.");
-                    }
-
-                    @Override
-                    public void componentHidden(ComponentEvent e) {
-                        enable=false; 
-                    }
-                });
-                
-                 while (enable) {
-                	 updateSingleViewers();
-                	 try {
-                		 Thread.sleep(updateMicros/1000);
-                	 } catch (InterruptedException ex) {
-                		 break;
-                		 //                            Logger.getLogger(NetPlotter.class.getName()).log(Level.SEVERE, null, ex);
-                	 }
-                 }
-                synchronized(SpikingOutputDisplay.this)
-                {
-                    SpikingOutputDisplay.this.notify();
-                }
+            	while (enable) {
+            		updateSingleViewers();
+            		try {
+            			Thread.sleep(updateMicros/1000);
+            		} catch (InterruptedException ex) {
+            			break;
+            			//                            Logger.getLogger(NetPlotter.class.getName()).log(Level.SEVERE, null, ex);
+            		}
+            	}
+            	synchronized(SpikingOutputDisplay.this)
+            	{
+            		SpikingOutputDisplay.this.notify();
+            	}
             }
-        }
-        
-        viewLoop=new ViewLoop();
+        };
         viewLoop.start();
     }
     
+    public void updateSingleViewers() {
+    	synchronized (viewers) {
+        	for (SingleOutputViewer sov : viewers) {
+        		sov.update();
+    		}
+		}
+    }
         
     public void kill()
     {
@@ -341,14 +355,17 @@ public class SpikingOutputDisplay {
     {
         synchronized(this)
         {
-        	for (SingleOutputViewer soViewer : viewers) {
-        		soViewer.reset();
-        	}
+        	kill();
+        	synchronized (viewers) {
+            	viewers.clear();
+			}
+        	statePanel.removeAll();
+        	fillFrame();
+        	runViewLoop();
+//        	for (SingleOutputViewer soViewer : viewers) {
+//        		displayFrame.setContentPane(arg0)
+////        		soViewer.reset();
+//        	}
         }
-    }
-    public void updateSingleViewers() {
-    	for (SingleOutputViewer sov : viewers) {
-    		sov.update();
-		}
     }
 }
