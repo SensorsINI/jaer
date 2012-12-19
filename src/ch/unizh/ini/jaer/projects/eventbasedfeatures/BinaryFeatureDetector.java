@@ -40,7 +40,7 @@ public class BinaryFeatureDetector extends EventFilter2D implements FrameAnnotat
     
     
     public enum BinaryMethod{
-        FAST
+        FAST, FASTer
     };
     
     public BinaryMethod method = BinaryMethod.valueOf(getPrefs().get("BinaryFeatureDetector.BinaryMethod", "FAST"));
@@ -168,15 +168,18 @@ public class BinaryFeatureDetector extends EventFilter2D implements FrameAnnotat
     @Override
     public void initFilter() {
         
+        kernel = new GaussianBlurKernel(chip, this); 
+        
         switch(method){     
             
-            case FAST:
-            default:{
-                
-                kernel = new GaussianBlurKernel(chip, this); 
+            case FASTer:
                 binaryMethod = new FAST(chip, this);
                 break;
-            }                                                     
+            
+            case FAST:
+            default:
+                binaryMethod = new FAST(chip, this);
+                break;                                                  
         }
     }        
 }
