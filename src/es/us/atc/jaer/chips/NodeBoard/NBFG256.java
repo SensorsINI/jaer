@@ -10,9 +10,9 @@ import ch.unizh.ini.jaer.chip.retina.*;
 import com.sun.opengl.util.j2d.TextRenderer;
 import es.us.atc.jaer.chips.NodeBoard.NBFG256.NBFG256DisplayMethod;
 import eu.seebetter.ini.chips.*;
-//import es.us.atc.jaer.chips.NodeBoard.PolarityADCSampleEvent;
+//import es.us.atc.jaer.chips.NodeBoard.ApsDvsEvent;
 //import eu.seebetter.ini.chips.sbret10.SBret10.SBret10Config.*;
-import eu.seebetter.ini.chips.sbret10.PolarityADCSampleEvent;
+import eu.seebetter.ini.chips.sbret10.ApsDvsEvent;
 import java.awt.geom.Point2D.Float;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -65,7 +65,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
             YMASK = 255 ; 
 
     public static final PixelArray EntirePixelArray = new PixelArray(1, 0, 0, 256, 256);
-    private FrameEventPacket frameEventPacket = new FrameEventPacket(PolarityADCSampleEvent.class);
+    private FrameEventPacket frameEventPacket = new FrameEventPacket(ApsDvsEvent.class);
     private NBFG256DisplayMethod sbretDisplayMethod = null;
     private boolean displayIntensity;
     private int exposureB;
@@ -82,7 +82,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
     /** Creates a new instance of cDVSTest20.  */
     public NBFG256() {
         setName("NBFG256");
-        setEventClass(PolarityADCSampleEvent.class);
+        setEventClass(ApsDvsEvent.class);
         setSizeX(EntirePixelArray.width*EntirePixelArray.pitch);
         setSizeY(EntirePixelArray.height*EntirePixelArray.pitch);
         setNumCellTypes(2); // two are polarity and last is intensity
@@ -233,7 +233,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
                     diffts=timestamps[i]-lastts;
                     lastts=timestamps[i];
                     if(((data & 0x7FFF) == 0x7FFF) && ((data1 & 0x7FFF) < 0x7FFF) && (diffts>0) ) {
-                        PolarityADCSampleEvent e = (PolarityADCSampleEvent) outItr.nextOutput();
+                        ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
                         ignore = false;
                         System.out.println("SOF - pixcount: "+pixCnt);
                         resetCounters();
@@ -252,23 +252,23 @@ public final class NBFG256 extends AETemporalConstastRetina {
                         //if (pixCnt%256 < 128 && (pixCnt/256)%256<128) {
                         if ((data%256)>=0 && (data%256<64)) {
                             for (t=0;t<64-data%128;t++){
-                                PolarityADCSampleEvent e = (PolarityADCSampleEvent) outItr.nextOutput();
+                                ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
                                 e.setStartOfFrame(false);
                                 e.setAdcSample(-1);//(short)data);//(data & 0xFF)*32); //data_l*16
                                 e.timestamp = (timestamps[i]);
                                 //e.address = pixCnt; //(data & 0xFF)*32; //data_l*16
-                                e.polarity= PolarityADCSampleEvent.Polarity.Off;
+                                e.polarity= ApsDvsEvent.Polarity.Off;
                                 e.x= (short)(128-pixCnt%128); //countX[0];
                                 e.y= (short)(128-(pixCnt/256)%128); //countY[0];                                
                             }
                         }else if ((data%256)>64 && (data%256<128)) {
                             for (t=0;t<(data%128)-64;t++){
-                                PolarityADCSampleEvent e = (PolarityADCSampleEvent) outItr.nextOutput();
+                                ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
                                 e.setStartOfFrame(false);
                                 e.setAdcSample(-1);//(short)data);//(data & 0xFF)*32); //data_l*16
                                 e.timestamp = (timestamps[i]);
                                 //e.address = pixCnt; //(data & 0xFF)*32; //data_l*16
-                                e.polarity= PolarityADCSampleEvent.Polarity.On;
+                                e.polarity= ApsDvsEvent.Polarity.On;
                                 e.x= (short)(128-pixCnt%128); //countX[0];
                                 e.y= (short)(128-(pixCnt/256)%128); //countY[0];                                
                             }
@@ -278,24 +278,24 @@ public final class NBFG256 extends AETemporalConstastRetina {
                         //if (pixCnt%256 < 128 && (pixCnt/256)%256<128) {
                         if ((data/256)>=0 && (data/256)<64) {
                             for (t=0;t<64-(data/256)%128;t++) {
-                                PolarityADCSampleEvent e1 = (PolarityADCSampleEvent) outItr.nextOutput();
+                                ApsDvsEvent e1 = (ApsDvsEvent) outItr.nextOutput();
                                 e1.setAdcSample(-1); 
                                 e1.timestamp = (timestamps[i]);
                                 //e1.address = pixCnt;
-                                e1.polarity= PolarityADCSampleEvent.Polarity.Off;
-                                //e1.readoutType = PolarityADCSampleEvent.Type.A;
+                                e1.polarity= ApsDvsEvent.Polarity.Off;
+                                //e1.readoutType = ApsDvsEvent.Type.A;
                                 e1.x= (short)(128-pixCnt%128); 
                                 e1.y= (short)(128-(pixCnt/256)%128); 
                                 e1.setStartOfFrame(false);
                             }
                         }else if ((data/256)>64 && (data/256)<128) {
                             for (t=0;t<(data/256)%128-64;t++) {
-                                PolarityADCSampleEvent e1 = (PolarityADCSampleEvent) outItr.nextOutput();
+                                ApsDvsEvent e1 = (ApsDvsEvent) outItr.nextOutput();
                                 e1.setAdcSample(-1); //(short)(data/256)); //((data & 0xFF00)/256)*32); //data_h*16
                                 e1.timestamp = (timestamps[i]);
                                 //e1.address = pixCnt;//((data & 0xFF00)/256)*32; //data_h*16
-                                e1.polarity= PolarityADCSampleEvent.Polarity.On;
-                                //e1..readoutType = PolarityADCSampleEvent.Type.A;
+                                e1.polarity= ApsDvsEvent.Polarity.On;
+                                //e1..readoutType = ApsDvsEvent.Type.A;
                                 e1.x= (short)(128-pixCnt%128); //countX[0];
                                 e1.y= (short)(128-(pixCnt/256)%128); //countY[0];
                                 e1.setStartOfFrame(false);
@@ -548,8 +548,8 @@ public final class NBFG256 extends AETemporalConstastRetina {
                 return;
             }
             this.packet = packet;
-            if (packet.getEventClass() != PolarityADCSampleEvent.class) {
-                log.log(Level.WARNING, "wrong input event class, got {0} but we need to have {1}", new Object[]{packet.getEventClass(), PolarityADCSampleEvent.class});
+            if (packet.getEventClass() != ApsDvsEvent.class) {
+                log.log(Level.WARNING, "wrong input event class, got {0} but we need to have {1}", new Object[]{packet.getEventClass(), ApsDvsEvent.class});
                 return;
             }
             float[] pm = getPixmapArray();
@@ -564,7 +564,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
             try {
                 step = 1f / (colorScale);
                 for (Object obj : packet) {
-                    PolarityADCSampleEvent e = (PolarityADCSampleEvent) obj;
+                    ApsDvsEvent e = (ApsDvsEvent) obj;
                     //eventData = "address:"+Integer.toBinaryString(e.address)+"( x: "+Integer.toString(e.x)+", y: "+Integer.toString(e.y)+"), data "+Integer.toBinaryString(e.adcSample)+" ("+Integer.toString(e.adcSample)+")";
                     //System.out.println("Event: "+eventData);
                     if (putADCData && e.isAdcSample()) { // hack to detect ADC sample events
@@ -902,7 +902,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
             }
         }
 
-        private void putEvent(PolarityADCSampleEvent e) {
+        private void putEvent(ApsDvsEvent e) {
             if(!e.isAdcSample()) return;
             if(e.isStartOfFrame()) {
                 resetWriteCounter();
@@ -911,7 +911,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
 //            putNextSampleValue(e.adcSample, e.readoutType, index(e.x, e.y));
         }
         
-        private void putNextSampleValue(int val, PolarityADCSampleEvent.Type type, int index) {
+        private void putNextSampleValue(int val, ApsDvsEvent.ReadoutType type, int index) {
             float value = 0;
             float valueB = 0;
             switch(type){
