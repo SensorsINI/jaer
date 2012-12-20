@@ -11,7 +11,7 @@ import com.sun.opengl.util.j2d.TextRenderer;
 import eu.seebetter.ini.chips.*;
 import eu.seebetter.ini.chips.config.*;
 import eu.seebetter.ini.chips.sbret10.ApsDvsEvent.ReadoutType;
-import eu.seebetter.ini.chips.sbret10.SBret10.SBret10Config.*;
+import eu.seebetter.ini.chips.sbret10.SBret10old.SBret10Config.*;
 import eu.seebetter.ini.chips.seebetter20.SeeBetter20;
 import java.awt.event.ActionEvent;
 import java.awt.geom.Point2D.Float;
@@ -82,7 +82,7 @@ import net.sf.jaer.util.jama.Matrix;
  * @author tobi
  */
 @Description("SBret version 1.0")
-public class SBret10 extends APSDVSchip {
+public class SBret10old extends APSDVSchip {
 
     /** Describes size of array of pixels on the chip, in the pixels address space */
     public static class PixelArray extends Rectangle {
@@ -135,13 +135,13 @@ public class SBret10 extends APSDVSchip {
     private boolean ignoreReadout;
     private boolean snapshot = false;
     private boolean resetOnReadout = false;
-    SBret10DisplayControlPanel displayControlPanel = null;
+    SBret10DisplayControlPanelold displayControlPanel = null;
     private IntensityFrameData frameData = new IntensityFrameData();
     private SBret10Config config;
     JFrame controlFrame = null;
 
     /** Creates a new instance of cDVSTest20.  */
-    public SBret10() {
+    public SBret10old() {
         setName("SBret10");
         setEventClass(ApsDvsEvent.class);
         setSizeX(EntirePixelArray.width*EntirePixelArray.pitch);
@@ -152,7 +152,7 @@ public class SBret10 extends APSDVSchip {
 
         setEventExtractor(new SBret10Extractor(this));
 
-        setBiasgen(config = new SBret10.SBret10Config(this));
+        setBiasgen(config = new SBret10old.SBret10Config(this));
 
         displayIntensity = getPrefs().getBoolean("displayIntensity", true);
         displayLogIntensityChangeEvents = getPrefs().getBoolean("displayLogIntensityChangeEvents", true);
@@ -184,7 +184,7 @@ public class SBret10 extends APSDVSchip {
             //JPanel imagePanel = viewer.getImagePanel();
             controlFrame = new JFrame("SBret10 display controls");
             JPanel imagePanel = new JPanel();
-            imagePanel.add((displayControlPanel = new eu.seebetter.ini.chips.sbret10.SBret10DisplayControlPanel(this)), BorderLayout.SOUTH);
+            imagePanel.add((displayControlPanel = new eu.seebetter.ini.chips.sbret10.SBret10DisplayControlPanelold(this)), BorderLayout.SOUTH);
             imagePanel.revalidate();
             controlFrame.getContentPane().add(imagePanel);
             controlFrame.pack();
@@ -210,7 +210,7 @@ public class SBret10 extends APSDVSchip {
     /** Creates a new instance of cDVSTest10
      * @param hardwareInterface an existing hardware interface. This constructor is preferred. It makes a new cDVSTest10Biasgen object to talk to the on-chip biasgen.
      */
-    public SBret10(HardwareInterface hardwareInterface) {
+    public SBret10old(HardwareInterface hardwareInterface) {
         this();
         setHardwareInterface(hardwareInterface);
     }
@@ -234,7 +234,7 @@ public class SBret10 extends APSDVSchip {
         private int pixCnt=0; // TODO debug
         boolean ignore = false;
         
-        public SBret10Extractor(SBret10 chip) {
+        public SBret10Extractor(SBret10old chip) {
             super(chip);
             resetCounters();
         }
@@ -389,10 +389,10 @@ public class SBret10 extends APSDVSchip {
     @Override
     public void setHardwareInterface(final HardwareInterface hardwareInterface) {
         this.hardwareInterface = hardwareInterface;
-        SBret10.SBret10Config bg;
+        SBret10old.SBret10Config bg;
         try {
             if (getBiasgen() == null) {
-                setBiasgen(bg = new SBret10.SBret10Config(this));
+                setBiasgen(bg = new SBret10old.SBret10Config(this));
                 // now we can addConfigValue the control panel
 
             } else {
@@ -430,24 +430,24 @@ public class SBret10 extends APSDVSchip {
         JPanel bPanel;
         JTabbedPane bgTabbedPane;
         // portA
-        private PortBit runCpld = new PortBit(SBret10.this, "a3", "runCpld", "(A3) Set high to run CPLD which enables event capture, low to hold logic in reset", true);
-        private PortBit extTrigger = new PortBit(SBret10.this, "a1", "extTrigger", "(A1) External trigger to debug APS statemachine", false);
+        private PortBit runCpld = new PortBit(SBret10old.this, "a3", "runCpld", "(A3) Set high to run CPLD which enables event capture, low to hold logic in reset", true);
+        private PortBit extTrigger = new PortBit(SBret10old.this, "a1", "extTrigger", "(A1) External trigger to debug APS statemachine", false);
         // portC
-        private PortBit runAdc = new PortBit(SBret10.this, "c0", "runAdc", "(C0) High to run ADC", true);
+        private PortBit runAdc = new PortBit(SBret10old.this, "c0", "runAdc", "(C0) High to run ADC", true);
         // portE
         /** Bias generator power down bit */
-        PortBit powerDown = new PortBit(SBret10.this, "e2", "powerDown", "(E2) High to disable master bias and tie biases to default rails", false);
-        PortBit nChipReset = new PortBit(SBret10.this, "e3", "nChipReset", "(E3) Low to reset AER circuits and hold pixels in reset, High to run", true); // shouldn't need to manipulate from host
+        PortBit powerDown = new PortBit(SBret10old.this, "e2", "powerDown", "(E2) High to disable master bias and tie biases to default rails", false);
+        PortBit nChipReset = new PortBit(SBret10old.this, "e3", "nChipReset", "(E3) Low to reset AER circuits and hold pixels in reset, High to run", true); // shouldn't need to manipulate from host
         // CPLD shift register contents specified here by CPLDInt and CPLDBit
-        private CPLDInt exposureB = new CPLDInt(SBret10.this, 15, 0, "exposureB", "time between reset and readout of a pixel", 0);
-        private CPLDInt exposureC = new CPLDInt(SBret10.this, 31, 16, "exposureC", "time between reset and readout of a pixel for a second time (min 240!)", 240);
-        private CPLDInt colSettle = new CPLDInt(SBret10.this, 47, 32, "colSettle", "time to settle a column select before readout", 0);
-        private CPLDInt rowSettle = new CPLDInt(SBret10.this, 63, 48, "rowSettle", "time to settle a row select before readout", 0);
-        private CPLDInt resSettle = new CPLDInt(SBret10.this, 79, 64, "resSettle", "time to settle a reset before readout", 0);
-        private CPLDInt frameDelay = new CPLDInt(SBret10.this, 95, 80, "frameDelay", "time between two frames", 0);
-        private CPLDInt padding = new CPLDInt(SBret10.this, 109, 96, "pad", "used to zeros", 0);
-        private CPLDBit testPixAPSread = new CPLDBit(SBret10.this, 110, "testPixAPSread", "enables continuous scanning of testpixel", false);
-        private CPLDBit useC = new CPLDBit(SBret10.this, 111, "useC", "enables a second readout", false);
+        private CPLDInt exposureB = new CPLDInt(SBret10old.this, 15, 0, "exposureB", "time between reset and readout of a pixel", 0);
+        private CPLDInt exposureC = new CPLDInt(SBret10old.this, 31, 16, "exposureC", "time between reset and readout of a pixel for a second time (min 240!)", 240);
+        private CPLDInt colSettle = new CPLDInt(SBret10old.this, 47, 32, "colSettle", "time to settle a column select before readout", 0);
+        private CPLDInt rowSettle = new CPLDInt(SBret10old.this, 63, 48, "rowSettle", "time to settle a row select before readout", 0);
+        private CPLDInt resSettle = new CPLDInt(SBret10old.this, 79, 64, "resSettle", "time to settle a reset before readout", 0);
+        private CPLDInt frameDelay = new CPLDInt(SBret10old.this, 95, 80, "frameDelay", "time between two frames", 0);
+        private CPLDInt padding = new CPLDInt(SBret10old.this, 109, 96, "pad", "used to zeros", 0);
+        private CPLDBit testPixAPSread = new CPLDBit(SBret10old.this, 110, "testPixAPSread", "enables continuous scanning of testpixel", false);
+        private CPLDBit useC = new CPLDBit(SBret10old.this, 111, "useC", "enables a second readout", false);
         //
         // lists of ports and CPLD config
         private ADC adc;
@@ -553,7 +553,7 @@ public class SBret10 extends APSDVSchip {
             try {
                 sendOnchipConfig();
             } catch (HardwareInterfaceException ex) {
-                Logger.getLogger(SBret10.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(SBret10old.class.getName()).log(Level.SEVERE, null, ex);
             }
             byte[] b = formatConfigurationBytes(this);
 
@@ -1087,7 +1087,7 @@ public class SBret10 extends APSDVSchip {
                     try {
                         Thread.sleep(10);
                     } catch (InterruptedException ex) {
-                        Logger.getLogger(SBret10.class.getName()).log(Level.SEVERE, null, ex);
+                        Logger.getLogger(SBret10old.class.getName()).log(Level.SEVERE, null, ex);
                     }
                 }
                 runAdc.set(yes);
@@ -1130,12 +1130,12 @@ public class SBret10 extends APSDVSchip {
             Chip sbChip;
             
             //Config Bits
-            OnchipConfigBit resetCalib = new OnchipConfigBit(SBret10.this, "resetCalib", 0, "turn the calibration neuron off", true),
-                    typeNCalib = new OnchipConfigBit(SBret10.this, "typeNCalib", 1, "make the calibration neuron N type", false),
-                    resetTestpixel = new OnchipConfigBit(SBret10.this, "resetTestpixel", 2, "keeps the testpixel in reset", true),
-                    hotPixelSuppression = new OnchipConfigBit(SBret10.this, "hotPixelSuppression", 3, "turns on the hot pixel suppression", false),
-                    nArow = new OnchipConfigBit(SBret10.this, "nArow", 4, "use nArow in the AER state machine", false),
-                    useAout = new OnchipConfigBit(SBret10.this, "useAout", 5, "turn the pads for the analog MUX outputs on", true)
+            OnchipConfigBit resetCalib = new OnchipConfigBit(SBret10old.this, "resetCalib", 0, "turn the calibration neuron off", true),
+                    typeNCalib = new OnchipConfigBit(SBret10old.this, "typeNCalib", 1, "make the calibration neuron N type", false),
+                    resetTestpixel = new OnchipConfigBit(SBret10old.this, "resetTestpixel", 2, "keeps the testpixel in reset", true),
+                    hotPixelSuppression = new OnchipConfigBit(SBret10old.this, "hotPixelSuppression", 3, "turns on the hot pixel suppression", false),
+                    nArow = new OnchipConfigBit(SBret10old.this, "nArow", 4, "use nArow in the AER state machine", false),
+                    useAout = new OnchipConfigBit(SBret10old.this, "useAout", 5, "turn the pads for the analog MUX outputs on", true)
                     ;
             OnchipConfigBit[] configBits = {resetCalib, typeNCalib, resetTestpixel, hotPixelSuppression, nArow, useAout};
             int TOTAL_CONFIG_BITS = 24;
@@ -1449,7 +1449,7 @@ public class SBret10 extends APSDVSchip {
         private TextRenderer renderer = null;
         private TextRenderer exposureRenderer = null;
 
-        public SBret10DisplayMethod(SBret10 chip) {
+        public SBret10DisplayMethod(SBret10old chip) {
             super(chip.getCanvas());
         }
 
@@ -1518,7 +1518,7 @@ public class SBret10 extends APSDVSchip {
      */
     public class SBret10Renderer extends RetinaRenderer {
 
-        private SBret10 cDVSChip = null;
+        private SBret10old cDVSChip = null;
 //        private final float[] redder = {1, 0, 0}, bluer = {0, 0, 1}, greener={0,1,0}, brighter = {1, 1, 1}, darker = {-1, -1, -1};
         private final float[] brighter = {0, 1, 0}, darker = {1, 0, 0};
         private int sizeX = 1;
@@ -1531,7 +1531,7 @@ public class SBret10 extends APSDVSchip {
         /** Control scaling and offset of display of log intensity values. */
         int apsIntensityGain, apsIntensityOffset;
 
-        public SBret10Renderer(SBret10 chip) {
+        public SBret10Renderer(SBret10old chip) {
             super(chip);
             cDVSChip = chip;
             agcEnabled = chip.getPrefs().getBoolean("agcEnabled", false);
@@ -1765,7 +1765,7 @@ public class SBret10 extends APSDVSchip {
             if (diff < 1) {
                 return 1;
             }
-            int gain = (int) (SBret10.MAX_ADC / (f.y - f.x));
+            int gain = (int) (SBret10old.MAX_ADC / (f.y - f.x));
             return gain;
         }
 

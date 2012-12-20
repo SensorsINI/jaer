@@ -23,13 +23,13 @@ import org.jdesktop.beansbinding.Validator;
  *
  * @author Tobi
  */
-public class SBret10DisplayControlPanel extends javax.swing.JPanel implements PropertyChangeListener{
+public class SBret10DisplayControlPanelold extends javax.swing.JPanel implements PropertyChangeListener{
 
     private SBret10DisplayMethod displayMethod=null;
     private SBret10Renderer renderer=null;
-    private SBret10 chip;
+    private SBret10old chip;
 
-    public SBret10DisplayControlPanel(SBret10 chip) {
+    public SBret10DisplayControlPanelold(SBret10old chip) {
         this.chip=chip;
         this.displayMethod=(SBret10DisplayMethod)chip.getCanvas().getDisplayMethod();
         this.renderer=(SBret10Renderer)chip.getRenderer();
@@ -496,7 +496,7 @@ public class SBret10DisplayControlPanel extends javax.swing.JPanel implements Pr
     }//GEN-LAST:event_displayIntensityActionPerformed
 
     private void readComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_readComboBoxActionPerformed
-        chip.getFrameData().setDisplayRead(SBret10.Read.values()[readComboBox.getSelectedIndex()]);
+        chip.getFrameData().setDisplayRead(SBret10old.Read.values()[readComboBox.getSelectedIndex()]);
     }//GEN-LAST:event_readComboBoxActionPerformed
 
     private void jCheckBox2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBox2ActionPerformed
@@ -567,14 +567,14 @@ public class SBret10DisplayControlPanel extends javax.swing.JPanel implements Pr
     /**
      * @return the chip
      */
-    public SBret10 getChip() {
+    public SBret10old getChip() {
         return chip;
     }
 
     /**
      * @param chip the chip to set
      */
-    public void setChip(SBret10 chip) {
+    public void setChip(SBret10old chip) {
         this.chip = chip;
     }
 
@@ -594,11 +594,11 @@ public class SBret10DisplayControlPanel extends javax.swing.JPanel implements Pr
         return (int)(renderer.getApsIntensityGain());
     }
 
-    public SBret10.Read getDisplayRead(){
+    public SBret10old.Read getDisplayRead(){
         return chip.getFrameData().getDisplayRead();
     }
     
-    public void setDisplayRead(SBret10.Read displayRead){
+    public void setDisplayRead(SBret10old.Read displayRead){
         chip.getFrameData().setDisplayRead(displayRead);
     }
 
