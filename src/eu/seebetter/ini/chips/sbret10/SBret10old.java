@@ -1207,14 +1207,14 @@ public class SBret10old extends APSDVSchip {
 
                 }
 
-                dmuxes[0].put(14, "AY179");
-                dmuxes[0].put(15, "RY179");
-                dmuxes[1].put(14, "AY179");
-                dmuxes[1].put(15, "RY179");
-                dmuxes[2].put(14, "biasCalibSpike");
-                dmuxes[2].put(15, "nRY179right");
-                dmuxes[3].put(14, "nResetRxCol");
-                dmuxes[3].put(15, "nRYtestpixel");
+                dmuxes[3].put(14, "AY179");
+                dmuxes[3].put(15, "RY179");
+                dmuxes[2].put(14, "AY179");
+                dmuxes[2].put(15, "RY179");
+                dmuxes[1].put(14, "biasCalibSpike");
+                dmuxes[1].put(15, "nRY179right");
+                dmuxes[0].put(14, "nResetRxCol");
+                dmuxes[0].put(15, "nRYtestpixel");
 
                 amuxes[0].setName("AnaMux2");
                 amuxes[1].setName("AnaMux1");
