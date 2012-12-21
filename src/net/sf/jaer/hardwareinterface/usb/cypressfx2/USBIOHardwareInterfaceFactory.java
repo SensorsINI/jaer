@@ -225,8 +225,8 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
                 } else {
                     return new SeeBetterHardwareInterface(n);
                 }
-            case SBret10HardwareInterface.PID:
-                return new SBret10HardwareInterface(n);
+            case ApsDvsHardwareInterface.PID:
+                return new ApsDvsHardwareInterface(n);
             case DVS320HardwareInterface.PID:
                 return new DVS320HardwareInterface(n);
             case CochleaAMS1bHardwareInterface.PID:

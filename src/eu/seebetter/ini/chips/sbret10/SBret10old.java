@@ -177,6 +177,16 @@ public class SBret10old extends APSDVSchip {
         registerControlPanel();
         help1 = getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/tretina/pcb/cDVSTest/cDVSTest.pdf", "cDVSTest PCB design", "shows pcb design");
     }
+    
+    @Override
+    public void setPowerDown(boolean powerDown){
+        config.powerDown.set(powerDown);
+        try {
+            config.sendChipConfig();
+        } catch (HardwareInterfaceException ex) {
+            Logger.getLogger(SBret10.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
 
     private void registerControlPanel() {
         try {

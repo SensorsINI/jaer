@@ -4,32 +4,34 @@
  * Created on 23 Jan 2008
  *
  */
-package eu.seebetter.ini.chips.sbret10;
+package net.sf.jaer.hardwareinterface.usb.cypressfx2;
 
+import eu.seebetter.ini.chips.*;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Biasgen;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
-import eu.seebetter.ini.chips.sbret10.SBret10old;
 import javax.swing.ProgressMonitor;
 import java.io.*;
+import java.util.Arrays;
 
 /**
  * Adds functionality of SeeBetter10/11 retina test chips to base classes for Cypress FX2 interface.
  *
  * @author tobi
  */
-public class SBret10HardwareInterface extends CypressFX2Biasgen {
+public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 
     /** The USB product ID of this device */
     static public final short PID = (short) 0x840D;
     static public final short DID = (short) 0x0002;
 
     /** Creates a new instance of CypressFX2Biasgen */
-    public SBret10HardwareInterface(int devNumber) {
+    public ApsDvsHardwareInterface(int devNumber) {
         super(devNumber);
+        
     }
 
 
@@ -41,9 +43,9 @@ public class SBret10HardwareInterface extends CypressFX2Biasgen {
      */
     @Override
     synchronized public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
-        if(chip!=null && chip instanceof SBret10old){
-            SBret10old.SBret10Config sb=(SBret10old.SBret10Config)chip.getBiasgen();
-            sb.powerDown.set(powerDown);
+        if(chip!=null && chip instanceof APSDVSchip){
+            APSDVSchip apsDVSchip = (APSDVSchip) chip;
+            apsDVSchip.setPowerDown(powerDown);
         }
     }
     
@@ -250,6 +252,7 @@ public class SBret10HardwareInterface extends CypressFX2Biasgen {
 
         public RetinaAEReader(CypressFX2 cypress) throws HardwareInterfaceException {
             super(cypress);
+            resetFrameAddressCounters();
         }
         /** Method to translate the UsbIoBuffer for the DVS320 sensor which uses the 32 bit address space.
          *<p>
@@ -301,13 +304,19 @@ public class SBret10HardwareInterface extends CypressFX2Biasgen {
          *@param b the data buffer
          *@see #translateEvents
          */
-        static private final byte Xbit = (byte) 0x02;
-        static private final byte triggerBit = (byte) 0x10;
+        static private final byte XBIT = (byte) 0x02;
+        static private final byte TRIGGER_BIT = (byte) 0x10;
+        public static final int TYPE_WORD_BIT = 0x2000;
+        public static final int FRAME_START_BIT = 0x1000;
         private int lasty = 0;
         private int currentts = 0;
         private int lastts = 0;
         private int nonmonotonicTimestampWarningCount=NONMONOTONIC_WARNING_COUNT;
-
+        
+        private int[] countX;
+        private int[] countY;
+        private int numReadoutTypes = 3;
+        
         @Override
         protected void translateEvents(UsbIoBuf b) {
             try {
@@ -355,27 +364,41 @@ public class SBret10HardwareInterface extends CypressFX2Biasgen {
                                 if ((eventCounter >= aeBufferSize) || (buffer.overrunOccuredFlag)) {
                                     buffer.overrunOccuredFlag = true; // throw away events if we have overrun the output arrays
                                 } else {
-                                    if ((dataword & SBret10old.ADDRESS_TYPE_MASK) == SBret10old.ADDRESS_TYPE_APS) {
-                                        addresses[eventCounter] = dataword;
+                                    if ((dataword & TYPE_WORD_BIT) == TYPE_WORD_BIT) {
+                                        if((dataword & FRAME_START_BIT) == FRAME_START_BIT)resetFrameAddressCounters();
+                                        int readcycle = (dataword & APSDVSchip.ADC_READCYCLE_MASK)>>APSDVSchip.ADC_READCYCLE_SHIFT;
+                                        if(!(countY[readcycle]<chip.getSizeY())){
+                                            countY[readcycle] = 0;
+                                            countX[readcycle]++;
+                                        }
+                                        int xAddr=(short)(chip.getSizeX()-1-countX[readcycle]);
+                                        int yAddr=(short)(chip.getSizeY()-1-countY[readcycle]);
+                                        countY[readcycle]++;
+                                        addresses[eventCounter] = APSDVSchip.ADDRESS_TYPE_APS | 
+                                                (yAddr<<APSDVSchip.YSHIFT)|
+                                                (xAddr<<APSDVSchip.XSHIFT)|
+                                                (dataword & (APSDVSchip.ADC_READCYCLE_MASK | APSDVSchip.ADC_DATA_MASK));
                                         timestamps[eventCounter] = currentts;  // ADC event gets last timestamp
                                         eventCounter++;
 //                                              System.out.println("ADC word: " + (dataword&SeeBetter20.ADC_DATA_MASK));
-                                    } else if ((buf[i + 1] & triggerBit) == triggerBit) { 
+                                    } else if ((buf[i + 1] & TRIGGER_BIT) == TRIGGER_BIT) { 
                                         addresses[eventCounter] = 256;  // combine current bits with last y address bits and send
                                         timestamps[eventCounter] = currentts;
                                         eventCounter++;
-                                     } else if ((buf[i + 1] & Xbit) == Xbit) {////  received an X address, write out event to addresses/timestamps output arrays
+                                     } else if ((buf[i + 1] & XBIT) == XBIT) {////  received an X address, write out event to addresses/timestamps output arrays
                                         // x adddress
-                                        addresses[eventCounter] = (lasty << SBret10old.YSHIFT) | (dataword & (SBret10old.XMASK | SBret10old.POLMASK));  // combine current bits with last y address bits and send
+                                        int xmask = (APSDVSchip.XMASK | APSDVSchip.POLMASK) >>> APSDVSchip.POLSHIFT;
+                                        addresses[eventCounter] = (lasty << APSDVSchip.YSHIFT) | ((dataword & xmask)<<APSDVSchip.POLSHIFT);  // combine current bits with last y address bits and send
                                         timestamps[eventCounter] = currentts; // add in the wrap offset and convert to 1us tick
                                         eventCounter++;
-                                        //log.info("X: "+((dataword & SBret10old.XMASK)>>1));
+                                        //log.info("X: "+((dataword & APSDVSchip.XMASK)>>1));
                                         gotY = false;
                                     } else {
                                         // y address
-                                        lasty = (SBret10old.YMASK >>> SBret10old.YSHIFT) & dataword; //(0xFF & buf[i]); //
+                                        int ymask = (APSDVSchip.YMASK >>> APSDVSchip.YSHIFT);
+                                        lasty = ymask & dataword; //(0xFF & buf[i]); //
                                         gotY = true;
-                                        //log.info("Y: "+lasty+" - data "+dataword+" - mask: "+(SBret10old.YMASK >>> SBret10old.YSHIFT));
+                                        //log.info("Y: "+lasty+" - data "+dataword+" - mask: "+(APSDVSchip.YMASK >>> APSDVSchip.YSHIFT));
                                     }
                                 }
                                 break;
@@ -414,6 +437,15 @@ public class SBret10HardwareInterface extends CypressFX2Biasgen {
             } catch (java.lang.IndexOutOfBoundsException e) {
                 log.warning(e.toString());
             }
+        }
+        
+        private void resetFrameAddressCounters(){
+            if(countX == null || countY == null){
+                countX = new int[numReadoutTypes];
+                countY = new int[numReadoutTypes];
+            }
+            Arrays.fill(countX, 0, numReadoutTypes, (short)0);
+            Arrays.fill(countY, 0, numReadoutTypes, (short)0);
         }
     }
 }

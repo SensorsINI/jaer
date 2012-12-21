@@ -110,22 +110,6 @@ public class SBret10 extends APSDVSchip {
     /**
      * bit masks/shifts for cDVS  AE data
      */
-    public static final int POLMASK = 1,
-            XSHIFT = Integer.bitCount(POLMASK),
-            XMASK = 255 << XSHIFT, // 8 bits
-            YSHIFT = 16, 
-            YMASK = 255 << YSHIFT; // 8 bits
-
-    /*
-     * data type fields
-     */
-    /** data type is either timestamp or data (AE address or ADC reading) */
-    public static final int DATA_TYPE_MASK = 0xc000, DATA_TYPE_ADDRESS = 0x0000, DATA_TYPE_TIMESTAMP = 0x4000, DATA_TYPE_WRAP = 0x8000, DATA_TYPE_TIMESTAMP_RESET = 0xd000;
-    /** Address-type refers to data if is it an "address". This data is either an AE address or ADC reading.*/
-    public static final int ADDRESS_TYPE_MASK = 0x2000, EVENT_ADDRESS_MASK = POLMASK | XMASK | YMASK, ADDRESS_TYPE_EVENT = 0x0000, ADDRESS_TYPE_ADC = 0x2000;
-    /** For ADC data, the data is defined by the ADC channel and whether it is the first ADC value from the scanner. */
-    public static final int ADC_DATA_MASK = 0x3ff, ADC_START_BIT = 0x1000, ADC_READCYCLE_MASK = 0x0C00; 
-    public static final int MAX_ADC = (int) ((1 << 10) - 1);
     private SBret10DisplayMethod sbretDisplayMethod = null;
     private boolean displayIntensity;
     private int exposureB;
@@ -176,6 +160,16 @@ public class SBret10 extends APSDVSchip {
     public void onRegistration() {
         registerControlPanel();
         help1 = getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/tretina/pcb/cDVSTest/cDVSTest.pdf", "cDVSTest PCB design", "shows pcb design");
+    }
+    
+    @Override
+    public void setPowerDown(boolean powerDown){
+        config.powerDown.set(powerDown);
+        try {
+            config.sendChipConfig();
+        } catch (HardwareInterfaceException ex) {
+            Logger.getLogger(SBret10.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     private void registerControlPanel() {
@@ -229,24 +223,10 @@ public class SBret10 extends APSDVSchip {
     public class SBret10Extractor extends RetinaExtractor {
 
         private int firstFrameTs = 0;
-        private short[] countX;
-        private short[] countY;
-        private int pixCnt=0; // TODO debug
         boolean ignore = false;
         
         public SBret10Extractor(SBret10 chip) {
             super(chip);
-            resetCounters();
-        }
-
-        private void resetCounters(){
-            int numReadoutTypes = 3;
-            if(countX == null || countY == null){
-                countX = new short[numReadoutTypes];
-                countY = new short[numReadoutTypes];
-            }
-            Arrays.fill(countX, 0, numReadoutTypes, (short)0);
-            Arrays.fill(countY, 0, numReadoutTypes, (short)0);
         }
         
         private void lastADCevent(){
@@ -285,7 +265,7 @@ public class SBret10 extends APSDVSchip {
             for (int i = 0; i < n; i++) {  // TODO implement skipBy
                 int data = datas[i];
 
-                if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_EVENT) {
+                if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_DVS) {
                     //DVS event
                     if(!ignore){
                         ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
@@ -294,12 +274,12 @@ public class SBret10 extends APSDVSchip {
                         e.special = false;
                         e.address = data;
                         e.timestamp = (timestamps[i]);
-                        e.polarity = (data & 1) == 1 ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
+                        e.polarity = (data & POLMASK) == POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
                         e.x = (short) (chip.getSizeX()-1-((data & XMASK) >>> XSHIFT));
                         e.y = (short) ((data & YMASK) >>> YSHIFT); 
                         //System.out.println(data);
                     } 
-                } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_ADC) {
+                } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_APS) {
                     //APS event
                     ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
                     e.adcSample = data & ADC_DATA_MASK;
@@ -325,32 +305,23 @@ public class SBret10 extends APSDVSchip {
                     e.special = false;
                     e.timestamp = (timestamps[i]);
                     e.address = data;
-                    e.startOfFrame = (data & ADC_START_BIT) == ADC_START_BIT;
+                    e.x = (short) (((data & XMASK) >>> XSHIFT));
+                    e.y = (short) ((data & YMASK) >>> YSHIFT); 
+                    e.startOfFrame = (e.readoutType == ApsDvsEvent.ReadoutType.A && e.x == 0 && e.y == 0);
                     if(e.startOfFrame){
                         //if(pixCnt!=129600) System.out.println("New frame, pixCnt was incorrectly "+pixCnt+" instead of 129600 but this could happen at end of file");
                         if(ignoreReadout){
                             ignore = true;
                         }
-                        //System.out.println("SOF - pixcount: "+pixCnt);
-                        resetCounters();
-                        pixCnt=0;
                         frameTime = e.timestamp - firstFrameTs;
                         firstFrameTs = e.timestamp;
                     }
-                    if(e.isB() && countX[1] == 0 && countY[2] == 0){
+                    if(e.isB() && e.x == 0 && e.y == 0){
                         exposureB = e.timestamp-firstFrameTs;
                     }
-                    if(e.isC() && countX[2] == 0 && countY[2] == 0){
+                    if(e.isC() && e.x == 0 && e.y == 0){
                         exposureC = e.timestamp-firstFrameTs;
                     }
-                    if(!(countY[sampleType]<chip.getSizeY())){
-                        countY[sampleType] = 0;
-                        countX[sampleType]++;
-                    }
-                    e.x=(short)(chip.getSizeX()-1-countX[sampleType]);
-                    e.y=(short)(chip.getSizeY()-1-countY[sampleType]);
-                    countY[sampleType]++;
-                    pixCnt++;
                     if(((config.useC.isSet() && e.isC()) || (!config.useC.isSet() && e.isB()))  && e.x == (short)(chip.getSizeX()-1) && e.y == (short)(chip.getSizeY()-1)){
                         lastADCevent();
                         //insert and end of frame event
