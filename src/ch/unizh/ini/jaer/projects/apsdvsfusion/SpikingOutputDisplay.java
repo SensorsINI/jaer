@@ -242,7 +242,8 @@ public class SpikingOutputDisplay {
 //        JPanel mainPanel=new JPanel();
         
         myPanel = new JPanel();
-        myPanel.setPreferredSize(Toolkit.getDefaultToolkit().getScreenSize());
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+		myPanel.setPreferredSize(new Dimension((int)screenSize.getWidth()/2, (int)screenSize.getHeight()/2));
         myPanel.setLayout(new BorderLayout());
  
         if (!SwingUtilities.isEventDispatchThread())

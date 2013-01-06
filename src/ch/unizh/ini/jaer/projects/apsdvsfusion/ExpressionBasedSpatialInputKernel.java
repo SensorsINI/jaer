@@ -23,6 +23,7 @@ public class ExpressionBasedSpatialInputKernel implements InputKernel {
 	int width = -1, height = -1;
 
 	int centerX, centerY;
+	int offsetX, offsetY;
 
 	String onExpressionString = "0.01";
 	String offExpressionString = "0.01";
@@ -52,6 +53,7 @@ public class ExpressionBasedSpatialInputKernel implements InputKernel {
 	public String getOnExpressionString() {
 		return onExpressionString;
 	}
+
 
 	public void setOnExpressionString(String onExpressionString) {
 		try {
@@ -122,11 +124,28 @@ public class ExpressionBasedSpatialInputKernel implements InputKernel {
 		if (width != this.width || height != this.height && width >= 0 && height >= 0) {
 			this.width = width;
 			this.height = height;
-			onConvolutionValues = new float[width][height];
-			offConvolutionValues = new float[width][height];
+			try {
+				onConvolutionValues = evaluateExpression(onExpressionString, new float[width][height], "0");
+				offConvolutionValues = evaluateExpression(offExpressionString, new float[width][height], "0");
+			} catch (IllegalExpressionException e) {
+			}
+			
 			this.centerX = width/2;
 			this.centerY = height/2;
+			recomputeMappings();
 		}
+	}
+	
+	protected void recomputeMappings() {
+		
+	}
+	
+	public synchronized void setInputOutputSizes(int inputX, int inputY, int outputX, int outputY) {
+		changeOffset((outputX - inputX) / 2 ,(outputX - outputY) / 2);
+	}
+	public synchronized void changeOffset(int offsetX, int offsetY) {
+		this.offsetX = offsetX;
+		this.offsetY = offsetY;
 	}
 	
 	public synchronized int getCenterX() {
@@ -139,32 +158,56 @@ public class ExpressionBasedSpatialInputKernel implements InputKernel {
 
 	public synchronized void setCenterX(int centerX) {
 		this.centerX = centerX;
+		recomputeMappings();
 	}
 	
 	public synchronized void setCenterY(int centerY) {
 		this.centerY = centerY;
+		recomputeMappings();
 	}
 
 	@Override
 	public void apply(int tx, int ty, int time, Polarity polarity,
 			FiringModelMap map, SpikeHandler spikeHandler) {
-		tx -= centerX;
-		ty -= centerY;
-		short minx = (short)Math.max(-map.getOffsetX(), -tx), maxx = (short)Math.min(width, map.getSizeX()-map.getOffsetX()-tx);
-		short miny = (short)Math.max(-map.getOffsetY(), -ty), maxy = (short)Math.min(height, map.getSizeY()-map.getOffsetY()-ty);
+		tx = tx - centerX + offsetX;
+		ty = ty - centerY + offsetY;
+		int minx = Math.max(0, -tx), maxx = Math.min(width, map.getSizeX()-tx);
+		int miny = Math.max(0, -ty), maxy = Math.min(height, map.getSizeY()-ty);
 		tx += minx; ty += miny;
 		float[][] convolutionValues;
 		if (polarity == Polarity.On) 
 			convolutionValues = onConvolutionValues;
 		else
 			convolutionValues = offConvolutionValues;
-		for (short x = minx; x < maxx; x++, tx++) {
-			for (short y = miny, ity = (short)ty; y < maxy; y++, ity++) {
+//		tx -= map.getOffsetX();
+//		ty -= map.getOffsetY();
+		for (int x = minx; x < maxx; x++, tx++) {
+			for (int y = miny, ity = ty; y < maxy; y++, ity++) {
 				if (map.get(tx,ity).receiveSpike(convolutionValues[x][y], time)) {
 					spikeHandler.spikeAt(tx,ity,time, Polarity.On);
 				}
 			}
 		}
+	}
+
+	@Override
+	public int getOffsetX() {
+		return offsetX;
+	}
+
+	@Override
+	public int getOffsetY() {
+		return offsetY;
+	}
+
+	@Override
+	public void setOffsetX(int offsetX) {
+		this.offsetX = offsetX;
+	}
+
+	@Override
+	public void setOffsetY(int offsetY) {
+		this.offsetY = offsetY;
 	}
 
 	

@@ -26,11 +26,11 @@ public class ExpressionTreeNodeFactory {
 			@Override public double compute(double left, double right) { 	return left - right;	}	});
 		ExpressionTreeNodeFactory.addOperation(new SimpleBinaryOperationCreator("*",100) {
 			@Override public double compute(double left, double right) { 	return left * right;	}	});
-		ExpressionTreeNodeFactory.addOperation(new SimpleBinaryOperationCreator("/",100) {
+		ExpressionTreeNodeFactory.addOperation(new SimpleBinaryOperationCreator("/",150) {
 			@Override public double compute(double left, double right) { 	return left / right;	}	});
-		ExpressionTreeNodeFactory.addOperation(new SimpleBinaryOperationCreator("^",100) {
+		ExpressionTreeNodeFactory.addOperation(new SimpleBinaryOperationCreator("^",200) {
 			@Override public double compute(double left, double right) { 	return Math.pow(left, right);	}	});
-		ExpressionTreeNodeFactory.addOperation(new SimpleBinaryOperationCreator("=",100) {
+		ExpressionTreeNodeFactory.addOperation(new SimpleBinaryOperationCreator("==",30) {
 			@Override public double compute(double left, double right) { 	if (left == right) return 1.0; else return 0.0;	}	});
 
 		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("sqrt",200, 1) {
@@ -82,6 +82,23 @@ public class ExpressionTreeNodeFactory {
 			@Override protected double compute(double[] arguments) { return Math.tan(arguments[0]);	}	});
 		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("tanh",200, 1) {
 			@Override protected double compute(double[] arguments) { return Math.tanh(arguments[0]);	}	});
+//		ExpressionTreeNodeFactory.addFunction(new FunctionETNodeCreator() {
+//			@Override public String symbol() { return "normal"; }
+//			@Override public int priority() { return 200; }
+//			@Override public int getNumberOfArguments() { return 2;	}
+//			@Override public FunctionETNode createExpressionTreeNode(
+//					ExpressionTreeNode[] arguments) throws IllegalExpressionException {
+//				return new FunctionETNode() {
+//					
+//					@Override
+//					protected double compute(double[] arguments) {
+//						// TODO Auto-generated method stub
+//						return 0;
+//					}
+//				};
+//			}
+//		});
+		
 		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("normal",200, 3) {
 			@Override 
 			protected double compute(double[] arguments) {

@@ -10,6 +10,8 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 import java.text.DecimalFormat;
 
 import javax.swing.JButton;
@@ -134,7 +136,7 @@ public class ExpressionKernelEditor extends JFrame {
 		
 		outWidthSpinner.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent arg0) {
-				setOutWidth((Integer)outHeightSpinner.getModel().getValue());
+				setOutWidth((Integer)outWidthSpinner.getModel().getValue());
 			}
 		});
 		
@@ -144,18 +146,38 @@ public class ExpressionKernelEditor extends JFrame {
 			}
 		});
 
+		
 		onExpressionField.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				myExpressionKernel.setOnExpressionString(onExpressionField.getText());
+				myExpressionKernel.setOffExpressionString(offExpressionField.getText());
 				plot(myExpressionKernel.getOnConvolutionValues(), onConvolutionDisplay);
+				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
 			}
 		});
 		offExpressionField.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				myExpressionKernel.setOffExpressionString(offExpressionField.getText());
-				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
+				updatePlots();
+			}
+		});
+		offExpressionField.addFocusListener(new FocusListener() {
+			@Override
+			public void focusLost(FocusEvent arg0) {
+				updatePlots();
+			}
+			@Override
+			public void focusGained(FocusEvent arg0) {
+			}
+		});
+		onExpressionField.addFocusListener(new FocusListener() {
+			@Override
+			public void focusLost(FocusEvent arg0) {
+				updatePlots();
+			}
+			@Override
+			public void focusGained(FocusEvent arg0) {
 			}
 		});
 		
@@ -165,8 +187,15 @@ public class ExpressionKernelEditor extends JFrame {
                 6, 10);       //xPad, yPad			
 	}
 	
+	private void updatePlots() {
+		myExpressionKernel.setOnExpressionString(onExpressionField.getText());
+		myExpressionKernel.setOffExpressionString(offExpressionField.getText());
+		plot(myExpressionKernel.getOnConvolutionValues(), onConvolutionDisplay);
+		plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
+	}
+	
 	public ExpressionBasedSpatialInputKernel createInputKernel() {
-		ExpressionBasedSpatialInputKernel kernel = new ExpressionBasedSpatialInputKernel(
+		ExpressionBasedSpatialInputKernel kernel = new SpaceableExpressionBasedSpatialIK(
 				myExpressionKernel.getWidth(), myExpressionKernel.getHeight());
 		kernel.setOffExpressionString(myExpressionKernel.getOffExpressionString());
 		kernel.setOnExpressionString(myExpressionKernel.getOnExpressionString());

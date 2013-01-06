@@ -115,6 +115,7 @@ public class ExpressionTreeBuilder {
 					else 
 						expressions.add(ExpressionTreeNodeFactory.createFunctionNode(token, arguments.toArray(new ExpressionTreeNode[arguments.size()])));
 					lastTokenWasAnExpression = true;
+					negateNext = false;
 				}
 			}
 			else if (token.equals(",") || token.equals(")")) {
@@ -126,10 +127,14 @@ public class ExpressionTreeBuilder {
 				return token;
 			}
 			else if (token.equals("(")) {
+				int lengthBefore = expressions.size();
 				String exitChar = parseString(st,expressions);
 				if (!exitChar.equals(")"))
 					throw new IllegalExpressionException("')' expected!");
 				lastTokenWasAnExpression = true;
+				if (negateNext && expressions.size() == lengthBefore+1)
+					expressions.add(negateETN(expressions.removeLast()));
+				negateNext = false;
 			}
 			// check for numbers, constants and variables...
 			else {
@@ -147,6 +152,7 @@ public class ExpressionTreeBuilder {
 					expressions.add(negateETN(e));
 				else 
 					expressions.add(e);
+				negateNext = false;
 				lastTokenWasAnExpression = true;
 			}
 			fresh = false;
@@ -209,7 +215,7 @@ public class ExpressionTreeBuilder {
 //		String test = "a*b + c +sin(a)";
 //		String test = "a*b + (c +sin(a))";
 //		String test = "a*(b) + c +sin(a)";
-		String test = "b*(a+c)+sin(axc)";
+		String test = "-(b*(-a+c)+100)";
 		try {
 			ExpressionTreeNode etn = parseString(test);
 			HashMap<String, Double> variables = new HashMap<String, Double>();

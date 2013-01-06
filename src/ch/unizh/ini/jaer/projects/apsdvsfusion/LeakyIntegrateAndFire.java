@@ -55,6 +55,19 @@ public class LeakyIntegrateAndFire implements FiringModel {
         	else if (membranePotential < 0.0f)
         		membranePotential = 0.0f;
         }
+        // time wrapped around...
+        else if (timeInUs + Integer.MAX_VALUE/2 < lastSpikeTime) {
+        	//membranePotential *= Math.exp(((float)(lastIncreaseTime - timeInUs)) / tau);
+        	membranePotential = (float)value;
+        	lastIncreaseTime = timeInUs;
+        	if (membranePotential > threshold) {
+        		membranePotential = 0.0f;
+        		lastSpikeTime = timeInUs + refractoryTime;
+        		return true;
+        	}
+        	else if (membranePotential < 0.0f)
+        		membranePotential = 0.0f;
+        }
 		return false;
 	}
 

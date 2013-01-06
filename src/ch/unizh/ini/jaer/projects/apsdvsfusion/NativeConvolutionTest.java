@@ -61,4 +61,28 @@ public class NativeConvolutionTest implements InputKernel {
 		test.runNative(1,1,1,test);
 	}
 
+	@Override
+	public int getOffsetX() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public int getOffsetY() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public void setOffsetX(int offsetX) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void setOffsetY(int offsetY) {
+		// TODO Auto-generated method stub
+		
+	}
+
 }

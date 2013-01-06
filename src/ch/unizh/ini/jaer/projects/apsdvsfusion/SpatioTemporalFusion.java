@@ -136,6 +136,7 @@ public class SpatioTemporalFusion extends EventFilter2D implements ActionListene
         if (enclosedFilter != null) {
             in = enclosedFilter.filterPacket(in);
         }
+//        getPrefs()
 		checkOutputPacketEventType(in);
         OutputEventIterator<?> oi=out.outputIterator();
 //        firingModelMap.changeSize(chip.getSizeX(), chip.getSizeY());
@@ -223,10 +224,11 @@ public class SpatioTemporalFusion extends EventFilter2D implements ActionListene
 				kernelEditor.getOutWidth(), kernelEditor.getOutWidth());
 		ExpressionBasedSpatialInputKernel kernel = kernelEditor
 				.createInputKernel();
+//		kernel.changeOffset((kernelEditor.getOutWidth() - 128) / 2 ,(kernelEditor.getOutHeight() - 128) / 2);
+		kernel.setInputOutputSizes(128, 128, kernelEditor.getOutWidth(), kernelEditor.getOutHeight());
+
 		SimpleKernelProcessor kernelProcessor = new SimpleKernelProcessor(
-				kernelEditor.getOutWidth(), kernelEditor.getOutHeight(), 
-				// center kernel:
-				(kernelEditor.getOutWidth() - 128) / 2 ,(kernelEditor.getOutHeight() - 128) / 2,kernel);
+				kernelEditor.getOutWidth(), kernelEditor.getOutHeight(),kernel);
 		kernelProcessor.addSpikeHandler(soViewer);
 		synchronized (kernelProcessors) {
 			kernelProcessors.add(kernelProcessor);

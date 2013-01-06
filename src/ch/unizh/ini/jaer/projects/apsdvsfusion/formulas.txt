@@ -1,2 +1,20 @@
-normal(sqrt(x*x+y*y),0,50)*0.01 * 0.3 * -1
-normal(sqrt(x*x+y*y),0,25)*0.01 * 0.15
+Approach cell (kernel size: 91x91, 10x10 output cells):
+On-Kernel:
+-normal(sqrt(x^2+y^2),0,25) * 0.3
+Off-Kernel: 
+normal(sqrt(x^2+y^2),0,12.5)* 0.15
+
+
+Off brisk cells (kernel size: 7x7, 64x64 output cells):
+On-Kernel:
+-4.5*normal(sqrt(x^2+y^2),0,1.0) + 4.5/5.0 * normal(sqrt(x^2+y^2),0,2.0)
+Off-Kernel:
+1.0 * normal(sqrt(x^2+y^2),0,1.0) - 1/6.0 * normal(sqrt(x^2+y^2),0,2.0)
+
+
+On brisk cells (kernel size: 7x7, 64x64 output cells):
+On-Kernel:
+1.0 * normal(sqrt(x^2+y^2),0,1.0) - 1/6.0 * normal(sqrt(x^2+y^2),0,2.0)
+Off-Kernel:
+-4.5*normal(sqrt(x^2+y^2),0,1.0) + 4.5/5.0 * normal(sqrt(x^2+y^2),0,2.0)
+

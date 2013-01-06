@@ -86,29 +86,33 @@ public class Sparsify extends EventFilter2D {
 
 
     // Deal with incoming packet
-    @Override public EventPacket<?> filterPacket( EventPacket<?> P){
-        if(!filterEnabled) return P;
+    @Override 
+    public EventPacket<?> filterPacket( EventPacket<?> P){
+		if (!filterEnabled)
+			return P;
         //out.outputIterator()
         
         float rate=P.getEventRateHz();
 
 
-        if (rate<maxFreq)
+        if (rate<maxFreq && polarityPass == 0)
             return P;
         else
         {
             OutputEventIterator outItr=out.outputIterator();
 
             out.setEventClass(PolarityEvent.class);
-            for (Object p:P)
-            //for (int i=0; i<P.getSize()*maxFreq/rate; i++)
-            { // iterate over the input packet**
-                    PolarityEvent e=(PolarityEvent) p;// P.getEvent(i);
-                    if ((polarityPass==0) || (polarityPass<0 && (e.polarity==e.polarity.Off)) || (polarityPass>0 && (e.polarity==e.polarity.On)))
-                    {   PolarityEvent x=(PolarityEvent)outItr.nextOutput();  // make an output event**
-                        x.copyFrom(e);
-                        
-                    }
+            int eventLimit = (maxFreq>=0)?(int)(P.getSize()*maxFreq/rate):P.getSize();
+            for (Object p:P)  { 
+            	// iterate over the input packet**
+            	PolarityEvent e=(PolarityEvent) p;// P.getEvent(i);
+            	if ((polarityPass==0) || (polarityPass<0 && (e.polarity==e.polarity.Off)) || (polarityPass>0 && (e.polarity==e.polarity.On))) {   
+            		PolarityEvent x=(PolarityEvent)outItr.nextOutput();  // make an output event**
+            		x.copyFrom(e);
+            		eventLimit--;
+            		if (eventLimit <= 0)
+            			break;
+            	}
             }
 
             //System.out.print(rate+" Hz");
