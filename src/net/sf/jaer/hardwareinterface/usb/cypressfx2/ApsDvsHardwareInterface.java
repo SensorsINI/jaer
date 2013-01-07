@@ -304,7 +304,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
          *@param b the data buffer
          *@see #translateEvents
          */
-        static private final byte XBIT = (byte) 0x02;
+        static private final byte XBIT = (byte) 0x08;
         static private final byte TRIGGER_BIT = (byte) 0x10;
         public static final int TYPE_WORD_BIT = 0x2000;
         public static final int FRAME_START_BIT = 0x1000;
