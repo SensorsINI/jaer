@@ -16,9 +16,9 @@ abstract public class APSDVSchip extends AETemporalConstastRetina{
     
     public static final int 
             YSHIFT = 22,
-            YMASK = 255 << YSHIFT, // 9 bits
+            YMASK = 511 << YSHIFT, // 9 bits
             XSHIFT = 12, 
-            XMASK = 255 << XSHIFT, // 10 bits
+            XMASK = 1023 << XSHIFT, // 10 bits
             POLSHIFT = 11, 
             POLMASK = 1 << POLSHIFT; 
 

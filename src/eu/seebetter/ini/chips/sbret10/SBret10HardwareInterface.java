@@ -301,7 +301,7 @@ public class SBret10HardwareInterface extends CypressFX2Biasgen {
          *@param b the data buffer
          *@see #translateEvents
          */
-        static private final byte Xbit = (byte) 0x02;
+        static private final byte Xbit = (byte) 0x08;
         static private final byte triggerBit = (byte) 0x10;
         private int lasty = 0;
         private int currentts = 0;
