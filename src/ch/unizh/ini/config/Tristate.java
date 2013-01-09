@@ -1,4 +1,4 @@
-package eu.seebetter.ini.chips.config;
+package ch.unizh.ini.config;
 
 /** Used for tristate outputs */
 public enum Tristate {

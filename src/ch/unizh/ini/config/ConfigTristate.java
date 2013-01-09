@@ -1,4 +1,4 @@
-package eu.seebetter.ini.chips.config;
+package ch.unizh.ini.config;
 
 /** Interface for a Tristate configuration value */
 public interface ConfigTristate extends ConfigBit {

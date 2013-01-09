@@ -2,8 +2,9 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package eu.seebetter.ini.chips.config;
+package ch.unizh.ini.config.cpld;
 
+import ch.unizh.ini.config.AbstractConfigValue;
 import java.util.logging.Logger;
 import java.util.prefs.PreferenceChangeEvent;
 import net.sf.jaer.chip.Chip;

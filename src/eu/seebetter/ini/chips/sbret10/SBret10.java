@@ -6,65 +6,59 @@ created 26 Oct 2008 for new cDVSTest chip
  */
 package eu.seebetter.ini.chips.sbret10;
 
-import ch.unizh.ini.jaer.chip.retina.*;
+import ch.unizh.ini.config.MuxControlPanel;
+import ch.unizh.ini.config.OutputMap;
+import ch.unizh.ini.config.cpld.CPLDBit;
+import ch.unizh.ini.config.cpld.CPLDConfigValue;
+import ch.unizh.ini.config.cpld.CPLDInt;
+import ch.unizh.ini.config.fx2.PortBit;
+import ch.unizh.ini.config.fx2.TriStateablePortBit;
+import ch.unizh.ini.config.onchip.OnchipConfigBit;
+import ch.unizh.ini.config.onchip.OutputMux;
 import com.sun.opengl.util.j2d.TextRenderer;
-import eu.seebetter.ini.chips.*;
-import eu.seebetter.ini.chips.config.*;
+import eu.seebetter.ini.chips.APSDVSchip;
+import eu.seebetter.ini.chips.DVSWithIntensityDisplayMethod;
+import eu.seebetter.ini.chips.config.SBretCPLDConfig;
 import eu.seebetter.ini.chips.sbret10.ApsDvsEvent.ReadoutType;
-import eu.seebetter.ini.chips.sbret10.SBret10.SBret10Config.*;
-import eu.seebetter.ini.chips.seebetter20.SeeBetter20;
-import java.awt.event.ActionEvent;
-import java.awt.geom.Point2D.Float;
-import java.util.Observer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.swing.JRadioButton;
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.biasgen.VDAC.VPot;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.hardwareinterface.*;
+import eu.seebetter.ini.chips.sbret10.SBret10.SBret10Config.ADC;
+import eu.seebetter.ini.chips.sbret10.SBret10.SBret10Config.ApsReadoutControl;
+import eu.seebetter.ini.chips.sbret10.SBret10.SBret10Config.ChipConfigChain;
+import eu.seebetter.ini.chips.sbret10.SBret10.SBret10Config.ConfigCmd;
 import java.awt.BorderLayout;
 import java.awt.Font;
-import java.awt.Insets;
-import java.awt.Rectangle;
+import java.awt.event.ActionEvent;
+import java.awt.geom.Point2D.Float;
 import java.beans.PropertyChangeSupport;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
 import java.math.BigInteger;
 import java.nio.FloatBuffer;
 import java.text.ParseException;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-import javax.swing.BoxLayout;
-import javax.swing.ButtonGroup;
-import javax.swing.JButton;
-import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JComponent;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.JTabbedPane;
+import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import net.sf.jaer.Description;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.Pot.Sex;
 import net.sf.jaer.biasgen.Pot.Type;
+import net.sf.jaer.biasgen.VDAC.VPot;
 import net.sf.jaer.biasgen.coarsefine.AddressedIPotCF;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceControlsCF;
+import net.sf.jaer.chip.Chip;
+import net.sf.jaer.chip.RetinaExtractor;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent.Polarity;
-import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.RetinaRenderer;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.util.ParameterControlPanel;
 import net.sf.jaer.util.filter.LowpassFilter2d;
-import net.sf.jaer.util.jama.Matrix;
 
 /**
  * Describes  retina and its event extractor and bias generator.
@@ -83,26 +77,7 @@ import net.sf.jaer.util.jama.Matrix;
  */
 @Description("SBret version 1.0")
 public class SBret10 extends APSDVSchip {
-
-    /** Describes size of array of pixels on the chip, in the pixels address space */
-    public static class PixelArray extends Rectangle {
-
-        int pitch;
-
-        /** Makes a new description. Assumes that Extractor already right shifts address to remove even and odd distinction of addresses.
-         * 
-         * @param pitch pitch of pixels in raw AER address space
-         * @param x left corner origin x location of pixel in its address space
-         * @param y bottom origin of array in its address space 
-         * @param width width in pixels
-         * @param height height in pixels.
-         */
-        public PixelArray(int pitch, int x, int y, int width, int height) {
-            super(x, y, width, height);
-            this.pitch = pitch;
-        }
-    }
-    public static final PixelArray EntirePixelArray = new PixelArray(1, 0, 0, 240, 180);
+    
     // following define bit masks for various hardware data types. 
     // The hardware interface translateEvents method packs the raw device data into 32 bit 'addresses' and timestamps.
     // timestamps are unwrapped and timestamp resets are handled in translateEvents. Addresses are filled with either AE or ADC data.
@@ -123,13 +98,15 @@ public class SBret10 extends APSDVSchip {
     private IntensityFrameData frameData = new IntensityFrameData();
     private SBret10Config config;
     JFrame controlFrame = null;
+    public static short WIDTH = 240;
+    public static short HEIGHT = 180;
 
     /** Creates a new instance of cDVSTest20.  */
     public SBret10() {
         setName("SBret10");
         setEventClass(ApsDvsEvent.class);
-        setSizeX(EntirePixelArray.width*EntirePixelArray.pitch);
-        setSizeY(EntirePixelArray.height*EntirePixelArray.pitch);
+        setSizeX(WIDTH);
+        setSizeY(HEIGHT);
         setNumCellTypes(3); // two are polarity and last is intensity
         setPixelHeightUm(18.5f);
         setPixelWidthUm(18.5f);
@@ -814,6 +791,7 @@ public class SBret10 extends APSDVSchip {
         @Override
         public void loadPreferences() {
             super.loadPreferences();
+            
             if (hasPreferencesList != null) {
                 for (HasPreference hp : hasPreferencesList) {
                     hp.loadPreference();
@@ -825,9 +803,7 @@ public class SBret10 extends APSDVSchip {
                     ss.loadPreferences();
                 }
             }
-//            if (thermometerDAC != null) {
-//                thermometerDAC.loadPreferences();
-//            }
+
             setAutoResetEnabled(getPrefs().getBoolean("autoResetEnabled", false));
         }
 
@@ -1211,21 +1187,21 @@ public class SBret10 extends APSDVSchip {
             
             }
             
-            class SBret10OutputMap extends OutputMap {
+//            class SBret10OutputMap extends OutputMap {
+//
+//                HashMap<Integer, String> nameMap = new HashMap<Integer, String>();
+//                
+//                public void put(int k, int v, String name) {
+//                    put(k, v);
+//                    nameMap.put(k, name);
+//                }
+//
+//                public void put(int k, String name) {
+//                    nameMap.put(k, name);
+//                }
+//            }
 
-                HashMap<Integer, String> nameMap = new HashMap<Integer, String>();
-                
-                void put(int k, int v, String name) {
-                    put(k, v);
-                    nameMap.put(k, name);
-                }
-
-                void put(int k, String name) {
-                    nameMap.put(k, name);
-                }
-            }
-
-            class VoltageOutputMap extends SBret10OutputMap {
+            class VoltageOutputMap extends OutputMap {
 
                 final void put(int k, int v) {
                     put(k, v, "Voltage " + k);
@@ -1243,7 +1219,7 @@ public class SBret10 extends APSDVSchip {
                 }
             }
 
-            class DigitalOutputMap extends SBret10OutputMap {
+            class DigitalOutputMap extends OutputMap {
 
                 DigitalOutputMap() {
                     for (int i = 0; i < 16; i++) {
@@ -1523,8 +1499,8 @@ public class SBret10 extends APSDVSchip {
             }
             if (madebuffer || value != grayValue) {
                 grayBuffer.rewind();
-                for (int y = 0; y < sizeY; y++) {
-                    for (int x = 0; x < sizeX; x++) {
+                for (int y = 0; y < HEIGHT; y++) {
+                    for (int x = 0; x < WIDTH; x++) {
                         if(displayLogIntensityChangeEvents){
                             grayBuffer.put(0);
                             grayBuffer.put(0);
@@ -1571,7 +1547,7 @@ public class SBret10 extends APSDVSchip {
             }
             
             String event = "";
-            try {
+//            try {
                 step = 1f / (colorScale);
                 Iterator allItr = packet.fullIterator();
                 while(allItr.hasNext()){
@@ -1606,8 +1582,8 @@ public class SBret10 extends APSDVSchip {
                 if (displayIntensity) {
                     double minADC = Integer.MAX_VALUE;
                     double maxADC = Integer.MIN_VALUE;
-                    for (int y = 0; y < EntirePixelArray.height; y++) {
-                        for (int x = 0; x < EntirePixelArray.width; x++) {
+                    for (int y = 0; y < HEIGHT; y++) {
+                        for (int x = 0; x < WIDTH; x++) {
                             //event = "ADC x "+x+", y "+y;
                             double count = frameData.get(x, y);
                             if (agcEnabled) {
@@ -1630,9 +1606,9 @@ public class SBret10 extends APSDVSchip {
 
                 }
                 autoScaleFrame(pm);
-            } catch (IndexOutOfBoundsException e) {
-                log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type? Event: "+event);//log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type? Event: "+eventData);
-            }
+//            } catch (IndexOutOfBoundsException e) {
+//                log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type? Event: "+event);//log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type? Event: "+eventData);
+//            }
             pixmap.rewind();
         }
 
@@ -1808,8 +1784,7 @@ public class SBret10 extends APSDVSchip {
     public class IntensityFrameData {
 
         /** The scanner is 240wide by 180 high  */
-        public final int WIDTH = EntirePixelArray.width, HEIGHT = EntirePixelArray.height; // width is BDVS pixels not scanner registers
-        private final int NUMSAMPLES = WIDTH * HEIGHT;
+        private int NUMSAMPLES;
         private int timestamp = 0; // timestamp of starting sample
         private float[] aBuffer,bBuffer,cBuffer;
         private float[] displayBuffer, displayFrame,lastFrame;
@@ -1831,6 +1806,7 @@ public class SBret10 extends APSDVSchip {
         }
         
         public void resetFrames(){
+            NUMSAMPLES = WIDTH * HEIGHT;
             aBuffer = new float[WIDTH*HEIGHT];
             bBuffer = new float[WIDTH*HEIGHT];
             cBuffer = new float[WIDTH*HEIGHT];
@@ -1877,6 +1853,7 @@ public class SBret10 extends APSDVSchip {
         
         public void putDvsEvent(ApsDvsEvent e){
             //update displayFrame
+            if(e.x<0 || e.x >= WIDTH || e.y < 0 || e.y >= HEIGHT) return;
             int idx = getIndex(e.x,e.y);
             if(e.timestamp<timestamps[idx])return;
             if(e.polarity == Polarity.On){
@@ -1902,6 +1879,7 @@ public class SBret10 extends APSDVSchip {
         
         private void putApsEvent(ApsDvsEvent e){
             if(!e.isAdcSample()) return;
+            if(e.x<0 || e.x >= WIDTH || e.y < 0 || e.y >= HEIGHT) return;
             if(e.isStartOfFrame())timestamp=e.timestamp;
             putNextSampleValue(e.adcSample, e.readoutType, e.x, e.y, e.timestamp);
         }

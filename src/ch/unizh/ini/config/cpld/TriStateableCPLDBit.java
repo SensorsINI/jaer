@@ -2,11 +2,14 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package eu.seebetter.ini.chips.config;
+package ch.unizh.ini.config.cpld;
 
-import eu.seebetter.ini.chips.config.CPLDBit;
-import eu.seebetter.ini.chips.config.ConfigTristate;
-import eu.seebetter.ini.chips.config.Tristate;
+import ch.unizh.ini.config.cpld.CPLDBit;
+import ch.unizh.ini.config.cpld.CPLDBit;
+import ch.unizh.ini.config.ConfigTristate;
+import ch.unizh.ini.config.ConfigTristate;
+import ch.unizh.ini.config.Tristate;
+import ch.unizh.ini.config.Tristate;
 import net.sf.jaer.chip.Chip;
 
 /**

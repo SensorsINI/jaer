@@ -6,6 +6,12 @@ created 26 Oct 2008 for new cDVSTest chip
  */
 package eu.seebetter.ini.chips.seebetter20;
 
+import ch.unizh.ini.config.fx2.TriStateablePortBit;
+import ch.unizh.ini.config.fx2.PortBit;
+import ch.unizh.ini.config.onchip.OnchipConfigBit;
+import ch.unizh.ini.config.cpld.CPLDInt;
+import ch.unizh.ini.config.cpld.CPLDConfigValue;
+import ch.unizh.ini.config.cpld.CPLDBit;
 import ch.unizh.ini.jaer.chip.retina.*;
 import com.sun.opengl.util.j2d.TextRenderer;
 import eu.seebetter.ini.chips.*;

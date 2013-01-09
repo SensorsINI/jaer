@@ -2,10 +2,10 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package eu.seebetter.ini.chips.config;
+package ch.unizh.ini.config.fx2;
 
-import eu.seebetter.ini.chips.config.AbstractConfigBit;
-import eu.seebetter.ini.chips.config.ConfigBit;
+import ch.unizh.ini.config.AbstractConfigBit;
+import ch.unizh.ini.config.ConfigBit;
 import net.sf.jaer.chip.Chip;
 
 /**

@@ -34,8 +34,6 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         
     }
 
-
-
     /** Overridden to use PortBit powerDown in biasgen
      * 
      * @param powerDown true to power off masterbias

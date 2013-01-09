@@ -2,9 +2,8 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package eu.seebetter.ini.chips.config;
+package ch.unizh.ini.config;
 
-import eu.seebetter.ini.chips.config.HasPreference;
 import eu.seebetter.ini.chips.seebetter1011.SeeBetter1011;
 import java.util.Observable;
 import java.util.prefs.PreferenceChangeListener;

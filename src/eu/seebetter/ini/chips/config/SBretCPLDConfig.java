@@ -4,6 +4,11 @@
  */
 package eu.seebetter.ini.chips.config;
 
+import ch.unizh.ini.config.fx2.PortBit;
+import ch.unizh.ini.config.HasPreference;
+import ch.unizh.ini.config.cpld.CPLDShiftRegister;
+import ch.unizh.ini.config.cpld.CPLDConfigValue;
+import ch.unizh.ini.config.AbstractConfigValue;
 import java.util.ArrayList;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.IPotGroup;

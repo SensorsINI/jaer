@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package eu.seebetter.ini.chips.config;
+package ch.unizh.ini.config;
 
 import java.awt.event.ActionEvent;
 import java.util.prefs.PreferenceChangeEvent;

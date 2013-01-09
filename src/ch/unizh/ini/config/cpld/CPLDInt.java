@@ -2,18 +2,20 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package eu.seebetter.ini.chips.config;
+package ch.unizh.ini.config.cpld;
 
-import eu.seebetter.ini.chips.config.ConfigInt;
+import ch.unizh.ini.config.cpld.CPLDConfigValue;
+import ch.unizh.ini.config.ConfigInt;
+import ch.unizh.ini.config.ConfigInt;
 import java.util.prefs.PreferenceChangeEvent;
 import net.sf.jaer.chip.Chip;
 
 /** A integer configuration value on CPLD shift register.
  * @author tobi
  */
-public class CPLDLong extends CPLDConfigValue implements ConfigInt {
+public class CPLDInt extends CPLDConfigValue implements ConfigInt {
 
-    volatile long value;
+    volatile int value;
     int def;
 
     /** Makes a new int value on the CPLD shift register.  The int has up to 32 bits. It occupies some bit positions.
@@ -25,23 +27,22 @@ public class CPLDLong extends CPLDConfigValue implements ConfigInt {
      * @param tip tool-tip
      * @param def default value
      */
-    public CPLDLong(Chip chip, int msb, int lsb, String name, String tip, int def) {
+    public CPLDInt(Chip chip, int msb, int lsb, String name, String tip, int def) {
         super(chip, lsb, msb, name, tip);
         this.lsb = lsb;
         this.msb = msb;
         this.def = def;
-        this.nBits = msb-lsb + 1;
         key = "CPLDInt." + name;
-        if (msb - lsb != 31) {
-            log.warning("only counted " + (msb - lsb + 1) + " bits, but there should usually be 32 in a CPLDInt like we are (" + this+")");
+        if (msb - lsb != 15) {
+            log.warning("only counted " + (msb - lsb + 1) + " bits, but there should usually be 16 in a CPLDInt like we are (" + this+")");
         }
         loadPreference();
     }
 
     @Override
     public void set(int value) throws IllegalArgumentException {
-        if (value < 0 || value >= (long)1 << nBits) {
-            throw new IllegalArgumentException("tried to store value=" + value + " which larger than permitted value of " + (1 << nBits) + " ("+nBits+") or is negative in " + this);
+        if (value < 0 || value >= 1 << nBits) {
+            throw new IllegalArgumentException("tried to store value=" + value + " which larger than permitted value of " + (1 << nBits) + " or is negative in " + this);
         }
         if (this.value != value) {
             setChanged();
@@ -53,7 +54,7 @@ public class CPLDLong extends CPLDConfigValue implements ConfigInt {
 
     @Override
     public int get() {
-        return (int)value;
+        return value;
     }
 
     @Override
@@ -72,12 +73,12 @@ public class CPLDLong extends CPLDConfigValue implements ConfigInt {
 
     @Override
     public void loadPreference() {
-        set((int)prefs.getLong(key, def));
+        set(prefs.getInt(key, def));
     }
 
     @Override
     public void storePreference() {
-        prefs.putLong(key, value); // will eventually call pref change listener which will call set again
+        prefs.putInt(key, value); // will eventually call pref change listener which will call set again
     }
     
     public int getMax(){

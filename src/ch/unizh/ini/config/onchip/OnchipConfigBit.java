@@ -1,6 +1,8 @@
-package eu.seebetter.ini.chips.config;
+package ch.unizh.ini.config.onchip;
 
 
+import ch.unizh.ini.config.HasPreference;
+import ch.unizh.ini.config.AbstractConfigBit;
 import net.sf.jaer.chip.Chip;
 
 

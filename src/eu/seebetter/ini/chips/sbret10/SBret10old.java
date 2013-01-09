@@ -6,6 +6,15 @@ created 26 Oct 2008 for new cDVSTest chip
  */
 package eu.seebetter.ini.chips.sbret10;
 
+import ch.unizh.ini.config.fx2.TriStateablePortBit;
+import ch.unizh.ini.config.fx2.PortBit;
+import ch.unizh.ini.config.onchip.OutputMux;
+import ch.unizh.ini.config.OutputMap;
+import ch.unizh.ini.config.onchip.OnchipConfigBit;
+import ch.unizh.ini.config.MuxControlPanel;
+import ch.unizh.ini.config.cpld.CPLDInt;
+import ch.unizh.ini.config.cpld.CPLDConfigValue;
+import ch.unizh.ini.config.cpld.CPLDBit;
 import ch.unizh.ini.jaer.chip.retina.*;
 import com.sun.opengl.util.j2d.TextRenderer;
 import eu.seebetter.ini.chips.*;
@@ -1254,12 +1263,12 @@ public class SBret10old extends APSDVSchip {
 
                 HashMap<Integer, String> nameMap = new HashMap<Integer, String>();
                 
-                void put(int k, int v, String name) {
+                public void put(int k, int v, String name) {
                     put(k, v);
                     nameMap.put(k, name);
                 }
 
-                void put(int k, String name) {
+                public void put(int k, String name) {
                     nameMap.put(k, name);
                 }
             }

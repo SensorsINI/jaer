@@ -2,8 +2,11 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package eu.seebetter.ini.chips.config;
+package ch.unizh.ini.config.cpld;
 
+import ch.unizh.ini.config.cpld.CPLDConfigValue;
+import ch.unizh.ini.config.cpld.CPLDBit;
+import ch.unizh.ini.config.ConfigInt;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;

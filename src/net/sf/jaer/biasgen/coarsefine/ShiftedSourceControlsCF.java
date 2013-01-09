@@ -44,7 +44,7 @@ public class ShiftedSourceControlsCF extends javax.swing.JPanel implements Obser
     public static boolean sliderEnabled = prefs.getBoolean("ConfigurableIPot.sliderEnabled", true);
     public static boolean valueEnabled = prefs.getBoolean("ConfigurableIPot.valueEnabled", true);
     public static boolean bitValueEnabled = prefs.getBoolean("ConfigurableIPot.bitValueEnabled", false);
-    public static boolean bitViewEnabled = prefs.getBoolean("ConfigurableIPot.bitViewEnabled", false);
+    public static boolean bitViewEnabled = prefs.getBoolean("ConfigurableIPot.bitViewEnabled", true);
     public static boolean sexEnabled = prefs.getBoolean("ConfigurableIPot.sexEnabled", true);
     public static boolean typeEnabled = prefs.getBoolean("ConfigurableIPot.typeEnabled", true);
     private boolean addedUndoListener = false;
@@ -77,6 +77,7 @@ public class ShiftedSourceControlsCF extends javax.swing.JPanel implements Obser
         refBiasSlider.setMaximum(pot.maxRefBitValue - 1);
         updateAppearance();  // set controls up with values from ipot
         allInstances.add(this);
+        setBitViewEnabled(true);
     }
 
     public String toString() {

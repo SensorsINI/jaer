@@ -1,4 +1,4 @@
-package eu.seebetter.ini.chips.config;
+package ch.unizh.ini.config;
 
 /** Interface for a configuration integer value. */
 public interface ConfigInt extends ConfigBase {

@@ -1,4 +1,4 @@
-package eu.seebetter.ini.chips.config;
+package ch.unizh.ini.config;
 
 
 import java.util.Observer;

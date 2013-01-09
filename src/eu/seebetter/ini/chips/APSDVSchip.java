@@ -5,7 +5,7 @@
 package eu.seebetter.ini.chips;
 
 import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
-import eu.seebetter.ini.chips.config.PortBit;
+import ch.unizh.ini.config.fx2.PortBit;
 import net.sf.jaer.chip.AEChip;
 
 /**
