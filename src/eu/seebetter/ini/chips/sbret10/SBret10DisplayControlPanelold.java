@@ -11,12 +11,12 @@
 
 package eu.seebetter.ini.chips.sbret10;
 
-import eu.seebetter.ini.chips.sbret10.SBret10.*;
+import eu.seebetter.ini.chips.sbret10.SBret10old.SBret10DisplayMethod;
+import eu.seebetter.ini.chips.sbret10.SBret10old.SBret10Renderer;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import net.sf.jaer.graphics.AEChipRenderer;
-import org.jdesktop.beansbinding.Validator;
 
 /**
  * Controls display of pixel data on SBret10.
