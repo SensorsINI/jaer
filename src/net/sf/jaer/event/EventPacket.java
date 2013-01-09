@@ -438,7 +438,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
             log.info("enlarging capacity of " + this);
             int ncapacity = capacity * 2; // (capacity*3)/2+1;
             Object oldData[] = elementData;
-            elementData = (E[]) new BasicEvent[ncapacity];
+            elementData = (E[]) Array.newInstance(eventClass, ncapacity);
             System.arraycopy(oldData, 0, elementData, 0, size);
             oldData = null;
             // capacity still is old capacity and we have already filled it to there with new events, now fill
@@ -462,7 +462,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         log.info("enlarging capacity of "+this+" to "+n+" events");
         int ncapacity=n; // (capacity*3)/2+1;
         Object oldData[]=elementData;
-        elementData=(E[]) new BasicEvent[ncapacity];
+        elementData = (E[]) Array.newInstance(eventClass, ncapacity);
         System.arraycopy(oldData, 0, elementData, 0, size);
         oldData=null;
         // capacity still is old capacity and we have already filled it to there with new events, now fill

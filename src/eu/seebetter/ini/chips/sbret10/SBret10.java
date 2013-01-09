@@ -53,6 +53,7 @@ import net.sf.jaer.chip.RetinaExtractor;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent.Polarity;
+import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.graphics.RetinaRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -313,21 +314,32 @@ public class SBret10 extends APSDVSchip {
                             config.adc.setAdcEnabled(false);
                         }
                     }
-                    //if(e.x<0 || e.y<0)System.out.println("New ADC event: type "+sampleType+", x "+e.x+", y "+e.y);
-//                    if(e.x>=0 && e.y>=0 && displayIntensity && !getAeViewer().isPaused()){
-//                        frameData.putApsEvent(e);
-//                    }
                 }
-
             }
-        /*    if (gotAEREvent) {
-                lastEventTime = System.currentTimeMillis();
-            } else if (config.autoResetEnabled && config.nChipReset.isSet() && System.currentTimeMillis() - lastEventTime > AUTO_RESET_TIMEOUT_MS && getAeViewer() != null && getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
-                config.resetChip();
-            }*/
-
             return out;
         } // extractPacket
+        
+        @Override
+        public AEPacketRaw reconstructRawPacket(EventPacket packet) {
+            if(raw==null) raw=new AEPacketRaw();
+            if(!(packet instanceof ApsDvsEventPacket)) return null;
+            ApsDvsEventPacket apsDVSpacket = (ApsDvsEventPacket) packet;
+            raw.ensureCapacity(packet.getSize());
+            raw.setNumEvents(0);
+            int[] a=raw.addresses;
+            int [] ts=raw.timestamps;
+            int n=apsDVSpacket.getSize();
+            Iterator evItr = apsDVSpacket.fullIterator();
+            int k=0;
+            while(evItr.hasNext()){
+                TypedEvent e=(ApsDvsEvent)evItr.next();
+                ts[k]=e.timestamp;
+                a[k++]=e.address; 
+            }
+            raw.setNumEvents(n);
+            return raw;
+        } 
+        
     } // extractor
 
     /** overrides the Chip setHardware interface to construct a biasgen if one doesn't exist already.

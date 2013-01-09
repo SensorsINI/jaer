@@ -343,7 +343,7 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
         this.subsampleThresholdEventCount = subsampleThresholdEventCount;
     }
     
-    private AEPacketRaw raw=null;
+    public AEPacketRaw raw=null;
     
     /** 
      * Returns a raw packet suitable for logging to a data file, from an EventPacket that could be the result of filtering

@@ -2043,7 +2043,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         loggingOutputStream.writePacket(aeRaw); // log all events
                     } else {
                         // log the reconstructed packet after filtering
-                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet); // TODO crashes if logging filtered apsDVSPacket
+                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
                         loggingOutputStream.writePacket(aeRawRecon);
                     }
                 } catch (IOException e) {
