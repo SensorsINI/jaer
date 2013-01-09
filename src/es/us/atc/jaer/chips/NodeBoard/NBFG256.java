@@ -15,7 +15,6 @@ import eu.seebetter.ini.chips.*;
 import eu.seebetter.ini.chips.sbret10.ApsDvsEvent;
 import java.awt.geom.Point2D.Float;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
@@ -215,8 +214,8 @@ public final class NBFG256 extends AETemporalConstastRetina {
            // }
             int n = in.getNumEvents(); //addresses.length;
 
-            int[] datas = in.getAddresses();
-            int[] timestamps = in.getTimestamps();
+            int[] datas = in.addresses;
+            int[] timestamps = in.timestamps;
             OutputEventIterator outItr = out.outputIterator();
 
             // at this point the raw data from the USB IN packet has already been digested to extract timestamps, including timestamp wrap events and timestamp resets.
@@ -232,7 +231,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
                     else data1=0;
                     diffts=timestamps[i]-lastts;
                     lastts=timestamps[i];
-                    if(((data & 0x7FFF) == 0x7FFF) && ((data1 & 0x7FFF) < 0x7FFF) && (diffts>0) ) {
+                    if(((data & 0x7FFF) == 0x7FFF) && ((data1 & 0x7FFF) < 0x7FFF) && (diffts>10) ) {
                         ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
                         ignore = false;
                         System.out.println("SOF - pixcount: "+pixCnt);
