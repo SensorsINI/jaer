@@ -73,8 +73,13 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     private E eventPrototype;
     public transient E[] elementData;
     private AEPacketRaw rawPacket=null;
-    /** The outputPacket that gets filled with events from this packet (used for bypassing a filter e.g. in the case of APS events) */
-    public EventPacket nextPacket=null;
+    
+    /** The outputPacket that gets filled with events from this packet when events are bypassed for processing. 
+     * Used for bypassing a filter e.g. in the case of APS events).
+     This reference is used when the default event iterator needs to preserve events in the packet without processing them.
+     To set this field use <code>setNextPacket</code>.
+     */
+    protected EventPacket nextPacket=null;
     
     /** The modification system timestamp of the EventPacket in ns, from System.nanoTime(). Some hardware interfaces set this field 
      * when the packet is started to be filled with events from hardware.
@@ -115,18 +120,27 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         setEventClass(eventClass);
     }
     
-    //get a new EventPacket to fill for next filter stage (needs to be overwritten by extending classes)
+    /** Returns a new EventPacket to fill for next filter stage.
+     * Subclasses must override this method to return the proper subtype of EventPacket.
+     * @return EventPacket filled with this packet's event class
+     */
     public EventPacket getNextPacket(){
         setNextPacket(new EventPacket(this.eventClass));
         return nextPacket;
     }
     
-    //set the packet to which events are copied in a filter to allow bypassing the filter
+   /** Sets the packet to which events are copied in a filter to allow bypassing the filter. Use this method in an EventFilter before iterating over events.
+    * <code>next</code> is the output packet of an EventFilter, obtained from <code>checkOutputPacketEventType</code>.
+    * 
+    * @param next the output packet of the filter using the iterator of this packet.
+    * @see EventFilter2D#checkOutputPacketEventType(net.sf.jaer.event.EventPacket) 
+    * 
+    */
     public void setNextPacket(EventPacket next){
         nextPacket = next;
     }
 
-    /** Fills this with DEFAULT_INITIAL_CAPACITY of the event class */
+    /** Fills this EventPacket with DEFAULT_INITIAL_CAPACITY of the event class */
     protected void initializeEvents() {
 //        eventList=new ArrayList<E>(DEFAULT_INITIAL_CAPACITY);
 //        elementData = (E[])new BasicEvent[DEFAULT_INITIAL_CAPACITY];
@@ -273,7 +287,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     }
     private OutItr outputIterator=null;
 
-    /** Returns an iterator that iterates over the output events.
+    /** Returns an iterator that iterates over the output events. This iterator is reset by this call to start at the beginning of the output packet.
      *
      * @return the iterator. Use it to obtain new output events which can be then copied from other events or modfified.
      */
@@ -286,7 +300,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return outputIterator;
     }
     
-    /** Returns the actual iterator that iterates over the output events.
+    /** Returns the iterator that iterates over the output events, but does not reset the iterator.
      *
      * @return the actual iterator
      */
