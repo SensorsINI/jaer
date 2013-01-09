@@ -11,6 +11,8 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagLayout;
 import java.awt.Toolkit;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
 import java.lang.reflect.InvocationTargetException;
@@ -18,11 +20,15 @@ import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.text.JTextComponent;
 
 import com.kitfox.svg.app.MainFrame;
@@ -49,6 +55,7 @@ public class SpikingOutputDisplay {
     private volatile boolean enable=true;
     private JFrame displayFrame = null;
     
+    
     public class SingleOutputViewer implements SpikeHandler {   
     	int sizeX = 0, sizeY = 0;
         ImageDisplay display ;
@@ -63,7 +70,7 @@ public class SpikingOutputDisplay {
             display.setSizeX(sizeX);
             display.setSizeY(sizeY);
             display.setPreferredSize(new Dimension(250,250));
-            display.setBorderSpacePixels(18);
+            display.setBorderSpacePixels(1);
             this.display.setFontSize(14);
         }
         

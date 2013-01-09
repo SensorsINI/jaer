@@ -1,0 +1,19 @@
+ToDo:
+
+1) Interface changes:
+- Cell Model must be
+  a) selectable (Integrate cell, IntegrateAndFire etc.)
+  b) editable (like threshold, time constant etc.)
+  
+- Kernel Editor:
+  a) improve output viewer
+  b) fuse output viewer and kernel editor
+  c) show formulas in output viewer, allow editing of instantiated kernels
+  
+  
+- allow Spatio-Temporal Filters:
+  a) Kernel Editor & viewer must allow 3D kernels
+  b) new Cell model required:
+     i)   current-based or voltage based (integrate charges or search for membrane potential peaks?)
+     ii)  at each spike, a "future profile" should be added to the future voltage or current trace of affected cells. 
+     iii) How to generate spikes? Future spikes can only be generated when the next spike arrives...   

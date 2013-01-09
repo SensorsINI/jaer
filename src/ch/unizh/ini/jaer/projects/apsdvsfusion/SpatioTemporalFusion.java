@@ -124,7 +124,8 @@ public class SpatioTemporalFusion extends EventFilter2D implements ActionListene
 		}
 	}
 	
-	
+
+	int time = 0;
 	/* (non-Javadoc)
 	 * @see net.sf.jaer.eventprocessing.EventFilter2D#filterPacket(net.sf.jaer.event.EventPacket)
 	 */
@@ -142,11 +143,17 @@ public class SpatioTemporalFusion extends EventFilter2D implements ActionListene
 //        firingModelMap.changeSize(chip.getSizeX(), chip.getSizeY());
  //       PolarityEvent e;
         out.setEventClass(PolarityEvent.class);
+        int beforePackageTime = time;
 		for (BasicEvent be : in) {
 			if (be instanceof PolarityEvent) {
 				synchronized (kernelProcessors) {
 					for (KernelProcessor kp : kernelProcessors) {
+						if (be.timestamp < time)
+							System.out.println(time + " -> " + be.timestamp);
+						if (be.timestamp < beforePackageTime) 
+							System.out.println("time decreased from last package: "+beforePackageTime+" -> "+be.timestamp);
 						kp.spikeAt(be.x,be.y,be.timestamp, ((PolarityEvent)be).getPolarity());
+						time = be.timestamp;
 					}
 				}
 //				inputKernel.apply(be.x, be.y, be.timestamp, ((PolarityEvent)be).polarity, firingModelMap, spikeHandler);
@@ -216,6 +223,7 @@ public class SpatioTemporalFusion extends EventFilter2D implements ActionListene
 		}
 	}
 
+	
 	@Override
 	public void actionPerformed(ActionEvent e) {
 //		SingleOutputViewer soViewer = spikingOutputDisplay.createOutputViewer(
@@ -233,6 +241,19 @@ public class SpatioTemporalFusion extends EventFilter2D implements ActionListene
 		synchronized (kernelProcessors) {
 			kernelProcessors.add(kernelProcessor);
 		}
-
+	}
+	
+	public void addKernelProcessor(KernelProcessor kernelProcessor) {
+		synchronized (kernelProcessors) {
+			if (!kernelProcessors.contains(kernelProcessor))
+				kernelProcessors.add(kernelProcessor);
+		}
+	}
+	
+	public void removeKernelProcessor(KernelProcessor kernelProcessor) {
+		synchronized (kernelProcessors) {
+			if (kernelProcessors.contains(kernelProcessor))
+				kernelProcessors.remove(kernelProcessor);
+		}
 	}
 }
