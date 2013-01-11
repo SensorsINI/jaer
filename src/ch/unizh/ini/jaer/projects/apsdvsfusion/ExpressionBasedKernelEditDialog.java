@@ -32,6 +32,7 @@ import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.Spring;
 import javax.swing.SpringLayout;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -328,7 +329,7 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 ////		kernelFrame.setVisible(visible);
 //	}
 	
-    public void plot(float[][] convolutionValues, ImageDisplay display) {
+    public void plot(final float[][] convolutionValues, final ImageDisplay display) {
         float max=Float.NEGATIVE_INFINITY;
         float min=Float.POSITIVE_INFINITY;
         for (int i=0; i<convolutionValues.length; i++)
@@ -341,15 +342,30 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
         
         max=Math.abs(max);
         min=Math.abs(min);
-        float absmax=Math.max(min,max);
+        final float absmax=Math.max(min,max);
         
         max=absmax;
         min=-absmax;
 
-        display.setImageSize(convolutionValues.length,convolutionValues[0].length);
+        if (display.getSizeX() != convolutionValues.length || display.getSizeY() != convolutionValues[0].length)
+        	display.setImageSize(convolutionValues.length,convolutionValues[0].length);
                 
 //        disp.setPreferredSize(new Dimension(300,300));
-        
+        SwingUtilities.invokeLater(new Runnable() {
+			
+			@Override
+			public void run() {
+				for (int x = 0; x < convolutionValues.length; x++)
+					for (int y = 0; y < convolutionValues[x].length; y++) {
+						float val = convolutionValues[x][y];
+						if (val > 0)
+							display.setPixmapRGB(x, y, val / absmax, 0, 0);
+						else
+							display.setPixmapRGB(x, y, 0, 0, -val / absmax);
+					}
+		        display.repaint();
+			}
+		});
 		for (int x = 0; x < convolutionValues.length; x++)
 			for (int y = 0; y < convolutionValues[x].length; y++) {
 				float val = convolutionValues[x][y];

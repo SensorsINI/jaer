@@ -7,8 +7,8 @@ import java.awt.Dimension;
 
 import javax.swing.SwingUtilities;
 
-import jspikestack.ImageDisplay;
 import net.sf.jaer.event.PolarityEvent.Polarity;
+import net.sf.jaer.graphics.ImageDisplay;
 
 /**
  * @author Dennis
@@ -29,7 +29,7 @@ public class SpikingOutputViewer implements SpikeHandler {
         display.setSizeX(sizeX);
         display.setSizeY(sizeY);
         display.setPreferredSize(new Dimension(250,250));
-        display.setBorderSpacePixels(18);
+        display.setBorderSpacePixels(0);
         this.display.setFontSize(14);
     }
     
@@ -58,7 +58,7 @@ public class SpikingOutputViewer implements SpikeHandler {
     /* Update layerStatePlots to current network time */
     public void update()  {
     	// swap buffer and receivedSpikes:
-    	synchronized (this) {
+//    	synchronized (this) {
     	synchronized (this.receivedSpikes) {
     		synchronized (this.receivedSpikesBuffer) {
             	this.maxValueInBuffer = 1; 
@@ -73,7 +73,7 @@ public class SpikingOutputViewer implements SpikeHandler {
 				}
     		}
     	}
-    	}
+//    	}
         SwingUtilities.invokeLater(new Runnable(){
                 @Override
                 public void run() {

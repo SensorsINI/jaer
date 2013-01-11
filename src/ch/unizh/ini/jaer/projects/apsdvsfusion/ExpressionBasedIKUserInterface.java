@@ -11,6 +11,8 @@ import java.awt.HeadlessException;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Random;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -18,8 +20,13 @@ import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
 
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
 
@@ -170,6 +177,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 		mainPanel.setPreferredSize(new Dimension(850,400));
 		this.pack();
 		this.setVisible(true);
+		addKernel(7,7,128,128,128,128,"0.05","0.05");
 	}
 	
 //	
@@ -178,16 +186,36 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 //	ArrayList<SpikingOutputViewer> soViewers = new ArrayList<SpikingOutputViewer>();
 //	ArrayList<ExpressionBasedSpatialIKPanel> soViewerPanels = new ArrayList<ExpressionBasedSpatialIKPanel>(); 
 	
+	public void addKernel(int kernelWidth, int kernelHeight, int inputWidth, int inputHeight, int outputWidth, int outputHeight, String onExpressionString, String offExpressionString) {
+		final ExpressionBasedSpatialIKPanel soViewerPanel = new ExpressionBasedSpatialIKPanel(kernelWidth, kernelHeight, inputWidth, inputHeight, outputWidth, outputHeight, onExpressionString, offExpressionString);
+		if (SwingUtilities.isEventDispatchThread()) {
+			panels.add(soViewerPanel);
+			viewerPanel.add(soViewerPanel);
+			this.pack();
+		}
+		else {
+			SwingUtilities.invokeLater(new Runnable() {
+				@Override
+				public void run() {
+					panels.add(soViewerPanel);
+					viewerPanel.add(soViewerPanel);
+					ExpressionBasedIKUserInterface.this.pack();
+				}
+			});
+		}
+		
+	}
 	protected void addKernel() {
 		editDialog.setParameters(7,7, 128, 128,128,128, "0.01","0.01");
 		editDialog.setVisible(true);
 		if (editDialog.isValuesAccepted()) {
 			ExpressionBasedSpatialIKPanel soViewerPanel = new ExpressionBasedSpatialIKPanel(editDialog.getKernelWidth(), editDialog.getKernelHeight(), 128,128,editDialog.getOutWidth(), editDialog.getOutHeight(), editDialog.getOnExpressionString(), editDialog.getOffExpressionString());
-			
+
 			panels.add(soViewerPanel);
 			viewerPanel.add(soViewerPanel);
 			this.pack();
 		}
+		
 		
 //		SimpleKernelProcessor kernelProcessor = new SimpleKernelProcessor(128,128,kernel);
 //		kernelProcessor.addSpikeHandler(soViewer);
@@ -234,6 +262,26 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 	public static void main(String[] args) {
 		SpatioTemporalFusion stfFilter = new SpatioTemporalFusion(null);
 		SpikingOutputViewerManager spikingOutputViewerManager = new SpikingOutputViewerManager(); 
-		ExpressionBasedIKUserInterface ui = new ExpressionBasedIKUserInterface(stfFilter, spikingOutputViewerManager);
+		stfFilter.setFilterEnabled(true);
+		ExpressionBasedIKUserInterface ui = stfFilter.expressionBasedIKUserInterface;//new ExpressionBasedIKUserInterface(stfFilter, spikingOutputViewerManager);
+		Random r = new Random(1);
+		ui.addKernel(7,7,128,128,128,128,"0.05","0.05");
+		int time = 0;
+		for (int i = 0; i < 100000; i++) {
+			EventPacket<PolarityEvent> ep = new EventPacket<PolarityEvent>(PolarityEvent.class);
+            OutputEventIterator outItr = ep.outputIterator();
+			Iterator<PolarityEvent> it = ep.inputIterator();
+			for (int j = 0; j < 1000; j++) {
+                PolarityEvent pe = (PolarityEvent) outItr.nextOutput();
+				
+//				PolarityEvent pe = it.next();//new PolarityEvent();
+				pe.setX((short)r.nextInt(128));
+				pe.setY((short)r.nextInt(128));
+				pe.setTimestamp(time++);
+//				ep.(packet)(pe);
+			}
+			stfFilter.filterPacket(ep);
+		}
+		System.exit(0);
 	}
 }

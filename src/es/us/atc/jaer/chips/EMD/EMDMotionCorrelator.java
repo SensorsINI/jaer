@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package es.us.atc.emd;
+package es.us.atc.jaer.chips.EMD;
 
 import ch.unizh.ini.jaer.chip.dollbrain.ColorEvent;
 //import net.sf.jaer.chip.AEChip;
