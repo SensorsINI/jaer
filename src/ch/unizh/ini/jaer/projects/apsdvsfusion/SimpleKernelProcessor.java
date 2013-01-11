@@ -31,6 +31,16 @@ public class SimpleKernelProcessor extends KernelProcessor {
 		this.inputKernel = inputKernel;
 	}
 
+	
+	public int getOutWidth() {
+		return firingModelMap.getSizeX();
+	}
+	public int getOutHeight() {
+		return firingModelMap.getSizeY();
+	}
+	public void changeOutSize(int width, int height) {
+		firingModelMap.changeSize(width, height);
+	}
 	public void addSpikeHandler(SpikeHandler handler) {
 		spikeHandler.addSpikeHandler(handler);
 	}
@@ -57,7 +67,9 @@ public class SimpleKernelProcessor extends KernelProcessor {
 	
 	@Override
 	protected void processSpike(int x, int y, int time, PolarityEvent.Polarity polarity) {
-		inputKernel.apply(x, y, time, polarity, firingModelMap, spikeHandler);
+		synchronized (this) {
+			inputKernel.apply(x, y, time, polarity, firingModelMap, spikeHandler);
+		}
 	}
 
 }

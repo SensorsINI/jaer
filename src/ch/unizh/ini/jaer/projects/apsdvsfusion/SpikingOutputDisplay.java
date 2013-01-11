@@ -33,10 +33,11 @@ import javax.swing.text.JTextComponent;
 
 import com.kitfox.svg.app.MainFrame;
 
-import jspikestack.ControlPanel;
-import jspikestack.ImageDisplay;
+//import jspikestack.ControlPanel;
+//import jspikestack.ImageDisplay;
 
 import net.sf.jaer.event.PolarityEvent.Polarity;
+import net.sf.jaer.graphics.ImageDisplay;
 
 /**
  * @author Dennis Goehlsdorf
@@ -174,10 +175,10 @@ public class SpikingOutputDisplay {
     	return soViewer;
     }
     
-    public void addControls(ControlPanel cp)
-    {  
-        controlPanel=cp;
-    }
+//    public void addControls(ControlPanel cp)
+//    {  
+//        controlPanel=cp;
+//    }
     
     public void setVisible(boolean visible) {
     	if (visible) {

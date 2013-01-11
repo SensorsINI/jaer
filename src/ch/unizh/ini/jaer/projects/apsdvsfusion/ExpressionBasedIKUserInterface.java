@@ -5,6 +5,7 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.GraphicsConfiguration;
 import java.awt.HeadlessException;
 import java.awt.event.ActionEvent;
@@ -32,7 +33,8 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 	private JPanel viewerPanel = new JPanel();
 	private SpatioTemporalFusion stfFilter;
 	SpikingOutputViewerManager spikingOutputViewerManager;
-	
+	ExpressionBasedKernelEditDialog editDialog;
+	ArrayList<ExpressionBasedSpatialIKPanel> panels = new ArrayList<ExpressionBasedIKUserInterface.ExpressionBasedSpatialIKPanel>();
 	
     public class ExpressionBasedSpatialIKPanel extends JPanel {
     	SpikingOutputViewer soViewer;
@@ -43,24 +45,43 @@ public class ExpressionBasedIKUserInterface extends JFrame {
     	JButton deleteButton;
     	JCheckBox enableBox;
     	BorderLayout layout;
+    	int inputWidth, inputHeight;
     	
-    	public ExpressionBasedSpatialIKPanel(int kernelWidth, int kernelHeight, int inputWidth, int inputHeight, int outputWidth, int outputHeight) {
+    	public ExpressionBasedSpatialIKPanel(int kernelWidth, int kernelHeight, int inputWidth, int inputHeight, int outputWidth, int outputHeight, String onExpressionString, String offExpressionString) {
+    		this.inputWidth = inputWidth;
+    		this.inputHeight = inputHeight;
     		inputKernel = new SpaceableExpressionBasedSpatialIK(kernelWidth, kernelHeight);
+    		inputKernel.setOnExpressionString(onExpressionString);
+    		inputKernel.setOffExpressionString(offExpressionString);
     		soViewer = spikingOutputViewerManager.createOutputViewer(outputWidth, outputHeight);
     		inputKernel.setInputOutputSizes(inputWidth, inputHeight, outputWidth, outputHeight);
-    		kernelProcessor = new SimpleKernelProcessor(128,128,inputKernel);
+    		kernelProcessor = new SimpleKernelProcessor(outputWidth,outputHeight,inputKernel);
     		kernelProcessor.addSpikeHandler(soViewer);
     		stfFilter.addKernelProcessor(kernelProcessor);
     		
     		layout = new BorderLayout();
     		this.setLayout(layout);
     		viewerPanel = new JPanel();
+            viewerPanel.setLayout(new BorderLayout());
     		this.add(viewerPanel, BorderLayout.CENTER);
+    		viewerPanel.add(soViewer.getDisplay(), BorderLayout.CENTER);
+//    		viewerPanel.setPreferredSize(new Dimension(400,400));
+    		viewerPanel.validate();
+            
+//            GridBagConstraints c = new GridBagConstraints();
+//            c.fill=GridBagConstraints.HORIZONTAL;
+//            c.gridx=viewers.size() % 5;
+//            c.gridy=viewers.size() / 5;
+//            c.gridheight=2;
+           
+   		
+    		
     		JPanel buttonPanel = new JPanel();
     		//buttonPanel.setLayout(new )
     		editButton = new JButton("Edit");
     		deleteButton = new JButton("Delete");
     		enableBox = new JCheckBox("enable");
+    		enableBox.setSelected(true);
     		buttonPanel.add(enableBox);
     		buttonPanel.add(editButton);
     		buttonPanel.add(deleteButton);
@@ -68,7 +89,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
     		enableBox.addChangeListener(new ChangeListener() {
 				@Override
 				public void stateChanged(ChangeEvent arg0) {
-					setEnabled(enableBox.isSelected());
+					setActivationState(enableBox.isSelected());
 				}
 			});
     		editButton.addActionListener(new ActionListener() {
@@ -84,16 +105,43 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 				}
 			});
     		this.setBorder(BorderFactory.createLineBorder(Color.black));
+    		this.validate();
     	}
     	protected void setActivationState(boolean enabled) {
-    		// TODO
+    		kernelProcessor.setEnabled(enabled);
     	}
     	protected void editKernel() {
+			editDialog.setParameters(inputKernel.getWidth(),
+					inputKernel.getHeight(), inputWidth, inputHeight,
+					kernelProcessor.getOutWidth(),
+					kernelProcessor.getOutHeight(),
+					inputKernel.getOnExpressionString(),
+					inputKernel.getOffExpressionString());
+			editDialog.setVisible(true);
+			if (editDialog.isValuesAccepted()) {
+				synchronized (inputKernel) {
+					synchronized (kernelProcessor) {
+//						viewerPanel.remove(soViewer.getDisplay());
+						inputKernel.changeSize(editDialog.getKernelWidth(), editDialog.getKernelHeight());
+						kernelProcessor.changeOutSize(editDialog.getOutWidth(), editDialog.getOutHeight());
+						soViewer.changeSize(editDialog.getOutWidth(), editDialog.getOutHeight());
+						inputKernel.setOnExpressionString(editDialog.getOnExpressionString());
+						inputKernel.setOffExpressionString(editDialog.getOffExpressionString());
+						inputKernel.setInputOutputSizes(inputWidth, inputHeight, editDialog.getOutWidth(), editDialog.getOutHeight());
+						ExpressionBasedIKUserInterface.this.pack();
+//						viewerPanel.add(soViewer.getDisplay());
+					}
+				}
+			}
     		// TODO
     	}
     	protected void deleteKernel() {
     		stfFilter.removeKernelProcessor(kernelProcessor);
+    		spikingOutputViewerManager.removeOutputViewer(soViewer);
     		removePanel(this);
+    		ExpressionBasedIKUserInterface.this.pack();
+    		ExpressionBasedIKUserInterface.this.repaint();
+    		panels.remove(this);
     	}
     	
     }
@@ -103,8 +151,9 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 	 */
 	public ExpressionBasedIKUserInterface(SpatioTemporalFusion stfFilter, SpikingOutputViewerManager spikingOutputViewerManager) {
 		super("ConvolutionKernel-Viewer");
+		editDialog = new ExpressionBasedKernelEditDialog(this);
 		this.spikingOutputViewerManager = spikingOutputViewerManager;
-		
+		this.stfFilter = stfFilter;
 		this.setContentPane(mainPanel);
 		mainPanel.setLayout(mainPanelLayout);
 		JPanel buttonPanel = new JPanel();
@@ -118,6 +167,9 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 		});
 		mainPanel.add(buttonPanel,BorderLayout.NORTH);
 		mainPanel.add(viewerPanel,BorderLayout.CENTER);
+		mainPanel.setPreferredSize(new Dimension(850,400));
+		this.pack();
+		this.setVisible(true);
 	}
 	
 //	
@@ -127,9 +179,15 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 //	ArrayList<ExpressionBasedSpatialIKPanel> soViewerPanels = new ArrayList<ExpressionBasedSpatialIKPanel>(); 
 	
 	protected void addKernel() {
-		ExpressionBasedSpatialIKPanel soViewerPanel = new ExpressionBasedSpatialIKPanel(5,5,128,128,128,128);
-		
-		viewerPanel.add(soViewerPanel);
+		editDialog.setParameters(7,7, 128, 128,128,128, "0.01","0.01");
+		editDialog.setVisible(true);
+		if (editDialog.isValuesAccepted()) {
+			ExpressionBasedSpatialIKPanel soViewerPanel = new ExpressionBasedSpatialIKPanel(editDialog.getKernelWidth(), editDialog.getKernelHeight(), 128,128,editDialog.getOutWidth(), editDialog.getOutHeight(), editDialog.getOnExpressionString(), editDialog.getOffExpressionString());
+			
+			panels.add(soViewerPanel);
+			viewerPanel.add(soViewerPanel);
+			this.pack();
+		}
 		
 //		SimpleKernelProcessor kernelProcessor = new SimpleKernelProcessor(128,128,kernel);
 //		kernelProcessor.addSpikeHandler(soViewer);
@@ -160,8 +218,22 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 //		}
 	}
 	
+	
+	public void reset() {
+		ArrayList<ExpressionBasedSpatialIKPanel> panels = new ArrayList<ExpressionBasedIKUserInterface.ExpressionBasedSpatialIKPanel>(this.panels);
+		for (ExpressionBasedSpatialIKPanel panel : panels) {
+			panel.deleteKernel();
+		}
+		viewerPanel.removeAll();
+		this.pack();
+		
+	}
 	protected void removePanel(ExpressionBasedSpatialIKPanel panel) {
 		viewerPanel.remove(panel);
 	}
-	
+	public static void main(String[] args) {
+		SpatioTemporalFusion stfFilter = new SpatioTemporalFusion(null);
+		SpikingOutputViewerManager spikingOutputViewerManager = new SpikingOutputViewerManager(); 
+		ExpressionBasedIKUserInterface ui = new ExpressionBasedIKUserInterface(stfFilter, spikingOutputViewerManager);
+	}
 }

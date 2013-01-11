@@ -29,16 +29,28 @@ public class SpikingOutputViewer implements SpikeHandler {
         display.setSizeX(sizeX);
         display.setSizeY(sizeY);
         display.setPreferredSize(new Dimension(250,250));
-        display.setBorderSpacePixels(1);
+        display.setBorderSpacePixels(18);
         this.display.setFontSize(14);
     }
     
     public void changeSize(int sizeX, int sizeY) {
     	if (sizeX != this.sizeX || sizeY != this.sizeY) {
-        	this.sizeX = sizeX;
-        	this.sizeY = sizeY;
-        	this.receivedSpikes = new int[sizeX][sizeY];
-        	this.receivedSpikesBuffer = new int[sizeX][sizeY];
+    		synchronized (this) {
+				
+	        	this.sizeX = sizeX;
+	        	this.sizeY = sizeY;
+	        	this.receivedSpikes = new int[sizeX][sizeY];
+	        	this.receivedSpikesBuffer = new int[sizeX][sizeY];
+	        	if (display != null) {
+	//                display = ImageDisplay.createOpenGLCanvas();
+	//                display.setSizeX(sizeX);
+	//                display.setSizeY(sizeY);
+	//                display.setPreferredSize(new Dimension(250,250));
+	//                display.setBorderSpacePixels(1);
+	//                this.display.setFontSize(14);
+	        		display.setImageSize(sizeX, sizeY);
+				}
+        	}
     	}
     	
     }
@@ -46,6 +58,7 @@ public class SpikingOutputViewer implements SpikeHandler {
     /* Update layerStatePlots to current network time */
     public void update()  {
     	// swap buffer and receivedSpikes:
+    	synchronized (this) {
     	synchronized (this.receivedSpikes) {
     		synchronized (this.receivedSpikesBuffer) {
             	this.maxValueInBuffer = 1; 
@@ -59,6 +72,7 @@ public class SpikingOutputViewer implements SpikeHandler {
 					}
 				}
     		}
+    	}
     	}
         SwingUtilities.invokeLater(new Runnable(){
                 @Override
