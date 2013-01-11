@@ -154,7 +154,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     private GLU glu = new GLU();
     private TextRenderer textRenderer;
     public final int BORDER_SPACE_PIXELS_DEFAULT = 40;
-    private int borderPixels =  BORDER_SPACE_PIXELS_DEFAULT;
+    private float borderPixels =  BORDER_SPACE_PIXELS_DEFAULT;
     private boolean fillsVertically;
     private boolean fillsHorizontally;
     private final float ZCLIP = 1;
@@ -281,7 +281,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         }
 
         gl.glPixelZoom(scale, scale);
-        gl.glRasterPos2f(-.5f, -.5f); // to LL corner of chip, but must be inside viewport or else it is ignored, breaks on zoom     if (zoom.isZoomEnabled() == false) {
+//        gl.glRasterPos2f(-.5f, -.5f); // to LL corner of chip, but must be inside viewport or else it is ignored, breaks on zoom     if (zoom.isZoomEnabled() == false) {
+        gl.glRasterPos2f(0, 0); // to LL corner of chip, but must be inside viewport or else it is ignored, breaks on zoom     if (zoom.isZoomEnabled() == false) {
 
         checkPixmapAllocation();
         {
@@ -300,12 +301,12 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 
         // outline frame
         gl.glColor4f(0, 0, 1f, 0f);
-        gl.glLineWidth(1f);
+        gl.glLineWidth(2f);
         {
             gl.glBegin(GL.GL_LINE_LOOP);
-            final float o = .5f;
-            final float w = sizeX - 1;
-            final float h = sizeY - 1;
+            final float o = 0;
+            final float w = sizeX ;
+            final float h = sizeY ;
             gl.glVertex2f(-o, -o);
             gl.glVertex2f(w + o, -o);
             gl.glVertex2f(w + o, h + o);
@@ -448,7 +449,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         pixmap.limit(array.length);
     }
     
-    /** Updates pixmap values with the values in array only in the region that comes within the blurring kernel, centred at x, y.
+    /** Updates pixmap values with the values in array only in the region that comes within the blurring kernel, centered at x, y.
      * 
      * @param x
      * @param y
@@ -488,6 +489,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     }
 
 //    private float pixmapGrayValue = 0;
+    
     /** Sets full pixmap to some gray level. An internal buffer is created if needed
      * so that gray level can be set back quickly using System.arraycopy.
      *
@@ -564,25 +566,26 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         final float border = 0; // getBorderSpacePixels()*(float)height/width;
         if (sizeY > sizeX) {
             // chip is tall and skinny, so set j2dScale by frame height/chip height
-            newscale = (float) (height - border) / sizeY;
+            newscale = (float) (height - border) / (float)sizeY;
             fillsVertically = true;
             fillsHorizontally = false;
             if (newscale * sizeX > width) { // unless it runs into left/right, then set to fill width
-                newscale = (float) (width - border) / sizeX;
+                newscale = (float) (width - border) / (float)sizeX;
                 fillsHorizontally = true;
                 fillsVertically = false;
             }
         } else {
             // chip is square or squat, so set j2dScale by frame width / chip width
-            newscale = (float) (width - border) / sizeX;
+            newscale = (float) (width - border) / (float)sizeX;
             fillsHorizontally = true;
             fillsVertically = false;
             if (newscale * sizeY > height) {// unless it runs into top/bottom, then set to fill height
-                newscale = (float) (height - border) / sizeY;
+                newscale = (float) (height - border) / (float)sizeY;
                 fillsVertically = true;
                 fillsHorizontally = false;
             }
         }
+        log.info("height="+height+" width="+width+" fillsHorizontally="+fillsHorizontally+" fillsVertically="+fillsVertically+" newscale="+newscale);
         setDefaultProjection(gl, drawable); // this sets orthographic projection so that chip pixels are scaled to the drawable area
         gl.glViewport(0, 0, width, height);
         repaint();
@@ -612,16 +615,17 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         g.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
         // now we set the clipping volume so that the volume is clipped according to whether the window is tall (ar>1) or wide (ar<1).
 
-        if (isFillsHorizontally()) { //tall
+        if (isFillsHorizontally()) { //tall window, chip/array fills window horizontally
             glScale = (float) (w - 2 * borderPixels) / sizeX; // chip pix to screen pix scaling in horizontal&vert direction
             float b = borderPixels / glScale; // l,r border in model coordinates
-            if (b <= 0) {
-                b = 1;
-            }
+//            if (b <= 0.5f) {
+//                b = 1;
+//            }
+            // vertical border comprises left over screen region
             float bb = (h / glScale - sizeY) / 2; // leftover y in model coordinates that makes up vertical border
-            if (bb <= 0) {
-                bb = 1;
-            }
+//            if (bb <= .5f) {
+//                bb = 1;
+//            }
             clipArea.left = -b;
             clipArea.right = sizeX + b;
             clipArea.bottom = -bb;
@@ -629,16 +633,18 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             borders.leftRight = b;
             borders.bottomTop = bb;
             g.glOrtho(-b, sizeX + b, -bb, (sizeY + bb), ZCLIP, -ZCLIP); // clip area has same aspect ratio as screen!
-        } else {
-            glScale = (float) (h - 2 * borderPixels) / sizeY;
-            float b = borderPixels / glScale;
-            if (b <= .5f) {
-                b = 1;
-            }
-            float bb = (w / glScale - sizeX) / 2; // leftover y in model coordinates that makes up vertical border
-            if (bb <= 0) {
-                bb = 1;
-            }
+            log.info("b border="+b+" pixels, bb border="+bb+" pixels");
+        } else { //wide window, chip/array fills window vertically
+            glScale = (float) (h - 2 * borderPixels) / sizeY; // number of screen pixels in drawing area (not counting borders) per chip/array pixels
+            float b = borderPixels / glScale; // equiv number of chip/array pixels occupied by each horizontal border
+//            if (b <= .5f) { // if border is less than .5 chip pixel, then set it to at least a pixel
+//                b = 1;
+//            }
+            // horizontal border region for this case comprises leftover screen pixels
+            float bb = (w / glScale - sizeX) / 2; // leftover y in model coordinates that makes up each horizontal border
+//            if (bb <= .5f) {
+//                bb = 1; // at least 1 chip/array pixel border
+//            }
             clipArea.left = -bb;
             clipArea.right = sizeX + bb;
             clipArea.bottom = -b;
@@ -646,8 +652,10 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             borders.leftRight = bb;
             borders.bottomTop = b;
             g.glOrtho(-bb, (sizeX + bb), -b, sizeY + b, ZCLIP, -ZCLIP);
-        }
+           log.info("b border="+b+" pixels, bb border="+bb+" pixels");
+         }
         g.glMatrixMode(GL.GL_MODELVIEW);
+        checkGLError(g, "after setDefaultProjection");
     }
 
     public float getBorderSpacePixels() {
@@ -951,7 +959,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             gl.glPushMatrix();
 
             Rectangle2D r = textRenderer.getBounds(yLabel);
-            gl.glTranslated(-r.getHeight() * s - (yticks != null ? 10 : 0), sizeY / 2 - r.getWidth() / 2 * s, 0); // shift label left if there are ytick markers
+            gl.glTranslated(-r.getHeight() * s - (yticks != null ? 10 : 0)*s, sizeY / 2 - r.getWidth() / 2 * s, 0); // shift label left if there are ytick markers
             gl.glRotatef(90, 0, 0, 1);
 
             textRenderer.draw3D(yLabel, 0, 0, 0, s);
@@ -996,13 +1004,13 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         /** The rendered multi-line string. */
         public String s;
         /** The location starting at 0,0 at lower left corner of image. */
-        public int x, y;
+        public float x, y;
 //        /** The drawn font size. */
 //        public int fontSize=ImageDisplay.this.fontSize;
         /** The Legend font color. */
         public float[] color = ImageDisplay.this.textColor;
 
-        public Legend(String s, int x, int y) {
+        public Legend(String s, float x, float y) {
             this.s = s;
             this.x = x;
             this.y = y;
@@ -1019,7 +1027,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
      * @return the Legend object, which may be modified as desired.
      *
      */
-    synchronized public Legend addLegend(String s, int x, int y) {
+    synchronized public Legend addLegend(String s, float x, float y) {
         Legend legend = new Legend(s, x, y);
         legends.add(legend);
         return legend;
@@ -1105,10 +1113,10 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         JFrame frame = new JFrame("ImageFrame");  // make a JFrame to hold it
         frame.setPreferredSize(new Dimension(400, 400));  // set the window size
         frame.getContentPane().add(disp, BorderLayout.CENTER); // add the GLCanvas to the center of the window
-        int size = 200;  // used later to define image size
+        int sizex = 3, sizey=3;  // used later to define image size
         final Point2D.Float mousePoint = new Point2D.Float();
 
-        disp.setImageSize(size, size); // set dimensions of image
+        disp.setImageSize(sizex, sizey); // set dimensions of image
 
         disp.addKeyListener(new KeyAdapter() { // add some key listeners to the ImageDisplay
 
@@ -1150,17 +1158,17 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 
         disp.setxLabel("x label"); // add xaxis label and some tick markers
         disp.addXTick(0, "0");
-        disp.addXTick(size, Integer.toString(size));
-        disp.addXTick(size / 2, Integer.toString(size / 2));
+        disp.addXTick(sizex, Integer.toString(sizex));
+        disp.addXTick(sizey / 2, Integer.toString(sizey / 2));
 
         disp.setyLabel("y label"); // same for y axis
         disp.addYTick(0, "0");
-        disp.addYTick(size, Integer.toString(size));
-        disp.addYTick(size / 2, Integer.toString(size / 2));
+        disp.addYTick(sizey, Integer.toString(sizey));
+        disp.addYTick(sizey / 2, Integer.toString(sizey / 2));
 
-        // Add a 3 line legend starting at pixel x=10, y=size (near UL corner).
-        String mls = "This is a multi-line string\nIt has three lines\nand ends with this one";
-        Legend legend = disp.addLegend(mls, 10, size);  // drawa a multiline string - only do this once!  Or clear the list each time.
+        // Add a 3 line legend starting at pixel x=1, y=size (near UL corner).
+        String mls = "Use mouse to position this multiline label\nUse arrow keys to resize array\n'g' sets the array gray, ESC ends";
+        Legend legend = disp.addLegend(mls, 1, sizey);  // drawa a multiline string - only do this once!  Or clear the list each time.
         legend.color = new float[]{1, 0, 0};
 
         disp.setTextColor(new float[]{.8f, 1, 1});
@@ -1170,7 +1178,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         int frameCounter = 0; // iterate over frame updates
         while (true) {
             disp.checkPixmapAllocation(); // make sure we have a pixmaps (not resally necessary since setting size will allocate pixmap
-            int n = size * size;
+            int n = sizex * sizey;
             float[] f = disp.getPixmapArray(); // get reference to pixmap array so we can set pixel values
             int sx = disp.getSizeX(), sy = disp.getSizeY();
             // randomly update all pixels
@@ -1207,8 +1215,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 //            legend.y = (int) (disp.getSizeX() * .5 * (1 + Math.sin(phase)));
 
             // mouse the legend to the mouse point
-            legend.x = (int) (mousePoint.x);
-            legend.y = (int) (mousePoint.y);
+            legend.x =  (mousePoint.x);
+            legend.y =  (mousePoint.y);
 
 
             // randomly change axes font size
