@@ -18,3 +18,15 @@ On-Kernel:
 Off-Kernel:
 -4.5*normal(sqrt(x^2+y^2),0,1.0) + 4.5/5.0 * normal(sqrt(x^2+y^2),0,2.0)
 
+Gabor edge detector:
+x_theta=x*cos(theta)+y*sin(theta);
+y_theta=-x*sin(theta)+y*cos(theta);
+ 
+exp(- 0.5 * ( (x*cos(theta)+y*sin(theta))^2 / sigma_x^2 + (-x*sin(theta)+y*cos(theta))^2 / sigma_y^2)).*cos(2*PI / lambda * (x*cos(theta)+y*sin(theta)) + psi);
+
+45 degree:
+exp(- 0.5 * ( (x*0.7071 + y*0.7071)^2 / 2^2 + (-x*0.7071+y*0.7071)^2 / 1^2)).*cos(2 * PI / 2 * (x*0.7071+y*0.7071));
+
+
+90 degree:
+exp(- 0.5 * ( (y)^2 / 2^2 + (-x)^2 / 1^2)).*cos(2 * PI / 2 * (y));
