@@ -6,6 +6,8 @@ Copyright June 13, 2011 Andreas Steiner, Inst. of Neuroinformatics, UNI-ETH Zuri
 package ch.unizh.ini.jaer.projects.opticalflow.mdc2d;
 
 import ch.unizh.ini.jaer.projects.opticalflow.MotionData;
+import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.dsPIC33F_COM_OpticalFlowHardwareInterface;
+import com.phidgets.SpatialEventData;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -44,12 +46,14 @@ public class GlobalOpticalFlowAnalyser {
     
     protected String dirName;
     protected boolean dataStored= false;
+    protected boolean storingData= false;
     
     // files that will be created in data directory
     public static final String motionLogFileName= "motionLog.csv";
     public static final String infoFileName= "info.txt";
     
     // contains all (valid) motions calculated
+    protected String hardwareConfiguration;
     protected ArrayList<FrameMotion> motions;
     protected ArrayList<FramePicture> pictures;
     
@@ -84,8 +88,8 @@ public class GlobalOpticalFlowAnalyser {
      * @see #storagePath
      * @see #frameSaveRate
      */
-    public GlobalOpticalFlowAnalyser(String dirName,int frameSaveRate) {
-        this(dirName);
+    public GlobalOpticalFlowAnalyser(dsPIC33F_COM_OpticalFlowHardwareInterface hardwareInterface,String dirName,int frameSaveRate) {
+        this(hardwareInterface, dirName);
         this.frameSaveRate= frameSaveRate;
     }
 
@@ -93,10 +97,11 @@ public class GlobalOpticalFlowAnalyser {
      * @see #GlobalOpticalFlowAnalyser
      * @param dirName 
      */
-    public GlobalOpticalFlowAnalyser(String dirName)
+    public GlobalOpticalFlowAnalyser(dsPIC33F_COM_OpticalFlowHardwareInterface hardwareInterface,String dirName)
     {
         loggedInfo= new StringBuilder();
         
+        hardwareConfiguration= hardwareInterface.dump();
         motions= new ArrayList<FrameMotion>();
         pictures= new ArrayList<FramePicture>(); 
         erroneousCalculations= new ArrayList<Integer>();
@@ -116,6 +121,8 @@ public class GlobalOpticalFlowAnalyser {
      * @throws IOException 
      */
     public void storeData() throws IOException {
+        
+        storingData= true;
         
         File storageDir= new File(storagePath);
         File destinationDirectory;
@@ -139,6 +146,8 @@ public class GlobalOpticalFlowAnalyser {
         Date now= new Date();
         infoWriter.write("stored on " + fmt.format(now) + "\n\n");
         
+        infoWriter.write(hardwareConfiguration+"\n\n");
+        
         infoWriter.write(erroneousCalculations.size() + " erroneousCalculations : ");
         for(Integer i : erroneousCalculations) 
             infoWriter.write(String.format("0x%02X ",i.intValue()));
@@ -160,6 +169,8 @@ public class GlobalOpticalFlowAnalyser {
         // store captured frames
         for(FramePicture fp : pictures)
             fp.writeToDirectory(destinationDirectory);
+        
+        storingData= false;
     }
     
     /**
@@ -210,6 +221,7 @@ public class GlobalOpticalFlowAnalyser {
      * @param frame will be saved to disk, together with the previous frame
      */
     public void addBogusFrame(MotionData frame) { 
+        if (storingData) return;
         logInfo("got bogus frame");
         pictures.add(new FramePicture(frame));
         bogusFrames++; 
@@ -222,6 +234,7 @@ public class GlobalOpticalFlowAnalyser {
      * @param frame will be saved to disk, together with the preceeding frame
      */
     public void addErroneousCalculations(int errorCode,MotionData frame) { 
+        if (storingData) return;
         logInfo("erroneous calculation code="+errorCode+" seq="+frame.getSequenceNumber());
         erroneousCalculations.add(new Integer(errorCode)); 
         pictures.add(new FramePicture(frame));
@@ -232,6 +245,7 @@ public class GlobalOpticalFlowAnalyser {
      * @param seq sequence of message that was lost
      */
     public void addLostMessage(int seq) { 
+        if (storingData) return;
         logInfo("lost message : seq="+seq);
     }   
 
@@ -247,6 +261,7 @@ public class GlobalOpticalFlowAnalyser {
      */
     public void analyseMotionData(MotionData frame)
     {
+        if (storingData) return;
         FrameMotion fm= new FrameMotion(frame);
         motions.add(fm);
 
@@ -265,7 +280,7 @@ public class GlobalOpticalFlowAnalyser {
      */
     public static class FrameMotion
     {
-        protected float dx,dy,dx2,dy2;
+        protected float dx,dy,dx2,dy2,px,py;
         protected long dt;
         protected int  seq;
         
@@ -277,11 +292,19 @@ public class GlobalOpticalFlowAnalyser {
             dy= frame.getGlobalY()      *dt/MotionDataMDC2D.globalScaleFactor;
             dx2= frame.getGlobalX2()    *dt/MotionDataMDC2D.globalScaleFactor;
             dy2= frame.getGlobalY2()    *dt/MotionDataMDC2D.globalScaleFactor;
+            SpatialEventData phidgetData= frame.getPhidgetData();
+            if (phidgetData==null) {
+                px= Float.NaN;
+                py= Float.NaN;
+            } else {
+                px= (float) phidgetData.getAngularRate()[0];
+                py= (float) phidgetData.getAngularRate()[1];
+            }
             seq=frame.getSequenceNumber();
         }
 
         /** field names; should be first line in <code>.csv</code> file */
-        public static String HEADER_STRING="dx,dy,dx2,dy2,dt,seq";
+        public static String HEADER_STRING="dx,dy,dx2,dy2,px,py,dt,seq";
         
         protected float sanitize(float x) {
             if (Float.isInfinite(x) || Float.isNaN(x))
@@ -296,7 +319,10 @@ public class GlobalOpticalFlowAnalyser {
          */
         @Override
         public String toString() {
-            return sanitize(dx) + "," + sanitize(dy) + "," + sanitize(dx2) + "," + sanitize(dy2) + "," + dt + "," + seq;
+            return sanitize(dx) + "," + sanitize(dy) + "," + 
+                   sanitize(dx2) + "," + sanitize(dy2) + "," + 
+                   sanitize(px) + "," + sanitize(py)+ "," + 
+                   dt + "," + seq;
         }
         
         public boolean sameSigns() {

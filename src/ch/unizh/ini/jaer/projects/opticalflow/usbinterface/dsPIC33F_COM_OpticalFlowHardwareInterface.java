@@ -22,9 +22,14 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 import ch.unizh.ini.jaer.projects.dspic.serial.*;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.GlobalOpticalFlowAnalyser;
+import com.phidgets.PhidgetException;
+import com.phidgets.SpatialEventData;
+import com.phidgets.SpatialPhidget;
+import com.phidgets.event.*;
 
 import gnu.io.PortInUseException;
 import java.util.Calendar;
+import java.util.logging.Level;
 import java.util.prefs.Preferences;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -109,6 +114,24 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
     protected boolean onChipBiases = prefs.getBoolean("onChipBiases",true);
     // end class state variables
 
+    /**
+     * get values of current configuration. the returned string is a
+     * human readable representation of the state of the hardware interface
+     * and the device. use this for log purposes
+     * @return human readable representation of the current state of the
+     *      hardware interface / device
+     */
+    public String dump() {
+        return 
+                dsPIC33F_COM_OpticalFlowHardwareInterface.class.getName()+" "+
+                "["+PROTOCOL_MAJOR+"/"+PROTOCOL_MINOR+"] : "+
+                "port="+portName+"; "+
+                "delays="+delay1_us+"us/"+delay2_us+"us; "+
+                "channel="+channel+"; "+
+                "onChipADC="+onChipADC+"; "+
+                "onChipBiases="+onChipBiases+"; ";
+    }
+    
     // states of opening procedure; see open() and setPortName()
     private boolean triedOpening= false;
     private boolean triedReset= false;
@@ -131,7 +154,7 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
     // for collecting & analysing global motion calculation data
     protected GlobalOpticalFlowAnalyser analyser= null;
     protected boolean analysing= false;
-
+    
     /**
      * creates a new hardware interface instance; will <i>not yet connect</i> to
      * the device
@@ -367,7 +390,8 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
      * @see ch.unizh.ini.jaer.projects.dspic.serial.StreamCommandMessage
      * @see ch.unizh.ini.jaer.projects.opticalflow.MotionData
      */
-    protected class DataConverter implements Runnable
+    protected class DataConverter implements Runnable, 
+            SpatialDataListener, ErrorListener, AttachListener, DetachListener
     {
         private Exchanger<MotionData> dataOut;
         private LinkedList<StreamCommandMessage> messages;
@@ -387,8 +411,13 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
          * motion calculations on firmware/computer side)
          * @see dsPIC33F_COM_ConfigurationPanel
          */
-        public final static int MAX_QUEUED_MESSAGES= 2; 
-
+        public final static int MAX_QUEUED_MESSAGES= 2;
+        
+        // phidget data is simply saved in listener and transfered to message
+        // in worker thread
+        SpatialPhidget phidget;
+        SpatialEventData phidgetData;
+        Object phidgetDataSynchronizer= new Object();
 
         /**
          * creates a new instance of this class; the thread must later be
@@ -410,6 +439,21 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
             frame= motionBuffer;
             width= frame.chip.getSizeX();
             messagesPushed = messagesParsed = 0;
+
+            phidget= null;
+            try {
+                
+                phidget = new SpatialPhidget();
+
+                phidget.addAttachListener(this);
+                phidget.addDetachListener(this);
+                phidget.addErrorListener(this);
+          
+                phidget.openAny();
+            
+            } catch (PhidgetException ex) {
+                log.warning("could not phidget.lopenAny(): "+ex);
+            }
 
             stopped= false;
         }
@@ -708,6 +752,10 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         public void run() {
             if (debugging) System.err.println("converter started");
             
+            if (phidget != null)
+                phidget.addSpatialDataListener(this);
+            phidgetData= null;
+            
             while(!stopped) {
                 try
                 {
@@ -718,6 +766,11 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
                     {
                         messagesParsed++;
     //                    if (messagesParsed%300==0) System.err.println("messages : " + messagesPushed + " pushed -> " + messagesParsed + " parsed"); //DBG
+                        
+                        synchronized(phidgetDataSynchronizer) {
+                            frame.setPhidgetData(phidgetData);
+                            phidgetData= null;
+                        }
 
                         // exchange buffer, make history
                         MotionData last= frame.clone(); // a *shallow* copy
@@ -735,6 +788,9 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
 //                    log.info("interrupted : e="+e);
                 }
             }
+
+            if (phidget != null)
+                phidget.removeSpatialDataListener(this);
 
             if (debugging) System.err.println("converter stopped");
             stopped= false;
@@ -781,6 +837,32 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
             return dataOut.exchange(data,DATA_TIMEOUT_MS,TimeUnit.MILLISECONDS);
         }
 
+        @Override
+        public void attached(AttachEvent ae) {
+            log.info("attachment of " + ae);
+            try {
+                ((SpatialPhidget) ae.getSource()).setDataRate(10); //set data rate to 496ms
+            } catch (PhidgetException pe) {
+                log.warning("Problem setting data rate : " +pe);
+            }
+        }
+        @Override
+        public void detached(DetachEvent ae) {
+            log.info("detachment of " + ae);
+        }
+        @Override
+        public void error(ErrorEvent ee) {
+            log.warning("error event for " + ee);
+        }
+        @Override
+        
+        public void data(SpatialDataEvent sde) {
+            synchronized(phidgetDataSynchronizer) {
+                phidgetData= sde.getData()[0];
+                //System.err.println("got data + "+phidgetData.getAngularRate());
+            }
+        }
+
     }
 
     /**
@@ -792,7 +874,7 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
      * @see GlobalOpticalFlowAnalyser
      */
     public void startAnalysis(String name,int saveRate) { 
-        analyser= new GlobalOpticalFlowAnalyser(name,saveRate); 
+        analyser= new GlobalOpticalFlowAnalyser(this,name,saveRate); 
         analysing= true;
     }
     /**
@@ -810,9 +892,9 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
      * @see #startAnalysis
      */
     public void  stopAnalysis() { 
+        analysing= false;
         analyser.finish(); 
         analyser= null; 
-        analysing= false;
     }
     
     

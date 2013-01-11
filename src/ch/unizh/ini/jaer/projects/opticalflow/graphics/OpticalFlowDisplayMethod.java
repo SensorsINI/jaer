@@ -9,6 +9,7 @@
 package ch.unizh.ini.jaer.projects.opticalflow.graphics;
 
 import ch.unizh.ini.jaer.projects.opticalflow.*;
+import com.phidgets.SpatialEventData;
 import net.sf.jaer.graphics.*;
 import java.util.prefs.*;
 import javax.media.opengl.*;
@@ -49,13 +50,15 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
     private float globalMotionGain=prefs.getFloat("OpticalFlowDisplayMethod.globalMotionGain",1f);
     private float globalMotionOffset=prefs.getFloat("OpticalFlowDisplayMethod.globalMotionOffset",0.5f);
     private float vectorLengthScale=prefs.getFloat("OpticalFlowDisplayMethod.vectorLengthScale",.5f);
+    private float angularVectorScale=prefs.getFloat("OpticalFlowDisplayMethod.angularVectorScale",0.2f);
     
     private boolean photoDisplayEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.photoDisplayEnabled",true),
-            localDisplayEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.localDisplayEnabled",true),
+            localDisplayEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.localDisplayEnabled",false),
             globalDisplayEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.globalDisplayEnabled",true),
             globalDisplay2Enabled=prefs.getBoolean("OpticalFlowDisplayMethod.globalDisplay2Enabled",true),
-            absoluteCoordinates=prefs.getBoolean("OpticalFlowDisplayMethod.absoluteCoordinatesEnabled",true),
-            localMotionColorsEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.localMotionColorsEnabled",true);
+            absoluteCoordinates=prefs.getBoolean("OpticalFlowDisplayMethod.absoluteCoordinatesEnabled",false),
+            localMotionColorsEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.localMotionColorsEnabled",false),
+            angularRateEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.angularRateEnabled",false);
 
     private int rawChannelToDisplay=0;
     
@@ -112,6 +115,9 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
         float[][] rawChannel=motionData.extractRawChannel(this.getRawChannelDisplayed());
         float[][] ux=motionData.getUx();//rawChannel
         float[][] uy=motionData.getUy();//ux
+        SpatialEventData phidgetData= motionData.getPhidgetData();
+        float ang1= phidgetData==null ? 0 : (float) phidgetData.getAngularRate()[0];
+        float ang2= phidgetData==null ? 0 : (float) phidgetData.getAngularRate()[1];
 
 
         
@@ -206,6 +212,17 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
             gl.glVertex3f(nCols/2+.5f,nRows/2+.5f,1); // put at z=1 to draw above pixels
             gl.glVertex3f(nCols/2+.5f+gx2,nRows/2+.5f+gy2,1);
             gl.glEnd();
+        }
+        // draw SpatialPhidget angular rate
+        if(angularRateEnabled){
+            gl.glColor3f(0,0,1);
+            gl.glLineWidth(2f);
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex3f(nCols/2+.5f,nRows/2+.5f,1); // put at z=1 to draw above pixels
+            gl.glVertex3f(nCols/2+.5f+ang1*angularVectorScale,nRows/2+.5f-ang2*angularVectorScale,1);
+            gl.glEnd();
+            //if (motionData.getSequenceNumber() % 100 == 0)
+            //    System.err.println("SpatialPhidget : ang1="+ang1+"; ang2="+ang2);
         }
         gl.glPopMatrix();
     }
@@ -351,4 +368,13 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
     public void setRawChannelDisplayed(int channelNumber){
         this.rawChannelToDisplay=channelNumber;
     }
+
+    public boolean isAngularRateEnabled() {
+        return angularRateEnabled;
+    }
+
+    public void setAngularRateEnabled(boolean angularRateEnabled) {
+        this.angularRateEnabled = angularRateEnabled;
+    }
+
 }

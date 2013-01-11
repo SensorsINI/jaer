@@ -12,6 +12,7 @@ package ch.unizh.ini.jaer.projects.opticalflow;
  *Copyright November 24, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 
+import com.phidgets.SpatialEventData;
 import java.io.*;
 import java.util.Random;
 
@@ -76,6 +77,7 @@ public abstract class MotionData implements Cloneable{
     // these are used for comparison purposes
     protected float globalX2; // global velocity x, centered on 0
     protected float globalY2; // global velocity x, centered on 0
+    protected SpatialEventData phidgetData; // as measured by SpatialPhidget
 
     // a Chip2DMotion object of the current chip type
     public Chip2DMotion chip;
@@ -361,6 +363,15 @@ public abstract class MotionData implements Cloneable{
     public void setGlobalY2(float globalY2) {
         this.globalY2 = globalY2;
     }
+
+    public SpatialEventData getPhidgetData() {
+        return phidgetData;
+    }
+
+    public void setPhidgetData(SpatialEventData phidgetData) {
+        this.phidgetData = phidgetData;
+    }
+    
 
     /* shifts pastMotionData array by one position. The oldest data fall out. At
      * position 0 the most recent data is inserted
