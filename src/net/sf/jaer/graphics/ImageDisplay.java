@@ -141,7 +141,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 
    
     protected Preferences prefs = Preferences.userNodeForPackage(ImageDisplay.class);
-    protected Logger log = Logger.getLogger("ImageDisplay");
+    static final Logger log = Logger.getLogger("ImageDisplay");
     private int fontSize = 20;
     private int sizeX = 0, sizeY = 0;
     /** The gray value. Default is 0. */
@@ -533,6 +533,9 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     public void checkPixmapAllocation() {
         final int n = 3 * sizeX * sizeY;
         if (pixmap == null || pixmap.capacity() != n) {
+            if(pixmap!=null) pixmap=null;
+            System.gc();
+            log.info("allocating "+n+" floats for pixmap");
             pixmap = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
         }
     }
@@ -847,7 +850,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     /**
      * Sets a new font size for the axes labels and title.
      *
-     * @param fontSize the fontSize to set
+     * @param fontSize the fontSize to set, e.g 12. This is in points.
      */
     synchronized public void setFontSize(int fontSize) {
         if (this.fontSize != fontSize) {
@@ -1136,6 +1139,13 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
                     disp.setSizeX(disp.getSizeX() / 2);
                 } else if (k == KeyEvent.VK_G) { // 'g' resets the frame to gray level 0.5f
                     disp.resetFrame(.5f);
+                }else if (k == KeyEvent.VK_F && ((e.getModifiersEx()&KeyEvent.SHIFT_DOWN_MASK)==KeyEvent.SHIFT_DOWN_MASK)){
+                    disp.setFontSize(disp.getFontSize()*14/10);
+                    log.info("fontSize"+disp.getFontSize());
+               }else if (k == KeyEvent.VK_F && ((e.getModifiersEx()&KeyEvent.SHIFT_DOWN_MASK)==0)){
+                    int newsize=disp.getFontSize()*10/14; if (newsize<1) newsize=1;
+                    disp.setFontSize(newsize);
+                    log.info("fontSize"+disp.getFontSize());
                 }
             }
         });
@@ -1176,11 +1186,15 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         Random r = new Random();  // will use to fill display with noise
 
         int frameCounter = 0; // iterate over frame updates
-        while (true) {
+             int n;
+            float[] f; // get reference to pixmap array so we can set pixel values
+            int sx, sy, xx, yy;
+       while (true) {
             disp.checkPixmapAllocation(); // make sure we have a pixmaps (not resally necessary since setting size will allocate pixmap
-            int n = sizex * sizey;
-            float[] f = disp.getPixmapArray(); // get reference to pixmap array so we can set pixel values
-            int sx = disp.getSizeX(), sy = disp.getSizeY();
+            n = sizex * sizey;
+            f = disp.getPixmapArray(); // get reference to pixmap array so we can set pixel values
+            sx = disp.getSizeX();
+            sy = disp.getSizeY();
             // randomly update all pixels
 //                for (int x = 0; x < sx; x++) {
 //                    for (int y = 0; y < sy; y++) {
@@ -1204,8 +1218,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 //            disp.resetFrame(0);
 
             // randomly set a pixel to some RGB value
-            int xx = r.nextInt(disp.getSizeX());
-            int yy = r.nextInt(disp.getSizeY());
+             xx = r.nextInt(disp.getSizeX());
+             yy = r.nextInt(disp.getSizeY());
             disp.setPixmapRGB(xx, yy, r.nextFloat(), r.nextFloat(), r.nextFloat());
 
 
@@ -1219,16 +1233,18 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             legend.y =  (mousePoint.y);
 
 
-            // randomly change axes font size
-//            if(frameCounter%1000==0){
-//                disp.setFontSize(r.nextInt(60));
-//            }
+
 
 
             disp.setTitleLabel("Frame " + (frameCounter++));
 
             // ask for a repaint
             disp.repaint();
+            try{
+                Thread.sleep(10);
+            }catch(InterruptedException e){
+                
+            }
 
         }
     }
